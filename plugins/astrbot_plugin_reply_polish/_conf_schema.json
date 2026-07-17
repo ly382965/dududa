@@ -1,0 +1,32 @@
+{
+  "min_chars": {
+    "description": "转换为合并转发的最短字符数",
+    "type": "int",
+    "default": 50
+  },
+  "chunk_chars": {
+    "description": "每个转发节点的目标字符数",
+    "type": "int",
+    "default": 520
+  },
+  "max_nodes": {
+    "description": "单次合并转发的最大节点数",
+    "type": "int",
+    "default": 8
+  },
+  "bot_name": {
+    "description": "合并转发中显示的机器人名称",
+    "type": "string",
+    "default": "嘟嘟哒"
+  },
+  "bot_uin": {
+    "description": "合并转发中使用的机器人 QQ 号",
+    "type": "string",
+    "default": "0"
+  },
+  "enable_forward": {
+    "description": "启用长回复合并转发",
+    "type": "bool",
+    "default": true
+  }
+}

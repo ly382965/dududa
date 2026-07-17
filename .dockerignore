@@ -1,0 +1,15 @@
+.git
+.github
+.env
+data
+runtime
+backups
+**/__pycache__
+**/*.pyc
+**/.venv
+**/*.db
+**/*.sqlite3
+docs
+tests
+vendor
+patches

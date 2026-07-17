@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/icourse-mcp/pyproject.toml
+      - name: Install icourse MCP
+        run: python -m pip install -e services/icourse-mcp
+      - name: Compile Python sources
+        run: python -m compileall -q plugins services scripts
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate shell
+        run: bash -n manage.sh
+      - name: Validate Compose
+        run: docker compose --env-file .env.example config --quiet
+      - name: Check repository for secrets and runtime data
+        run: python scripts/check_secrets.py
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "icourse": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/icourse-mcp/run_icourse_mcp.py",
+        "--db-path",
+        "/AstrBot/data/icourse-cache/icourse.sqlite3",
+        "--request-delay",
+        "1.0"
+      ],
+      "disabled": false
+    }
+  }
+}

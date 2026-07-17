@@ -1,0 +1,11 @@
+name: astrbot_plugin_target_talk
+display_name: 定向搭话
+desc: 监听指定 QQ 号在群聊中的发言，按概率自动 @ 对方并用 LLM 生成回复。
+help: |
+  在插件配置页添加目标 QQ 号后生效。
+  插件为被动触发模式：目标用户先在群里发言，命中概率、冷却和过滤条件后，Bot 会 @ 该用户并回复。
+version: v0.1.0
+author: mmdustc
+repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_target_talk
+support_platforms:
+  - aiocqhttp
