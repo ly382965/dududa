@@ -37,6 +37,14 @@ compose.yml              # AstrBot + NapCat
 plugins.lock.json        # 第三方插件精确版本
 ```
 
+## Dududa 2.0 Refactor
+
+The Phase 0 audit and Phase 1 target design are indexed in
+[Dududa 2.0 Design Overview](docs/design/dududa-2.0-overview.md). The verified
+current state, migration map, phase plan, ADRs, deployment design, and rollback
+contract are documentation only at this point: the runtime still uses the
+paths and commands described above, and Phase 2 implementation has not started.
+
 ## Requirements
 
 - Linux host with Docker Engine and Docker Compose v2
