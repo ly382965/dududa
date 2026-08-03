@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: selection-contracts
 Parent: model-selection
-Status: pending
-Verification: unverified
-Last sync: unix:1785750151
+Status: complete
+Verification: verified
+Last sync: unix:1785760314
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
