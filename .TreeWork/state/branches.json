@@ -67,10 +67,20 @@
       "title": "S09 Perception And Tiering",
       "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "paused",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1785750151"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/perception-tiering",
+        "git_branch": "treework/perception-tiering",
+        "managed_by_treework": true,
+        "created_at": "unix:1785773625",
+        "last_entered_at": "unix:1785773625",
+        "last_status": "created managed worktree"
+      },
+      "status_reason": "Preserve completed but uncommitted S09 worktree while the user-requested NapCat/Mew WebUI parity effort is scoped separately.",
+      "last_sync": "unix:1785783268"
     },
     {
       "path": "offline-runtime",
