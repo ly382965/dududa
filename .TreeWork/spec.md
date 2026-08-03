@@ -4,17 +4,19 @@
 
 ### Starting Point
 
-The current worktree implements the S01-S07 foundations but has not committed
-them. The pure `dududa-agent` package, Connector/Output adapters, security
-services, memory boundary, compatibility extraction, and 116-test baseline are
-implementation truth. The legacy AstrBot handlers remain production authority.
-`apps/web` and the Sub2API plugin are concurrent unrelated work and are outside
-this project's write and commit scope.
+S01-S07 are committed as the framework foundation. S08 selection contracts and
+the static Router are integrated, and S09 Perception/Tiering is integrated and
+verified through Python 3.10/3.12 at control commit `18d4958`. The S09 synthetic
+Eval has 320 material profiles in 32 template families and reports
+`technical_pass=true`; `release_ready=false` remains honest until a human
+reviews those template families. The legacy AstrBot handlers remain production
+authority.
 
-Before isolated TreeWork branches can depend on the new package, the Lead will
-create a selective baseline commit containing only the documented S01-S07
-delivery and TreeWork metadata. No unrelated path is staged. Every later branch
-is integrated in dependency order and revalidated against that baseline.
+`apps/web`, deployment files and the Sub2API plugin remain concurrent user work
+in the dirty control workspace. They are outside this project's write and
+commit scope. Every remaining TreeWork branch starts from the committed
+S08/S09 control baseline in an isolated worktree and is integrated only after
+branch-local and control-level verification.
 
 ### Integrated Model Selection Architecture
 
@@ -132,33 +134,69 @@ Initial TierPolicy is conservative and deterministic:
   difficulty;
 - prompt text requesting a named tier or model is untrusted data.
 
-Evaluation labels complexity by the lowest tier that meets a frozen quality
-threshold on the same sanitized task, not by subjective difficulty. Splits are
-clustered by full conversation/group. Reports include under-routing quality
-violations, minimum-sufficient-tier agreement, unnecessary Opus escalation,
-calibration, cost, latency, and task/context/privacy strata.
+The committed S09 Eval labels the expected output of the frozen deterministic
+policy (`policy_gold`); it does not claim an empirically minimum sufficient
+real-model tier. Only a future blinded same-task, per-tier quality study may
+make that claim. Splits are clustered by template family and conversation
+lineage. Reports bind every artifact and prediction digest, separate
+development/held-out and per-stratum metrics, use applicable family counts for
+hard gates, and distinguish technical pass from human release review.
 
 ### S10 Offline Runtime
 
-The first Orchestrator supports only explicit mentions and direct replies.
-Memory, tools, attachments requiring preprocessing, and proactive chat are
-disabled. It provides a testable in-memory state store, current-message context
-builder, deterministic social policy, direct-chat model call, minimal response
-composer, one pass-through/deterministic persona renderer, render validation,
-and two-stage delivery acknowledgement.
+The first Orchestrator accepts bounded pure-text private messages and group
+messages that explicitly mention the current Bot. A reply-only group message is
+not admitted because current-message context cannot prove that the referenced
+message was authored by the Bot; trusted reply history is deferred. Memory,
+tools, attachments and proactive chat are disabled. User feature flags cannot
+enable them.
 
-Before orchestration, contract drift is corrected: successful/partial/failed or
-unknown delivery completion must be representable; `reconcile_delivery()` and
-one authoritative `DeliveryConstraints` shape must match design and code.
-Visible output ends at `READY_TO_EMIT`; only a caller-provided delivery receipt
-advances acknowledgement/completion. Cancellation and deadlines stop new work,
-unknown side effects are not retried, and the total budget covers both the
-bootstrap perception and direct-chat calls.
+The current-message builder creates a de-identified `PerceptionContext` plus a
+separate validated identity binding used only after Perception to map an opaque
+response target back to the current Scope. Raw platform IDs never enter either
+model request. Response authorization uses `message.respond` over the current
+conversation; final delivery obtains a separately bound `message.send`
+decision over the immutable Delivery intent.
 
-`ShadowRunner` is a separate side-effect-denying composition. It has no real
-OutputAdapter, Memory writer, Tool executor or event-stop capability. A shadow
-candidate may be evaluated and traced but cannot be converted into an external
-send.
+Router-backed Perception gains an additive execution receipt containing no
+prompt or output text: whether a model call started, request fingerprint,
+sanitized `RouteDecision`, reported usage and failure kind. Runtime persists
+this receipt, the `TaskComplexityAssessment`, `TierDecision`, the direct-chat
+route receipt and conservative charged usage without adding another phase.
+The total Runtime budget is split into configured Perception and Direct Chat
+reservations. Each child call sees only its reservation; a started call is
+charged its full reservation when any Provider attempt lacks complete usage,
+so failure and retry cannot create optimistic remaining budget.
+
+Direct Chat accepts only a bounded text response and projects it into a
+versioned `DirectChatContent` before composition. `ASK_CLARIFICATION` uses a
+configured deterministic message and does not call the downstream Router.
+`IGNORE` and `DEFER` complete without visible output in S10. The minimal
+Composer, deterministic single-Persona renderer and validator preserve facts,
+citations, refusal, targets and immutable constraints; final content safety is
+bound to the recomputed rendered digest.
+
+The in-memory Runtime State Store atomically creates a checkpoint and message
+dedup record, performs revision CAS, keeps bounded unexpired checkpoints and
+tombstones, and provides revision waiting for same-process single-flight.
+Concurrent duplicates with the same start digest wait for and reuse one result;
+the same message with a different start digest is a conflict. Capacity never
+evicts an unexpired record.
+
+Before orchestration, contract drift is corrected. `CompletionReceipt`
+represents real `SUCCEEDED`, `PARTIAL`, `FAILED` and `UNKNOWN` delivery status;
+`AgentRuntime` includes idempotent acknowledgement and reconciliation; and the
+single authoritative `DeliveryConstraints` uses Schema version, maximum parts,
+UTF-8 bytes per part, forward-bundle permission, allowed attachment schemes and
+a reconciliation window. Visible output stops at `READY_TO_EMIT`; a separate
+offline delivery driver calls `OutputAdapter` and then acknowledgement. Late
+receipts merge monotonically without moving `COMPLETED` back to an earlier
+phase.
+
+`ShadowRunner` is a separate side-effect-denying composition. Its constructor
+has no OutputAdapter, Memory writer, Tool executor or event-stop capability,
+and its public receipt contains only sanitized outcome and decision digests,
+never a `DeliveryRequest`, AuthorizationDecision or response body.
 
 ### S11 Controlled Rollout
 

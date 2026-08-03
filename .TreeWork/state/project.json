@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1",
-  "stage": "alignment",
+  "stage": "work_tree",
   "current_branch": "perception-tiering",
-  "last_event_seq": 15,
+  "last_event_seq": 16,
   "tree_revision": 1,
   "tree_editing": null,
   "tree_hash": "fnv1a64:1a89870cd80e343b",
-  "last_sync": "unix:1785784286"
+  "last_sync": "unix:1785785590"
 }

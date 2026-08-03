@@ -34,15 +34,15 @@ and do not implement or connect Bandit learning yet.
 
 ## Success Criteria (testable outcomes that show the need was met)
 
-- [ ] S08 provides versioned immutable model-selection contracts, a validated
+- [x] S08 provides versioned immutable model-selection contracts, a validated
   registry, deterministic tier/endpoint selection, atomic capacity admission,
   bounded retry/failover/fallback, a Fake Provider, and one real compatible
   Adapter sharing Provider contract tests.
-- [ ] S09 provides Rule and Model Perception, whole-result validation,
+- [x] S09 provides Rule and Model Perception, whole-result validation,
   deterministic merging and social decision, a versioned complexity
   assessment, a deterministic TierPolicy, and a reproducible synthetic or
   sanitized evaluation set and report.
-- [ ] The bootstrap `PERCEPTION` call always uses an allowed `haiku` endpoint;
+- [x] The bootstrap `PERCEPTION` call always uses an allowed `haiku` endpoint;
   only the validated assessment influences the later `DIRECT_CHAT` tier.
 - [ ] S10 runs the offline sequence Connector -> Context -> Perception ->
   Complexity -> TierPolicy -> Router -> Direct Chat -> Composer -> one
