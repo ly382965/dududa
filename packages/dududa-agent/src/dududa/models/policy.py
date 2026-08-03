@@ -44,6 +44,32 @@ class ConfidenceHandling(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class BootstrapTierPolicyDefinition:
+    schema_version: int
+    policy_id: str
+    role: ModelRole
+    selected_tier: ModelTier
+    policy_revision: str
+    reason_codes: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(self.policy_id, "bootstrap_tier_policy_id")
+        require_non_empty(self.policy_revision, "bootstrap_tier_policy_revision")
+        _require_enum(self.role, ModelRole, "model_role")
+        _require_enum(self.selected_tier, ModelTier, "selected_tier")
+        if self.role is not ModelRole.PERCEPTION:
+            raise validation_error("bootstrap_policy_role_forbidden")
+        if self.selected_tier is not ModelTier.HAIKU:
+            raise validation_error("bootstrap_policy_tier_forbidden")
+        object.__setattr__(
+            self,
+            "reason_codes",
+            _unique_strings(self.reason_codes, "reason_codes", required=True),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TierSelectionContext:
     schema_version: int
     selection_id: str

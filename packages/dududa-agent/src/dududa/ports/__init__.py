@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .attachments import AttachmentRepository, BoundedAttachmentStream
     from .memory import MemoryRepository, ScopeSelectorVerifier
     from .models import (
+        BootstrapModelTierPolicy,
         ModelAdmissionController,
         ModelCatalogPublisher,
         ModelInvocationEstimator,
@@ -25,6 +26,15 @@ if TYPE_CHECKING:
         ModelRoutingRegistry,
         ModelTierPolicy,
     )
+    from .perception import (
+        ModelPerception,
+        PerceptionEngine,
+        PerceptionMerger,
+        PerceptionValidator,
+        RulePerception,
+        SocialDecisionEngine,
+        TaskComplexityAssessor,
+    )
     from .output import OutputAdapter
     from .runtime import AgentRuntime, InputConnector
 
@@ -32,6 +42,7 @@ __all__ = [
     "AgentRuntime",
     "AttachmentRepository",
     "BoundedAttachmentStream",
+    "BootstrapModelTierPolicy",
     "CancellationToken",
     "InputConnector",
     "ManualCancellationToken",
@@ -45,12 +56,19 @@ __all__ = [
     "ModelRouter",
     "ModelRoutingRegistry",
     "ModelTierPolicy",
+    "ModelPerception",
     "NeverCancelled",
     "OutputAdapter",
     "PortCallContext",
+    "PerceptionEngine",
+    "PerceptionMerger",
+    "PerceptionValidator",
+    "RulePerception",
     "ScopeSelectorVerifier",
     "ServiceCallContext",
     "ServicePrincipal",
+    "SocialDecisionEngine",
+    "TaskComplexityAssessor",
 ]
 
 
@@ -74,6 +92,7 @@ def __getattr__(name: str) -> object:
 
         return OutputAdapter
     if name in {
+        "BootstrapModelTierPolicy",
         "ModelAdmissionController",
         "ModelCatalogPublisher",
         "ModelInvocationEstimator",
@@ -85,6 +104,7 @@ def __getattr__(name: str) -> object:
         "ModelTierPolicy",
     }:
         from .models import (
+            BootstrapModelTierPolicy,
             ModelAdmissionController,
             ModelCatalogPublisher,
             ModelInvocationEstimator,
@@ -97,6 +117,7 @@ def __getattr__(name: str) -> object:
         )
 
         return {
+            "BootstrapModelTierPolicy": BootstrapModelTierPolicy,
             "ModelAdmissionController": ModelAdmissionController,
             "ModelCatalogPublisher": ModelCatalogPublisher,
             "ModelInvocationEstimator": ModelInvocationEstimator,
@@ -106,6 +127,34 @@ def __getattr__(name: str) -> object:
             "ModelRouter": ModelRouter,
             "ModelRoutingRegistry": ModelRoutingRegistry,
             "ModelTierPolicy": ModelTierPolicy,
+        }[name]
+    if name in {
+        "ModelPerception",
+        "PerceptionEngine",
+        "PerceptionMerger",
+        "PerceptionValidator",
+        "RulePerception",
+        "SocialDecisionEngine",
+        "TaskComplexityAssessor",
+    }:
+        from .perception import (
+            ModelPerception,
+            PerceptionEngine,
+            PerceptionMerger,
+            PerceptionValidator,
+            RulePerception,
+            SocialDecisionEngine,
+            TaskComplexityAssessor,
+        )
+
+        return {
+            "ModelPerception": ModelPerception,
+            "PerceptionEngine": PerceptionEngine,
+            "PerceptionMerger": PerceptionMerger,
+            "PerceptionValidator": PerceptionValidator,
+            "RulePerception": RulePerception,
+            "SocialDecisionEngine": SocialDecisionEngine,
+            "TaskComplexityAssessor": TaskComplexityAssessor,
         }[name]
     if name in {"AgentRuntime", "InputConnector"}:
         from .runtime import AgentRuntime, InputConnector

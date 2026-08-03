@@ -27,6 +27,7 @@ from dududa.domain.primitives import (
 from dududa.errors import validation_error
 from dududa.memory.models import MemoryCandidate, MemorySubmissionReceipt
 from dududa.models.contracts import RouteHint
+from dududa.perception.contracts import PerceptionResult, SocialDecision
 
 
 class RuntimePhase(StrEnum):
@@ -57,8 +58,6 @@ class ProvisionalRuntimePayload(Protocol):
 PreprocessResult: TypeAlias = ProvisionalRuntimePayload
 MemoryRetrievalResult: TypeAlias = ProvisionalRuntimePayload
 ContextBuildResult: TypeAlias = ProvisionalRuntimePayload
-PerceptionResult: TypeAlias = ProvisionalRuntimePayload
-SocialDecision: TypeAlias = ProvisionalRuntimePayload
 CapabilityRetrievalResult: TypeAlias = ProvisionalRuntimePayload
 ToolPlan: TypeAlias = ProvisionalRuntimePayload
 ToolObservation: TypeAlias = ProvisionalRuntimePayload

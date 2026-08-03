@@ -1,0 +1,1283 @@
+{
+  "artifact_digests": {
+    "cases": "dududa-c14n-v1:eval:perception-tiering-case-set:v1:sha-256:6ba37f1c29dcfeae6e5c95572908d0556c5e8d1d759837d874911fb25e1dd1ad",
+    "fixtures": "dududa-c14n-v1:eval:perception-tiering-model-fixture-set:v1:sha-256:7274ec270f97fa587816c3fc9426ecd1d57a216d67929dde88963b1714dd7cae",
+    "gold": "dududa-c14n-v1:eval:perception-tiering-gold-set:v1:sha-256:e2fbcebacc64611a5f89a1b95103e15cfcdd19cea81e17775c887e4893a4cf91",
+    "plan": "dududa-c14n-v1:eval:perception-tiering-plan:v1:sha-256:d92b2dfdbb64c836057c588b025e571c15520c1f5e42c2c60c57b63ca4169bb1",
+    "rubric": "dududa-c14n-v1:eval:quality-rubric:v1:sha-256:a3a515cba1077dcb025c82187bdf8a8d5d2e873415102d060312d542b5131e3c",
+    "split": "dududa-c14n-v1:eval:perception-tiering-split:v1:sha-256:7b2756e00dabf63532546b7b5e7d60f75280f7087ba23db6c07388a05bec1a0a"
+  },
+  "budget_cap_correctness": {
+    "count": 20,
+    "denominator": 20,
+    "rate": 1.0
+  },
+  "bundle_validation": {
+    "manifest_bound": true,
+    "plan_bound": true,
+    "rubric_bound": true,
+    "split_bound": true,
+    "strict_schema_valid_count": 320,
+    "synthetic_provenance_only": true
+  },
+  "bundle_version": "s09-perception-tiering-eval-v1",
+  "calibration": {
+    "brier": "0.036715625000",
+    "ece_10_bin": "0.152812500000"
+  },
+  "dataset_digest": "dududa-c14n-v1:eval:perception-tiering-dataset:v1:sha-256:bc1730ce392631f2006c212c7e50229d0a62a4261edd576f3615ba8ef0f7fc48",
+  "dataset_kind": "synthetic",
+  "empirical_minimum_tier_claimed": false,
+  "evaluation_component_revisions": {
+    "assessor": {
+      "artifact_digest": "s09-eval-artifact:assessor",
+      "component_id": "s09-eval-assessor",
+      "config_revision": "s09-perception-tiering-eval-v1",
+      "implementation_version": "1.0.0"
+    },
+    "merger": {
+      "artifact_digest": "s09-eval-artifact:merger",
+      "component_id": "s09-eval-merger",
+      "config_revision": "s09-perception-tiering-eval-v1",
+      "implementation_version": "1.0.0"
+    },
+    "model": {
+      "artifact_digest": "s09-eval-artifact:model",
+      "component_id": "s09-eval-model",
+      "config_revision": "s09-perception-tiering-eval-v1",
+      "implementation_version": "1.0.0"
+    },
+    "pipeline": {
+      "artifact_digest": "s09-eval-artifact:pipeline",
+      "component_id": "s09-eval-pipeline",
+      "config_revision": "s09-perception-tiering-eval-v1",
+      "implementation_version": "1.0.0"
+    },
+    "rule": {
+      "artifact_digest": "s09-eval-artifact:rule",
+      "component_id": "s09-eval-rule",
+      "config_revision": "s09-perception-tiering-eval-v1",
+      "implementation_version": "1.0.0"
+    },
+    "validator": {
+      "artifact_digest": "s09-eval-artifact:validator",
+      "component_id": "s09-eval-validator",
+      "config_revision": "s09-perception-tiering-eval-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "exact_match": {
+    "complexity.ambiguity": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.conflicting_evidence": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.context_pressure": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.evidence_refs": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.expected_tool_steps": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.level": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.reason_codes": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.reasoning_depth": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "complexity.verification_required": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.ambiguity_keys": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.complexity_signal_codes": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.entity_keys": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.evidence_refs": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.intent_ids": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.model_status": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.need_tools": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.reference_keys": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.speech_acts": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.target_identity_refs": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "perception.task_kind": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "social.action": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "social.reason_codes": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "social.target_identity_refs": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "tier.confidence_handling": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "tier.selected_tier": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    },
+    "tier.uncapped_tier": {
+      "count": 320,
+      "denominator": 320,
+      "rate": 1.0
+    }
+  },
+  "fixture_fallback_count": 30,
+  "hard_policy_gates": {
+    "identical_prediction_fingerprints_across_orders": {
+      "applicable_case_count": 320,
+      "applicable_independent_cluster_count": 32,
+      "one_sided_95_percent_upper_if_zero": "0.089368198986",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_cross_scope_reference": {
+      "applicable_case_count": 10,
+      "applicable_independent_cluster_count": 1,
+      "one_sided_95_percent_upper_if_zero": "0.950000000000",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_out_of_scope_social_action": {
+      "applicable_case_count": 320,
+      "applicable_independent_cluster_count": 32,
+      "one_sided_95_percent_upper_if_zero": "0.089368198986",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_private_boundary_reply": {
+      "applicable_case_count": 10,
+      "applicable_independent_cluster_count": 1,
+      "one_sided_95_percent_upper_if_zero": "0.950000000000",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_prompt_routing_authority": {
+      "applicable_case_count": 10,
+      "applicable_independent_cluster_count": 1,
+      "one_sided_95_percent_upper_if_zero": "0.950000000000",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_unauthorized_tool_action": {
+      "applicable_case_count": 30,
+      "applicable_independent_cluster_count": 3,
+      "one_sided_95_percent_upper_if_zero": "0.631596850136",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_unsolicited_group_reply": {
+      "applicable_case_count": 10,
+      "applicable_independent_cluster_count": 1,
+      "one_sided_95_percent_upper_if_zero": "0.950000000000",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    },
+    "no_wrong_target": {
+      "applicable_case_count": 320,
+      "applicable_independent_cluster_count": 32,
+      "one_sided_95_percent_upper_if_zero": "0.089368198986",
+      "upper_bound_basis": "applicable_template_family_clusters",
+      "upper_bound_interpretation": "nominal_only_under_independent_bernoulli_cluster_assumption",
+      "violating_case_count": 0,
+      "violating_independent_cluster_count": 0,
+      "violation_event_count": 0
+    }
+  },
+  "hard_policy_violations": {
+    "items": [],
+    "violating_case_count": 0,
+    "violating_independent_cluster_count": 0,
+    "violation_event_count": 0
+  },
+  "independent_cluster_count": 32,
+  "label_basis": "policy_gold",
+  "latency_and_cost": "not_measured_in_fixture_eval",
+  "material_case_profile_count": 320,
+  "metrics_by_split": {
+    "development": {
+      "all_metric_fields_match": {
+        "count": 80,
+        "denominator": 80,
+        "rate": 1.0
+      },
+      "case_count": 80,
+      "exact_match": {
+        "complexity.ambiguity": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.conflicting_evidence": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.context_pressure": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.evidence_refs": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.expected_tool_steps": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.level": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.reason_codes": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.reasoning_depth": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "complexity.verification_required": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.ambiguity_keys": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.complexity_signal_codes": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.entity_keys": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.evidence_refs": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.intent_ids": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.model_status": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.need_tools": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.reference_keys": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.speech_acts": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.target_identity_refs": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "perception.task_kind": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "social.action": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "social.reason_codes": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "social.target_identity_refs": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "tier.confidence_handling": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "tier.selected_tier": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        },
+        "tier.uncapped_tier": {
+          "count": 80,
+          "denominator": 80,
+          "rate": 1.0
+        }
+      },
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 8,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "test": {
+      "all_metric_fields_match": {
+        "count": 240,
+        "denominator": 240,
+        "rate": 1.0
+      },
+      "case_count": 240,
+      "exact_match": {
+        "complexity.ambiguity": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.conflicting_evidence": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.context_pressure": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.evidence_refs": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.expected_tool_steps": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.level": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.reason_codes": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.reasoning_depth": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "complexity.verification_required": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.ambiguity_keys": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.complexity_signal_codes": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.entity_keys": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.evidence_refs": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.intent_ids": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.model_status": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.need_tools": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.reference_keys": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.speech_acts": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.target_identity_refs": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "perception.task_kind": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "social.action": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "social.reason_codes": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "social.target_identity_refs": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "tier.confidence_handling": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "tier.selected_tier": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        },
+        "tier.uncapped_tier": {
+          "count": 240,
+          "denominator": 240,
+          "rate": 1.0
+        }
+      },
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 24,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    }
+  },
+  "metrics_by_stratum": {
+    "architecture": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "artifacts": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "budget_cap": {
+      "all_metric_fields_match": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "case_count": 20,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 2,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "chinese": {
+      "all_metric_fields_match": {
+        "count": 40,
+        "denominator": 40,
+        "rate": 1.0
+      },
+      "case_count": 40,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 4,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "clarification": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "code": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "code_review": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "command": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "comparison": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "conflict": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "conservative_sonnet": {
+      "all_metric_fields_match": {
+        "count": 30,
+        "denominator": 30,
+        "rate": 1.0
+      },
+      "case_count": 30,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 3,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "cross_scope": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "default_sonnet": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "defer": {
+      "all_metric_fields_match": {
+        "count": 40,
+        "denominator": 40,
+        "rate": 1.0
+      },
+      "case_count": 40,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 4,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "direct_reply": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "english": {
+      "all_metric_fields_match": {
+        "count": 100,
+        "denominator": 100,
+        "rate": 1.0
+      },
+      "case_count": 100,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 10,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "formal_reasoning": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "group": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "haiku": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "high": {
+      "all_metric_fields_match": {
+        "count": 120,
+        "denominator": 120,
+        "rate": 1.0
+      },
+      "case_count": 120,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 12,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "high_context_pressure": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "ignore": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "low": {
+      "all_metric_fields_match": {
+        "count": 80,
+        "denominator": 80,
+        "rate": 1.0
+      },
+      "case_count": 80,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 8,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "low_confidence": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "medium": {
+      "all_metric_fields_match": {
+        "count": 80,
+        "denominator": 80,
+        "rate": 1.0
+      },
+      "case_count": 80,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 8,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "migration": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "model_fallback": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "negative": {
+      "all_metric_fields_match": {
+        "count": 50,
+        "denominator": 50,
+        "rate": 1.0
+      },
+      "case_count": 50,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 5,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "negative_control": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "privacy": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "prompt_injection": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "question": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "research": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "root_cause": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "routing_authority": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "security": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "single_high_signal": {
+      "all_metric_fields_match": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "case_count": 20,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 2,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "sonnet": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "tool": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "tool_plan": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "transformation": {
+      "all_metric_fields_match": {
+        "count": 40,
+        "denominator": 40,
+        "rate": 1.0
+      },
+      "case_count": 40,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 4,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "unauthorized_tool": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "whole_reject": {
+      "all_metric_fields_match": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "case_count": 20,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 2,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    },
+    "wrong_target": {
+      "all_metric_fields_match": {
+        "count": 10,
+        "denominator": 10,
+        "rate": 1.0
+      },
+      "case_count": 10,
+      "hard_violation_case_count": 0,
+      "independent_cluster_count": 1,
+      "mismatch_case_count": 0,
+      "policy_under_selected_count": 0,
+      "policy_unexpected_opus_count": 0
+    }
+  },
+  "mismatches": [],
+  "order_reproducible": true,
+  "plan_digest": "dududa-c14n-v1:eval:perception-tiering-plan:v1:sha-256:d92b2dfdbb64c836057c588b025e571c15520c1f5e42c2c60c57b63ca4169bb1",
+  "plan_id": "s09-offline-fixture-eval-v1",
+  "policy_selected_tier_agreement": {
+    "count": 320,
+    "denominator": 320,
+    "label_basis": "policy_gold_not_empirical_minimum",
+    "rate": 1.0
+  },
+  "policy_under_selection": {
+    "count": 0,
+    "denominator": 320
+  },
+  "policy_unexpected_opus": {
+    "count": 0,
+    "denominator": 320
+  },
+  "prediction_set_digest": "dududa-c14n-v1:eval:perception-tiering-prediction-set:v1:sha-256:c08ca143a8d44520106fab4ad9e2994570d20cde699d4c5809744014400de8d7",
+  "quality_rubric_digest": "dududa-c14n-v1:eval:quality-rubric:v1:sha-256:a3a515cba1077dcb025c82187bdf8a8d5d2e873415102d060312d542b5131e3c",
+  "quality_rubric_id": "s09-policy-gold-rubric-v1",
+  "release_blockers": [
+    "human_review_not_complete"
+  ],
+  "release_ready": false,
+  "report_digest": "dududa-c14n-v1:eval:perception-tiering-report:v1:sha-256:493fe8dbc22abe6ed5643c145cc3787fe6508dea02e95eac83e2e3aa3e30bf75",
+  "sample_count": 320,
+  "schema_version": 1,
+  "semantic_set_metrics": {
+    "entity_keys": {
+      "denominator": 320,
+      "exact_match_count": 320,
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "intent_ids": {
+      "denominator": 320,
+      "exact_match_count": 320,
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "macro_f1": 1.0,
+    "reference_keys": {
+      "denominator": 320,
+      "exact_match_count": 320,
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "target_identity_refs": {
+      "denominator": 320,
+      "exact_match_count": 320,
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  },
+  "split_counts": {
+    "development": 80,
+    "test": 240
+  },
+  "split_digest": "dududa-c14n-v1:eval:perception-tiering-split:v1:sha-256:7b2756e00dabf63532546b7b5e7d60f75280f7087ba23db6c07388a05bec1a0a",
+  "split_strategy": "template_lineage_cluster_split",
+  "statistical_unit": "template_family_cluster",
+  "strata_counts": {
+    "architecture": 10,
+    "artifacts": 10,
+    "budget_cap": 20,
+    "chinese": 40,
+    "clarification": 10,
+    "code": 10,
+    "code_review": 10,
+    "command": 10,
+    "comparison": 10,
+    "conflict": 10,
+    "conservative_sonnet": 30,
+    "cross_scope": 10,
+    "default_sonnet": 10,
+    "defer": 40,
+    "direct_reply": 10,
+    "english": 100,
+    "formal_reasoning": 10,
+    "group": 10,
+    "haiku": 10,
+    "high": 120,
+    "high_context_pressure": 10,
+    "ignore": 10,
+    "low": 80,
+    "low_confidence": 10,
+    "medium": 80,
+    "migration": 10,
+    "model_fallback": 10,
+    "negative": 50,
+    "negative_control": 10,
+    "privacy": 10,
+    "prompt_injection": 10,
+    "question": 10,
+    "research": 10,
+    "root_cause": 10,
+    "routing_authority": 10,
+    "security": 10,
+    "single_high_signal": 20,
+    "sonnet": 10,
+    "tool": 10,
+    "tool_plan": 10,
+    "transformation": 40,
+    "unauthorized_tool": 10,
+    "whole_reject": 20,
+    "wrong_target": 10
+  },
+  "technical_pass": true,
+  "tool_need_metrics": {
+    "f1": 1.0,
+    "false_negative": 0,
+    "false_positive": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "true_negative": 290,
+    "true_positive": 30
+  },
+  "unique_text_count": 300
+}

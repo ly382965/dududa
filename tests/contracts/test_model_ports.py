@@ -5,6 +5,7 @@ from inspect import Parameter, signature
 
 from dududa.models.contracts import RouteHint
 from dududa.ports.models import (
+    BootstrapModelTierPolicy,
     ModelAdmissionController,
     ModelCatalogPublisher,
     ModelInvocationEstimator,
@@ -93,6 +94,11 @@ class _TierPolicy:
         raise NotImplementedError
 
 
+class _BootstrapTierPolicy:
+    def decide(self, definition, *, now=None):
+        raise NotImplementedError
+
+
 class ModelPortContractTests(unittest.TestCase):
     def test_minimal_implementations_structurally_conform(self) -> None:
         implementations = (
@@ -105,6 +111,7 @@ class ModelPortContractTests(unittest.TestCase):
             (_Codec(), ModelOutputCodec),
             (_Estimator(), ModelInvocationEstimator),
             (_TierPolicy(), ModelTierPolicy),
+            (_BootstrapTierPolicy(), BootstrapModelTierPolicy),
         )
         for implementation, protocol in implementations:
             with self.subTest(protocol=protocol.__name__):

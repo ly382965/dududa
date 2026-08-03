@@ -5,14 +5,51 @@
 Branch: perception-tiering
 Parent: model-selection
 Status: paused
-Verification: unverified
-Last sync: unix:1785783111
+Verification: verified
+Last sync: unix:1785783268
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S09 implementation is technically complete in the managed worktree. It adds
+  bounded de-identified Perception contracts, deterministic rule/model merge,
+  complexity assessment, social gating, tier policy and Runtime-owned S08
+  Router integration without changing S08 endpoint-routing authority.
+- The committed synthetic Eval has 320 material execution profiles from 32
+  template-family clusters and 300 unique texts. Its latest report records
+  `technical_pass=true` and `release_ready=false` because human review is still
+  pending.
+- Python 3.10 and 3.12 each pass 257 repository tests with two AstrBot-host-only
+  skips. Branch-owned Ruff/format, strict async checks, compileall, secret scan,
+  artifact drift and whitespace checks pass.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Implemented fixed `PERCEPTION/HAIKU` bootstrap selection, strict structured
+  semantic projection, conservative fallback and complete tier-decision binding.
+- Hardened model-output and context construction limits, rule-authoritative
+  response targets and full-request-plan idempotency keys after adversarial
+  review.
+- Reworked Eval after independent review: variants now contain distinct text,
+  all artifact layers are strictly bound, security gates use applicable cluster
+  denominators, policy metrics do not claim minimum real-model quality, and
+  technical/release status is separated.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- A human has not confirmed the 32 synthetic template families; this is an
+  explicit release-readiness gap, not a technical-test failure.
+- Real AstrBot Provider quality, latency/cost and real group-chat behavior are
+  not measured by S09 fixtures. S10 owns offline orchestration and S11 owns
+  controlled production evidence.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Branch-owned implementation is committed at `91bf36a` before the TreeWork
+  verification transaction.
+- Integrate the verified S09 branch into `codex/s08-s11`, rerun the repository
+  gate, then enter `offline-runtime`. S10 must consume the S09 helper that
+  validates a TierDecision before passing it to S08 Router.
+- Reasoning depth is assessed but the S08 Role still binds one fixed reasoning
+  profile. Dynamic per-request profiles require a later explicit Router contract
+  revision and are not silently simulated here.

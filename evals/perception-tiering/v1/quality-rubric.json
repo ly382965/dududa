@@ -1,0 +1,8 @@
+{
+  "empirical_minimum_tier_available": false,
+  "empirical_requirement": "Blinded same-task outputs from every tier must be judged against a frozen task-quality rubric before empirical_frozen_quality labels exist.",
+  "label_basis": "policy_gold",
+  "policy_regression_only": true,
+  "rubric_id": "s09-policy-gold-rubric-v1",
+  "schema_version": 1
+}

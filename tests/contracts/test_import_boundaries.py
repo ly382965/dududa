@@ -16,8 +16,10 @@ PUBLIC_PACKAGES = (
     "dududa.config",
     "dududa.contracts",
     "dududa.domain",
+    "dududa.evaluation",
     "dududa.memory",
     "dududa.models",
+    "dududa.perception",
     "dududa.ports",
     "dududa.runtime",
     "dududa.security",
@@ -30,10 +32,17 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.models.contracts",
     "dududa.models.errors",
     "dududa.models.policy",
+    "dududa.perception.contracts",
     "dududa.ports.context",
     "dududa.ports.models",
+    "dududa.ports.perception",
     "dududa.security.models",
 )
+
+FORBIDDEN_INTERNAL_IMPORTS = {
+    "dududa.perception": ("dududa.models", "dududa.runtime"),
+    "dududa.models": ("dududa.perception", "dududa.runtime"),
+}
 
 
 class ImportBoundaryTests(unittest.TestCase):
@@ -53,6 +62,29 @@ class ImportBoundaryTests(unittest.TestCase):
                     root = name.split(".", 1)[0]
                     if root != "dududa" and root not in sys.stdlib_module_names:
                         violations.append(f"{path.relative_to(ROOT)}: {name}")
+        self.assertEqual(violations, [])
+
+    def test_selection_packages_preserve_one_way_internal_dependencies(self) -> None:
+        violations: list[str] = []
+        for owner, forbidden in FORBIDDEN_INTERNAL_IMPORTS.items():
+            package = SOURCE / owner.rsplit(".", 1)[-1]
+            for path in package.rglob("*.py"):
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        names = tuple(alias.name for alias in node.names)
+                    elif isinstance(node, ast.ImportFrom) and node.module:
+                        names = (node.module,) if node.level == 0 else ()
+                    else:
+                        names = ()
+                    for name in names:
+                        if any(
+                            name == prefix or name.startswith(f"{prefix}.")
+                            for prefix in forbidden
+                        ):
+                            violations.append(
+                                f"{path.relative_to(ROOT)}: {owner} imports {name}"
+                            )
         self.assertEqual(violations, [])
 
     def test_public_packages_are_valid_first_imports(self) -> None:

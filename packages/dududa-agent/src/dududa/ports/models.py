@@ -23,6 +23,8 @@ from dududa.models.contracts import (
     ReasoningProfile,
 )
 from dududa.models.policy import (
+    BootstrapTierDecision,
+    BootstrapTierPolicyDefinition,
     ModelCatalogPublishReceipt,
     ModelCatalogUpdate,
     ModelRoutePolicy,
@@ -161,3 +163,13 @@ class ModelTierPolicy(Protocol):
         *,
         now: datetime,
     ) -> TierDecision: ...
+
+
+@runtime_checkable
+class BootstrapModelTierPolicy(Protocol):
+    def decide(
+        self,
+        definition: BootstrapTierPolicyDefinition,
+        *,
+        now: datetime | None = None,
+    ) -> BootstrapTierDecision: ...

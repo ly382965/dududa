@@ -22,6 +22,7 @@ from .contracts import (
     RouteDecision,
 )
 from .policy import (
+    BootstrapTierPolicyDefinition,
     BootstrapTierDecision,
     ModelRoutePolicy,
     TierAuthority,
@@ -94,6 +95,15 @@ def bootstrap_tier_selection_fingerprint(
             "reason_codes": reason_codes,
         },
         domain="model:bootstrap-tier-selection-plan:v1",
+    )
+
+
+def bootstrap_tier_policy_definition_digest(
+    definition: BootstrapTierPolicyDefinition,
+) -> DigestString:
+    return canonical_digest(
+        definition,
+        domain="model:bootstrap-tier-policy-definition:v1",
     )
 
 

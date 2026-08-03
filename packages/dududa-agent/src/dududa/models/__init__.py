@@ -11,6 +11,10 @@ if TYPE_CHECKING:
         InMemoryModelRoutingRegistry,
     )
     from .router import StaticModelRouter
+    from .tiering import (
+        DeterministicModelTierPolicy,
+        FixedPerceptionBootstrapTierPolicy,
+    )
 
 from .contracts import (
     AdmissionDisposition,
@@ -59,6 +63,7 @@ from .contracts import (
     StructuredOutputSupport,
 )
 from .digests import (
+    bootstrap_tier_policy_definition_digest,
     bootstrap_tier_decision_digest,
     bootstrap_tier_selection_fingerprint,
     endpoint_admission_request_digest,
@@ -86,6 +91,7 @@ from .digests import (
 from .errors import ModelInvocationError, ModelProviderError, model_error_info
 from .policy import (
     BootstrapTierDecision,
+    BootstrapTierPolicyDefinition,
     ConfidenceHandling,
     ModelCapabilitiesRequirement,
     ModelCatalogPublishReceipt,
@@ -106,6 +112,7 @@ from .policy import (
 __all__ = [
     "AdmissionDisposition",
     "BootstrapTierDecision",
+    "BootstrapTierPolicyDefinition",
     "ConfidenceHandling",
     "EndpointAdmissionRequest",
     "EndpointAdmissionResult",
@@ -117,9 +124,11 @@ __all__ = [
     "EndpointRouteCandidatePlan",
     "EndpointTrafficPolicy",
     "ConservativeModelInvocationEstimator",
+    "DeterministicModelTierPolicy",
     "InMemoryModelAdmissionController",
     "InMemoryModelOperationalStateRegistry",
     "InMemoryModelRoutingRegistry",
+    "FixedPerceptionBootstrapTierPolicy",
     "LoadCounterScope",
     "ModelCapabilities",
     "ModelCapabilitiesRequirement",
@@ -171,6 +180,7 @@ __all__ = [
     "TierPolicyDefinition",
     "TierSelectionContext",
     "bootstrap_tier_decision_digest",
+    "bootstrap_tier_policy_definition_digest",
     "bootstrap_tier_selection_fingerprint",
     "endpoint_admission_request_digest",
     "endpoint_admission_result_digest",
@@ -196,6 +206,8 @@ __all__ = [
     "tier_selection_fingerprint",
     "validate_routing_snapshot",
     "validate_tier_authority",
+    "validate_bootstrap_tier_decision",
+    "validate_tier_decision",
 ]
 
 _IMPLEMENTATION_EXPORTS = {
@@ -205,6 +217,10 @@ _IMPLEMENTATION_EXPORTS = {
     "InMemoryModelRoutingRegistry": ".registry",
     "ModelTokenPricing": ".estimation",
     "StaticModelRouter": ".router",
+    "DeterministicModelTierPolicy": ".tiering",
+    "FixedPerceptionBootstrapTierPolicy": ".tiering",
+    "validate_bootstrap_tier_decision": ".tiering",
+    "validate_tier_decision": ".tiering",
 }
 
 
