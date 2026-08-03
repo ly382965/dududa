@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import ast
 import os
-from pathlib import Path
 import subprocess
 import sys
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "packages" / "dududa-agent" / "src" / "dududa"
@@ -18,6 +17,7 @@ PUBLIC_PACKAGES = (
     "dududa.contracts",
     "dududa.domain",
     "dududa.memory",
+    "dududa.models",
     "dududa.ports",
     "dududa.runtime",
     "dududa.security",
@@ -26,7 +26,12 @@ PUBLIC_PACKAGES = (
 ORDER_SENSITIVE_MODULES = (
     "dududa.domain.attachments",
     "dududa.domain.delivery",
+    "dududa.domain.task",
+    "dududa.models.contracts",
+    "dududa.models.errors",
+    "dududa.models.policy",
     "dududa.ports.context",
+    "dududa.ports.models",
     "dududa.security.models",
 )
 
@@ -72,10 +77,15 @@ class ImportBoundaryTests(unittest.TestCase):
             statements.extend(
                 (
                     "import importlib",
-                    "packages=[importlib.import_module(name) "
-                    f"for name in {PUBLIC_PACKAGES!r}]",
-                    "[[getattr(package, name) for name in getattr(package, '__all__', ())] "
-                    "for package in packages]",
+                    (
+                        "packages=[importlib.import_module(name) "
+                        f"for name in {PUBLIC_PACKAGES!r}]"
+                    ),
+                    (
+                        "[[getattr(package, name) "
+                        "for name in getattr(package, '__all__', ())] "
+                        "for package in packages]"
+                    ),
                 )
             )
         environment = dict(os.environ)

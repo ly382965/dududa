@@ -14,6 +14,17 @@ from .context import (
 if TYPE_CHECKING:
     from .attachments import AttachmentRepository, BoundedAttachmentStream
     from .memory import MemoryRepository, ScopeSelectorVerifier
+    from .models import (
+        ModelAdmissionController,
+        ModelCatalogPublisher,
+        ModelInvocationEstimator,
+        ModelOperationalStateRegistry,
+        ModelOutputCodec,
+        ModelProvider,
+        ModelRouter,
+        ModelRoutingRegistry,
+        ModelTierPolicy,
+    )
     from .output import OutputAdapter
     from .runtime import AgentRuntime, InputConnector
 
@@ -25,12 +36,21 @@ __all__ = [
     "InputConnector",
     "ManualCancellationToken",
     "MemoryRepository",
+    "ModelAdmissionController",
+    "ModelCatalogPublisher",
+    "ModelInvocationEstimator",
+    "ModelOperationalStateRegistry",
+    "ModelOutputCodec",
+    "ModelProvider",
+    "ModelRouter",
+    "ModelRoutingRegistry",
+    "ModelTierPolicy",
     "NeverCancelled",
     "OutputAdapter",
     "PortCallContext",
+    "ScopeSelectorVerifier",
     "ServiceCallContext",
     "ServicePrincipal",
-    "ScopeSelectorVerifier",
 ]
 
 
@@ -53,6 +73,40 @@ def __getattr__(name: str) -> object:
         from .output import OutputAdapter
 
         return OutputAdapter
+    if name in {
+        "ModelAdmissionController",
+        "ModelCatalogPublisher",
+        "ModelInvocationEstimator",
+        "ModelOperationalStateRegistry",
+        "ModelOutputCodec",
+        "ModelProvider",
+        "ModelRouter",
+        "ModelRoutingRegistry",
+        "ModelTierPolicy",
+    }:
+        from .models import (
+            ModelAdmissionController,
+            ModelCatalogPublisher,
+            ModelInvocationEstimator,
+            ModelOperationalStateRegistry,
+            ModelOutputCodec,
+            ModelProvider,
+            ModelRouter,
+            ModelRoutingRegistry,
+            ModelTierPolicy,
+        )
+
+        return {
+            "ModelAdmissionController": ModelAdmissionController,
+            "ModelCatalogPublisher": ModelCatalogPublisher,
+            "ModelInvocationEstimator": ModelInvocationEstimator,
+            "ModelOperationalStateRegistry": ModelOperationalStateRegistry,
+            "ModelOutputCodec": ModelOutputCodec,
+            "ModelProvider": ModelProvider,
+            "ModelRouter": ModelRouter,
+            "ModelRoutingRegistry": ModelRoutingRegistry,
+            "ModelTierPolicy": ModelTierPolicy,
+        }[name]
     if name in {"AgentRuntime", "InputConnector"}:
         from .runtime import AgentRuntime, InputConnector
 

@@ -25,6 +25,13 @@ if TYPE_CHECKING:
         SchemaRef,
         Sensitivity,
     )
+    from .task import (
+        ContextPressure,
+        TaskAmbiguity,
+        TaskComplexityAssessment,
+        TaskComplexityLevel,
+        TaskReasoningDepth,
+    )
 
 __all__ = [
     "Actor",
@@ -35,6 +42,7 @@ __all__ = [
     "AttachmentPurpose",
     "AttachmentRef",
     "ComponentRevision",
+    "ContextPressure",
     "ConversationScope",
     "ConversationType",
     "DigestString",
@@ -49,6 +57,10 @@ __all__ = [
     "SchemaRef",
     "Sensitivity",
     "StoredContentRef",
+    "TaskAmbiguity",
+    "TaskComplexityAssessment",
+    "TaskComplexityLevel",
+    "TaskReasoningDepth",
 ]
 
 _EXPORT_MODULES = {
@@ -74,6 +86,11 @@ _EXPORT_MODULES = {
     "SchemaRef": ".primitives",
     "Sensitivity": ".primitives",
     "StoredContentRef": ".attachments",
+    "ContextPressure": ".task",
+    "TaskAmbiguity": ".task",
+    "TaskComplexityAssessment": ".task",
+    "TaskComplexityLevel": ".task",
+    "TaskReasoningDepth": ".task",
 }
 
 

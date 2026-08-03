@@ -51,8 +51,13 @@ the existing canonical digest and component-revision conventions.
   pressure, reasoning depth, expected tool steps, ambiguity, verification need,
   evidence/reason codes, and assessor revision. It cannot contain a tier,
   Provider ID, model ID, or opaque hidden reasoning.
-- `TierSelectionContext` is a minimal projection that combines validated task
-  signals with role, privacy, budget and explicit operator policy.
+- `BootstrapTierDecision` explicitly authorizes only the pre-assessment
+  `PERCEPTION/HAIKU` call and records its policy revision without inventing an
+  assessment digest.
+- `TierSelectionContext` carries the immutable validated assessment itself plus
+  role, privacy, token bound and budget; it does not duplicate independently
+  forgeable assessment scalars. Operator-configured high-complexity reason
+  codes determine the signal count used by TierPolicy.
 - `TierDecision` records requested tier, policy revision, assessment digest,
   confidence handling, and reason codes.
 - `ModelEndpointDescriptor` has stable `endpoint_id`, Provider-native
@@ -60,12 +65,22 @@ the existing canonical digest and component-revision conventions.
   processing declarations, and an opaque shared quota-pool reference.
 - Context gating uses a conservative input-token upper bound, independent input
   limit when declared, total context limit, and output limit.
+- `ModelInvocationEstimator` receives the complete request, Endpoint and
+  ReasoningProfile and estimates prompt/Schema/Provider wrapping, total
+  generated output and cost before admission. Reasoning usage is an optional
+  subset of generated tokens and is never charged twice.
+- TierPolicy has an explicit input/generated-token/cost floor for every allowed
+  Tier, so an Opus proposal can be recorded and deterministically budget-capped.
 - `EndpointTrafficPolicy` contains concurrency/RPM/TPM/queue/latency/error,
   minimum-sample, cooldown and snapshot-age thresholds. Mutable observations
   live in a separate revisioned load snapshot.
 - `RouteDecision` preserves the routing/catalog/load revisions, eligible and
   rejected candidates with stable reasons, selected endpoint and reasoning
   profile, and attempt/fallback receipts without raw prompt or output.
+- Deterministic request, tier and route-plan fingerprints exclude correlation
+  IDs, wall-clock observations and attempt latency; full receipt digests retain
+  those execution facts. Provider request and prompt revisions bind each
+  attempt.
 
 Provider-specific reasoning parameters belong to Adapter configuration. Catalog
 publication fails when an enabled endpoint cannot map a required profile;

@@ -27,6 +27,28 @@ class ErrorInfo:
     public_message_key: str
     reason_codes: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        if type(self.schema_version) is not int or self.schema_version != 1:
+            raise ValueError("unsupported ErrorInfo schema version")
+        if not isinstance(self.category, ErrorCategory):
+            raise TypeError("invalid ErrorInfo category")
+        if type(self.retryable) is not bool or type(self.outcome_unknown) is not bool:
+            raise TypeError("invalid ErrorInfo boolean")
+        for field_name in ("code", "public_message_key"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"empty ErrorInfo {field_name}")
+        if isinstance(self.reason_codes, (str, bytes)):
+            raise TypeError("invalid ErrorInfo reason_codes")
+        reason_codes = tuple(self.reason_codes)
+        if any(
+            not isinstance(reason, str) or not reason.strip() for reason in reason_codes
+        ):
+            raise ValueError("invalid ErrorInfo reason code")
+        if len(reason_codes) != len(set(reason_codes)):
+            raise ValueError("duplicate ErrorInfo reason code")
+        object.__setattr__(self, "reason_codes", reason_codes)
+
 
 class DududaError(Exception):
     """Stable domain error that never exposes an implementation exception."""

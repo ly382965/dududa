@@ -11,8 +11,39 @@ Last sync: unix:1785760314
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Shared task-complexity, three-tier, reasoning, Endpoint, traffic, privacy,
+  request/response, failure, admission and reproducibility contracts are
+  implemented without AstrBot or Provider SDK dependencies.
+- Bootstrap Perception has an explicit `PERCEPTION + HAIKU` authority; assessed
+  Tier selection embeds validated complexity evidence and cannot be used for
+  the bootstrap call.
+- Runtime now imports the shared `RouteHint`; the duplicate provisional type is
+  removed without connecting a production Event or changing Handler authority.
+- Deterministic plan fingerprints are separate from timestamped execution
+  receipts, and complete request/Prompt/Schema/operational revisions can be
+  bound by the next Router implementation.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Implemented and adversarially reviewed the S08 selection contract surface.
+- Full repository verification passes 124 tests with two AstrBot-host-only
+  skips; Python 3.10 focused verification passes 27 tests.
+- Ruff, formatting, compileall, whitespace and forbidden-dependency scans pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- None within branch scope. Registry, Router, admission implementation,
+  Provider Fake/Adapter and execution conformance remain owned by
+  `static-router`.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- `static-router` should consume `validate_tier_authority()` before filtering,
+  use `ModelInvocationEstimator` before Context/budget/admission checks, and
+  preserve the supplied fingerprints/digests in every success or terminal
+  failure receipt.
+- Prompt-only AstrBot structured output is eligible when native support is
+  `NONE`, but the role policy requires Core Schema validation and the request
+  carries a `SchemaRef`.
+- Unknown Provider usage settles against reservation ceilings; reasoning tokens
+  are a subset of generated tokens and must never be charged twice.

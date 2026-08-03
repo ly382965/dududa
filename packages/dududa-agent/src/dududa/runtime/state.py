@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Mapping, Protocol, TypeAlias
+from typing import Protocol, TypeAlias
 
 from dududa._compat import StrEnum
 from dududa.contracts.binding import NegotiatedBindingReceipt
@@ -25,6 +26,7 @@ from dududa.domain.primitives import (
 )
 from dududa.errors import validation_error
 from dududa.memory.models import MemoryCandidate, MemorySubmissionReceipt
+from dududa.models.contracts import RouteHint
 
 
 class RuntimePhase(StrEnum):
@@ -61,12 +63,6 @@ CapabilityRetrievalResult: TypeAlias = ProvisionalRuntimePayload
 ToolPlan: TypeAlias = ProvisionalRuntimePayload
 ToolObservation: TypeAlias = ProvisionalRuntimePayload
 ToolValidationResult: TypeAlias = ProvisionalRuntimePayload
-
-
-@dataclass(frozen=True, slots=True)
-class RouteHint:
-    provider_id: str | None = None
-    model_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,7 +201,10 @@ class RuntimeState:
             raise validation_error("invalid_runtime_phase")
         if self.actor.platform != self.message.platform:
             raise validation_error("runtime_actor_message_mismatch")
-        if self.actor.bot_id != self.message.bot_id or self.actor.user_id != self.message.user_id:
+        if (
+            self.actor.bot_id != self.message.bot_id
+            or self.actor.user_id != self.message.user_id
+        ):
             raise validation_error("runtime_actor_message_mismatch")
         if (
             self.conversation_scope.platform != self.message.platform
@@ -338,7 +337,10 @@ class RuntimeResult:
                 Outcome.DEFERRED: RuntimePhase.DEFERRED,
                 Outcome.FAILED: RuntimePhase.FAILED,
             }.get(self.outcome)
-            if expected_phase is None or self.completion.final_phase is not expected_phase:
+            if (
+                expected_phase is None
+                or self.completion.final_phase is not expected_phase
+            ):
                 raise validation_error("completion_outcome_mismatch")
 
 
@@ -395,7 +397,9 @@ _ALLOWED_TRANSITIONS: Mapping[RuntimePhase, frozenset[RuntimePhase]] = {
 }
 
 
-def transition(state: RuntimeState, next_phase: RuntimePhase, **changes: object) -> RuntimeState:
+def transition(
+    state: RuntimeState, next_phase: RuntimePhase, **changes: object
+) -> RuntimeState:
     if next_phase not in _ALLOWED_TRANSITIONS[state.phase]:
         raise validation_error(
             "invalid_runtime_transition", state.phase.value, next_phase.value

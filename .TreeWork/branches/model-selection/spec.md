@@ -9,10 +9,13 @@ boundaries.
 ## Shared Direction
 
 The bootstrap perception call is always `ModelRole.PERCEPTION` with an allowed
-`ModelTier.HAIKU` route. Perception produces validated task evidence. Runtime
-projects that evidence into a model-owned `TierSelectionContext`; a
-deterministic policy produces `TierDecision`; the static Router selects and
-invokes a physical endpoint for the downstream role.
+`ModelTier.HAIKU` route. It carries an explicit, policy-revisioned
+`BootstrapTierDecision` that cannot reference a fabricated assessment and
+validates that exact role/tier pair. Perception then produces validated task
+evidence. Runtime projects that evidence into a model-owned
+`TierSelectionContext`; a deterministic policy produces the normal
+assessment-bound `TierDecision`; the static Router selects and invokes a
+physical endpoint for the downstream role.
 
 No child branch may introduce a reverse import between perception and model
 modules, accept a user-supplied tier as authority, infer capability from model
@@ -31,8 +34,10 @@ names, or add Bandit/random selection.
 
 ## Shared Acceptance
 
-- Fixed request and snapshots produce byte-for-byte equivalent decision
-  receipts.
+- Fixed semantic request, policy and snapshots produce byte-for-byte equivalent
+  selection fingerprints. Execution receipts separately preserve correlation
+  IDs, timestamps, latency and attempts and therefore are not conflated with
+  deterministic plan identity.
 - Every model call is bounded by privacy, deadline, budget and atomic capacity.
 - Provider-specific reasoning settings cannot be silently ignored.
 - Invalid structured semantic output is rejected as a whole.

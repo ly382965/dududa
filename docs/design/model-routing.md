@@ -2,7 +2,8 @@
 
 ## 1. 文档状态与目标
 
-- 阶段：Phase 1，目标设计，尚未实现。
+- 阶段：S08 selection-contracts 已实现；Registry、Router 和 Provider Adapter
+  仍由后续 S08 static-router 分支实现。
 - 目标代码：`packages/dududa-agent/src/dududa/models/`。
 - 配置目标：`configs/models/` 下可提交的无凭据路由策略；真实 Provider 凭据继续只存在于 AstrBot 私有运行配置。
 
@@ -21,25 +22,39 @@ Model Router 按“任务角色”选择模型；Tool Router 按“外部能力�
 ## 3. 依赖与信任边界
 
 ```text
-Runtime / Perception / Planner / Composer
-                   |
-                   v
-              ModelRouter
-          + ModelRoutingRegistry snapshot
-          + Health/Budget State
-          + optional ContextualBanditPolicy
-                   |
-                   v
-           ModelProvider Protocol
-                   ^
-                   |
-     AstrBotProviderAdapter / ImageProviderAdapter / future adapters
+Message / Context
+      |
+      v
+PERCEPTION bootstrap route (fixed HAIKU)
+      |
+      v
+validated TaskComplexityAssessment
+      |
+      v
+Runtime projection -> TierSelectionContext
+      |
+      v
+DeterministicTierPolicy -> TierDecision
+      |
+      v
+StaticModelRouter
+  + immutable ModelRoutingSnapshot
+  + bounded ModelOperationalSnapshot
+  + deadline / privacy / budget / atomic admission
+      |
+      v
+ModelProvider Protocol
+      ^
+      |
+AstrBotProviderAdapter / future adapters
 ```
 
 - Domain 和 Runtime 只依赖 `ModelRouter` Protocol 和结构化请求/响应；
 - Provider Adapter 位于应用适配层或基础设施层，可以依赖 AstrBot API 或供应商 SDK；
 - `CredentialResolver` 只在基础设施边界使用，Core 只看到不可反查的 credential reference；
 - 路由配置描述角色、能力、优先级和限制，不包含 key、Cookie、Token 或私有 API Header。
+- S08-S11 不包含 Bandit、随机权重或基于动态成本/延迟的重新排序；相同输入与
+  snapshot 必须产生相同决策。
 
 ## 4. 模型角色
 
@@ -70,56 +85,133 @@ class ModelRole(StrEnum):
 
 同一个实际模型可以承担多个角色，但角色配置、超时、温度、输出 Schema 和隐私策略相互独立。
 
+### 4.1 档位与思考深度
+
+`ModelRole`、`ModelTier` 和 `ReasoningProfile` 是三个正交维度：
+
+```python
+class ModelTier(StrEnum):
+    HAIKU = "haiku"
+    SONNET = "sonnet"
+    OPUS = "opus"
+
+class ReasoningDepth(StrEnum):
+    OFF = "off"
+    LIGHT = "light"
+    BALANCED = "balanced"
+    DEEP = "deep"
+    MAXIMUM = "maximum"
+```
+
+- Role 描述本次调用负责什么；
+- Tier 是运营方配置的能力/成本档，不从模型名称推断；
+- Reasoning Profile 描述本次调用需要的思考行为，由 Adapter 显式映射到供应商参数。
+
+同一 Tier 可以包含多个 Provider Endpoint，同一实际模型也可以提供多个 Reasoning
+Profile。枚举顺序不代表 fallback 顺序；跨档回退只能沿配置中的显式无环边执行。
+
+`PERCEPTION` 的启动路由固定为允许的 Haiku Endpoint，避免“需要先判断难度才能选择
+感知模型、又需要先选择模型才能判断难度”的递归。普通 `DIRECT_CHAT` 默认 Sonnet；
+Opus 不接受隐式升级流量。
+
+### 4.2 难度判断边界
+
+难度判断属于 S09 Perception/Tiering，不属于静态 Router：
+
+1. Rule Perception 提取 mention、回复、命令、文本形态等确定性事实；
+2. 固定 Haiku 的 Model Perception 只提供严格 Schema 的语义候选；
+3. Merger 与 Validator 生成可信证据；
+4. Complexity Assessor 输出 `TaskComplexityAssessment`；
+5. Runtime 加入角色、隐私、预算和 token 上界，投影为 `TierSelectionContext`；
+6. `DeterministicTierPolicy` 输出 `TierDecision`；
+7. Static Router 只在所选 Tier 和显式 fallback DAG 内选择 Endpoint。
+
+Assessment 只能包含 level、confidence、task kind、context pressure、reasoning depth、
+预计工具步数、歧义、验证需求、冲突标记、reason codes、evidence refs 和 assessor
+revision，不能包含 Tier、Provider 或 model ID。用户消息中的“使用 Opus”只是非可信文本，
+不能进入 RouteHint。
+
+初始 TierPolicy 采用保守规则：清晰低复杂度证据才使用 Haiku；低置信度、规则/模型冲突
+和普通聊天默认 Sonnet；Opus 必须同时满足多个高复杂度证据、最低置信度、角色 allowlist
+和预算。长上下文只产生容量压力，不能单独证明语义困难。
+
+每个允许 Tier 都有版本化 `TierBudgetRequirement`，声明最少剩余 input token、总生成
+token（已包含 reasoning）和 cost units。`TierDecision` 同时记录 `uncapped_tier` 与
+`selected_tier`；只有 `BUDGET_CAPPED` 可以令二者不同，因此离线 Eval 能区分“本来就是
+Sonnet”与“Opus 因预算降为 Sonnet”。Tier policy digest 和不含随机 ID/时间的 selection
+fingerprint 与完整执行 receipt digest 分开保存。
+
 ## 5. 数据契约
 
 ### 5.1 能力声明
 
 ```python
+class StructuredOutputSupport(StrEnum):
+    NONE = "none"
+    JSON_OBJECT = "json_object"
+    JSON_SCHEMA = "json_schema"
+
 @dataclass(frozen=True, slots=True)
 class ModelCapabilities:
     schema_version: int
-    input_modalities: frozenset[Literal["text", "image", "audio", "file"]]
-    output_modalities: frozenset[Literal["text", "image", "embedding"]]
-    structured_output: bool
+    input_modalities: frozenset[ModelInputModality]
+    output_modalities: frozenset[ModelOutputModality]
+    native_structured_output: StructuredOutputSupport
     max_context_tokens: int
+    max_input_tokens: int | None
     max_output_tokens: int
     supports_temperature: bool
     supports_streaming: bool
     supports_seed: bool
+
+@dataclass(frozen=True, slots=True)
+class ReasoningProfile:
+    schema_version: int
+    profile_id: str
+    depth: ReasoningDepth
+    max_reasoning_tokens: int | None
+    required: bool
 ```
 
-Provider Adapter 在启动时提供能力快照；路由不能仅根据模型名称猜测能力。
+Provider Adapter 在启动时提供逐 Endpoint 能力快照；路由不能根据模型名称猜测能力。
+`native_structured_output` 只声明供应商 API 的原生能力，区分无原生支持、JSON object 和
+严格 JSON Schema；它不等同于“Core 是否必须校验 Schema”。AstrBot Endpoint 即使声明
+`NONE`，仍可通过受限 JSON Prompt 生成候选，再由 Core Codec 按 `SchemaRef` 整体校验。
+`max_input_tokens` 表达供应商独立输入上限；调用前还必须同时验证
+`input_upper_bound + requested_output <= max_context_tokens`。必需 Reasoning Profile 无法
+映射时，catalog 发布失败，Adapter 不得静默忽略。
+
+每个 Endpoint 还绑定不可变 `EndpointTrafficPolicy`，声明并发、RPM、TPM、队列、P95、
+429/error rate、观测窗口、最小样本、cooldown 和 snapshot 最大年龄。可变观测保存在独立
+`EndpointLoadSnapshot`，不进入 descriptor digest。
 
 ### 5.2 ModelRequest
 
 ```python
-class ModelDataClassification(StrEnum):
-    PUBLIC = "public"
-    CONVERSATION = "conversation"
-    PERSONAL = "personal"
-    SENSITIVE = "sensitive"
-
 @dataclass(frozen=True, slots=True)
 class ModelInputPart:
+    schema_version: int
     part_id: str
-    modality: Literal["text", "image", "audio", "file"]
+    modality: ModelInputModality
     text: str | None
     content_ref: str | None
     content_digest: DigestString | None
     media_type: str | None
-    attachment_access: AttachmentAccessRequest | None
 
 @dataclass(frozen=True, slots=True)
 class ModelPrivacyPolicy:
-    data_classification: ModelDataClassification
+    schema_version: int
+    data_classification: PrivacyLevel
     allow_external_provider: bool
     allowed_residencies: frozenset[str]
     allow_provider_retention: bool
 
 @dataclass(frozen=True, slots=True)
 class RouteHint:
-    preferred_provider_id: str | None
-    preferred_model_id: str | None
+    schema_version: int
+    provider_id: str | None
+    endpoint_id: str | None
+    model_id: str | None
 
 @dataclass(frozen=True, slots=True)
 class ModelInput:
@@ -128,52 +220,55 @@ class ModelInput:
     source_refs: tuple[str, ...]
 
 @dataclass(frozen=True, slots=True)
-class ModelRequest(Generic[T]):
+class ModelRequest:
     schema_version: int
     request_id: str
     role: ModelRole
     input: ModelInput
     output_schema: SchemaRef | None
     max_output_tokens: int
+    content_input_tokens_upper_bound: int
     temperature: float | None
     privacy: ModelPrivacyPolicy
+    reasoning_profile_id: str
     random_seed: int | None
     idempotency_key: str | None
-    route_hint: RouteHint | None = None
+    route_hint: RouteHint | None
 ```
 
 `ModelInput` 只能包含该角色需要的数据。`SchemaRef` 使用稳定 Schema ID、版本和 digest，不能把 Python class 或供应商专属 Schema 对象传到进程外。Provider Adapter 负责将输入和 Schema 转换为供应商消息格式；Core 不构造 OpenAI 专属 payload。
 
-`ModelInputPart` 按 modality 严格执行 one-of：文本只能有受限 `text`；附件必须同时携带
-受信的 opaque `content_ref + content_digest + media_type` 和目的为 `MODEL_INPUT` 的
-`AttachmentAccessRequest`。Provider Adapter 只在本地用授权请求从 Attachment Repository
-取得有界 stream，绝不把授权对象发给外部供应商。本地路径、任意 URL、base64、Event 或
-Provider 对象不能作为输入 part。`RESTRICTED` 数据在构造 ModelRequest 前已经被拒绝。
+`content_input_tokens_upper_bound` 只描述进入路由前可知的内容上界，供 TierPolicy 做早期预算
+门禁；它不是最终 Provider token 估算。调用前必须由 `ModelInvocationEstimator` 在具体
+Endpoint 上加入 system/template、Schema 和 Provider wrapping，且最终 input estimate 不得
+小于该内容上界。
+
+`ModelInputPart` 按 modality 严格执行 one-of：文本只能有受限 `text`；附件引用只能是
+opaque `content_ref + content_digest + media_type`。S08-S11 的首个 Runtime 只接受纯文本；
+未来启用附件角色时，Adapter 必须在本地凭目的为 `MODEL_INPUT` 的
+`AttachmentAccessRequest` 从 Attachment Repository 取得有界 stream，不能把本地路径、
+任意 URL、base64、Event、授权对象或 Provider 对象放入请求。
+`RESTRICTED` 数据在构造 ModelRequest 前已经被拒绝。
 有效数据等级只有 `ModelPrivacyPolicy.data_classification` 一处；禁止在 Input 中保存第二份
 可能不一致的分类。
 
-`RouteHint` 只能表达允许的偏好，例如兼容 TargetTalk 的旧 `provider_id`，不能绕过角色 allowlist、隐私规则或健康检查。
+`RouteHint` 只能表达允许的偏好，例如兼容 TargetTalk 的旧 `provider_id`；它没有 Tier
+字段，也不能绕过角色 allowlist、隐私、能力、预算、健康或流量准入。
 
 ### 5.3 ModelResponse
 
 ```python
 @dataclass(frozen=True, slots=True)
-class ModelResponse(Generic[T]):
+class ModelResponse:
     schema_version: int
     request_id: str
     role: ModelRole
-    route_policy_revision: str
-    router_revision: ComponentRevision
-    provider_id: str
-    model_id: str
-    provider_revision: ComponentRevision
-    prompt_template_revision: ComponentRevision
     output_schema_digest: DigestString | None
-    output: T
+    output: JsonValue
     finish_reason: str
     usage: ModelUsage | None
     latency_ms: int
-    route_attempts: tuple[RouteAttempt, ...]
+    route_decision: RouteDecision
     safety_annotations: tuple[SafetyAnnotation, ...]
     processing: ModelProcessingReceipt
 ```
@@ -181,40 +276,92 @@ class ModelResponse(Generic[T]):
 ```python
 @dataclass(frozen=True, slots=True)
 class ModelUsage:
+    schema_version: int
     input_tokens: int
-    output_tokens: int
+    generated_tokens: int
+    reasoning_tokens: int | None
     cached_input_tokens: int | None
     cost_units: Decimal | None
 
 @dataclass(frozen=True, slots=True)
+class ModelInvocationEstimate:
+    schema_version: int
+    model_request_digest: DigestString
+    endpoint_descriptor_digest: DigestString
+    reasoning_profile_id: str
+    input_tokens_upper_bound: int
+    generated_tokens_upper_bound: int
+    reasoning_tokens_upper_bound: int
+    total_context_tokens_upper_bound: int
+    cost_units_upper_bound: Decimal | None
+    estimator_revision: ComponentRevision
+
+@dataclass(frozen=True, slots=True)
 class RouteAttempt:
+    schema_version: int
+    attempt: int
+    kind: RouteAttemptKind
     provider_id: str
+    endpoint_id: str
     model_id: str
+    tier: ModelTier
+    provider_request_digest: DigestString
+    prompt_template_revision: ComponentRevision
     started_at: datetime
     latency_ms: int
+    failure_kind: ModelFailureKind | None
     error: ErrorInfo | None
 
 @dataclass(frozen=True, slots=True)
 class SafetyAnnotation:
+    schema_version: int
     code: str
     severity: str
     blocked: bool
 
 @dataclass(frozen=True, slots=True)
-class GeneratedAsset:
-    asset_id: str
-    content_ref: str
-    media_type: str
-    size_bytes: int
-    source_digest: DigestString
+class RouteDecision:
+    schema_version: int
+    decision_id: str
+    request_id: str
+    model_request_digest: DigestString
+    model_request_fingerprint: DigestString
+    role: ModelRole
+    requested_tier: ModelTier
+    selected_tier: ModelTier | None
+    tier_authority_digest: DigestString
+    tier_selection_fingerprint: DigestString
+    routing_snapshot_id: str
+    catalog_revision: str
+    route_policy_revision: str
+    operational_snapshot_id: str
+    operational_snapshot_digest: DigestString
+    output_schema_digest: DigestString | None
+    output_codec_revision: ComponentRevision | None
+    route_plan_fingerprint: DigestString
+    eligible_endpoints: tuple[ModelEndpointRef, ...]
+    rejected_endpoints: tuple[EndpointRejection, ...]
+    selected_endpoint: ModelEndpointRef | None
+    reasoning_profile: ReasoningProfile
+    attempts: tuple[RouteAttempt, ...]
+    decided_at: datetime
 ```
 
 结构化角色必须先通过 Schema Validator 才能构造成功响应。供应商自由文本、异常对象和原始 HTTP Response 不得穿透到 Runtime。
 
-`route_policy_revision`、Router/Provider/Prompt revision、`provider_id`、`model_id`、Schema digest、公开采样参数、usage
-和 latency 构成离线 Eval 的最小复现实验元数据。Trace 不记录 Credential、原始 Prompt、
+Assessment/Tier digest、catalog/route/load revision、Endpoint descriptor digest、Provider
+revision、reasoning profile、Schema digest、公开采样参数、usage 和 latency 构成离线 Eval
+的最小复现实验元数据。每个 attempt 必须绑定 eligible Endpoint 且序号连续，成功响应的
+最终 attempt、selected Endpoint 和 processing receipt 必须一致。Trace 不记录 Credential、原始 Prompt、
 隐藏推理或默认完整输出；同一固定请求集至少分别报告 Schema-valid rate、任务指标、
 P50/P95、fallback 率和成本，不能只比较主观文案质量。
+
+`ModelInvocationEstimator` 必须读取完整 `ModelRequest`、Endpoint 和 ReasoningProfile；输入
+上界包含 system/template、用户内容、Schema 与 Provider wrapping，不能只估算用户文本。
+`generated_tokens` 是供应商计入 Context/账单的全部生成 token，已经包含 reasoning；
+`reasoning_tokens` 是其中可选的可观测子集，绝不能再次相加。Context 与 Runtime 的
+`output_tokens_remaining` 都扣减 `generated_tokens`。估算同样要求
+`reasoning_tokens_upper_bound <= generated_tokens_upper_bound`，未知 cost 不能当作零。
 
 ### 5.4 Provider 与 Route DTO
 
@@ -230,13 +377,20 @@ class ModelRetentionMode(StrEnum):
 @dataclass(frozen=True, slots=True)
 class ModelEndpointDescriptor:
     schema_version: int
+    endpoint_id: str
     model_id: str
     descriptor_digest: DigestString
+    tier: ModelTier
     capabilities: ModelCapabilities
-    allowed_data_classes: frozenset[ModelDataClassification]
+    reasoning_profiles: tuple[ReasoningProfile, ...]
+    default_reasoning_profile_id: str
+    allowed_data_classes: frozenset[PrivacyLevel]
     processing_boundary: ModelProcessingBoundary
     available_data_residencies: frozenset[str]
     supported_retention_modes: frozenset[ModelRetentionMode]
+    quota_pool_id: str
+    traffic_policy: EndpointTrafficPolicy
+    enabled: bool
 
 @dataclass(frozen=True, slots=True)
 class ModelProviderDescriptor:
@@ -250,23 +404,17 @@ class ModelProcessingReceipt:
     schema_version: int
     provider_id: str
     provider_revision: ComponentRevision
+    endpoint_id: str
     endpoint_descriptor_digest: DigestString
+    model_id: str
+    provider_request_digest: DigestString
     processing_boundary: ModelProcessingBoundary
     data_residency: str
     retention_mode: ModelRetentionMode
+    requested_reasoning_profile_id: str
+    effective_reasoning_profile_id: str
     requested_seed: int | None
     effective_seed: int | None
-
-@dataclass(frozen=True, slots=True)
-class GeneratedAssetTarget:
-    schema_version: int
-    scope_digest: DigestString
-    sensitivity: Sensitivity
-    allowed_media_types: frozenset[str]
-    maximum_size_bytes: int
-    expires_at: datetime
-    authorization: AuthorizationDecision
-    idempotency_key: str
 
 @dataclass(frozen=True, slots=True)
 class ProviderRequest:
@@ -274,19 +422,22 @@ class ProviderRequest:
     request_id: str
     provider_id: str
     provider_revision: ComponentRevision
+    endpoint_id: str
     endpoint_descriptor_digest: DigestString
+    model_id: str
+    selected_tier: ModelTier
+    tier_authority_digest: DigestString
     route_policy_revision: str
     selected_data_residency: str
     required_retention_mode: ModelRetentionMode
     role: ModelRole
-    model_id: str
     input: ModelInput
     output_schema: SchemaRef | None
     max_output_tokens: int
     temperature: float | None
     privacy: ModelPrivacyPolicy
+    reasoning_profile: ReasoningProfile
     random_seed: int | None
-    generated_asset_target: GeneratedAssetTarget | None
     idempotency_key: str | None
 
 @dataclass(frozen=True, slots=True)
@@ -294,9 +445,10 @@ class ProviderResponse:
     schema_version: int
     request_id: str
     provider_id: str
+    endpoint_id: str
     model_id: str
     provider_revision: ComponentRevision
-    output: JsonValue | GeneratedAsset
+    output: JsonValue
     finish_reason: str
     usage: ModelUsage | None
     safety_annotations: tuple[SafetyAnnotation, ...]
@@ -304,16 +456,17 @@ class ProviderResponse:
 
 @dataclass(frozen=True, slots=True)
 class ModelEndpointHealth:
-    model_id: str
+    schema_version: int
+    endpoint_id: str
     endpoint_descriptor_digest: DigestString
-    status: Literal["healthy", "degraded", "unavailable"]
+    status: EndpointHealthStatus
     reason_codes: tuple[str, ...]
 
 @dataclass(frozen=True, slots=True)
 class ModelProviderHealth:
     schema_version: int
     provider_id: str
-    status: Literal["healthy", "degraded", "unavailable"]
+    status: EndpointHealthStatus
     endpoints: tuple[ModelEndpointHealth, ...]
     snapshot_revision: str
     checked_at: datetime
@@ -321,45 +474,68 @@ class ModelProviderHealth:
 
 @dataclass(frozen=True, slots=True)
 class ModelEndpointRef:
+    schema_version: int
     provider_id: str
+    endpoint_id: str
     model_id: str
     endpoint_descriptor_digest: DigestString
+    tier: ModelTier
+    priority: int
 
 @dataclass(frozen=True, slots=True)
 class ModelRoutePolicy:
     schema_version: int
+    policy_id: str
     role: ModelRole
+    default_tier: ModelTier
+    allowed_tiers: frozenset[ModelTier]
     candidate_endpoints: tuple[ModelEndpointRef, ...]
     requirements: ModelCapabilitiesRequirement
-    allowed_data_classes: frozenset[ModelDataClassification]
+    allowed_data_classes: frozenset[PrivacyLevel]
     fallback: ModelFallbackPolicy
+    tier_fallback_edges: tuple[TierFallbackEdge, ...]
     policy_revision: str
 
 @dataclass(frozen=True, slots=True)
 class ModelCapabilitiesRequirement:
-    input_modalities: frozenset[str]
-    output_modalities: frozenset[str]
-    structured_output: bool
+    schema_version: int
+    input_modalities: frozenset[ModelInputModality]
+    output_modalities: frozenset[ModelOutputModality]
+    minimum_native_structured_output: StructuredOutputSupport
+    requires_schema_validation: bool
     minimum_context_tokens: int
+    minimum_output_tokens: int
+    reasoning_profile_id: str
 
 @dataclass(frozen=True, slots=True)
 class ModelFallbackPolicy:
-    maximum_attempts: int
-    retryable_error_codes: frozenset[str]
+    schema_version: int
+    max_retries_per_endpoint: int
+    max_same_tier_failovers: int
+    max_tier_hops: int
+    max_total_attempts: int
+    retryable_failure_kinds: frozenset[ModelFailureKind]
     deterministic_fallback_id: str
+
+@dataclass(frozen=True, slots=True)
+class TierFallbackEdge:
+    schema_version: int
+    from_tier: ModelTier
+    to_tier: ModelTier
+    failure_kinds: frozenset[ModelFailureKind]
 ```
 
 Provider request 只携带已选择模型所需字段，并重复携带已冻结 endpoint/Provider/Route
 revision 与完整 `ModelPrivacyPolicy`。Adapter 必须检查 external boundary、所选 residency、
 所需 retention mode 和 endpoint capability；`selected_data_residency` 必须来自 Policy 与
 Endpoint 的交集；`allow_provider_retention=false` 时只能选择并实际配置
-`NO_RETENTION`，不能把“不知道供应商怎么处理”当成功。产生图片等资产时，ProviderRequest
-必须携带已授权、绑定 Scope/Sensitivity/MIME/大小/TTL 的 `GeneratedAssetTarget`；Adapter
-把响应流写入 Attachment Repository 后才返回 opaque `GeneratedAsset`，原始 URL/base64
+`NO_RETENTION`，不能把“不知道供应商怎么处理”当成功。S08-S11 首个运行闭环不启用生成
+资产；未来启用图片输出时必须新增绑定 Scope/Sensitivity/MIME/大小/TTL 的授权目标契约，
+Adapter 把响应流写入 Attachment Repository 后才可返回 opaque ref，原始 URL/base64
 不能穿透。总 deadline、取消、Trace、Policy
 snapshot 和预算仍来自 `PortCallContext`。Provider response 通过
 `ModelProcessingReceipt` 证明实际边界、驻留、retention 和 seed；Router 在 Schema、安全、
-大小及 receipt 一致性校验后才构造公开 `ModelResponse[T]`。
+大小及 receipt 一致性校验后才构造公开 `ModelResponse`。
 
 ## 6. Protocol
 
@@ -367,10 +543,11 @@ snapshot 和预算仍来自 `PortCallContext`。Provider response 通过
 class ModelRouter(Protocol):
     async def invoke(
         self,
-        request: ModelRequest[T],
+        request: ModelRequest,
+        tier_authority: BootstrapTierDecision | TierDecision,
         *,
         call: PortCallContext,
-    ) -> ModelResponse[T]: ...
+    ) -> ModelResponse: ...
 
 class ModelProvider(Protocol):
     @property
@@ -425,7 +602,26 @@ class ModelCatalogPublisher(Protocol):
         update: ModelCatalogUpdate,
         *,
         call: PortCallContext | ServiceCallContext,
-    ) -> str: ...
+    ) -> ModelCatalogPublishReceipt: ...
+
+class ModelAdmissionController(Protocol):
+    async def reserve(...) -> EndpointCapacityLease: ...
+    async def settle(
+        self,
+        lease: EndpointCapacityLease,
+        usage: ModelUsage | None,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> EndpointCapacityReceipt: ...
+    async def release(...) -> EndpointCapacityReceipt: ...
+
+class ModelInvocationEstimator(Protocol):
+    def estimate(
+        self,
+        request: ModelRequest,
+        endpoint: ModelEndpointDescriptor,
+        reasoning_profile: ReasoningProfile,
+    ) -> ModelInvocationEstimate: ...
 
 class CredentialResolver(Protocol):
     async def resolve(
@@ -445,6 +641,15 @@ descriptor 与 Route Policy 都从该 handle 读取，禁止把两个“最新 r
 实例按 snapshot 中的 ComponentRevision 精确解析；执行中发生配置漂移只影响下一次请求，
 旧 revision 无法解析时显式拒绝而不是调用新实现。
 
+Provider Adapter 失败时抛出只含 `ModelFailureKind + ErrorInfo` 的
+`ModelProviderError`，不能把 SDK/HTTP 异常穿透 Port。Router 用 failure kind 执行显式
+retry/failover DAG；终止时抛出 `ModelInvocationError`，其中携带完整且已脱敏的
+`RouteDecision`，使 Runtime 即使在失败路径也能保存 attempts 和 revision 证据。
+
+Provider 可以合法返回 `usage=None`。Admission Controller 此时必须按 reservation ceiling
+结算并在 receipt 中返回实际扣账的 `ModelUsage`，不能因为 AstrBot 未报告 usage 而泄漏容量
+或把未知值当作零。
+
 ## 7. 路由策略
 
 ### 7.1 配置示例
@@ -455,42 +660,57 @@ descriptor 与 Route Policy 都从该 handle 读取，禁止把两个“最新 r
 schema_version: 1
 routes:
   perception:
+    default_tier: haiku
+    allowed_tiers: [haiku]
     candidates:
-      - provider_ref: astrbot/current
-        model_ref: default
+      - provider_id: astrbot
+        endpoint_id: perception-haiku-primary
+        model_id: provider-native-flash
+        tier: haiku
+        priority: 10
     require:
-      structured_output: true
+      minimum_native_structured_output: none
+      requires_schema_validation: true
       input_modalities: [text]
-    timeout_seconds: 15
-    max_output_tokens: 512
-    fallback: deterministic_rules
+      reasoning_profile_id: quick
+    cross_tier_fallback: []
 
-  image_generation:
+  direct_chat:
+    default_tier: sonnet
+    allowed_tiers: [haiku, sonnet, opus]
     candidates:
-      - provider_ref: astrbot/openai
-        model_ref: gpt-image-2
+      - {provider_id: astrbot, endpoint_id: chat-haiku, tier: haiku, priority: 10}
+      - {provider_id: astrbot, endpoint_id: chat-sonnet, tier: sonnet, priority: 10}
+      - {provider_id: astrbot, endpoint_id: chat-opus, tier: opus, priority: 10}
     require:
-      output_modalities: [image]
-    timeout_seconds: 420
-    fallback: unavailable
+      input_modalities: [text]
+      output_modalities: [text]
+      reasoning_profile_id: balanced
+    cross_tier_fallback:
+      - {from: opus, to: sonnet, failures: [timeout, provider_unavailable]}
 ```
 
 `provider_ref` 是 Adapter 可解析的逻辑名称，不是 API URL 或 credential。生产覆盖配置保存在 Git 忽略的运行目录。
 
 ### 7.2 选择顺序
 
-1. 读取角色策略和候选列表；
-2. 应用数据分类、会话策略和用户许可；
-3. 验证输入/输出模态、Structured Output、上下文及输出上限；
-4. 排除熔断、限流或不健康候选；
-5. 检查 `PortCallContext` 中的 Runtime deadline 和成本预算；
-6. 应用合法 `route_hint`；
-7. 对仍然合法的候选可调用 Contextual Bandit；未启用、日志失败或不允许探索时使用静态
-   baseline 顺序；
-8. 调用选中候选；
-9. 仅按该角色声明的错误类型和次数 fallback。
+1. 校验请求 Role 与 `BootstrapTierDecision | TierDecision`，确定本次 Tier；
+2. 从同一不可变 snapshot 读取角色策略和候选 Endpoint；
+3. 应用 Tier allowlist、数据分类、external processing、驻留和 retention；
+4. 验证输入/输出模态、Structured Output、Reasoning Profile、输入/总 Context 和输出上限；
+5. 检查总 deadline、调用/token/cost 预算；
+6. 排除不健康、cooldown、过期/未知 load 和超过硬流量阈值的候选；
+7. 合法 `route_hint` 只能重排仍然 eligible 的 Endpoint；
+8. 按静态 `priority`，再按 `endpoint_id` 稳定排序；
+9. 调用前对共享 `quota_pool_id` 原子 reserve；
+10. 仅按该角色声明的次数、failure kind 和显式跨档边执行 retry/failover。
 
 模型不可用时不能把 `IMAGE_GENERATION` 路由到文本模型，也不能把要求本地处理的敏感内容自动发送给外部 Provider。
+
+Admission reservation 必须绑定 model request/estimate digest、Endpoint descriptor digest、
+traffic policy ID/revision，并预留 input、visible output、reasoning token 和 cost。共享 quota
+pool 的所有 Endpoint 必须发布完全相同的 Traffic Policy；load/health 观测不得晚于其
+Operational Snapshot 的 `acquired_at`。
 
 ### 7.3 路由与成本
 
@@ -504,20 +724,15 @@ routes:
 - 是否允许带图片或敏感数据；
 - fallback 候选和确定性降级。
 
-成本只影响候选排序，不能降低权限、事实和隐私要求。
+S08-S11 中成本和延迟只参与硬预算/资格判断，不参与动态排序。它们不能降低权限、事实和
+隐私要求，也不能让过载状态把任务重新解释成另一个难度。
 
-### 7.4 Contextual Bandit
+### 7.4 Contextual Bandit（S08-S11 不接入）
 
-Bandit 是 Route Policy 的可选后排序器，正式契约见 `online-learning.md`。Model Router 先按
-角色、Endpoint capability、隐私边界、驻留、retention、健康、deadline 和预算生成完整
-`eligible_actions`；Bandit 只能从该集合选择。第一版建议使用 LinUCB 或 Thompson Sampling，
-Context 仅含任务类别、长度/预算 bucket、是否需实时信息和会话类型等最小特征。
-
-决策必须在调用 Provider 前记录 action set、propensity、Feature/Policy/Reward revision；
-记录失败走静态 baseline。`SENSITIVE/RESTRICTED`、无合法 Provider、强制本地处理和高风险
-场景 exploration probability 为 0。上线依次经过合成/replay estimator 测试、shadow 和极小
-conservative canary；只有 canary 或历史受控探索日志具有 propensity/support 时，才能用
-IPS/SNIPS/DR 评估并决定放量。质量增益不能抵消隐私、权限、Schema 或事实 Gate 违规。
+本阶段没有 Bandit Policy、随机权重、propensity 或在线更新接口。Router 只输出可复现的
+静态决策收据，供未来 S20 在单独设计评审后离线使用。届时即使加入 Bandit，也只能位于
+所有硬过滤之后，并必须有独立 shadow、回滚和因果评估门禁；不能改变本阶段的隐私、权限、
+Schema、容量和显式 fallback 不变量。
 
 ## 8. Structured Output
 
@@ -597,6 +812,11 @@ Adapter 必须把 AstrBot、HTTP、SDK 和解析错误映射为携带 Runtime `E
 | Image Generation | 返回明确失败，不用文本冒充图片 |
 
 认证错误不尝试其他未明确允许的凭据；内容安全拒绝不通过改写规避；429/超时可以在策略允许时尝试一个候选，但必须服从总 deadline。
+
+可靠性计数严格分为三类：同 Endpoint retry、同 Tier failover、沿显式 DAG 的跨 Tier
+fallback；三者分别受限并共享 `max_total_attempts`。`RouteAttemptKind` 必须与相邻 attempt
+的 Provider/Endpoint/Tier 变化一致。每次重试或换 Endpoint 都重新检查 deadline、预算、
+隐私、能力和原子容量。认证、非法请求、安全拒绝、取消以及第二次结构化输出失败立即停止。
 
 ## 11. 隐私、安全和审计
 
