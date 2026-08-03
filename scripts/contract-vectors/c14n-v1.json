@@ -1,0 +1,28 @@
+{
+  "codec": "dududa-c14n-v1",
+  "valid": [
+    {
+      "name": "nfc_datetime_decimal_and_set",
+      "domain": "fixture:canonical:v1",
+      "input": {
+        "z": {"$set": ["beta", "alpha"]},
+        "name": "é",
+        "at": {"$datetime": "2025-01-02T03:04:05.000006+08:00"},
+        "amount": {"$decimal": "12.3400"}
+      },
+      "canonical_json": "{\"amount\":12.34,\"at\":\"2025-01-01T19:04:05.000006Z\",\"name\":\"é\",\"z\":[\"alpha\",\"beta\"]}",
+      "digest": "dududa-c14n-v1:fixture:canonical:v1:sha-256:207d369ba60884cf44e38b87937d67d5a1ded1593fc44a5435f1f80a4eabd554"
+    },
+    {
+      "name": "fixed_microsecond_duration",
+      "domain": "fixture:duration:v1",
+      "input": {"$duration_microseconds": 2592000000000},
+      "canonical_json": "\"PT2592000.000000S\"",
+      "digest": "dududa-c14n-v1:fixture:duration:v1:sha-256:49e65cb2802221faabcff7711daee2325f8a3655e87886c6ed0d4acaa5be0023"
+    }
+  ],
+  "invalid": [
+    {"name": "naive_datetime", "input": {"$datetime": "2025-01-02T03:04:05"}},
+    {"name": "non_finite_decimal", "input": {"$decimal": "Infinity"}}
+  ]
+}

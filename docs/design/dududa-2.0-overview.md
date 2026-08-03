@@ -1,6 +1,7 @@
 # Dududa 2.0 Design Overview
 
-Status: Phase 1 design; implementation has not started.
+状态：Phase 1 设计已冻结，S01–S07 已增量实现；生产 Runtime 尚未切流。当前证据以
+`../refactor/PROGRESS.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository
@@ -14,6 +15,7 @@ runtime, service, operation, and compatibility changes together.
 - Memory Scope, retrieval, and Write Gate: `memory.md`
 - Capability and unified MCP runtime: `capability-and-mcp.md`
 - Model-role routing: `model-routing.md`
+- Conservative online learning and Contextual Bandit: `online-learning.md`
 - Persona and OC rendering: `persona.md`
 - Security, privacy, audit, and rate limits: `security.md`
 - Target repository layout: `repository-layout.md`
@@ -37,6 +39,10 @@ runtime, service, operation, and compatibility changes together.
    until tested removal gates pass.
 10. Secrets and production state never enter repository code, fixtures, traces,
     evals, or documentation.
+11. Attachment bytes stay behind a scoped repository; only opaque references and
+    bounded authorized streams cross adapter boundaries.
+12. Online learning ranks only hard-filtered actions; propensity is logged before
+    execution, and reward never offsets a security or privacy violation.
 
 ## Delivery Strategy
 

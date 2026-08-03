@@ -46,8 +46,8 @@ flowchart TD
     TE --> V["Result Validator"]
     V -->|"retry / continue within budget"| TP
     V -->|"complete / fail"| RC
-    RC --> O["OC Renderer"]
-    O --> RR["RuntimeResult / READY_TO_EMIT"]
+    RC --> O["OC Renderer + Validator"]
+    O --> RR["ValidatedFinalResponse / READY_TO_EMIT"]
     RR --> OA["Output adapter"]
     OA --> DR["DeliveryReceipt"]
     DR --> W["Memory Write Gate"]
@@ -235,6 +235,17 @@ Event.
 ### Response And Runtime Result
 
 ```text
+ValidatedFinalResponse
+  response: FinalResponse
+  render_validation: RenderValidationResult
+  content_safety: ContentSafetyDecision
+
+DeliveryRequest
+  delivery_id, run_id, request_digest, payload_digest
+  response | reaction
+  scope, reply_to, constraints, authorization
+  idempotency_key, attempt, adapter_binding
+
 FinalResponse
   response_id: str
   blocks: tuple[RenderedBlock, ...]
@@ -245,11 +256,16 @@ FinalResponse
 ```
 
 Response Composer creates a fact-stable `DraftResponse`; Persona Renderer turns
-it into `FinalResponse`. `RuntimeResult` wraps the execution outcome, optional
-`FinalResponse`, optional reaction, reason codes, trace summary, and whether a
-delivery acknowledgement is required. Reactions therefore belong to
-`RuntimeResult`, not `FinalResponse`. AstrBot `Plain`, `Image`, `Node`, and
-`Nodes` are output-adapter types, never domain types.
+it into a `FinalResponse` candidate. Render validation and final content safety
+produce `ValidatedFinalResponse`. `RuntimeResult` wraps the execution outcome,
+optional validated response/reaction, the exact checkpointed `DeliveryRequest`,
+an optional no-output `CompletionReceipt`, reason codes, and trace summary. A
+non-null DeliveryRequest is the sole signal that acknowledgement is required;
+no-output results instead carry `NOT_REQUIRED` completion. The caller
+passes that request unchanged to the bound Output Adapter; it never recreates
+delivery IDs, Scope, constraints, or authorization. Reactions therefore belong
+to RuntimeResult/DeliveryRequest, not FinalResponse. AstrBot `Plain`, `Image`,
+`Node`, and `Nodes` are output-adapter types, never domain types.
 
 ## Runtime State And Orchestration
 
@@ -258,15 +274,19 @@ One execution owns an immutable-or-copy-on-transition state containing:
 ```text
 message
 actor
+received_at, connector_revision, invocation_options, start_digest
 conversation_scope
-context
+preprocess_result, memory_retrieval, context_build
 perception
 social_decision
-candidate_capabilities
+capability_retrieval
 tool_plan
 tool_observations
+tool_validation
 draft_response
-final_response
+validated_final_response
+delivery_request, delivery_receipt
+pending_delivery_candidates, reconciliation_expires_at
 memory_candidates
 trace
 budget
@@ -288,10 +308,14 @@ the state follows the normal `READY_TO_EMIT` and acknowledgement path. Invalid
 transitions raise a typed programming error. Tool loops are bounded by
 configured steps, elapsed time, cost, and repeated-call detection. The Output
 Adapter is outside core:
-`run()` returns at `READY_TO_EMIT`, then a platform-neutral `DeliveryReceipt`
-drives an idempotent acknowledgement call. No-output outcomes pass through the
-Write Gate without inventing a delivery. Automatic memories that claim a reply
-was delivered are committed only after a successful receipt.
+`run(RuntimeStartRequest)` returns at `READY_TO_EMIT` with the authoritative
+`DeliveryRequest`; the adapter returns a platform-neutral `DeliveryReceipt`.
+Request and per-part content digests plus `SUCCEEDED | PARTIAL | FAILED | UNKNOWN`
+state drive an idempotent acknowledgement call. The reconciliation window retains
+the bounded evidence needed to evaluate delivery-dependent candidates. No-output outcomes pass through the Write Gate
+without inventing a delivery. Automatic memories that claim a reply was
+delivered are committed only after a fully successful receipt; queued and
+persisted memory submissions remain distinct.
 
 ## Perception And Social Decision
 
@@ -331,10 +355,12 @@ Exact scope filtering is mandatory before semantic retrieval. Missing required
 scope metadata fails closed; a model cannot repair or approve an ambiguous
 match.
 
-Memory categories are Session State, Short-term Conversation, User Profile,
-Group Memory, Episodic Memory, and Explicit User Memory. `MemoryRepository` is
-owned by core. Iris is one adapter and its existing patch is defense in depth,
-not the primary scope guarantee.
+The product-level Memory System has three stores with different contracts:
+`RuntimeStateStore` owns execution checkpoints, `ConversationContextStore` owns
+bounded recent messages, and durable `MemoryRepository` types are User Profile,
+Group Memory, Episodic Memory, and Explicit User Memory. Iris is one durable
+adapter and its existing patch is defense in depth, not the primary scope
+guarantee.
 
 The Write Gate evaluates source identity, sensitivity, future value,
 duplication, conflicts, target Scope, TTL, and whether confirmation is required.
@@ -372,14 +398,18 @@ SOCIAL_DECISION
 TOOL_PLANNING
 DIRECT_CHAT
 RESPONSE_COMPOSITION
+PERSONA_RENDERING
 MEMORY_SUMMARY
 IMAGE_UNDERSTANDING
 IMAGE_GENERATION
 ```
 
-`ModelRouter` resolves an externalized role policy to a `ModelGateway`. It
-applies timeout, structured-output validation, fallback, cost limits, and trace
-metadata without exposing credentials. Model IDs and Provider sources do not
+`ModelRouter` resolves one atomic routing snapshot to a per-model Endpoint
+descriptor and Provider. It applies privacy boundary/residency/retention,
+timeout, structured-output validation, fallback, cost limits, and trace metadata
+without exposing credentials. An optional Contextual Bandit may rank only the
+already-eligible endpoints; it logs propensity before action and cannot alter
+hard permissions, privacy, or budgets. Model IDs and Provider sources do not
 belong in command code.
 
 ## Response Composer And OC Renderer

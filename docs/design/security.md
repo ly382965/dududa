@@ -1,6 +1,7 @@
 # Security And Privacy Design
 
-Status: Phase 1 design; several controls described here do not exist yet.
+Status: S03 foundational controls are implemented; runtime-wide enforcement,
+production policy migration, and several later-phase controls remain pending.
 
 ## Security Objectives
 
@@ -64,6 +65,396 @@ The AstrBot adapter resolves `AstrMessageEvent` to `Actor`; core security code
 never calls Event methods. Runtime-specific admin fallback is implemented by an
 adapter and represented explicitly in the resolved roles.
 
+## Owned Security Ports
+
+```python
+class AuthorizationEffect(StrEnum):
+    ALLOW = "allow"
+    DENY = "deny"
+    REQUIRE_CONFIRMATION = "require_confirmation"
+
+@dataclass(frozen=True, slots=True)
+class AuthorizationRequest:
+    schema_version: int
+    request_digest: DigestString
+    actor: Actor
+    conversation_scope: ConversationScope
+    action: ActionId
+    resource: ResourceRef
+    capability_id: str | None
+    risk_level: RiskLevel
+    metadata: Mapping[str, JsonValue]
+
+@dataclass(frozen=True, slots=True)
+class AuthorizationDecision:
+    schema_version: int
+    decision_id: str
+    effect: AuthorizationEffect
+    request_digest: DigestString
+    actor_digest: DigestString
+    scope_digest: DigestString
+    action: ActionId
+    resource_digest: DigestString
+    capability_id: str | None
+    risk_level: RiskLevel
+    metadata_digest: DigestString
+    policy_revision: str
+    reason_codes: tuple[str, ...]
+    decided_at: datetime
+    expires_at: datetime
+
+class AuthorizationPolicy(Protocol):
+    async def decide(
+        self,
+        request: AuthorizationRequest,
+        *,
+        call: PortCallContext,
+    ) -> AuthorizationDecision: ...
+
+@dataclass(frozen=True, slots=True)
+class ConfirmationRequest:
+    schema_version: int
+    request_digest: DigestString
+    actor: Actor
+    conversation_scope: ConversationScope
+    action: ActionId
+    payload_digest: DigestString
+    required_permission: str
+    ttl: timedelta
+
+@dataclass(frozen=True, slots=True)
+class ConfirmationConsumeRequest:
+    schema_version: int
+    request_digest: DigestString
+    confirmation_id: str
+    actor: Actor
+    conversation_scope: ConversationScope
+    action: ActionId
+    payload_digest: DigestString
+    required_permission: str
+    execution_id: str
+    idempotency_key: str
+    authorization: AuthorizationDecision
+
+@dataclass(frozen=True, slots=True)
+class ConfirmationRequirement:
+    schema_version: int
+    confirmation_id: str
+    request_digest: DigestString
+    actor_digest: DigestString
+    scope_digest: DigestString
+    action: ActionId
+    payload_digest: DigestString
+    required_permission: str
+    public_prompt_key: str
+    policy_revision: str
+    created_at: datetime
+    expires_at: datetime
+
+@dataclass(frozen=True, slots=True)
+class ConfirmationGrant:
+    schema_version: int
+    confirmation_id: str
+    consume_request_digest: DigestString
+    actor_digest: DigestString
+    scope_digest: DigestString
+    action: ActionId
+    payload_digest: DigestString
+    required_permission: str
+    execution_id: str
+    idempotency_key: str
+    authorization_digest: DigestString
+    policy_revision: str
+    created_at: datetime
+    consumed_at: datetime
+    expires_at: datetime
+
+class ConfirmationService(Protocol):
+    async def issue(
+        self,
+        request: ConfirmationRequest,
+        *,
+        call: PortCallContext,
+    ) -> ConfirmationRequirement: ...
+
+    async def consume(
+        self,
+        request: ConfirmationConsumeRequest,
+        *,
+        call: PortCallContext,
+    ) -> ConfirmationGrant: ...
+
+@dataclass(frozen=True, slots=True)
+class InteractionLimitRequest:
+    schema_version: int
+    request_digest: DigestString
+    actor: Actor
+    conversation_scope: ConversationScope
+    action: ActionId
+    units: int
+    idempotency_key: str
+
+@dataclass(frozen=True, slots=True)
+class InteractionLease:
+    schema_version: int
+    lease_id: str
+    allowed: bool
+    request_digest: DigestString
+    actor_digest: DigestString
+    scope_digest: DigestString
+    action: ActionId
+    units: int
+    idempotency_key: str
+    policy_revision: str
+    reason_codes: tuple[str, ...]
+    reserved_at: datetime
+    expires_at: datetime
+
+@dataclass(frozen=True, slots=True)
+class InteractionLeaseReceipt:
+    schema_version: int
+    lease_id: str
+    idempotency_key: str
+    disposition: Literal["committed", "released", "already_committed", "already_released"]
+    limiter_revision: ComponentRevision
+    recorded_at: datetime
+
+class InteractionLimiter(Protocol):
+    async def reserve(
+        self,
+        request: InteractionLimitRequest,
+        *,
+        call: PortCallContext,
+    ) -> InteractionLease: ...
+
+    async def commit(
+        self,
+        lease: InteractionLease,
+        *,
+        call: PortCallContext,
+    ) -> InteractionLeaseReceipt: ...
+
+    async def release(
+        self,
+        lease: InteractionLease,
+        *,
+        call: PortCallContext,
+    ) -> InteractionLeaseReceipt: ...
+
+@dataclass(frozen=True, slots=True)
+class ResourceUsage:
+    schema_version: int
+    model_calls: int
+    tool_steps: int
+    retries: int
+    input_tokens: int
+    output_tokens: int
+    cost_units: Decimal | None
+
+@dataclass(frozen=True, slots=True)
+class BudgetReservationRequest:
+    schema_version: int
+    request_digest: DigestString
+    resource: ResourceRef
+    maximum: ResourceUsage
+    idempotency_key: str
+
+@dataclass(frozen=True, slots=True)
+class BudgetLease:
+    schema_version: int
+    lease_id: str
+    request_digest: DigestString
+    resource_digest: DigestString
+    idempotency_key: str
+    reserved: ResourceUsage
+    policy_revision: str
+    reserved_at: datetime
+    expires_at: datetime
+
+@dataclass(frozen=True, slots=True)
+class BudgetReceipt:
+    schema_version: int
+    lease_id: str
+    request_digest: DigestString
+    usage_digest: DigestString
+    idempotency_key: str
+    disposition: Literal["settled", "released", "duplicate"]
+    charged: ResourceUsage
+    remaining: ResourceUsage
+    recorded_at: datetime
+
+class BudgetLedger(Protocol):
+    async def reserve(
+        self,
+        request: BudgetReservationRequest,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> BudgetLease: ...
+
+    async def settle(
+        self,
+        lease: BudgetLease,
+        usage: ResourceUsage,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> BudgetReceipt: ...
+
+    async def release(
+        self,
+        lease: BudgetLease,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> BudgetReceipt: ...
+
+@dataclass(frozen=True, slots=True)
+class RedactionRequest:
+    schema_version: int
+    value: JsonValue
+    sensitivity: Sensitivity
+    purpose: str
+
+@dataclass(frozen=True, slots=True)
+class RedactionResult:
+    schema_version: int
+    value: JsonValue
+    changed: bool
+    reason_codes: tuple[str, ...]
+    redactor_revision: str
+
+class Redactor(Protocol):
+    def redact(self, request: RedactionRequest) -> RedactionResult: ...
+
+@dataclass(frozen=True, slots=True)
+class ContentSafetyRequest:
+    schema_version: int
+    request_id: str
+    request_digest: DigestString
+    stage: SafetyStage
+    content: JsonValue
+    content_digest: DigestString
+    actor_digest: DigestString
+    scope_digest: DigestString
+
+@dataclass(frozen=True, slots=True)
+class ContentSafetyDecision:
+    schema_version: int
+    request_id: str
+    stage: SafetyStage
+    request_digest: DigestString
+    content_digest: DigestString
+    actor_digest: DigestString
+    scope_digest: DigestString
+    allowed: bool
+    required_constraints: ResponseConstraints
+    reason_codes: tuple[str, ...]
+    policy_revision: str
+    producer: ComponentRevision
+    decided_at: datetime
+
+class ContentSafetyPolicy(Protocol):
+    async def evaluate(
+        self,
+        request: ContentSafetyRequest,
+        *,
+        call: PortCallContext,
+    ) -> ContentSafetyDecision: ...
+
+@dataclass(frozen=True, slots=True)
+class AuditEvent:
+    schema_version: int
+    event_id: str
+    event_digest: DigestString
+    timestamp: datetime
+    run_id: str | None
+    operation_id: str
+    trace_id: str
+    span_id: str | None
+    actor_digest: DigestString | None
+    scope_digest: DigestString | None
+    action: ActionId
+    decision: str
+    authorization_decision_id: str | None
+    request_digest: DigestString
+    policy_revisions: tuple[str, ...]
+    component_revisions: tuple[ComponentRevision, ...]
+    reason_codes: tuple[str, ...]
+    resource_digest: DigestString
+    sanitized_detail: JsonValue
+    sensitivity: Sensitivity
+    outcome: str
+
+@dataclass(frozen=True, slots=True)
+class AuditReceipt:
+    schema_version: int
+    event_id: str
+    event_digest: DigestString
+    persisted: bool
+    sink_revision: str
+
+@dataclass(frozen=True, slots=True)
+class TraceReceipt:
+    schema_version: int
+    event_id: str
+    accepted: bool
+    sink_revision: str
+
+class AuditSink(Protocol):
+    async def write(
+        self,
+        event: AuditEvent,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> AuditReceipt: ...
+
+class TraceSink(Protocol):
+    async def emit(
+        self,
+        event: TraceEvent,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> TraceReceipt: ...
+
+@dataclass(frozen=True, slots=True)
+class SecretRef:
+    schema_version: int
+    namespace: str
+    secret_id: str
+    version_hint: str | None
+
+class SecretConsumer(Protocol[T]):
+    def __call__(self, secret: memoryview) -> T: ...
+
+class SecretValue(Protocol):
+    def use_once(self, consumer: SecretConsumer[T]) -> T: ...
+
+class SecretResolver(Protocol):
+    async def resolve(
+        self,
+        reference: SecretRef,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> SecretValue: ...
+```
+
+Every top-level request, decision, lease, receipt, persisted record, and event is
+immutable and schema-versioned. The caller supplies a canonical `request_digest`,
+the owning service recomputes it, and every authorization-type result repeats it.
+Authorization additionally binds capability, risk and metadata; content safety
+binds actor, Scope, stage and exact content; limiter binds Actor, units and
+idempotency key. Consumers recompute and reject every mismatch rather than choosing
+the more permissive snapshot. Confirmation consume and limiter/budget
+reserve/commit/release are atomic and concurrency-safe. A `ServiceCallContext`
+identifies a background service but never replaces the Actor and authorization
+evidence embedded in a durable command.
+
+The Runtime reserves worst-case local budget before invoking a component. A
+shared `BudgetLedger` is additionally required when limits span processes or
+runs. Missing or unknown usage is charged at the reservation ceiling. Security
+and privileged mutations use required Audit receipts and fail closed when the
+sink cannot commit; low-risk Trace is explicitly best effort. `SecretValue` is
+an opaque infrastructure object that cannot enter Domain DTOs, model inputs,
+tool plans, trace, audit detail, exceptions, or `repr`.
+
 ## Confirmation Binding
 
 High-risk confirmations bind all of:
@@ -74,14 +465,18 @@ actor identity
 conversation scope
 action and canonical payload digest
 required permission
+execution ID and idempotency key
+the current authorization decision digest
 created_at and expires_at
 single-use state
 ```
 
 Permission is re-evaluated when confirmation executes. Changing conversation,
-payload, role, or expiry invalidates it. Logs never contain a raw sensitive
-payload. Durable operations use durable confirmation state or clearly state
-that a restart cancels them.
+payload, permission, execution ID, role, or expiry invalidates it. `consume()`
+atomically tombstones the confirmation and returns a grant usable only for the
+bound execution/idempotency key; replay for another command fails closed. Logs
+never contain a raw sensitive payload. Durable operations use durable confirmation
+state or clearly state that a restart cancels them.
 
 ## Privacy Classification
 
@@ -245,9 +640,23 @@ closed for privileged operations.
 
 ## Required Tests
 
+- Shared Contract Tests for `AuthorizationPolicy`, `ConfirmationService`,
+  `InteractionLimiter`, `BudgetLedger`, `Redactor`, `ContentSafetyPolicy`,
+  `AuditSink`, `TraceSink`, and `SecretResolver` across Fake and real adapters.
 - Role/action/resource/context permission matrix and default deny.
-- Confirmation actor, Scope, payload, expiry, single-use, and role recheck.
+- Canonical request digest tampering for Authorization capability/risk/metadata,
+  Content Safety Actor/Scope/stage/content, and every lease/receipt fails closed.
+- Confirmation actor, Scope, payload, required permission, execution/idempotency key,
+  current authorization, expiry, single-use/tombstone, and role recheck.
+- Concurrent limiter reservations cannot all pass from one stale snapshot;
+  Actor/units/key binding, commit/release, expiry, retries, and idempotency are atomic.
+- Required audit failure blocks high-risk mutations; best-effort Trace failure
+  never gets reported as a durable audit receipt.
 - Nested and value-based redaction with no raw secret in audit/trace/error.
+- Content Safety request/decision stage and content digest binding; required constraints must
+  be present in the exact `ValidatedFinalResponse` being delivered.
+- ServiceCallContext principal cannot replace the original Actor authorization in a queued command.
+- Audit event/receipt bind run/operation, policy/component revisions and event/request digests.
 - Cross-user/group/private/Bot/Persona memory isolation.
 - Capability privacy and permission eligibility before planning.
 - Path traversal, absolute path, symlink, and overwrite restrictions.

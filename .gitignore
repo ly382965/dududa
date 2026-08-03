@@ -9,6 +9,10 @@ Thumbs.db
 
 data/
 runtime/
+!packages/dududa-agent/src/dududa/runtime/
+!packages/dududa-agent/src/dududa/runtime/**
+!tests/unit/runtime/
+!tests/unit/runtime/**
 backups/
 *.db
 *.db-*

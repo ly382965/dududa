@@ -4,7 +4,6 @@ import random
 import re
 import time
 from collections import defaultdict, deque
-from dataclasses import dataclass
 from typing import Any
 
 from astrbot.api import logger
@@ -14,17 +13,21 @@ from astrbot.api.star import Context, Star, register
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import (
     AiocqhttpMessageEvent,
 )
-
-
-@dataclass
-class TargetUser:
-    qq: str
-    alias: str
-    enabled: bool
-    group_whitelist: set[str]
-    probability: float | None
-    reply_style: str
-    prompt_template: str
+from dududa.compatibility.target_talk import (
+    TargetUser,
+    clamp_float,
+    clean_reply,
+    coerce_bool,
+    coerce_int,
+    coerce_string_list,
+    float_or_none,
+    history_entry,
+    in_cooldown,
+    load_targets,
+    matches_any,
+    should_handle_message,
+    target_enabled_for_group,
+)
 
 
 @register(
@@ -158,38 +161,27 @@ class TargetTalkPlugin(Star):
         sender_id: str,
         text: str,
     ) -> bool:
-        if not self.enabled:
-            return False
-        if not group_id or not sender_id:
-            return False
-        if sender_id == str(event.get_self_id()):
-            return False
-        if self.group_whitelist and group_id not in self.group_whitelist:
-            return False
-        if self.ignore_at_or_wake_command and getattr(event, "is_at_or_wake_command", False):
-            return False
-        if sender_id not in self.targets:
-            return False
-
-        normalized = (text or "").strip()
-        if len(normalized) < self.min_message_chars:
-            return False
-        if self.max_message_chars and len(normalized) > self.max_message_chars:
-            return False
-        if self.exclude_keywords and self._matches_any(self.exclude_keywords, normalized):
-            return False
-        if self.trigger_keywords and not self._matches_any(
-            self.trigger_keywords, normalized
-        ):
-            return False
-        return True
+        return should_handle_message(
+            enabled=self.enabled,
+            group_id=group_id,
+            sender_id=sender_id,
+            self_id=str(event.get_self_id()),
+            is_at_or_wake_command=bool(
+                getattr(event, "is_at_or_wake_command", False)
+            ),
+            ignore_at_or_wake_command=self.ignore_at_or_wake_command,
+            configured_targets=self.targets,
+            group_whitelist=self.group_whitelist,
+            text=text,
+            minimum_characters=self.min_message_chars,
+            maximum_characters=self.max_message_chars,
+            exclude_patterns=self.exclude_keywords,
+            trigger_patterns=self.trigger_keywords,
+            on_invalid_regex=self._invalid_regex,
+        )
 
     def _target_enabled_for_group(self, target: TargetUser, group_id: str) -> bool:
-        if not target.enabled:
-            return False
-        if target.group_whitelist and group_id not in target.group_whitelist:
-            return False
-        return True
+        return target_enabled_for_group(target, group_id)
 
     async def _generate_reply(
         self,
@@ -283,10 +275,7 @@ class TargetTalkPlugin(Star):
         if not text:
             return
         sender = self._sender_name(event) or str(event.get_sender_id() or "")
-        text = re.sub(r"\s+", " ", text)
-        if len(text) > 180:
-            text = text[:177] + "..."
-        self.history[group_id].append(f"{sender}: {text}")
+        self.history[group_id].append(history_entry(sender, text))
 
     def _recent_context(self, group_id: str) -> str:
         if self.recent_context_messages <= 0:
@@ -303,81 +292,28 @@ class TargetTalkPlugin(Star):
             return ""
 
     def _in_cooldown(self, key: str, now: float) -> bool:
-        if self.cooldown_seconds <= 0:
-            return False
         last = self.cooldowns.get(key, 0.0)
-        return now - last < self.cooldown_seconds
+        return in_cooldown(last, now, self.cooldown_seconds)
 
     def _in_global_cooldown(self, now: float) -> bool:
-        if self.global_cooldown_seconds <= 0:
-            return False
-        return now - self.last_global_at < self.global_cooldown_seconds
+        return in_cooldown(
+            self.last_global_at,
+            now,
+            self.global_cooldown_seconds,
+        )
 
     def _matches_any(self, patterns: list[str], text: str) -> bool:
-        for pattern in patterns:
-            if not pattern:
-                continue
-            if pattern.startswith("re:"):
-                try:
-                    if re.search(pattern[3:], text, flags=re.I):
-                        return True
-                except re.error as exc:
-                    logger.warning("TargetTalk: invalid regex %r: %s", pattern, exc)
-                continue
-            if pattern.lower() in text.lower():
-                return True
-        return False
+        return matches_any(patterns, text, self._invalid_regex)
+
+    @staticmethod
+    def _invalid_regex(pattern: str, exc: re.error) -> None:
+        logger.warning("TargetTalk: invalid regex %r: %s", pattern, exc)
 
     def _load_targets(self, raw_targets: Any) -> dict[str, TargetUser]:
-        targets: dict[str, TargetUser] = {}
-        if not isinstance(raw_targets, list):
-            raw_targets = []
-
-        for item in raw_targets:
-            if isinstance(item, str):
-                qq = item.strip()
-                data: dict[str, Any] = {}
-            elif isinstance(item, dict):
-                data = item
-                qq = str(data.get("qq", "") or "").strip()
-            else:
-                continue
-
-            if not qq or not qq.isdigit():
-                continue
-
-            probability = self._float_or_none(data.get("probability", -1))
-            if probability is not None and probability < 0:
-                probability = None
-            if probability is not None:
-                probability = max(0.0, min(1.0, probability))
-
-            targets[qq] = TargetUser(
-                qq=qq,
-                alias=str(data.get("alias", "") or "").strip(),
-                enabled=self._bool(data.get("enabled", True), True),
-                group_whitelist=self._str_set(data.get("group_whitelist", [])),
-                probability=probability,
-                reply_style=str(data.get("reply_style", "") or "").strip(),
-                prompt_template=str(data.get("prompt_template", "") or "").strip(),
-            )
-        return targets
+        return load_targets(raw_targets)
 
     def _clean_reply(self, text: str) -> str:
-        text = (text or "").strip()
-        if not text:
-            return ""
-        text = re.sub(r"^```(?:\w+)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-        text = re.sub(r"^\s*(回复|回答|输出)\s*[:：]\s*", "", text)
-        text = text.strip(" \t\r\n\"'“”")
-        text = re.sub(r"\[CQ:at,qq=\d+\]\s*", "", text)
-        text = re.sub(r"@\S+\s*", "", text)
-        if len(text) > self.max_reply_chars:
-            text = text[: self.max_reply_chars].rstrip()
-            if text and text[-1] not in "。！？!?~～":
-                text += "..."
-        return text
+        return clean_reply(text, self.max_reply_chars)
 
     def _safe_format(self, template: str, **kwargs: str) -> str:
         try:
@@ -387,42 +323,21 @@ class TargetTalkPlugin(Star):
             return template
 
     def _str_list(self, value: Any) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, str):
-            value = re.split(r"[,，\n]", value)
-        if not isinstance(value, list):
-            return []
-        return [str(item).strip() for item in value if str(item).strip()]
+        return coerce_string_list(value)
 
     def _str_set(self, value: Any) -> set[str]:
         return set(self._str_list(value))
 
     def _bool(self, value: Any, default: bool) -> bool:
-        if isinstance(value, bool):
-            return value
-        if value is None:
-            return default
-        return str(value).strip().lower() not in {"0", "false", "no", "off", "否"}
+        return coerce_bool(value, default)
 
     def _int(self, value: Any, default: int) -> int:
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return default
+        return coerce_int(value, default)
 
     def _float_or_none(self, value: Any) -> float | None:
-        if value is None or value == "":
-            return None
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
+        return float_or_none(value)
 
     def _clamp_float(
         self, value: Any, default: float, minimum: float, maximum: float
     ) -> float:
-        parsed = self._float_or_none(value)
-        if parsed is None:
-            parsed = default
-        return max(minimum, min(maximum, parsed))
+        return clamp_float(value, default, minimum, maximum)

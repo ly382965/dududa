@@ -11,21 +11,41 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: services/icourse-mcp/pyproject.toml
-      - name: Install icourse MCP
-        run: python -m pip install -e services/icourse-mcp
+          cache-dependency-path: |
+            packages/dududa-agent/pyproject.toml
+            services/icourse-mcp/pyproject.toml
+      - name: Build and install Dududa packages
+        run: |
+          mkdir -p "$RUNNER_TEMP/dududa-wheel"
+          python -m pip wheel --no-deps \
+            --wheel-dir "$RUNNER_TEMP/dududa-wheel" \
+            packages/dududa-agent
+          python -m pip install "$RUNNER_TEMP"/dududa-wheel/dududa_agent-*.whl
+          python -m pip install -e services/icourse-mcp
+          python -m pip check
+          python -c 'import importlib.metadata, pathlib, dududa; assert importlib.metadata.version("dududa-agent") == dududa.__version__; assert (pathlib.Path(dududa.__file__).parent / "py.typed").is_file()'
       - name: Compile Python sources
-        run: python -m compileall -q plugins services scripts
+        run: python -m compileall -q packages plugins services scripts tests
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
       - name: Validate shell
-        run: bash -n manage.sh
+        run: |
+          bash -n manage.sh scripts/setup_dev.sh
+          sh -n services/icourse-mcp/scripts/setup.sh services/icourse-mcp/scripts/start_mcp.sh
+      - name: Validate memory migration entrypoint
+        run: |
+          test -x scripts/migrate_memory_v2.py
+          ./scripts/migrate_memory_v2.py --help
       - name: Validate Compose
         run: docker compose --env-file .env.example config --quiet
       - name: Check repository for secrets and runtime data

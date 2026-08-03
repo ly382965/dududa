@@ -16,7 +16,7 @@ Persona 子系统负责：
 - 将角色语气、称呼和表达习惯组织为 `PersonaDefinition` 与 `RenderContext`，但不覆盖 Social Decision 产生的 `ResponseConstraints`；
 - 在事实稳定的 `DraftResponse` 上执行 OC Renderer；
 - 验证渲染前后事实锚点、引用、拒绝和目标用户不变；
-- 在渲染失败时返回安全的未渲染 Draft；
+- 在模型渲染失败时用确定性 Finalizer 生成候选输出，并经过相同 Validator/Safety 链；
 - 支持多 Persona、版本升级、回滚和 Eval。
 
 Persona 子系统不负责：
@@ -73,7 +73,7 @@ class PersonaDefinition:
     channel_rules: Mapping[str, ChannelStyle]
     safety_notes: tuple[str, ...]
     renderer: RendererPolicy
-    source_digest: str
+    source_digest: DigestString
 ```
 
 关键辅助类型：
@@ -121,8 +121,41 @@ configs/personas/
 
 ```python
 @dataclass(frozen=True, slots=True)
+class Citation:
+    citation_id: str
+    source_ref: str
+    label: str
+    safe_url: str | None
+
+@dataclass(frozen=True, slots=True)
+class UncertaintyNote:
+    code: str
+    text: str
+
+@dataclass(frozen=True, slots=True)
+class SafetyNotice:
+    code: str
+    text: str
+    required: bool
+
+@dataclass(frozen=True, slots=True)
+class Refusal:
+    code: str
+    text: str
+    policy_revision: str
+
+@dataclass(frozen=True, slots=True)
+class GeneratedAssetRef:
+    asset_id: str
+    content_ref: str
+    media_type: str
+    source_digest: DigestString
+
+@dataclass(frozen=True, slots=True)
 class DraftResponse:
+    schema_version: int
     response_id: str
+    producer: ComponentRevision
     intent: str
     content_blocks: tuple[ContentBlock, ...]
     fact_anchors: tuple[FactAnchor, ...]
@@ -132,7 +165,7 @@ class DraftResponse:
     refusal: Refusal | None
     target_users: tuple[ResolvedIdentityRef, ...]
     attachments: tuple[GeneratedAssetRef, ...]
-    immutable_constraints: tuple[str, ...]
+    immutable_constraints: ResponseConstraints
 ```
 
 `FactAnchor` 为渲染校验提供稳定依据：
@@ -152,43 +185,148 @@ class FactAnchor:
 
 ```python
 @dataclass(frozen=True, slots=True)
+class RenderedContent:
+    kind: Literal["text", "code", "asset"]
+    text: str | None
+    asset: GeneratedAssetRef | None
+
+@dataclass(frozen=True, slots=True)
 class RenderContext:
+    schema_version: int
     persona: PersonaDefinition
     locale: str
-    channel: Literal["private", "group", "web"]
+    conversation_type: ConversationType
+    surface: Literal["chat", "web_preview"]
     conversation_mode: str
     user_style_preference: str | None
     response_constraints: ResponseConstraints
     target_aliases: Mapping[str, str]
 
 @dataclass(frozen=True, slots=True)
+class RenderedBlock:
+    block_id: str
+    content: RenderedContent
+    fact_anchor_ids: tuple[str, ...]
+    citation_ids: tuple[str, ...]
+    constraint_ids: tuple[str, ...]
+
+@dataclass(frozen=True, slots=True)
+class RenderMetadata:
+    persona_id: str
+    persona_version: str
+    mode: Literal["deterministic", "model", "hybrid"]
+    renderer_revision: ComponentRevision
+    fallback_used: bool
+    latency_ms: int
+
+@dataclass(frozen=True, slots=True)
 class FinalResponse:
+    schema_version: int
     response_id: str
+    producer: ComponentRevision
     blocks: tuple[RenderedBlock, ...]
+    fact_anchors: tuple[FactAnchor, ...]
     citations: tuple[Citation, ...]
+    uncertainty: tuple[UncertaintyNote, ...]
+    warnings: tuple[SafetyNotice, ...]
+    refusal: Refusal | None
+    immutable_constraints: ResponseConstraints
     target_users: tuple[ResolvedIdentityRef, ...]
     attachments: tuple[GeneratedAssetRef, ...]
     render_metadata: RenderMetadata
 
+@dataclass(frozen=True, slots=True)
+class PersonaCatalogSnapshot:
+    schema_version: int
+    snapshot_id: str
+    snapshot_revision: str
+    definitions: tuple[PersonaDefinition, ...]
+    acquired_at: datetime
+
 class PersonaRegistry(Protocol):
-    async def get(self, persona_id: str, version: str | None = None) -> PersonaDefinition: ...
+    def acquire_snapshot(self) -> PersonaCatalogSnapshot: ...
+    async def get(
+        self,
+        snapshot: PersonaCatalogSnapshot,
+        persona_id: str,
+        version: str | None = None,
+        *,
+        call: PortCallContext,
+    ) -> PersonaDefinition: ...
+
+    def list_versions(
+        self, snapshot: PersonaCatalogSnapshot, persona_id: str
+    ) -> tuple[str, ...]: ...
+
+@dataclass(frozen=True, slots=True)
+class PersonaCatalogUpdate:
+    schema_version: int
+    expected_revision: str
+    definitions: tuple[PersonaDefinition, ...]
+
+class PersonaCatalogPublisher(Protocol):
+    async def publish(
+        self,
+        update: PersonaCatalogUpdate,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> str: ...
 
 class PersonaRenderer(Protocol):
     async def render(
         self,
         draft: DraftResponse,
         context: RenderContext,
+        *,
+        call: PortCallContext,
     ) -> FinalResponse: ...
+
+class DeterministicDraftFinalizer(Protocol):
+    async def finalize(
+        self,
+        draft: DraftResponse,
+        context: RenderContext,
+        *,
+        call: PortCallContext,
+    ) -> FinalResponse: ...
+
+@dataclass(frozen=True, slots=True)
+class RenderValidationResult:
+    schema_version: int
+    valid: bool
+    draft_digest: DigestString
+    rendered_digest: DigestString
+    reason_codes: tuple[str, ...]
+    changed_anchor_ids: tuple[str, ...]
+    validator_revision: ComponentRevision
+
+@dataclass(frozen=True, slots=True)
+class ValidatedFinalResponse:
+    schema_version: int
+    response: FinalResponse
+    render_validation: RenderValidationResult
+    content_safety: ContentSafetyDecision
 
 class RenderValidator(Protocol):
     async def validate(
         self,
         draft: DraftResponse,
         rendered: FinalResponse,
+        *,
+        call: PortCallContext,
     ) -> RenderValidationResult: ...
 ```
 
-Registry 加载后执行 Schema 校验、digest 计算和版本检查。无效新版本不能替换进程内最后一份有效 Persona。
+Registry 加载后执行 Schema 校验、digest 计算和版本检查。一次 Render 从一个
+`PersonaCatalogSnapshot` 解析 definition/version/digest；不能把“最新 Persona”与另一 revision
+的规则混用。无效新版本不能替换进程内最后一份有效 Persona。
+
+`PersonaCatalogPublisher` 一次校验并原子发布完整 snapshot，失败保留 last-known-good。
+只有 `RenderValidationResult.valid=true`、其中 draft/render digest 与实际对象一致，且
+最终 `ContentSafetyDecision.allowed=true`、stage 为最终输出、content digest 等于规范化
+`FinalResponse` digest、`required_constraints` 是最终不可变约束的子集时，Runtime 才能
+构造 `ValidatedFinalResponse` 并交给 Output Adapter。这样事实/内容门禁不能与另一份文本
+拼接，checkpoint 恢复后也不必重新调用概率 Renderer 才能证明校验结果。
 
 ## 7. OC Renderer 行为
 
@@ -218,10 +356,13 @@ Registry 加载后执行 Schema 校验、digest 计算和版本检查。无效�
 第一阶段建议 `hybrid`：
 
 1. 对错误、拒绝、权限和短命令结果使用确定性模板；
-2. 对普通聊天和较长说明可调用 Model Router 的 `RESPONSE_COMPOSITION` 或受限渲染子任务；
+2. 对普通聊天和较长说明可调用 Model Router 的 `PERSONA_RENDERING` 角色；该角色与
+   `RESPONSE_COMPOSITION` 独立配置 Schema、隐私、温度、预算和 Eval；
 3. 模型输入包含结构化 Draft、VoiceRules 和限制，不包含原始工具输出；
 4. Render Validator 对锚点、引用、拒绝和目标做检查；
-5. 校验失败时最多重试一次，仍失败则使用确定性渲染或原 Draft。
+5. 校验失败时最多重试一次，仍失败则由 `DeterministicDraftFinalizer` 把 Draft 转成
+   `FinalResponse`；该候选仍必须经过 Render Validator 和最终 Content Safety，不能把裸
+   Draft 当成可投递类型。
 
 不为 Persona 新设一个可访问工具的 Agent。Renderer 的模型调用没有 Tool 权限。
 
@@ -254,6 +395,60 @@ class PersonaPreferenceScope:
     bot_id: str
     user_id: str
     persona_id: str
+
+@dataclass(frozen=True, slots=True)
+class UserPreferenceView:
+    schema_version: int
+    scope: PersonaPreferenceScope
+    style_overrides: Mapping[str, JsonValue]
+    revision: int
+    updated_at: datetime
+
+@dataclass(frozen=True, slots=True)
+class UserPreferenceRequest:
+    schema_version: int
+    actor: Actor
+    conversation_scope: ConversationScope
+    persona_id: str
+
+@dataclass(frozen=True, slots=True)
+class UserPreferenceCommand:
+    schema_version: int
+    request: UserPreferenceRequest
+    expected_revision: int | None
+    style_overrides: Mapping[str, JsonValue]
+    authorization: AuthorizationDecision
+    idempotency_key: str
+
+@dataclass(frozen=True, slots=True)
+class UserPreferenceDeleteCommand:
+    schema_version: int
+    request: UserPreferenceRequest
+    expected_revision: int
+    authorization: AuthorizationDecision
+    idempotency_key: str
+
+class UserPreferenceRepository(Protocol):
+    async def get(
+        self,
+        request: UserPreferenceRequest,
+        *,
+        call: PortCallContext,
+    ) -> UserPreferenceView | None: ...
+
+    async def put(
+        self,
+        command: UserPreferenceCommand,
+        *,
+        call: PortCallContext,
+    ) -> UserPreferenceView: ...
+
+    async def delete(
+        self,
+        command: UserPreferenceDeleteCommand,
+        *,
+        call: PortCallContext,
+    ) -> None: ...
 ```
 
 - 偏好不是权限，不得启用高风险能力；
@@ -261,6 +456,11 @@ class PersonaPreferenceScope:
 - 群聊中默认不展示偏好原文；
 - 偏好可查询、导出、关闭和删除；
 - 迁移旧 style 时必须明确旧数据的默认 Scope，不能静默复制到所有 Bot/Persona。
+
+Contextual Bandit 只能在 PersonaDefinition、群约束和用户显式偏好共同允许的已评审 style
+variant 中排序，正式契约见 `online-learning.md`。Feature 不含原始消息或真实身份；决策在
+渲染前记录 propensity。它不能修改 Fact Anchor、引用、拒绝、安全提示、目标、附件或不可变
+约束，也不能覆盖用户明确选择；未明确同意的群聊成员不承担 live 风格探索。
 
 Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write Gate 使用同一 Persona Scope，防止不同 Persona 间把角色关系或称呼混用。
 
@@ -270,7 +470,7 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 
 - 继续注册命令和读取旧 Persona seed 状态；
 - `/style` 先双读或迁移到 `UserPreferenceRepository`，保留原命令文案；
-- 插件只把 `FinalResponse` 转为 AstrBot Result，不自行拼接新人格 Prompt；
+- 插件只把 `ValidatedFinalResponse` 转为 AstrBot Result，不自行拼接新人格 Prompt；
 - 当前 `/course` 结果的事实字段先变为 Draft 锚点，再允许 Renderer 调整措辞。
 
 ### 10.2 `astrbot_plugin_target_talk`
@@ -283,7 +483,7 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 ### 10.3 `astrbot_plugin_reply_polish`
 
 - 它负责长纯文本切分和 QQ 合并转发，不负责语气或 OC；
-- 继续位于 FinalResponse 之后的 Output Adapter/装饰阶段；
+- 继续位于 `ValidatedFinalResponse` 之后的 Output Adapter/装饰阶段；
 - 分段不能改事实，但当前可能静默截断尾部，迁移时需用测试固定或显式修正；
 - `Plain`、`Nodes` 和 Bot UIN 始终留在 AstrBot 兼容层。
 
@@ -295,8 +495,8 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 | --- | --- |
 | Persona 不存在 | 使用版本化 `neutral` Persona，不猜测其他 ID |
 | Persona Schema 无效 | 拒绝加载新版本，继续最后有效版本 |
-| Renderer 模型不可用 | 确定性模板或原 Draft |
-| Renderer 超时 | 不阻塞到总 Runtime deadline，返回安全 Draft |
+| Renderer 模型不可用 | Deterministic Finalizer -> Render Validator -> Content Safety |
+| Renderer 超时 | 不阻塞总 deadline；走同一确定性 Finalizer 与验证链 |
 | 锚点/引用校验失败 | 丢弃渲染结果，重试一次后回退 |
 | 用户 style 无效 | 忽略 override，使用 Persona 默认值 |
 | 输出超过平台限制 | 交给 Output Adapter 分段，不让 Persona 删除必要事实 |
@@ -321,6 +521,7 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 ### Unit
 
 - Persona Schema、版本、digest 和 last-known-good 加载；
+- Persona catalog 原子发布、revision 冲突和回滚；
 - 用户 style override 的允许/禁止字段；
 - 确定性模板覆盖拒绝、错误、权限和工具失败；
 - Renderer 失败、超时及无模型回退；
@@ -330,6 +531,7 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 
 - 随机生成 Draft 后，渲染前后所有 exact FactAnchor 一致；
 - 引用集合、目标用户、附件和拒绝状态不能减少或改变；
+- `ValidatedFinalResponse` 的 draft/render digest 不可替换、错配或在恢复后丢失；
 - 数字、日期和课程 ID 不因语气改写变化；
 - Prompt Injection 样本不能让 Renderer 输出系统 Prompt 或忽略安全规则；
 - 长度压缩不删除安全警告和关键来源。
@@ -339,6 +541,10 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 - 闲聊、技术回答、课程结果、工具失败、权限拒绝、隐私引导和情绪陪伴；
 - “可爱但不过度卖萌”“技术问题认真”“群聊不刷屏”的人工评分；
 - OC 一致性与事实正确性分开评分；
+- 人工风格评分使用盲化、随机顺序、至少两名标注者并报告一致性；候选与模板在同一 Draft
+  上配对，报告样本量、95% 置信区间和预先冻结的最小效果量；
+- Fact/Citation/Refusal/Target/Attachment 改变、跨 Scope 泄漏、内容安全违规和危险 URL
+  都是独立零容忍门禁，不能被风格分抵消；
 - 当前 `dududa.md` 的关键表达习惯建立少量稳定 Golden，避免逐字快照锁死语言；
 - TargetTalk 目标级风格与主 Persona 冲突时，安全和 Persona 身份优先。
 

@@ -1,6 +1,7 @@
 # Dududa Old-To-New Migration Map
 
-Status: Phase 1 design; no mapped move or extraction has started.
+状态：S01–S07 的 Package 增量、公共逻辑抽取和插件内部拆分已完成；Phase 8 的物理路径
+迁移尚未开始，现有插件 ID、容器目标路径和生产入口保持不变。
 
 ## Mapping Rules
 
@@ -151,7 +152,7 @@ want global QQ behavior. It is not automatically merged into OC Renderer.
 | --- | --- | --- |
 | AIOCQHTTP Event extraction | AstrBot Message Envelope adapter | Contract fixtures before replacement |
 | Target, allowlist, keyword, probability rules | Legacy Social Decision policy | Extract pure deterministic function |
-| Recent group history | Session State / Context source | Add bounded, scoped storage; stop pre-filter capture |
+| Recent group history | ConversationContextStore | Add bounded, scoped storage; stop pre-filter capture |
 | Cooldowns | Rate-limit service | Preserve per-target/global semantics |
 | Provider selection and prompt | Model Router `DIRECT_CHAT` role | Inject gateway and structured context |
 | Direct `event.send()` | Runtime response -> Output Adapter | Preserve timing/order in selective cutover |

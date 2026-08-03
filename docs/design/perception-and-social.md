@@ -23,7 +23,7 @@ PerceptionEngine -> PerceptionResult
       |
       v
 SocialDecisionEngine
-  + PermissionPolicy
+  + AuthorizationPolicy
   + GroupPolicy
   + RateLimiter
   + LegacyTargetTalkPolicy
@@ -44,13 +44,16 @@ Perception 可以使用规则和模型；Social Decision 必须由确定性硬�
 ```python
 @dataclass(frozen=True, slots=True)
 class ContextSnapshot:
+    schema_version: int
     message: MessageEnvelope
     scope: ConversationScope
     recent_messages: tuple[ContextMessage, ...]
     reply_chain: tuple[ContextMessage, ...]
     attachment_summaries: tuple[AttachmentSummary, ...]
     active_topics: tuple[str, ...]
-    scoped_memories: tuple[MemoryRecord, ...]
+    scoped_memories: tuple[ContextMemoryEvidence, ...]
+    memory_conflicts: tuple[MemoryConflictGroup, ...]
+    degraded_components: tuple[str, ...]
     group_policy: GroupPolicyView
     user_preferences: UserPreferenceView
     persona: PersonaRef
@@ -79,12 +82,15 @@ class DecisionSignals:
     message_replies_to_bot: bool
     explicit_command: bool
     group_mode: Literal["quiet", "normal", "active"]
-    rate_limit: RateLimitSnapshot
+    interaction_lease: InteractionLease
     duplicate_or_self_message: bool
     legacy_target_talk: LegacyTargetTalkSignal | None
 ```
 
-权限、群策略和限流结果以只读值传入，Perception 模型不接收管理员名单、真实权限配置、Actor roles 或完整限流键。`AuthorizationView` 由统一 Permission Policy 根据完整 `Actor` 和 `ConversationScope` 生成；不得把多角色和 deny overlay 压缩成一个可歧义的角色字符串。
+权限、群策略和限流结果以只读值传入，Perception 模型不接收管理员名单、真实权限配置、
+Actor roles 或完整限流键。`AuthorizationView` 由统一 `AuthorizationPolicy` 根据完整
+`Actor` 和 `ConversationScope` 生成；不得把多角色和 deny overlay 压缩成一个可歧义的
+角色字符串。
 
 ## 4. PerceptionResult
 
@@ -94,6 +100,8 @@ class DecisionSignals:
 @dataclass(frozen=True, slots=True)
 class PerceptionResult:
     schema_version: int
+    pipeline_revision: ComponentRevision
+    component_revisions: tuple[ComponentRevision, ...]
     should_consider_response: bool
     target_users: tuple[ResolvedIdentityRef, ...]
     speech_acts: tuple[SpeechAct, ...]
@@ -135,12 +143,18 @@ class Ambiguity:
 ### 4.2 校验规则
 
 - `schema_version` 必须被当前 Runtime 支持；
+- `pipeline_revision` 标识组合管线；`component_revisions` 分别记录 Rule、Model、Merger
+  和 Validator 的实现/配置 revision，供 Eval 重放；不得记录模型隐藏推理；
 - 所有置信度限制在 `[0, 1]`；
 - `target_users` 只能引用 Context Builder 已知的匿名身份引用；
 - `resolved_references` 必须指出依据消息 ID，不能只给模型自由文本结论；
 - `need_tools=True` 不代表允许调用工具；权限和 Capability Retrieval 在后续执行；
 - 未知 intent 保留为 namespaced ID，例如 `legacy.course_review_search`，不得映射成任意代码调用；
 - Schema 校验失败时整个模型结果无效，不采用“能解析多少算多少”的宽松策略。
+
+`confidence` 只用于质量评估、澄清和软决策排序，不是权限分数。Eval 必须按场景报告
+校准误差，并使用按完整 conversation 切分的 held-out 数据，避免相邻消息泄漏到训练
+与测试两侧。
 
 ## 5. PerceptionEngine Protocol
 
@@ -150,7 +164,7 @@ class PerceptionEngine(Protocol):
         self,
         context: ContextSnapshot,
         *,
-        deadline: datetime | None = None,
+        call: PortCallContext,
     ) -> PerceptionResult: ...
 ```
 
@@ -176,8 +190,31 @@ class SocialAction(StrEnum):
     ASK_CLARIFICATION = "ask_clarification"
     DEFER = "defer"
 
+class ResponseConstraintCode(StrEnum):
+    PRESERVE_FACTS = "preserve_facts"
+    PRESERVE_CITATIONS = "preserve_citations"
+    PRESERVE_REFUSAL = "preserve_refusal"
+    PRESERVE_TARGETS = "preserve_targets"
+    CONTENT_SAFETY = "content_safety"
+    MAX_LENGTH = "max_length"
+
+@dataclass(frozen=True, slots=True)
+class ResponseConstraint:
+    schema_version: int
+    constraint_id: str
+    code: ResponseConstraintCode
+    parameters: JsonObject
+
+@dataclass(frozen=True, slots=True)
+class ResponseConstraints:
+    schema_version: int
+    constraints: tuple[ResponseConstraint, ...]
+
 @dataclass(frozen=True, slots=True)
 class SocialDecision:
+    schema_version: int
+    policy_revision: str
+    component_revisions: tuple[ComponentRevision, ...]
     action: SocialAction
     confidence: float
     reason_codes: tuple[str, ...]
@@ -186,7 +223,7 @@ class SocialDecision:
     clarification: str | None
     response_constraints: ResponseConstraints
     capability_query: CapabilityQuery | None
-    cooldown_receipt: CooldownReceipt | None
+    interaction_lease_id: str | None
 ```
 
 语义：
@@ -202,6 +239,15 @@ class SocialDecision:
 
 `reason_codes` 使用稳定机器码，例如 `direct_mention`、`muted_actor`、`low_value_interruption`、`tool_required`、`ambiguous_reference`、`rate_limited`。日志和 Eval 断言 reason code，而不是依赖自然语言解释。
 
+`policy_revision` 标识确定性 Policy Chain 的配置与规则版本。相同 Context、Perception、
+DecisionSignals 和 policy revision 在不启用模型软候选时必须产生相同结果；启用概率模型
+时，`component_revisions` 和 Trace 还需记录对应模型、合并器与 Validator revision。
+
+`InteractionLease` 必须在读取限流状态时原子 reserve；Runtime 在最终采用可见动作时
+commit，在 `IGNORE`、取消或失败时 release。仅传递一个可过期 snapshot 会让并发消息同时
+通过限流，因此不属于正式接口。Lease 的 Scope、action、过期时间和 policy revision 必须
+与本次 decision 一致。
+
 ### 6.2 SocialDecisionEngine Protocol
 
 ```python
@@ -211,6 +257,8 @@ class SocialDecisionEngine(Protocol):
         context: ContextSnapshot,
         perception: PerceptionResult,
         signals: DecisionSignals,
+        *,
+        call: PortCallContext,
     ) -> SocialDecision: ...
 ```
 
@@ -267,6 +315,7 @@ Identity/Dedup Gate
 ```python
 @dataclass(frozen=True, slots=True)
 class LegacyTargetTalkSignal:
+    schema_version: int
     matched: bool
     target_ref: ResolvedIdentityRef | None
     probability_passed: bool
@@ -283,6 +332,8 @@ class LegacyTargetTalkPolicy(Protocol):
         self,
         context: ContextSnapshot,
         config: LegacyTargetTalkConfig,
+        *,
+        call: PortCallContext,
     ) -> LegacyTargetTalkSignal: ...
 ```
 
@@ -354,6 +405,12 @@ class LegacyTargetTalkPolicy(Protocol):
 - reason code 稳定性。
 
 Eval 数据使用脱敏 JSONL，至少标注：`should_consider_response`、`target_users`、`speech_acts`、`intent`、`need_tools`、`expected_action`、`allowed_actions`、`reason_codes`。允许多种合理动作时用集合而不是强制单一文案。
+
+Dataset 按完整 conversation、群和时间窗口分层切分，禁止同一回复链跨 train/test。报告
+样本量、类别分布、缺失标注、macro/micro F1、target/reference exact match、Brier/ECE、
+误插话率与错误目标率。Baseline 与候选在同一 case 上配对比较，使用固定 seeds、多次运行、
+paired bootstrap 95% 置信区间和预先冻结的最小效果量；未达到效果量或区间跨零时不能宣称
+优于 Baseline。零容忍策略项同时报告违规数、分母和单侧置信上界，不能只写“本次为 0”。
 
 ## 12. 当前实现状态
 

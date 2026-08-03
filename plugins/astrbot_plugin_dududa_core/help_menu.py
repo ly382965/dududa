@@ -29,6 +29,7 @@ def user_help() -> str:
 /remind <时间> <内容>
 /reminders
 /summary [today|数量]
+/sub2api help
 /help plugins
 
 娱乐：
@@ -112,6 +113,7 @@ PokePro：戳一戳
 Reread：复读
 Target Talk：低频主动参与
 Reply Polish：回复口吻润色
+Sub2API Readonly：白名单群内查询 Token、排名和账号状态
 Meme Manager：表情包
 
 统一入口已保留；原插件命令不改名。"""

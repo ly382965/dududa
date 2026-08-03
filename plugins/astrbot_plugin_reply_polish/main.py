@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import re
 from typing import Iterable
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import Node, Nodes, Plain
 from astrbot.api.star import Context, Star, register
+from dududa.compatibility.reply_polish import split_long_piece, split_text
 
 
 @register(
@@ -79,59 +79,7 @@ class ReplyPolishPlugin(Star):
     def _split_text(
         self, text: str, chunk_chars: int, max_nodes: int
     ) -> Iterable[str]:
-        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-        if not paragraphs:
-            paragraphs = [text]
-
-        chunks: list[str] = []
-        current = ""
-        for paragraph in paragraphs:
-            pieces = self._split_long_piece(paragraph, chunk_chars)
-            for piece in pieces:
-                candidate = f"{current}\n\n{piece}".strip() if current else piece
-                if len(candidate) <= chunk_chars:
-                    current = candidate
-                    continue
-                if current:
-                    chunks.append(current)
-                current = piece
-        if current:
-            chunks.append(current)
-
-        if len(chunks) <= max_nodes:
-            return chunks
-
-        kept = chunks[: max_nodes - 1]
-        tail = "\n\n".join(chunks[max_nodes - 1 :])
-        kept.append(tail[: chunk_chars * 2])
-        return kept
+        return split_text(text, chunk_chars, max_nodes)
 
     def _split_long_piece(self, text: str, chunk_chars: int) -> list[str]:
-        if len(text) <= chunk_chars:
-            return [text]
-
-        sentences = re.findall(r".+?[。！？!?；;]\s*|.+$", text, re.S)
-        pieces: list[str] = []
-        current = ""
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence:
-                continue
-            if len(sentence) > chunk_chars:
-                if current:
-                    pieces.append(current)
-                    current = ""
-                pieces.extend(
-                    sentence[i : i + chunk_chars]
-                    for i in range(0, len(sentence), chunk_chars)
-                )
-                continue
-            candidate = f"{current}{sentence}" if current else sentence
-            if len(candidate) <= chunk_chars:
-                current = candidate
-            else:
-                pieces.append(current)
-                current = sentence
-        if current:
-            pieces.append(current)
-        return pieces
+        return split_long_piece(text, chunk_chars)

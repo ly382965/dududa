@@ -89,6 +89,7 @@ Capability 是上层可规划的原子业务能力。一个 Capability 可以由
 class CapabilityDefinition:
     schema_version: int
     capability_id: str
+    definition_digest: DigestString
     name: str
     description: str
     category: str
@@ -97,7 +98,7 @@ class CapabilityDefinition:
     output_schema: JsonSchema
     risk_level: RiskLevel
     privacy_level: PrivacyLevel
-    allowed_contexts: frozenset[ConversationContext]
+    allowed_contexts: frozenset[ConversationType]
     required_permissions: frozenset[str]
     cost_hint: CostHint
     latency_hint: LatencyHint
@@ -110,6 +111,7 @@ class CapabilityDefinition:
 最低字段与约束：
 
 - `capability_id` 使用稳定命名空间，例如 `icourse.search_courses.v1`；显示名变化不得改变 ID；
+- `definition_digest` 是除 digest 字段本身外对规范化完整定义计算的内容哈希；
 - `description` 只说明何时使用、输入和结果，不包含密钥、内部路径或 Prompt 注入文本；
 - `input_schema` 和 `output_schema` 必须是受支持的 JSON Schema 子集，拒绝开放式任意对象作为核心契约；
 - `provider` 只引用 Provider ID，不携带可执行对象；
@@ -145,6 +147,7 @@ Social Decision 只产生业务意图，不指定工具名：
 ```python
 @dataclass(frozen=True, slots=True)
 class CapabilityQuery:
+    schema_version: int
     intent_ids: tuple[str, ...]
     natural_language_goal: str
     entities: tuple[EntityRef, ...]
@@ -163,13 +166,19 @@ Planner 只能看到经过过滤的摘要：
 ```python
 @dataclass(frozen=True, slots=True)
 class CapabilityCandidate:
+    schema_version: int
     capability_id: str
     name: str
     description: str
     input_schema: JsonSchema
-    output_summary: str
+    output_schema: JsonSchema
+    definition_digest: DigestString
+    provider_id: str
+    provider_revision: ComponentRevision
     risk_level: RiskLevel
     privacy_level: PrivacyLevel
+    idempotency: Idempotency
+    side_effects: frozenset[SideEffect]
     cost_hint: CostHint
     latency_hint: LatencyHint
     score: float
@@ -183,24 +192,113 @@ class CapabilityCandidate:
 ### 5.1 Registry 端口
 
 ```python
+@dataclass(frozen=True, slots=True)
+class CapabilityProviderDescriptor:
+    schema_version: int
+    provider_id: str
+    revision: ComponentRevision
+    capability_ids: frozenset[str]
+    provider_kind: Literal["builtin", "mcp", "http", "workflow"]
+
+@dataclass(frozen=True, slots=True)
+class CapabilityEndpointHealth:
+    capability_id: str
+    definition_digest: DigestString
+    status: Literal["healthy", "degraded", "unavailable"]
+    reason_codes: tuple[str, ...]
+
+@dataclass(frozen=True, slots=True)
+class CapabilityProviderHealth:
+    schema_version: int
+    provider_id: str
+    provider_revision: ComponentRevision
+    status: Literal["healthy", "degraded", "unavailable"]
+    capabilities: tuple[CapabilityEndpointHealth, ...]
+    checked_at: datetime
+    reason_codes: tuple[str, ...]
+
+@dataclass(frozen=True, slots=True)
+class CapabilityHealthSnapshot:
+    schema_version: int
+    snapshot_revision: str
+    providers: tuple[CapabilityProviderHealth, ...]
+    observed_at: datetime
+    expires_at: datetime
+
+@dataclass(frozen=True, slots=True)
+class CapabilityCatalogSnapshot:
+    schema_version: int
+    snapshot_id: str
+    catalog_revision: str
+    mapping_revision: str
+    provider_registry_revision: str
+    definitions: tuple[CapabilityDefinition, ...]
+    mappings: tuple["McpCapabilityMapping", ...]
+    provider_descriptors: tuple[CapabilityProviderDescriptor, ...]
+    acquired_at: datetime
+
 class CapabilityRegistry(Protocol):
-    def get(self, capability_id: str) -> CapabilityDefinition: ...
-    def list_enabled(self) -> Sequence[CapabilityDefinition]: ...
-    def register_provider(self, provider: CapabilityProvider) -> None: ...
+    def acquire_snapshot(self) -> CapabilityCatalogSnapshot: ...
+    def get(
+        self, snapshot: CapabilityCatalogSnapshot, capability_id: str
+    ) -> CapabilityDefinition: ...
+    def list_enabled(
+        self, snapshot: CapabilityCatalogSnapshot
+    ) -> Sequence[CapabilityDefinition]: ...
+
+class CapabilityProviderRegistry(Protocol):
+    def resolve(
+        self, provider_id: str, expected_revision: ComponentRevision
+    ) -> CapabilityProvider: ...
+    def snapshot_revision(self) -> str: ...
+
+class CapabilityHealthRegistry(Protocol):
+    async def snapshot(
+        self,
+        providers: tuple[CapabilityProviderDescriptor, ...],
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> CapabilityHealthSnapshot: ...
+
+@dataclass(frozen=True, slots=True)
+class CapabilityCatalogUpdate:
+    schema_version: int
+    expected_revision: str
+    definitions: tuple[CapabilityDefinition, ...]
+    mcp_mappings: tuple["McpCapabilityMapping", ...]
+    provider_descriptors: tuple[CapabilityProviderDescriptor, ...]
+
+class CapabilityCatalogPublisher(Protocol):
+    async def publish(
+        self,
+        update: CapabilityCatalogUpdate,
+        *,
+        call: PortCallContext,
+    ) -> str: ...
 
 class CapabilityProvider(Protocol):
     @property
-    def provider_id(self) -> str: ...
+    def descriptor(self) -> CapabilityProviderDescriptor: ...
+
+    async def health(
+        self, *, call: PortCallContext | ServiceCallContext
+    ) -> CapabilityProviderHealth: ...
 
     async def invoke(
         self,
-        capability_id: str,
-        arguments: JsonObject,
-        context: ExecutionContext,
-    ) -> ProviderResult: ...
+        request: "ProviderInvocation",
+        *,
+        call: PortCallContext,
+    ) -> "CapabilityResult": ...
 ```
 
-注册时必须校验唯一 ID、Schema、Provider 存在性、风险字段和配置来源。动态发现的 MCP Tool 不能自动成为模型可见 Capability；必须有显式映射和策略。
+Provider 对象只在 composition root 注册；配置热加载通过
+`CapabilityCatalogPublisher` 一次校验并原子发布完整 immutable snapshot。一次 Retrieval
+只能使用同一个 `CapabilityCatalogSnapshot` 和一个有时间界限的 health snapshot；Definition、
+Mapping 和 Provider descriptor 不能分别读取“最新值”后拼成混合 revision。Executor 通过
+Candidate 固定的 Provider revision 重解析实例，漂移时拒绝或重新检索。发布时校验唯一 ID、
+Schema、Provider 存在性、风险字段、MCP mapping 和配置来源；失败保留 last-known-good
+revision。动态发现的 MCP Tool 不能自动成为模型可见 Capability；必须有显式映射和策略。
 
 ### 5.2 确定性预过滤
 
@@ -237,6 +335,48 @@ score = semantic_similarity
 - 检索日志记录 ID、分数和 reason code，不记录完整用户正文或敏感参数；
 - Eval 分别计算目标能力 Recall@K、错误能力暴露率和权限过滤准确率；
 - Top-K 只减少 Planner 上下文，不能代替执行前权限复核。
+- Contextual Bandit 只能在上述确定性过滤完成后重排仍合法、语义可替代的候选；正式契约见
+  `online-learning.md`。它不能恢复被过滤能力、改变 K/风险或 live 探索高风险副作用，且动作
+  前必须记录完整候选集与 propensity；第一阶段保持关闭或 shadow-only。
+
+正式检索 Port 不向模型暴露被拒绝的定义：
+
+```python
+@dataclass(frozen=True, slots=True)
+class CapabilityRetrievalRequest:
+    schema_version: int
+    query: CapabilityQuery
+    actor: Actor
+    conversation_scope: ConversationScope
+    limit: int
+
+@dataclass(frozen=True, slots=True)
+class CapabilityRetrievalResult:
+    schema_version: int
+    candidates: tuple[CapabilityCandidate, ...]
+    catalog_snapshot_id: str
+    registry_revision: str
+    mapping_revision: str
+    provider_registry_revision: str
+    policy_revision: str
+    health_snapshot_revision: str
+    retriever_revision: ComponentRevision
+    reason_codes: tuple[str, ...]
+
+class CapabilityRetriever(Protocol):
+    async def retrieve(
+        self,
+        request: CapabilityRetrievalRequest,
+        *,
+        call: PortCallContext,
+    ) -> CapabilityRetrievalResult: ...
+```
+
+`limit` 必须在全局上限内。`CapabilityRetrievalResult` 只包含通过确定性过滤的候选；
+禁止用空结果触发“放宽权限后重试”。相同输入、Registry/Mapping revision、Policy
+revision 和健康快照必须产生稳定顺序。Candidate 的 definition digest 与 Provider revision 固定本次
+计划看到的能力；Executor 若发现 Registry/Provider 已漂移，必须重新检索或显式拒绝，
+不能静默执行另一份定义。概率排序器需要在 Trace 中记录实现与配置 revision。
 
 ## 6. Planner、Executor 与 Validator
 
@@ -244,10 +384,23 @@ score = semantic_similarity
 
 ```python
 @dataclass(frozen=True, slots=True)
+class ObservationBinding:
+    source_step_id: str
+    source_json_pointer: str
+    target_json_pointer: str
+
+@dataclass(frozen=True, slots=True)
+class ArgumentTemplate:
+    literal_template: JsonValue
+    bindings: tuple[ObservationBinding, ...]
+
+@dataclass(frozen=True, slots=True)
 class ToolStep:
     step_id: str
+    logical_operation_id: str
     capability_id: str
-    arguments: JsonObject
+    definition_digest: DigestString
+    arguments: ArgumentTemplate
     purpose: str
     depends_on: tuple[str, ...]
     expected_output: str
@@ -255,12 +408,18 @@ class ToolStep:
 @dataclass(frozen=True, slots=True)
 class ToolPlan:
     schema_version: int
+    plan_id: str
     goal: str
     steps: tuple[ToolStep, ...]
     completion_criteria: tuple[str, ...]
+    planner_revision: ComponentRevision
 ```
 
-Planner 只能引用本次候选列表中的 ID。计划必须是有向无环依赖，参数必须通过对应 input schema。初始计划不能借未来 Observation 伪造参数；需要后续结果的步骤应明确 `depends_on`，由下一轮规划填充。
+Planner 只能引用本次候选列表中的 ID 和 definition digest。计划必须是有向无环依赖；
+literal template、binding 的源/目标 JSON Pointer 和类型兼容性先校验。Orchestrator 在依赖
+完成后调用纯 `ArgumentBinder`，再对完整参数执行 input schema 校验并构造
+`ToolExecutionRequest`。Binding 只能读取 Validator 已接受的
+Observation，不能读取错误正文、任意 JSONPath、未来步骤或隐藏 Provider 对象。
 
 ### 6.2 显式循环
 
@@ -286,7 +445,10 @@ RETRIEVE
 - Planner 不能直接调用 Provider；所有执行必须经过 Executor；
 - 每次重试前重新校验权限、Scope、Server 状态和参数；
 - `NON_IDEMPOTENT` 能力默认不自动重试；
-- 相同 `capability_id + normalized arguments + run_id` 可生成 idempotency key；
+- 相同 `run_id + logical_operation_id + capability_id + definition digest + normalized
+  arguments` 生成稳定 idempotency key；`plan_id + step_id` 用于证明 logical operation 的
+  来源。Replan/retry 同一副作用必须保留 logical operation ID，两个有意相同的独立步骤必须
+  使用不同 ID；模型和 Provider 不能自行指定最终 key；
 - Observation 是不可信外部数据，不能成为系统指令。
 
 ### 6.3 Executor
@@ -295,7 +457,7 @@ Executor 依次执行：
 
 1. 重新解析 CapabilityDefinition 和 Provider；
 2. 校验 actor、conversation scope、群策略和最新限流状态；
-3. 校验并规范化参数，拒绝额外字段；
+3. 校验 Orchestrator/Binder 已解析的参数与 source invocation，重新规范化并拒绝额外字段；
 4. 检查文件路径、URL、标识符和敏感参数策略；
 5. 申请调用预算并生成 audit start；
 6. 在步骤 timeout 和总 deadline 内调用 Provider；
@@ -306,10 +468,91 @@ Executor 依次执行：
 
 ```python
 @dataclass(frozen=True, slots=True)
-class ToolObservation:
+class ArgumentBindingRequest:
+    schema_version: int
+    step: ToolStep
+    accepted_observations: tuple["ToolObservation", ...]
+    input_schema: JsonSchema
+
+@dataclass(frozen=True, slots=True)
+class ArgumentBindingResult:
+    schema_version: int
     step_id: str
+    resolved_arguments: JsonObject
+    source_invocation_ids: tuple[str, ...]
+    binder_revision: ComponentRevision
+
+class ArgumentBinder(Protocol):
+    def bind(self, request: ArgumentBindingRequest) -> ArgumentBindingResult: ...
+
+class ToolExecutionStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+@dataclass(frozen=True, slots=True)
+class ToolError:
+    schema_version: int
+    info: ErrorInfo
+    provider_error_code: str | None
+    safe_details: Mapping[str, JsonValue]
+
+@dataclass(frozen=True, slots=True)
+class ToolExecutionRequest:
+    schema_version: int
+    invocation_id: str
+    plan_id: str
+    step_id: str
+    logical_operation_id: str
     capability_id: str
-    ok: bool
+    definition_digest: DigestString
+    catalog_snapshot_id: str
+    registry_revision: str
+    mapping_revision: str
+    provider_registry_revision: str
+    retrieval_policy_revision: str
+    health_snapshot_revision: str
+    provider_id: str
+    provider_revision: ComponentRevision
+    resolved_arguments: JsonObject
+    source_invocation_ids: tuple[str, ...]
+    idempotency_key: str
+    attempt: int
+    context: ExecutionContext
+
+@dataclass(frozen=True, slots=True)
+class ProviderInvocation:
+    schema_version: int
+    invocation_id: str
+    logical_operation_id: str
+    capability_id: str
+    definition_digest: DigestString
+    provider_id: str
+    provider_revision: ComponentRevision
+    arguments: JsonObject
+    idempotency_key: str
+    attempt: int
+    context: ExecutionContext
+    authorization: AuthorizationDecision
+
+@dataclass(frozen=True, slots=True)
+class ToolObservation:
+    schema_version: int
+    invocation_id: str
+    plan_id: str
+    step_id: str
+    logical_operation_id: str
+    capability_id: str
+    definition_digest: DigestString
+    catalog_snapshot_id: str
+    registry_revision: str
+    mapping_revision: str
+    provider_registry_revision: str
+    provider_revision: ComponentRevision
+    policy_revision: str
+    idempotency_key: str
+    attempt: int
+    status: ToolExecutionStatus
     data: JsonValue | None
     error: ToolError | None
     source_refs: tuple[SourceRef, ...]
@@ -326,9 +569,62 @@ class ValidationAction(StrEnum):
     CLARIFY = "clarify"
     ABORT = "abort"
     DEGRADE = "degrade"
+
+@dataclass(frozen=True, slots=True)
+class ToolPlanningRequest:
+    schema_version: int
+    query: CapabilityQuery
+    retrieval: CapabilityRetrievalResult
+    prior_observations: tuple[ToolObservation, ...]
+    remaining_steps: int
+
+@dataclass(frozen=True, slots=True)
+class ToolValidationRequest:
+    schema_version: int
+    retrieval: CapabilityRetrievalResult
+    plan: ToolPlan
+    observations: tuple[ToolObservation, ...]
+
+@dataclass(frozen=True, slots=True)
+class ToolValidationResult:
+    schema_version: int
+    action: ValidationAction
+    accepted_observations: tuple[ToolObservation, ...]
+    retry_step_id: str | None
+    clarification: str | None
+    reason_codes: tuple[str, ...]
+    validator_revision: ComponentRevision
+
+class ToolPlanner(Protocol):
+    async def plan(
+        self,
+        request: ToolPlanningRequest,
+        *,
+        call: PortCallContext,
+    ) -> ToolPlan: ...
+
+class ToolExecutor(Protocol):
+    async def execute(
+        self,
+        request: ToolExecutionRequest,
+        *,
+        call: PortCallContext,
+    ) -> ToolObservation: ...
+
+class ToolResultValidator(Protocol):
+    async def validate(
+        self,
+        request: ToolValidationRequest,
+        *,
+        call: PortCallContext,
+    ) -> ToolValidationResult: ...
 ```
 
-Validator 必须检查 output schema、业务错误、来源、空结果、跨步骤一致性、事实完整度、敏感度和 completion criteria。它不能修改权限，也不能把 schema 不匹配结果当成功。重试建议必须包含可执行 reason code，例如 `transient_timeout`，不能只给自然语言。
+Validator 必须检查 output schema、业务错误、来源、空结果、跨步骤一致性、事实完整度、
+敏感度和 completion criteria。它不能修改权限，也不能把 schema 不匹配结果当成功。
+重试建议必须包含可执行 reason code，例如 `transient_timeout`，不能只给自然语言。
+`UNKNOWN` 表示调用可能已产生外部副作用：只读或下游真正支持同一幂等键的幂等写才可
+重试；非幂等写必须停止并进入人工查询/补偿流程，绝不能换一个 invocation ID 重放。
 
 ## 7. MCP Registry
 
@@ -357,6 +653,41 @@ class McpServerRegistry(Protocol):
     def get(self, server_id: str) -> McpServerDefinition: ...
     def list_enabled(self) -> tuple[McpServerDefinition, ...]: ...
     def config_revision(self) -> str: ...
+
+@dataclass(frozen=True, slots=True)
+class McpCapabilityMapping:
+    schema_version: int
+    capability_id: str
+    capability_definition_digest: DigestString
+    server_id: str
+    tool_name: str
+    discovered_schema_digest: DigestString
+    argument_mapping_revision: str
+    result_mapping_revision: str
+    enabled: bool
+
+class McpCapabilityMappingRegistry(Protocol):
+    def get(self, capability_id: str) -> McpCapabilityMapping: ...
+    def snapshot_revision(self) -> str: ...
+
+@dataclass(frozen=True, slots=True)
+class McpRuntimeSnapshot:
+    schema_version: int
+    snapshot_id: str
+    server_config_revision: str
+    mapping_revision: str
+    servers: tuple[McpServerDefinition, ...]
+    mappings: tuple[McpCapabilityMapping, ...]
+    acquired_at: datetime
+
+class McpRuntimeRegistry(Protocol):
+    def acquire_snapshot(self) -> McpRuntimeSnapshot: ...
+    def get_server(
+        self, snapshot: McpRuntimeSnapshot, server_id: str
+    ) -> McpServerDefinition: ...
+    def get_mapping(
+        self, snapshot: McpRuntimeSnapshot, capability_id: str
+    ) -> McpCapabilityMapping: ...
 ```
 
 配置规则：
@@ -382,22 +713,82 @@ Server 首次连接或配置版本变化时执行 Tool Discovery。缓存键至�
 ## 8. Unified MCP Client
 
 ```python
+@dataclass(frozen=True, slots=True)
+class McpToolDescriptor:
+    schema_version: int
+    server_id: str
+    tool_name: str
+    description: str
+    input_schema: JsonSchema
+    output_schema: JsonSchema | None
+    schema_digest: DigestString
+    server_revision: str
+    discovered_at: datetime
+
+@dataclass(frozen=True, slots=True)
+class McpHealth:
+    schema_version: int
+    server_id: str
+    status: Literal["healthy", "degraded", "unavailable"]
+    snapshot_revision: str
+    checked_at: datetime
+    reason_codes: tuple[str, ...]
+
+@dataclass(frozen=True, slots=True)
+class McpToolCallRequest:
+    schema_version: int
+    invocation_id: str
+    server_id: str
+    server_config_revision: str
+    tool_name: str
+    discovered_schema_digest: DigestString
+    arguments: JsonObject
+    idempotency_key: str
+    attempt: int
+    context: ExecutionContext
+    authorization: AuthorizationDecision
+
+@dataclass(frozen=True, slots=True)
+class McpToolResult:
+    schema_version: int
+    invocation_id: str
+    status: ToolExecutionStatus
+    data: JsonValue | None
+    error: ToolError | None
+    server_revision: str
+    tool_schema_digest: DigestString
+    idempotency_key: str
+    attempt: int
+
 class UnifiedMcpClient(Protocol):
-    async def discover(self, server_id: str) -> tuple[McpToolDescriptor, ...]: ...
+    async def discover(
+        self,
+        server_id: str,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> tuple[McpToolDescriptor, ...]: ...
 
     async def call_tool(
         self,
-        server_id: str,
-        tool_name: str,
-        arguments: JsonObject,
-        context: McpCallContext,
+        request: McpToolCallRequest,
+        *,
+        call: PortCallContext,
     ) -> McpToolResult: ...
 
-    async def health(self, server_id: str) -> McpHealth: ...
+    async def health(
+        self,
+        server_id: str,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> McpHealth: ...
     async def close(self) -> None: ...
 ```
 
-唯一生产 Client 在构造时注入 `McpServerRegistry`。Runtime、Planner、模型和 Capability 参数只能引用 `server_id`，不能旁路 Registry 提供 command、URL、环境变量或 SecretRef。
+唯一生产 Client 在构造时注入 `McpRuntimeRegistry`；一次 discovery/call/health 使用同一个
+`McpRuntimeSnapshot`，不能分别读取 Server 与 Mapping 的最新值。Runtime、Planner、
+模型和 Capability 参数只能引用已经固定 revision/digest 的逻辑 ID，不能旁路 Registry
+提供 command、URL、环境变量或 SecretRef。发现结果只有经过显式 mapping、Schema digest
+匹配和原子 Registry snapshot 发布后才可能成为 Capability。
 
 统一 Client 负责：
 
@@ -433,16 +824,18 @@ Client 不负责 Capability Retrieval、业务权限定义、自然语言规划�
 ```python
 @dataclass(frozen=True, slots=True)
 class ExecutionContext:
-    run_id: str
     actor: Actor
     conversation_scope: ConversationScope
-    granted_permissions: frozenset[str]
-    policy_snapshot_id: str
-    deadline: datetime
-    trace_id: str
 ```
 
-Provider 不接受裸管理员布尔值。`Actor` 是授权主体；`ActorRef` 仅可作为目标引用或脱敏审计投影，不能替代权限输入。权限由统一 PermissionPolicy 生成 snapshot，Executor 以该 snapshot 和最新撤销状态复核。
+Provider 不接受裸管理员布尔值。`ToolExecutionRequest.context` 只携带 Actor 与 Scope；
+Executor 重新授权成功后才构造绑定完整 `AuthorizationDecision` 的 Provider/MCP request。
+`Actor` 是授权主体；`ActorRef` 仅可作为目标引用或脱敏
+审计投影，不能替代权限输入。统一 `AuthorizationPolicy` 生成带 policy revision、action、
+resource、Scope 和有效期的 decision；Executor 在每次实际调用前重新授权。若它与
+`PortCallContext.policy_snapshot_id` 指向的初始策略不再兼容，则拒绝或重新检索，不能取
+两者中更宽松的一份。run ID、deadline、cancellation 和 trace 从同一次调用的
+`PortCallContext` 获取，不在多个 DTO 中复制。
 
 ### 9.2 风险分层
 
@@ -475,11 +868,15 @@ result_status, error_code, latency_ms, retry_count, circuit_state
 | `McpServerUnavailableError` | Registry/Client | 熔断并选择显式替代能力 |
 | `McpProtocolError` | Client | 不把原始协议错误直接给用户 |
 | `ToolTimeoutError` | Client/Provider | 仅按幂等策略有限重试 |
+| `ToolOutcomeUnknownError` | timeout/cancel/断连后无法确认副作用 | 不自动重放非幂等写；查询、补偿或人工处理 |
 | `ToolBusinessError` | Server | Validator 依据稳定 code 决定澄清或降级 |
 | `ToolResultInvalidError` | Validator | 结果不可用于事实回答 |
 | `ToolBudgetExceededError` | Runtime | 停止循环并基于可信结果降级 |
 
 所有用户可见消息由 Response Composer 生成。MCP Server 的异常字符串和外部页面内容不能直接成为系统提示或最终回复。
+每个 `ToolError` 都包装 Runtime 定义的 `ErrorInfo(code, category, retryable,
+outcome_unknown, public_message_key, reason_codes)`；Adapter 私有错误码只能作为受控辅助字段，
+不能决定重试或直接显示给用户。
 
 ## 11. iCourse 标准迁移
 
@@ -509,9 +906,15 @@ iCourse Provider 将现有不一致结果转换为统一 envelope：
 ```python
 @dataclass(frozen=True, slots=True)
 class CapabilityResult:
-    ok: bool
+    schema_version: int
+    invocation_id: str
+    status: ToolExecutionStatus
     data: JsonValue | None
     error: ToolError | None
+    definition_digest: DigestString
+    provider_revision: ComponentRevision
+    idempotency_key: str
+    attempt: int
     source_refs: tuple[SourceRef, ...]
     observed_at: datetime
     cache_status: Literal["hit", "miss", "refreshed", "unknown"]
@@ -540,7 +943,9 @@ class CapabilityResult:
 - Capability Schema、ID 唯一性和配置加载；
 - 确定性 Policy 过滤与 Top-K 稳定排序；
 - Planner 不得引用候选外 ID；
-- 最大步数、重试计数、deadline 和幂等规则；
+- Registry/Provider/Schema revision 漂移必须触发重新检索或拒绝；
+- 最大步数、重试计数、deadline，以及 logical operation 区分“重试同一副作用”和“有意重复步骤”的幂等规则；
+- timeout/cancel 后 `UNKNOWN` 的只读、幂等写和非幂等写分支；
 - Validator 对空结果、Schema 错误、提示注入和敏感数据的处理；
 - MCP 错误标准化、参数脱敏和熔断状态机。
 
@@ -548,14 +953,19 @@ class CapabilityResult:
 
 - 每个 Capability 的 input/output schema；
 - MCP Tool Discovery snapshot 与显式 allowlist；
+- MCP Tool 到 Capability mapping 的 Schema digest、原子 snapshot 与 last-known-good；
 - Provider 到 MCP Tool 的参数和结果映射；
-- PermissionPolicy、AuditSink 和 SecretResolver 端口；
+- Capability Provider descriptor/health、Catalog/Mapping/Provider 原子 snapshot 与精确 revision resolve；
+- AuthorizationPolicy、AuditSink 和 SecretResolver 端口；
+- `CapabilityRetriever`、`ToolPlanner`、`ArgumentBinder`、`ToolExecutor`、
+  `ToolResultValidator` 和 `UnifiedMcpClient` 使用同一 Fake/真实实现 Contract Test；
 - iCourse 十个旧工具兼容契约及目标安全子集。
 
 ### Integration
 
 - Capability Retrieval -> Planner -> Executor -> Validator 完整循环；
 - 持久 stdio session 的启动、并发、超时、取消和关闭；
+- 重复 invocation/idempotency key、晚到结果和非幂等写断连不重复执行；
 - Server 崩溃、协议损坏、慢调用、半开熔断和恢复；
 - iCourse fixture HTTP -> parser -> SQLite -> MCP -> CapabilityResult；
 - 无权限、群聊敏感场景和 export path 逃逸必须 fail closed。
@@ -565,6 +975,16 @@ class CapabilityResult:
 - 课程查询意图的 Recall@K、参数抽取和错误工具选择；
 - 不应调用工具的普通聊天不得产生调用；
 - 权限不足时工具暴露率必须为零；
+- 固定数据集记录 Registry、Policy、Retriever、Planner、Validator、Model 和 Schema
+  revision，分别报告 Recall@K、错误暴露率、Plan/参数合法率、完成率、平均步数、
+  P50/P95 和成本；
+- 若启用 Bandit shadow，记录 action set、behavior/candidate propensity，只报告候选覆盖、
+  策略一致率、日志完整率和延迟；IPS/SNIPS/DR、有效样本量、最大 importance weight 与
+  paired effect 只对历史受控探索或安全 canary 产生的、有 propensity/support 的日志报告；
+- 数据按意图、风险、权限、会话类型和错误注入分层，报告样本量/分母、固定 seeds、
+  repeated-run variance、paired bootstrap 95% 置信区间和预先冻结的最小效果量；
+- 未授权暴露/调用、确认绑定失败、非幂等重复写和预算越界分别报告观测违规数、分母与
+  单侧置信上界，任何一次观测违规都阻断 canary；
 - Docker 构建、MCP 握手、Schema snapshot、`icourse_stats` 和只读查询；
 - Trace、日志和测试 fixture 中不出现真实密钥、QQ ID、Cookie 或聊天数据。
 

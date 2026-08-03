@@ -1,12 +1,17 @@
 .git
 .github
 .env
+.env.*
 data
 runtime
 backups
 **/__pycache__
 **/*.pyc
 **/.venv
+**/.ruff_cache
+**/build
+**/dist
+**/*.egg-info
 **/*.db
 **/*.sqlite3
 docs

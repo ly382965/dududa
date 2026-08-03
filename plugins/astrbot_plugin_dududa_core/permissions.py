@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 from astrbot.api.event import AstrMessageEvent
+from dududa.security.authorization import LegacyActorInput, LegacyRolePolicy
 
 from .config import load_astrbot_config, str_set
 
@@ -28,6 +29,16 @@ class PermissionManager:
         if not self.owners:
             astrbot_cfg = load_astrbot_config()
             self.owners = str_set(astrbot_cfg.get("admins_id", []))
+        self._role_policy = LegacyRolePolicy(
+            owners=frozenset(self.owners),
+            global_admins=frozenset(self.global_admins),
+            trusted_users=frozenset(self.trusted_users),
+            muted_users=frozenset(self.muted_users),
+            group_admins={
+                group_id: frozenset(users)
+                for group_id, users in self.group_admins.items()
+            },
+        )
 
     def actor(self, event: AstrMessageEvent) -> Actor:
         try:
@@ -42,19 +53,13 @@ class PermissionManager:
 
     def role(self, event: AstrMessageEvent) -> str:
         actor = self.actor(event)
-        if actor.qq in self.muted_users:
-            return "muted_user"
-        if actor.qq in self.owners:
-            return "owner"
-        if actor.qq in self.global_admins:
-            return "admin"
-        if actor.group_id and actor.qq in self.group_admins.get(actor.group_id, set()):
-            return "admin"
-        if actor.is_platform_admin:
-            return "admin"
-        if actor.qq in self.trusted_users:
-            return "trusted_user"
-        return "normal_user"
+        return self._role_policy.resolve(
+            LegacyActorInput(
+                user_id=actor.qq,
+                group_id=actor.group_id,
+                is_platform_admin=actor.is_platform_admin,
+            )
+        )
 
     def is_owner(self, event: AstrMessageEvent) -> bool:
         return self.role(event) == "owner"

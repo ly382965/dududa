@@ -1,0 +1,67 @@
+"""Scoped Memory v2 contracts and local adapters."""
+
+from importlib import import_module
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .iris import IrisMemoryRepository
+    from .json_repository import JsonMemoryRepository
+    from .models import (
+        MemoryCandidate,
+        MemoryQuery,
+        MemoryRecord,
+        MemoryScope,
+        MemorySource,
+        MemoryType,
+        ScopeSelector,
+        SelectorMode,
+        Visibility,
+    )
+    from .repository import InMemoryMemoryRepository
+    from .selectors import HmacScopeSelectorAuthority
+    from .write_gate import ExplicitMemoryWriteGate
+
+__all__ = [
+    "ExplicitMemoryWriteGate",
+    "HmacScopeSelectorAuthority",
+    "InMemoryMemoryRepository",
+    "IrisMemoryRepository",
+    "JsonMemoryRepository",
+    "MemoryCandidate",
+    "MemoryQuery",
+    "MemoryRecord",
+    "MemoryScope",
+    "MemorySource",
+    "MemoryType",
+    "ScopeSelector",
+    "SelectorMode",
+    "Visibility",
+]
+
+_EXPORT_MODULES = {
+    "ExplicitMemoryWriteGate": ".write_gate",
+    "HmacScopeSelectorAuthority": ".selectors",
+    "InMemoryMemoryRepository": ".repository",
+    "IrisMemoryRepository": ".iris",
+    "JsonMemoryRepository": ".json_repository",
+    "MemoryCandidate": ".models",
+    "MemoryQuery": ".models",
+    "MemoryRecord": ".models",
+    "MemoryScope": ".models",
+    "MemorySource": ".models",
+    "MemoryType": ".models",
+    "ScopeSelector": ".models",
+    "SelectorMode": ".models",
+    "Visibility": ".models",
+}
+
+
+def __getattr__(name: str) -> object:
+    module_name = _EXPORT_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(name)
+    return getattr(import_module(module_name, __name__), name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

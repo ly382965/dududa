@@ -14,7 +14,7 @@ first. The complete plan is split into:
 ## Migration Sequence
 
 ```text
-baseline and design
+baseline, minimal eval/trace harness, and design
   -> pure package contracts
   -> security/config extraction
   -> thin AstrBot adapters
@@ -22,7 +22,7 @@ baseline and design
   -> Agent Runtime
   -> Capability and MCP runtime
   -> operation/layout/manifest migration
-  -> eval/tracing/CI
+  -> eval/tracing/CI consolidation and hardening
   -> compatibility cleanup
 ```
 
