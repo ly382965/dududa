@@ -6,7 +6,7 @@ Stage: alignment
 Lead cursor: perception-tiering
 Accepted tree revision: 1
 Tree editing: closed
-Last sync: unix:1785783268
+Last sync: unix:1785784286
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)

@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: perception-tiering
 Parent: model-selection
-Status: paused
+Status: complete
 Verification: verified
-Last sync: unix:1785783268
+Last sync: unix:1785784286
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
