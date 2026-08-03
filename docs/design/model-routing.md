@@ -2,8 +2,9 @@
 
 ## 1. 文档状态与目标
 
-- 阶段：S08 selection-contracts 已实现；Registry、Router 和 Provider Adapter
-  仍由后续 S08 static-router 分支实现。
+- 阶段：S08 selection-contracts 已集成；Registry、Estimator、Admission、Static Router、
+  Recording Fake、严格 Codec 和保守 AstrBot Adapter 已在 `static-router` 分支实现，
+  当前状态为完成分支验收与集成前的验证阶段。
 - 目标代码：`packages/dududa-agent/src/dududa/models/`。
 - 配置目标：`configs/models/` 下可提交的无凭据路由策略；真实 Provider 凭据继续只存在于 AstrBot 私有运行配置。
 
@@ -46,12 +47,13 @@ StaticModelRouter
 ModelProvider Protocol
       ^
       |
-AstrBotProviderAdapter / future adapters
+AstrBotModelProviderAdapter / future adapters
 ```
 
 - Domain 和 Runtime 只依赖 `ModelRouter` Protocol 和结构化请求/响应；
 - Provider Adapter 位于应用适配层或基础设施层，可以依赖 AstrBot API 或供应商 SDK；
-- `CredentialResolver` 只在基础设施边界使用，Core 只看到不可反查的 credential reference；
+- 未来的 `CredentialResolver` 只允许位于基础设施边界；当前 S08 Core 和 AstrBot Adapter
+  都不解析、复制或保存凭据；
 - 路由配置描述角色、能力、优先级和限制，不包含 key、Cookie、Token 或私有 API Header。
 - S08-S11 不包含 Bandit、随机权重或基于动态成本/延迟的重新排序；相同输入与
   snapshot 必须产生相同决策。
@@ -76,7 +78,7 @@ class ModelRole(StrEnum):
 | `PERCEPTION` | 意图、实体、指代和工具需求识别 | 严格 `PerceptionResult` |
 | `SOCIAL_DECISION` | 仅提供软决策候选，硬策略仍由代码执行 | 候选动作、置信度、reason codes |
 | `TOOL_PLANNING` | 在 Top-K Capability 中生成有限步骤计划 | 严格 `ToolPlan` |
-| `DIRECT_CHAT` | 不需要工具的直接内容草稿 | 结构化 Draft Content |
+| `DIRECT_CHAT` | 不需要工具的直接内容草稿 | S08 可为文本；S10 投影为版本化 Draft Content |
 | `RESPONSE_COMPOSITION` | 合并工具结果、来源、错误和不确定性 | `DraftResponse` |
 | `PERSONA_RENDERING` | 在锁定事实与安全约束后改变表达 | 严格 `FinalResponse` |
 | `MEMORY_SUMMARY` | 在已限定 Scope 内压缩记忆候选 | 结构化摘要，不负责写入 |
@@ -305,6 +307,8 @@ class RouteAttempt:
     endpoint_id: str
     model_id: str
     tier: ModelTier
+    invocation_estimate_digest: DigestString
+    admission_reservation_id: str
     provider_request_digest: DigestString
     prompt_template_revision: ComponentRevision
     started_at: datetime
@@ -339,11 +343,17 @@ class RouteDecision:
     output_schema_digest: DigestString | None
     output_codec_revision: ComponentRevision | None
     route_plan_fingerprint: DigestString
+    candidate_plans: tuple[EndpointRouteCandidatePlan, ...]
     eligible_endpoints: tuple[ModelEndpointRef, ...]
     rejected_endpoints: tuple[EndpointRejection, ...]
+    planned_endpoint: ModelEndpointRef | None
     selected_endpoint: ModelEndpointRef | None
     reasoning_profile: ReasoningProfile
+    admission_results: tuple[EndpointAdmissionResult, ...]
+    capacity_receipts: tuple[EndpointCapacityReceipt, ...]
     attempts: tuple[RouteAttempt, ...]
+    terminal_failure_kind: ModelFailureKind | None
+    terminal_error: ErrorInfo | None
     decided_at: datetime
 ```
 
@@ -427,7 +437,11 @@ class ProviderRequest:
     model_id: str
     selected_tier: ModelTier
     tier_authority_digest: DigestString
+    invocation_estimate_digest: DigestString
     route_policy_revision: str
+    attempt: int
+    attempt_kind: RouteAttemptKind
+    prompt_template_revision: ComponentRevision
     selected_data_residency: str
     required_retention_mode: ModelRetentionMode
     role: ModelRole
@@ -514,6 +528,7 @@ class ModelFallbackPolicy:
     max_same_tier_failovers: int
     max_tier_hops: int
     max_total_attempts: int
+    max_schema_repairs: int
     retryable_failure_kinds: frozenset[ModelFailureKind]
     deterministic_fallback_id: str
 
@@ -536,6 +551,10 @@ Adapter 把响应流写入 Attachment Repository 后才可返回 opaque ref，�
 snapshot 和预算仍来自 `PortCallContext`。Provider response 通过
 `ModelProcessingReceipt` 证明实际边界、驻留、retention 和 seed；Router 在 Schema、安全、
 大小及 receipt 一致性校验后才构造公开 `ModelResponse`。
+
+每个 Provider attempt 还必须绑定完整估算、attempt kind 和精确 Prompt artifact revision。
+`SCHEMA_REPAIR` 必须携带同一输出 Schema 和独立 repair Prompt revision；未知 revision、
+artifact digest 不匹配或 repair 无 Schema 都在下游调用前拒绝。
 
 ## 6. Protocol
 
@@ -605,7 +624,7 @@ class ModelCatalogPublisher(Protocol):
     ) -> ModelCatalogPublishReceipt: ...
 
 class ModelAdmissionController(Protocol):
-    async def reserve(...) -> EndpointCapacityLease: ...
+    async def reserve(...) -> EndpointAdmissionResult: ...
     async def settle(
         self,
         lease: EndpointCapacityLease,
@@ -615,6 +634,16 @@ class ModelAdmissionController(Protocol):
     ) -> EndpointCapacityReceipt: ...
     async def release(...) -> EndpointCapacityReceipt: ...
 
+class ModelOperationalStateRegistry(Protocol):
+    def acquire_snapshot(self) -> ModelOperationalSnapshot: ...
+
+class ModelOutputCodec(Protocol):
+    @property
+    def revision(self) -> ComponentRevision: ...
+    def validate(
+        self, output: JsonValue, schema: SchemaRef
+    ) -> JsonValue: ...
+
 class ModelInvocationEstimator(Protocol):
     def estimate(
         self,
@@ -623,6 +652,7 @@ class ModelInvocationEstimator(Protocol):
         reasoning_profile: ReasoningProfile,
     ) -> ModelInvocationEstimate: ...
 
+# 未来基础设施接口；当前 S08 代码尚未提供该 Protocol。
 class CredentialResolver(Protocol):
     async def resolve(
         self,
@@ -632,7 +662,8 @@ class CredentialResolver(Protocol):
     ) -> ProviderCredential: ...
 ```
 
-`CredentialResolver` 不属于 `dududa.domain` 的可调用能力，不得注入 Planner、Persona 或 MCP。它只能由 Provider Adapter 使用。
+`CredentialResolver` 是未来基础设施扩展点，不是当前代码镜像，也不属于 `dududa.domain`
+的可调用能力；未来不得注入 Planner、Persona 或 MCP，只能由 Provider Adapter 使用。
 
 Provider 实例只由 composition root 注册。配置更新通过 `ModelCatalogPublisher` 完整校验
 角色、逐 endpoint descriptor、隐私、Schema 能力和 fallback DAG 后原子发布；失败保留
@@ -690,7 +721,9 @@ routes:
       - {from: opus, to: sonnet, failures: [timeout, provider_unavailable]}
 ```
 
-`provider_ref` 是 Adapter 可解析的逻辑名称，不是 API URL 或 credential。生产覆盖配置保存在 Git 忽略的运行目录。
+`provider_id` 是 Registry 中的稳定逻辑标识，不是 API URL 或 credential；
+`endpoint_id` 再绑定 Provider-native `model_id` 和精确 descriptor revision。生产覆盖配置保存在
+Git 忽略的运行目录。
 
 ### 7.2 选择顺序
 
@@ -711,6 +744,12 @@ Admission reservation 必须绑定 model request/estimate digest、Endpoint desc
 traffic policy ID/revision，并预留 input、visible output、reasoning token 和 cost。共享 quota
 pool 的所有 Endpoint 必须发布完全相同的 Traffic Policy；load/health 观测不得晚于其
 Operational Snapshot 的 `acquired_at`。
+
+`EndpointLoadSnapshot.counter_scope` 在 S08 固定为
+`EXTERNAL_TO_ADMISSION_CONTROLLER`：快照只报告本 controller 之外的负载，本地
+in-flight/RPM/TPM/window 由原子 Admission 状态单独累计，禁止重复扣算。排队唤醒后必须
+重新检查 stale、sample、cooldown、P95、deadline；原生 task cancellation 也必须恰好移除
+waiter，并使每个已发 lease 最终得到一个 `SETTLED | RELEASED` receipt。
 
 ### 7.3 路由与成本
 
@@ -737,34 +776,48 @@ Schema、容量和显式 fallback 不变量。
 ## 8. Structured Output
 
 `PERCEPTION`、`SOCIAL_DECISION`、`TOOL_PLANNING`、`RESPONSE_COMPOSITION`、
-`PERSONA_RENDERING` 和 `MEMORY_SUMMARY` 必须使用带版本的严格 Schema；`DIRECT_CHAT`
-也返回版本化内容容器而不是裸字符串：
+`PERSONA_RENDERING` 和 `MEMORY_SUMMARY` 必须使用带版本的严格 Schema。S08 Router 允许
+`DIRECT_CHAT` 返回文本，以便独立验证 Provider/路由边界；S10 Runtime 接入 Composer 时
+才强制把 Direct Chat 结果投影为版本化内容容器：
 
 - 优先使用 Provider 原生 Structured Output；
 - 不支持时由 Adapter 使用受限 JSON 模式，但仍执行完整 Schema 校验；
 - 禁止用正则从任意说明文本中截取 JSON 后接受部分字段；
 - 校验失败只允许在预算内以修复提示重试一次；
-- 第二次失败返回 `ModelOutputValidationError`，由上层确定性降级；
+- 第二次失败以 `ModelInvocationError(failure_kind=OUTPUT_INVALID)` 终止，并保留完整
+  `RouteDecision`；
 - 原始无效输出默认不写日志，仅记录长度、哈希和错误路径。
 
 自然语言内容也应返回结构化容器，例如正文段落、事实锚点、来源 ID 和警告，避免 Persona Renderer 只能处理一个不可验证字符串。
 
 ## 9. Provider Adapter
 
-### 9.1 AstrBotProviderAdapter
+### 9.1 AstrBotModelProviderAdapter
 
 它负责：
 
-- 将逻辑 `astrbot/current` 解析为当前 UMO 的 Provider；
-- 将允许的旧 `provider_id` hint 映射为 AstrBot Provider；
-- 把 `text_chat` 响应标准化；
-- 隔离 AstrBot Context、Provider 类型和异常；
-- 提供健康和能力快照。
+- 接收 composition root 注入的单一 AstrBot Provider 和单 Endpoint descriptor，不在
+  Adapter 内读取 UMO、Event、Context 或私有 Provider 配置；
+- 用 `AstrBotProviderBindingEvidence` 精确绑定 host/Provider ID、model ID、输出上限、
+  residency、retention、单次请求、下游 deadline/cancellation enforcement 和日志脱敏
+  证据；Adapter 本地有界返回不能替代下游 enforcement 证据；
+- 按 `ProviderRequest.prompt_template_revision` 解析 digest-bound Prompt artifact，区分
+  primary 与 schema-repair artifact；
+- 把 `text_chat` completion/usage 和结构化错误标准化为 Provider-neutral DTO；
+- 对成功结果和 outcome-unknown 失败维护有界 TTL/LRU 幂等账本；同一 key/digest
+  重放 tombstone 而不再次调用下游，固定锁分片和 `close()` 清理限制内容驻留；
+- 只提供被动 `UNKNOWN` health，避免在路由热路径调用默认模型探活；
+- AstrBot 拥有 Provider 生命周期，因此 `close()` 是幂等 no-op。
 
-MessageEnvelope 不携带 AstrBot UMO。AstrBot Adapter 应在进入 Core 前使用 UMO 解析当前
-Provider 的逻辑引用，再通过 `RuntimeInvocationOptions.route_hint` 传入；不得把 Event、
-UMO、Provider 对象或不透明平台句柄塞进 Domain。离线测试可直接注入 Fake Provider 和
-合法 RouteHint。
+MessageEnvelope 不携带 AstrBot UMO。composition root 在进入 Core 前解析并注册精确
+Provider revision；旧 `provider_id` 偏好只能转成无 Tier 权限的合法 `RouteHint`。不得把
+Event、UMO、Provider 对象或不透明平台句柄塞进 Domain。离线测试直接注入 Recording Fake
+或符合共享 conformance suite 的 AstrBot-compatible harness。
+
+固定镜像 AstrBot 4.26.2 的 OpenAI/Anthropic 实现尚不能证明 `max_tokens` 真实下传、内部
+只有一次请求、下游 deadline/cancellation 确实终止网络请求以及完整日志脱敏，因此不能
+生成 permits-enablement evidence，生产 Endpoint 保持 disabled；签名接受参数或 Adapter
+在 deadline 后返回不等于能力证据。
 
 ### 9.2 ImageProviderAdapter
 
@@ -783,20 +836,21 @@ UMO、Provider 对象或不透明平台句柄塞进 Domain。离线测试可直�
 标准错误：
 
 ```python
-class ModelError(DududaError): ...
-class ModelRouteNotFoundError(ModelError): ...
-class ModelCapabilityMismatchError(ModelError): ...
-class ModelUnavailableError(ModelError): ...
-class ModelTimeoutError(ModelError): ...
-class ModelRateLimitedError(ModelError): ...
-class ModelAuthenticationError(ModelError): ...
-class ModelSafetyRejectedError(ModelError): ...
-class ModelOutputValidationError(ModelError): ...
+class ModelProviderError(DududaError):
+    failure_kind: ModelFailureKind
+
+class ModelInvocationError(DududaError):
+    failure_kind: ModelFailureKind
+    route_decision: RouteDecision
 ```
 
-Adapter 必须把 AstrBot、HTTP、SDK 和解析错误映射为携带 Runtime `ErrorInfo` 的上述类型。
+Adapter 必须把 AstrBot、HTTP、SDK 和解析错误映射为携带稳定 `ErrorInfo` 的
+`ModelProviderError`；Router 终止时再构造携带完整 receipt 的 `ModelInvocationError`。
+Core 不信任 Provider 自带的公开错误字段，只保留已校验的 `failure_kind` 和
+`outcome_unknown`，并用固定 code/message/reason 重建 attempt 与 terminal receipt。
 `retryable` 只描述错误类别，Router 仍需检查角色 fallback policy、数据边界、总 deadline、
-预算和请求幂等键；`outcome_unknown` 不能被当成普通失败重复计费。异常 `repr` 与用户文案
+预算和请求幂等键；`outcome_unknown` 既不能被当成普通失败重复计费，也必须在 Adapter
+幂等账本中形成 tombstone，阻止同一 key/digest 再次发起未知副作用。异常 `repr` 与用户文案
 不得包含 URL query、Header、key、文件路径、Prompt 或 Provider 原始正文。
 
 | 角色 | 默认回退 |
@@ -845,13 +899,14 @@ fallback；三者分别受限并共享 `max_total_attempts`。`RouteAttemptKind`
 
 ### Provider Contract
 
-- Fake AstrBot Provider 的输入输出归一化；
+- Recording Fake 与 AstrBot-compatible harness 的共享输入输出 conformance；
 - `ModelRoutingRegistry` 与 Catalog Publisher 的原子 snapshot、revision 冲突和回滚；
 - 每个 model endpoint 独立能力、处理边界、驻留和 retention Contract；
-- ProviderRequest/Response 的隐私 receipt、attachment grant 和 seed 一致性；
+- ProviderRequest/Response 的隐私 receipt、Prompt revision 和 seed 一致性；
 - Provider 异常不泄漏 AstrBot/SDK 类型；
 - usage、finish reason 和安全标记映射；
-- Router/Provider/Prompt/Schema artifact revision 可由 Artifact Store 解析；
+- Registry 精确解析 Provider revision，AstrBot Adapter 精确解析 Prompt artifact，
+  `JsonSchemaDocumentRegistry` 精确解析本地 `SchemaRef`；通用 Artifact Store 属于后续扩展；
 - 图片响应流经大小/MIME/digest 校验写入 Attachment Repository，再转 `GeneratedAsset` opaque ref；
 - 凭据和自定义 Header 不出现在异常、`repr` 或 Trace。
 

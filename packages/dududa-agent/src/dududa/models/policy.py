@@ -387,6 +387,7 @@ class ModelFallbackPolicy:
     max_same_tier_failovers: int
     max_tier_hops: int
     max_total_attempts: int
+    max_schema_repairs: int
     retryable_failure_kinds: frozenset[ModelFailureKind]
     deterministic_fallback_id: str
 
@@ -396,8 +397,11 @@ class ModelFallbackPolicy:
             "max_retries_per_endpoint",
             "max_same_tier_failovers",
             "max_tier_hops",
+            "max_schema_repairs",
         ):
             _nonnegative_int(getattr(self, field_name), field_name)
+        if self.max_schema_repairs > 1:
+            raise validation_error("too_many_schema_repairs")
         _positive_int(self.max_total_attempts, "max_total_attempts")
         retryable = frozenset(self.retryable_failure_kinds)
         allowed = {

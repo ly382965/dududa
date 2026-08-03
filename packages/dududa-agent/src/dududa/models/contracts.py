@@ -87,7 +87,12 @@ class StaleSnapshotPolicy(StrEnum):
     ALLOW_DEGRADED = "allow_degraded"
 
 
+class LoadCounterScope(StrEnum):
+    EXTERNAL_TO_ADMISSION_CONTROLLER = "external_to_admission_controller"
+
+
 class ModelFailureKind(StrEnum):
+    ROUTE_NOT_FOUND = "route_not_found"
     TRANSIENT_NETWORK = "transient_network"
     TIMEOUT = "timeout"
     RATE_LIMITED = "rate_limited"
@@ -656,6 +661,9 @@ class ProviderRequest:
     tier_authority_digest: DigestString
     invocation_estimate_digest: DigestString
     route_policy_revision: str
+    attempt: int
+    attempt_kind: RouteAttemptKind
+    prompt_template_revision: ComponentRevision
     selected_data_residency: str
     required_retention_mode: ModelRetentionMode
     role: ModelRole
@@ -683,6 +691,11 @@ class ProviderRequest:
             ReasoningProfile,
             "reasoning_profile",
         )
+        _require_instance(
+            self.prompt_template_revision,
+            ComponentRevision,
+            "prompt_template_revision",
+        )
         for field_name in (
             "request_id",
             "provider_id",
@@ -703,6 +716,13 @@ class ProviderRequest:
         )
         _require_enum(self.selected_tier, ModelTier, "selected_tier")
         _require_enum(self.role, ModelRole, "model_role")
+        _positive_int(self.attempt, "attempt")
+        _require_enum(self.attempt_kind, RouteAttemptKind, "route_attempt_kind")
+        if (
+            self.attempt_kind is RouteAttemptKind.SCHEMA_REPAIR
+            and self.output_schema is None
+        ):
+            raise validation_error("schema_repair_requires_output_schema")
         if self.role is ModelRole.PERCEPTION and self.output_schema is None:
             raise validation_error("perception_schema_required")
         _require_enum(
@@ -846,6 +866,7 @@ class EndpointLoadSnapshot:
     quota_pool_id: str
     traffic_policy_id: str
     traffic_policy_revision: str
+    counter_scope: LoadCounterScope
     in_flight: int
     requests_per_minute: int
     tokens_per_minute: int
@@ -873,6 +894,7 @@ class EndpointLoadSnapshot:
             str(self.endpoint_descriptor_digest),
             "endpoint_descriptor_digest",
         )
+        _require_enum(self.counter_scope, LoadCounterScope, "load_counter_scope")
         for field_name in (
             "in_flight",
             "requests_per_minute",
@@ -935,6 +957,7 @@ class EndpointAdmissionRequest:
     operational_snapshot_id: str
     operational_snapshot_digest: DigestString
     invocation_estimate_digest: DigestString
+    invocation_estimate: ModelInvocationEstimate
     reserved_input_tokens: int
     reserved_generated_tokens: int
     reserved_reasoning_tokens: int
@@ -961,6 +984,24 @@ class EndpointAdmissionRequest:
             "invocation_estimate_digest",
         ):
             require_non_empty(str(getattr(self, field_name)), field_name)
+        _require_instance(
+            self.invocation_estimate,
+            ModelInvocationEstimate,
+            "invocation_estimate",
+        )
+        from .digests import model_invocation_estimate_digest
+
+        if (
+            model_invocation_estimate_digest(self.invocation_estimate)
+            != self.invocation_estimate_digest
+        ):
+            raise validation_error("invocation_estimate_digest_mismatch")
+        if (
+            self.invocation_estimate.model_request_digest != self.model_request_digest
+            or self.invocation_estimate.endpoint_descriptor_digest
+            != self.endpoint_descriptor_digest
+        ):
+            raise validation_error("admission_invocation_estimate_mismatch")
         _nonnegative_int(self.reserved_input_tokens, "reserved_input_tokens")
         _nonnegative_int(
             self.reserved_generated_tokens,
@@ -976,6 +1017,17 @@ class EndpointAdmissionRequest:
             self.reserved_cost_units,
             "reserved_cost_units",
         )
+        if (
+            self.reserved_input_tokens
+            != self.invocation_estimate.input_tokens_upper_bound
+            or self.reserved_generated_tokens
+            != self.invocation_estimate.generated_tokens_upper_bound
+            or self.reserved_reasoning_tokens
+            != self.invocation_estimate.reasoning_tokens_upper_bound
+            or self.reserved_cost_units
+            != self.invocation_estimate.cost_units_upper_bound
+        ):
+            raise validation_error("admission_reservation_estimate_mismatch")
         require_aware(self.expires_at, "expires_at")
 
 
@@ -995,6 +1047,44 @@ class EndpointCapacityLease:
         require_aware(self.issued_at, "issued_at")
         if self.request.expires_at <= self.issued_at:
             raise validation_error("expired_capacity_lease")
+
+
+@dataclass(frozen=True, slots=True)
+class EndpointAdmissionResult:
+    schema_version: int
+    request: EndpointAdmissionRequest
+    disposition: AdmissionDisposition
+    lease: EndpointCapacityLease | None
+    admission_revision: str
+    reason_codes: tuple[str, ...]
+    decided_at: datetime
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _require_instance(self.request, EndpointAdmissionRequest, "admission_request")
+        _require_enum(self.disposition, AdmissionDisposition, "admission_disposition")
+        _optional_instance(self.lease, EndpointCapacityLease, "capacity_lease")
+        require_non_empty(self.admission_revision, "admission_revision")
+        require_aware(self.decided_at, "decided_at")
+        object.__setattr__(
+            self,
+            "reason_codes",
+            _unique_strings(
+                self.reason_codes,
+                "reason_codes",
+                required=self.disposition is AdmissionDisposition.REJECTED,
+            ),
+        )
+        if self.disposition is AdmissionDisposition.RESERVED:
+            if self.lease is None or self.lease.request != self.request:
+                raise validation_error("reserved_admission_requires_exact_lease")
+            if self.lease.admission_revision != self.admission_revision:
+                raise validation_error("admission_revision_mismatch")
+        elif self.disposition is AdmissionDisposition.REJECTED:
+            if self.lease is not None:
+                raise validation_error("rejected_admission_has_lease")
+        else:
+            raise validation_error("invalid_admission_result_disposition")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1035,6 +1125,8 @@ class RouteAttempt:
     endpoint_id: str
     model_id: str
     tier: ModelTier
+    invocation_estimate_digest: DigestString
+    admission_reservation_id: str
     provider_request_digest: DigestString
     prompt_template_revision: ComponentRevision
     started_at: datetime
@@ -1049,6 +1141,14 @@ class RouteAttempt:
         _require_enum(self.tier, ModelTier, "model_tier")
         for field_name in ("provider_id", "endpoint_id", "model_id"):
             require_non_empty(getattr(self, field_name), field_name)
+        require_non_empty(
+            str(self.invocation_estimate_digest),
+            "invocation_estimate_digest",
+        )
+        require_non_empty(
+            self.admission_reservation_id,
+            "admission_reservation_id",
+        )
         require_non_empty(
             str(self.provider_request_digest),
             "provider_request_digest",
@@ -1087,6 +1187,39 @@ class EndpointRejection:
 
 
 @dataclass(frozen=True, slots=True)
+class EndpointRouteCandidatePlan:
+    schema_version: int
+    endpoint: ModelEndpointRef
+    estimate: ModelInvocationEstimate
+    reasoning_profile: ReasoningProfile
+    selected_data_residency: str
+    required_retention_mode: ModelRetentionMode
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _require_instance(self.endpoint, ModelEndpointRef, "endpoint")
+        _require_instance(self.estimate, ModelInvocationEstimate, "estimate")
+        _require_instance(
+            self.reasoning_profile,
+            ReasoningProfile,
+            "reasoning_profile",
+        )
+        require_non_empty(self.selected_data_residency, "selected_data_residency")
+        _require_enum(
+            self.required_retention_mode,
+            ModelRetentionMode,
+            "required_retention_mode",
+        )
+        if (
+            self.endpoint.endpoint_descriptor_digest
+            != self.estimate.endpoint_descriptor_digest
+        ):
+            raise validation_error("candidate_estimate_descriptor_mismatch")
+        if self.reasoning_profile.profile_id != self.estimate.reasoning_profile_id:
+            raise validation_error("candidate_estimate_reasoning_mismatch")
+
+
+@dataclass(frozen=True, slots=True)
 class RouteDecision:
     schema_version: int
     decision_id: str
@@ -1106,11 +1239,17 @@ class RouteDecision:
     output_schema_digest: DigestString | None
     output_codec_revision: ComponentRevision | None
     route_plan_fingerprint: DigestString
+    candidate_plans: tuple[EndpointRouteCandidatePlan, ...]
     eligible_endpoints: tuple[ModelEndpointRef, ...]
     rejected_endpoints: tuple[EndpointRejection, ...]
+    planned_endpoint: ModelEndpointRef | None
     selected_endpoint: ModelEndpointRef | None
     reasoning_profile: ReasoningProfile
+    admission_results: tuple[EndpointAdmissionResult, ...]
+    capacity_receipts: tuple[EndpointCapacityReceipt, ...]
     attempts: tuple[RouteAttempt, ...]
+    terminal_failure_kind: ModelFailureKind | None
+    terminal_error: ErrorInfo | None
     decided_at: datetime
 
     def __post_init__(self) -> None:
@@ -1137,15 +1276,48 @@ class RouteDecision:
         _require_enum(self.requested_tier, ModelTier, "requested_tier")
         if self.selected_tier is not None:
             _require_enum(self.selected_tier, ModelTier, "selected_tier")
+        candidate_plans = tuple(self.candidate_plans)
         eligible = tuple(self.eligible_endpoints)
         rejected = tuple(self.rejected_endpoints)
+        admission_results = tuple(self.admission_results)
+        capacity_receipts = tuple(self.capacity_receipts)
         attempts = tuple(self.attempts)
+        if not all(
+            isinstance(item, EndpointRouteCandidatePlan) for item in candidate_plans
+        ):
+            raise validation_error("invalid_candidate_plan")
         if not all(isinstance(item, ModelEndpointRef) for item in eligible):
             raise validation_error("invalid_eligible_endpoint")
         if not all(isinstance(item, EndpointRejection) for item in rejected):
             raise validation_error("invalid_rejected_endpoint")
         if not all(isinstance(item, RouteAttempt) for item in attempts):
             raise validation_error("invalid_route_attempt")
+        _optional_instance(self.terminal_error, ErrorInfo, "terminal_error")
+        if (self.terminal_failure_kind is None) != (self.terminal_error is None):
+            raise validation_error("route_terminal_error_mismatch")
+        if self.terminal_failure_kind is not None:
+            _require_enum(
+                self.terminal_failure_kind,
+                ModelFailureKind,
+                "terminal_failure_kind",
+            )
+            validate_model_failure_info(
+                self.terminal_failure_kind,
+                self.terminal_error,
+            )
+        if not all(
+            isinstance(item, EndpointAdmissionResult) for item in admission_results
+        ):
+            raise validation_error("invalid_admission_result")
+        if not all(
+            isinstance(item, EndpointCapacityReceipt) for item in capacity_receipts
+        ):
+            raise validation_error("invalid_capacity_receipt")
+        _optional_instance(
+            self.planned_endpoint,
+            ModelEndpointRef,
+            "planned_endpoint",
+        )
         _optional_instance(
             self.selected_endpoint,
             ModelEndpointRef,
@@ -1171,6 +1343,8 @@ class RouteDecision:
             (f"{item.provider_id}/{item.endpoint_id}" for item in eligible),
             "eligible_endpoint",
         )
+        if tuple(item.endpoint for item in candidate_plans) != eligible:
+            raise validation_error("candidate_plan_eligible_mismatch")
         _unique_ids(
             (f"{item.provider_id}/{item.endpoint_id}" for item in rejected),
             "rejected_endpoint",
@@ -1182,6 +1356,46 @@ class RouteDecision:
             (item.provider_id, item.endpoint_id) for item in rejected
         }:
             raise validation_error("endpoint_both_eligible_and_rejected")
+        if not eligible:
+            if self.planned_endpoint is not None:
+                raise validation_error("empty_route_has_planned_endpoint")
+        elif self.planned_endpoint != eligible[0]:
+            raise validation_error("planned_endpoint_not_first_eligible")
+        admission_by_id = {
+            item.request.reservation_id: item for item in admission_results
+        }
+        if len(admission_by_id) != len(admission_results):
+            raise validation_error("duplicate_admission_reservation")
+        lease_by_id: dict[str, EndpointAdmissionResult] = {}
+        for result in admission_results:
+            request_endpoint = eligible_by_key.get(
+                (result.request.provider_id, result.request.endpoint_id)
+            )
+            if request_endpoint is None:
+                raise validation_error("admission_endpoint_not_eligible")
+            if (
+                result.request.endpoint_descriptor_digest
+                != request_endpoint.endpoint_descriptor_digest
+            ):
+                raise validation_error("admission_endpoint_descriptor_mismatch")
+            plan = candidate_plans[eligible.index(request_endpoint)]
+            from .digests import model_invocation_estimate_digest
+
+            if (
+                result.request.invocation_estimate_digest
+                != (model_invocation_estimate_digest(plan.estimate))
+                or result.request.invocation_estimate != plan.estimate
+            ):
+                raise validation_error("admission_estimate_mismatch")
+            if result.lease is not None:
+                if result.lease.lease_id in lease_by_id:
+                    raise validation_error("duplicate_capacity_lease")
+                lease_by_id[result.lease.lease_id] = result
+        receipt_by_lease = {item.lease_id: item for item in capacity_receipts}
+        if len(receipt_by_lease) != len(capacity_receipts):
+            raise validation_error("duplicate_capacity_receipt")
+        if set(receipt_by_lease) != set(lease_by_id):
+            raise validation_error("capacity_receipt_lease_mismatch")
         if tuple(item.attempt for item in attempts) != tuple(
             range(1, len(attempts) + 1)
         ):
@@ -1198,6 +1412,39 @@ class RouteDecision:
                 or attempt.tier is not attempted_endpoint.tier
             ):
                 raise validation_error("route_attempt_endpoint_mismatch")
+            admission = admission_by_id.get(attempt.admission_reservation_id)
+            if admission is None or admission.lease is None:
+                raise validation_error("route_attempt_has_no_reserved_admission")
+            if (
+                admission.request.provider_id != attempt.provider_id
+                or admission.request.endpoint_id != attempt.endpoint_id
+                or admission.request.invocation_estimate_digest
+                != attempt.invocation_estimate_digest
+            ):
+                raise validation_error("route_attempt_admission_mismatch")
+            receipt = receipt_by_lease[admission.lease.lease_id]
+            if receipt.disposition is not AdmissionDisposition.SETTLED:
+                raise validation_error("route_attempt_capacity_not_settled")
+        attempted_reservations = {
+            attempt.admission_reservation_id for attempt in attempts
+        }
+        if len(attempted_reservations) != len(attempts):
+            raise validation_error("duplicate_attempt_admission")
+        for result in admission_results:
+            if result.lease is None:
+                continue
+            receipt = receipt_by_lease[result.lease.lease_id]
+            was_attempted = result.request.reservation_id in attempted_reservations
+            settled = receipt.disposition is AdmissionDisposition.SETTLED
+            expired_before_attempt = (
+                not was_attempted
+                and settled
+                and receipt.reason_codes == ("expired_lease_ceiling_charged",)
+                and self.terminal_failure_kind
+                in {ModelFailureKind.TIMEOUT, ModelFailureKind.CANCELLED}
+            )
+            if not expired_before_attempt and was_attempted != settled:
+                raise validation_error("capacity_disposition_attempt_mismatch")
         if self.selected_endpoint is None:
             if self.selected_tier is not None or attempts:
                 raise validation_error("empty_route_has_selection")
@@ -1217,9 +1464,17 @@ class RouteDecision:
                     or terminal.tier is not self.selected_tier
                 ):
                     raise validation_error("terminal_attempt_selection_mismatch")
+        if self.terminal_failure_kind is None:
+            if not attempts or attempts[-1].failure_kind is not None:
+                raise validation_error("successful_route_has_no_successful_attempt")
+        elif attempts and attempts[-1].failure_kind is None:
+            raise validation_error("failed_route_ends_in_success")
         require_aware(self.decided_at, "decided_at")
         object.__setattr__(self, "eligible_endpoints", eligible)
+        object.__setattr__(self, "candidate_plans", candidate_plans)
         object.__setattr__(self, "rejected_endpoints", rejected)
+        object.__setattr__(self, "admission_results", admission_results)
+        object.__setattr__(self, "capacity_receipts", capacity_receipts)
         object.__setattr__(self, "attempts", attempts)
 
 
@@ -1260,6 +1515,8 @@ class ModelResponse:
             raise validation_error("response_has_no_route_attempt")
         if self.route_decision.attempts[-1].failure_kind is not None:
             raise validation_error("response_last_attempt_failed")
+        if self.route_decision.terminal_failure_kind is not None:
+            raise validation_error("response_route_has_terminal_failure")
         selected = self.route_decision.selected_endpoint
         if (
             selected.provider_id != self.processing.provider_id
@@ -1314,6 +1571,7 @@ def validate_model_failure_info(
     info: ErrorInfo,
 ) -> None:
     categories = {
+        ModelFailureKind.ROUTE_NOT_FOUND: {ErrorCategory.NOT_FOUND},
         ModelFailureKind.TRANSIENT_NETWORK: {ErrorCategory.EXTERNAL},
         ModelFailureKind.TIMEOUT: {ErrorCategory.TIMEOUT},
         ModelFailureKind.RATE_LIMITED: {ErrorCategory.EXTERNAL},
@@ -1344,6 +1602,27 @@ def validate_model_failure_info(
     }
     if info.retryable != (failure_kind in retryable):
         raise validation_error("model_failure_retryability_mismatch")
+    expected_public_message = {
+        ModelFailureKind.CANCELLED: "request.cancelled",
+        ModelFailureKind.BUDGET_EXHAUSTED: "request.budget_exhausted",
+        ModelFailureKind.ROUTE_NOT_FOUND: "model.route_not_found",
+        ModelFailureKind.OUTPUT_INVALID: "model.output_invalid",
+    }.get(failure_kind, "model.unavailable")
+    if info.public_message_key != expected_public_message:
+        raise validation_error("model_failure_public_message_mismatch")
+    _validate_model_error_token(info.code, "model_failure_code")
+    for reason_code in info.reason_codes:
+        _validate_model_error_token(reason_code, "model_failure_reason_code")
+
+
+def _validate_model_error_token(value: str, field: str) -> None:
+    allowed = frozenset("abcdefghijklmnopqrstuvwxyz0123456789._:-")
+    if (
+        len(value) > 128
+        or value != value.strip()
+        or any(character not in allowed for character in value)
+    ):
+        raise validation_error("unsafe_model_error_token", field)
 
 
 def _validate_attempt_transitions(attempts: tuple[RouteAttempt, ...]) -> None:
@@ -1351,9 +1630,25 @@ def _validate_attempt_transitions(attempts: tuple[RouteAttempt, ...]) -> None:
         return
     if attempts[0].kind is not RouteAttemptKind.PRIMARY:
         raise validation_error("route_first_attempt_not_primary")
+    if sum(attempt.kind is RouteAttemptKind.SCHEMA_REPAIR for attempt in attempts) > 1:
+        raise validation_error("multiple_schema_repairs")
     for previous, current in pairwise(attempts):
         if previous.failure_kind is None:
             raise validation_error("route_attempt_after_success")
+        if previous.error is not None and previous.error.outcome_unknown:
+            raise validation_error("route_attempt_after_unknown_outcome")
+        terminal = {
+            ModelFailureKind.ROUTE_NOT_FOUND,
+            ModelFailureKind.AUTHENTICATION,
+            ModelFailureKind.INVALID_REQUEST,
+            ModelFailureKind.CAPABILITY_MISMATCH,
+            ModelFailureKind.SAFETY_REJECTED,
+            ModelFailureKind.CANCELLED,
+            ModelFailureKind.BUDGET_EXHAUSTED,
+            ModelFailureKind.INTERNAL,
+        }
+        if previous.failure_kind in terminal:
+            raise validation_error("route_attempt_after_terminal_failure")
         same_endpoint = (
             previous.provider_id == current.provider_id
             and previous.endpoint_id == current.endpoint_id
@@ -1376,6 +1671,23 @@ def _validate_attempt_transitions(attempts: tuple[RouteAttempt, ...]) -> None:
             or previous.failure_kind is not ModelFailureKind.OUTPUT_INVALID
         ):
             raise validation_error("schema_repair_transition_mismatch")
+        if (
+            previous.failure_kind is ModelFailureKind.OUTPUT_INVALID
+            and current.kind is not RouteAttemptKind.SCHEMA_REPAIR
+        ):
+            raise validation_error("output_invalid_nonrepair_transition")
+        if (
+            previous.error is not None
+            and not previous.error.retryable
+            and not (
+                current.kind is RouteAttemptKind.SCHEMA_REPAIR
+                or (
+                    current.kind is RouteAttemptKind.CROSS_TIER_FALLBACK
+                    and previous.failure_kind is ModelFailureKind.CONTEXT_TOO_LONG
+                )
+            )
+        ):
+            raise validation_error("route_attempt_after_nonretryable_failure")
 
 
 def _require_enum(value: object, expected: type[StrEnum], field: str) -> None:

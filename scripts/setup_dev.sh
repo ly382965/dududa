@@ -15,6 +15,7 @@ if [[ ! -x .venv/bin/python ]]; then
 fi
 
 uv pip install --python .venv/bin/python \
+  -r plugins/astrbot_plugin_dududa_core/requirements.txt \
   -e packages/dududa-agent \
   -e services/icourse-mcp
 uv pip check --python .venv/bin/python

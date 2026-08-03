@@ -104,6 +104,7 @@ def _route_policy(
             max_same_tier_failovers=1,
             max_tier_hops=2,
             max_total_attempts=4,
+            max_schema_repairs=1,
             retryable_failure_kinds=frozenset(
                 {
                     ModelFailureKind.TRANSIENT_NETWORK,
@@ -283,6 +284,8 @@ class ModelPolicyContractTests(unittest.TestCase):
 
     def test_fallback_cycle_and_unsafe_failure_are_rejected(self) -> None:
         policy = _route_policy(self.endpoints)
+        with self.assertRaises(DududaError):
+            replace(policy.fallback, max_schema_repairs=2)
         self.assertIn(
             "schema_version",
             {field.name for field in fields(TierFallbackEdge)},

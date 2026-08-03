@@ -12,10 +12,14 @@ from dududa.errors import DududaError, ErrorCategory, ErrorInfo
 from dududa.models.contracts import (
     AdmissionDisposition,
     EndpointAdmissionRequest,
+    EndpointAdmissionResult,
+    EndpointCapacityLease,
     EndpointCapacityReceipt,
     EndpointHealthStatus,
     EndpointLoadSnapshot,
+    LoadCounterScope,
     EndpointRejection,
+    EndpointRouteCandidatePlan,
     EndpointTrafficPolicy,
     ModelCapabilities,
     ModelEndpointHealth,
@@ -60,6 +64,96 @@ from dududa.models.errors import ModelInvocationError, ModelProviderError
 from .helpers import NOW, endpoint, reasoning_profiles, revision, traffic_policy
 
 
+def _execution_evidence(
+    descriptor,
+    selected: ModelEndpointRef,
+    reasoning_profile: ReasoningProfile,
+    *,
+    request_id: str,
+    suffix: str,
+) -> tuple[
+    EndpointRouteCandidatePlan,
+    EndpointAdmissionResult,
+    EndpointCapacityReceipt,
+    DigestString,
+]:
+    estimate = ModelInvocationEstimate(
+        schema_version=1,
+        model_request_digest=DigestString(f"model-request-{suffix}"),
+        endpoint_descriptor_digest=selected.endpoint_descriptor_digest,
+        reasoning_profile_id=reasoning_profile.profile_id,
+        input_tokens_upper_bound=100,
+        generated_tokens_upper_bound=50,
+        reasoning_tokens_upper_bound=25,
+        total_context_tokens_upper_bound=150,
+        cost_units_upper_bound=Decimal("0.5"),
+        estimator_revision=revision("model-estimator"),
+    )
+    estimate_digest = model_invocation_estimate_digest(estimate)
+    candidate = EndpointRouteCandidatePlan(
+        schema_version=1,
+        endpoint=selected,
+        estimate=estimate,
+        reasoning_profile=reasoning_profile,
+        selected_data_residency="global",
+        required_retention_mode=ModelRetentionMode.NO_RETENTION,
+    )
+    admission_request = EndpointAdmissionRequest(
+        schema_version=1,
+        reservation_id=f"reservation-{suffix}",
+        model_request_id=request_id,
+        model_request_digest=estimate.model_request_digest,
+        provider_id=selected.provider_id,
+        endpoint_id=selected.endpoint_id,
+        endpoint_descriptor_digest=selected.endpoint_descriptor_digest,
+        quota_pool_id=descriptor.quota_pool_id,
+        traffic_policy_id=descriptor.traffic_policy.policy_id,
+        traffic_policy_revision=descriptor.traffic_policy.policy_revision,
+        operational_snapshot_id="operational-snapshot-1",
+        operational_snapshot_digest=DigestString("operational-digest-1"),
+        invocation_estimate_digest=estimate_digest,
+        invocation_estimate=estimate,
+        reserved_input_tokens=estimate.input_tokens_upper_bound,
+        reserved_generated_tokens=estimate.generated_tokens_upper_bound,
+        reserved_reasoning_tokens=estimate.reasoning_tokens_upper_bound,
+        reserved_cost_units=estimate.cost_units_upper_bound,
+        expires_at=NOW + timedelta(seconds=30),
+    )
+    lease = EndpointCapacityLease(
+        schema_version=1,
+        lease_id=f"lease-{suffix}",
+        request=admission_request,
+        admission_revision="admission-v1",
+        issued_at=NOW,
+    )
+    admission = EndpointAdmissionResult(
+        schema_version=1,
+        request=admission_request,
+        disposition=AdmissionDisposition.RESERVED,
+        lease=lease,
+        admission_revision="admission-v1",
+        reason_codes=("capacity_reserved",),
+        decided_at=NOW,
+    )
+    charged = ModelUsage(
+        schema_version=1,
+        input_tokens=100,
+        generated_tokens=50,
+        reasoning_tokens=25,
+        cached_input_tokens=None,
+        cost_units=Decimal("0.5"),
+    )
+    receipt = EndpointCapacityReceipt(
+        schema_version=1,
+        lease_id=lease.lease_id,
+        disposition=AdmissionDisposition.SETTLED,
+        usage=charged,
+        reason_codes=("usage_settled",),
+        recorded_at=NOW,
+    )
+    return candidate, admission, receipt, estimate_digest
+
+
 class ModelContractTests(unittest.TestCase):
     def test_public_leaf_receipts_are_versioned(self) -> None:
         for contract in (
@@ -69,6 +163,8 @@ class ModelContractTests(unittest.TestCase):
             ModelEndpointHealth,
             RouteAttempt,
             EndpointRejection,
+            EndpointAdmissionResult,
+            EndpointRouteCandidatePlan,
         ):
             with self.subTest(contract=contract.__name__):
                 self.assertIn(
@@ -252,6 +348,7 @@ class ModelContractTests(unittest.TestCase):
             quota_pool_id=descriptor.quota_pool_id,
             traffic_policy_id=descriptor.traffic_policy.policy_id,
             traffic_policy_revision=descriptor.traffic_policy.policy_revision,
+            counter_scope=LoadCounterScope.EXTERNAL_TO_ADMISSION_CONTROLLER,
             in_flight=1,
             requests_per_minute=2,
             tokens_per_minute=300,
@@ -289,6 +386,18 @@ class ModelContractTests(unittest.TestCase):
         )
         with self.assertRaises(DududaError):
             replace(operational, acquired_at=NOW - timedelta(seconds=1))
+        admission_estimate = ModelInvocationEstimate(
+            schema_version=1,
+            model_request_digest=DigestString("model-request-digest"),
+            endpoint_descriptor_digest=descriptor.descriptor_digest,
+            reasoning_profile_id="balanced",
+            input_tokens_upper_bound=100,
+            generated_tokens_upper_bound=50,
+            reasoning_tokens_upper_bound=25,
+            total_context_tokens_upper_bound=150,
+            cost_units_upper_bound=Decimal("0.5"),
+            estimator_revision=revision("model-estimator"),
+        )
         admission = EndpointAdmissionRequest(
             schema_version=1,
             reservation_id="reservation-1",
@@ -302,7 +411,10 @@ class ModelContractTests(unittest.TestCase):
             traffic_policy_revision=descriptor.traffic_policy.policy_revision,
             operational_snapshot_id=operational.snapshot_id,
             operational_snapshot_digest=DigestString("operational-digest"),
-            invocation_estimate_digest=DigestString("invocation-estimate-digest"),
+            invocation_estimate_digest=model_invocation_estimate_digest(
+                admission_estimate
+            ),
+            invocation_estimate=admission_estimate,
             reserved_input_tokens=100,
             reserved_generated_tokens=50,
             reserved_reasoning_tokens=25,
@@ -406,6 +518,14 @@ class ModelContractTests(unittest.TestCase):
             tier=descriptor.tier,
             priority=10,
         )
+        reasoning_profile = reasoning_profiles()[1]
+        candidate, admission, capacity_receipt, estimate_digest = _execution_evidence(
+            descriptor,
+            selected,
+            reasoning_profile,
+            request_id="request-1",
+            suffix="success-1",
+        )
         attempt = RouteAttempt(
             schema_version=1,
             attempt=1,
@@ -414,6 +534,8 @@ class ModelContractTests(unittest.TestCase):
             endpoint_id=selected.endpoint_id,
             model_id=selected.model_id,
             tier=selected.tier,
+            invocation_estimate_digest=estimate_digest,
+            admission_reservation_id=admission.request.reservation_id,
             provider_request_digest=DigestString("provider-request-1"),
             prompt_template_revision=revision("direct-chat-prompt"),
             started_at=NOW,
@@ -421,19 +543,17 @@ class ModelContractTests(unittest.TestCase):
             failure_kind=None,
             error=None,
         )
-        reasoning_profile = reasoning_profiles()[1]
         route_fingerprint = route_plan_fingerprint(
             model_request_fingerprint=DigestString("model-request-plan-1"),
             tier_selection_fingerprint=DigestString("tier-plan-1"),
+            requested_tier=ModelTier.SONNET,
             catalog_revision="catalog-v1",
-            route_policy_revision="direct-chat-v1",
-            operational_snapshot_digest=DigestString("operational-digest-1"),
+            route_policy_digest=DigestString("direct-chat-policy-digest"),
             output_schema_digest=None,
             output_codec_revision=None,
-            eligible_endpoints=(selected,),
+            candidate_plans=(candidate,),
             rejected_endpoints=(),
-            selected_endpoint=selected,
-            reasoning_profile=reasoning_profile,
+            planned_endpoint=selected,
         )
         decision = RouteDecision(
             schema_version=1,
@@ -454,11 +574,17 @@ class ModelContractTests(unittest.TestCase):
             output_schema_digest=None,
             output_codec_revision=None,
             route_plan_fingerprint=route_fingerprint,
+            candidate_plans=(candidate,),
             eligible_endpoints=(selected,),
             rejected_endpoints=(),
+            planned_endpoint=selected,
             selected_endpoint=selected,
             reasoning_profile=reasoning_profile,
+            admission_results=(admission,),
+            capacity_receipts=(capacity_receipt,),
             attempts=(attempt,),
+            terminal_failure_kind=None,
+            terminal_error=None,
             decided_at=NOW,
         )
         processing = ModelProcessingReceipt(
@@ -555,6 +681,14 @@ class ModelContractTests(unittest.TestCase):
         )
         mutable_reasons.append("mutated")
         self.assertEqual(failure.reason_codes, ("deadline_exceeded",))
+        reasoning_profile = reasoning_profiles()[2]
+        candidate, admission, capacity_receipt, estimate_digest = _execution_evidence(
+            descriptor,
+            selected,
+            reasoning_profile,
+            request_id="request-failed",
+            suffix="failed-1",
+        )
         failed_attempt = RouteAttempt(
             schema_version=1,
             attempt=1,
@@ -563,6 +697,8 @@ class ModelContractTests(unittest.TestCase):
             endpoint_id=selected.endpoint_id,
             model_id=selected.model_id,
             tier=selected.tier,
+            invocation_estimate_digest=estimate_digest,
+            admission_reservation_id=admission.request.reservation_id,
             provider_request_digest=DigestString("provider-request-failed-1"),
             prompt_template_revision=revision("direct-chat-prompt"),
             started_at=NOW,
@@ -591,11 +727,17 @@ class ModelContractTests(unittest.TestCase):
             output_schema_digest=None,
             output_codec_revision=None,
             route_plan_fingerprint=DigestString("route-plan-failed"),
+            candidate_plans=(candidate,),
             eligible_endpoints=(selected,),
             rejected_endpoints=(),
+            planned_endpoint=selected,
             selected_endpoint=selected,
-            reasoning_profile=reasoning_profiles()[2],
+            reasoning_profile=reasoning_profile,
+            admission_results=(admission,),
+            capacity_receipts=(capacity_receipt,),
             attempts=(failed_attempt,),
+            terminal_failure_kind=ModelFailureKind.TIMEOUT,
+            terminal_error=failure,
             decided_at=NOW,
         )
         processing = ModelProcessingReceipt(
@@ -624,6 +766,23 @@ class ModelContractTests(unittest.TestCase):
         )
         self.assertIs(provider_error.info, failure)
         self.assertIs(invocation_error.route_decision, decision)
+        unsafe = ErrorInfo(
+            schema_version=1,
+            code="https://provider.invalid/?token=secret",
+            category=ErrorCategory.TIMEOUT,
+            retryable=True,
+            outcome_unknown=True,
+            public_message_key="Authorization: Bearer secret",
+            reason_codes=("provider response body secret",),
+        )
+        with self.assertRaises(DududaError):
+            ModelProviderError(ModelFailureKind.TIMEOUT, unsafe)
+        with self.assertRaises(DududaError):
+            ModelProviderError(
+                ModelFailureKind.TIMEOUT,
+                failure,
+                detail="provider response body secret",
+            )
         with self.assertRaises(DududaError):
             ModelResponse(
                 schema_version=1,
@@ -668,6 +827,8 @@ class ModelContractTests(unittest.TestCase):
             endpoint_id=other.endpoint_id,
             model_id=other.model_id,
             tier=other.tier,
+            invocation_estimate_digest=DigestString("retry-estimate"),
+            admission_reservation_id="reservation-retry-2",
             provider_request_digest=DigestString("provider-request-retry-2"),
             prompt_template_revision=revision("direct-chat-prompt"),
             started_at=NOW,

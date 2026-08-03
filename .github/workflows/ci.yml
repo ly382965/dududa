@@ -24,6 +24,7 @@ jobs:
           cache-dependency-path: |
             packages/dududa-agent/pyproject.toml
             services/icourse-mcp/pyproject.toml
+            plugins/astrbot_plugin_dududa_core/requirements.txt
       - name: Build and install Dududa packages
         run: |
           mkdir -p "$RUNNER_TEMP/dududa-wheel"
@@ -32,6 +33,7 @@ jobs:
             packages/dududa-agent
           python -m pip install "$RUNNER_TEMP"/dududa-wheel/dududa_agent-*.whl
           python -m pip install -e services/icourse-mcp
+          python -m pip install -r plugins/astrbot_plugin_dududa_core/requirements.txt
           python -m pip check
           python -c 'import importlib.metadata, pathlib, dududa; assert importlib.metadata.version("dududa-agent") == dududa.__version__; assert (pathlib.Path(dududa.__file__).parent / "py.typed").is_file()'
       - name: Compile Python sources

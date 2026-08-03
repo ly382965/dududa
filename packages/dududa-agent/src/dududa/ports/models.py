@@ -6,6 +6,7 @@ from typing import Protocol, runtime_checkable
 from dududa.domain.primitives import ComponentRevision, JsonValue, SchemaRef
 from dududa.models.contracts import (
     EndpointAdmissionRequest,
+    EndpointAdmissionResult,
     EndpointCapacityLease,
     EndpointCapacityReceipt,
     ModelEndpointDescriptor,
@@ -111,7 +112,7 @@ class ModelAdmissionController(Protocol):
         request: EndpointAdmissionRequest,
         *,
         call: PortCallContext | ServiceCallContext,
-    ) -> EndpointCapacityLease: ...
+    ) -> EndpointAdmissionResult: ...
 
     async def settle(
         self,

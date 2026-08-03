@@ -11,8 +11,56 @@ Last sync: unix:1785773448
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Selection contracts are integrated and the 124-test baseline plus two
+  AstrBot-host skips was green before entering this branch.
+- The static Router, last-known-good catalog/operational registries, complete
+  estimator, strict codec, atomic admission controller, Recording Fake and
+  compatible AstrBot Adapter are implemented and covered by focused tests.
+- Provider dispatch has a full lease-finalization boundary: pre-dispatch exits
+  release capacity; dispatched unknown exits ceiling-settle; repeated native
+  cancellation, forged responses, broken clocks/watchers and deadline races do
+  not leak leases or detached tasks.
+- Provider-owned error strings are rebuilt at the Core boundary. AstrBot
+  external getters and Codec parse/schema failures cannot retain raw output in
+  public errors or exception chains.
+- AstrBot success and outcome-unknown replay state uses a bounded TTL/LRU
+  ledger and fixed lock stripes. Enablement requires explicit downstream
+  deadline and cancellation enforcement evidence.
+- AstrBot's confirmed compatible surface is Provider lookup, a broad
+  `text_chat(...)` signature and `completion_text`; in pinned 4.26.2 the
+  OpenAI/Anthropic implementations do not reliably propagate per-request
+  output/temperature kwargs and may hide retries. Signature acceptance is not
+  capability evidence, so those real bindings cannot be enabled yet.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Python 3.12 and 3.10 each pass the 96-test S08 suite and the 198-test full
+  repository suite; the two local host-only skips pass 6/6 in the derived
+  AstrBot image.
+- Branch-owned Ruff/format, compileall, repository secret scan, Compose, shell,
+  migration entrypoint and whitespace checks pass. The image builds as
+  `dududa/astrbot:s08-static-router` with digest
+  `sha256:8b22114ca48a7486b9230084ac83e173bc5f319f93b07149e23c3a6ec64aebcb`.
+- Two independent adversarial reviews were resolved and rechecked, covering
+  cancellation races, lease expiry, malformed Provider DTOs, untrusted error
+  fields, external property getters, exception chains and idempotency replay.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No S08 implementation issue remains open. Real AstrBot 4.26.2 OpenAI and
+  Anthropic bindings remain intentionally disabled because upstream behavior
+  cannot produce the required single-request, output-limit, deadline,
+  cancellation and sanitized-logging evidence.
+- Full-repository Ruff reports five pre-existing findings in four untouched
+  files; the branch-owned lint surface is green and those files match `HEAD`.
+- Local `gitleaks` is unavailable; the repository scanner passes 290 files and
+  the configured GitHub `secrets` job remains the authoritative pushed-commit
+  check.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- S08 is ready for a clean branch commit, TreeWork verification and completion.
+- Integration must preserve the control workspace's unrelated WebUI,
+  deployment and Sub2API changes. S09 may consume only the versioned
+  `TaskComplexityAssessment`, tier-authority and Router interfaces; it must not
+  add Bandit or connect production Events.

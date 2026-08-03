@@ -1,14 +1,29 @@
 """Provider-neutral model selection and routing contracts."""
 
+from importlib import import_module
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .admission import InMemoryModelAdmissionController
+    from .estimation import ConservativeModelInvocationEstimator, ModelTokenPricing
+    from .registry import (
+        InMemoryModelOperationalStateRegistry,
+        InMemoryModelRoutingRegistry,
+    )
+    from .router import StaticModelRouter
+
 from .contracts import (
     AdmissionDisposition,
     EndpointAdmissionRequest,
+    EndpointAdmissionResult,
     EndpointCapacityLease,
     EndpointCapacityReceipt,
     EndpointHealthStatus,
     EndpointLoadSnapshot,
     EndpointRejection,
+    EndpointRouteCandidatePlan,
     EndpointTrafficPolicy,
+    LoadCounterScope,
     ModelCapabilities,
     ModelEndpointDescriptor,
     ModelEndpointHealth,
@@ -46,11 +61,16 @@ from .contracts import (
 from .digests import (
     bootstrap_tier_decision_digest,
     bootstrap_tier_selection_fingerprint,
+    endpoint_admission_request_digest,
+    endpoint_admission_result_digest,
+    endpoint_capacity_receipt_digest,
     model_endpoint_descriptor_digest,
     model_invocation_estimate_digest,
+    model_invocation_estimate_fingerprint,
     model_operational_snapshot_digest,
     model_request_digest,
     model_request_fingerprint,
+    model_route_policy_digest,
     provider_request_digest,
     route_decision_digest,
     route_plan_fingerprint,
@@ -63,7 +83,7 @@ from .digests import (
     tier_selection_context_digest,
     tier_selection_fingerprint,
 )
-from .errors import ModelInvocationError, ModelProviderError
+from .errors import ModelInvocationError, ModelProviderError, model_error_info
 from .policy import (
     BootstrapTierDecision,
     ConfidenceHandling,
@@ -88,12 +108,19 @@ __all__ = [
     "BootstrapTierDecision",
     "ConfidenceHandling",
     "EndpointAdmissionRequest",
+    "EndpointAdmissionResult",
     "EndpointCapacityLease",
     "EndpointCapacityReceipt",
     "EndpointHealthStatus",
     "EndpointLoadSnapshot",
     "EndpointRejection",
+    "EndpointRouteCandidatePlan",
     "EndpointTrafficPolicy",
+    "ConservativeModelInvocationEstimator",
+    "InMemoryModelAdmissionController",
+    "InMemoryModelOperationalStateRegistry",
+    "InMemoryModelRoutingRegistry",
+    "LoadCounterScope",
     "ModelCapabilities",
     "ModelCapabilitiesRequirement",
     "ModelCatalogPublishReceipt",
@@ -123,6 +150,7 @@ __all__ = [
     "ModelRoutePolicy",
     "ModelRoutingSnapshot",
     "ModelTier",
+    "ModelTokenPricing",
     "ModelUsage",
     "ProviderRequest",
     "ProviderResponse",
@@ -135,6 +163,7 @@ __all__ = [
     "SafetyAnnotation",
     "StaleSnapshotPolicy",
     "StructuredOutputSupport",
+    "StaticModelRouter",
     "TierAuthority",
     "TierBudgetRequirement",
     "TierDecision",
@@ -143,11 +172,17 @@ __all__ = [
     "TierSelectionContext",
     "bootstrap_tier_decision_digest",
     "bootstrap_tier_selection_fingerprint",
+    "endpoint_admission_request_digest",
+    "endpoint_admission_result_digest",
+    "endpoint_capacity_receipt_digest",
     "model_endpoint_descriptor_digest",
     "model_invocation_estimate_digest",
+    "model_invocation_estimate_fingerprint",
     "model_operational_snapshot_digest",
     "model_request_digest",
     "model_request_fingerprint",
+    "model_route_policy_digest",
+    "model_error_info",
     "provider_request_digest",
     "route_decision_digest",
     "route_plan_fingerprint",
@@ -162,3 +197,23 @@ __all__ = [
     "validate_routing_snapshot",
     "validate_tier_authority",
 ]
+
+_IMPLEMENTATION_EXPORTS = {
+    "ConservativeModelInvocationEstimator": ".estimation",
+    "InMemoryModelAdmissionController": ".admission",
+    "InMemoryModelOperationalStateRegistry": ".registry",
+    "InMemoryModelRoutingRegistry": ".registry",
+    "ModelTokenPricing": ".estimation",
+    "StaticModelRouter": ".router",
+}
+
+
+def __getattr__(name: str) -> object:
+    module_name = _IMPLEMENTATION_EXPORTS.get(name)
+    if module_name is None:
+        raise AttributeError(name)
+    return getattr(import_module(module_name, __name__), name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

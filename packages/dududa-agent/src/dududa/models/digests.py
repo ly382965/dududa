@@ -5,7 +5,11 @@ from dududa.domain.primitives import ComponentRevision, DigestString
 from dududa.domain.task import TaskComplexityAssessment
 
 from .contracts import (
+    EndpointAdmissionRequest,
+    EndpointAdmissionResult,
+    EndpointCapacityReceipt,
     EndpointRejection,
+    EndpointRouteCandidatePlan,
     ModelEndpointDescriptor,
     ModelEndpointRef,
     ModelInvocationEstimate,
@@ -15,7 +19,6 @@ from .contracts import (
     ModelRole,
     ModelTier,
     ProviderRequest,
-    ReasoningProfile,
     RouteDecision,
 )
 from .policy import (
@@ -153,6 +156,17 @@ def model_invocation_estimate_digest(
     return canonical_digest(estimate, domain="model:invocation-estimate:v1")
 
 
+def model_invocation_estimate_fingerprint(
+    estimate: ModelInvocationEstimate,
+) -> DigestString:
+    values = {
+        name: getattr(estimate, name)
+        for name in estimate.__dataclass_fields__
+        if name != "model_request_digest"
+    }
+    return canonical_digest(values, domain="model:invocation-estimate-plan:v1")
+
+
 def model_operational_snapshot_digest(
     snapshot: ModelOperationalSnapshot,
 ) -> DigestString:
@@ -163,6 +177,26 @@ def provider_request_digest(request: ProviderRequest) -> DigestString:
     return canonical_digest(request, domain="model:provider-request:v1")
 
 
+def endpoint_admission_request_digest(
+    request: EndpointAdmissionRequest,
+) -> DigestString:
+    return canonical_digest(request, domain="model:endpoint-admission-request:v1")
+
+
+def endpoint_admission_result_digest(result: EndpointAdmissionResult) -> DigestString:
+    return canonical_digest(result, domain="model:endpoint-admission-result:v1")
+
+
+def endpoint_capacity_receipt_digest(
+    receipt: EndpointCapacityReceipt,
+) -> DigestString:
+    return canonical_digest(receipt, domain="model:endpoint-capacity-receipt:v1")
+
+
+def model_route_policy_digest(policy: ModelRoutePolicy) -> DigestString:
+    return canonical_digest(policy, domain="model:route-policy:v1")
+
+
 def route_decision_digest(decision: RouteDecision) -> DigestString:
     return canonical_digest(decision, domain="model:route-decision:v1")
 
@@ -171,29 +205,39 @@ def route_plan_fingerprint(
     *,
     model_request_fingerprint: DigestString,
     tier_selection_fingerprint: DigestString,
+    requested_tier: ModelTier,
     catalog_revision: str,
-    route_policy_revision: str,
-    operational_snapshot_digest: DigestString,
+    route_policy_digest: DigestString,
     output_schema_digest: DigestString | None,
     output_codec_revision: ComponentRevision | None,
-    eligible_endpoints: tuple[ModelEndpointRef, ...],
+    candidate_plans: tuple[EndpointRouteCandidatePlan, ...],
     rejected_endpoints: tuple[EndpointRejection, ...],
-    selected_endpoint: ModelEndpointRef | None,
-    reasoning_profile: ReasoningProfile,
+    planned_endpoint: ModelEndpointRef | None,
 ) -> DigestString:
+    candidate_fingerprints = tuple(
+        {
+            "endpoint": candidate.endpoint,
+            "estimate_fingerprint": model_invocation_estimate_fingerprint(
+                candidate.estimate
+            ),
+            "reasoning_profile": candidate.reasoning_profile,
+            "selected_data_residency": candidate.selected_data_residency,
+            "required_retention_mode": candidate.required_retention_mode,
+        }
+        for candidate in candidate_plans
+    )
     return canonical_digest(
         {
             "model_request_fingerprint": model_request_fingerprint,
             "tier_selection_fingerprint": tier_selection_fingerprint,
+            "requested_tier": requested_tier,
             "catalog_revision": catalog_revision,
-            "route_policy_revision": route_policy_revision,
-            "operational_snapshot_digest": operational_snapshot_digest,
+            "route_policy_digest": route_policy_digest,
             "output_schema_digest": output_schema_digest,
             "output_codec_revision": output_codec_revision,
-            "eligible_endpoints": eligible_endpoints,
+            "candidate_plans": candidate_fingerprints,
             "rejected_endpoints": rejected_endpoints,
-            "selected_endpoint": selected_endpoint,
-            "reasoning_profile": reasoning_profile,
+            "planned_endpoint": planned_endpoint,
         },
         domain="model:route-plan:v1",
     )

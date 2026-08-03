@@ -3,6 +3,8 @@ FROM ${ASTRBOT_BASE_IMAGE}
 
 COPY packages/dududa-agent /opt/dududa/dududa-agent
 COPY services/icourse-mcp /opt/dududa/icourse-mcp
+COPY plugins/astrbot_plugin_dududa_core/requirements.txt /opt/dududa/dududa-core-requirements.txt
 RUN python -m pip install --no-cache-dir \
+    -r /opt/dududa/dududa-core-requirements.txt \
     /opt/dududa/dududa-agent \
     /opt/dududa/icourse-mcp
