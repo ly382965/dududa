@@ -1,0 +1,91 @@
+{
+  "branches": [
+    {
+      "path": "root",
+      "parent": "",
+      "title": "Dududa S08-S11",
+      "purpose": "Deliver integrated deterministic model selection through controlled direct-chat rollout.",
+      "status": "in_progress",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "model-selection",
+      "parent": "root",
+      "title": "Model Selection Epic",
+      "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "selection-contracts",
+      "parent": "model-selection",
+      "title": "S08 Selection Contracts",
+      "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "static-router",
+      "parent": "model-selection",
+      "title": "S08 Static Router",
+      "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "perception-tiering",
+      "parent": "model-selection",
+      "title": "S09 Perception And Tiering",
+      "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "offline-runtime",
+      "parent": "root",
+      "title": "S10 Offline Runtime",
+      "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "controlled-rollout",
+      "parent": "root",
+      "title": "S11 Controlled Rollout",
+      "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    },
+    {
+      "path": "completion-audit",
+      "parent": "root",
+      "title": "S08-S11 Completion Audit",
+      "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785750151"
+    }
+  ]
+}

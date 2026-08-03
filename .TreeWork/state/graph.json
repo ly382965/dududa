@@ -1,0 +1,100 @@
+{
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "root",
+      "to": "model-selection",
+      "kind": "parent_of",
+      "user_label": "root contains model-selection",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-2",
+      "from": "model-selection",
+      "to": "selection-contracts",
+      "kind": "parent_of",
+      "user_label": "model-selection contains selection-contracts",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-3",
+      "from": "model-selection",
+      "to": "static-router",
+      "kind": "parent_of",
+      "user_label": "model-selection contains static-router",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-4",
+      "from": "model-selection",
+      "to": "perception-tiering",
+      "kind": "parent_of",
+      "user_label": "model-selection contains perception-tiering",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-5",
+      "from": "root",
+      "to": "offline-runtime",
+      "kind": "parent_of",
+      "user_label": "root contains offline-runtime",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-6",
+      "from": "root",
+      "to": "controlled-rollout",
+      "kind": "parent_of",
+      "user_label": "root contains controlled-rollout",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-7",
+      "from": "root",
+      "to": "completion-audit",
+      "kind": "parent_of",
+      "user_label": "root contains completion-audit",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-8",
+      "from": "perception-tiering",
+      "to": "static-router",
+      "kind": "depends_on",
+      "user_label": "perception-tiering depends on static-router",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-9",
+      "from": "offline-runtime",
+      "to": "perception-tiering",
+      "kind": "depends_on",
+      "user_label": "offline-runtime depends on perception-tiering",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-10",
+      "from": "controlled-rollout",
+      "to": "offline-runtime",
+      "kind": "depends_on",
+      "user_label": "controlled-rollout depends on offline-runtime",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-11",
+      "from": "completion-audit",
+      "to": "controlled-rollout",
+      "kind": "depends_on",
+      "user_label": "completion-audit depends on controlled-rollout",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-12",
+      "from": "static-router",
+      "to": "selection-contracts",
+      "kind": "depends_on",
+      "user_label": "static-router depends on selection-contracts",
+      "interpreted_relation": "depends_on"
+    }
+  ]
+}

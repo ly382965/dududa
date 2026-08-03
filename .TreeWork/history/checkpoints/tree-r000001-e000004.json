@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "event_seq": 4,
+  "captured_at": "unix:1785750151",
+  "tree_revision": 1,
+  "checkpoint_hash": "fnv1a64:acfc032c22c4a9da",
+  "project": {
+    "stage": "work_tree",
+    "current_branch": "root",
+    "tree_editing": null,
+    "tree_hash": "fnv1a64:1a89870cd80e343b"
+  },
+  "tree": {
+    "schema_version": 1,
+    "revision": 1,
+    "source_hash": "fnv1a64:1a89870cd80e343b",
+    "state_hash": "fnv1a64:4e103594bdff4827",
+    "accepted_at": "unix:1785750151",
+    "root": "root",
+    "nodes": [
+      {
+        "id": "root",
+        "parent": "",
+        "title": "Dududa S08-S11",
+        "purpose": "Deliver integrated deterministic model selection through controlled direct-chat rollout.",
+        "spec": "spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "model-selection",
+        "parent": "root",
+        "title": "Model Selection Epic",
+        "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
+        "spec": "branches/model-selection/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "selection-contracts",
+        "parent": "model-selection",
+        "title": "S08 Selection Contracts",
+        "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
+        "spec": "branches/selection-contracts/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "static-router",
+        "parent": "model-selection",
+        "title": "S08 Static Router",
+        "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
+        "spec": "branches/static-router/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "selection-contracts"
+        ]
+      },
+      {
+        "id": "perception-tiering",
+        "parent": "model-selection",
+        "title": "S09 Perception And Tiering",
+        "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
+        "spec": "branches/perception-tiering/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "static-router"
+        ]
+      },
+      {
+        "id": "offline-runtime",
+        "parent": "root",
+        "title": "S10 Offline Runtime",
+        "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
+        "spec": "branches/offline-runtime/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "perception-tiering"
+        ]
+      },
+      {
+        "id": "controlled-rollout",
+        "parent": "root",
+        "title": "S11 Controlled Rollout",
+        "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
+        "spec": "branches/controlled-rollout/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "offline-runtime"
+        ]
+      },
+      {
+        "id": "completion-audit",
+        "parent": "root",
+        "title": "S08-S11 Completion Audit",
+        "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
+        "spec": "branches/completion-audit/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "controlled-rollout"
+        ]
+      }
+    ]
+  },
+  "branches": [
+    {
+      "id": "root",
+      "parent": "",
+      "title": "Dududa S08-S11",
+      "purpose": "Deliver integrated deterministic model selection through controlled direct-chat rollout.",
+      "status": "in_progress",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "model-selection",
+      "parent": "root",
+      "title": "Model Selection Epic",
+      "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "selection-contracts",
+      "parent": "model-selection",
+      "title": "S08 Selection Contracts",
+      "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "static-router",
+      "parent": "model-selection",
+      "title": "S08 Static Router",
+      "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "perception-tiering",
+      "parent": "model-selection",
+      "title": "S09 Perception And Tiering",
+      "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "offline-runtime",
+      "parent": "root",
+      "title": "S10 Offline Runtime",
+      "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "controlled-rollout",
+      "parent": "root",
+      "title": "S11 Controlled Rollout",
+      "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "completion-audit",
+      "parent": "root",
+      "title": "S08-S11 Completion Audit",
+      "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "event_seq": 1,
+  "captured_at": "unix:1785749514",
+  "tree_revision": 0,
+  "checkpoint_hash": "fnv1a64:28d4518ad5ec2df6",
+  "project": {
+    "stage": "alignment",
+    "current_branch": "root",
+    "tree_editing": null,
+    "tree_hash": ""
+  },
+  "tree": null,
+  "branches": [
+    {
+      "id": "root",
+      "parent": "",
+      "title": "",
+      "purpose": "",
+      "status": "in_progress",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    }
+  ]
+}
