@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: static-router
 Parent: model-selection
-Status: in_progress
+Status: complete
 Verification: verified
-Last sync: unix:1785773448
+Last sync: unix:1785773580
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

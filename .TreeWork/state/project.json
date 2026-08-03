@@ -2,9 +2,9 @@
   "schema_version": "0.1",
   "stage": "work_tree",
   "current_branch": "static-router",
-  "last_event_seq": 9,
+  "last_event_seq": 10,
   "tree_revision": 1,
   "tree_editing": null,
   "tree_hash": "fnv1a64:1a89870cd80e343b",
-  "last_sync": "unix:1785773448"
+  "last_sync": "unix:1785773580"
 }

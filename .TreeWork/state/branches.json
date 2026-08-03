@@ -47,19 +47,19 @@
       "title": "S08 Static Router",
       "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/static-router",
         "git_branch": "treework/static-router",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1785760617",
         "last_entered_at": "unix:1785760617",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785773448"
+      "last_sync": "unix:1785773580"
     },
     {
       "path": "perception-tiering",
