@@ -2,9 +2,9 @@
   "schema_version": "0.1",
   "stage": "work_tree",
   "current_branch": "mew-parity-foundation",
-  "last_event_seq": 29,
+  "last_event_seq": 30,
   "tree_revision": 2,
   "tree_editing": null,
   "tree_hash": "fnv1a64:0f7a27ea99378f56",
-  "last_sync": "unix:1785828293"
+  "last_sync": "unix:1785828431"
 }

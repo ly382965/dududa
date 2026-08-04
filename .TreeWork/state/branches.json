@@ -158,19 +158,19 @@
       "title": "NapCat Web Foundation",
       "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-parity-foundation",
         "git_branch": "treework/mew-parity-foundation",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1785826597",
         "last_entered_at": "unix:1785826597",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785828293"
+      "last_sync": "unix:1785828431"
     },
     {
       "path": "mew-chat-parity",
