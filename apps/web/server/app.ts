@@ -69,7 +69,7 @@ function routeError(response: ServerResponse, error: unknown): void {
         ? 409
     : /不存在|not found/i.test(message)
       ? 404
-      : /游标|before|after|Range|参数无效|JSON|请求正文|消息内容|上传|消息标识|标识无效|标识与|QQ 号|转发|文件类型|不匹配/.test(
+      : /游标|before|after|Range|参数无效|JSON|请求正文|消息内容|上传|消息标识|标识无效|标识与|QQ 号|转发|文件类型|表情|不匹配/.test(
             message,
           )
         ? 400
@@ -691,6 +691,38 @@ export function createDududaServer(options: DududaServerOptions) {
           decodeURIComponent(groupFolderRoute[3]!),
         )
         json(response, 200, { ok: true })
+        return
+      }
+      const customFacesRoute =
+        /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/custom-faces$/.exec(url.pathname)
+      if (method === 'GET' && customFacesRoute) {
+        json(
+          response,
+          200,
+          await options.hub.customFaceCatalog(
+            decodeURIComponent(customFacesRoute[1]!),
+            customFacesRoute[2] as 'group' | 'private',
+            decodeURIComponent(customFacesRoute[3]!),
+          ),
+        )
+        return
+      }
+      const customFacePreviewRoute =
+        /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/custom-faces\/([a-f0-9]{32})\/preview$/.exec(
+          url.pathname,
+        )
+      if (method === 'GET' && customFacePreviewRoute) {
+        const source = options.hub.customFaceUrl(
+          decodeURIComponent(customFacePreviewRoute[1]!),
+          customFacePreviewRoute[2] as 'group' | 'private',
+          decodeURIComponent(customFacePreviewRoute[3]!),
+          customFacePreviewRoute[4]!,
+        )
+        if (!source) {
+          json(response, 404, { error: '收藏表情地址已过期' })
+          return
+        }
+        await proxyImage(response, source, 'private, max-age=300')
         return
       }
       const messagesRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/messages$/.exec(url.pathname)

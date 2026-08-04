@@ -106,6 +106,7 @@ interface FakeNapCatOptions {
   packetAvailable?: boolean
   selfMemberGroupId?: string
   groupFileCount?: number
+  customFaceUrls?: string[]
 }
 
 interface FakeNapCatState {
@@ -219,6 +220,9 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         break
       case 'get_recent_contact':
         data = state.recent
+        break
+      case 'fetch_custom_face':
+        data = options.customFaceUrls ?? ['https://gchat.qpic.cn/gchatpic_new/0/0-0-FAVORITE/0']
         break
       case 'get_group_msg_history':
         data = { messages: [realGroupMessage('来自真实 NapCat 的消息', { self_id: Number(connectionSelfId) })] }
@@ -635,6 +639,7 @@ describe('Dududa NapCat gateway', () => {
       reason: expect.stringContaining('NapCat'),
     })
     expect(capabilities.actions['message.send.image']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['message.custom_faces']).toEqual({ status: 'supported' })
 
     const messageUrl = `${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`
     const first = (await (await fetch(`${messageUrl}?limit=1`)).json()) as {
@@ -698,6 +703,133 @@ describe('Dududa NapCat gateway', () => {
     napcat.socket.close()
   })
 
+  it('uses account-bound expiring handles for NapCat custom faces without exposing remote URLs', async () => {
+    const secondSelfId = '987654321'
+    const remoteFaceUrl = 'https://gchat.qpic.cn/gchatpic_new/0/0-0-FAVORITE/0'
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const firstNapcat = connectFakeNapCat(port, {
+      customFaceUrls: [remoteFaceUrl, remoteFaceUrl, 'https://attacker.example/not-a-qq-face'],
+    })
+    const secondNapcat = connectFakeNapCat(port, { selfId: secondSelfId })
+    await Promise.all([firstNapcat.ready, secondNapcat.ready])
+    const firstAccount = `qq-${selfId}`
+    const secondAccount = `qq-${secondSelfId}`
+    await waitFor(() => Promise.resolve(hub.workspaceSnapshot().accounts.length === 2))
+
+    const catalogResponse = await fetch(
+      `${baseUrl}/api/accounts/${firstAccount}/conversations/group/345678901/custom-faces`,
+    )
+    expect(catalogResponse.status).toBe(200)
+    const catalog = (await catalogResponse.json()) as {
+      accountId: string
+      conversationId: string
+      items: Array<{ handle: string; previewUrl: string; expiresAt: number }>
+    }
+    expect(catalog).toMatchObject({
+      accountId: firstAccount,
+      conversationId: `${firstAccount}:group:345678901`,
+    })
+    expect(catalog.items).toHaveLength(1)
+    expect(catalog.items[0]).toMatchObject({
+      handle: expect.stringMatching(/^[a-f0-9]{32}$/),
+      previewUrl: expect.stringMatching(/^\/api\/accounts\/qq-\d+\/conversations\/group\/345678901\/custom-faces\/[a-f0-9]{32}\/preview$/),
+      expiresAt: expect.any(Number),
+    })
+    expect(JSON.stringify(catalog)).not.toContain(remoteFaceUrl)
+    expect(JSON.stringify(catalog)).not.toContain('attacker.example')
+    expect(firstNapcat.actions.filter((item) => item.action === 'fetch_custom_face').at(-1)?.params).toEqual({ count: 48 })
+
+    const handle = catalog.items[0]!.handle
+    const secondCatalog = (await (
+      await fetch(`${baseUrl}/api/accounts/${secondAccount}/conversations/group/345678901/custom-faces`)
+    ).json()) as { items: Array<{ handle: string }> }
+    expect(secondCatalog.items[0]!.handle).not.toBe(handle)
+    const crossAccountPreview = catalog.items[0]!.previewUrl.replace(`/accounts/${firstAccount}/`, `/accounts/${secondAccount}/`)
+    expect((await fetch(`${baseUrl}${crossAccountPreview}`)).status).toBe(404)
+    const crossConversationPreview = catalog.items[0]!.previewUrl.replace(
+      '/conversations/group/345678901/',
+      '/conversations/private/456789012/',
+    )
+    expect((await fetch(`${baseUrl}${crossConversationPreview}`)).status).toBe(404)
+
+    const firstMessages = `${baseUrl}/api/accounts/${firstAccount}/conversations/group/345678901/messages`
+    const secondMessages = `${baseUrl}/api/accounts/${secondAccount}/conversations/group/345678901/messages`
+    const withoutOrigin = await fetch(firstMessages, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ segments: [{ type: 'custom_face', handle }] }),
+    })
+    expect(withoutOrigin.status).toBe(403)
+
+    const crossAccountSend = await fetch(secondMessages, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'custom_face', handle }] }),
+    })
+    expect(crossAccountSend.status).toBe(400)
+    expect(secondNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+    const crossConversationSend = await fetch(
+      `${baseUrl}/api/accounts/${firstAccount}/conversations/private/456789012/messages`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: JSON.stringify({ segments: [{ type: 'custom_face', handle }] }),
+      },
+    )
+    expect(crossConversationSend.status).toBe(400)
+    expect(firstNapcat.actions.some((item) => item.action === 'send_private_msg')).toBe(false)
+
+    const arbitraryUrl = await fetch(firstMessages, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'custom_face', handle, url: 'https://gchat.qpic.cn/other' }] }),
+    })
+    expect(arbitraryUrl.status).toBe(400)
+    const unknownHandle = await fetch(firstMessages, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'custom_face', handle: '0'.repeat(32) }] }),
+    })
+    expect(unknownHandle.status).toBe(400)
+
+    const sent = await fetch(firstMessages, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'custom_face', handle }] }),
+    })
+    expect(sent.status).toBe(201)
+    expect(firstNapcat.actions.filter((item) => item.action === 'send_group_msg').at(-1)?.params.message).toEqual([
+      { type: 'image', data: { file: remoteFaceUrl, sub_type: 1, summary: '[表情]' } },
+    ])
+    const sentBody = (await sent.json()) as { message: { content: string; segments: Array<Record<string, unknown>> } }
+    expect(sentBody.message).toMatchObject({ content: '[表情]', segments: [{ type: 'image', sticker: true }] })
+    firstNapcat.socket.close()
+    secondNapcat.socket.close()
+  })
+
+  it('rejects a custom-face handle after its server-side TTL expires', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer({ customFaceTtlMs: 5 })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(() => Promise.resolve(hub.workspaceSnapshot().accounts[0]?.status === 'online'))
+    const account = `qq-${selfId}`
+    const catalog = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/conversations/group/345678901/custom-faces`)
+    ).json()) as { items: Array<{ handle: string }> }
+    await new Promise((resolve) => setTimeout(resolve, 15))
+
+    const sent = await fetch(`${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'custom_face', handle: catalog.items[0]!.handle }] }),
+    })
+    expect(sent.status).toBe(400)
+    expect(napcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+    napcat.socket.close()
+  })
+
   it('disables version-gated actions for an older NapCat implementation', async () => {
     const { server, port, baseUrl } = await startTestServer()
     servers.push(server)
@@ -718,6 +850,7 @@ describe('Dududa NapCat gateway', () => {
       reason: expect.stringContaining('4.8.0'),
     })
     expect(capabilities.actions['message.download.file']).toMatchObject({ status: 'unsupported' })
+    expect(capabilities.actions['message.custom_faces']).toMatchObject({ status: 'unsupported' })
     expect(capabilities.actions['message.send.text']).toEqual({ status: 'supported' })
     napcat.socket.close()
   })

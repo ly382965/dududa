@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   Conversation,
   ConversationDraft,
+  CustomFaceCatalog,
   EssencePage,
   FileSendReceipt,
   ForwardedMessageBundle,
@@ -38,6 +39,7 @@ export interface WorkspaceAdapter {
   loadCapabilities(accountId: string): Promise<AccountCapabilityDocument>
   loadDirectory(accountId: string, refresh?: boolean): Promise<AccountDirectory>
   loadNotifications(accountId: string, refresh?: boolean): Promise<NotificationInbox>
+  loadCustomFaces(conversation: Conversation): Promise<CustomFaceCatalog>
   loadCachedNotifications?(accountId: string): Promise<QqNotification[]>
   cacheNotifications?(accountId: string, notifications: QqNotification[]): Promise<void>
   resolveNotification(accountId: string, notificationId: string, action: 'accept' | 'reject'): Promise<QqNotification>
@@ -123,6 +125,10 @@ export class NapCatWorkspaceAdapter implements WorkspaceAdapter {
     return this.request<NotificationInbox>(
       `/api/accounts/${encodeURIComponent(accountId)}/notifications?refresh=${refresh ? '1' : '0'}`,
     )
+  }
+
+  async loadCustomFaces(conversation: Conversation): Promise<CustomFaceCatalog> {
+    return this.request<CustomFaceCatalog>(`${this.conversationPath(conversation)}/custom-faces`)
   }
 
   async loadCachedNotifications(accountId: string): Promise<QqNotification[]> {

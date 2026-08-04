@@ -343,6 +343,24 @@ export interface StagedMediaMessageSegment {
   name?: string
 }
 
+export interface CustomFaceOutgoingSegment {
+  type: 'custom_face'
+  handle: string
+}
+
+export interface CustomFaceItem {
+  handle: string
+  previewUrl: string
+  expiresAt: number
+}
+
+export interface CustomFaceCatalog {
+  accountId: string
+  conversationId: string
+  items: CustomFaceItem[]
+  refreshedAt: number
+}
+
 export interface ForwardMessageSegment {
   type: 'forward'
   forwardId: string
@@ -389,6 +407,7 @@ export type OutgoingMessageSegment =
   | Pick<MentionMessageSegment, 'type' | 'userId' | 'label' | 'all'>
   | Pick<ReplyMessageSegment, 'type' | 'messageId' | 'messageSeq'>
   | Pick<FaceMessageSegment, 'type' | 'faceId' | 'name' | 'market'>
+  | CustomFaceOutgoingSegment
   | StagedMediaMessageSegment
 
 export interface UploadReceipt {

@@ -14,6 +14,14 @@ describe('workspace schemas', () => {
       sendMessageRequestSchema.parse({ segments: [{ type: 'image', file: '/tmp/private.png' }] }),
     ).toThrow()
     expect(() => sendMessageRequestSchema.parse({ segments: [{ type: 'raw', data: {} }] })).toThrow()
+    expect(
+      sendMessageRequestSchema.parse({ segments: [{ type: 'custom_face', handle: 'a'.repeat(32) }] }),
+    ).toEqual([{ type: 'custom_face', handle: 'a'.repeat(32) }])
+    expect(() =>
+      sendMessageRequestSchema.parse({
+        segments: [{ type: 'custom_face', handle: 'a'.repeat(32), url: 'https://gchat.qpic.cn/arbitrary' }],
+      }),
+    ).toThrow()
   })
 
   it('requires account-safe opaque history query shapes', () => {

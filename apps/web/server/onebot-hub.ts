@@ -12,6 +12,7 @@ import type {
   CapabilityName,
   ChatMessage,
   Conversation,
+  CustomFaceCatalog,
   EssenceMessage,
   EssencePage,
   FileSendReceipt,
@@ -160,6 +161,14 @@ interface StagedUpload {
   consuming: boolean
 }
 
+interface CustomFaceEntry {
+  accountId: string
+  type: 'group' | 'private'
+  peerId: string
+  url: string
+  expiresAt: number
+}
+
 interface OneBotForwardNode {
   type?: string
   data?: {
@@ -179,6 +188,8 @@ export interface HubOptions {
   messageHistoryCount?: number
   mediaTtlMs?: number
   mediaMaxEntries?: number
+  customFaceTtlMs?: number
+  customFaceMaxEntries?: number
   uploadTtlMs?: number
   uploadMaxEntries?: number
   uploadMaxTotalBytes?: number
@@ -188,6 +199,8 @@ const emittedMessageTtlMs = 5 * 60_000
 const emittedMessageMaxEntries = 5_000
 const defaultMediaTtlMs = 30 * 60_000
 const defaultMediaMaxEntries = 2_000
+const defaultCustomFaceTtlMs = 10 * 60_000
+const defaultCustomFaceMaxEntries = 1_000
 const defaultUploadTtlMs = 10 * 60_000
 const defaultUploadMaxEntries = 32
 const defaultUploadMaxTotalBytes = 100 * 1024 * 1024
@@ -335,6 +348,7 @@ export class OneBotHub extends EventEmitter {
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 50 * 1024 * 1024 })
   private readonly accounts = new Map<string, AccountState>()
   private readonly media = new Map<string, MediaEntry>()
+  private readonly customFaces = new Map<string, CustomFaceEntry>()
   private readonly uploads = new Map<string, StagedUpload>()
   private readonly uncertainGroupUploads = new Map<string, { state: 'inflight' | 'unknown'; expiresAt: number }>()
   private readonly resolvingNotifications = new Set<string>()
@@ -344,6 +358,8 @@ export class OneBotHub extends EventEmitter {
   private readonly messageHistoryCount: number
   private readonly mediaTtlMs: number
   private readonly mediaMaxEntries: number
+  private readonly customFaceTtlMs: number
+  private readonly customFaceMaxEntries: number
   private readonly uploadTtlMs: number
   private readonly uploadMaxEntries: number
   private readonly uploadMaxTotalBytes: number
@@ -357,6 +373,8 @@ export class OneBotHub extends EventEmitter {
     this.messageHistoryCount = options.messageHistoryCount ?? 50
     this.mediaTtlMs = Math.max(1, Math.floor(options.mediaTtlMs ?? defaultMediaTtlMs))
     this.mediaMaxEntries = Math.max(1, Math.floor(options.mediaMaxEntries ?? defaultMediaMaxEntries))
+    this.customFaceTtlMs = Math.max(1, Math.floor(options.customFaceTtlMs ?? defaultCustomFaceTtlMs))
+    this.customFaceMaxEntries = Math.max(1, Math.floor(options.customFaceMaxEntries ?? defaultCustomFaceMaxEntries))
     this.uploadTtlMs = Math.max(1, Math.floor(options.uploadTtlMs ?? defaultUploadTtlMs))
     this.uploadMaxEntries = Math.max(1, Math.floor(options.uploadMaxEntries ?? defaultUploadMaxEntries))
     this.uploadMaxTotalBytes = Math.max(1, Math.floor(options.uploadMaxTotalBytes ?? defaultUploadMaxTotalBytes))
@@ -435,6 +453,50 @@ export class OneBotHub extends EventEmitter {
 
   capabilities(account: string): AccountCapabilityDocument {
     return this.capabilityDocument(this.requireAccount(account))
+  }
+
+  async customFaceCatalog(account: string, type: 'group' | 'private', peerId: string): Promise<CustomFaceCatalog> {
+    const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'message.custom_faces')
+    const data = await state.connection.request<unknown>('fetch_custom_face', { count: 48 }, 30_000)
+    if (!Array.isArray(data)) throw new Error('NapCat 收藏表情响应无效')
+
+    const urls = [...new Set(data.filter((item): item is string => typeof item === 'string'))]
+      .filter((source) => this.customFaceSourceAllowed(source))
+      .slice(0, 48)
+    const now = Date.now()
+    this.pruneCustomFaces(now)
+
+    const items = urls.map((source) => {
+      const handle = createHmac('sha256', this.options.token)
+        .update(`custom-face\0${account}\0${type}\0${peerId}\0${source}`)
+        .digest('hex')
+        .slice(0, 32)
+      const expiresAt = now + this.customFaceTtlMs
+      this.customFaces.delete(handle)
+      this.customFaces.set(handle, { accountId: account, type, peerId, url: source, expiresAt })
+      return {
+        handle,
+        previewUrl: `/api/accounts/${encodeURIComponent(account)}/conversations/${type}/${encodeURIComponent(peerId)}/custom-faces/${handle}/preview`,
+        expiresAt,
+      }
+    })
+    while (this.customFaces.size > this.customFaceMaxEntries) {
+      const oldest = this.customFaces.keys().next().value as string | undefined
+      if (!oldest) break
+      this.customFaces.delete(oldest)
+    }
+    return {
+      accountId: account,
+      conversationId: conversationId(account, type, peerId),
+      items: items.filter((item) => this.customFaces.has(item.handle)),
+      refreshedAt: now,
+    }
+  }
+
+  customFaceUrl(account: string, type: 'group' | 'private', peerId: string, handle: string): string | undefined {
+    this.requireConversation(account, type, peerId)
+    return this.resolveCustomFace(account, type, peerId, handle)?.url
   }
 
   async directorySnapshot(account: string, refresh = false): Promise<AccountDirectory> {
@@ -1157,13 +1219,15 @@ export class OneBotHub extends EventEmitter {
               ? 'message.send.reply'
               : segment.type === 'face'
                 ? 'message.send.face'
-                : (`message.send.${segment.type}` as CapabilityName)
+                : segment.type === 'custom_face'
+                  ? 'message.custom_faces'
+                  : (`message.send.${segment.type}` as CapabilityName)
       this.requireCapability(state, capability)
     }
     const action = type === 'group' ? 'send_group_msg' : 'send_private_msg'
     const key = type === 'group' ? 'group_id' : 'user_id'
     const reservedUploads: string[] = []
-    let outgoing: Array<{ type: string; data: Record<string, string> }>
+    let outgoing: Array<{ type: string; data: Record<string, string | number> }>
     let result: { message_id: number | string }
     let actionStarted = false
     try {
@@ -1356,6 +1420,7 @@ export class OneBotHub extends EventEmitter {
     for (const state of this.accounts.values()) state.connection.close(1001, 'server shutting down')
     this.accounts.clear()
     this.media.clear()
+    this.customFaces.clear()
     this.uploads.clear()
     this.uncertainGroupUploads.clear()
     this.resolvingNotifications.clear()
@@ -2041,6 +2106,7 @@ export class OneBotHub extends EventEmitter {
       'message.forward',
       'message.nudge',
       'message.read',
+      'message.custom_faces',
     ])
     const napCatGaps = new Map<CapabilityName, string>([
       ['directory.peer_pin', '当前 NapCat 未提供 QQ 同步置顶 action'],
@@ -2051,6 +2117,7 @@ export class OneBotHub extends EventEmitter {
       ['message.download.file', '4.8.0'],
       ['message.forward', '4.8.0'],
       ['message.nudge', '4.8.0'],
+      ['message.custom_faces', '4.18.7'],
     ])
     const actions = Object.fromEntries(
       capabilityNames.map((name) => {
@@ -2094,7 +2161,7 @@ export class OneBotHub extends EventEmitter {
     peerId: string,
     segment: OutgoingMessageSegment,
     reservedUploads: string[],
-  ): { type: string; data: Record<string, string> } {
+  ): { type: string; data: Record<string, string | number> } {
     switch (segment.type) {
       case 'text':
         return { type: 'text', data: { text: segment.text } }
@@ -2104,6 +2171,11 @@ export class OneBotHub extends EventEmitter {
         return { type: 'reply', data: { id: segment.messageId ?? segment.messageSeq ?? '' } }
       case 'face':
         return { type: 'face', data: { id: segment.faceId } }
+      case 'custom_face': {
+        const favorite = this.resolveCustomFace(account, type, peerId, segment.handle)
+        if (!favorite || !this.isCurrent(state)) throw new Error('收藏表情句柄已过期或与当前 QQ 会话不匹配')
+        return { type: 'image', data: { file: favorite.url, sub_type: 1, summary: '[表情]' } }
+      }
       case 'image':
       case 'audio':
       case 'video': {
@@ -2332,6 +2404,36 @@ export class OneBotHub extends EventEmitter {
 
   private isCurrent(state: AccountState): boolean {
     return this.accounts.get(accountId(state.selfId))?.connection === state.connection
+  }
+
+  private customFaceSourceAllowed(source: string): boolean {
+    if (!source || source.length > 8_192) return false
+    try {
+      const url = new URL(source)
+      return ['http:', 'https:'].includes(url.protocol) && this.mediaHostAllowed(url.hostname)
+    } catch {
+      return false
+    }
+  }
+
+  private resolveCustomFace(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    handle: string,
+  ): CustomFaceEntry | undefined {
+    this.pruneCustomFaces(Date.now())
+    const entry = this.customFaces.get(handle)
+    if (!entry || entry.accountId !== account || entry.type !== type || entry.peerId !== peerId) return undefined
+    this.customFaces.delete(handle)
+    this.customFaces.set(handle, entry)
+    return entry
+  }
+
+  private pruneCustomFaces(now: number): void {
+    for (const [handle, entry] of this.customFaces) {
+      if (entry.expiresAt <= now) this.customFaces.delete(handle)
+    }
   }
 
   private registerMedia(source: string): string | undefined {

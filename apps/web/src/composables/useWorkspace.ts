@@ -18,6 +18,7 @@ import type {
   ChatMessage,
   CapabilityName,
   Conversation,
+  CustomFaceCatalog,
   HistoryPage,
   MobilePanel,
   OutgoingMessageSegment,
@@ -111,6 +112,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   let unsubscribe: (() => void) | undefined
   let colorSchemeQuery: MediaQueryList | undefined
   let messageLoadVersion = 0
+  const draftRevisions = new Map<string, number>()
   const updateSystemTheme = (event: MediaQueryListEvent | MediaQueryList) => (systemDark.value = event.matches)
 
   const accounts = computed(() => snapshot.value.accounts)
@@ -236,10 +238,24 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   }
 
   async function loadConversationDraft(conversation: Conversation): Promise<void> {
-    const stored = await adapter.loadDraft(conversation)
-    if (stored?.conversationId === conversation.id && typeof stored.content === 'string') {
-      drafts.value[conversation.id] = stored.content
+    const revision = draftRevisions.get(conversation.id) ?? 0
+    try {
+      const stored = await adapter.loadDraft(conversation)
+      const current = conversations.value.find((item) => item.id === conversation.id)
+      if (current?.accountId !== conversation.accountId || (draftRevisions.get(conversation.id) ?? 0) !== revision) return
+      if (
+        stored?.accountId === conversation.accountId &&
+        stored.conversationId === conversation.id &&
+        typeof stored.content === 'string'
+      ) drafts.value[conversation.id] = stored.content
+      else delete drafts.value[conversation.id]
+    } catch {
+      // A cache read failure must not block the live NapCat workspace.
     }
+  }
+
+  async function loadConversationDrafts(items: Conversation[]): Promise<void> {
+    await Promise.all(items.map((conversation) => loadConversationDraft(conversation)))
   }
 
   function mergeWorkspace(next: WorkspaceSnapshot): void {
@@ -251,6 +267,12 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     }))
     next.messages = previous.messages
     next.configs = { ...previous.configs, ...next.configs }
+    const activeConversationIds = new Set(next.conversations.map((item) => item.id))
+    for (const conversation of previous.conversations) {
+      if (activeConversationIds.has(conversation.id)) continue
+      draftRevisions.set(conversation.id, (draftRevisions.get(conversation.id) ?? 0) + 1)
+      delete drafts.value[conversation.id]
+    }
     snapshot.value = next
     const stillSelected = next.conversations.some((item) => item.id === selectedConversationId.value)
     if (!stillSelected && !selectedConversationId.value) selectedConversationId.value = next.conversations[0]?.id ?? ''
@@ -265,9 +287,9 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
       connectionError.value = ''
       const previousSelection = selectedConversationId.value
       mergeWorkspace(next)
+      await loadConversationDrafts(next.conversations)
       if (selectedConversationId.value && selectedConversationId.value !== previousSelection) {
         await loadConversationMessages(selectedConversation.value)
-        if (selectedConversation.value) await loadConversationDraft(selectedConversation.value)
         return true
       }
     } catch (error) {
@@ -417,6 +439,42 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     }
   }
 
+  async function loadCustomFaces(): Promise<CustomFaceCatalog> {
+    const conversation = selectedConversation.value
+    if (!conversation) throw new Error('请先选择 QQ 会话')
+    requireCapability(conversation, 'message.custom_faces')
+    const catalog = await adapter.loadCustomFaces(conversation)
+    if (
+      catalog.accountId !== conversation.accountId ||
+      catalog.conversationId !== conversation.id ||
+      selectedConversation.value?.id !== conversation.id
+    ) {
+      throw new Error('收藏表情响应与当前 QQ 会话不匹配')
+    }
+    return catalog
+  }
+
+  async function sendCustomFace(handle: string): Promise<boolean> {
+    const conversation = selectedConversation.value
+    if (!conversation || sendingMessage.value || !/^[a-f0-9]{32}$/.test(handle)) return false
+    sendingMessage.value = true
+    try {
+      requireCapability(conversation, 'message.custom_faces')
+      const message = await adapter.sendSegments(conversation, [{ type: 'custom_face', handle }])
+      mergeMessages(conversation.id, [message])
+      void adapter.cacheMessages(conversation, [message])
+      const account = accounts.value.find((item) => item.id === conversation.accountId)
+      conversation.lastMessage = `${account?.shortName ?? '我'}：${message.content || '[表情]'}`
+      notify('收藏表情已由 NapCat 发送')
+      return true
+    } catch (error) {
+      notify(error instanceof Error ? error.message : '收藏表情发送失败')
+      return false
+    } finally {
+      sendingMessage.value = false
+    }
+  }
+
   async function sendRichMessage(
     contentSegments: ComposerContentSegment[],
     files: Array<{ fileId: string; file: File }>,
@@ -443,7 +501,9 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
                   ? 'message.send.reply'
                   : segment.type === 'face'
                     ? 'message.send.face'
-                    : (`message.send.${segment.type}` as CapabilityName)
+                    : segment.type === 'custom_face'
+                      ? 'message.custom_faces'
+                      : (`message.send.${segment.type}` as CapabilityName)
           requireCapability(conversation, capability)
           outgoing.push(segment)
           continue
@@ -462,6 +522,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
       mergeMessages(conversation.id, [message])
       void adapter.cacheMessages(conversation, [message])
       conversation.lastMessage = `${selectedAccount.value?.shortName ?? '我'}：${message.content}`
+      draftRevisions.set(conversation.id, (draftRevisions.get(conversation.id) ?? 0) + 1)
       drafts.value[conversation.id] = ''
       void adapter.saveDraft({
         accountId: conversation.accountId,
@@ -596,6 +657,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   function updateChatDraft(conversationId: string, value: string): void {
     const conversation = conversations.value.find((item) => item.id === conversationId)
     if (!conversation) return
+    draftRevisions.set(conversation.id, (draftRevisions.get(conversation.id) ?? 0) + 1)
     drafts.value[conversation.id] = value
     void adapter.saveDraft({
       accountId: conversation.accountId,
@@ -735,7 +797,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     const selectionLoaded = await refreshWorkspace(true)
     loading.value = false
     if (selectedConversation.value && !selectionLoaded) {
-      await Promise.all([loadConversationMessages(selectedConversation.value), loadConversationDraft(selectedConversation.value)])
+      await loadConversationMessages(selectedConversation.value)
     }
   }
 
@@ -768,6 +830,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     selectedAccount,
     chatMessages,
     chatDraft,
+    drafts,
     chatHistory,
     chatUnread,
     mentionCandidates,
@@ -801,6 +864,8 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     openAgent,
     toggleAgent,
     sendChat,
+    loadCustomFaces,
+    sendCustomFace,
     sendRichMessage,
     sendFiles,
     recallChatMessage,

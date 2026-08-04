@@ -8,6 +8,7 @@ import type {
   MessageSegment,
   QqNotification,
 } from '../types/workspace'
+import { createSearchMatcher } from './search'
 
 export interface StoredMessage {
   cacheId: string
@@ -287,11 +288,7 @@ export class WorkspaceCache {
   async searchMessages(request: MessageSearchRequest): Promise<MessageSearchPage> {
     assertConversationScope(request.accountId, request.conversationId)
     const limit = Math.min(Math.max(Math.floor(request.limit ?? 50), 1), 100)
-    const terms = (request.query ?? '')
-      .trim()
-      .toLocaleLowerCase('zh-CN')
-      .split(/\s+/)
-      .filter(Boolean)
+    const matchesQuery = createSearchMatcher(request.query ?? '')
     const lower = request.startTimeMs ?? Dexie.minKey
     const upper = Math.min(request.endTimeMs ?? Number.MAX_SAFE_INTEGER, request.beforeTimestampMs ?? Number.MAX_SAFE_INTEGER)
     const rows = await this.database.messages
@@ -306,8 +303,7 @@ export class WorkspaceCache {
           }
         }
         if (request.senderId && row.message.senderId !== request.senderId) return false
-        const haystack = `${row.message.senderName}\n${row.message.content}`.toLocaleLowerCase('zh-CN')
-        return terms.every((term) => haystack.includes(term))
+        return matchesQuery(`${row.message.senderName}\n${row.message.content}`)
       })
       .limit(limit + 1)
       .toArray()
