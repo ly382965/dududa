@@ -5,8 +5,8 @@
 Branch: offline-runtime
 Parent: root
 Status: in_progress
-Verification: unverified
-Last sync: unix:1785785642
+Verification: verified
+Last sync: unix:1785812616
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
