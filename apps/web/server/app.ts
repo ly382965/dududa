@@ -7,10 +7,20 @@ import { pipeline } from 'node:stream/promises'
 
 import type { WorkspaceEvent } from '../src/types/workspace'
 import {
+  createGroupFolderSchema,
+  directoryQuerySchema,
+  groupFileMutationSchema,
+  groupFilesQuerySchema,
+  groupMembersQuerySchema,
   forwardRequestSchema,
   historyQuerySchema,
   nudgeRequestSchema,
+  renameGroupSchema,
+  resolveNotificationSchema,
   sendMessageRequestSchema,
+  setGroupAdminSchema,
+  setGroupCardSchema,
+  setGroupMuteAllSchema,
 } from '../src/schemas/workspace'
 import { OneBotHub } from './onebot-hub'
 import { readBrowserUpload } from './uploads'
@@ -53,9 +63,13 @@ function routeError(response: ServerResponse, error: unknown): void {
   const message = error instanceof Error ? error.message : '请求失败'
   const status = /未连接|连接已断开/.test(message)
     ? 503
+    : /无权|只允许|只有.+可以|无法确认当前 QQ 的群|@全体成员/.test(message)
+      ? 403
+      : /已经处理|正在处理|正在上传|结果未知|避免重复上传/.test(message)
+        ? 409
     : /不存在|not found/i.test(message)
       ? 404
-      : /游标|before|after|Range|参数无效|JSON|请求正文|消息内容|上传|消息标识|QQ 号|转发|文件类型|不匹配/.test(
+      : /游标|before|after|Range|参数无效|JSON|请求正文|消息内容|上传|消息标识|标识无效|标识与|QQ 号|转发|文件类型|不匹配/.test(
             message,
           )
         ? 400
@@ -63,11 +77,22 @@ function routeError(response: ServerResponse, error: unknown): void {
   json(response, status, { error: message })
 }
 
+function trustedLoopbackHost(value: string | undefined): boolean {
+  if (!value) return false
+  try {
+    const hostname = new URL(`http://${value}`).hostname.toLowerCase()
+    return hostname === 'localhost' || hostname === 'localhost.' || hostname === '127.0.0.1' || hostname === '[::1]'
+  } catch {
+    return false
+  }
+}
+
 function sameOrigin(request: IncomingMessage): boolean {
   const origin = request.headers.origin
-  if (!origin) return true
+  if (!origin || !trustedLoopbackHost(request.headers.host)) return false
   try {
-    return new URL(origin).host === request.headers.host
+    const parsed = new URL(origin)
+    return ['http:', 'https:'].includes(parsed.protocol) && parsed.host === request.headers.host
   } catch {
     return false
   }
@@ -305,6 +330,10 @@ export function createDududaServer(options: DududaServerOptions) {
     const method = request.method ?? 'GET'
     const url = new URL(request.url ?? '/', 'http://localhost')
     try {
+      if (!trustedLoopbackHost(request.headers.host)) {
+        json(response, 421, { error: '请求 Host 不在本地服务允许范围内' })
+        return
+      }
       if (method === 'GET' && url.pathname === '/api/health') {
         json(response, 200, options.hub.runtimeStatus())
         return
@@ -330,6 +359,338 @@ export function createDududaServer(options: DududaServerOptions) {
       const capabilitiesRoute = /^\/api\/accounts\/([^/]+)\/capabilities$/.exec(url.pathname)
       if (method === 'GET' && capabilitiesRoute) {
         json(response, 200, options.hub.capabilities(decodeURIComponent(capabilitiesRoute[1]!)))
+        return
+      }
+      const directoryRoute = /^\/api\/accounts\/([^/]+)\/directory$/.exec(url.pathname)
+      if (method === 'GET' && directoryRoute) {
+        const parsed = directoryQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '联系人请求参数无效' })
+          return
+        }
+        json(
+          response,
+          200,
+          await options.hub.directorySnapshot(decodeURIComponent(directoryRoute[1]!), parsed.data.refresh),
+        )
+        return
+      }
+      const notificationsRoute = /^\/api\/accounts\/([^/]+)\/notifications$/.exec(url.pathname)
+      if (method === 'GET' && notificationsRoute) {
+        const parsed = directoryQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '通知请求参数无效' })
+          return
+        }
+        json(
+          response,
+          200,
+          await options.hub.notificationInbox(decodeURIComponent(notificationsRoute[1]!), parsed.data.refresh),
+        )
+        return
+      }
+      const notificationActionRoute = /^\/api\/accounts\/([^/]+)\/notifications\/([^/]+)\/resolve$/.exec(
+        url.pathname,
+      )
+      if (method === 'POST' && notificationActionRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = resolveNotificationSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '通知处理参数无效' })
+          return
+        }
+        const notification = await options.hub.resolveNotification(
+          decodeURIComponent(notificationActionRoute[1]!),
+          decodeURIComponent(notificationActionRoute[2]!),
+          parsed.data.action,
+        )
+        json(response, 200, { notification })
+        return
+      }
+      const groupMembersRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members$/.exec(url.pathname)
+      if (method === 'GET' && groupMembersRoute) {
+        const parsed = groupMembersQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '群成员请求参数无效' })
+          return
+        }
+        json(
+          response,
+          200,
+          await options.hub.memberDirectory(
+            decodeURIComponent(groupMembersRoute[1]!),
+            decodeURIComponent(groupMembersRoute[2]!),
+            parsed.data.refresh,
+          ),
+        )
+        return
+      }
+      const groupMemberAdminRoute =
+        /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members\/([^/]+)\/admin$/.exec(url.pathname)
+      if (method === 'PUT' && groupMemberAdminRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = setGroupAdminSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '管理员设置参数无效' })
+          return
+        }
+        await options.hub.setGroupAdmin(
+          decodeURIComponent(groupMemberAdminRoute[1]!),
+          decodeURIComponent(groupMemberAdminRoute[2]!),
+          decodeURIComponent(groupMemberAdminRoute[3]!),
+          parsed.data.enabled,
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const groupMemberCardRoute =
+        /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members\/([^/]+)\/card$/.exec(url.pathname)
+      if (method === 'PUT' && groupMemberCardRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = setGroupCardSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '群名片参数无效' })
+          return
+        }
+        await options.hub.setGroupCard(
+          decodeURIComponent(groupMemberCardRoute[1]!),
+          decodeURIComponent(groupMemberCardRoute[2]!),
+          decodeURIComponent(groupMemberCardRoute[3]!),
+          parsed.data.card,
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const groupMemberRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members\/([^/]+)$/.exec(url.pathname)
+      if (method === 'DELETE' && groupMemberRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        await options.hub.kickGroupMember(
+          decodeURIComponent(groupMemberRoute[1]!),
+          decodeURIComponent(groupMemberRoute[2]!),
+          decodeURIComponent(groupMemberRoute[3]!),
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const groupMuteRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/mute-all$/.exec(url.pathname)
+      if (method === 'PUT' && groupMuteRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = setGroupMuteAllSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '全员禁言参数无效' })
+          return
+        }
+        await options.hub.setGroupMuteAll(
+          decodeURIComponent(groupMuteRoute[1]!),
+          decodeURIComponent(groupMuteRoute[2]!),
+          parsed.data.enabled,
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const groupRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)$/.exec(url.pathname)
+      if (method === 'PATCH' && groupRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = renameGroupSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '群名称参数无效' })
+          return
+        }
+        await options.hub.renameGroup(
+          decodeURIComponent(groupRoute[1]!),
+          decodeURIComponent(groupRoute[2]!),
+          parsed.data.name,
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      if (method === 'DELETE' && groupRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        await options.hub.quitGroup(
+          decodeURIComponent(groupRoute[1]!),
+          decodeURIComponent(groupRoute[2]!),
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const essenceRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/essence$/.exec(url.pathname)
+      if (method === 'GET' && essenceRoute) {
+        json(
+          response,
+          200,
+          await options.hub.essenceMessages(
+            decodeURIComponent(essenceRoute[1]!),
+            decodeURIComponent(essenceRoute[2]!),
+          ),
+        )
+        return
+      }
+      const announcementsRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/announcements$/.exec(url.pathname)
+      if (method === 'GET' && announcementsRoute) {
+        json(
+          response,
+          200,
+          await options.hub.groupAnnouncements(
+            decodeURIComponent(announcementsRoute[1]!),
+            decodeURIComponent(announcementsRoute[2]!),
+          ),
+        )
+        return
+      }
+      const announcementRoute =
+        /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/announcements\/([^/]+)$/.exec(url.pathname)
+      if (method === 'DELETE' && announcementRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        await options.hub.deleteGroupAnnouncement(
+          decodeURIComponent(announcementRoute[1]!),
+          decodeURIComponent(announcementRoute[2]!),
+          decodeURIComponent(announcementRoute[3]!),
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const groupFilesRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/files$/.exec(url.pathname)
+      if (method === 'GET' && groupFilesRoute) {
+        const parsed = groupFilesQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '群文件请求参数无效' })
+          return
+        }
+        json(
+          response,
+          200,
+          await options.hub.groupFiles(
+            decodeURIComponent(groupFilesRoute[1]!),
+            decodeURIComponent(groupFilesRoute[2]!),
+            parsed.data.parentId,
+            parsed.data.limit,
+          ),
+        )
+        return
+      }
+      const groupFilesUploadRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/files\/uploads$/.exec(url.pathname)
+      if (method === 'POST' && groupFilesUploadRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parentId = url.searchParams.get('parentId') || '/'
+        const upload = await readBrowserUpload(request)
+        json(
+          response,
+          201,
+          await options.hub.uploadGroupResource(
+            decodeURIComponent(groupFilesUploadRoute[1]!),
+            decodeURIComponent(groupFilesUploadRoute[2]!),
+            parentId,
+            upload,
+          ),
+        )
+        return
+      }
+      const groupFileUrlRoute =
+        /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/files\/([^/]+)\/url$/.exec(url.pathname)
+      if (method === 'GET' && groupFileUrlRoute) {
+        json(
+          response,
+          200,
+          await options.hub.groupFileDownloadUrl(
+            decodeURIComponent(groupFileUrlRoute[1]!),
+            decodeURIComponent(groupFileUrlRoute[2]!),
+            decodeURIComponent(groupFileUrlRoute[3]!),
+            url.searchParams.get('name') || '群文件',
+          ),
+        )
+        return
+      }
+      const groupFileRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/files\/([^/]+)$/.exec(url.pathname)
+      if (method === 'PATCH' && groupFileRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = groupFileMutationSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '群文件操作参数无效' })
+          return
+        }
+        await options.hub.mutateGroupFile(
+          decodeURIComponent(groupFileRoute[1]!),
+          decodeURIComponent(groupFileRoute[2]!),
+          decodeURIComponent(groupFileRoute[3]!),
+          parsed.data,
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      if (method === 'DELETE' && groupFileRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        await options.hub.deleteGroupFile(
+          decodeURIComponent(groupFileRoute[1]!),
+          decodeURIComponent(groupFileRoute[2]!),
+          decodeURIComponent(groupFileRoute[3]!),
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const groupFoldersRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/folders$/.exec(url.pathname)
+      if (method === 'POST' && groupFoldersRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = createGroupFolderSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '群文件夹参数无效' })
+          return
+        }
+        await options.hub.createGroupFolder(
+          decodeURIComponent(groupFoldersRoute[1]!),
+          decodeURIComponent(groupFoldersRoute[2]!),
+          parsed.data.name,
+        )
+        json(response, 201, { ok: true })
+        return
+      }
+      const groupFolderRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/folders\/([^/]+)$/.exec(url.pathname)
+      if (method === 'DELETE' && groupFolderRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        await options.hub.deleteGroupFolder(
+          decodeURIComponent(groupFolderRoute[1]!),
+          decodeURIComponent(groupFolderRoute[2]!),
+          decodeURIComponent(groupFolderRoute[3]!),
+        )
+        json(response, 200, { ok: true })
         return
       }
       const messagesRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/messages$/.exec(url.pathname)

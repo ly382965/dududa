@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { WorkspaceAdapter } from '../services/workspace-adapter'
 import type { Account, ChatMessage, Conversation, HistoryPage, WorkspaceEvent, WorkspaceSnapshot } from '../types/workspace'
@@ -69,7 +69,17 @@ function message(target: Conversation): ChatMessage {
   }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => (resolve = done))
+  return { promise, resolve }
+}
+
 describe('useWorkspace account-scoped state', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    window.localStorage.clear()
+  })
   it('loads the initially selected history once and deletes recalled cache data', async () => {
     const first = account('qq-111111111')
     const second = account('qq-222222222')
@@ -144,5 +154,114 @@ describe('useWorkspace account-scoped state', () => {
     expect(adapter.deleteCachedMessage).toHaveBeenCalledWith(first.id, firstConversation.id, historyMessage.id)
     expect(snapshot.messages[firstConversation.id]?.[0]).toMatchObject({ status: 'recalled', content: '此消息已撤回' })
     wrapper.unmount()
+  })
+
+  it('retains the system theme preference while following color-scheme changes', async () => {
+    let dark = true
+    const listeners = new Set<(event: MediaQueryListEvent) => void>()
+    vi.stubGlobal('matchMedia', vi.fn(() => ({
+      matches: dark,
+      media: '(prefers-color-scheme: dark)',
+      onchange: null,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => true,
+    })))
+    window.localStorage.setItem('dududa-theme', 'system')
+    const adapter = {
+      load: async () => ({
+        runtime: { status: 'waiting', message: 'waiting', reverseWebSocketPath: '/onebot/v11/ws' },
+        accounts: [],
+        conversations: [],
+        messages: {},
+        sessions: [],
+        agentMessages: {},
+        runs: [],
+        configs: {},
+      }),
+      subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+
+    expect(workspace.theme.value).toBe('system')
+    expect(workspace.resolvedTheme.value).toBe('dark')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    dark = false
+    listeners.forEach((listener) => listener({ matches: dark } as MediaQueryListEvent))
+    await flushPromises()
+    expect(workspace.theme.value).toBe('system')
+    expect(workspace.resolvedTheme.value).toBe('light')
+    expect(window.localStorage.getItem('dududa-theme')).toBe('system')
+    wrapper.unmount()
+  })
+
+  it('persists a group chat-file guard before the request finishes and clears it only on success', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const pending = deferred<{ kind: 'file'; name: string; size: number }>()
+    const sendFile = vi.fn()
+      .mockImplementationOnce(async () => pending.promise)
+      .mockResolvedValue({ kind: 'file', name: '真实文件.txt', size: 10 })
+    const adapter = {
+      load: async () => snapshot,
+      loadCachedMessages: async () => [],
+      loadHistory: async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false }),
+      loadDraft: async () => undefined,
+      markRead: async () => undefined,
+      sendFile,
+      subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    let firstWorkspace!: ReturnType<typeof useWorkspace>
+    const firstHost = mount(defineComponent({
+      setup() {
+        firstWorkspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    const firstFile = new File(['real bytes'], '真实文件.txt', { type: 'text/plain' })
+    const firstSend = firstWorkspace.sendFiles([firstFile])
+    await vi.waitFor(() => expect(sendFile).toHaveBeenCalledTimes(1))
+    firstHost.unmount()
+
+    let secondWorkspace!: ReturnType<typeof useWorkspace>
+    const secondHost = mount(defineComponent({
+      setup() {
+        secondWorkspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await expect(secondWorkspace.sendFiles([
+      new File(['real bytes'], '真实文件.txt', { type: 'text/plain' }),
+    ])).resolves.toBe(false)
+    expect(sendFile).toHaveBeenCalledTimes(1)
+
+    pending.resolve({ kind: 'file', name: '真实文件.txt', size: 10 })
+    await expect(firstSend).resolves.toBe(true)
+    await expect(secondWorkspace.sendFiles([
+      new File(['real bytes'], '真实文件.txt', { type: 'text/plain' }),
+    ])).resolves.toBe(true)
+    expect(sendFile).toHaveBeenCalledTimes(2)
+    secondHost.unmount()
   })
 })

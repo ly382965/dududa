@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import {
+  Bell,
   Bot,
+  Contact,
   Inbox,
-  MessageCircleMore,
+  MessageCircle,
   Moon,
   Plus,
   Settings,
@@ -21,6 +23,8 @@ defineProps<{
   mobilePanel: MobilePanel
   theme: ThemeMode
   agentActive: boolean
+  activeRoute: 'chat' | 'contacts' | 'notifications' | 'settings'
+  notificationCount: number
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +34,7 @@ const emit = defineEmits<{
   openAgent: []
   openSettings: []
   addAccount: []
+  navigate: [route: 'chat' | 'contacts' | 'notifications' | 'settings']
 }>()
 </script>
 
@@ -39,6 +44,13 @@ const emit = defineEmits<{
       <Bot :size="22" stroke-width="2.1" />
       <span class="brand-mark__dot" />
     </div>
+
+    <nav class="route-nav" aria-label="QQ 工作区">
+      <button class="rail-button" :class="{ active: activeRoute === 'chat' }" type="button" title="消息" aria-label="消息" @click="emit('navigate', 'chat')"><MessageCircle :size="19" /></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'contacts' }" type="button" title="联系人" aria-label="联系人" @click="emit('navigate', 'contacts')"><Contact :size="19" /></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'notifications' }" type="button" title="通知" aria-label="通知" @click="emit('navigate', 'notifications')"><Bell :size="19" /><span v-if="notificationCount" class="rail-badge">{{ notificationCount > 99 ? '99+' : notificationCount }}</span></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'settings' }" type="button" title="设置" aria-label="设置" @click="emit('navigate', 'settings')"><Settings :size="19" /></button>
+    </nav>
 
     <nav class="account-list" aria-label="QQ 账号">
       <button
@@ -85,28 +97,30 @@ const emit = defineEmits<{
         <Moon v-if="theme === 'light'" :size="19" />
         <Sun v-else :size="19" />
       </button>
-      <button class="rail-button" type="button" title="工作台设置" aria-label="工作台设置" @click="emit('openSettings')">
-        <Settings :size="19" />
-      </button>
     </div>
 
     <nav class="mobile-nav" aria-label="移动端工作区导航">
-      <button :class="{ active: mobilePanel === 'inbox' }" type="button" @click="emit('setMobilePanel', 'inbox')">
+      <button :class="{ active: activeRoute === 'chat' }" type="button" @click="emit('navigate', 'chat'); emit('setMobilePanel', 'inbox')">
         <Inbox :size="21" />
         <span>消息</span>
         <b v-if="totalUnread">{{ totalUnread }}</b>
       </button>
-      <button :class="{ active: mobilePanel === 'chat' }" type="button" @click="emit('setMobilePanel', 'chat')">
-        <MessageCircleMore :size="21" />
-        <span>聊天</span>
+      <button :class="{ active: activeRoute === 'contacts' }" type="button" @click="emit('navigate', 'contacts')">
+        <Contact :size="21" />
+        <span>联系人</span>
+      </button>
+      <button :class="{ active: activeRoute === 'notifications' }" type="button" @click="emit('navigate', 'notifications')">
+        <Bell :size="21" />
+        <span>通知</span>
+        <b v-if="notificationCount">{{ notificationCount }}</b>
       </button>
       <button :class="{ active: mobilePanel === 'agent' }" type="button" @click="emit('setMobilePanel', 'agent')">
         <Sparkles :size="21" />
         <span>Agent</span>
       </button>
-      <button type="button" @click="emit('openSettings')">
+      <button :class="{ active: activeRoute === 'settings' }" type="button" @click="emit('navigate', 'settings')">
         <Settings :size="21" />
-        <span>配置</span>
+        <span>设置</span>
       </button>
     </nav>
   </aside>
@@ -150,6 +164,7 @@ const emit = defineEmits<{
 }
 
 .account-list,
+.route-nav,
 .rail-tools {
   display: flex;
   width: 100%;
@@ -159,10 +174,16 @@ const emit = defineEmits<{
 }
 
 .account-list {
-  margin-top: 20px;
+  margin-top: 12px;
   overflow-y: auto;
   padding: 3px 0;
   scrollbar-width: none;
+}
+
+.route-nav {
+  margin-top: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 .account-list::-webkit-scrollbar {
@@ -273,6 +294,7 @@ const emit = defineEmits<{
   }
 
   .brand-mark,
+  .route-nav,
   .account-list,
   .rail-tools {
     display: none;
@@ -282,7 +304,7 @@ const emit = defineEmits<{
     display: grid;
     width: 100%;
     height: 100%;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .mobile-nav button {

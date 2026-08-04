@@ -1,13 +1,16 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App.vue'
+import { router } from './router'
 import type { Account, ChatMessage, WorkspaceSnapshot } from './types/workspace'
 
 class FakeEventSource {
   addEventListener() {}
   close() {}
 }
+const mountedApps: Array<ReturnType<typeof mount>> = []
 
 const account = {
   id: 'qq-123456789',
@@ -35,6 +38,15 @@ const account = {
       'message.nudge',
     ].map((name) => [name, { status: 'supported' }]),
   ) as Account['capabilities'],
+}
+
+const secondAccount: Account = {
+  ...account,
+  id: 'qq-223456789',
+  botId: '223456789',
+  name: '二号真实机器人',
+  shortName: '二号机器人',
+  avatar: '/api/media/avatar/user/223456789',
 }
 
 const conversations = [
@@ -85,7 +97,7 @@ const historyMessage: ChatMessage = {
   mine: false,
 }
 
-function workspace(accounts = [account]): WorkspaceSnapshot {
+function workspace(accounts: Account[] = [account]): WorkspaceSnapshot {
   return {
     runtime: {
       status: accounts.length ? 'connected' : 'waiting',
@@ -143,8 +155,11 @@ function mockApi(snapshot = workspace()) {
   return fetchMock
 }
 
-async function mountApp() {
-  const wrapper = mount(App)
+async function mountApp(path = '/chat') {
+  await router.replace(path)
+  await router.isReady()
+  const wrapper = mount(App, { global: { plugins: [createPinia(), router] } })
+  mountedApps.push(wrapper)
   await flushPromises()
   await flushPromises()
   return wrapper
@@ -154,6 +169,9 @@ describe('Dududa NapCat workspace', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.stubGlobal('EventSource', FakeEventSource)
+  })
+  afterEach(() => {
+    mountedApps.splice(0).forEach((wrapper) => wrapper.unmount())
   })
 
   it('shows the NapCat connection state when no account is online', async () => {
@@ -207,5 +225,91 @@ describe('Dududa NapCat workspace', () => {
         body: JSON.stringify({ segments: [{ type: 'text', text: '真实发送测试' }] }),
       }),
     )
+  })
+
+  it('opens a deep-linked conversation before reading or marking any other conversation', async () => {
+    const fetchMock = mockApi()
+    const wrapper = await mountApp('/chat/qq-123456789/private/456789012')
+    const requested = fetchMock.mock.calls.map(([input]) => String(input))
+
+    expect(wrapper.text()).toContain('真实好友')
+    expect(requested.some((path) => path.includes('/conversations/private/456789012/messages'))).toBe(true)
+    expect(requested.some((path) => path.includes('/conversations/group/345678901/messages'))).toBe(false)
+    expect(requested.some((path) => path.includes('/conversations/group/345678901/read'))).toBe(false)
+  })
+
+  it('keeps mobile panel state canonical with chat routes and preserves the deep link for Agent', async () => {
+    mockApi()
+    const wrapper = await mountApp('/chat/qq-123456789/group/345678901')
+    expect({
+      route: router.currentRoute.value.fullPath,
+      classes: wrapper.get('.workspace-shell').classes(),
+    }).toMatchObject({
+      route: '/chat/qq-123456789/group/345678901',
+      classes: expect.arrayContaining(['mobile-panel--chat']),
+    })
+
+    await wrapper.get('button[aria-label="打开 Agent Console"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/chat/qq-123456789/group/345678901')
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--agent')
+
+    await wrapper.get('.agent-panel .mobile-back').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/chat/qq-123456789/group/345678901')
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--chat')
+
+    await wrapper.get('.chat-panel .mobile-back').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/chat')
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--inbox')
+  })
+
+  it('returns account filters from a deep link to the bare chat inbox route', async () => {
+    mockApi()
+    const wrapper = await mountApp('/chat/qq-123456789/group/345678901')
+
+    await wrapper.get('button[aria-label="真实机器人"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/chat')
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--inbox')
+
+    await router.replace('/chat/qq-123456789/group/345678901')
+    await flushPromises()
+    await flushPromises()
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--chat')
+
+    await wrapper.get('button[aria-label="全部账号"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/chat')
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--inbox')
+  })
+
+  it('switches the management account without selecting or marking a QQ chat as read', async () => {
+    const snapshot = workspace([account, secondAccount])
+    snapshot.conversations = [
+      ...conversations,
+      {
+        ...conversations[0]!,
+        id: 'qq-223456789:group:445678901',
+        accountId: secondAccount.id,
+        peerId: '445678901',
+        name: '二号真实群',
+      },
+    ]
+    const fetchMock = mockApi(snapshot)
+    const wrapper = await mountApp('/contacts')
+    const readCount = () => fetchMock.mock.calls.filter(([input]) => String(input).endsWith('/read')).length
+    const baseline = readCount()
+
+    await wrapper.get('select[aria-label="管理操作账号"]').setValue(secondAccount.id)
+    await flushPromises()
+    expect(readCount()).toBe(baseline)
+    expect(wrapper.get('select[aria-label="管理操作账号"]').element).toHaveProperty('value', secondAccount.id)
+
+    await wrapper.get('button[aria-label="真实机器人"]').trigger('click')
+    await flushPromises()
+    expect(readCount()).toBe(baseline)
+    expect(router.currentRoute.value.fullPath).toBe('/contacts')
   })
 })

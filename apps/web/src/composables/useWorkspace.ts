@@ -1,6 +1,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { ComposerContentSegment } from '../services/composer-content'
+import {
+  clearUncertainGroupUpload,
+  groupUploadFingerprint,
+  markUncertainGroupUpload,
+  uncertainGroupUploadBlocked,
+} from '../services/upload-guard'
 import { workspaceAdapter, type WorkspaceAdapter } from '../services/workspace-adapter'
 import type {
   Account,
@@ -58,7 +64,7 @@ function messageIdentity(message: ChatMessage): string {
   return message.id
 }
 
-export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
+export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initialConversationId = '') {
   const snapshot = ref<WorkspaceSnapshot>(emptySnapshot())
   const loading = ref(true)
   const connectionError = ref('')
@@ -67,7 +73,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
   const sendingMessage = ref(false)
   const uploadStatus = ref('')
   const selectedAccountId = ref('all')
-  const selectedConversationId = ref('')
+  const selectedConversationId = ref(initialConversationId)
   const selectedSessionId = ref('')
   const searchQuery = ref('')
   const unreadOnly = ref(false)
@@ -93,12 +99,19 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     >
   >({})
   const fallbackConfig = ref(defaultConfig())
-  const theme = ref<ThemeMode>(
-    typeof window !== 'undefined' && window.localStorage.getItem('dududa-theme') === 'dark' ? 'dark' : 'light',
+  const storedTheme = typeof window !== 'undefined' ? window.localStorage.getItem('dududa-theme') : null
+  const theme = ref<ThemeMode>(storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system' ? storedTheme : 'system')
+  const systemDark = ref(
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches,
+  )
+  const resolvedTheme = computed<'light' | 'dark'>(() =>
+    theme.value === 'system' ? (systemDark.value ? 'dark' : 'light') : theme.value,
   )
   let toastTimer: ReturnType<typeof setTimeout> | undefined
   let unsubscribe: (() => void) | undefined
+  let colorSchemeQuery: MediaQueryList | undefined
   let messageLoadVersion = 0
+  const updateSystemTheme = (event: MediaQueryListEvent | MediaQueryList) => (systemDark.value = event.matches)
 
   const accounts = computed(() => snapshot.value.accounts)
   const conversations = computed(() => snapshot.value.conversations)
@@ -170,7 +183,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
   }
 
   function applyTheme(): void {
-    if (typeof document !== 'undefined') document.documentElement.dataset.theme = theme.value
+    if (typeof document !== 'undefined') document.documentElement.dataset.theme = resolvedTheme.value
     if (typeof window !== 'undefined') window.localStorage.setItem('dududa-theme', theme.value)
   }
 
@@ -240,7 +253,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     next.configs = { ...previous.configs, ...next.configs }
     snapshot.value = next
     const stillSelected = next.conversations.some((item) => item.id === selectedConversationId.value)
-    if (!stillSelected) selectedConversationId.value = next.conversations[0]?.id ?? ''
+    if (!stillSelected && !selectedConversationId.value) selectedConversationId.value = next.conversations[0]?.id ?? ''
     if (selectedAccountId.value !== 'all' && !next.accounts.some((item) => item.id === selectedAccountId.value)) {
       selectedAccountId.value = 'all'
     }
@@ -349,6 +362,23 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     void loadConversationMessages(conversation)
     void loadConversationDraft(conversation)
     if (openChat) mobilePanel.value = 'chat'
+  }
+
+  function selectDefaultConversation(openChat = false): void {
+    const next = conversations.value.find(
+      (item) => selectedAccountId.value === 'all' || item.accountId === selectedAccountId.value,
+    )
+    if (next) selectConversation(next.id, openChat)
+    else selectedConversationId.value = ''
+  }
+
+  function openConversation(conversation: Conversation, openChat = true): void {
+    const expectedId = `${conversation.accountId}:${conversation.type}:${conversation.peerId}`
+    if (conversation.id !== expectedId) throw new Error('会话账号、场景或 QQ 标识不匹配')
+    const existing = snapshot.value.conversations.find((item) => item.id === conversation.id)
+    if (!existing) snapshot.value.conversations.push({ ...conversation })
+    if (selectedConversationId.value !== conversation.id) selectConversation(conversation.id, openChat)
+    else if (openChat) mobilePanel.value = 'chat'
   }
 
   function selectSession(sessionId: string): void {
@@ -468,7 +498,24 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
           void adapter.cacheMessages(conversation, [message])
         } else {
           requireCapability(conversation, 'message.send.file')
-          await adapter.sendFile(conversation, file)
+          if (conversation.type === 'group') {
+            const fingerprint = await groupUploadFingerprint(
+              conversation.accountId,
+              conversation.peerId,
+              '/',
+              file,
+            )
+            if (uncertainGroupUploadBlocked(fingerprint)) {
+              throw new Error('相同群文件正在上传或上次结果未知；为避免重复上传，请等待 10 分钟并先刷新群文件列表')
+            }
+            if (!markUncertainGroupUpload(fingerprint)) {
+              throw new Error('无法写入群文件防重状态；为避免重复上传，本次请求未发送到 NapCat')
+            }
+            await adapter.sendFile(conversation, file)
+            clearUncertainGroupUpload(fingerprint)
+          } else {
+            await adapter.sendFile(conversation, file)
+          }
         }
       }
       notify(`${files.length} 个文件已由 NapCat 发送`)
@@ -622,7 +669,11 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
   }
 
   function toggleTheme(): void {
-    theme.value = theme.value === 'light' ? 'dark' : 'light'
+    theme.value = resolvedTheme.value === 'light' ? 'dark' : 'light'
+  }
+
+  function setTheme(mode: ThemeMode): void {
+    theme.value = mode
   }
 
   async function handleWorkspaceEvent(event: WorkspaceEvent): Promise<void> {
@@ -656,6 +707,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
       void adapter.deleteCachedMessage(event.accountId, event.conversationId, event.messageId)
       return
     }
+    if (event.type !== 'message.created') return
     const existing = conversations.value.find((item) => item.id === event.conversation.id)
     if (event.message.accountId !== event.conversation.accountId || event.message.conversationId !== event.conversation.id) return
     if (existing) {
@@ -687,13 +739,18 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     }
   }
 
-  watch(theme, applyTheme, { immediate: true })
+  watch([theme, resolvedTheme], applyTheme, { immediate: true })
   onMounted(async () => {
+    colorSchemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)')
+    colorSchemeQuery?.addEventListener('change', updateSystemTheme)
     unsubscribe = adapter.subscribe((event) => void handleWorkspaceEvent(event))
     await load()
   })
   onBeforeUnmount(() => {
     unsubscribe?.()
+    if (colorSchemeQuery) {
+      colorSchemeQuery.removeEventListener('change', updateSystemTheme)
+    }
     if (toastTimer) clearTimeout(toastTimer)
   })
 
@@ -731,12 +788,15 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     agentCollapsed,
     toast,
     theme,
+    resolvedTheme,
     totalUnread,
     onlineCount,
     agentAvailable,
     runtime: computed(() => snapshot.value.runtime),
     selectAccount,
     selectConversation,
+    selectDefaultConversation,
+    openConversation,
     selectSession,
     openAgent,
     toggleAgent,
@@ -765,6 +825,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     newSession,
     saveSettings,
     toggleTheme,
+    setTheme,
     load,
     notify,
   }

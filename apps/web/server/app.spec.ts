@@ -1,4 +1,5 @@
 import type { AddressInfo } from 'node:net'
+import { request as httpRequest } from 'node:http'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WebSocket } from 'ws'
@@ -49,6 +50,36 @@ async function closeServer(server: ReturnType<typeof createDududaServer>): Promi
   await new Promise<void>((resolve) => server.close(() => resolve()))
 }
 
+async function rawHttpRequest(
+  port: number,
+  path: string,
+  options: { method?: string; host: string; origin?: string; body?: string },
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest({
+      hostname: '127.0.0.1',
+      port,
+      path,
+      method: options.method ?? 'GET',
+      headers: {
+        Host: options.host,
+        ...(options.origin ? { Origin: options.origin } : {}),
+        ...(options.body ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(options.body) } : {}),
+      },
+    }, (response) => {
+      const chunks: Buffer[] = []
+      response.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+      response.on('end', () => resolve({
+        status: response.statusCode ?? 0,
+        body: Buffer.concat(chunks).toString('utf8'),
+      }))
+    })
+    request.once('error', reject)
+    if (options.body) request.write(options.body)
+    request.end()
+  })
+}
+
 async function waitFor(predicate: () => Promise<boolean>, timeoutMs = 2_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -58,12 +89,23 @@ async function waitFor(predicate: () => Promise<boolean>, timeoutMs = 2_000): Pr
   throw new Error('condition timed out')
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => (resolve = done))
+  return { promise, resolve }
+}
+
 interface FakeNapCatOptions {
   selfId?: string
   loginSelfId?: string
   reportSentEvent?: boolean
   sendMessageDelayMs?: number
   appVersion?: string
+  selfRole?: string
+  atAllAllowed?: boolean
+  packetAvailable?: boolean
+  selfMemberGroupId?: string
+  groupFileCount?: number
 }
 
 interface FakeNapCatState {
@@ -72,7 +114,13 @@ interface FakeNapCatState {
   friends: unknown[]
   recent: unknown[]
   failedActions: Set<string>
+  silentActions: Set<string>
   reportSentEvent: boolean
+  categories: unknown[]
+  failureMessage: string
+  failureWording: string
+  groupRequestChecked: boolean
+  memberListGate?: Promise<void>
 }
 
 function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
@@ -98,7 +146,18 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
       },
     ],
     failedActions: new Set(),
+    silentActions: new Set(),
     reportSentEvent: options.reportSentEvent ?? false,
+    categories: [
+      {
+        categoryId: 1,
+        categoryName: '我的好友',
+        buddyList: [{ user_id: 456789012, nickname: '真实好友', remark: '好友备注' }],
+      },
+    ],
+    failureMessage: 'fixture failure',
+    failureWording: 'fixture wording',
+    groupRequestChecked: false,
   }
   const socket = new WebSocket(`ws://127.0.0.1:${port}/onebot/v11/ws`, {
     headers: {
@@ -119,8 +178,16 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
   socket.on('message', (payload) => {
     const request = JSON.parse(payload.toString()) as ActionRequest
     actions.push(request)
+    if (state.silentActions.has(request.action)) return
     if (state.failedActions.has(request.action)) {
-      socket.send(JSON.stringify({ status: 'failed', retcode: 1200, data: null, message: 'fixture failure', echo: request.echo }))
+      socket.send(JSON.stringify({
+        status: 'failed',
+        retcode: 1200,
+        data: null,
+        message: state.failureMessage,
+        wording: state.failureWording,
+        echo: request.echo,
+      }))
       return
     }
     let data: unknown
@@ -134,17 +201,127 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
       case 'get_version_info':
         data = { app_name: 'NapCat.Onebot', protocol_version: 'v11', app_version: options.appVersion ?? '4.18.13' }
         break
+      case 'nc_get_packet_status':
+        if (options.packetAvailable === false) {
+          socket.send(JSON.stringify({ status: 'failed', retcode: 1200, data: null, message: 'packet unavailable', echo: request.echo }))
+          return
+        }
+        data = null
+        break
       case 'get_group_list':
         data = state.groups
         break
       case 'get_friend_list':
         data = state.friends
         break
+      case 'get_friends_with_category':
+        data = state.categories
+        break
       case 'get_recent_contact':
         data = state.recent
         break
       case 'get_group_msg_history':
         data = { messages: [realGroupMessage('来自真实 NapCat 的消息', { self_id: Number(connectionSelfId) })] }
+        break
+      case 'get_group_member_list':
+        data = [
+          {
+            group_id: options.selfMemberGroupId ?? String(request.params.group_id ?? 345678901),
+            user_id: Number(connectionSelfId),
+            nickname: '真实机器人',
+            card: '机器人群名片',
+            role: options.selfRole ?? 'owner',
+            level: '12',
+            join_time: 1_700_000_000,
+            last_sent_time: 1_785_742_400,
+          },
+          {
+            group_id: String(request.params.group_id ?? 345678901),
+            user_id: 234567890,
+            nickname: '群成员',
+            card: '测试成员',
+            role: 'member',
+            level: '8',
+            join_time: 1_710_000_000,
+            last_sent_time: 1_785_742_300,
+          },
+        ]
+        break
+      case 'get_group_at_all_remain':
+        data = {
+          can_at_all: options.atAllAllowed ?? true,
+          remain_at_all_count_for_group: options.atAllAllowed === false ? 0 : 1,
+          remain_at_all_count_for_self: options.atAllAllowed === false ? 0 : 1,
+        }
+        break
+      case 'get_group_system_msg':
+        data = {
+          invited_requests: [],
+          join_requests: [
+            {
+              request_id: 9001,
+              invitor_uin: 567890123,
+              invitor_nick: '真实申请者',
+              actor: 0,
+              group_id: 345678901,
+              group_name: '真实测试群',
+              message: '申请理由',
+              checked: state.groupRequestChecked,
+            },
+          ],
+        }
+        break
+      case 'get_essence_msg_list':
+        data = [
+          {
+            msg_seq: 101,
+            sender_id: 234567890,
+            sender_nick: '测试成员',
+            operator_id: Number(connectionSelfId),
+            operator_nick: '真实机器人',
+            message_id: 101,
+            operator_time: 1_785_742_400,
+            content: [{ type: 'text', data: { text: '真实精华消息' } }],
+          },
+        ]
+        break
+      case '_get_group_notice':
+        data = [
+          {
+            notice_id: 'notice-real-1',
+            sender_id: Number(connectionSelfId),
+            publish_time: 1_785_742_400,
+            message: { text: '真实群公告', images: [] },
+            read_num: 12,
+          },
+        ]
+        break
+      case 'get_group_root_files':
+        data = {
+          files: options.groupFileCount === undefined
+            ? [
+                {
+                  file_id: '/real-file-id',
+                  file_name: '真实文件.txt',
+                  file_size: 1024,
+                  download_times: 0,
+                  uploader: Number(connectionSelfId),
+                },
+              ]
+            : Array.from({ length: options.groupFileCount }, (_, index) => ({
+                file_id: `/real-file-${index}`,
+                file_name: `真实文件-${index}.txt`,
+                file_size: index + 1,
+                download_times: 0,
+                uploader: Number(connectionSelfId),
+              })),
+          folders: options.groupFileCount === undefined
+            ? [{ folder_id: '/real-folder-id', folder_name: '真实文件夹', total_file_count: 1 }]
+            : [],
+        }
+        break
+      case 'get_group_files_by_folder':
+        data = { files: [], folders: [] }
         break
       case 'get_friend_msg_history':
         data = {
@@ -198,6 +375,20 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
       case 'delete_msg':
       case 'group_poke':
       case 'friend_poke':
+      case 'set_friend_add_request':
+      case 'set_group_add_request':
+      case 'set_group_admin':
+      case 'set_group_kick':
+      case 'set_group_card':
+      case 'set_group_name':
+      case 'set_group_whole_ban':
+      case 'set_group_leave':
+      case '_del_group_notice':
+      case 'move_group_file':
+      case 'rename_group_file':
+      case 'delete_group_file':
+      case 'create_group_file_folder':
+      case 'delete_group_folder':
         data = null
         break
       case 'forward_group_single_msg':
@@ -271,7 +462,12 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         return
     }
     const response = JSON.stringify({ status: 'ok', retcode: 0, data, message: '', echo: request.echo })
-    if (options.sendMessageDelayMs && ['send_group_msg', 'send_private_msg'].includes(request.action)) {
+    if (state.memberListGate && request.action === 'get_group_member_list') {
+      const gate = state.memberListGate
+      void gate.then(() => {
+        if (socket.readyState === WebSocket.OPEN) socket.send(response)
+      })
+    } else if (options.sendMessageDelayMs && ['send_group_msg', 'send_private_msg'].includes(request.action)) {
       setTimeout(() => socket.send(response), options.sendMessageDelayMs)
     } else {
       socket.send(response)
@@ -297,6 +493,44 @@ describe('Dududa NapCat gateway', () => {
     const response = await fetch(`${baseUrl}/api/workspace`)
 
     expect(response.status).toBe(200)
+  })
+
+  it('rejects DNS-rebinding hosts and browser writes without a same-origin header', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const rebound = await rawHttpRequest(port, '/api/workspace', {
+      host: 'attacker.example',
+      origin: 'http://attacker.example',
+    })
+    expect(rebound.status).toBe(421)
+
+    const account = `qq-${selfId}`
+    const noOrigin = await fetch(
+      `${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: '不应发送' }),
+      },
+    )
+    expect(noOrigin.status).toBe(403)
+
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const hostileOrigin = await rawHttpRequest(
+      port,
+      `/api/accounts/${account}/conversations/group/345678901/messages`,
+      {
+        method: 'POST',
+        host: `127.0.0.1:${port}`,
+        origin: 'http://attacker.example',
+        body: JSON.stringify({ content: '不应发送的跨站消息' }),
+      },
+    )
+    expect(hostileOrigin.status).toBe(403)
+    expect(napcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+    napcat.socket.close()
   })
 
   it('rejects reverse websocket clients with the wrong token', async () => {
@@ -1027,6 +1261,749 @@ describe('Dududa NapCat gateway', () => {
 
     expect(response.status).toBe(201)
     expect(created.filter((event) => event.message?.id === `${account}:group:345678901:102`)).toHaveLength(1)
+    napcat.socket.close()
+  })
+
+  it('serves real account-scoped contacts, group requests, and authoritative member permissions', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+
+    const directory = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/directory?refresh=1`)
+    ).json()) as {
+      accountId: string
+      friends: Array<{ userId: string; categoryName?: string }>
+      groups: Array<{ groupId: string }>
+    }
+    expect(directory).toMatchObject({ accountId: account })
+    expect(directory.friends).toContainEqual(expect.objectContaining({ userId: '456789012', categoryName: '我的好友' }))
+    expect(directory.groups).toContainEqual(expect.objectContaining({ groupId: '345678901' }))
+
+    const members = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/groups/345678901/members?refresh=1`)
+    ).json()) as {
+      selfUserId: string
+      selfRole: string
+      members: Array<{ userId: string; role: string }>
+      permissions: Record<string, { allowed: boolean }>
+    }
+    expect(members).toMatchObject({ selfUserId: selfId, selfRole: 'owner' })
+    expect(members.members).toContainEqual(expect.objectContaining({ userId: '234567890', role: 'member' }))
+    expect(members.permissions.mentionAll).toEqual({ allowed: true })
+    expect(napcat.actions.some((item) => item.action === 'get_group_at_all_remain')).toBe(true)
+
+    const capabilities = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+    ).json()) as { actions: Record<string, { status: string }> }
+    expect(capabilities.actions['request.friend.history']?.status).toBe('unsupported')
+    expect(capabilities.actions['request.friend.resolve']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['request.group.resolve']).toEqual({ status: 'supported' })
+
+    const inbox = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/notifications?refresh=1`)
+    ).json()) as { items: Array<{ id: string; kind: string; userId: string; state: string }> }
+    const request = inbox.items.find((item) => item.kind === 'group-request')!
+    expect(request).toMatchObject({ userId: '567890123', state: 'pending' })
+    expect(JSON.stringify(request)).not.toContain('9001')
+
+    const resolved = await fetch(
+      `${baseUrl}/api/accounts/${account}/notifications/${encodeURIComponent(request.id)}/resolve`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: JSON.stringify({ action: 'reject' }),
+      },
+    )
+    expect(resolved.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_add_request').at(-1)?.params).toEqual({
+      flag: '9001',
+      approve: false,
+      reason: '',
+    })
+    const afterRefresh = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/notifications?refresh=1`)
+    ).json()) as { items: Array<{ id: string; state: string; actionable: boolean }> }
+    expect(afterRefresh.items.find((item) => item.id === request.id)).toMatchObject({
+      state: 'rejected',
+      actionable: false,
+    })
+    napcat.socket.close()
+  })
+
+  it('refuses group-request resolution when the connected QQ is only a group member', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { selfRole: 'member' })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const inbox = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/notifications?refresh=1`)
+    ).json()) as {
+      items: Array<{ id: string; kind: string; actionable: boolean; actionReason?: string }>
+    }
+    const request = inbox.items.find((item) => item.kind === 'group-request')!
+    expect(request).toMatchObject({
+      actionable: false,
+      actionReason: expect.stringContaining('群主或管理员'),
+    })
+
+    const denied = await fetch(
+      `${baseUrl}/api/accounts/${account}/notifications/${encodeURIComponent(request.id)}/resolve`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: JSON.stringify({ action: 'accept' }),
+      },
+    )
+    expect(denied.status).toBe(403)
+    expect(napcat.actions.some((item) => item.action === 'set_group_add_request')).toBe(false)
+    napcat.socket.close()
+  })
+
+  it('does not resolve a group request that a concurrent refresh already marked handled', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const notificationUrl = `${baseUrl}/api/accounts/${account}/notifications`
+    const inbox = (await (await fetch(`${notificationUrl}?refresh=1`)).json()) as {
+      items: Array<{ id: string; kind: string }>
+    }
+    const request = inbox.items.find((item) => item.kind === 'group-request')!
+    const memberGate = deferred<void>()
+    napcat.state.memberListGate = memberGate.promise
+    const memberLookups = napcat.actions.filter((item) => item.action === 'get_group_member_list').length
+    const resolving = fetch(`${notificationUrl}/${encodeURIComponent(request.id)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ action: 'accept' }),
+    })
+    await waitFor(async () =>
+      napcat.actions.filter((item) => item.action === 'get_group_member_list').length > memberLookups,
+    )
+
+    napcat.state.groupRequestChecked = true
+    const refreshed = await fetch(`${notificationUrl}?refresh=1`)
+    expect(refreshed.status).toBe(200)
+    expect((await refreshed.json()) as { items: Array<{ state: string }> }).toMatchObject({
+      items: expect.arrayContaining([expect.objectContaining({ state: 'handled' })]),
+    })
+    napcat.state.memberListGate = undefined
+    memberGate.resolve()
+    expect((await resolving).status).toBe(409)
+    expect(napcat.actions.some((item) => item.action === 'set_group_add_request')).toBe(false)
+    napcat.socket.close()
+  })
+
+  it('keeps a request retryable when role preflight is interrupted before the mutation starts', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const notificationUrl = `${baseUrl}/api/accounts/${account}/notifications`
+    const inbox = (await (await fetch(`${notificationUrl}?refresh=1`)).json()) as {
+      items: Array<{ id: string; kind: string }>
+    }
+    const request = inbox.items.find((item) => item.kind === 'group-request')!
+    napcat.state.silentActions.add('get_group_member_list')
+    const memberLookups = napcat.actions.filter((item) => item.action === 'get_group_member_list').length
+    const resolving = fetch(`${notificationUrl}/${encodeURIComponent(request.id)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ action: 'accept' }),
+    })
+    await waitFor(async () =>
+      napcat.actions.filter((item) => item.action === 'get_group_member_list').length > memberLookups,
+    )
+
+    const replacement = connectFakeNapCat(port)
+    await replacement.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    expect((await resolving).status).toBe(503)
+    const after = (await (await fetch(notificationUrl)).json()) as {
+      items: Array<{ id: string; state: string; actionable: boolean }>
+    }
+    expect(after.items.find((item) => item.id === request.id)).toMatchObject({ state: 'pending' })
+    expect(napcat.actions.some((item) => item.action === 'set_group_add_request')).toBe(false)
+    expect(replacement.actions.some((item) => item.action === 'set_group_add_request')).toBe(false)
+    replacement.socket.close()
+  })
+
+  it('does not grant group-request authority from a member row belonging to another group', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { selfMemberGroupId: '456789013' })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const notificationUrl = `${baseUrl}/api/accounts/${account}/notifications`
+    const inbox = (await (await fetch(`${notificationUrl}?refresh=1`)).json()) as {
+      items: Array<{ id: string; kind: string; actionable: boolean }>
+    }
+    const request = inbox.items.find((item) => item.kind === 'group-request')!
+    expect(request.actionable).toBe(false)
+
+    const denied = await fetch(`${notificationUrl}/${encodeURIComponent(request.id)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ action: 'accept' }),
+    })
+    expect(denied.status).toBe(403)
+    const renameDenied = await fetch(`${baseUrl}/api/accounts/${account}/groups/345678901`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ name: '不应授权的群名' }),
+    })
+    expect(renameDenied.status).toBe(403)
+    expect(napcat.actions.some((item) => item.action === 'set_group_add_request')).toBe(false)
+    expect(napcat.actions.some((item) => item.action === 'set_group_name')).toBe(false)
+    napcat.socket.close()
+  })
+
+  it('does not treat an unknown NapCat group role as an ordinary member or manager', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { selfRole: 'future-owner' })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const groupBase = `${baseUrl}/api/accounts/${account}/groups/345678901`
+    const members = (await (await fetch(`${groupBase}/members?refresh=1`)).json()) as {
+      selfRole?: string
+      members: Array<{ userId: string }>
+    }
+    expect(members.selfRole).toBeUndefined()
+    expect(members.members.some((item) => item.userId === selfId)).toBe(false)
+
+    const denied = await fetch(groupBase, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ name: '不应授权的群名' }),
+    })
+    expect(denied.status).toBe(403)
+    expect(napcat.actions.some((item) => item.action === 'set_group_name')).toBe(false)
+    napcat.socket.close()
+  })
+
+  it('maps every group management route to the exact allowlisted NapCat action and normalized event', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const groupBase = `${baseUrl}/api/accounts/${account}/groups/345678901`
+    const events: unknown[] = []
+    hub.on('workspace-event', (event) => events.push(event))
+
+    expect((await fetch(`${groupBase}/members/234567890/admin`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ enabled: true }),
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_admin').at(-1)?.params).toEqual({
+      group_id: '345678901', user_id: '234567890', enable: true,
+    })
+
+    expect((await fetch(`${groupBase}/members/${selfId}/card`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ card: '新的真实群名片' }),
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_card').at(-1)?.params).toEqual({
+      group_id: '345678901', user_id: selfId, card: '新的真实群名片',
+    })
+
+    expect((await fetch(groupBase, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ name: '新的真实群名' }),
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_name').at(-1)?.params).toEqual({
+      group_id: '345678901', group_name: '新的真实群名',
+    })
+
+    expect((await fetch(`${groupBase}/mute-all`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ enabled: true }),
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_whole_ban').at(-1)?.params).toEqual({
+      group_id: '345678901', enable: true,
+    })
+
+    expect((await fetch(`${groupBase}/members/234567890`, {
+      method: 'DELETE', headers: { Origin: baseUrl },
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_kick').at(-1)?.params).toEqual({
+      group_id: '345678901', user_id: '234567890', reject_add_request: false,
+    })
+    expect(events).toContainEqual({ type: 'group.members.changed', accountId: account, groupId: '345678901' })
+    expect(events).toContainEqual({ type: 'directory.changed', accountId: account })
+
+    expect((await fetch(groupBase, { method: 'DELETE', headers: { Origin: baseUrl } })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'set_group_leave').at(-1)?.params).toEqual({
+      group_id: '345678901', is_dismiss: false,
+    })
+    napcat.socket.close()
+  })
+
+  it('binds file and announcement IDs to their account and group while using exact NapCat file fields', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    napcat.state.groups.push({
+      group_id: 456789013,
+      group_name: '另一个真实测试群',
+      group_remark: '',
+      member_count: 3,
+    })
+    const secondSelfId = '223456789'
+    const secondNapcat = connectFakeNapCat(port, { selfId: secondSelfId })
+    await napcat.ready
+    await secondNapcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts.filter((item) => item.status === 'online').length === 2)
+    const account = `qq-${selfId}`
+    const groupBase = `${baseUrl}/api/accounts/${account}/groups/345678901`
+
+    const files = (await (await fetch(`${groupBase}/files?parentId=%2F`)).json()) as {
+      files: Array<{ id: string; name: string; downloadCount: number }>
+      folders: Array<{ id: string; name: string }>
+      permissions: Record<string, { allowed: boolean }>
+    }
+    const file = files.files[0]!
+    const folder = files.folders[0]!
+    expect(file).toMatchObject({ name: '真实文件.txt', downloadCount: 0 })
+    expect(file.id).not.toContain('/real-file-id')
+    expect(folder.id).not.toContain('/real-folder-id')
+    expect(files.permissions.packetFiles).toEqual({ allowed: true })
+
+    const download = await fetch(`${groupBase}/files/${encodeURIComponent(file.id)}/url?name=真实文件.txt`)
+    expect(download.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'get_group_file_url').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      file_id: '/real-file-id',
+    })
+
+    const moved = await fetch(`${groupBase}/files/${encodeURIComponent(file.id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ operation: 'move', currentParentId: '/', targetParentId: folder.id }),
+    })
+    expect(moved.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'move_group_file').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      file_id: '/real-file-id',
+      current_parent_directory: '/',
+      target_parent_directory: '/real-folder-id',
+    })
+
+    const renamed = await fetch(`${groupBase}/files/${encodeURIComponent(file.id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ operation: 'rename', currentParentId: '/', name: '重命名文件.txt' }),
+    })
+    expect(renamed.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'rename_group_file').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      file_id: '/real-file-id',
+      current_parent_directory: '/',
+      new_name: '重命名文件.txt',
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append('file', new Blob([Buffer.from('group-resource')], { type: 'text/plain' }), '群资源.txt')
+    const uploaded = await fetch(`${groupBase}/files/uploads?parentId=${encodeURIComponent(folder.id)}`, {
+      method: 'POST', headers: { Origin: baseUrl }, body: uploadForm,
+    })
+    expect(uploaded.status).toBe(201)
+    expect(napcat.actions.filter((item) => item.action === 'upload_group_file').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      file: `base64://${Buffer.from('group-resource').toString('base64')}`,
+      name: '群资源.txt',
+      folder: '/real-folder-id',
+    })
+
+    expect((await fetch(`${groupBase}/folders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ name: '新建真实文件夹' }),
+    })).status).toBe(201)
+    expect(napcat.actions.filter((item) => item.action === 'create_group_file_folder').at(-1)?.params).toEqual({
+      group_id: '345678901', folder_name: '新建真实文件夹',
+    })
+
+    expect((await fetch(`${groupBase}/files/${encodeURIComponent(file.id)}`, {
+      method: 'DELETE', headers: { Origin: baseUrl },
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'delete_group_file').at(-1)?.params).toEqual({
+      group_id: '345678901', file_id: '/real-file-id',
+    })
+
+    expect((await fetch(`${groupBase}/folders/${encodeURIComponent(folder.id)}`, {
+      method: 'DELETE', headers: { Origin: baseUrl },
+    })).status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'delete_group_folder').at(-1)?.params).toEqual({
+      group_id: '345678901', folder_id: '/real-folder-id',
+    })
+
+    const tampered = `${file.id.slice(0, -1)}x`
+    expect((await fetch(`${groupBase}/files/${encodeURIComponent(tampered)}/url`)).status).toBe(400)
+
+    const crossGroupActions = napcat.actions.filter((item) => item.action === 'get_group_file_url').length
+    const crossGroup = await fetch(
+      `${baseUrl}/api/accounts/${account}/groups/456789013/files/${encodeURIComponent(file.id)}/url`,
+    )
+    expect(crossGroup.status).toBe(400)
+    expect(napcat.actions.filter((item) => item.action === 'get_group_file_url')).toHaveLength(crossGroupActions)
+
+    const crossGroupFolderActions = napcat.actions.filter((item) => item.action === 'delete_group_folder').length
+    const crossGroupFolder = await fetch(
+      `${baseUrl}/api/accounts/${account}/groups/456789013/folders/${encodeURIComponent(folder.id)}`,
+      { method: 'DELETE', headers: { Origin: baseUrl } },
+    )
+    expect(crossGroupFolder.status).toBe(400)
+    expect(napcat.actions.filter((item) => item.action === 'delete_group_folder')).toHaveLength(crossGroupFolderActions)
+
+    const secondAccount = `qq-${secondSelfId}`
+    const crossAccountActions = secondNapcat.actions.filter((item) => item.action === 'get_group_file_url').length
+    const crossAccount = await fetch(
+      `${baseUrl}/api/accounts/${secondAccount}/groups/345678901/files/${encodeURIComponent(file.id)}/url`,
+    )
+    expect(crossAccount.status).toBe(400)
+    expect(secondNapcat.actions.filter((item) => item.action === 'get_group_file_url')).toHaveLength(crossAccountActions)
+
+    const announcements = (await (await fetch(`${groupBase}/announcements`)).json()) as Array<{
+      id: string
+      content: string
+    }>
+    expect(announcements[0]?.content).toBe('真实群公告')
+    expect(announcements[0]?.id).not.toContain('notice-real-1')
+    const crossAccountNoticeActions = secondNapcat.actions.filter((item) => item.action === '_del_group_notice').length
+    const crossAccountNotice = await fetch(
+      `${baseUrl}/api/accounts/${secondAccount}/groups/345678901/announcements/${encodeURIComponent(announcements[0]!.id)}`,
+      { method: 'DELETE', headers: { Origin: baseUrl } },
+    )
+    expect(crossAccountNotice.status).toBe(400)
+    expect(secondNapcat.actions.filter((item) => item.action === '_del_group_notice')).toHaveLength(crossAccountNoticeActions)
+    const deleted = await fetch(`${groupBase}/announcements/${encodeURIComponent(announcements[0]!.id)}`, {
+      method: 'DELETE',
+      headers: { Origin: baseUrl },
+    })
+    expect(deleted.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === '_del_group_notice').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      notice_id: 'notice-real-1',
+    })
+
+    const essence = (await (await fetch(`${groupBase}/essence`)).json()) as {
+      items: Array<{ content: string }>
+      hasMore: boolean
+    }
+    expect(essence).toMatchObject({ items: [{ content: '真实精华消息' }], hasMore: false })
+    napcat.socket.close()
+    secondNapcat.socket.close()
+  })
+
+  it('returns more than 100 group files and marks the 500-item NapCat boundary as truncated', async () => {
+    const first = await startTestServer()
+    servers.push(first.server)
+    const firstNapcat = connectFakeNapCat(first.port, { groupFileCount: 101 })
+    await firstNapcat.ready
+    await waitFor(async () => first.hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const firstPage = (await (
+      await fetch(`${first.baseUrl}/api/accounts/${account}/groups/345678901/files`)
+    ).json()) as { files: unknown[]; truncated: boolean }
+    expect(firstPage.files).toHaveLength(101)
+    expect(firstPage.truncated).toBe(false)
+    expect(firstNapcat.actions.filter((item) => item.action === 'get_group_root_files').at(-1)?.params).toMatchObject({
+      file_count: 500,
+    })
+
+    const bounded = await startTestServer()
+    servers.push(bounded.server)
+    const boundedNapcat = connectFakeNapCat(bounded.port, { groupFileCount: 500 })
+    await boundedNapcat.ready
+    await waitFor(async () => bounded.hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const boundedPage = (await (
+      await fetch(`${bounded.baseUrl}/api/accounts/${account}/groups/345678901/files`)
+    ).json()) as { files: unknown[]; truncated: boolean }
+    expect(boundedPage.files).toHaveLength(500)
+    expect(boundedPage.truncated).toBe(true)
+    firstNapcat.socket.close()
+    boundedNapcat.socket.close()
+  })
+
+  it('guards an unknown group-file upload outcome against duplicate manual replay', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer({
+      actionTimeoutMs: 30,
+      groupFileUploadTimeoutMs: 30,
+    })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    napcat.state.silentActions.add('upload_group_file')
+    const account = `qq-${selfId}`
+    const uploadUrl = `${baseUrl}/api/accounts/${account}/groups/345678901/files/uploads?parentId=%2F`
+    const upload = () => {
+      const form = new FormData()
+      form.append('file', new Blob([Buffer.from('uncertain-upload')], { type: 'text/plain' }), '结果未知.txt')
+      return fetch(uploadUrl, { method: 'POST', headers: { Origin: baseUrl }, body: form })
+    }
+
+    const [first, second] = await Promise.all([upload(), upload()])
+    expect([first.status, second.status]).toEqual([409, 409])
+    const errors = await Promise.all([first.json(), second.json()]) as Array<{ error: string }>
+    expect(errors.some((item) => item.error.includes('结果未知'))).toBe(true)
+    expect(napcat.actions.filter((item) => item.action === 'upload_group_file')).toHaveLength(1)
+    napcat.socket.close()
+  })
+
+  it('guards concurrent chat-file uploads with the same group file uncertainty lock', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer({
+      actionTimeoutMs: 30,
+      groupFileUploadTimeoutMs: 30,
+    })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    napcat.state.silentActions.add('upload_group_file')
+    const account = `qq-${selfId}`
+    const uploadUrl = `${baseUrl}/api/accounts/${account}/conversations/group/345678901/uploads?purpose=file`
+    const upload = () => {
+      const form = new FormData()
+      form.append('file', new Blob([Buffer.from('same-chat-file')], { type: 'text/plain' }), '聊天文件.txt')
+      return fetch(uploadUrl, { method: 'POST', headers: { Origin: baseUrl }, body: form })
+    }
+
+    const [first, second] = await Promise.all([upload(), upload()])
+    expect([first.status, second.status]).toEqual([409, 409])
+    expect(napcat.actions.filter((item) => item.action === 'upload_group_file')).toHaveLength(1)
+    expect((await upload()).status).toBe(409)
+    expect(napcat.actions.filter((item) => item.action === 'upload_group_file')).toHaveLength(1)
+    napcat.socket.close()
+  })
+
+  it('blocks management writes for ordinary members before any dangerous NapCat action', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { selfRole: 'member' })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const groupBase = `${baseUrl}/api/accounts/${account}/groups/345678901`
+    const files = (await (await fetch(`${groupBase}/files`)).json()) as {
+      files: Array<{ id: string }>
+      folders: Array<{ id: string }>
+    }
+    const announcements = (await (await fetch(`${groupBase}/announcements`)).json()) as Array<{ id: string }>
+    const jsonHeaders = { 'Content-Type': 'application/json', Origin: baseUrl }
+    const attempts = await Promise.all([
+      fetch(`${groupBase}/members/234567890/admin`, {
+        method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ enabled: true }),
+      }),
+      fetch(`${groupBase}/members/234567890/card`, {
+        method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ card: '不应修改他人群名片' }),
+      }),
+      fetch(`${groupBase}/members/234567890`, { method: 'DELETE', headers: { Origin: baseUrl } }),
+      fetch(groupBase, {
+        method: 'PATCH', headers: jsonHeaders, body: JSON.stringify({ name: '不应生效的群名' }),
+      }),
+      fetch(`${groupBase}/mute-all`, {
+        method: 'PUT', headers: jsonHeaders, body: JSON.stringify({ enabled: true }),
+      }),
+      fetch(`${groupBase}/announcements/${encodeURIComponent(announcements[0]!.id)}`, {
+        method: 'DELETE', headers: { Origin: baseUrl },
+      }),
+      fetch(`${groupBase}/files/${encodeURIComponent(files.files[0]!.id)}`, {
+        method: 'PATCH',
+        headers: jsonHeaders,
+        body: JSON.stringify({ operation: 'rename', currentParentId: '/', name: '不应生效.txt' }),
+      }),
+      fetch(`${groupBase}/files/${encodeURIComponent(files.files[0]!.id)}`, {
+        method: 'DELETE', headers: { Origin: baseUrl },
+      }),
+      fetch(`${groupBase}/folders`, {
+        method: 'POST', headers: jsonHeaders, body: JSON.stringify({ name: '不应创建' }),
+      }),
+      fetch(`${groupBase}/folders/${encodeURIComponent(files.folders[0]!.id)}`, {
+        method: 'DELETE', headers: { Origin: baseUrl },
+      }),
+    ])
+    expect(attempts.map((response) => response.status)).toEqual(Array(attempts.length).fill(403))
+    const dangerousActions = new Set([
+      'set_group_admin',
+      'set_group_card',
+      'set_group_kick',
+      'set_group_name',
+      'set_group_whole_ban',
+      '_del_group_notice',
+      'rename_group_file',
+      'delete_group_file',
+      'create_group_file_folder',
+      'delete_group_folder',
+    ])
+    expect(napcat.actions.filter((item) => dangerousActions.has(item.action))).toHaveLength(0)
+    napcat.socket.close()
+  })
+
+  it('sanitizes rejected NapCat action errors before returning them to the browser', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    napcat.state.failureMessage = '/srv/private/napcat/secrets/account.json: raw upstream failure'
+    napcat.state.failureWording = 'wording contains /home/qq/private-token.txt'
+    napcat.state.failedActions.add('set_group_name')
+    const account = `qq-${selfId}`
+
+    const response = await fetch(`${baseUrl}/api/accounts/${account}/groups/345678901`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ name: '不会生效' }),
+    })
+    const body = await response.text()
+    expect(response.status).toBe(502)
+    expect(body).toContain('set_group_name')
+    expect(body).toContain('1200')
+    expect(body).not.toContain('/srv/private')
+    expect(body).not.toContain('raw upstream failure')
+    expect(body).not.toContain('/home/qq/private-token.txt')
+    expect(body).not.toContain('wording contains')
+    napcat.socket.close()
+  })
+
+  it('enforces authoritative role and remaining-count checks for @all on the send endpoint', async () => {
+    const memberServer = await startTestServer()
+    servers.push(memberServer.server)
+    const memberNapcat = connectFakeNapCat(memberServer.port, { selfRole: 'member' })
+    await memberNapcat.ready
+    await waitFor(async () => memberServer.hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const sendUrl = `${memberServer.baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`
+    const deniedByRole = await fetch(sendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: memberServer.baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'mention', label: '全体成员', all: true }] }),
+    })
+    expect(deniedByRole.status).toBe(403)
+    expect(memberNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+
+    const countServer = await startTestServer()
+    servers.push(countServer.server)
+    const countNapcat = connectFakeNapCat(countServer.port, { atAllAllowed: false })
+    await countNapcat.ready
+    await waitFor(async () => countServer.hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const deniedByCount = await fetch(
+      `${countServer.baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: countServer.baseUrl },
+        body: JSON.stringify({ segments: [{ type: 'mention', label: '全体成员', all: true }] }),
+      },
+    )
+    expect(deniedByCount.status).toBe(403)
+    expect(countNapcat.actions.some((item) => item.action === 'get_group_at_all_remain')).toBe(true)
+    expect(countNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+  })
+
+  it('keeps group file reads available when member metadata fails and gates Packet-only actions separately', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    napcat.state.failedActions.add('get_group_member_list')
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const filesResponse = await fetch(`${baseUrl}/api/accounts/${account}/groups/345678901/files`)
+    expect(filesResponse.status).toBe(200)
+    const files = (await filesResponse.json()) as { files: unknown[]; permissions: Record<string, { allowed: boolean }> }
+    expect(files.files).toHaveLength(1)
+    expect(files.permissions.readFiles).toEqual({ allowed: true })
+    expect(files.permissions.uploadFiles.allowed).toBe(false)
+
+    const packetServer = await startTestServer()
+    servers.push(packetServer.server)
+    const packetNapcat = connectFakeNapCat(packetServer.port, { packetAvailable: false })
+    await packetNapcat.ready
+    await waitFor(async () => packetServer.hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const packetFiles = (await (
+      await fetch(`${packetServer.baseUrl}/api/accounts/${account}/groups/345678901/files`)
+    ).json()) as { files: Array<{ id: string }>; permissions: Record<string, { allowed: boolean }> }
+    expect(packetFiles.permissions.packetFiles.allowed).toBe(false)
+    expect(
+      (
+        await fetch(
+          `${packetServer.baseUrl}/api/accounts/${account}/groups/345678901/files/${encodeURIComponent(packetFiles.files[0]!.id)}/url`,
+        )
+      ).status,
+    ).toBe(502)
+    expect(packetNapcat.actions.some((item) => item.action === 'get_group_file_url')).toBe(false)
+    napcat.socket.close()
+    packetNapcat.socket.close()
+  })
+
+  it('marks an observed request non-retryable when the NapCat mutation outcome is unknown', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer({ actionTimeoutMs: 30 })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    napcat.socket.send(
+      JSON.stringify({
+        time: 1_785_742_500,
+        self_id: Number(selfId),
+        post_type: 'request',
+        request_type: 'friend',
+        user_id: 678901234,
+        comment: '好友申请',
+        flag: 'friend-flag-1',
+      }),
+    )
+    await waitFor(async () => {
+      const inbox = (await (
+        await fetch(`${baseUrl}/api/accounts/${account}/notifications`)
+      ).json()) as { items: unknown[] }
+      return inbox.items.length === 1
+    })
+    const inbox = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/notifications`)
+    ).json()) as { items: Array<{ id: string }> }
+    napcat.state.silentActions.add('set_friend_add_request')
+    const resolveUrl = `${baseUrl}/api/accounts/${account}/notifications/${encodeURIComponent(inbox.items[0]!.id)}/resolve`
+    const [first, second] = await Promise.all([
+      fetch(resolveUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: JSON.stringify({ action: 'accept' }),
+      }),
+      fetch(resolveUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: JSON.stringify({ action: 'reject' }),
+      }),
+    ])
+    expect([first.status, second.status].sort()).toEqual([409, 502])
+    expect(napcat.actions.filter((item) => item.action === 'set_friend_add_request')).toHaveLength(1)
+    const after = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/notifications`)
+    ).json()) as { items: Array<{ state: string; actionable: boolean; comment: string }> }
+    expect(after.items[0]).toMatchObject({ state: 'handled', actionable: false })
+    expect(after.items[0]?.comment).toContain('结果待')
     napcat.socket.close()
   })
 })

@@ -1,5 +1,10 @@
 import type {
   Account,
+  FriendContact,
+  GroupContact,
+  GroupFile,
+  GroupFolder,
+  GroupMember,
   ChatMessage,
   Conversation,
   MessageAttachment,
@@ -41,12 +46,47 @@ export interface OneBotGroup {
   group_remark?: string
   member_count?: number
   max_member_count?: number
+  group_all_shut?: number | boolean
 }
 
 export interface OneBotFriend {
   user_id: number | string
   nickname: string
   remark?: string
+  category_id?: number | string
+  categoryName?: string
+  categoryId?: number | string
+}
+
+export interface OneBotGroupMember {
+  group_id?: number | string
+  user_id: number | string
+  nickname?: string
+  card?: string
+  role?: string
+  title?: string
+  level?: number | string
+  join_time?: number | string
+  last_sent_time?: number | string
+}
+
+export interface OneBotGroupFile {
+  file_id: string
+  file_name?: string
+  busid?: number | string
+  size?: number | string
+  file_size?: number | string
+  upload_time?: number | string
+  download_times?: number | string
+  uploader?: number | string
+}
+
+export interface OneBotGroupFolder {
+  folder_id?: string
+  folder?: string
+  folder_name?: string
+  total_file_count?: number | string
+  file_count?: number | string
 }
 
 export interface OneBotRecentContact {
@@ -85,6 +125,12 @@ function opaqueResourceId(value: unknown): string | undefined {
   const candidate = text(value)
   if (!candidate || candidate.length > 2_048 || /[\u0000-\u001f\u007f]/.test(candidate)) return undefined
   if (/^(?:file:|data:|blob:|base64:\/\/|[a-zA-Z]:[\\/]|[\\/])/i.test(candidate)) return undefined
+  return candidate
+}
+
+function actionResourceId(value: unknown): string | undefined {
+  const candidate = text(value)
+  if (!candidate || candidate.length > 2_048 || /[\u0000-\u001f\u007f]/.test(candidate)) return undefined
   return candidate
 }
 
@@ -346,6 +392,102 @@ export function mapAccount(login: OneBotLoginInfo, status: Account['status'] = '
     unread: 0,
     role: 'bot',
     accent: 'cyan',
+  }
+}
+
+export function mapFriendContact(account: string, friend: OneBotFriend): FriendContact | undefined {
+  const userId = text(friend.user_id)
+  if (!/^\d{5,20}$/.test(userId)) return undefined
+  const categoryId = text(friend.category_id ?? friend.categoryId) || undefined
+  return {
+    accountId: account,
+    userId,
+    nickname: boundedText(friend.nickname, 128) || userId,
+    remark: boundedText(friend.remark, 128),
+    categoryId,
+    categoryName: boundedText(friend.categoryName, 128) || undefined,
+    avatar: userAvatar(userId),
+  }
+}
+
+export function mapGroupContact(account: string, group: OneBotGroup): GroupContact | undefined {
+  const groupId = text(group.group_id)
+  if (!/^\d{5,20}$/.test(groupId)) return undefined
+  return {
+    accountId: account,
+    groupId,
+    groupName: boundedText(group.group_name, 128) || groupId,
+    remark: boundedText(group.group_remark, 128),
+    memberCount: Math.max(0, Number(group.member_count) || 0),
+    maxMemberCount: positiveNumber(group.max_member_count),
+    wholeMuted:
+      group.group_all_shut === true ||
+      (group.group_all_shut !== undefined && Number(group.group_all_shut) !== 0),
+    avatar: groupAvatar(groupId),
+  }
+}
+
+export function mapGroupMember(account: string, groupId: string, member: OneBotGroupMember): GroupMember | undefined {
+  const userId = text(member.user_id)
+  if (!/^\d{5,20}$/.test(userId)) return undefined
+  const memberGroupId = text(member.group_id)
+  if (memberGroupId !== groupId) return undefined
+  if (member.role !== 'owner' && member.role !== 'admin' && member.role !== 'member') return undefined
+  const role = member.role
+  const joinTime = positiveNumber(member.join_time)
+  const lastSentTime = positiveNumber(member.last_sent_time)
+  return {
+    accountId: account,
+    groupId,
+    userId,
+    nickname: boundedText(member.nickname, 128) || userId,
+    card: boundedText(member.card, 128),
+    role,
+    title: boundedText(member.title, 128) || undefined,
+    level: boundedText(member.level, 64) || undefined,
+    joinTime,
+    lastSentTime,
+    avatar: userAvatar(userId),
+  }
+}
+
+export function mapGroupFile(
+  account: string,
+  groupId: string,
+  parentId: string,
+  file: OneBotGroupFile,
+): GroupFile | undefined {
+  const id = actionResourceId(file.file_id)
+  if (!id) return undefined
+  return {
+    id,
+    accountId: account,
+    groupId,
+    parentId,
+    name: boundedText(file.file_name, 255) || '未命名文件',
+    size: Math.max(0, Number(file.file_size ?? file.size) || 0),
+    busId: positiveNumber(file.busid),
+    uploaderId: /^\d{5,20}$/.test(text(file.uploader)) ? text(file.uploader) : undefined,
+    uploadedAt: positiveNumber(file.upload_time),
+    downloadCount: Math.max(0, Number(file.download_times) || 0),
+  }
+}
+
+export function mapGroupFolder(
+  account: string,
+  groupId: string,
+  parentId: string,
+  folder: OneBotGroupFolder,
+): GroupFolder | undefined {
+  const id = actionResourceId(folder.folder_id)
+  if (!id) return undefined
+  return {
+    id,
+    accountId: account,
+    groupId,
+    parentId,
+    name: boundedText(folder.folder_name, 120) || '未命名文件夹',
+    fileCount: Math.max(0, Number(folder.total_file_count ?? folder.file_count) || 0),
   }
 }
 

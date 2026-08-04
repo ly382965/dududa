@@ -2,7 +2,7 @@ export type AccountStatus = 'online' | 'degraded' | 'offline'
 export type ConversationType = 'group' | 'private'
 export type AgentTab = 'conversation' | 'run' | 'settings'
 export type MobilePanel = 'inbox' | 'chat' | 'agent'
-export type ThemeMode = 'light' | 'dark'
+export type ThemeMode = 'light' | 'dark' | 'system'
 
 export type CapabilityName =
   | 'history.cursor'
@@ -24,7 +24,9 @@ export type CapabilityName =
   | 'message.read'
   | 'message.custom_faces'
   | 'request.friend.history'
+  | 'request.friend.resolve'
   | 'request.group.history'
+  | 'request.group.resolve'
   | 'group.members'
   | 'group.admin'
   | 'group.kick'
@@ -84,6 +86,183 @@ export interface Conversation {
   onlineMembers?: number
   topic?: string
   updatedAt?: number
+}
+
+export interface FriendContact {
+  accountId: string
+  userId: string
+  nickname: string
+  remark: string
+  categoryId?: string
+  categoryName?: string
+  avatar: string
+}
+
+export interface GroupContact {
+  accountId: string
+  groupId: string
+  groupName: string
+  remark: string
+  memberCount: number
+  maxMemberCount?: number
+  wholeMuted?: boolean
+  avatar: string
+}
+
+export interface AccountDirectory {
+  accountId: string
+  friends: FriendContact[]
+  groups: GroupContact[]
+  refreshedAt: number
+}
+
+export type GroupRole = 'owner' | 'admin' | 'member'
+
+export interface GroupMember {
+  accountId: string
+  groupId: string
+  userId: string
+  nickname: string
+  card: string
+  role: GroupRole
+  title?: string
+  level?: string
+  joinTime?: number
+  lastSentTime?: number
+  avatar: string
+}
+
+export interface OperationPermission {
+  allowed: boolean
+  reason?: string
+}
+
+export interface GroupPermissions {
+  mentionAll: OperationPermission
+  setAdmin: OperationPermission
+  kickMembers: OperationPermission
+  editOwnCard: OperationPermission
+  rename: OperationPermission
+  muteAll: OperationPermission
+  quit: OperationPermission
+  readEssence: OperationPermission
+  readAnnouncements: OperationPermission
+  deleteAnnouncements: OperationPermission
+  readFiles: OperationPermission
+  uploadFiles: OperationPermission
+  manageFiles: OperationPermission
+  packetFiles: OperationPermission
+  renameFolders: OperationPermission
+}
+
+export interface GroupMemberDirectory {
+  accountId: string
+  groupId: string
+  selfUserId: string
+  selfRole?: GroupRole
+  members: GroupMember[]
+  permissions: GroupPermissions
+  refreshedAt: number
+}
+
+export type NotificationState = 'pending' | 'accepted' | 'rejected' | 'handled'
+export type NotificationKind =
+  | 'friend-request'
+  | 'group-request'
+  | 'group-invitation'
+  | 'group-member-increase'
+  | 'group-member-decrease'
+  | 'group-admin-change'
+
+export interface QqNotification {
+  id: string
+  accountId: string
+  kind: NotificationKind
+  occurredAt: number
+  userId: string
+  userName?: string
+  groupId?: string
+  groupName?: string
+  operatorId?: string
+  operatorName?: string
+  comment?: string
+  state: NotificationState
+  actionable: boolean
+  actionReason?: string
+}
+
+export interface NotificationInbox {
+  accountId: string
+  items: QqNotification[]
+  limitations: {
+    friendHistory: string
+    groupHistory?: string
+  }
+  refreshedAt: number
+}
+
+export interface EssenceMessage {
+  id: string
+  accountId: string
+  groupId: string
+  messageId: string
+  senderId: string
+  senderName: string
+  operatorId: string
+  operatorName: string
+  operatorTime: number
+  content: string
+  segments: MessageSegment[]
+}
+
+export interface EssencePage {
+  items: EssenceMessage[]
+  offset: number
+  hasMore: boolean
+  truncated?: boolean
+}
+
+export interface GroupAnnouncement {
+  id: string
+  accountId: string
+  groupId: string
+  senderId: string
+  publishTime: number
+  content: string
+  imageUrls: string[]
+  readCount?: number
+}
+
+export interface GroupFile {
+  id: string
+  accountId: string
+  groupId: string
+  parentId: string
+  name: string
+  size: number
+  busId?: number
+  uploaderId?: string
+  uploadedAt?: number
+  downloadCount?: number
+}
+
+export interface GroupFolder {
+  id: string
+  accountId: string
+  groupId: string
+  parentId: string
+  name: string
+  fileCount: number
+}
+
+export interface GroupFilePage {
+  accountId: string
+  groupId: string
+  parentId: string
+  files: GroupFile[]
+  folders: GroupFolder[]
+  truncated: boolean
+  permissions: Pick<GroupPermissions, 'readFiles' | 'uploadFiles' | 'manageFiles' | 'packetFiles' | 'renameFolders'>
 }
 
 export interface MessageReply {
@@ -394,4 +573,13 @@ export type WorkspaceEvent =
   | { type: 'message.created'; conversation: Conversation; message: ChatMessage }
   | { type: 'message.deleted'; accountId: string; conversationId: string; messageId: string }
   | { type: 'capabilities.changed'; accountId: string; capabilities: AccountCapabilityDocument }
+  | { type: 'directory.changed'; accountId: string }
+  | { type: 'notification.changed'; accountId: string; notification: QqNotification }
+  | { type: 'group.members.changed'; accountId: string; groupId: string }
+  | {
+      type: 'group.resources.changed'
+      accountId: string
+      groupId: string
+      resource: 'files' | 'announcements' | 'essence'
+    }
   | { type: 'runtime.status'; status: WorkspaceSnapshot['runtime'] }

@@ -26,3 +26,13 @@ Settings cover theme, implementation/capability information, account-scoped
 message/event/cache statistics, history backfill/cancel and cache cleanup. Cache
 controls never mutate QQ data. Mew tests are adapted for account switching,
 unsupported capabilities, stale async request isolation and mobile routing.
+
+Browser persistence is account-scoped, bounded and clearable. Persisted pending
+requests are historical evidence and remain non-actionable until the current
+NapCat session confirms them. Cleanup generations prevent responses that began
+before an account/date/global clear from repopulating IndexedDB.
+
+Every browser write requires a loopback same-origin request. Resource IDs are
+server-signed for one account and one group, and group-file uploads use matching
+browser-persistent and server in-flight/unknown-result guards so an uncertain
+NapCat outcome is not replayed after refresh, concurrency or Web restart.
