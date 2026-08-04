@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: mew-parity-foundation
 Parent: mew-parity
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1785826169
+Last sync: unix:1785826597
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
