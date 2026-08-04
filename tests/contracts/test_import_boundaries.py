@@ -21,6 +21,7 @@ PUBLIC_PACKAGES = (
     "dududa.models",
     "dududa.perception",
     "dududa.ports",
+    "dududa.rollout",
     "dududa.runtime",
     "dududa.security",
     "dududa.testing",
@@ -39,6 +40,14 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.ports.models",
     "dududa.ports.perception",
     "dududa.ports.runtime",
+    "dududa.rollout.admission",
+    "dududa.rollout.canary",
+    "dududa.rollout.contracts",
+    "dududa.rollout.ledger",
+    "dududa.rollout.metrics",
+    "dududa.rollout.ports",
+    "dududa.rollout.rollback",
+    "dududa.rollout.shadow",
     "dududa.runtime.composition",
     "dududa.runtime.context",
     "dududa.runtime.contracts",
@@ -63,6 +72,26 @@ FORBIDDEN_INTERNAL_IMPORTS = {
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s11_rollout_exports_are_visible_and_framework_neutral(self) -> None:
+        import importlib
+
+        rollout = importlib.import_module("dududa.rollout")
+        expected_owners = {
+            "CanaryCoordinator": "dududa.rollout.canary",
+            "RolloutControlConfig": "dududa.rollout.contracts",
+            "SQLiteRolloutLedger": "dududa.rollout.ledger",
+            "InMemoryRolloutMetrics": "dududa.rollout.metrics",
+            "RolloutOwnershipLedger": "dududa.rollout.ports",
+            "RollbackManifest": "dududa.rollout.rollback",
+            "BoundedShadowSupervisor": "dududa.rollout.shadow",
+        }
+        self.assertLessEqual(set(expected_owners), set(rollout.__all__))
+        self.assertEqual(len(rollout.__all__), len(set(rollout.__all__)))
+        for name, module_name in expected_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(rollout, name), getattr(owner, name))
+
     def test_s10_expected_exports_are_visible_and_owned_by_their_modules(self) -> None:
         import importlib
 

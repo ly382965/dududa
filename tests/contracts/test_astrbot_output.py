@@ -387,6 +387,29 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(event.sent, [])
 
+    async def test_live_send_guard_runs_immediately_before_platform_send(self) -> None:
+        event = FakeEvent()
+        calls: list[tuple[str, int, int]] = []
+
+        def deny(request: DeliveryRequest, part_number: int) -> str:
+            calls.append((request.delivery_id, part_number, len(event.sent)))
+            return "rollout_kill_switch_active"
+
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            send_guard=deny,
+            clock=lambda: self.now,
+        )
+
+        receipt = await adapter.deliver(self.request(), call=self.call)
+
+        self.assertEqual(calls, [("delivery-1", 1, 0)])
+        self.assertEqual(event.sent, [])
+        self.assertIs(receipt.status, DeliveryStatus.FAILED)
+        self.assertEqual(receipt.error_code, "rollout_kill_switch_active")
+
 
 if __name__ == "__main__":
     unittest.main()

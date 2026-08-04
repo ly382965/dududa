@@ -5,14 +5,40 @@
 Branch: controlled-rollout
 Parent: root
 Status: in_progress
-Verification: unverified
-Last sync: unix:1785812954
+Verification: verified
+Last sync: unix:1785816445
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Strict typed `off|shadow|canary` controls, deterministic admission and
+  sanitized bounded metrics are implemented in framework-neutral Core.
+- SQLite ownership claims, delivery bindings and tombstones are transactional
+  across processes and survive restart. A sending record recovers as UNKNOWN
+  and is never blindly replayed.
+- The AstrBot bridge keeps `off` and `shadow` on the legacy path, claims before
+  stopping a Canary Event and checks live controls at `event.send()`.
+- The plugin still defaults to off/kill-switch-on and requires explicit Runtime
+  installation. No real QQ message was sent.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added the rollout package, bounded Shadow supervisor, Canary coordinator,
+  Output send guard, plugin configuration/handler, executable rollback manifest
+  procedure and Chinese operations guide.
+- Python 3.10 and 3.12 each pass 350 tests with two AstrBot-host-only skips;
+  Runtime/rollout warnings-as-errors suites pass 109 tests on each version.
+- Ruff/format on branch-owned Python, compileall, import boundaries, JSON,
+  repository safety scan over 372 files and whitespace checks pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Real AstrBot registry and real authorized QQ group shadow/canary evidence need
+  the derived image, credentials, approved group IDs and an operator window.
+- The final `completion-audit` branch must synchronize the project-level S08-S11
+  requirements and cross-stage report.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- S11 local code/simulation acceptance is complete. Enter `completion-audit`
+  next; do not enable real delivery without explicit user authorization.

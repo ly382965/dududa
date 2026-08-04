@@ -16,17 +16,19 @@ Last sync: unix:1785816445
 - The clean integrated S09 snapshot passes 257 tests with two AstrBot-host-only
   skips on both Python 3.10 and 3.12; its synthetic Eval technical gate passes
   while human template review remains pending.
-- S10 Orchestrator, State Store, delivery reconciliation and Shadow composition
-  are the current implementation frontier. S11 canary and kill switch remain
-  unimplemented.
+- S10 Offline Runtime and S11 Controlled Rollout are locally implemented and
+  verified. The next frontier is the cross-stage `completion-audit` branch.
 - `apps/web` and Sub2API paths are concurrent unrelated work and excluded.
 - TreeWork was initialized for the integrated S08-S11 objective.
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
-- S10 must correct delivery/runtime contract drift and preserve complete
-  Perception/direct-route and conservative budget evidence.
 - Real AstrBot Provider and group-canary evidence require environment-specific
-  integration after offline contracts pass.
+  integration, explicit authorization and credentials.
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
+
+- S10 completed with 325 tests on Python 3.10/3.12 and protected delivery,
+  reconciliation and side-effect-free Shadow evidence.
+- S11 locally passes 350 tests on Python 3.10/3.12 with persistent single-owner
+  canary, pre-send kill switch, sanitized metrics and rollback evidence.

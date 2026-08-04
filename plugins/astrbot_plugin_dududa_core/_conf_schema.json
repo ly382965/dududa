@@ -4,6 +4,69 @@
     "type": "bool",
     "default": true
   },
+  "rollout_mode": {
+    "description": "新 Runtime 上线模式（off/shadow/canary）",
+    "type": "string",
+    "default": "off",
+    "hint": "仅接受 off、shadow、canary；非法值会关闭新 Runtime。"
+  },
+  "rollout_revision": {
+    "description": "上线控制配置版本",
+    "type": "string",
+    "default": "rollout-off-v1",
+    "hint": "每次修改白名单、模式或熔断状态时使用新的稳定版本号。"
+  },
+  "rollout_delivery_enabled": {
+    "description": "允许 Canary 实际发送",
+    "type": "bool",
+    "default": false
+  },
+  "rollout_allowlisted_groups": {
+    "description": "新 Runtime 允许处理的群号",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": []
+  },
+  "rollout_kill_switch": {
+    "description": "新 Runtime 紧急熔断",
+    "type": "bool",
+    "default": true,
+    "hint": "开启时不接受新任务；已取得所有权的任务也会在发送前再次检查。"
+  },
+  "rollout_tools_enabled": {
+    "description": "新 Runtime 工具能力",
+    "type": "bool",
+    "default": false,
+    "hint": "S11 必须保持关闭。"
+  },
+  "rollout_memory_enabled": {
+    "description": "新 Runtime Memory 能力",
+    "type": "bool",
+    "default": false,
+    "hint": "S11 必须保持关闭。"
+  },
+  "rollout_maximum_text_bytes": {
+    "description": "新 Runtime 单条文本最大 UTF-8 字节数",
+    "type": "int",
+    "default": 8192
+  },
+  "rollout_shadow_max_in_flight": {
+    "description": "Shadow 最大后台并发数",
+    "type": "int",
+    "default": 2
+  },
+  "rollout_shadow_timeout_ms": {
+    "description": "Shadow 单任务超时（毫秒）",
+    "type": "int",
+    "default": 30000
+  },
+  "rollout_canary_timeout_ms": {
+    "description": "Canary 单任务超时（毫秒）",
+    "type": "int",
+    "default": 60000
+  },
   "owners": {
     "description": "全局 owner QQ 号",
     "type": "list",

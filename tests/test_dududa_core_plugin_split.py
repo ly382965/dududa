@@ -13,6 +13,7 @@ COMMANDS = ROOT / "plugins" / "astrbot_plugin_dududa_core" / "commands"
 
 
 EXPECTED_HANDLERS = (
+    ("controlled_rollout", "self, event: AstrMessageEvent", "filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=100)"),
     ("natural_course_query", "self, event: AstrMessageEvent", "filter.event_message_type(filter.EventMessageType.ALL, priority=8)"),
     ("help", "self, event: AstrMessageEvent, module: str | None=None", "filter.command('help')"),
     ("dududa", "self", "filter.command_group('dududa', alias={'嘟嘟哒'})"),
@@ -83,7 +84,7 @@ def _handler_contract() -> tuple[tuple[str, str, str], ...]:
 class DududaCorePluginSplitTests(unittest.TestCase):
     def test_handler_order_signatures_and_decorators_are_stable(self) -> None:
         self.assertEqual(_handler_contract(), EXPECTED_HANDLERS)
-        self.assertEqual(len(EXPECTED_HANDLERS), 42)
+        self.assertEqual(len(EXPECTED_HANDLERS), 43)
 
     def test_plugin_registration_identity_is_stable(self) -> None:
         tree = ast.parse(MAIN.read_text(encoding="utf-8"))
@@ -138,13 +139,17 @@ class DududaCorePluginSplitTests(unittest.TestCase):
             for handler in star_handlers_registry
             if handler.handler_module_path == module.__name__
         ]
-        self.assertEqual(len(handlers), 42)
+        self.assertEqual(len(handlers), 43)
         self.assertEqual({handler.handler.__module__ for handler in handlers}, {module.__name__})
         self.assertIn(module.__name__, star_map)
         natural = next(
             handler for handler in handlers if handler.handler_name == "natural_course_query"
         )
         self.assertEqual(natural.extras_configs.get("priority"), 8)
+        rollout = next(
+            handler for handler in handlers if handler.handler_name == "controlled_rollout"
+        )
+        self.assertEqual(rollout.extras_configs.get("priority"), 100)
 
     def test_representative_command_results_and_stop_behavior(self) -> None:
         try:

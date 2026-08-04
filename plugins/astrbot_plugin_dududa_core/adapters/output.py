@@ -39,6 +39,10 @@ class ComponentFactory(Protocol):
     def chain(self, components: list[object]) -> object: ...
 
 
+class DeliverySendGuard(Protocol):
+    def __call__(self, request: DeliveryRequest, part_number: int) -> str | None: ...
+
+
 class _AstrBotComponentFactory:
     def __init__(self, event: object) -> None:
         from astrbot.api.message_components import At, Plain, Reply
@@ -94,11 +98,13 @@ class AstrBotOutputAdapter:
         ledger: InMemoryDeliveryLedger,
         *,
         component_factory: ComponentFactory | None = None,
+        send_guard: DeliverySendGuard | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._event = event
         self._ledger = ledger
         self._factory = component_factory or _AstrBotComponentFactory(event)
+        self._send_guard = send_guard
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._revision = ASTRBOT_OUTPUT_REVISION
 
@@ -282,6 +288,33 @@ class AstrBotOutputAdapter:
                     components.append(self._factory.at(target_id))
                 components.append(self._factory.plain(text))
                 chain = self._factory.chain(components)
+                guard_reason = self._check_send_guard(request, index)
+                if guard_reason is not None:
+                    receipts.append(
+                        DeliveryPartReceipt(
+                            1,
+                            part_id,
+                            digest,
+                            DeliveryPartStatus.FAILED,
+                            None,
+                            guard_reason,
+                        )
+                    )
+                    status = (
+                        DeliveryStatus.PARTIAL
+                        if any(
+                            item.status is DeliveryPartStatus.SUCCEEDED
+                            for item in receipts
+                        )
+                        else DeliveryStatus.FAILED
+                    )
+                    return self._receipt(
+                        request,
+                        status,
+                        tuple(receipts),
+                        self._clock(),
+                        guard_reason,
+                    )
                 send_started = True
                 await self._event.send(chain)
             except asyncio.CancelledError:
@@ -356,6 +389,31 @@ class AstrBotOutputAdapter:
             self._clock(),
             None,
         )
+
+    def _check_send_guard(
+        self,
+        request: DeliveryRequest,
+        part_number: int,
+    ) -> str | None:
+        if self._send_guard is None:
+            return None
+        try:
+            reason = self._send_guard(request, part_number)
+        except Exception:  # noqa: BLE001 - a failed gate must deny platform send
+            return "delivery_send_guard_failed"
+        if reason is None:
+            return None
+        if (
+            not isinstance(reason, str)
+            or not reason
+            or len(reason) > 128
+            or any(
+                character not in "abcdefghijklmnopqrstuvwxyz0123456789._:-"
+                for character in reason
+            )
+        ):
+            return "delivery_send_guard_failed"
+        return reason
 
     def _receipt(
         self,

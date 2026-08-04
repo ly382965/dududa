@@ -6,10 +6,10 @@ from .commands.admin import CoreAdminCommands
 from .commands.basic import CoreBasicCommands
 from .commands.compatibility import CoreCompatibilityCommands
 from .commands.course import CoreCourseCommands
-from .commands.image import CoreImageCommands, ImageGenerationError
+from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F401
 from .commands.memory import CoreMemoryCommands
 from .composition import initialize_plugin
-from .lifecycle import CoreLifecycleMixin, PendingAction
+from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
 
 
 @register(
@@ -31,6 +31,11 @@ class DududaCorePlugin(
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         initialize_plugin(self, config)
+
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=100)
+    async def controlled_rollout(self, event: AstrMessageEvent):
+        """受控执行显式提及的 shadow/canary。"""
+        await self._handle_controlled_rollout(event)
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=8)
     async def natural_course_query(self, event: AstrMessageEvent):

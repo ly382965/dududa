@@ -20,6 +20,16 @@ class PendingAction:
 
 
 class CoreLifecycleMixin:
+    async def _handle_controlled_rollout(self, event: AstrMessageEvent) -> None:
+        bridge = getattr(self, "rollout_bridge", None)
+        if bridge is not None:
+            await bridge.handle(event)
+
+    async def terminate(self) -> None:
+        bridge = getattr(self, "rollout_bridge", None)
+        if bridge is not None:
+            await bridge.close()
+
     def _blocked(self, event: AstrMessageEvent) -> str | None:
         if not self.enabled:
             return "嘟嘟哒核心插件暂时关闭。"
