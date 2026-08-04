@@ -2,9 +2,10 @@
 
 ## User Intent (the outcome the user is trying to achieve; not a proposed implementation)
 
-Continue long-running development of Dududa through S08-S11. Treat task
-difficulty assessment and model routing as one integrated development scope,
-and do not implement or connect Bandit learning yet.
+Continue long-running development of Dududa beyond the completed local S08-S11
+runtime by adding a real QQ multi-account Web client. Reproduce the observable
+QQ-client functionality of USTC-XeF2/mew-ui as closely as NapCat permits while
+retaining Dududa's server-side OneBot boundary and without shipping demo data.
 
 ## Target User (who experiences the result and whose constraints matter)
 
@@ -13,6 +14,9 @@ and do not implement or connect Bandit learning yet.
 - QQ users in an explicitly authorized test group eventually experience the
   direct-chat canary, while all other users remain on the existing AstrBot
   path.
+- The Dududa operator uses one browser workspace to read and operate multiple
+  real QQ accounts connected by NapCat, with Mew-equivalent chat, directory,
+  notification, group-management, resource and settings workflows.
 
 ## Desired Experience (observable behavior and qualities the user expects)
 
@@ -31,6 +35,25 @@ and do not implement or connect Bandit learning yet.
 - Canary delivery is restricted to an allowlisted group and explicit mention,
   supports a kill switch, prevents duplicate replies, and preserves the legacy
   route as the rollback authority.
+- The Web client opens directly into a Mew-style workspace when NapCat accounts
+  are online and otherwise shows an honest connection state. It has no browser
+  login, locally invented account, conversation, message or Agent result.
+- Multiple NapCat accounts remain connected concurrently. Every conversation,
+  request, message, draft, cache entry, unread state and capability is isolated
+  by `accountId`, while the operator may use either an account filter or a
+  combined inbox.
+- The chat experience includes the Mew source baseline's virtualized history,
+  rich message segments, reply/mention/face/media/file composition, message
+  actions, search, drafts and stable desktop/mobile navigation where the
+  connected NapCat exposes the required capability.
+- Contacts, notifications, group members, group management, announcements,
+  essence messages, group files and storage/settings surfaces behave like Mew
+  where NapCat has an equivalent action. Unsupported actions are disabled with
+  an explicit reason rather than simulated.
+- NapCat remains the authoritative QQ data source. Browser persistence may
+  cache only real NapCat-derived messages, coverage metadata, conversations and
+  drafts; clearing it never changes QQ server data and the UI remains honest
+  when a history range cannot be recovered.
 
 ## Success Criteria (testable outcomes that show the need was met)
 
@@ -58,8 +81,25 @@ and do not implement or connect Bandit learning yet.
   authorization are supplied, records zero duplicate/wrong-target/unauthorized
   or sensitive-trace incidents and captures the frozen SLO evidence.
 - [x] Existing S01-S07 tests and repository safety/import boundaries remain
-  green; unrelated WebUI and Sub2API work is neither modified nor committed by
-  this project.
+  green; unrelated Sub2API work is neither modified nor committed by this
+  project.
+- [ ] The production Web build contains no demo QQ or Agent data and obtains
+  accounts, conversations, history, events and mutation results only from an
+  authenticated server-side NapCat connection.
+- [ ] Two concurrent NapCat accounts can be exercised without cross-account
+  request, message, cache, draft, unread, upload or capability leakage.
+- [ ] Mew's chat, contacts, notifications, group members/management/resources
+  and settings behaviors are reproduced for every mapped NapCat capability,
+  with explicit disabled states for confirmed protocol gaps.
+- [ ] Text, links, reply, mentions, QQ faces, custom faces, images, audio,
+  video, files, forwarded messages, Markdown/light-app content and unknown
+  segments have tested send/display or honest fallback behavior as applicable.
+- [ ] History pagination, virtual scrolling, unread positioning, local search,
+  drafts, cache cleanup and recovery are verified on account-scoped real-data
+  caches across desktop and mobile viewports.
+- [ ] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
+  action access never reach the browser; destructive actions use a typed
+  server allowlist and the unauthenticated Web service remains loopback-only.
 
 The authorized real-group criterion remains unchecked because no group IDs,
 credentials, authorization or send window were supplied. Local simulation and
@@ -78,6 +118,17 @@ external evidence.
 - Replacing the legacy AstrBot Handler before the S11 canary gates pass.
 - Sending a real QQ message without explicit test-group authorization and
   configured credentials.
+- Implementing QQ login or the QQ protocol itself; NapCat remains responsible
+  for interactive login and QQ connectivity.
+- Claiming exact parity for capabilities absent from the connected NapCat,
+  currently including QQ-synchronized peer pinning, group-folder rename and
+  complete historical friend-request retrieval.
+- Connecting or simulating the Agent Console runtime in the Mew parity epic.
+  Agent sessions, model controls and reply approval remain a separate project
+  branch and the UI must show an honest unavailable state until then.
+- Features that Mew itself does not implement, including calls/recording,
+  temporary sessions, friend add/delete, message editing, red packets,
+  location, announcement publishing and per-member mute management.
 
 ## Confirmed Decisions (user-owned product choices and constraints; technical responses belong in spec.md)
 
@@ -88,3 +139,16 @@ external evidence.
 4. Bandit is explicitly deferred.
 5. Existing S01-S07 foundations and legacy production behavior are preserved
    unless an S08-S11 acceptance item requires an additive change.
+6. USTC-XeF2/mew-ui commit `97df34b3c8ca1747b92003fa3bb6566a58668a3f`
+   is the accepted QQ-client source and observable behavior baseline.
+7. NapCat/OneBot, not Milky and not browser-local fixtures, is the production QQ
+   backend.
+8. Dududa's concurrent multi-account runtime is preserved even though Mew has a
+   single active client.
+9. Browser persistence is allowed only for real NapCat data, drafts and derived
+   UI metadata; it is never an alternate QQ source.
+10. Browser identity authentication remains removed for the local deployment.
+    The OneBot Access Token remains mandatory between NapCat and the server and
+    never enters the browser.
+11. The Agent Console runtime is deferred until QQ/Mew parity is independently
+    implemented and audited.

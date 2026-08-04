@@ -9,6 +9,9 @@
 - Offline direct-chat runtime and side-effect-free shadow composition.
 - Controlled AstrBot shadow/canary boundary, kill switch, dedup, observability
   and rollback evidence.
+- Mew-source QQ client behavior over a typed server-side NapCat capability API.
+- Concurrent multi-account chat, directory, notification, group-resource and
+  settings workflows with account-scoped real-data persistence.
 
 ## Project Acceptance (project-level completion criteria; not branch-local steps)
 
@@ -21,6 +24,12 @@
 - [x] Shadow is proven side-effect-free and canary ownership is proven
   single-path under concurrency and restart simulation.
 - [x] The legacy path and unrelated workspace changes remain intact.
+- [ ] Real NapCat accounts provide all production QQ data and unsupported
+  capabilities are explicit rather than simulated.
+- [ ] Mew-equivalent chat, directory, notification, group-resource and settings
+  workflows pass adapted Unit and E2E contracts on desktop and mobile.
+- [ ] Concurrent accounts remain isolated through gateway actions, events,
+  browser caches, drafts and uploads, with the OneBot token server-only.
 
 The first project checkbox remains open only because the authorized real-group
 criterion in `requirements.md` has no supplied authority or credentials. All
@@ -36,12 +45,20 @@ local S08-S11 criteria and the completion audit are satisfied.
 5. Integrate controlled rollout configuration, bridge, persistent idempotency,
    metrics and rollback rehearsal.
 6. Run cross-stage verification and completion audit.
+7. Establish the selective Web baseline and account-scoped NapCat capability,
+   rich-message, cursor-history and persistence contracts.
+8. Port Mew's chat window, composer, renderers, search, drafts and message
+   actions to the NapCat contracts.
+9. Port contacts, notifications, group members/management/resources and
+   settings with explicit capability degradation.
+10. Audit real NapCat multi-account behavior, desktop/mobile UX, security and
+    the complete repository regression suite.
 
 ## Out Of Scope (project-wide exclusions; not branch ownership detail)
 
 - Bandit or any live exploration.
 - Tool and Memory integration, proactive chat, image generation, broad rollout,
-  WebUI and Sub2API.
+  Agent Console runtime integration and Sub2API.
 
 ## External Dependencies (user decisions, systems, or inputs outside tree.yaml)
 
@@ -51,3 +68,8 @@ local S08-S11 criteria and the completion audit are satisfied.
    Python still records the two expected host-only skips.
 3. A real S11 group run still requires explicit authorization, group identifiers,
    credentials and a user-approved external send window.
+4. Mew source behavior is pinned to commit `97df34b`; later upstream changes are
+   not imported silently.
+5. Full Web verification requires at least one real logged-in NapCat account;
+   destructive QQ mutations and public-network exposure require separate user
+   authority.

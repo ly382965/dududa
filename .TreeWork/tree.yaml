@@ -2,8 +2,8 @@ version: 1
 
 tree:
   id: root
-  title: Dududa S08-S11
-  purpose: Deliver integrated deterministic model selection through controlled direct-chat rollout.
+  title: Dududa Runtime And Operator Client
+  purpose: Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.
   spec: spec.md
 
   children:
@@ -51,3 +51,35 @@ tree:
       spec: branches/completion-audit/spec.md
       depends_on:
         - controlled-rollout
+
+    - id: mew-parity
+      title: Mew And NapCat Web Parity
+      purpose: Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.
+      spec: branches/mew-parity/spec.md
+      children:
+        - id: mew-parity-foundation
+          title: NapCat Web Foundation
+          purpose: Establish account-scoped rich-message, capability, cursor-history and persistence contracts.
+          spec: branches/mew-parity-foundation/spec.md
+
+        - id: mew-chat-parity
+          title: Mew Chat Parity
+          purpose: Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.
+          spec: branches/mew-chat-parity/spec.md
+          depends_on:
+            - mew-parity-foundation
+
+        - id: mew-directory-parity
+          title: Mew Directory And Group Parity
+          purpose: Port contacts, notifications, group management, resources and settings with capability gating.
+          spec: branches/mew-directory-parity/spec.md
+          depends_on:
+            - mew-parity-foundation
+
+        - id: mew-parity-audit
+          title: Mew Parity Audit
+          purpose: Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.
+          spec: branches/mew-parity-audit/spec.md
+          depends_on:
+            - mew-chat-parity
+            - mew-directory-parity

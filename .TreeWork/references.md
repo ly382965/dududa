@@ -32,4 +32,19 @@
 
 ## Evidence (external or project sources that materially informed requirements or Spec; not an undigested link dump)
 
--
+- USTC-XeF2/mew-ui `97df34b3c8ca1747b92003fa3bb6566a58668a3f`
+  is a Vue 3 browser QQ client with Router, Pinia, Dexie, TanStack Virtual,
+  Tiptap, rich message composition/rendering, contacts, notifications, group
+  management/resources and cache settings. Its runtime has one active Milky
+  client even though persisted profiles are account-scoped.
+- Dududa `apps/web` already has an authenticated server-side NapCat reverse
+  WebSocket, a real concurrent account `Map`, real group/friend/recent/history
+  data, SSE events and pure-text sending, but flattens rich segments and lacks
+  cursor history and Mew's non-chat routes.
+- The installed NapCat action schemas expose cursor history, rich OneBot message
+  arrays, media/file upload, recall, forward, nudge, member/group management,
+  group files, announcements, essence messages and request handling. They do
+  not expose Milky-equivalent peer pins, group-folder rename or complete friend
+  request history.
+- The user's approved interpretation permits IndexedDB caching of real NapCat
+  messages and drafts while forbidding demo or alternate local QQ data.

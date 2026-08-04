@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "event_seq": 27,
+  "captured_at": "unix:1785826169",
+  "tree_revision": 2,
+  "checkpoint_hash": "fnv1a64:80a72d03d6182821",
+  "project": {
+    "stage": "work_tree",
+    "current_branch": "completion-audit",
+    "tree_editing": null,
+    "tree_hash": "fnv1a64:0f7a27ea99378f56"
+  },
+  "tree": {
+    "schema_version": 1,
+    "revision": 2,
+    "source_hash": "fnv1a64:0f7a27ea99378f56",
+    "state_hash": "fnv1a64:969e7dbc635a0bbe",
+    "accepted_at": "unix:1785826169",
+    "root": "root",
+    "nodes": [
+      {
+        "id": "root",
+        "parent": "",
+        "title": "Dududa Runtime And Operator Client",
+        "purpose": "Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.",
+        "spec": "spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "model-selection",
+        "parent": "root",
+        "title": "Model Selection Epic",
+        "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
+        "spec": "branches/model-selection/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "selection-contracts",
+        "parent": "model-selection",
+        "title": "S08 Selection Contracts",
+        "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
+        "spec": "branches/selection-contracts/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "static-router",
+        "parent": "model-selection",
+        "title": "S08 Static Router",
+        "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
+        "spec": "branches/static-router/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "selection-contracts"
+        ]
+      },
+      {
+        "id": "perception-tiering",
+        "parent": "model-selection",
+        "title": "S09 Perception And Tiering",
+        "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
+        "spec": "branches/perception-tiering/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "static-router"
+        ]
+      },
+      {
+        "id": "offline-runtime",
+        "parent": "root",
+        "title": "S10 Offline Runtime",
+        "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
+        "spec": "branches/offline-runtime/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "perception-tiering"
+        ]
+      },
+      {
+        "id": "controlled-rollout",
+        "parent": "root",
+        "title": "S11 Controlled Rollout",
+        "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
+        "spec": "branches/controlled-rollout/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "offline-runtime"
+        ]
+      },
+      {
+        "id": "completion-audit",
+        "parent": "root",
+        "title": "S08-S11 Completion Audit",
+        "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
+        "spec": "branches/completion-audit/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "controlled-rollout"
+        ]
+      },
+      {
+        "id": "mew-parity",
+        "parent": "root",
+        "title": "Mew And NapCat Web Parity",
+        "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
+        "spec": "branches/mew-parity/spec.md",
+        "sibling_order": 4
+      },
+      {
+        "id": "mew-parity-foundation",
+        "parent": "mew-parity",
+        "title": "NapCat Web Foundation",
+        "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
+        "spec": "branches/mew-parity-foundation/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "mew-chat-parity",
+        "parent": "mew-parity",
+        "title": "Mew Chat Parity",
+        "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
+        "spec": "branches/mew-chat-parity/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "mew-parity-foundation"
+        ]
+      },
+      {
+        "id": "mew-directory-parity",
+        "parent": "mew-parity",
+        "title": "Mew Directory And Group Parity",
+        "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
+        "spec": "branches/mew-directory-parity/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "mew-parity-foundation"
+        ]
+      },
+      {
+        "id": "mew-parity-audit",
+        "parent": "mew-parity",
+        "title": "Mew Parity Audit",
+        "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
+        "spec": "branches/mew-parity-audit/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "mew-chat-parity",
+          "mew-directory-parity"
+        ]
+      }
+    ]
+  },
+  "branches": [
+    {
+      "id": "root",
+      "parent": "",
+      "title": "Dududa Runtime And Operator Client",
+      "purpose": "Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.",
+      "status": "in_progress",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "model-selection",
+      "parent": "root",
+      "title": "Model Selection Epic",
+      "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "selection-contracts",
+      "parent": "model-selection",
+      "title": "S08 Selection Contracts",
+      "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
+      "status": "complete",
+      "verification_status": "verified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/selection-contracts",
+        "git_branch": "treework/selection-contracts",
+        "managed_by_treework": false,
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      }
+    },
+    {
+      "id": "static-router",
+      "parent": "model-selection",
+      "title": "S08 Static Router",
+      "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
+      "status": "complete",
+      "verification_status": "verified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/static-router",
+        "git_branch": "treework/static-router",
+        "managed_by_treework": false,
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      }
+    },
+    {
+      "id": "perception-tiering",
+      "parent": "model-selection",
+      "title": "S09 Perception And Tiering",
+      "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
+      "status": "complete",
+      "verification_status": "verified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/perception-tiering",
+        "git_branch": "treework/perception-tiering",
+        "managed_by_treework": false,
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      }
+    },
+    {
+      "id": "offline-runtime",
+      "parent": "root",
+      "title": "S10 Offline Runtime",
+      "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
+      "status": "complete",
+      "verification_status": "verified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/offline-runtime",
+        "git_branch": "treework/offline-runtime",
+        "managed_by_treework": false,
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      }
+    },
+    {
+      "id": "controlled-rollout",
+      "parent": "root",
+      "title": "S11 Controlled Rollout",
+      "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
+      "status": "complete",
+      "verification_status": "verified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/controlled-rollout",
+        "git_branch": "treework/controlled-rollout",
+        "managed_by_treework": false,
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      }
+    },
+    {
+      "id": "completion-audit",
+      "parent": "root",
+      "title": "S08-S11 Completion Audit",
+      "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
+      "status": "complete",
+      "verification_status": "verified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/completion-audit",
+        "git_branch": "treework/completion-audit",
+        "managed_by_treework": false,
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      }
+    },
+    {
+      "id": "mew-parity",
+      "parent": "root",
+      "title": "Mew And NapCat Web Parity",
+      "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "mew-parity-foundation",
+      "parent": "mew-parity",
+      "title": "NapCat Web Foundation",
+      "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "mew-chat-parity",
+      "parent": "mew-parity",
+      "title": "Mew Chat Parity",
+      "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "mew-directory-parity",
+      "parent": "mew-parity",
+      "title": "Mew Directory And Group Parity",
+      "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    },
+    {
+      "id": "mew-parity-audit",
+      "parent": "mew-parity",
+      "title": "Mew Parity Audit",
+      "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
+    }
+  ]
+}

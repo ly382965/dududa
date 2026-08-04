@@ -3,12 +3,12 @@
     {
       "path": "root",
       "parent": "",
-      "title": "Dududa S08-S11",
-      "purpose": "Deliver integrated deterministic model selection through controlled direct-chat rollout.",
+      "title": "Dududa Runtime And Operator Client",
+      "purpose": "Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.",
       "status": "in_progress",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1785750151"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "model-selection",
@@ -19,7 +19,7 @@
       "status": "pending",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1785750151"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "selection-contracts",
@@ -39,7 +39,7 @@
         "last_entered_at": "unix:1785750662",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785760314"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "static-router",
@@ -59,7 +59,7 @@
         "last_entered_at": "unix:1785760617",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785773580"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "perception-tiering",
@@ -79,7 +79,7 @@
         "last_entered_at": "unix:1785773625",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785784286"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "offline-runtime",
@@ -99,7 +99,7 @@
         "last_entered_at": "unix:1785785642",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785812875"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "controlled-rollout",
@@ -119,7 +119,7 @@
         "last_entered_at": "unix:1785812954",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785816722"
+      "last_sync": "unix:1785826169"
     },
     {
       "path": "completion-audit",
@@ -139,7 +139,62 @@
         "last_entered_at": "unix:1785816767",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785817990"
+      "last_sync": "unix:1785826169"
+    },
+    {
+      "path": "mew-parity",
+      "parent": "root",
+      "title": "Mew And NapCat Web Parity",
+      "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785826169"
+    },
+    {
+      "path": "mew-parity-foundation",
+      "parent": "mew-parity",
+      "title": "NapCat Web Foundation",
+      "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785826169"
+    },
+    {
+      "path": "mew-chat-parity",
+      "parent": "mew-parity",
+      "title": "Mew Chat Parity",
+      "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785826169"
+    },
+    {
+      "path": "mew-directory-parity",
+      "parent": "mew-parity",
+      "title": "Mew Directory And Group Parity",
+      "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785826169"
+    },
+    {
+      "path": "mew-parity-audit",
+      "parent": "mew-parity",
+      "title": "Mew Parity Audit",
+      "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "pending",
+      "verification_status": "unverified",
+      "sync_status": "clean",
+      "last_sync": "unix:1785826169"
     }
   ]
 }

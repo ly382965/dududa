@@ -12,11 +12,12 @@ Eval has 320 material profiles in 32 template families and reports
 reviews those template families. The legacy AstrBot handlers remain production
 authority.
 
-`apps/web`, deployment files and the Sub2API plugin remain concurrent user work
-in the dirty control workspace. They are outside this project's write and
-commit scope. Every remaining TreeWork branch starts from the committed
-S08/S09 control baseline in an isolated worktree and is integrated only after
-branch-local and control-level verification.
+`apps/web` and its deployment integration are now an accepted project scope.
+They currently exist as an untracked/dirty but verified NapCat multi-account
+prototype in the control workspace. The Sub2API plugin remains unrelated user
+work and stays outside all Web commits. Before isolated Web branches begin, the
+Lead creates a selective Web baseline containing only Web-owned paths and
+Web-specific hunks; no Sub2API or model-runtime changes are staged with it.
 
 ### Integrated Model Selection Architecture
 
@@ -221,13 +222,97 @@ Real-group execution remains an external action. Code, simulation, configuration
 and rollback rehearsal can be completed locally; actual shadow/canary evidence
 requires an explicitly authorized group and credentials.
 
+### Mew/NapCat Web Parity
+
+#### Source And Ownership Boundary
+
+Mew commit `97df34b3c8ca1747b92003fa3bb6566a58668a3f` is the accepted
+functional baseline, not merely a visual reference. Dududa may adapt Mew's Vue
+Router, Pinia stores, Dexie services, TanStack Virtual windowing, Tiptap
+composer, message renderers, dialogs, group views, styles and tests. The Milky
+connection singleton and browser-held Access Token are not imported.
+
+The browser talks only to a typed same-origin Dududa HTTP/SSE API. The server
+owns authenticated NapCat reverse WebSockets and an allowlisted action surface.
+No endpoint accepts an arbitrary OneBot action name. Credentials, raw local
+paths, cookies and OneBot tokens are never serialized to the browser.
+
+#### Account Runtime And API Keys
+
+The existing server `Map<accountId, AccountState>` remains the connection
+authority. Every API route and event identifies an account, and all stable UI
+keys use `accountId + scene + peerId`; messages additionally retain both the
+OneBot `message_id` and `message_seq`. Requests validate that route account,
+connection self ID and event self ID agree.
+
+The server exposes a per-account capability document derived from the NapCat
+implementation/version and guarded probes. Views render actions only when the
+capability is supported and the current QQ role permits it. Known gaps such as
+peer pin synchronization, group-folder rename and complete friend-request
+history are represented explicitly and never produce optimistic local success.
+
+#### Rich Message Contract
+
+The current flattened `content + attachments` DTO is replaced by a normalized,
+loss-aware segment union covering text/link, mention/all-mention, reply, QQ and
+custom faces, image, audio, video, file, market face, forwarded content,
+Markdown/light-app JSON and unknown segments. Unknown data is bounded and
+displayed as unsupported content without exposing raw sensitive event objects.
+
+Outgoing messages use the same domain segment union and a server-side converter
+to OneBot arrays. Browser files cross a size- and MIME-limited upload endpoint;
+large files use NapCat upload actions rather than raw browser paths. Media
+download/proxy endpoints use host allowlists, byte limits, Range and safe
+Content-Disposition where appropriate. Action-specific deadlines separate text,
+media and file operations.
+
+#### History, Events And Persistence
+
+NapCat is authoritative. History APIs expose stable cursors based on message
+sequence and direction rather than only a latest-message limit. Normalized SSE
+events cover created/sent/recalled messages, requests, nudges, member changes,
+admin/mute/name changes, files and connection/capability changes. A refresh
+repairs missed or unrecognized events.
+
+Mew's Dexie layout is adapted so every message, conversation, draft, history
+range and event key includes `accountId`. IndexedDB contains only values obtained
+from NapCat plus operator drafts and derived UI metadata. It supports cached-
+first opening, bidirectional history coverage, local search and quota cleanup;
+clearing it cannot invoke a QQ mutation. Ephemeral Blob/Base64 media is never
+persisted.
+
+#### UI And Routes
+
+The workspace retains Dududa's account rail, account filters and combined inbox
+while restoring Mew's `/chat`, `/contacts`, `/notifications` and `/settings`
+surfaces. The chat branch owns virtual history, scroll anchoring, message
+rendering/actions, search, Tiptap composition, drafts, upload and desktop/mobile
+gestures. The directory branch owns contacts, request handling, members, group
+settings, essence messages, announcements, files and storage/settings views.
+
+There is no browser connect/authentication form. With no account, the app shows
+the real NapCat reverse-connection status and setup location. The Agent Console
+continues to report that its runtime is unavailable; no local Agent session,
+run, tool or reply-draft fixture is permitted.
+
+#### Compatibility And Verification
+
+Mew's unit and Playwright cases are ported or adapted as behavior contracts.
+Gateway tests use an in-memory NapCat transport only in test code and cover
+action mapping, malformed payloads, capability gaps, pagination, upload limits,
+destructive operations and concurrent-account isolation. Production verification
+uses connected NapCat accounts, without sending destructive or user-visible
+mutations unless explicitly authorized. Desktop and mobile screenshots, console
+errors, layout overlap and virtual-scroll stability are audited against the Mew
+baseline.
+
 ### Verification And Change Discipline
 
 Each implementation branch has focused Unit, Contract, negative and failure
-tests. The final audit reruns the full Python suite, import boundaries, compile,
-secret scan, shell, Compose parse, whitespace checks, wheel/image/plugin smoke
-where affected, and a requirement-by-requirement audit. Branch-local success is
-not evidence that the S08-S11 objective is complete.
+tests. The final audits rerun the full Python and Web suites, import boundaries,
+typecheck/build, secret scan, shell, Compose parse, whitespace checks,
+wheel/image/plugin smoke where affected, and a requirement-by-requirement
+audit. Branch-local success is not evidence that its project epic is complete.
 
 Bandit, random weights and learned online routing have no implementation hook in
 this project beyond reproducible static decision receipts that a later S20 can

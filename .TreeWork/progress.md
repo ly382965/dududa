@@ -4,9 +4,9 @@
 <!-- treework:root-status:start -->
 Stage: work_tree
 Lead cursor: completion-audit
-Accepted tree revision: 1
+Accepted tree revision: 2
 Tree editing: closed
-Last sync: unix:1785817990
+Last sync: unix:1785826169
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)
@@ -18,13 +18,19 @@ Last sync: unix:1785817990
   while human template review remains pending.
 - S08-S11 local implementation and the cross-stage completion audit are
   complete and verified. The authorized real-group criterion remains external.
-- `apps/web` and Sub2API paths are concurrent unrelated work and excluded.
-- TreeWork was initialized for the integrated S08-S11 objective.
+- `apps/web` is now an accepted Mew/NapCat parity scope. Its current untracked
+  prototype has a real multi-account reverse-WebSocket gateway but only a
+  flattened text chat surface.
+- Sub2API remains concurrent unrelated work and is excluded from Web branches.
+- Tree revision 2 adds the Mew/NapCat epic after explicit user approval of real
+  NapCat data caching and the Mew source baseline.
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
 - Real AstrBot Provider and group-canary evidence require environment-specific
   integration, explicit authorization and credentials.
+- Web parity still requires a selective baseline commit before isolated branch
+  work can consume the untracked prototype.
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 

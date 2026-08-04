@@ -95,6 +95,78 @@
       "kind": "depends_on",
       "user_label": "static-router depends on selection-contracts",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-13",
+      "from": "root",
+      "to": "mew-parity",
+      "kind": "parent_of",
+      "user_label": "root contains mew-parity",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-14",
+      "from": "mew-parity",
+      "to": "mew-parity-foundation",
+      "kind": "parent_of",
+      "user_label": "mew-parity contains mew-parity-foundation",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-15",
+      "from": "mew-parity",
+      "to": "mew-chat-parity",
+      "kind": "parent_of",
+      "user_label": "mew-parity contains mew-chat-parity",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-16",
+      "from": "mew-parity",
+      "to": "mew-directory-parity",
+      "kind": "parent_of",
+      "user_label": "mew-parity contains mew-directory-parity",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-17",
+      "from": "mew-parity",
+      "to": "mew-parity-audit",
+      "kind": "parent_of",
+      "user_label": "mew-parity contains mew-parity-audit",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-18",
+      "from": "mew-parity-audit",
+      "to": "mew-chat-parity",
+      "kind": "depends_on",
+      "user_label": "mew-parity-audit depends on mew-chat-parity",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-19",
+      "from": "mew-parity-audit",
+      "to": "mew-directory-parity",
+      "kind": "depends_on",
+      "user_label": "mew-parity-audit depends on mew-directory-parity",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-20",
+      "from": "mew-chat-parity",
+      "to": "mew-parity-foundation",
+      "kind": "depends_on",
+      "user_label": "mew-chat-parity depends on mew-parity-foundation",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-21",
+      "from": "mew-directory-parity",
+      "to": "mew-parity-foundation",
+      "kind": "depends_on",
+      "user_label": "mew-directory-parity depends on mew-parity-foundation",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

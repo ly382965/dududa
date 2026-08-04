@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "revision": 1,
-  "source_hash": "fnv1a64:1a89870cd80e343b",
-  "state_hash": "fnv1a64:4e103594bdff4827",
-  "accepted_at": "unix:1785750151",
+  "revision": 2,
+  "source_hash": "fnv1a64:0f7a27ea99378f56",
+  "state_hash": "fnv1a64:969e7dbc635a0bbe",
+  "accepted_at": "unix:1785826169",
   "root": "root",
   "nodes": [
     {
       "id": "root",
       "parent": "",
-      "title": "Dududa S08-S11",
-      "purpose": "Deliver integrated deterministic model selection through controlled direct-chat rollout.",
+      "title": "Dududa Runtime And Operator Client",
+      "purpose": "Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.",
       "spec": "spec.md",
       "sibling_order": 0
     },
@@ -83,6 +83,56 @@
       "sibling_order": 3,
       "depends_on": [
         "controlled-rollout"
+      ]
+    },
+    {
+      "id": "mew-parity",
+      "parent": "root",
+      "title": "Mew And NapCat Web Parity",
+      "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
+      "spec": "branches/mew-parity/spec.md",
+      "sibling_order": 4
+    },
+    {
+      "id": "mew-parity-foundation",
+      "parent": "mew-parity",
+      "title": "NapCat Web Foundation",
+      "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
+      "spec": "branches/mew-parity-foundation/spec.md",
+      "sibling_order": 0
+    },
+    {
+      "id": "mew-chat-parity",
+      "parent": "mew-parity",
+      "title": "Mew Chat Parity",
+      "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
+      "spec": "branches/mew-chat-parity/spec.md",
+      "sibling_order": 1,
+      "depends_on": [
+        "mew-parity-foundation"
+      ]
+    },
+    {
+      "id": "mew-directory-parity",
+      "parent": "mew-parity",
+      "title": "Mew Directory And Group Parity",
+      "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
+      "spec": "branches/mew-directory-parity/spec.md",
+      "sibling_order": 2,
+      "depends_on": [
+        "mew-parity-foundation"
+      ]
+    },
+    {
+      "id": "mew-parity-audit",
+      "parent": "mew-parity",
+      "title": "Mew Parity Audit",
+      "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
+      "spec": "branches/mew-parity-audit/spec.md",
+      "sibling_order": 3,
+      "depends_on": [
+        "mew-chat-parity",
+        "mew-directory-parity"
       ]
     }
   ]

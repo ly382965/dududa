@@ -1,10 +1,9 @@
-# Dududa S08-S11 Model Selection Runtime
+# Dududa Long-Running Development
 
 ## Purpose
 
-Develop Dududa from the completed S01-S07 foundations through an integrated,
-deterministic model-selection pipeline, an offline direct-chat runtime, and a
-controlled shadow/canary rollout boundary.
+Develop Dududa as a deterministic QQ Agent runtime and a real NapCat-backed,
+Mew-equivalent multi-account operator client through isolated, verified epics.
 
 ## Documents
 
@@ -19,8 +18,9 @@ controlled shadow/canary rollout boundary.
 
 ### Shape
 
-Hybrid: one model-selection epic owns difficulty assessment and static routing,
-followed by milestone branches for the offline runtime and controlled rollout.
+Hybrid: the completed model-selection/runtime sequence remains intact, while a
+separate Mew/NapCat epic owns a shared Web foundation followed by parallel chat
+and directory slices and a joint audit.
 
 ### Why
 
@@ -29,6 +29,11 @@ followed by milestone branches for the offline runtime and controlled rollout.
 2. S08, S09, S10, and S11 remain sequential verification gates.
 3. A final audit branch proves the cross-stage outcome instead of treating
    branch-local tests as project completion.
+4. Web protocol, persistence and account isolation are frozen once in the
+   foundation; chat and directory work can then proceed without redefining the
+   NapCat boundary.
+5. The Web audit depends on both user-facing slices and proves cross-account,
+   security and responsive behavior at their integration point.
 
 ### Revisit Conditions
 
@@ -38,9 +43,14 @@ followed by milestone branches for the offline runtime and controlled rollout.
   direct chat, tools-off, and memory-off.
 - S11 production evidence requires authority or infrastructure not currently
   available in the workspace.
+- NapCat action behavior contradicts the inspected schemas or requires an
+  unbounded/raw action proxy.
+- Mew behavior cannot remain account-scoped without changing an accepted Web
+  foundation contract.
 
 ## Current Direction
 
-Establish a recoverable S01-S07 Git baseline without touching concurrent WebUI
-or Sub2API work, then implement the model-selection epic before entering the
-offline runtime and rollout branches.
+The local S08-S11 implementation is complete pending authorized real-group
+evidence. Current work moves through an independent Mew/NapCat Web parity epic,
+starting with a selective Web baseline and shared protocol/persistence
+foundation while preserving unrelated Sub2API work.
