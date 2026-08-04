@@ -34,6 +34,9 @@ and directory slices and a joint audit.
    NapCat boundary.
 5. The Web audit depends on both user-facing slices and proves cross-account,
    security and responsive behavior at their integration point.
+6. Real group-chat validation is a terminal release gate. It is added as the
+   final Tree leaf only after the accepted module topology is complete, so any
+   later module audit must remain a predecessor rather than being bypassed.
 
 ### Revisit Conditions
 
@@ -50,7 +53,7 @@ and directory slices and a joint audit.
 
 ## Current Direction
 
-The local S08-S11 implementation is complete pending authorized real-group
-evidence. Current work moves through an independent Mew/NapCat Web parity epic,
-starting with a selective Web baseline and shared protocol/persistence
-foundation while preserving unrelated Sub2API work.
+The local S08-S11 implementation and audit are complete. Authorized real-group
+scenario testing is deliberately deferred until every accepted module, local
+integration audit and Web testing task is complete. Current work remains on the
+independent Mew/NapCat Web parity epic while preserving unrelated Sub2API work.

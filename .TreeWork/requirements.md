@@ -77,9 +77,6 @@ retaining Dududa's server-side OneBot boundary and without shipping demo data.
   delivery tombstones, allowlist and explicit-mention ownership, a second
   pre-delivery kill-switch check, sanitized metrics, and an executable rollback
   procedure.
-- [ ] An authorized real-group shadow/canary run, when credentials and group
-  authorization are supplied, records zero duplicate/wrong-target/unauthorized
-  or sensitive-trace incidents and captures the frozen SLO evidence.
 - [x] Existing S01-S07 tests and repository safety/import boundaries remain
   green; unrelated Sub2API work is neither modified nor committed by this
   project.
@@ -100,11 +97,16 @@ retaining Dududa's server-side OneBot boundary and without shipping demo data.
 - [ ] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
   action access never reach the browser; destructive actions use a typed
   server allowlist and the unauthenticated Web service remains loopback-only.
+- [ ] Only after every accepted module, Web testing task and local integration
+  audit is complete, an explicitly authorized real-group shadow/canary run
+  records zero duplicate, wrong-target, unauthorized-send or sensitive-trace
+  incidents and captures the frozen SLO evidence.
 
-The authorized real-group criterion remains unchecked because no group IDs,
-credentials, authorization or send window were supplied. Local simulation and
-an AstrBot image smoke are recorded separately and are not substituted for
-external evidence.
+The authorized real-group criterion is a final project-stage gate. It does not
+block the completed local S08-S11 scope and must not start while any accepted
+module, Web testing task or local integration audit remains incomplete. Local
+simulation and AstrBot image smoke remain separate evidence and are not
+substituted for the later external run.
 
 ## Non-Goals (explicit boundaries; not a backlog of unrelated future ideas)
 
@@ -152,3 +154,6 @@ external evidence.
     never enters the browser.
 11. The Agent Console runtime is deferred until QQ/Mew parity is independently
     implemented and audited.
+12. Real group-chat scenario testing runs last, after all accepted modules,
+    Web testing work and local integration audits are complete. Bandit remains
+    separately deferred and is not pulled into the critical path by this rule.

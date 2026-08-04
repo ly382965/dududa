@@ -12,6 +12,8 @@
 - Mew-source QQ client behavior over a typed server-side NapCat capability API.
 - Concurrent multi-account chat, directory, notification, group-resource and
   settings workflows with account-scoped real-data persistence.
+- A final authorized real-group scenario gate after all module, Web testing and
+  local integration work is complete.
 
 ## Project Acceptance (project-level completion criteria; not branch-local steps)
 
@@ -30,10 +32,12 @@
   workflows pass adapted Unit and E2E contracts on desktop and mobile.
 - [ ] Concurrent accounts remain isolated through gateway actions, events,
   browser caches, drafts and uploads, with the OneBot token server-only.
+- [ ] After every earlier acceptance item and local audit passes, the authorized
+  real-group shadow/canary records the frozen safety and SLO evidence.
 
-The first project checkbox remains open only because the authorized real-group
-criterion in `requirements.md` has no supplied authority or credentials. All
-local S08-S11 criteria and the completion audit are satisfied.
+All local S08-S11 criteria and their completion audit are satisfied. Remaining
+checkboxes belong to the Web testing scope and the final real-group gate; the
+real-group gate cannot start until every preceding checkbox is complete.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 
@@ -53,6 +57,13 @@ local S08-S11 criteria and the completion audit are satisfied.
    settings with explicit capability degradation.
 10. Audit real NapCat multi-account behavior, desktop/mobile UX, security and
     the complete repository regression suite.
+11. After every accepted module and local audit is complete, freeze the SLO and
+    rollback bundle, then run authorized single-group shadow, single-group
+    canary and only afterward any layered group expansion/debugging.
+
+If a later Tree revision adds another module or audit branch, that work is
+inserted before step 11. The terminal real-group branch must depend on every
+accepted local audit and cannot be entered merely because credentials arrive.
 
 ## Out Of Scope (project-wide exclusions; not branch ownership detail)
 
@@ -66,8 +77,9 @@ local S08-S11 criteria and the completion audit are satisfied.
    are integrated through `716e227`.
 2. AstrBot runtime tests passed in the derived `s11-audit` image; ordinary host
    Python still records the two expected host-only skips.
-3. A real S11 group run still requires explicit authorization, group identifiers,
-   credentials and a user-approved external send window.
+3. The final real-group run requires explicit authorization, group identifiers,
+   credentials and a user-approved external send window; these inputs are not
+   requested until all preceding development and local audit work is complete.
 4. Mew source behavior is pinned to commit `97df34b`; later upstream changes are
    not imported silently.
 5. Full Web verification requires at least one real logged-in NapCat account;

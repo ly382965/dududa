@@ -1,7 +1,8 @@
 # Dududa 2.0 实施计划
 
 状态：S01–S11 的本地增量实施步骤已完成。旧 AstrBot Handler 在 `off/shadow`
-模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群验证尚未授权。
+模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
+统一延期到所有当前范围模块、WebUI 测试工作和本地集成审计完成之后。
 
 ## 交付规则
 
@@ -35,7 +36,7 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 
 下表按 2026-08-04 的 `716e227` 和 Dududa 2.0 统一完成定义判断。S08-S11 已补齐静态
 路由、语义/难度判断、离线 Runtime、Shadow、受控 Canary 与回滚边界；真实 Provider 效果、
-Memory/Tool、附件和授权群放量仍按各模块独立门禁判断。
+Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再穿插在模块开发中，只在最终阶段执行。
 
 | 模块或工作流 | 状态 | 已有证据 | 达到完成仍缺少 |
 | --- | --- | --- | --- |
@@ -51,7 +52,7 @@ Memory/Tool、附件和授权群放量仍按各模块独立门禁判断。
 | 在线学习 / Bandit | 未完成（明确延期） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；后续仍需 propensity/support、OPE 与单独安全评审 |
 | Trace、Eval 与 CI | 部分完成 | 350 项双版本测试、S09 版本化 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI / Control Plane | 未完成 | 只有规划条目；当前文档站不是产品 Control Plane | ADR、只读 API、权限/脱敏/审计、Trace/Eval Viewer，之后才考虑写操作 |
-| 大规模真实群测试与 Debug | 未完成 | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 经授权的真实群 shadow/canary、3–5 群分层放量、冻结 SLO 和复盘 |
+| 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有模块、WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘 |
 
 ### 实施步骤完成度
 
@@ -68,8 +69,8 @@ Memory/Tool、附件和授权群放量仍按各模块独立门禁判断。
 | S08 | 已完成 | 三 Tier 静态 Model Router、Registry、流量 admission、fallback、Fake/Adapter conformance | 真实 Provider 效果证据不作为静态路由逻辑的完成声明 |
 | S09 | 已完成 | Rule/Model Perception、Merger/Validator、Social、Complexity、TierPolicy 和 320 条固定 Eval | 人工标签与真实数据校准保留为效果门禁 |
 | S10 | 已完成 | 显式 @ 直聊离线闭环、两次模型预算、CAS/single-flight、Composition、Delivery/reconciliation 与 Shadow | 生产 Provider 与 Memory/Tool/Attachment 不在 S10 范围 |
-| S11 | 已完成（本地） | typed rollout、SQLite claim/tombstone、AstrBot Bridge、发送前熔断、指标和可执行回滚 | 授权真实 QQ 群证据仍未执行 |
-| S12–S22 | 未开始 | 仅保留既有冻结设计与顺序 | 真实 Canary 门禁或负责人重新排序后再逐步进入 |
+| S11 | 已完成（本地） | typed rollout、SQLite claim/tombstone、AstrBot Bridge、发送前熔断、指标和可执行回滚 | 授权真实 QQ 群证据延期到最终 S23 |
+| S12–S23 | 未开始/进行中 | 后续模块与 WebUI 测试按 WIP=1 推进；Bandit 保持延期 | 先完成所有本地模块与总审计，最后才进入 S23 真实群验证 |
 
 ### 公共开工门禁
 
@@ -104,7 +105,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | --- | --- | --- | --- | --- |
 | Trace、Eval 与测试框架 | 建立版本化 fixture、Fake、Contract Test、run/trace ID 和隐私安全记录格式 | 将 Runtime、Router、Memory、Capability、MCP 和 OC 指标接入同一回放/Eval 入口 | 纳入完整 CI、趋势对比、故障注入和发布门禁 | 同一版本数据与配置可重复运行；安全门禁不可设为非阻塞 |
 | WebUI / Control Plane | 先提交 ADR，再定义权限、脱敏、审计、配置版本和只读查询 API；不抢先制作第二套业务逻辑 | 提供只读 Trace Viewer、Agent Playground、Eval 结果和 Model/MCP Health | 增加 RBAC、Memory Explorer、Persona/Model/Capability 配置、成本性能和告警 | UI 不绕过 Runtime Policy 或 Repository；所有写操作有审计、确认和回滚 |
-| 集成与真实群聊测试 | 使用合成 Event、离线回放和跨 Scope 负向 fixture，不读取生产聊天 | 白名单测试群依次执行 no-send/no-write shadow、明确 @ canary 和只读 `/course search` canary | 扩展到 3–5 个不同活跃度群，再执行大群并发、重复消息、故障注入和逐步放量 | 重复回复、未授权 Tool、跨 Scope Memory 和敏感 Trace 均为 0；达到模块 SLO，并验证 kill switch |
+| 集成与真实群聊测试 | 使用合成 Event、离线回放和跨 Scope 负向 fixture，不读取生产聊天 | 完成跨模块离线集成、故障注入和 no-send/no-write 仿真，不连接真实测试群 | 冻结全仓回归、SLO、授权清单和回滚包；真实群执行仍留到最终 S23 | S23 依次通过单群 shadow、单群 canary 和分层放量；重复回复、未授权 Tool、跨 Scope Memory 和敏感 Trace 均为 0 |
 
 ### 依赖与单人执行原则
 
@@ -117,8 +118,9 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
    `/course search`。这两个闭环稳定前不实现通用 Planner。
 5. Memory 的 Scope/隔离契约必须先完成，但效果研究不阻塞空 Memory Runtime；Memory 只有
    通过隔离门禁后才能进入 Context Builder。
-6. 首个白名单 canary 前必须有 kill switch、上一版本镜像、无副作用 shadow 证据和明确回滚
-   命令；不能把真实群聊当集成测试环境。
+6. 真实群验证是最终阶段：所有模块、WebUI 测试和本地总审计完成后，才允许准备白名单
+   canary；此前只做离线/仿真。进入最终阶段前必须具备 kill switch、上一版本镜像、无副作用
+   shadow 证据和明确回滚命令，不能把真实群聊当集成测试环境。
 7. Bandit 依赖稳定 Router、before-action 日志、延迟反馈和足够流量；WebUI 依赖稳定只读 API、
    权限和脱敏。二者都不在首个可用版本关键路径上。
 
@@ -140,7 +142,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S08 | 6A | 实现静态 Model Router：一个现有 Provider、`PERCEPTION` 和 `DIRECT_CHAT` 两个角色、逐 Endpoint descriptor、预算/隐私/health/fallback | Structured Output、429/timeout/认证/无合法路由、敏感数据过滤和 Fake/真实兼容 Adapter contract 通过 | 多 Provider 优化、图片角色和 Bandit |
 | S09 | 6B | 实现 Rule Perception、严格 Model Perception、Merger/Validator 和确定性 Social Decision；建立首版脱敏/合成 Eval 集 | Intent/Entity/Reference/tool-need 和 should-reply 分层指标已报告；非法 Schema 整体拒绝；误插话/越权 Gate 为 0 | 微调模型、主动学习和复杂群聊价值模型 |
 | S10 | 6C | 完成第一个离线纵向闭环：Connector -> Context -> Perception -> Decision -> Router -> Composer -> 单 Persona Renderer -> Output；只处理明确 @、无工具、Memory 关闭 | Runtime 状态/预算、事实锚点、无效模型输出、Delivery、取消和“shadow 绝不发送/写入”测试通过 | 自由插话、Tool、Memory 个性化、多 Persona |
-| S11 | 6D | 在一个白名单测试群依次执行 no-send shadow 和明确 @ canary；旧链路仍可一键恢复 | 无重复回复、错误目标、未授权数据、敏感 Trace；P95/错误率有基线；kill switch、回滚镜像和复盘记录有效 | 扩大群数或接入高风险能力 |
+| S11 | 6D | 本地完成 typed off/shadow/canary、持久 claim/tombstone、发送前熔断、指标与回滚演练；旧链路保持权威 | 并发、重启、TargetTalk、kill switch、UNKNOWN 和零副作用仿真通过 | 任何真实群发送；真实场景统一留到 S23 |
 | S12 | 7A | 实现 Unified MCP Client/Server Registry，把 iCourse 映射为第一个 Provider；只切只读 `/course search`，使用固定安全 Plan | Discovery/Schema cache、持久 Session、timeout/retry/重启/熔断、export root、抓取上限和 handshake smoke 通过 | 通用多步 Planner、写操作和其他 MCP Server |
 | S13 | 7B | 实现 Capability Registry/Retrieval、有限 Planner、逐步授权 Executor、Observation 和 Validator；先覆盖课程只读路径 | 候选资格/Top-K、参数 Schema、最多步数、重复调用、未知结果、Prompt Injection 和预算测试通过；可按 Capability 回滚 | 高风险/不可逆 Tool 和任意动态 Tool 暴露 |
 | S14 | 6E | 接入 Memory Retrieval 与 Write Gate：先 exact/recency/BM25 baseline，再 shadow 对比 embedding | Scope 泄漏为 0；显式写入、TTL、冲突、删除/导出、Delivery 依赖和迁移核对通过；复杂检索确有增益 | Graph/Temporal Memory、未确认自动写入 |
@@ -148,13 +150,15 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S16 | 8A | 先做运维硬化：health、backup、restore、upgrade receipt、rollback、最小 mount/network 和 Release manifest | 一次性数据完成 bootstrap -> start -> health -> backup -> upgrade -> restore -> rollback | 大规模目录移动或删除兼容入口 |
 | S17 | 8B | 用 `git mv` 分批迁移 `apps/`、`packages/`、`services/`、`configs/`、`deploy/ops`、`third_party/`；根入口保持兼容 | 每次路径切换的消费者契约、容器 smoke、根包装层和上一 Release 回滚通过 | 同一 PR 同时移动全部路径或运行数据 |
 | S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、run 关联、模型/MCP/Memory/OC 指标、故障注入、镜像与容器 smoke | 完整 unit/contract/integration/eval/smoke 矩阵通过；Trace 不含原文/凭据/真实标识；发布阈值冻结 | 通过删除安全测试恢复绿色状态 |
-| S19 | 真实场景 | 从 1 个白名单群扩到 3–5 个不同活跃度群，再做大群并发、重复消息、Provider/MCP 故障和长时间运行 | 重复回复、未授权 Tool、跨 Scope Memory、敏感 Trace 为 0；SLO、单侧风险上界、kill switch 和复盘满足门禁 | 无指标的全量放开 |
+| S19 | 本地总集成 | 汇总所有已完成模块，执行全仓回归、离线回放、故障注入、长期仿真、SLO 预注册和发布候选审计 | 所有模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
 | S20 | P2 在线优化 | 仅在 Model Route 的合法 Endpoint 中实现 Bandit：先日志与合成 estimator，再 shadow、极小 canary、IPS/SNIPS/DR | 有足够 support/有效样本量；群级 bootstrap、baseline floor、零安全 Gate 违规和自动回滚通过 | 权限、Memory Scope、高风险 Tool、敏感 Provider 或 Reply/Ignore 探索 |
 | S21 | 规划项 | 在 ADR 批准后实现只读 WebUI：Trace/Eval/Model/MCP Health；稳定后才讨论带审计和回滚的写操作 | API 复用 Runtime 权限/Scope/脱敏；RBAC、审计、CSRF/越权和回滚测试通过 | 在 UI 重写第二套业务逻辑或抢先做完整 Control Plane |
 | S22 | 10 | 按 `migration-map.md` 逐项删除旧 Client、Handler、Import、Mount 和路径；每次只清一个兼容面 | 生产入口和测试只消费新实现；移除清单为 0；迁移/回滚完成并保留可独立恢复 Release | 顺手重构或没有消费者证据的批量删除 |
+| S23 | 最终真实场景 | 所有当前范围模块、WebUI 测试和本地审计完成后，依次执行授权单群 no-send shadow、明确 @ canary、3–5 群分层放量与长时间 Debug | 重复回复、错误目标、未授权发送/Tool、跨 Scope Memory 和敏感 Trace 为 0；冻结 SLO、kill switch、回滚与复盘全部通过 | 提前上线、无指标放量，或在任一前置模块未完成时进入真实群 |
 
-达到 S11 才算“首个可用直聊版本”，达到 S13 才算“首个可用工具闭环”，达到 S19 才进入
-“可扩大真实使用”的候选状态。S20 Bandit、S21 WebUI 和 S22 清理都不能反向阻塞前三个里程碑。
+达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S22 且通过
+S19 本地总审计后，才允许进入 S23 真实群验证。S20 Bandit 明确延期，不是 S23 的前置；
+WebUI 仅按当前测试计划完成，不追加超出其范围的核验。
 
 单人阶段主动暂停以下范围：第二聊天平台、通用高风险 Tool、自动 Memory 写入、Graph Memory、
 模型微调、neural bandit、多 Persona 市场和可写 Control Plane。只有前一里程碑的真实错误证据
@@ -539,19 +543,19 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**S08：增加静态模型路由器**
+标题：**继续本地模块与 WebUI 测试工作，真实群验证最后执行**
 
-S01–S07 已完成，下一步只进入 S08：
+S01–S11 的本地实现已经完成。接下来继续当前已接受的模块与 WebUI 测试计划，每次仍保持
+`WIP=1`，并为每个步骤完成 Unit、Contract、负向、故障和回滚证据。所有模块完成后执行
+S19 本地总集成与 S22 最终兼容审计；只有这些门禁全部通过，才准备 S23：
 
-1. 定义一个现有 Provider 的兼容 Adapter，以及 `PERCEPTION`、`DIRECT_CHAT` 两个
-   `ModelRole`。
-2. 实现逐 Endpoint descriptor、静态 Route Policy、预算/隐私/健康硬过滤和有界 fallback。
-3. 使用 Fake 与真实兼容 Adapter 共享 Contract Test，覆盖 Structured Output、429、
-   timeout、认证失败、无合法路由和敏感数据拒绝。
-4. 保持旧模型调用路径和 AstrBot Handler 权威；不在 S08 接入生产 Event。
-5. 不实现多 Provider 优化、图片角色、Bandit、Perception 合并器或 Runtime Orchestrator。
+1. 冻结授权群、测试用户、发送窗口、SLO 和 digest-pinned 回滚包；
+2. 单群执行 no-send/no-write Shadow，先检查脱敏指标；
+3. 同一授权群仅对结构化明确 @ 执行 Canary；
+4. 单群门禁通过后，才扩展到 3–5 群和长时间 Debug；
+5. 任一重复、错误目标、越权、敏感 Trace 或熔断异常立即回滚。
 
-S08 通过后才进入 S09。生产 shadow/canary 仍需等待 S10–S11，不能用 Router 单测替代。
+Bandit 继续延期；WebUI 只按既定测试范围验证，不为进入 S23 追加新的产品范围。
 
 ## Phase 验收矩阵
 
@@ -566,3 +570,4 @@ S08 通过后才进入 S09。生产 shadow/canary 仍需等待 S10–S11，不�
 | 8 | 运维/布局/Manifest | 一次性完整生命周期和回滚 |
 | 9 | Trace/Eval/CI | 完整 CI 矩阵和隐私安全 Fixture |
 | 10 | 无兼容依赖 | 无旧消费者，并具备回滚 Release |
+| 最终真实场景 | 授权群 Shadow/Canary | 所有前置模块和本地审计完成；冻结 SLO、回滚包和授权窗口 |

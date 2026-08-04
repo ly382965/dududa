@@ -110,3 +110,5 @@ python3 scripts/rollback_dududa_rollout.py \
 ## 7. 外部验证边界
 
 本地仿真覆盖白名单、结构化提及、TargetTalk 重叠、并发 claim、进程重启、发送中熔断和 `UNKNOWN`。真实 QQ 群 shadow/canary 仍需操作者明确提供授权群、凭据、发送窗口和回滚快照；S11 本地开发不会自行发送外部消息。
+
+按当前项目顺序，真实群验证只在所有模块、WebUI 测试和本地总审计完成后启动；提前获得凭据或群号也不会跳过这些前置门禁。

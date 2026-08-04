@@ -218,9 +218,12 @@ candidate versus actual outcome, latency/TTFT, token/cost usage, fallback/error
 kind, under-route and unnecessary-escalation evaluation. Raw messages, prompts,
 model output, QQ IDs, credentials and Provider error bodies are excluded.
 
-Real-group execution remains an external action. Code, simulation, configuration
-and rollback rehearsal can be completed locally; actual shadow/canary evidence
-requires an explicitly authorized group and credentials.
+Real-group execution is a final project validation phase, not an S11 local
+completion gate. Code, simulation, configuration and rollback rehearsal are
+completed locally first. No external shadow/canary begins until every accepted
+module, Web testing task and local integration audit is complete; the final run
+then requires an explicitly authorized group, credentials, frozen SLO and a
+verified rollback bundle.
 
 ### Mew/NapCat Web Parity
 
@@ -313,6 +316,11 @@ tests. The final audits rerun the full Python and Web suites, import boundaries,
 typecheck/build, secret scan, shell, Compose parse, whitespace checks,
 wheel/image/plugin smoke where affected, and a requirement-by-requirement
 audit. Branch-local success is not evidence that its project epic is complete.
+
+The release sequence is strict: finish all accepted development branches,
+finish their local audits, freeze the release/SLO/rollback inputs, and only then
+run authorized single-group shadow and canary. Wider group testing and debugging
+may follow only if the single-group safety gate passes.
 
 Bandit, random weights and learned online routing have no implementation hook in
 this project beyond reproducible static decision receipts that a later S20 can

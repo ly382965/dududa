@@ -5,8 +5,6 @@
   immediately beforehand.
 - The S01-S07 paths identified by `docs/refactor/PROGRESS.md` and their passing
   tests are the intended baseline; only those relevant paths may be staged.
-- Real group IDs and credentials will be supplied or authorized after offline
-  and no-send gates pass. Until then, real external sends remain prohibited.
 
 ## Active Assumptions (unverified beliefs currently used for design; remove or resolve them when facts become known)
 

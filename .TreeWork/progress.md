@@ -17,7 +17,8 @@ Last sync: unix:1785834834
   skips on both Python 3.10 and 3.12; its synthetic Eval technical gate passes
   while human template review remains pending.
 - S08-S11 local implementation and the cross-stage completion audit are
-  complete and verified. The authorized real-group criterion remains external.
+  complete and verified. Authorized real-group testing is a deferred final
+  project stage, not an S08-S11 completion blocker.
 - `apps/web` is now an accepted Mew/NapCat parity scope. Its current untracked
   prototype has a real multi-account reverse-WebSocket gateway but only a
   flattened text chat surface.
@@ -27,8 +28,9 @@ Last sync: unix:1785834834
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
-- Real AstrBot Provider and group-canary evidence require environment-specific
-  integration, explicit authorization and credentials.
+- Final real-group evidence requires environment-specific integration, explicit
+  authorization and credentials, but is intentionally not actionable until all
+  accepted module, Web testing and local audit work is complete.
 - Web parity still requires a selective baseline commit before isolated branch
   work can consume the untracked prototype.
 
@@ -41,3 +43,6 @@ Last sync: unix:1785834834
 - The completion audit rebuilt the digest-pinned AstrBot image, passed 19
   affected host/plugin tests offline and synchronized the requirements and
   Chinese status documents without integrating WebUI/Sub2API paths.
+- The user confirmed that real group-chat scenario testing belongs after all
+  development and local verification; current Web work needs no extra audit for
+  this sequencing correction.

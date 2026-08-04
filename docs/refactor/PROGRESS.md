@@ -9,7 +9,7 @@
 - S01–S11 的**本地增量实施步骤已完成**；S08-S11 已实现确定性模型选择、难度判断、
   离线 Runtime、无发送 Shadow 和受控 Canary 边界。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
-  取得持久单一所有权。真实 QQ 群运行尚未授权。
+  取得持久单一所有权。真实 QQ 群运行统一延期到所有模块、WebUI 测试和本地总审计完成之后。
 - S04、S06、S07 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。
@@ -50,7 +50,9 @@
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | Unified MCP / Capability Runtime | 部分完成 | 现有 iCourse Server 和 10 个工具可用；统一 Client/Registry/Planner 尚未实现 |
-| Bandit、WebUI、真实群聊放量 | 未完成 | Bandit 明确无 hook；WebUI 不在本分支；真实群只有本地仿真和安全边界，无线上证据 |
+| Bandit | 明确延期 | 当前无配置或执行 hook，不在现阶段关键路径 |
+| WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |
+| 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有模块、WebUI 测试和本地总审计完成 |
 
 ## 2026-08-04 S08–S11 验证证据
 
@@ -106,8 +108,8 @@
 
 ## 残余边界
 
-1. **真实群证据未授权。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据，但没有授权
-   群 ID、凭据或发送窗口，不能声称生产 SLO 或真实发送完成。
+1. **真实群验证延期到最终阶段。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据；
+   即使提前具备群 ID、凭据和发送窗口，也要等所有模块、WebUI 测试和本地总审计完成后才执行。
 2. **Attachment Actor 绑定不完整。** `AttachmentAccessRequest` 没有独立 `Actor` 字段；当前
    只能验证 `AuthorizationDecision.actor_digest`，Repository 没有第二份当前 Actor 做交叉核对。
 3. **去重分层。** S10 Runtime Store 证明同进程 CAS/single-flight；S11 SQLite rollout ledger
@@ -123,9 +125,10 @@
 
 ## 下一步
 
-先完成经授权的单群 `shadow -> canary` 外部门禁，或由负责人明确选择后续 S12 模块。
-真实运行前必须冻结群 ID、凭据、SLO、发送窗口和 digest-pinned image/plugin/config 回滚清单。
-Bandit、Tool/Memory 自动接入和广泛群放量仍不得顺带开启。
+继续完成后续模块与既定 WebUI 测试工作，再执行全仓本地回归、故障注入和回滚审计。
+所有前置工作关闭后，才冻结群 ID、凭据、SLO、发送窗口和 digest-pinned
+image/plugin/config 回滚清单，并按“单群 Shadow -> 单群 Canary -> 分层放量”执行最终真实场景。
+Bandit 继续延期，不能因真实群验证顺序调整而顺带开启。
 
 ## 历史基线
 

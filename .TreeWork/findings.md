@@ -9,6 +9,9 @@
   to prevent concurrent overbooking.
 - S11 cannot use an image-only rollback because plugin source is bind-mounted;
   the rollback artifact must cover both image and plugin/config revision.
+- Real group-chat testing is a terminal validation stage. It must not interrupt
+  unfinished module or Web testing work, and Bandit remains outside this
+  critical path.
 
 ## Interface Or Contract Effects (effects crossing branch or product boundaries)
 
