@@ -69,6 +69,57 @@ export const conversationRefSchema = z
 
 export const nudgeRequestSchema = z.object({ userId: numericId }).strict()
 
+export const resolveNotificationSchema = z
+  .object({ action: z.enum(['accept', 'reject']) })
+  .strict()
+
+export const setGroupAdminSchema = z.object({ enabled: z.boolean() }).strict()
+
+export const setGroupCardSchema = z.object({ card: z.string().trim().max(60) }).strict()
+
+export const renameGroupSchema = z.object({ name: z.string().trim().min(1).max(60) }).strict()
+
+export const setGroupMuteAllSchema = z.object({ enabled: z.boolean() }).strict()
+
+export const groupFileMutationSchema = z.discriminatedUnion('operation', [
+  z
+    .object({
+      operation: z.literal('move'),
+      currentParentId: z.string().min(1).max(4096),
+      targetParentId: z.string().min(1).max(4096),
+    })
+    .strict(),
+  z
+    .object({
+      operation: z.literal('rename'),
+      currentParentId: z.string().min(1).max(4096),
+      name: z.string().trim().min(1).max(255),
+    })
+    .strict(),
+])
+
+export const createGroupFolderSchema = z.object({ name: z.string().trim().min(1).max(36) }).strict()
+
+const refreshFlagSchema = z
+  .enum(['0', '1'])
+  .default('0')
+  .transform((value) => value === '1')
+
+export const directoryQuerySchema = z
+  .object({ refresh: refreshFlagSchema })
+  .strict()
+
+export const groupMembersQuerySchema = z
+  .object({ refresh: refreshFlagSchema })
+  .strict()
+
+export const groupFilesQuerySchema = z
+  .object({
+    parentId: z.string().min(1).max(4096).default('/'),
+    limit: z.coerce.number().int().min(1).max(500).default(500),
+  })
+  .strict()
+
 export const forwardRequestSchema = z.object({ target: conversationRefSchema }).strict()
 
 export const sendMessageRequestSchema = z

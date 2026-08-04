@@ -11,23 +11,23 @@ Title: Mew Directory And Group Parity
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Real friend/group directories search and open the correct account-scoped
+- [x] Real friend/group directories search and open the correct account-scoped
   conversation.
-- [ ] Requests and group lifecycle notifications update live and supported
+- [x] Requests and group lifecycle notifications update live and supported
   pending requests can be accepted/rejected with real receipts.
-- [ ] Member, group, announcement, essence and file workflows match mapped Mew
+- [x] Member, group, announcement, essence and file workflows match mapped Mew
   behavior with role/capability gates and explicit protocol gaps.
-- [ ] Theme, storage statistics, backfill/cancel and cache cleanup work per
+- [x] Theme, storage statistics, backfill/cancel and cache cleanup work per
   account without QQ mutations.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Add typed gateway endpoints/events for directory, request, member, group
+- [x] Add typed gateway endpoints/events for directory, request, member, group
   and resource capabilities.
-- [ ] Port Mew Router, stores, views and group/UI components account-safely.
-- [ ] Port settings and storage/backfill operations.
-- [ ] Adapt Mew tests and add cross-account/stale-request/capability coverage.
-- [ ] Verify, record and commit the branch.
+- [x] Port Mew Router, stores, views and group/UI components account-safely.
+- [x] Port settings and storage/backfill operations.
+- [x] Adapt Mew tests and add cross-account/stale-request/capability coverage.
+- [x] Verify, record and commit the branch.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

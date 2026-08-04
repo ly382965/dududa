@@ -32,6 +32,7 @@ const props = defineProps<{
   draft: string
   replyTo: ChatMessage | null
   mentionCandidates: Array<{ userId: string; name: string }>
+  canMentionAll: boolean
   selectedMessageId: string
   unreadTargetId?: string
   unreadCount?: number
@@ -69,6 +70,7 @@ const emit = defineEmits<{
   openAgent: []
   back: []
   notify: [message: string]
+  openGroup: [groupId: string]
   jumpMessage: [message: ChatMessage]
   consumeUnread: [conversationId: string]
 }>()
@@ -309,7 +311,7 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
         </div>
         <div class="chat-actions">
           <button class="icon-button" type="button" title="搜索聊天记录" @click="searchOpen = true"><Search :size="18" /></button>
-          <button v-if="conversation.type === 'group'" class="icon-button secondary-action" type="button" title="群成员" @click="emit('notify', '群成员页将在联系人分支中打开')"><Users :size="18" /></button>
+          <button v-if="conversation.type === 'group'" class="icon-button secondary-action" type="button" title="群聊管理" @click="emit('openGroup', conversation.peerId)"><Users :size="18" /></button>
           <button class="icon-button agent-toggle" :class="{ active: !agentCollapsed }" type="button" title="Agent Console" @click="emit('openAgent')"><PanelRight :size="18" /></button>
         </div>
       </header>
@@ -362,6 +364,7 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
         :reply-to="replyTo"
         :conversation-name="conversation.name"
         :mention-candidates="mentionCandidates"
+        :can-mention-all="canMentionAll"
         :capabilities="account?.capabilities"
         :sending="sending"
         :upload-status="uploadStatus"

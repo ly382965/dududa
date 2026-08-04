@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { mapMessage, normalizeSegments, type OneBotMessage, type OneBotSegment } from './mapper'
+import {
+  mapGroupContact,
+  mapGroupFile,
+  mapGroupFolder,
+  mapGroupMember,
+  mapMessage,
+  normalizeSegments,
+  type OneBotMessage,
+  type OneBotSegment,
+} from './mapper'
 
 describe('OneBot rich message mapping', () => {
   it('preserves ordered known segments and safely summarizes unknown data', () => {
@@ -100,5 +109,63 @@ describe('OneBot rich message mapping', () => {
       segments: [{ type: 'text', text: '真实消息' }],
     })
     expect(mapMessage('qq-987654321', '987654321', raw, () => undefined)).toBeUndefined()
+  })
+
+  it('keeps slash-prefixed NapCat file IDs for later account/group signing', () => {
+    expect(
+      mapGroupFile('qq-123456789', '345678901', '/', {
+        file_id: '/encoded-file-id',
+        file_name: '报告.pdf',
+        file_size: 1024,
+        download_times: 0,
+      }),
+    ).toMatchObject({ id: '/encoded-file-id', parentId: '/', downloadCount: 0 })
+    expect(
+      mapGroupFile('qq-123456789', '345678901', '/', {
+        file_id: 'bad\u0000id',
+      }),
+    ).toBeUndefined()
+  })
+
+  it('requires a real folder_id and recognizes NapCat -1 whole-mute state', () => {
+    expect(
+      mapGroupFolder('qq-123456789', '345678901', '/', {
+        folder: '/path-only',
+        folder_name: '不应使用路径代替 ID',
+      }),
+    ).toBeUndefined()
+    expect(
+      mapGroupContact('qq-123456789', {
+        group_id: '345678901',
+        group_name: '真实群',
+        group_all_shut: -1,
+      }),
+    ).toMatchObject({ wholeMuted: true })
+  })
+
+  it('rejects a group member row that is explicitly bound to another group', () => {
+    expect(mapGroupMember('qq-123456789', '345678901', {
+      group_id: '456789013',
+      user_id: '123456789',
+      nickname: '跨群伪造角色',
+      role: 'owner',
+    })).toBeUndefined()
+    expect(mapGroupMember('qq-123456789', '345678901', {
+      group_id: '345678901',
+      user_id: '123456789',
+      nickname: '当前群群主',
+      role: 'owner',
+    })).toMatchObject({ groupId: '345678901', userId: '123456789', role: 'owner' })
+    expect(mapGroupMember('qq-123456789', '345678901', {
+      user_id: '123456789',
+      nickname: '缺少群绑定',
+      role: 'owner',
+    })).toBeUndefined()
+    expect(mapGroupMember('qq-123456789', '345678901', {
+      group_id: '345678901',
+      user_id: '123456789',
+      nickname: '未知角色',
+      role: 'future-owner',
+    })).toBeUndefined()
   })
 })

@@ -8,13 +8,24 @@ import { WebSocket, WebSocketServer } from 'ws'
 import type {
   Account,
   AccountCapabilityDocument,
+  AccountDirectory,
   CapabilityName,
   ChatMessage,
   Conversation,
+  EssenceMessage,
+  EssencePage,
   FileSendReceipt,
   ForwardedMessageBundle,
+  GroupAnnouncement,
+  GroupFilePage,
+  GroupMember,
+  GroupMemberDirectory,
+  GroupPermissions,
   HistoryPage,
+  NotificationInbox,
+  OperationPermission,
   OutgoingMessageSegment,
+  QqNotification,
   UploadReceipt,
   WorkspaceEvent,
   WorkspaceSnapshot,
@@ -25,13 +36,21 @@ import {
   conversationId,
   eventConversation,
   mapAccount,
+  mapFriendContact,
   mapFriendConversation,
+  mapGroupContact,
   mapGroupConversation,
+  mapGroupFile,
+  mapGroupFolder,
+  mapGroupMember,
   mapMessage,
   messagePreview,
   recentConversationType,
   type OneBotFriend,
+  type OneBotGroupFile,
+  type OneBotGroupFolder,
   type OneBotGroup,
+  type OneBotGroupMember,
   type OneBotLoginInfo,
   type OneBotMessage,
   type OneBotRecentContact,
@@ -48,6 +67,7 @@ interface OneBotResponse<T = unknown> {
 }
 
 interface PendingRequest {
+  action: string
   resolve: (value: unknown) => void
   reject: (reason: Error) => void
   timer: ReturnType<typeof setTimeout>
@@ -72,7 +92,52 @@ interface AccountState {
   compatible: boolean
   implementationName: string
   implementationVersion?: string
+  packetAvailable: boolean
   refreshedAt: number
+  directory: AccountDirectory
+  notifications: Map<string, CachedNotification>
+  groupMembers: Map<string, { members: GroupMember[]; refreshedAt: number }>
+}
+
+interface CachedNotification {
+  notification: QqNotification
+  flag?: string
+  resolveKind?: 'friend' | 'group'
+}
+
+interface OneBotGroupSystemItem {
+  request_id?: number | string
+  invitor_uin?: number | string
+  invitor_nick?: string
+  actor?: number | string
+  requester_nick?: string
+  group_id?: number | string
+  group_name?: string
+  message?: string
+  checked?: boolean
+}
+
+interface OneBotEssenceItem {
+  msg_seq?: number | string
+  sender_id?: number | string
+  sender_nick?: string
+  operator_id?: number | string
+  operator_nick?: string
+  message_id?: number | string
+  operator_time?: number | string
+  content?: OneBotSegment[]
+}
+
+interface OneBotAnnouncement {
+  notice_id?: string
+  sender_id?: number | string
+  publish_time?: number | string
+  read_num?: number | string
+  message?: {
+    text?: string
+    image?: Array<{ id?: string }>
+    images?: Array<{ id?: string }>
+  }
 }
 
 interface MediaEntry {
@@ -109,6 +174,7 @@ interface OneBotForwardNode {
 export interface HubOptions {
   token: string
   actionTimeoutMs?: number
+  groupFileUploadTimeoutMs?: number
   recentConversationCount?: number
   messageHistoryCount?: number
   mediaTtlMs?: number
@@ -125,6 +191,7 @@ const defaultMediaMaxEntries = 2_000
 const defaultUploadTtlMs = 10 * 60_000
 const defaultUploadMaxEntries = 32
 const defaultUploadMaxTotalBytes = 100 * 1024 * 1024
+const unknownGroupUploadGuardMs = 10 * 60_000
 
 const capabilityNames: CapabilityName[] = [
   'history.cursor',
@@ -146,7 +213,9 @@ const capabilityNames: CapabilityName[] = [
   'message.read',
   'message.custom_faces',
   'request.friend.history',
+  'request.friend.resolve',
   'request.group.history',
+  'request.group.resolve',
   'group.members',
   'group.admin',
   'group.kick',
@@ -200,6 +269,7 @@ export class OneBotConnection {
       }, timeoutMs)
       timer.unref?.()
       this.pending.set(echo, {
+        action,
         resolve: (value) => resolve(value as T),
         reject,
         timer,
@@ -208,7 +278,7 @@ export class OneBotConnection {
         if (!error) return
         clearTimeout(timer)
         this.pending.delete(echo)
-        reject(new OneBotActionError(error.message, 'unknown'))
+        reject(new OneBotActionError(`NapCat action 发送失败: ${action}`, 'unknown'))
       })
     })
   }
@@ -238,7 +308,7 @@ export class OneBotConnection {
       } else {
         pending.reject(
           new OneBotActionError(
-            response.message || response.wording || `NapCat action 失败: ${response.retcode}`,
+            `NapCat action 被拒绝: ${pending.action} (${Number(response.retcode ?? -1)})`,
             'rejected',
           ),
         )
@@ -266,7 +336,10 @@ export class OneBotHub extends EventEmitter {
   private readonly accounts = new Map<string, AccountState>()
   private readonly media = new Map<string, MediaEntry>()
   private readonly uploads = new Map<string, StagedUpload>()
+  private readonly uncertainGroupUploads = new Map<string, { state: 'inflight' | 'unknown'; expiresAt: number }>()
+  private readonly resolvingNotifications = new Set<string>()
   private readonly actionTimeoutMs: number
+  private readonly groupFileUploadTimeoutMs: number
   private readonly recentConversationCount: number
   private readonly messageHistoryCount: number
   private readonly mediaTtlMs: number
@@ -279,6 +352,7 @@ export class OneBotHub extends EventEmitter {
   constructor(private readonly options: HubOptions) {
     super()
     this.actionTimeoutMs = options.actionTimeoutMs ?? 20_000
+    this.groupFileUploadTimeoutMs = options.groupFileUploadTimeoutMs ?? 120_000
     this.recentConversationCount = options.recentConversationCount ?? 100
     this.messageHistoryCount = options.messageHistoryCount ?? 50
     this.mediaTtlMs = Math.max(1, Math.floor(options.mediaTtlMs ?? defaultMediaTtlMs))
@@ -363,6 +437,532 @@ export class OneBotHub extends EventEmitter {
     return this.capabilityDocument(this.requireAccount(account))
   }
 
+  async directorySnapshot(account: string, refresh = false): Promise<AccountDirectory> {
+    const state = this.requireAccount(account)
+    this.requireCapability(state, 'directory.friends')
+    this.requireCapability(state, 'directory.groups')
+    if (refresh || !state.directory.refreshedAt) await this.refreshAccount(state, true)
+    return {
+      ...state.directory,
+      friends: state.directory.friends.map((friend) => ({ ...friend })),
+      groups: state.directory.groups.map((group) => ({ ...group })),
+    }
+  }
+
+  async notificationInbox(account: string, refresh = false): Promise<NotificationInbox> {
+    const state = this.requireAccount(account)
+    if (refresh) {
+      const capability = this.capabilityDocument(state).actions['request.group.history']
+      if (capability.status === 'supported') {
+        const data = await state.connection.request<{
+          invited_requests?: OneBotGroupSystemItem[]
+          InvitedRequest?: OneBotGroupSystemItem[]
+          join_requests?: OneBotGroupSystemItem[]
+        }>('get_group_system_msg', { count: 50 }, 30_000)
+        this.mergeGroupSystemNotifications(
+          state,
+          data.invited_requests ?? data.InvitedRequest ?? [],
+          data.join_requests ?? [],
+        )
+        await this.refreshGroupRequestPermissions(state, false)
+      }
+    }
+    return {
+      accountId: account,
+      items: [...state.notifications.values()]
+        .map((entry) => ({ ...entry.notification }))
+        .sort((left, right) => right.occurredAt - left.occurredAt)
+        .slice(0, 500),
+      limitations: {
+        friendHistory: 'NapCat 无法回填普通好友申请；这里只保留本次服务运行期间观察到的申请。',
+      },
+      refreshedAt: Date.now(),
+    }
+  }
+
+  async resolveNotification(
+    account: string,
+    notificationId: string,
+    action: 'accept' | 'reject',
+  ): Promise<QqNotification> {
+    const state = this.requireAccount(account)
+    const cached = state.notifications.get(notificationId)
+    if (!cached || !cached.flag || !cached.resolveKind) throw new Error('通知不存在或不可处理')
+    if (cached.notification.state !== 'pending') throw new Error('通知已经处理')
+    const resolvingKey = `${account}:${notificationId}`
+    if (this.resolvingNotifications.has(resolvingKey)) throw new Error('通知正在处理，请等待 NapCat 返回结果')
+    this.resolvingNotifications.add(resolvingKey)
+    let actionStarted = false
+    try {
+      const capability: CapabilityName =
+        cached.resolveKind === 'friend' ? 'request.friend.resolve' : 'request.group.resolve'
+      this.requireCapability(state, capability)
+      if (cached.notification.kind === 'group-request') {
+        const groupId = cached.notification.groupId
+        if (!groupId) throw new Error('群申请缺少群号，无法确认处理权限')
+        const directory = await this.memberDirectory(account, groupId, true)
+        if (directory.selfRole !== 'owner' && directory.selfRole !== 'admin') {
+          throw new Error('只有群主或管理员可以处理入群申请')
+        }
+      }
+      const latestBeforeAction = state.notifications.get(notificationId)
+      if (
+        this.accounts.get(account) !== state ||
+        !latestBeforeAction ||
+        latestBeforeAction.flag !== cached.flag ||
+        latestBeforeAction.resolveKind !== cached.resolveKind ||
+        latestBeforeAction.notification.state !== 'pending'
+      ) {
+        throw new Error('通知已经处理')
+      }
+      actionStarted = true
+      await state.connection.request(
+        cached.resolveKind === 'friend' ? 'set_friend_add_request' : 'set_group_add_request',
+        cached.resolveKind === 'friend'
+          ? { flag: cached.flag, approve: action === 'accept', remark: '' }
+          : { flag: cached.flag, approve: action === 'accept', reason: '' },
+        this.actionTimeoutMs,
+      )
+      const current = state.notifications.get(notificationId) ?? cached
+      current.notification = {
+        ...current.notification,
+        state: action === 'accept' ? 'accepted' : 'rejected',
+        actionable: false,
+      }
+      this.broadcast({ type: 'notification.changed', accountId: account, notification: { ...current.notification } })
+      if (action === 'accept') void this.refreshAccount(state, true).then(() => this.broadcast({ type: 'directory.changed', accountId: account }))
+      return { ...current.notification }
+    } catch (error) {
+      if (actionStarted && error instanceof OneBotActionError && error.outcome === 'unknown') {
+        const current = state.notifications.get(notificationId) ?? cached
+        if (current.notification.state === 'pending') {
+          current.notification = {
+            ...current.notification,
+            state: 'handled',
+            actionable: false,
+            comment: [current.notification.comment, '处理结果待 NapCat 刷新确认'].filter(Boolean).join(' · '),
+          }
+          this.broadcast({ type: 'notification.changed', accountId: account, notification: { ...current.notification } })
+        }
+        if (cached.resolveKind === 'group') void this.notificationInbox(account, true).catch(() => undefined)
+      }
+      throw error
+    } finally {
+      this.resolvingNotifications.delete(resolvingKey)
+    }
+  }
+
+  async memberDirectory(account: string, groupId: string, refresh = false): Promise<GroupMemberDirectory> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.members')
+    const cached = state.groupMembers.get(groupId)
+    let members = cached?.members
+    if (refresh || !cached || Date.now() - cached.refreshedAt > 60_000) {
+      const raw = await state.connection.request<OneBotGroupMember[]>(
+        'get_group_member_list',
+        { group_id: groupId, no_cache: refresh },
+        60_000,
+      )
+      const roleOrder: Record<GroupMember['role'], number> = { owner: 0, admin: 1, member: 2 }
+      members = raw
+        .map((member) => mapGroupMember(account, groupId, member))
+        .filter((member): member is GroupMember => Boolean(member))
+        .sort(
+          (left, right) =>
+            roleOrder[left.role] - roleOrder[right.role] ||
+            (left.card || left.nickname || left.userId).localeCompare(right.card || right.nickname || right.userId, 'zh-CN'),
+        )
+      state.groupMembers.set(groupId, { members, refreshedAt: Date.now() })
+    }
+    const selfRole = members?.find((member) => member.userId === state.selfId)?.role
+    const permissions = this.groupPermissions(state, selfRole)
+    if (permissions.mentionAll.allowed) {
+      try {
+        const atAll = await state.connection.request<{
+          can_at_all?: boolean
+          remain_at_all_count_for_group?: number | string
+          remain_at_all_count_for_self?: number | string
+        }>('get_group_at_all_remain', { group_id: groupId }, 15_000)
+        if (atAll.can_at_all !== true) {
+          permissions.mentionAll = { allowed: false, reason: '当前 QQ 或群聊已没有可用的 @全体成员 次数' }
+        }
+      } catch {
+        permissions.mentionAll = { allowed: false, reason: '暂时无法确认 @全体成员 剩余次数' }
+      }
+    }
+    return {
+      accountId: account,
+      groupId,
+      selfUserId: state.selfId,
+      selfRole,
+      members: (members ?? []).map((member) => ({ ...member })),
+      permissions,
+      refreshedAt: state.groupMembers.get(groupId)?.refreshedAt ?? Date.now(),
+    }
+  }
+
+  async setGroupAdmin(account: string, groupId: string, userId: string, enabled: boolean): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.admin')
+    const directory = await this.memberDirectory(account, groupId, true)
+    const target = directory.members.find((member) => member.userId === userId)
+    if (!target) throw new Error('群成员不存在')
+    if (directory.selfRole !== 'owner' || target.userId === state.selfId || target.role === 'owner') {
+      throw new Error('当前 QQ 群角色无权设置该成员为管理员')
+    }
+    await state.connection.request('set_group_admin', { group_id: groupId, user_id: userId, enable: enabled }, 30_000)
+    target.role = enabled ? 'admin' : 'member'
+    this.replaceCachedMember(state, groupId, target)
+    this.broadcast({ type: 'group.members.changed', accountId: account, groupId })
+  }
+
+  async kickGroupMember(account: string, groupId: string, userId: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.kick')
+    const directory = await this.memberDirectory(account, groupId, true)
+    const target = directory.members.find((member) => member.userId === userId)
+    const permitted =
+      target &&
+      target.userId !== state.selfId &&
+      target.role !== 'owner' &&
+      (directory.selfRole === 'owner' || (directory.selfRole === 'admin' && target.role === 'member'))
+    if (!permitted) throw new Error('当前 QQ 群角色无权移出该成员')
+    await state.connection.request(
+      'set_group_kick',
+      { group_id: groupId, user_id: userId, reject_add_request: false },
+      30_000,
+    )
+    const cached = state.groupMembers.get(groupId)
+    if (cached) cached.members = cached.members.filter((member) => member.userId !== userId)
+    this.broadcast({ type: 'group.members.changed', accountId: account, groupId })
+  }
+
+  async setGroupCard(account: string, groupId: string, userId: string, card: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.card')
+    const directory = await this.memberDirectory(account, groupId, true)
+    const target = directory.members.find((member) => member.userId === userId)
+    if (!target) throw new Error('群成员不存在')
+    if (userId !== state.selfId) throw new Error('群名片接口只允许修改当前 QQ 自己的群名片')
+    await state.connection.request('set_group_card', { group_id: groupId, user_id: userId, card }, 30_000)
+    this.replaceCachedMember(state, groupId, { ...target, card })
+    this.broadcast({ type: 'group.members.changed', accountId: account, groupId })
+  }
+
+  async renameGroup(account: string, groupId: string, name: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.rename')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.rename, '当前 QQ 群角色无权修改群名称')
+    await state.connection.request('set_group_name', { group_id: groupId, group_name: name }, 30_000)
+    const group = state.directory.groups.find((item) => item.groupId === groupId)
+    if (group) group.groupName = name
+    const conversation = state.conversations.get(conversationId(account, 'group', groupId))
+    if (conversation) {
+      conversation.name = group?.remark || name
+      conversation.topic = name
+    }
+    this.broadcast({ type: 'directory.changed', accountId: account })
+    this.broadcast({ type: 'workspace.refresh' })
+  }
+
+  async setGroupMuteAll(account: string, groupId: string, enabled: boolean): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.mute_all')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.muteAll, '当前 QQ 群角色无权设置全员禁言')
+    await state.connection.request('set_group_whole_ban', { group_id: groupId, enable: enabled }, 30_000)
+    const group = state.directory.groups.find((item) => item.groupId === groupId)
+    if (group) group.wholeMuted = enabled
+    this.broadcast({ type: 'directory.changed', accountId: account })
+  }
+
+  async quitGroup(account: string, groupId: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.quit')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.quit, '当前账号无法退出该群聊')
+    await state.connection.request('set_group_leave', { group_id: groupId, is_dismiss: false }, 30_000)
+    state.directory.groups = state.directory.groups.filter((group) => group.groupId !== groupId)
+    state.conversations.delete(conversationId(account, 'group', groupId))
+    state.groupMembers.delete(groupId)
+    this.broadcast({ type: 'directory.changed', accountId: account })
+    this.broadcast({ type: 'workspace.refresh' })
+  }
+
+  async essenceMessages(account: string, groupId: string): Promise<EssencePage> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.essence')
+    const raw = await state.connection.request<OneBotEssenceItem[]>('get_essence_msg_list', { group_id: groupId }, 60_000)
+    const all = raw.map((item, index) => this.mapEssenceMessage(state, groupId, item, index))
+    return { items: all.slice(0, 500), offset: 0, hasMore: false, truncated: all.length > 500 }
+  }
+
+  async groupAnnouncements(account: string, groupId: string): Promise<GroupAnnouncement[]> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.announcements')
+    const raw = await state.connection.request<OneBotAnnouncement[]>('_get_group_notice', { group_id: groupId }, 60_000)
+    return raw.flatMap((announcement) => {
+      const rawId = String(announcement.notice_id ?? '')
+      if (!rawId || rawId.length > 512) return []
+      const images = announcement.message?.images ?? announcement.message?.image ?? []
+      const imageUrls = images.flatMap((image) => {
+        const imageId = String(image.id ?? '')
+        if (!imageId || imageId.length > 512) return []
+        const url = this.registerMedia(`https://gdynamic.qpic.cn/gdynamic/${encodeURIComponent(imageId)}/0`)
+        return url ? [url] : []
+      })
+      return [{
+        id: this.encodeScopedId('notice', account, groupId, rawId),
+        accountId: account,
+        groupId,
+        senderId: String(announcement.sender_id ?? ''),
+        publishTime: Number(announcement.publish_time) || 0,
+        content: String(announcement.message?.text ?? '').slice(0, 20_000),
+        imageUrls,
+        readCount: Number(announcement.read_num) || undefined,
+      }]
+    })
+  }
+
+  async deleteGroupAnnouncement(account: string, groupId: string, announcementId: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.announcements')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.deleteAnnouncements, '当前 QQ 群角色无权删除群公告')
+    const rawId = this.decodeScopedId('notice', account, groupId, announcementId)
+    await state.connection.request('_del_group_notice', { group_id: groupId, notice_id: rawId }, 30_000)
+    this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'announcements' })
+  }
+
+  async groupFiles(account: string, groupId: string, parentId: string, limit: number): Promise<GroupFilePage> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    const rawParentId = parentId === '/' ? '/' : this.decodeScopedId('folder', account, groupId, parentId)
+    const action = rawParentId === '/' ? 'get_group_root_files' : 'get_group_files_by_folder'
+    const raw = await state.connection.request<{ files?: OneBotGroupFile[]; folders?: OneBotGroupFolder[] }>(
+      action,
+      rawParentId === '/'
+        ? { group_id: groupId, file_count: limit }
+        : { group_id: groupId, folder_id: rawParentId, file_count: limit },
+      60_000,
+    )
+    let permissions = this.groupPermissions(state)
+    try {
+      permissions = (await this.memberDirectory(account, groupId)).permissions
+    } catch {
+      permissions.uploadFiles = { allowed: false, reason: '无法确认当前 QQ 的群成员身份' }
+      permissions.manageFiles = { allowed: false, reason: '无法确认当前 QQ 的群管理权限' }
+    }
+    return {
+      accountId: account,
+      groupId,
+      parentId,
+      files: (raw.files ?? []).flatMap((file) => {
+        const mapped = mapGroupFile(account, groupId, rawParentId, file)
+        return mapped
+          ? [{ ...mapped, id: this.encodeScopedId('file', account, groupId, mapped.id), parentId }]
+          : []
+      }),
+      folders: (raw.folders ?? []).flatMap((folder) => {
+        const mapped = mapGroupFolder(account, groupId, rawParentId, folder)
+        return mapped
+          ? [{ ...mapped, id: this.encodeScopedId('folder', account, groupId, mapped.id), parentId }]
+          : []
+      }),
+      truncated: (raw.files?.length ?? 0) + (raw.folders?.length ?? 0) >= limit,
+      permissions: {
+        readFiles: permissions.readFiles,
+        uploadFiles: permissions.uploadFiles,
+        manageFiles: permissions.manageFiles,
+        packetFiles: permissions.packetFiles,
+        renameFolders: permissions.renameFolders,
+      },
+    }
+  }
+
+  async groupFileDownloadUrl(
+    account: string,
+    groupId: string,
+    fileId: string,
+    fileName: string,
+  ): Promise<{ url: string }> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    this.assertPermission(
+      this.groupPermissions(state).packetFiles,
+      '当前 NapCat Packet 服务不可用，无法下载群文件',
+    )
+    const rawFileId = this.decodeScopedId('file', account, groupId, fileId)
+    const result = await state.connection.request<{ url?: string }>(
+      'get_group_file_url',
+      { group_id: groupId, file_id: rawFileId },
+      30_000,
+    )
+    const url = result.url ? this.registerFileMedia(result.url, fileName) : undefined
+    if (!url) throw new Error('NapCat 未返回可用的群文件下载地址')
+    return { url }
+  }
+
+  async uploadGroupResource(
+    account: string,
+    groupId: string,
+    parentId: string,
+    input: { buffer: Buffer; fileName: string; size: number },
+  ): Promise<FileSendReceipt> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.uploadFiles, '当前 QQ 群角色无权上传群文件')
+    if (input.size !== input.buffer.length || input.size <= 0 || input.size > 25 * 1024 * 1024) {
+      throw new Error('上传文件大小无效')
+    }
+    const folder = parentId === '/' ? undefined : this.decodeScopedId('folder', account, groupId, parentId)
+    await this.uploadGroupFileOnce(state, account, groupId, parentId, input, folder)
+    this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+    return { kind: 'file', name: input.fileName, size: input.size }
+  }
+
+  private async uploadGroupFileOnce(
+    state: AccountState,
+    account: string,
+    groupId: string,
+    parentId: string,
+    input: { buffer: Buffer; fileName: string; size: number },
+    folder?: string,
+  ): Promise<{ file_id?: string | null }> {
+    const now = Date.now()
+    for (const [key, guard] of this.uncertainGroupUploads) {
+      if (guard.expiresAt <= now) this.uncertainGroupUploads.delete(key)
+    }
+    const uploadKey = createHash('sha256')
+      .update(account)
+      .update('\0')
+      .update(groupId)
+      .update('\0')
+      .update(parentId)
+      .update('\0')
+      .update(input.fileName)
+      .update('\0')
+      .update(String(input.size))
+      .update('\0')
+      .update(input.buffer)
+      .digest('hex')
+    const existingGuard = this.uncertainGroupUploads.get(uploadKey)
+    if (existingGuard && existingGuard.expiresAt > now) {
+      throw new Error(
+        existingGuard.state === 'inflight'
+          ? '相同群文件正在上传；为避免重复上传，本次请求未发送到 NapCat'
+          : '相同群文件的上次上传结果未知；为避免重复上传，请先刷新群文件列表，10 分钟后再决定是否重试',
+      )
+    }
+    this.uncertainGroupUploads.set(uploadKey, {
+      state: 'inflight',
+      expiresAt: now + this.groupFileUploadTimeoutMs + unknownGroupUploadGuardMs,
+    })
+    try {
+      const result = await state.connection.request<{ file_id?: string | null }>(
+        'upload_group_file',
+        {
+          group_id: groupId,
+          file: `base64://${input.buffer.toString('base64')}`,
+          name: input.fileName,
+          ...(folder ? { folder } : {}),
+        },
+        this.groupFileUploadTimeoutMs,
+      )
+      this.uncertainGroupUploads.delete(uploadKey)
+      return result
+    } catch (error) {
+      if (error instanceof OneBotActionError && error.outcome === 'unknown') {
+        this.uncertainGroupUploads.set(uploadKey, {
+          state: 'unknown',
+          expiresAt: Date.now() + unknownGroupUploadGuardMs,
+        })
+        throw new Error('群文件上传结果未知；为避免重复上传，请先刷新群文件列表，10 分钟内不会重放相同文件')
+      }
+      this.uncertainGroupUploads.delete(uploadKey)
+      throw error
+    }
+  }
+
+  async mutateGroupFile(
+    account: string,
+    groupId: string,
+    fileId: string,
+    mutation:
+      | { operation: 'move'; currentParentId: string; targetParentId: string }
+      | { operation: 'rename'; currentParentId: string; name: string },
+  ): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.manageFiles, '当前 QQ 群角色无权管理群文件')
+    this.assertPermission(directory.permissions.packetFiles, '当前 NapCat Packet 服务不可用，无法移动或重命名群文件')
+    const rawFileId = this.decodeScopedId('file', account, groupId, fileId)
+    const currentParentId =
+      mutation.currentParentId === '/'
+        ? '/'
+        : this.decodeScopedId('folder', account, groupId, mutation.currentParentId)
+    if (mutation.operation === 'move') {
+      await state.connection.request(
+        'move_group_file',
+        {
+          group_id: groupId,
+          file_id: rawFileId,
+          current_parent_directory: currentParentId,
+          target_parent_directory:
+            mutation.targetParentId === '/'
+              ? '/'
+              : this.decodeScopedId('folder', account, groupId, mutation.targetParentId),
+        },
+        60_000,
+      )
+      this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+      return
+    }
+    await state.connection.request(
+      'rename_group_file',
+      {
+        group_id: groupId,
+        file_id: rawFileId,
+        current_parent_directory: currentParentId,
+        new_name: mutation.name,
+      },
+      60_000,
+    )
+    this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+  }
+
+  async deleteGroupFile(account: string, groupId: string, fileId: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.manageFiles, '当前 QQ 群角色无权删除群文件')
+    const rawFileId = this.decodeScopedId('file', account, groupId, fileId)
+    await state.connection.request('delete_group_file', { group_id: groupId, file_id: rawFileId }, 60_000)
+    this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+  }
+
+  async createGroupFolder(account: string, groupId: string, name: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.manageFiles, '当前 QQ 群角色无权创建群文件夹')
+    await state.connection.request('create_group_file_folder', { group_id: groupId, folder_name: name }, 60_000)
+    this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+  }
+
+  async deleteGroupFolder(account: string, groupId: string, folderId: string): Promise<void> {
+    const state = this.requireConversation(account, 'group', groupId)
+    this.requireCapability(state, 'group.files')
+    const directory = await this.memberDirectory(account, groupId, true)
+    this.assertPermission(directory.permissions.manageFiles, '当前 QQ 群角色无权删除群文件夹')
+    const rawFolderId = this.decodeScopedId('folder', account, groupId, folderId)
+    await state.connection.request('delete_group_folder', { group_id: groupId, folder_id: rawFolderId }, 60_000)
+    this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+  }
+
   assertConversation(account: string, type: 'group' | 'private', peerId: string): void {
     this.requireConversation(account, type, peerId)
   }
@@ -426,17 +1026,17 @@ export class OneBotHub extends EventEmitter {
     if (input.size !== input.buffer.length || input.size <= 0 || input.size > 25 * 1024 * 1024) {
       throw new Error('上传文件大小无效')
     }
-    const action = type === 'group' ? 'upload_group_file' : 'upload_private_file'
-    const key = type === 'group' ? 'group_id' : 'user_id'
-    const result = await state.connection.request<{ file_id?: string | null }>(
-      action,
-      {
-        [key]: peerId,
-        file: `base64://${input.buffer.toString('base64')}`,
-        name: input.fileName,
-      },
-      120_000,
-    )
+    const result = type === 'group'
+      ? await this.uploadGroupFileOnce(state, account, peerId, '/', input)
+      : await state.connection.request<{ file_id?: string | null }>(
+          'upload_private_file',
+          {
+            user_id: peerId,
+            file: `base64://${input.buffer.toString('base64')}`,
+            name: input.fileName,
+          },
+          120_000,
+        )
     return { kind: 'file', fileId: result.file_id ?? undefined, name: input.fileName, size: input.size }
   }
 
@@ -542,6 +1142,11 @@ export class OneBotHub extends EventEmitter {
     segments: OutgoingMessageSegment[],
   ): Promise<ChatMessage> {
     const state = this.requireConversation(account, type, peerId)
+    if (segments.some((segment) => segment.type === 'mention' && segment.all)) {
+      if (type !== 'group') throw new Error('@全体成员只能发送到群聊')
+      const directory = await this.memberDirectory(account, peerId, true)
+      this.assertPermission(directory.permissions.mentionAll, '当前 QQ 无权提及全体成员')
+    }
     for (const segment of segments) {
       const capability: CapabilityName =
         segment.type === 'text'
@@ -752,6 +1357,8 @@ export class OneBotHub extends EventEmitter {
     this.accounts.clear()
     this.media.clear()
     this.uploads.clear()
+    this.uncertainGroupUploads.clear()
+    this.resolvingNotifications.clear()
     this.wss.close()
   }
 
@@ -775,7 +1382,11 @@ export class OneBotHub extends EventEmitter {
       emittedMessages: new Map(),
       compatible: false,
       implementationName: 'NapCat.Onebot',
+      packetAvailable: false,
       refreshedAt: 0,
+      directory: previous?.directory ?? { accountId: id, friends: [], groups: [], refreshedAt: 0 },
+      notifications: previous?.notifications ?? new Map(),
+      groupMembers: new Map(),
     }
     this.accounts.set(id, state)
     this.broadcast({ type: 'runtime.status', status: this.runtimeStatus() })
@@ -784,10 +1395,14 @@ export class OneBotHub extends EventEmitter {
 
   private async initializeAccount(state: AccountState): Promise<void> {
     try {
-      const [login, status, version] = await Promise.all([
+      const [login, status, version, packetAvailable] = await Promise.all([
         state.connection.request<OneBotLoginInfo>('get_login_info'),
         state.connection.request<{ online?: boolean; good?: boolean }>('get_status'),
         state.connection.request<{ app_name?: string; app_version?: string; protocol_version?: string }>('get_version_info'),
+        state.connection.request<null>('nc_get_packet_status').then(
+          () => true,
+          () => false,
+        ),
       ])
       if (!this.isCurrent(state)) return
       if (String(login.user_id) !== state.selfId) {
@@ -798,6 +1413,7 @@ export class OneBotHub extends EventEmitter {
       state.compatible = compatible
       state.implementationName = version.app_name || 'Unknown OneBot'
       state.implementationVersion = version.app_version
+      state.packetAvailable = packetAvailable
       state.account = mapAccount(login, this.oneBotAccountStatus(status.online, status.good, compatible))
       await this.refreshAccount(state, true)
       if (!this.isCurrent(state)) return
@@ -811,14 +1427,53 @@ export class OneBotHub extends EventEmitter {
 
   private async refreshAccount(state: AccountState, force: boolean): Promise<void> {
     if (!force && Date.now() - state.refreshedAt < 15_000) return
-    const [groupsResult, friendsResult, recentResult] = await Promise.allSettled([
+    const [groupsResult, friendsResult, categorizedFriendsResult, recentResult] = await Promise.allSettled([
       state.connection.request<OneBotGroup[]>('get_group_list', { no_cache: false }, 30_000),
       state.connection.request<OneBotFriend[]>('get_friend_list', { no_cache: false }, 60_000),
+      state.connection.request<Array<{
+        categoryId?: number | string
+        categoryName?: string
+        buddyList?: OneBotFriend[]
+      }>>('get_friends_with_category', {}, 60_000),
       state.connection.request<OneBotRecentContact[]>('get_recent_contact', { count: this.recentConversationCount }, 30_000),
     ])
     if (!this.isCurrent(state)) return
-    const anyFulfilled = [groupsResult, friendsResult, recentResult].some((result) => result.status === 'fulfilled')
+    const anyFulfilled = [groupsResult, friendsResult, categorizedFriendsResult, recentResult].some(
+      (result) => result.status === 'fulfilled',
+    )
     if (!anyFulfilled) return
+    const categorizedFriends =
+      categorizedFriendsResult.status === 'fulfilled'
+        ? categorizedFriendsResult.value.flatMap((category) =>
+            (category.buddyList ?? []).map((friend) => ({
+              ...friend,
+              categoryId: category.categoryId,
+              categoryName: category.categoryName,
+            })),
+          )
+        : []
+    const categorizedById = new Map(categorizedFriends.map((friend) => [String(friend.user_id), friend]))
+    const rawFriends =
+      friendsResult.status === 'fulfilled'
+        ? friendsResult.value.map((friend) => ({
+            ...friend,
+            ...categorizedById.get(String(friend.user_id)),
+          }))
+        : categorizedFriends.length > 0
+          ? categorizedFriends
+          : undefined
+    const friends =
+      rawFriends
+        ? rawFriends
+            .map((friend) => mapFriendContact(state.account.id, friend))
+            .filter((friend): friend is NonNullable<typeof friend> => Boolean(friend))
+        : state.directory.friends
+    const groups =
+      groupsResult.status === 'fulfilled'
+        ? groupsResult.value
+            .map((group) => mapGroupContact(state.account.id, group))
+            .filter((group): group is NonNullable<typeof group> => Boolean(group))
+        : state.directory.groups
     const next = new Map<string, Conversation>()
     if (groupsResult.status === 'fulfilled') {
       for (const group of groupsResult.value) {
@@ -831,8 +1486,8 @@ export class OneBotHub extends EventEmitter {
         if (conversation.type === 'group') next.set(conversation.id, conversation)
       }
     }
-    if (friendsResult.status === 'fulfilled') {
-      for (const friend of friendsResult.value) {
+    if (rawFriends) {
+      for (const friend of rawFriends) {
         const mapped = mapFriendConversation(state.account.id, friend)
         const conversation = this.preserveConversationActivity(mapped, state.conversations.get(mapped.id))
         next.set(conversation.id, conversation)
@@ -858,6 +1513,7 @@ export class OneBotHub extends EventEmitter {
     }
     state.conversations = next
     state.refreshedAt = Date.now()
+    state.directory = { accountId: state.account.id, friends, groups, refreshedAt: state.refreshedAt }
   }
 
   private handleEvent(account: string, connection: OneBotConnection, event: Record<string, unknown>): void {
@@ -879,6 +1535,155 @@ export class OneBotHub extends EventEmitter {
     if (postType === 'notice' && String(event.notice_type ?? '') === 'bot_offline') {
       this.setAccountStatus(state, 'offline', true)
       return
+    }
+    if (postType === 'request') {
+      const requestType = String(event.request_type ?? '')
+      const flag = String(event.flag ?? '')
+      const userId = String(event.user_id ?? '')
+      if (!flag || flag.length > 2_048 || !/^\d{1,20}$/.test(userId)) return
+      const occurredAt = (Number(event.time) || Math.floor(Date.now() / 1_000)) * 1_000
+      if (requestType === 'friend') {
+        const friend = state.directory.friends.find((candidate) => candidate.userId === userId)
+        const kind = 'friend-request' as const
+        this.cacheNotification(state, {
+          flag,
+          resolveKind: 'friend',
+          notification: {
+            id: this.notificationId(account, kind, flag),
+            accountId: account,
+            kind,
+            occurredAt,
+            userId,
+            userName: friend?.remark || friend?.nickname || userId,
+            comment: String(event.comment ?? '').slice(0, 2_000),
+            state: 'pending',
+            actionable: true,
+          },
+        })
+        return
+      }
+      if (requestType === 'group') {
+        const groupId = String(event.group_id ?? '')
+        if (!/^\d{5,20}$/.test(groupId)) return
+        const kind = String(event.sub_type ?? '') === 'invite' ? 'group-invitation' as const : 'group-request' as const
+        const group = state.directory.groups.find((candidate) => candidate.groupId === groupId)
+        const notificationId = this.notificationId(account, kind, flag)
+        this.cacheNotification(state, {
+          flag,
+          resolveKind: 'group',
+          notification: {
+            id: notificationId,
+            accountId: account,
+            kind,
+            occurredAt,
+            userId,
+            groupId,
+            groupName: group?.remark || group?.groupName || groupId,
+            comment: String(event.comment ?? '').slice(0, 2_000),
+            state: 'pending',
+            actionable: kind === 'group-invitation',
+            actionReason: kind === 'group-request' ? '正在确认当前 QQ 的群管理权限' : undefined,
+          },
+        })
+        if (kind === 'group-request') void this.refreshGroupRequestPermission(state, notificationId, groupId, true)
+      }
+      return
+    }
+    if (postType === 'notice') {
+      const noticeType = String(event.notice_type ?? '')
+      const groupId = String(event.group_id ?? '')
+      if (noticeType === 'friend_add') {
+        void this.refreshAccount(state, true).then(() => this.broadcast({ type: 'directory.changed', accountId: account }))
+        return
+      }
+      if (noticeType === 'group_upload' && /^\d{5,20}$/.test(groupId)) {
+        this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'files' })
+        return
+      }
+      if (noticeType === 'essence' && /^\d{5,20}$/.test(groupId)) {
+        this.broadcast({ type: 'group.resources.changed', accountId: account, groupId, resource: 'essence' })
+        return
+      }
+      if (noticeType === 'notify' && String(event.sub_type ?? '') === 'group_name' && /^\d{5,20}$/.test(groupId)) {
+        const name = String(event.name_new ?? '').slice(0, 128)
+        const group = state.directory.groups.find((candidate) => candidate.groupId === groupId)
+        if (group && name) group.groupName = name
+        const conversation = state.conversations.get(conversationId(account, 'group', groupId))
+        if (conversation && name) {
+          conversation.name = group?.remark || name
+          conversation.topic = name
+        }
+        this.broadcast({ type: 'directory.changed', accountId: account })
+        this.broadcast({ type: 'workspace.refresh' })
+        return
+      }
+      if (noticeType === 'group_ban' && /^\d{5,20}$/.test(groupId) && String(event.user_id ?? '') === '0') {
+        const group = state.directory.groups.find((candidate) => candidate.groupId === groupId)
+        if (group) group.wholeMuted = Number(event.duration) > 0 || String(event.sub_type ?? '') === 'ban'
+        this.broadcast({ type: 'directory.changed', accountId: account })
+        return
+      }
+      if (noticeType === 'group_card' && /^\d{5,20}$/.test(groupId)) {
+        const userId = String(event.user_id ?? '')
+        const cached = state.groupMembers.get(groupId)
+        const member = cached?.members.find((candidate) => candidate.userId === userId)
+        if (member) member.card = String(event.card_new ?? '').slice(0, 128)
+        this.broadcast({ type: 'group.members.changed', accountId: account, groupId })
+        return
+      }
+      const kind =
+        noticeType === 'group_increase'
+          ? 'group-member-increase' as const
+          : noticeType === 'group_decrease'
+            ? 'group-member-decrease' as const
+            : noticeType === 'group_admin'
+              ? 'group-admin-change' as const
+              : undefined
+      if (kind && /^\d{5,20}$/.test(groupId)) {
+        const userId = String(event.user_id ?? '')
+        const operatorId = String(event.operator_id ?? '')
+        if (!/^\d{1,20}$/.test(userId)) return
+        const occurredAt = (Number(event.time) || Math.floor(Date.now() / 1_000)) * 1_000
+        const cachedMembers = state.groupMembers.get(groupId)?.members ?? []
+        const user = cachedMembers.find((member) => member.userId === userId)
+        const operator = cachedMembers.find((member) => member.userId === operatorId)
+        const group = state.directory.groups.find((candidate) => candidate.groupId === groupId)
+        this.cacheNotification(state, {
+          notification: {
+            id: this.notificationId(
+              account,
+              kind,
+              `${occurredAt}:${groupId}:${userId}:${operatorId}:${String(event.sub_type ?? '')}`,
+            ),
+            accountId: account,
+            kind,
+            occurredAt,
+            userId,
+            userName: user?.card || user?.nickname || userId,
+            groupId,
+            groupName: group?.remark || group?.groupName || groupId,
+            operatorId: /^\d{1,20}$/.test(operatorId) ? operatorId : undefined,
+            operatorName: operator?.card || operator?.nickname || undefined,
+            comment: String(event.sub_type ?? '').slice(0, 128),
+            state: 'handled',
+            actionable: false,
+          },
+        })
+        state.groupMembers.delete(groupId)
+        if (group) {
+          if (kind === 'group-member-increase') group.memberCount += 1
+          if (kind === 'group-member-decrease') group.memberCount = Math.max(0, group.memberCount - 1)
+        }
+        this.broadcast({ type: 'group.members.changed', accountId: account, groupId })
+        this.broadcast({ type: 'directory.changed', accountId: account })
+        if (userId === state.selfId) {
+          void this.refreshAccount(state, true).then(() => {
+            this.broadcast({ type: 'directory.changed', accountId: account })
+            this.broadcast({ type: 'workspace.refresh' })
+          })
+        }
+        return
+      }
     }
     if ((postType === 'message' || postType === 'message_sent') && event.message_type) {
       const raw = event as unknown as OneBotMessage
@@ -923,8 +1728,32 @@ export class OneBotHub extends EventEmitter {
 
   private requireConversation(account: string, type: 'group' | 'private', peerId: string): AccountState {
     const state = this.requireAccount(account)
-    if (!/^\d{5,20}$/.test(peerId) || !state.conversations.has(conversationId(account, type, peerId))) {
+    if (!/^\d{5,20}$/.test(peerId)) {
       throw new Error(`QQ 会话不存在: ${account}:${type}:${peerId}`)
+    }
+    const id = conversationId(account, type, peerId)
+    if (!state.conversations.has(id)) {
+      const contact = type === 'group'
+        ? state.directory.groups.find((group) => group.groupId === peerId)
+        : state.directory.friends.find((friend) => friend.userId === peerId)
+      if (!contact) throw new Error(`QQ 会话不存在: ${account}:${type}:${peerId}`)
+      state.conversations.set(id, {
+        id,
+        accountId: account,
+        type,
+        peerId,
+        name: type === 'group' && 'groupName' in contact
+          ? contact.remark || contact.groupName || peerId
+          : 'nickname' in contact ? contact.remark || contact.nickname || peerId : peerId,
+        avatar: contact.avatar,
+        lastMessage: '',
+        lastMessageAt: '',
+        unread: 0,
+        pinned: false,
+        muted: false,
+        members: type === 'group' && 'memberCount' in contact ? contact.memberCount : undefined,
+        updatedAt: 0,
+      })
     }
     return state
   }
@@ -938,11 +1767,267 @@ export class OneBotHub extends EventEmitter {
     this.emit('workspace-event', event)
   }
 
+  private groupPermissions(state: AccountState, selfRole?: GroupMember['role']): GroupPermissions {
+    const manager = selfRole === 'owner' || selfRole === 'admin'
+    const capability = (name: CapabilityName, roleAllowed = true, roleReason = '当前 QQ 群角色无权执行此操作') => {
+      const action = this.capabilityDocument(state).actions[name]
+      if (action.status !== 'supported') return { allowed: false, reason: action.reason || `${name} 当前不可用` }
+      return roleAllowed ? { allowed: true } : { allowed: false, reason: roleReason }
+    }
+    return {
+      mentionAll: capability('message.send.mention', manager, '只有群主或管理员可以提及全体成员'),
+      setAdmin: capability('group.admin', selfRole === 'owner', '只有群主可以设置管理员'),
+      kickMembers: capability('group.kick', manager),
+      editOwnCard: capability('group.card', Boolean(selfRole), '无法确认当前 QQ 的群成员身份'),
+      rename: capability('group.rename', manager),
+      muteAll: capability('group.mute_all', manager),
+      quit: capability('group.quit', Boolean(selfRole), '无法确认当前 QQ 的群成员身份'),
+      readEssence: capability('group.essence'),
+      readAnnouncements: capability('group.announcements'),
+      deleteAnnouncements: capability('group.announcements', manager),
+      readFiles: capability('group.files'),
+      uploadFiles: capability('group.files', Boolean(selfRole), '无法确认当前 QQ 的群成员身份'),
+      manageFiles: capability('group.files', manager),
+      packetFiles: capability(
+        'group.files',
+        state.packetAvailable,
+        '当前 NapCat Packet 服务不可用',
+      ),
+      renameFolders: capability('group.folder.rename', false, '当前 NapCat 未提供群文件夹重命名 action'),
+    }
+  }
+
+  private assertPermission(permission: OperationPermission, fallback: string): void {
+    if (!permission.allowed) throw new Error(permission.reason || fallback)
+  }
+
+  private assertOpaqueId(value: string, message: string): void {
+    if (!value || value.length > 2_048 || /[\u0000-\u001f\u007f]/.test(value)) throw new Error(message)
+  }
+
+  private encodeScopedId(kind: 'file' | 'folder' | 'notice', accountId: string, groupId: string, value: string): string {
+    this.assertOpaqueId(value, `${kind} 标识无效`)
+    const encoded = Buffer.from(JSON.stringify({ v: 1, kind, accountId, groupId, value })).toString('base64url')
+    const signature = createHmac('sha256', this.options.token).update(encoded).digest('base64url')
+    return `${encoded}.${signature}`
+  }
+
+  private decodeScopedId(kind: 'file' | 'folder' | 'notice', accountId: string, groupId: string, token: string): string {
+    if (!token || token.length > 8_192) throw new Error(`${kind} 标识无效`)
+    const [encoded, signature, extra] = token.split('.')
+    if (!encoded || !signature || extra) throw new Error(`${kind} 标识无效`)
+    const expected = Buffer.from(createHmac('sha256', this.options.token).update(encoded).digest('base64url'))
+    const actual = Buffer.from(signature)
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error(`${kind} 标识无效`)
+    let payload: { v?: unknown; kind?: unknown; accountId?: unknown; groupId?: unknown; value?: unknown }
+    try {
+      payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as typeof payload
+    } catch {
+      throw new Error(`${kind} 标识无效`)
+    }
+    if (
+      payload.v !== 1 ||
+      payload.kind !== kind ||
+      payload.accountId !== accountId ||
+      payload.groupId !== groupId ||
+      typeof payload.value !== 'string'
+    ) {
+      throw new Error(`${kind} 标识与当前账号或群聊不匹配`)
+    }
+    this.assertOpaqueId(payload.value, `${kind} 标识无效`)
+    return payload.value
+  }
+
+  private replaceCachedMember(state: AccountState, groupId: string, member: GroupMember): void {
+    const cached = state.groupMembers.get(groupId)
+    if (!cached) return
+    cached.members = cached.members.map((candidate) => (candidate.userId === member.userId ? { ...member } : candidate))
+  }
+
+  private mapEssenceMessage(
+    state: AccountState,
+    groupId: string,
+    item: OneBotEssenceItem,
+    index: number,
+  ): EssenceMessage {
+    const messageId = String(item.message_id ?? item.msg_seq ?? `essence-${index}`)
+    const senderId = String(item.sender_id ?? '')
+    const mapped = mapMessage(
+      state.account.id,
+      state.selfId,
+      {
+        self_id: state.selfId,
+        group_id: groupId,
+        message_type: 'group',
+        message_id: messageId,
+        message_seq: item.msg_seq ?? messageId,
+        user_id: senderId,
+        sender: { user_id: senderId, nickname: item.sender_nick },
+        time: Number(item.operator_time) || 0,
+        message: item.content ?? [],
+      },
+      (url) => this.registerMedia(url),
+    )
+    return {
+      id: `${state.account.id}:${groupId}:essence:${messageId}`,
+      accountId: state.account.id,
+      groupId,
+      messageId,
+      senderId,
+      senderName: String(item.sender_nick ?? senderId),
+      operatorId: String(item.operator_id ?? ''),
+      operatorName: String(item.operator_nick ?? item.operator_id ?? ''),
+      operatorTime: Number(item.operator_time) || 0,
+      content: mapped?.content ?? '[无法解析的精华消息]',
+      segments: mapped?.segments ?? [],
+    }
+  }
+
+  private notificationId(account: string, kind: QqNotification['kind'], seed: string): string {
+    return createHash('sha256').update(`${account}\0${kind}\0${seed}`).digest('hex').slice(0, 24)
+  }
+
+  private cacheNotification(state: AccountState, entry: CachedNotification, broadcast = true): void {
+    const existing = state.notifications.get(entry.notification.id)
+    if (existing) {
+      const currentState = existing.notification.state
+      const incomingState = entry.notification.state
+      if (
+        ((currentState === 'accepted' || currentState === 'rejected') &&
+          incomingState !== 'accepted' && incomingState !== 'rejected') ||
+        (currentState === 'handled' && incomingState === 'pending')
+      ) {
+        entry.notification.state = currentState
+        entry.notification.actionable = false
+      }
+      if (!entry.notification.occurredAt && existing.notification.occurredAt) {
+        entry.notification.occurredAt = existing.notification.occurredAt
+      }
+    }
+    state.notifications.delete(entry.notification.id)
+    state.notifications.set(entry.notification.id, entry)
+    while (state.notifications.size > 500) {
+      const oldest = state.notifications.keys().next().value as string | undefined
+      if (!oldest) break
+      state.notifications.delete(oldest)
+    }
+    if (broadcast) {
+      this.broadcast({
+        type: 'notification.changed',
+        accountId: state.account.id,
+        notification: { ...entry.notification },
+      })
+    }
+  }
+
+  private mergeGroupSystemNotifications(
+    state: AccountState,
+    invitations: OneBotGroupSystemItem[],
+    requests: OneBotGroupSystemItem[],
+  ): void {
+    const add = (item: OneBotGroupSystemItem, kind: 'group-invitation' | 'group-request') => {
+      const flag = String(item.request_id ?? '')
+      const groupId = String(item.group_id ?? '')
+      const userId = String(item.invitor_uin ?? '')
+      if (!flag || !/^\d{5,20}$/.test(groupId) || !/^\d{1,20}$/.test(userId)) return
+      this.cacheNotification(
+        state,
+        {
+          flag,
+          resolveKind: 'group',
+          notification: {
+            id: this.notificationId(state.account.id, kind, flag),
+            accountId: state.account.id,
+            kind,
+            occurredAt: 0,
+            userId,
+            userName: String(item.requester_nick || item.invitor_nick || userId),
+            groupId,
+            groupName: String(item.group_name || groupId),
+            comment: String(item.message || '').slice(0, 2_000),
+            state: item.checked ? 'handled' : 'pending',
+            actionable: kind === 'group-invitation' && !item.checked,
+            actionReason:
+              kind === 'group-request' && !item.checked
+                ? '正在确认当前 QQ 的群管理权限'
+                : undefined,
+          },
+        },
+        false,
+      )
+    }
+    invitations.forEach((item) => add(item, 'group-invitation'))
+    requests.forEach((item) => add(item, 'group-request'))
+  }
+
+  private async refreshGroupRequestPermissions(state: AccountState, broadcast: boolean): Promise<void> {
+    const requests = [...state.notifications.values()].filter(
+      (entry) => entry.notification.kind === 'group-request' && entry.notification.state === 'pending',
+    )
+    for (let index = 0; index < requests.length; index += 4) {
+      await Promise.allSettled(
+        requests.slice(index, index + 4).map((entry) =>
+          this.refreshGroupRequestPermission(
+            state,
+            entry.notification.id,
+            entry.notification.groupId ?? '',
+            broadcast,
+          ),
+        ),
+      )
+    }
+  }
+
+  private async refreshGroupRequestPermission(
+    state: AccountState,
+    notificationId: string,
+    groupId: string,
+    broadcast: boolean,
+  ): Promise<void> {
+    let allowed = false
+    let reason = '无法确认当前 QQ 的群管理权限'
+    try {
+      const directory = await this.memberDirectory(state.account.id, groupId)
+      allowed = directory.selfRole === 'owner' || directory.selfRole === 'admin'
+      reason = allowed ? '' : '当前 QQ 不是该群的群主或管理员'
+    } catch {
+      // Keep the request visible but non-actionable when role lookup fails.
+    }
+    if (this.accounts.get(state.account.id) !== state) return
+    const current = state.notifications.get(notificationId)
+    if (!current || current.notification.kind !== 'group-request' || current.notification.state !== 'pending') return
+    current.notification = {
+      ...current.notification,
+      actionable: allowed,
+      actionReason: reason || undefined,
+    }
+    if (broadcast) {
+      this.broadcast({
+        type: 'notification.changed',
+        accountId: state.account.id,
+        notification: { ...current.notification },
+      })
+    }
+  }
+
   private capabilityDocument(state: AccountState): AccountCapabilityDocument {
     const implemented = new Set<CapabilityName>([
       'history.cursor',
       'directory.friends',
       'directory.groups',
+      'request.friend.resolve',
+      'request.group.history',
+      'request.group.resolve',
+      'group.members',
+      'group.admin',
+      'group.kick',
+      'group.card',
+      'group.rename',
+      'group.mute_all',
+      'group.quit',
+      'group.essence',
+      'group.announcements',
+      'group.files',
       'message.send.text',
       'message.send.mention',
       'message.send.reply',
