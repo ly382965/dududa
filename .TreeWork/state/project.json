@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "offline-runtime",
-  "last_event_seq": 19,
+  "current_branch": "controlled-rollout",
+  "last_event_seq": 21,
   "tree_revision": 1,
   "tree_editing": null,
   "tree_hash": "fnv1a64:1a89870cd80e343b",
-  "last_sync": "unix:1785812875"
+  "last_sync": "unix:1785816445"
 }
