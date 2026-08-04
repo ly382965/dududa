@@ -43,12 +43,33 @@ const faceSegmentSchema = z
   })
   .strict()
 
+const stagedMediaSegmentSchema = z
+  .object({
+    type: z.enum(['image', 'audio', 'video']),
+    uploadId: z.string().regex(/^[0-9a-f-]{36}$/i),
+    name: z.string().max(512).optional(),
+  })
+  .strict()
+
 export const outgoingMessageSegmentSchema = z.discriminatedUnion('type', [
   textSegmentSchema,
   mentionSegmentSchema,
   replySegmentSchema,
   faceSegmentSchema,
+  stagedMediaSegmentSchema,
 ])
+
+export const conversationRefSchema = z
+  .object({
+    accountId: z.string().regex(/^qq-\d{5,20}$/),
+    type: z.enum(['group', 'private']),
+    peerId: z.string().regex(/^\d{5,20}$/),
+  })
+  .strict()
+
+export const nudgeRequestSchema = z.object({ userId: numericId }).strict()
+
+export const forwardRequestSchema = z.object({ target: conversationRefSchema }).strict()
 
 export const sendMessageRequestSchema = z
   .union([

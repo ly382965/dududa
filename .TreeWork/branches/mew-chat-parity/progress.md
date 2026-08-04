@@ -4,15 +4,44 @@
 <!-- treework:status:start -->
 Branch: mew-chat-parity
 Parent: mew-parity
-Status: pending
-Verification: unverified
-Last sync: unix:1785826169
+Status: complete
+Verification: verified
+Last sync: unix:1785834789
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Mew-derived virtual history, rich rendering, Tiptap composition, search,
+  drafts, file confirmation, media refresh, single forwarding, nested merged
+  forwards, recall, nudge and `+1` now run through typed NapCat routes.
+- Browser media uploads are bounded, UTF-8 safe, account/conversation bound and
+  atomically single-use. Ambiguous NapCat timeout/disconnect outcomes cannot
+  replay the same upload token.
+- Real-data Dexie messages, ranges, search cursors and drafts are account scoped;
+  ephemeral proxy URLs and Blob/Base64/file values are not persisted. Both the
+  cache and active window have explicit bounds.
+- Desktop and mobile flows retain the account rail and honest unavailable Agent
+  surface. Mobile message actions use long-press/context and swipe-to-reply,
+  with a viewport-safe action sheet.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Production build, 22 browser tests, 20 gateway tests, four Playwright flows,
+  dependency audit and whitespace validation pass. Desktop/mobile screenshots
+  show no overflow or incoherent overlap.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Authoritative full group-member candidates and the current QQ role belong to
+  `mew-directory-parity`. Until integrated, the composer uses recent real
+  senders and conservatively disables `@全体成员`.
+- No QQ-visible mutation was executed against the running real NapCat account;
+  mutation evidence remains fixture-only until the user authorizes a target and
+  action window. Read-only real-account checks belong to the final audit.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Integrate this branch before refreshing the paused directory worktree. The
+  directory branch should feed member candidates/self role into the existing
+  `ChatPane -> MessageComposer` boundary rather than introducing another chat
+  store or browser OneBot client.

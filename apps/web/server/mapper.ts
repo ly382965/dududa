@@ -83,7 +83,9 @@ function positiveNumber(value: unknown): number | undefined {
 
 function opaqueResourceId(value: unknown): string | undefined {
   const candidate = text(value)
-  return candidate && candidate.length <= 512 && !/[\\/:]/.test(candidate) ? candidate : undefined
+  if (!candidate || candidate.length > 2_048 || /[\u0000-\u001f\u007f]/.test(candidate)) return undefined
+  if (/^(?:file:|data:|blob:|base64:\/\/|[a-zA-Z]:[\\/]|[\\/])/i.test(candidate)) return undefined
+  return candidate
 }
 
 function safeExternalUrl(value: unknown): string | undefined {

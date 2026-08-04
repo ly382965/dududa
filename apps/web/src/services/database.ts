@@ -39,6 +39,23 @@ export interface StoredDraft extends ConversationDraft {
   id: string
 }
 
+export interface MessageSearchRequest {
+  accountId: string
+  conversationId: string
+  query?: string
+  senderId?: string
+  startTimeMs?: number
+  endTimeMs?: number
+  beforeTimestampMs?: number
+  beforeCacheId?: string
+  limit?: number
+}
+
+export interface MessageSearchPage {
+  messages: ChatMessage[]
+  hasMore: boolean
+}
+
 export class WorkspaceDatabase extends Dexie {
   messages!: EntityTable<StoredMessage, 'cacheId'>
   conversations!: EntityTable<StoredConversation, 'id'>
@@ -62,7 +79,8 @@ export class WorkspaceDatabase extends Dexie {
 function persistentUrl(value: string | undefined): string | undefined {
   if (!value) return undefined
   if (/^(?:blob:|data:|base64:\/\/|file:)/i.test(value)) return undefined
-  if (/^\/(?:api\/media|assets)\//.test(value)) return value
+  if (/^\/assets\//.test(value)) return value
+  if (/^\/api\/media\//.test(value)) return undefined
   if (/^(?:[a-zA-Z]:[\\/]|\/[^/])/.test(value)) return undefined
   return value
 }
@@ -96,7 +114,7 @@ export function sanitizeMessageForStorage(message: ChatMessage): ChatMessage {
 function sanitizeDraftContent(content: unknown): unknown {
   const serialized = JSON.stringify(content, (_key, value: unknown) => {
     if (typeof Blob !== 'undefined' && value instanceof Blob) return undefined
-    if (typeof value === 'string' && value && !persistentUrl(value)) return undefined
+    if (typeof value === 'string' && /^(?:blob:|data:|base64:\/\/|file:)/i.test(value)) return undefined
     return value
   })
   if (!serialized) return null
@@ -120,6 +138,7 @@ export class WorkspaceCache {
     const messages = this.storedMessages(conversation, input)
     await this.database.transaction('rw', this.database.messages, this.database.conversations, async () => {
       if (messages.length) await this.database.messages.bulkPut(messages)
+      await this.pruneMessages(conversation.accountId, conversation.id)
       await this.database.conversations.put({ ...conversation, cachedAt: Date.now() })
     })
   }
@@ -137,6 +156,7 @@ export class WorkspaceCache {
       this.database.historyRanges,
       async () => {
         if (messages.length) await this.database.messages.bulkPut(messages)
+        await this.pruneMessages(conversation.accountId, conversation.id)
         await this.database.conversations.put({ ...conversation, cachedAt: Date.now() })
         const existing = await this.database.historyRanges.get(conversation.id)
         await this.database.historyRanges.put({
@@ -169,6 +189,42 @@ export class WorkspaceCache {
   async historyRange(accountId: string, conversationId: string): Promise<StoredHistoryRange | undefined> {
     const range = await this.database.historyRanges.get(conversationId)
     return range?.accountId === accountId ? range : undefined
+  }
+
+  async searchMessages(request: MessageSearchRequest): Promise<MessageSearchPage> {
+    const limit = Math.min(Math.max(Math.floor(request.limit ?? 50), 1), 100)
+    const terms = (request.query ?? '')
+      .trim()
+      .toLocaleLowerCase('zh-CN')
+      .split(/\s+/)
+      .filter(Boolean)
+    const lower = request.startTimeMs ?? Dexie.minKey
+    const upper = Math.min(request.endTimeMs ?? Number.MAX_SAFE_INTEGER, request.beforeTimestampMs ?? Number.MAX_SAFE_INTEGER)
+    const rows = await this.database.messages
+      .where('[accountId+conversationId+timestampMs]')
+      .between([request.accountId, request.conversationId, lower], [request.accountId, request.conversationId, upper], true, true)
+      .reverse()
+      .filter((row) => {
+        if (request.beforeTimestampMs !== undefined) {
+          if (row.timestampMs > request.beforeTimestampMs) return false
+          if (row.timestampMs === request.beforeTimestampMs) {
+            if (!request.beforeCacheId || row.cacheId >= request.beforeCacheId) return false
+          }
+        }
+        if (request.senderId && row.message.senderId !== request.senderId) return false
+        const haystack = `${row.message.senderName}\n${row.message.content}`.toLocaleLowerCase('zh-CN')
+        return terms.every((term) => haystack.includes(term))
+      })
+      .limit(limit + 1)
+      .toArray()
+    return { messages: rows.slice(0, limit).map((row) => row.message), hasMore: rows.length > limit }
+  }
+
+  async deleteMessage(accountId: string, conversationId: string, messageId: string): Promise<void> {
+    const stored = await this.database.messages.get(messageId)
+    if (stored?.accountId === accountId && stored.conversationId === conversationId) {
+      await this.database.messages.delete(messageId)
+    }
   }
 
   async saveDraft(draft: ConversationDraft): Promise<void> {
@@ -228,6 +284,25 @@ export class WorkspaceCache {
         messageSeqNumber: messageSeqNumber(message),
         message: sanitizeMessageForStorage(message),
       }))
+  }
+
+  private async pruneMessages(accountId: string, conversationId: string): Promise<void> {
+    const conversationRows = this.database.messages
+      .where('[accountId+conversationId+timestampMs]')
+      .between([accountId, conversationId, Dexie.minKey], [accountId, conversationId, Dexie.maxKey])
+    const conversationExcess = Math.max(0, (await conversationRows.count()) - 5_000)
+    if (conversationExcess) {
+      const keys = (await conversationRows.limit(conversationExcess).primaryKeys()) as string[]
+      await this.database.messages.bulkDelete(keys)
+    }
+    const accountRows = this.database.messages
+      .where('[accountId+timestampMs]')
+      .between([accountId, Dexie.minKey], [accountId, Dexie.maxKey])
+    const accountExcess = Math.max(0, (await accountRows.count()) - 50_000)
+    if (accountExcess) {
+      const keys = (await accountRows.limit(accountExcess).primaryKeys()) as string[]
+      await this.database.messages.bulkDelete(keys)
+    }
   }
 }
 
