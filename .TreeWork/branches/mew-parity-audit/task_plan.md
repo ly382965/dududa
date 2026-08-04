@@ -11,23 +11,23 @@ Title: Mew Parity Audit
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Every Mew baseline behavior has passed evidence or a documented confirmed
+- [x] Every Mew baseline behavior has passed evidence or a documented confirmed
   NapCat capability gap with an explicit disabled state.
-- [ ] Two-account transport tests and available real-account read-only checks
+- [x] Two-account transport tests and available real-account read-only checks
   show no identity, message, cache, draft, capability or upload cross-talk.
-- [ ] Desktop/mobile screenshots and interaction tests have no blank canvas,
+- [x] Desktop/mobile screenshots and interaction tests have no blank canvas,
   incoherent overlap, inaccessible controls or unstable history anchoring.
-- [ ] Production artifacts contain no demo data or protected credentials and
+- [x] Production artifacts contain no demo data or protected credentials and
   the full repository regression suite passes.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Freeze the feature/capability evidence matrix.
-- [ ] Run focused Web, security and two-account verification.
-- [ ] Run authorized real NapCat read-only verification and record external
+- [x] Freeze the feature/capability evidence matrix.
+- [x] Run focused Web, security and two-account verification.
+- [x] Run authorized real NapCat read-only verification and record external
   mutation gaps honestly.
-- [ ] Run full repository, Compose, secret and dependency checks.
-- [ ] Capture desktop/mobile visual evidence and close all audit findings.
+- [x] Run full repository, Compose, secret and dependency checks.
+- [x] Capture desktop/mobile visual evidence and close all audit findings.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

@@ -80,21 +80,21 @@ retaining Dududa's server-side OneBot boundary and without shipping demo data.
 - [x] Existing S01-S07 tests and repository safety/import boundaries remain
   green; unrelated Sub2API work is neither modified nor committed by this
   project.
-- [ ] The production Web build contains no demo QQ or Agent data and obtains
+- [x] The production Web build contains no demo QQ or Agent data and obtains
   accounts, conversations, history, events and mutation results only from an
   authenticated server-side NapCat connection.
-- [ ] Two concurrent NapCat accounts can be exercised without cross-account
+- [x] Two concurrent NapCat accounts can be exercised without cross-account
   request, message, cache, draft, unread, upload or capability leakage.
-- [ ] Mew's chat, contacts, notifications, group members/management/resources
+- [x] Mew's chat, contacts, notifications, group members/management/resources
   and settings behaviors are reproduced for every mapped NapCat capability,
   with explicit disabled states for confirmed protocol gaps.
-- [ ] Text, links, reply, mentions, QQ faces, custom faces, images, audio,
+- [x] Text, links, reply, mentions, QQ faces, custom faces, images, audio,
   video, files, forwarded messages, Markdown/light-app content and unknown
   segments have tested send/display or honest fallback behavior as applicable.
-- [ ] History pagination, virtual scrolling, unread positioning, local search,
+- [x] History pagination, virtual scrolling, unread positioning, local search,
   drafts, cache cleanup and recovery are verified on account-scoped real-data
   caches across desktop and mobile viewports.
-- [ ] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
+- [x] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
   action access never reach the browser; destructive actions use a typed
   server allowlist and the unauthenticated Web service remains loopback-only.
 - [ ] Only after every accepted module, Web testing task and local integration
