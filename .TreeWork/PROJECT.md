@@ -53,7 +53,9 @@ and directory slices and a joint audit.
 
 ## Current Direction
 
-The local S08-S11 implementation and audit are complete. Authorized real-group
-scenario testing is deliberately deferred until every accepted module, local
-integration audit and Web testing task is complete. Current work remains on the
-independent Mew/NapCat Web parity epic while preserving unrelated Sub2API work.
+The local S08-S11 implementation/audit and the independent Mew/NapCat Web
+parity epic are complete and verified. The Web client is deployed against real
+NapCat with account-scoped caching and explicit capability gaps. The next
+project gate is the separately authorized real-group Agent shadow/canary;
+Agent Console integration, Bandit and unrelated Sub2API work remain outside
+the completed Web epic.

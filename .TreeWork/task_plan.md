@@ -26,18 +26,18 @@
 - [x] Shadow is proven side-effect-free and canary ownership is proven
   single-path under concurrency and restart simulation.
 - [x] The legacy path and unrelated workspace changes remain intact.
-- [ ] Real NapCat accounts provide all production QQ data and unsupported
+- [x] Real NapCat accounts provide all production QQ data and unsupported
   capabilities are explicit rather than simulated.
-- [ ] Mew-equivalent chat, directory, notification, group-resource and settings
+- [x] Mew-equivalent chat, directory, notification, group-resource and settings
   workflows pass adapted Unit and E2E contracts on desktop and mobile.
-- [ ] Concurrent accounts remain isolated through gateway actions, events,
+- [x] Concurrent accounts remain isolated through gateway actions, events,
   browser caches, drafts and uploads, with the OneBot token server-only.
 - [ ] After every earlier acceptance item and local audit passes, the authorized
   real-group shadow/canary records the frozen safety and SLO evidence.
 
-All local S08-S11 criteria and their completion audit are satisfied. Remaining
-checkboxes belong to the Web testing scope and the final real-group gate; the
-real-group gate cannot start until every preceding checkbox is complete.
+All local S08-S11 and Web criteria and their completion audits are satisfied.
+The remaining project checkbox is the final real-group gate; it requires a
+separate authorized external run.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 
