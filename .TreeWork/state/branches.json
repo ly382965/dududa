@@ -178,10 +178,19 @@
       "title": "Mew Chat Parity",
       "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "in_progress",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1785826169"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-chat-parity",
+        "git_branch": "treework/mew-chat-parity",
+        "managed_by_treework": true,
+        "created_at": "unix:1785828495",
+        "last_entered_at": "unix:1785828594",
+        "last_status": "reused existing worktree"
+      },
+      "last_sync": "unix:1785834561"
     },
     {
       "path": "mew-directory-parity",
@@ -189,10 +198,20 @@
       "title": "Mew Directory And Group Parity",
       "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
+      "status": "paused",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1785826169"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-directory-parity",
+        "git_branch": "treework/mew-directory-parity",
+        "managed_by_treework": true,
+        "created_at": "unix:1785828496",
+        "last_entered_at": "unix:1785828496",
+        "last_status": "created managed worktree"
+      },
+      "status_reason": "Chat branch is implemented first because no worker handshake was established; directory worktree remains clean and reserved.",
+      "last_sync": "unix:1785828594"
     },
     {
       "path": "mew-parity-audit",
