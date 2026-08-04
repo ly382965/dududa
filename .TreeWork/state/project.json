@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "mew-parity-audit",
-  "last_event_seq": 42,
+  "current_branch": "mew-parity",
+  "last_event_seq": 45,
   "tree_revision": 2,
   "tree_editing": null,
   "tree_hash": "fnv1a64:0f7a27ea99378f56",
-  "last_sync": "unix:1785851465"
+  "last_sync": "unix:1785851856"
 }

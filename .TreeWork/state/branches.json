@@ -147,10 +147,19 @@
       "title": "Mew And NapCat Web Parity",
       "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1785826169"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-parity",
+        "git_branch": "treework/mew-parity",
+        "managed_by_treework": false,
+        "created_at": "unix:1785851636",
+        "last_entered_at": "unix:1785851636",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1785851856"
     },
     {
       "path": "mew-parity-foundation",
