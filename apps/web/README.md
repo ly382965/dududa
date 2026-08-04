@@ -3,8 +3,9 @@
 嘟嘟哒的真实 QQ 多账号工作台。浏览器不直连 NapCat：同源 Node 网关接收 NapCat 的 OneBot 11
 反向 WebSocket，在服务端执行受限 action，再向 Vue 前端提供 HTTP + SSE。
 
-生产代码不包含演示账号、虚构群聊或模拟 Agent 输出，也不把消息写入浏览器数据库。网关只在内存中
-维护在线连接和短期媒体映射；账号、联系人、群、历史消息和发送结果均来自当前 NapCat 连接。
+生产代码不包含演示账号、虚构群聊或模拟 Agent 输出。账号、联系人、群、历史消息和发送结果均来自
+当前 NapCat 连接；浏览器 IndexedDB 只缓存 NapCat 返回的规范化消息、历史覆盖范围、会话和操作员草稿，
+不作为另一个 QQ 数据源。清理浏览器缓存不会修改 QQ 数据。
 
 ## Architecture
 
@@ -78,20 +79,30 @@ npm run dev
 ```
 
 开发模式启动端口 `8000` 的 Gateway 和端口 `5173` 的 Vite UI。NapCat 必须能够访问 Gateway；
-容器部署时使用上面的 `dududa-web-api` 网络别名。
+独立启动默认只监听 `127.0.0.1`。NapCat 位于容器或其他主机时，应在受保护网络内显式设置
+`DUDUDA_WEB_BIND=0.0.0.0`；Compose 部署使用上面的 `dududa-web-api` 网络别名，同时宿主发布端口仍默认
+绑定 `127.0.0.1`。
 
 ## Supported QQ Surface
 
 - `get_login_info`、`get_status`、`get_version_info`；
 - `get_group_list`、`get_friend_list`、`get_recent_contact`；
 - `get_group_msg_history`、`get_friend_msg_history`；
-- `send_group_msg`、`send_private_msg`、`get_msg`；
+- 绑定账号和会话的签名历史游标，以及前后方向分页；
+- `send_group_msg`、`send_private_msg`、`get_msg`，当前安全发送段包括文本、回复、提及和 QQ face；
 - `message`、`message_sent` 与群/好友撤回事件；
-- QQ 用户/群头像代理，以及允许的 QQ CDN 图片代理。
+- 有序规范化文本、回复、提及、QQ/市场表情、图片、语音、视频、文件、合并转发、Markdown、
+  Light App 和未知消息段；
+- 每账号能力文档，明确区分已实现、协议缺失、权限不足和暂时不可用；
+- QQ 用户/群头像代理，以及允许的 QQ CDN 媒体映射。
 
 网关没有“任意 OneBot action”转发接口。Cookie、Credential、原始本地路径和 OneBot Token 不会下发
 浏览器。浏览器 API 当前暂不启用登录，默认只应绑定本机回环地址；对外发布前必须在反向代理补充认证。
 QQ 头像与历史图片是上游的短期数据，失败时前端使用明确降级状态。
+
+缓存主键均包含 `accountId` 与会话 ID。Blob URL、Data URL、`base64://`、`file://` 和原始本地路径
+不会写入 IndexedDB。当前 NapCat 没有 QQ 同步置顶、群文件夹重命名和完整普通好友申请历史 action，
+这些能力会明确显示为不支持，不使用本地假成功补齐。
 
 NapCat 无法保证补齐 QQ 离线期间未同步到本机的全部消息；本工作台也不会伪造初始未读、置顶或免打扰
 状态。未读数仅从当前页面收到的实时事件开始计算。

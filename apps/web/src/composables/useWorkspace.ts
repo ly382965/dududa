@@ -40,6 +40,7 @@ function emptySnapshot(): WorkspaceSnapshot {
       reverseWebSocketPath: '/onebot/v11/ws',
     },
     accounts: [],
+    capabilities: {},
     conversations: [],
     messages: {},
     sessions: [],
@@ -140,8 +141,8 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     const merged = new Map(existing.map((message) => [messageIdentity(message), message]))
     for (const message of incoming) merged.set(messageIdentity(message), message)
     snapshot.value.messages[conversationId] = [...merged.values()].sort((left, right) => {
-      const leftSequence = Number(left.sequence)
-      const rightSequence = Number(right.sequence)
+      const leftSequence = Number(left.messageSeq ?? left.sequence)
+      const rightSequence = Number(right.messageSeq ?? right.sequence)
       return Number.isFinite(leftSequence) && Number.isFinite(rightSequence) ? leftSequence - rightSequence : 0
     })
   }
@@ -183,7 +184,11 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     if (!conversation) return
     messagesLoading.value = true
     try {
-      const messages = await adapter.loadMessages(conversation, 50)
+      const cached = await adapter.loadCachedMessages(conversation, 50)
+      if (version === messageLoadVersion && selectedConversationId.value === conversation.id) {
+        mergeMessages(conversation.id, cached)
+      }
+      const messages = (await adapter.loadHistory(conversation, { limit: 50 })).messages
       if (version !== messageLoadVersion || selectedConversationId.value !== conversation.id) return
       mergeMessages(conversation.id, messages)
       void adapter.markRead(conversation).catch(() => undefined)
@@ -244,6 +249,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     try {
       const message = await adapter.sendMessage(conversation, value)
       mergeMessages(conversation.id, [message])
+      void adapter.cacheMessages(conversation, [message])
       conversation.lastMessage = `${selectedAccount.value?.shortName ?? '我'}：${value}`
       notify('消息已由 NapCat 发送')
     } catch (error) {
@@ -273,6 +279,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     try {
       const message = await adapter.sendMessage(conversation, draft.content)
       mergeMessages(conversation.id, [message])
+      void adapter.cacheMessages(conversation, [message])
       draft.status = 'sent'
       notify('草稿已由 NapCat 发送')
     } catch (error) {
@@ -310,6 +317,16 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
       snapshot.value.runtime = event.status
       return
     }
+    if (event.type === 'capabilities.changed') {
+      snapshot.value.capabilities ??= {}
+      snapshot.value.capabilities[event.accountId] = event.capabilities
+      const account = snapshot.value.accounts.find((item) => item.id === event.accountId)
+      if (account) {
+        account.implementation = event.capabilities.implementation
+        account.capabilities = event.capabilities.actions
+      }
+      return
+    }
     if (event.type === 'message.deleted') {
       const messages = snapshot.value.messages[event.conversationId]
       if (messages) snapshot.value.messages[event.conversationId] = messages.filter((message) => message.id !== event.messageId)
@@ -319,6 +336,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter) {
     if (existing) Object.assign(existing, event.conversation)
     else snapshot.value.conversations.unshift(event.conversation)
     mergeMessages(event.conversation.id, [event.message])
+    void adapter.cacheMessages(event.conversation, [event.message])
     if (event.conversation.id !== selectedConversationId.value && !event.message.mine) {
       const target = conversations.value.find((item) => item.id === event.conversation.id)
       if (target) target.unread += 1

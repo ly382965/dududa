@@ -55,11 +55,17 @@ const conversations = [
 
 const historyMessage: ChatMessage = {
   id: 'qq-123456789:group:345678901:101',
+  accountId: account.id,
+  conversationId: conversations[0]!.id,
+  messageId: '101',
+  messageSeq: '101',
   senderId: '234567890',
   senderName: '测试成员',
   senderAvatar: '/api/media/avatar/user/234567890',
   timestamp: '18:10',
+  timestampMs: 1_785_742_400_000,
   content: '来自真实 NapCat 的消息',
+  segments: [{ type: 'text', text: '来自真实 NapCat 的消息' }],
   mine: false,
 }
 
@@ -91,10 +97,13 @@ function mockApi(snapshot = workspace()) {
           message: {
             ...historyMessage,
             id: 'qq-123456789:group:345678901:102',
+            messageId: '102',
+            messageSeq: '102',
             senderId: account.botId,
             senderName: account.name,
             senderAvatar: account.avatar,
             content: content.content,
+            segments: [{ type: 'text', text: content.content }],
             mine: true,
           },
         }),
@@ -102,7 +111,10 @@ function mockApi(snapshot = workspace()) {
       )
     }
     if (path.includes('/messages')) {
-      return new Response(JSON.stringify({ messages: [historyMessage] }), { status: 200 })
+      return new Response(
+        JSON.stringify({ messages: [historyMessage], hasMoreBefore: false, hasMoreAfter: false }),
+        { status: 200 },
+      )
     }
     if (path.endsWith('/read')) return new Response(JSON.stringify({ ok: true }), { status: 200 })
     return new Response(JSON.stringify({ error: 'not found' }), { status: 404 })

@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
 
@@ -7,8 +7,12 @@ import { WebSocket, WebSocketServer } from 'ws'
 
 import type {
   Account,
+  AccountCapabilityDocument,
+  CapabilityName,
   ChatMessage,
   Conversation,
+  HistoryPage,
+  OutgoingMessageSegment,
   WorkspaceEvent,
   WorkspaceSnapshot,
 } from '../src/types/workspace'
@@ -52,6 +56,8 @@ interface AccountState {
   conversations: Map<string, Conversation>
   emittedMessages: Map<string, number>
   compatible: boolean
+  implementationName: string
+  implementationVersion?: string
   refreshedAt: number
 }
 
@@ -73,6 +79,53 @@ const emittedMessageTtlMs = 5 * 60_000
 const emittedMessageMaxEntries = 5_000
 const defaultMediaTtlMs = 30 * 60_000
 const defaultMediaMaxEntries = 2_000
+
+const capabilityNames: CapabilityName[] = [
+  'history.cursor',
+  'directory.friends',
+  'directory.groups',
+  'directory.peer_pin',
+  'message.send.text',
+  'message.send.mention',
+  'message.send.reply',
+  'message.send.face',
+  'message.send.image',
+  'message.send.audio',
+  'message.send.video',
+  'message.send.file',
+  'message.recall',
+  'message.forward',
+  'message.nudge',
+  'message.read',
+  'message.custom_faces',
+  'request.friend.history',
+  'request.group.history',
+  'group.members',
+  'group.admin',
+  'group.kick',
+  'group.card',
+  'group.rename',
+  'group.mute_all',
+  'group.quit',
+  'group.essence',
+  'group.announcements',
+  'group.files',
+  'group.folder.rename',
+]
+
+interface HistoryCursorPayload {
+  v: 1
+  accountId: string
+  type: 'group' | 'private'
+  peerId: string
+  messageSeq: string
+}
+
+export interface HistoryPageRequest {
+  limit?: number
+  before?: string
+  after?: string
+}
 
 export class OneBotConnection {
   private readonly pending = new Map<string, PendingRequest>()
@@ -229,7 +282,11 @@ export class OneBotHub extends EventEmitter {
       .sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0) || left.name.localeCompare(right.name, 'zh-CN'))
     return {
       runtime: this.runtimeStatus(),
-      accounts: states.map((state) => state.account),
+      accounts: states.map((state) => {
+        const capabilities = this.capabilityDocument(state)
+        return { ...state.account, implementation: capabilities.implementation, capabilities: capabilities.actions }
+      }),
+      capabilities: Object.fromEntries(states.map((state) => [state.account.id, this.capabilityDocument(state)])),
       conversations,
       messages: {},
       sessions: [],
@@ -243,25 +300,48 @@ export class OneBotHub extends EventEmitter {
     await Promise.allSettled([...this.accounts.values()].map((state) => this.refreshAccount(state, force)))
   }
 
+  capabilities(account: string): AccountCapabilityDocument {
+    return this.capabilityDocument(this.requireAccount(account))
+  }
+
   async history(account: string, type: 'group' | 'private', peerId: string, limit?: number): Promise<ChatMessage[]> {
+    return (await this.historyPage(account, type, peerId, { limit })).messages
+  }
+
+  async historyPage(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    request: HistoryPageRequest = {},
+  ): Promise<HistoryPage> {
     const state = this.requireConversation(account, type, peerId)
-    const count = Math.min(Math.max(Number(limit) || this.messageHistoryCount, 1), 100)
+    const count = Math.min(Math.max(Number(request.limit) || this.messageHistoryCount, 1), 100)
+    if (request.before && request.after) throw new Error('before 与 after 不能同时使用')
+    const cursor = request.before || request.after
+    const decodedCursor = cursor ? this.decodeHistoryCursor(cursor, account, type, peerId) : undefined
+    const direction = request.after ? 'after' : 'before'
+    const requestCount = decodedCursor ? Math.min(count + 1, 100) : count
     const action = type === 'group' ? 'get_group_msg_history' : 'get_friend_msg_history'
     const key = type === 'group' ? 'group_id' : 'user_id'
     let data: { messages?: OneBotMessage[] }
     try {
       data = await state.connection.request(action, {
         [key]: peerId,
-        count,
-        reverse_order: false,
+        count: requestCount,
+        ...(decodedCursor ? { message_seq: decodedCursor.messageSeq } : {}),
+        reverse_order: direction === 'after',
         disable_get_url: false,
         parse_mult_msg: true,
       })
     } catch (error) {
-      if (error instanceof Error && /不存在|not found/i.test(error.message)) return []
+      if (error instanceof Error && /不存在|not found/i.test(error.message)) {
+        return { messages: [], hasMoreBefore: false, hasMoreAfter: false }
+      }
       throw error
     }
-    return (data.messages ?? [])
+    const rawMessages = data.messages ?? []
+    const byId = new Map<string, ChatMessage>()
+    rawMessages
       .sort(
         (left, right) =>
           Number(left.time ?? 0) - Number(right.time ?? 0) ||
@@ -271,15 +351,45 @@ export class OneBotHub extends EventEmitter {
         mapMessage(account, state.selfId, raw, (url) => this.registerMedia(url), type === 'private' ? peerId : undefined),
       )
       .filter((message): message is ChatMessage => Boolean(message))
+      .filter((message) => !decodedCursor || message.messageSeq !== decodedCursor.messageSeq)
+      .forEach((message) => byId.set(message.id, message))
+    const mappedMessages = [...byId.values()]
+    const messages =
+      mappedMessages.length > count
+        ? direction === 'before'
+          ? mappedMessages.slice(-count)
+          : mappedMessages.slice(0, count)
+        : mappedMessages
+    const firstSeq = messages.find((message) => message.messageSeq)?.messageSeq
+    const lastSeq = [...messages].reverse().find((message) => message.messageSeq)?.messageSeq
+    return {
+      messages,
+      beforeCursor: firstSeq ? this.encodeHistoryCursor(account, type, peerId, firstSeq) : undefined,
+      afterCursor: lastSeq ? this.encodeHistoryCursor(account, type, peerId, lastSeq) : undefined,
+      hasMoreBefore:
+        direction === 'before' && (mappedMessages.length > count || rawMessages.length >= requestCount),
+      hasMoreAfter:
+        direction === 'after' && (mappedMessages.length > count || rawMessages.length >= requestCount),
+    }
   }
 
   async sendText(account: string, type: 'group' | 'private', peerId: string, content: string): Promise<ChatMessage> {
+    return this.sendSegments(account, type, peerId, [{ type: 'text', text: content }])
+  }
+
+  async sendSegments(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    segments: OutgoingMessageSegment[],
+  ): Promise<ChatMessage> {
     const state = this.requireConversation(account, type, peerId)
     const action = type === 'group' ? 'send_group_msg' : 'send_private_msg'
     const key = type === 'group' ? 'group_id' : 'user_id'
+    const outgoing = segments.map((segment) => this.toOneBotSegment(segment))
     const result = await state.connection.request<{ message_id: number | string }>(action, {
       [key]: peerId,
-      message: [{ type: 'text', data: { text: content } }],
+      message: outgoing,
     })
     let raw: OneBotMessage | undefined
     try {
@@ -295,8 +405,8 @@ export class OneBotHub extends EventEmitter {
         message_seq: result.message_id,
         time: Math.floor(Date.now() / 1000),
         sender: { user_id: state.selfId, nickname: state.account.name },
-        message: [{ type: 'text', data: { text: content } }],
-        raw_message: content,
+        message: outgoing,
+        raw_message: segments.map((segment) => (segment.type === 'text' ? segment.text : '')).join(''),
       }
     }
     raw = {
@@ -367,6 +477,7 @@ export class OneBotHub extends EventEmitter {
       conversations: previous?.conversations ?? new Map(),
       emittedMessages: new Map(),
       compatible: false,
+      implementationName: 'NapCat.Onebot',
       refreshedAt: 0,
     }
     this.accounts.set(id, state)
@@ -379,7 +490,7 @@ export class OneBotHub extends EventEmitter {
       const [login, status, version] = await Promise.all([
         state.connection.request<OneBotLoginInfo>('get_login_info'),
         state.connection.request<{ online?: boolean; good?: boolean }>('get_status'),
-        state.connection.request<{ app_name?: string; protocol_version?: string }>('get_version_info'),
+        state.connection.request<{ app_name?: string; app_version?: string; protocol_version?: string }>('get_version_info'),
       ])
       if (!this.isCurrent(state)) return
       if (String(login.user_id) !== state.selfId) {
@@ -388,10 +499,13 @@ export class OneBotHub extends EventEmitter {
       }
       const compatible = version.app_name === 'NapCat.Onebot' && version.protocol_version === 'v11'
       state.compatible = compatible
+      state.implementationName = version.app_name || 'Unknown OneBot'
+      state.implementationVersion = version.app_version
       state.account = mapAccount(login, this.oneBotAccountStatus(status.online, status.good, compatible))
       await this.refreshAccount(state, true)
       if (!this.isCurrent(state)) return
       this.broadcast({ type: 'runtime.status', status: this.runtimeStatus() })
+      this.broadcast({ type: 'capabilities.changed', accountId: state.account.id, capabilities: this.capabilityDocument(state) })
       this.broadcast({ type: 'workspace.refresh' })
     } catch {
       if (this.isCurrent(state)) this.setAccountStatus(state, 'degraded')
@@ -489,6 +603,7 @@ export class OneBotHub extends EventEmitter {
       if (!peerId || !rawMessageId) return
       this.broadcast({
         type: 'message.deleted',
+        accountId: account,
         conversationId: conversationId(account, type, peerId),
         messageId: `${account}:${type}:${peerId}:${rawMessageId}`,
       })
@@ -519,6 +634,101 @@ export class OneBotHub extends EventEmitter {
 
   private broadcast(event: WorkspaceEvent): void {
     this.emit('workspace-event', event)
+  }
+
+  private capabilityDocument(state: AccountState): AccountCapabilityDocument {
+    const implemented = new Set<CapabilityName>([
+      'history.cursor',
+      'directory.friends',
+      'directory.groups',
+      'message.send.text',
+      'message.send.mention',
+      'message.send.reply',
+      'message.send.face',
+      'message.read',
+    ])
+    const napCatGaps = new Map<CapabilityName, string>([
+      ['directory.peer_pin', '当前 NapCat 未提供 QQ 同步置顶 action'],
+      ['request.friend.history', '当前 NapCat 无法回填普通好友申请历史'],
+      ['group.folder.rename', '当前 NapCat 未提供群文件夹重命名 action'],
+    ])
+    const actions = Object.fromEntries(
+      capabilityNames.map((name) => {
+        if (!state.compatible) return [name, { status: 'unavailable' as const, reason: '连接端不是兼容的 NapCat OneBot v11' }]
+        if (state.account.status === 'offline') return [name, { status: 'unavailable' as const, reason: 'QQ 账号当前离线' }]
+        if (implemented.has(name)) return [name, { status: 'supported' as const }]
+        return [
+          name,
+          {
+            status: 'unsupported' as const,
+            reason: napCatGaps.get(name) || 'NapCat 支持该能力，但 Web 安全网关尚未实现',
+          },
+        ]
+      }),
+    ) as Record<CapabilityName, AccountCapabilityDocument['actions'][CapabilityName]>
+    return {
+      accountId: state.account.id,
+      implementation: {
+        name: state.implementationName,
+        version: state.implementationVersion,
+        protocol: 'onebot-v11',
+      },
+      actions,
+    }
+  }
+
+  private toOneBotSegment(segment: OutgoingMessageSegment): { type: string; data: Record<string, string> } {
+    switch (segment.type) {
+      case 'text':
+        return { type: 'text', data: { text: segment.text } }
+      case 'mention':
+        return { type: 'at', data: { qq: segment.all ? 'all' : segment.userId ?? '' } }
+      case 'reply':
+        return { type: 'reply', data: { id: segment.messageId ?? segment.messageSeq ?? '' } }
+      case 'face':
+        return { type: 'face', data: { id: segment.faceId } }
+    }
+  }
+
+  private encodeHistoryCursor(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    messageSeq: string,
+  ): string {
+    const payload: HistoryCursorPayload = { v: 1, accountId: account, type, peerId, messageSeq }
+    const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
+    const signature = createHmac('sha256', this.options.token).update(encoded).digest('base64url')
+    return `${encoded}.${signature}`
+  }
+
+  private decodeHistoryCursor(
+    cursor: string,
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+  ): HistoryCursorPayload {
+    const [encoded, signature, extra] = cursor.split('.')
+    if (!encoded || !signature || extra) throw new Error('历史游标无效')
+    const expected = Buffer.from(createHmac('sha256', this.options.token).update(encoded).digest('base64url'))
+    const actual = Buffer.from(signature)
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) throw new Error('历史游标无效')
+    let payload: HistoryCursorPayload
+    try {
+      payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as HistoryCursorPayload
+    } catch {
+      throw new Error('历史游标无效')
+    }
+    if (
+      payload.v !== 1 ||
+      payload.accountId !== account ||
+      payload.type !== type ||
+      payload.peerId !== peerId ||
+      !/^\d{1,24}$/.test(payload.messageSeq)
+    ) {
+      throw new Error('历史游标与当前会话不匹配')
+    }
+    return payload
   }
 
   private broadcastMessage(state: AccountState, conversation: Conversation, message: ChatMessage): void {

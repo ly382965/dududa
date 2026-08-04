@@ -6,6 +6,7 @@ import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 import type { WorkspaceEvent } from '../src/types/workspace'
+import { historyQuerySchema, sendMessageRequestSchema } from '../src/schemas/workspace'
 import { OneBotHub } from './onebot-hub'
 
 export interface DududaServerOptions {
@@ -44,7 +45,13 @@ function json(response: ServerResponse, status: number, payload: unknown): void 
 
 function routeError(response: ServerResponse, error: unknown): void {
   const message = error instanceof Error ? error.message : '请求失败'
-  const status = /未连接|连接已断开/.test(message) ? 503 : /不存在|not found/i.test(message) ? 404 : 502
+  const status = /未连接|连接已断开/.test(message)
+    ? 503
+    : /不存在|not found/i.test(message)
+      ? 404
+      : /游标|before|after|参数无效|JSON|请求正文|消息内容/.test(message)
+        ? 400
+        : 502
   json(response, status, { error: message })
 }
 
@@ -197,14 +204,24 @@ export function createDududaServer(options: DududaServerOptions) {
         request.once('close', () => eventClients.delete(response))
         return
       }
+      const capabilitiesRoute = /^\/api\/accounts\/([^/]+)\/capabilities$/.exec(url.pathname)
+      if (method === 'GET' && capabilitiesRoute) {
+        json(response, 200, options.hub.capabilities(decodeURIComponent(capabilitiesRoute[1]!)))
+        return
+      }
       const messagesRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/messages$/.exec(url.pathname)
       if (messagesRoute) {
         const account = decodeURIComponent(messagesRoute[1]!)
         const type = messagesRoute[2] as 'group' | 'private'
         const peerId = decodeURIComponent(messagesRoute[3]!)
         if (method === 'GET') {
-          const messages = await options.hub.history(account, type, peerId, Number(url.searchParams.get('limit') ?? 50))
-          json(response, 200, { messages })
+          const parsed = historyQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()))
+          if (!parsed.success) {
+            json(response, 400, { error: parsed.error.issues[0]?.message || '历史请求参数无效' })
+            return
+          }
+          const page = await options.hub.historyPage(account, type, peerId, parsed.data)
+          json(response, 200, page)
           return
         }
         if (method === 'POST') {
@@ -213,12 +230,12 @@ export function createDududaServer(options: DududaServerOptions) {
             return
           }
           const body = await readJson(request, maxRequestBytes)
-          const content = typeof body.content === 'string' ? body.content.trim() : ''
-          if (!content || content.length > 4000) {
-            json(response, 400, { error: '消息长度必须在 1 到 4000 字符之间' })
+          const parsed = sendMessageRequestSchema.safeParse(body)
+          if (!parsed.success) {
+            json(response, 400, { error: parsed.error.issues[0]?.message || '消息内容无效' })
             return
           }
-          const message = await options.hub.sendText(account, type, peerId, content)
+          const message = await options.hub.sendSegments(account, type, peerId, parsed.data)
           json(response, 201, { message })
           return
         }

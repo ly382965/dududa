@@ -1,15 +1,31 @@
-import type { ChatMessage, Conversation, WorkspaceEvent, WorkspaceSnapshot } from '../types/workspace'
+import type {
+  AccountCapabilityDocument,
+  ChatMessage,
+  Conversation,
+  HistoryPage,
+  OutgoingMessageSegment,
+  WorkspaceEvent,
+  WorkspaceSnapshot,
+} from '../types/workspace'
+import { workspaceCache, type WorkspaceCache } from './database'
+
+export interface HistoryRequest {
+  limit?: number
+  before?: string
+  after?: string
+}
 
 export interface WorkspaceAdapter {
   load(force?: boolean): Promise<WorkspaceSnapshot>
+  loadCapabilities(accountId: string): Promise<AccountCapabilityDocument>
+  loadCachedMessages(conversation: Conversation, limit?: number): Promise<ChatMessage[]>
+  loadHistory(conversation: Conversation, request?: HistoryRequest): Promise<HistoryPage>
   loadMessages(conversation: Conversation, limit?: number): Promise<ChatMessage[]>
+  sendSegments(conversation: Conversation, segments: OutgoingMessageSegment[]): Promise<ChatMessage>
   sendMessage(conversation: Conversation, content: string): Promise<ChatMessage>
+  cacheMessages(conversation: Conversation, messages: ChatMessage[]): Promise<void>
   markRead(conversation: Conversation): Promise<void>
   subscribe(handler: (event: WorkspaceEvent) => void): () => void
-}
-
-interface MessageListResponse {
-  messages: ChatMessage[]
 }
 
 interface SendMessageResponse {
@@ -17,16 +33,47 @@ interface SendMessageResponse {
 }
 
 export class NapCatWorkspaceAdapter implements WorkspaceAdapter {
-  constructor(private readonly baseUrl = '') {}
+  constructor(
+    private readonly baseUrl = '',
+    private readonly cache: WorkspaceCache = workspaceCache,
+  ) {}
 
   async load(force = false): Promise<WorkspaceSnapshot> {
-    return this.request<WorkspaceSnapshot>(`/api/workspace${force ? '?refresh=1' : ''}`)
+    const snapshot = await this.request<WorkspaceSnapshot>(`/api/workspace${force ? '?refresh=1' : ''}`)
+    await Promise.allSettled(snapshot.conversations.map((conversation) => this.cache.saveConversation(conversation)))
+    return snapshot
+  }
+
+  async loadCapabilities(accountId: string): Promise<AccountCapabilityDocument> {
+    return this.request<AccountCapabilityDocument>(`/api/accounts/${encodeURIComponent(accountId)}/capabilities`)
+  }
+
+  async loadCachedMessages(conversation: Conversation, limit = 50): Promise<ChatMessage[]> {
+    return this.cache.recentMessages(conversation.accountId, conversation.id, limit).catch(() => [])
+  }
+
+  async loadHistory(conversation: Conversation, request: HistoryRequest = {}): Promise<HistoryPage> {
+    const search = new URLSearchParams()
+    search.set('limit', String(Math.min(Math.max(request.limit ?? 50, 1), 100)))
+    if (request.before) search.set('before', request.before)
+    if (request.after) search.set('after', request.after)
+    const page = await this.request<HistoryPage>(`${this.conversationPath(conversation)}/messages?${search.toString()}`)
+    const direction = request.before ? 'before' : request.after ? 'after' : 'initial'
+    await this.cache.saveHistoryPage(conversation, page, direction).catch(() => undefined)
+    return page
   }
 
   async loadMessages(conversation: Conversation, limit = 50): Promise<ChatMessage[]> {
-    const path = this.conversationPath(conversation)
-    const result = await this.request<MessageListResponse>(`${path}/messages?limit=${Math.min(Math.max(limit, 1), 100)}`)
-    return result.messages
+    return (await this.loadHistory(conversation, { limit })).messages
+  }
+
+  async sendSegments(conversation: Conversation, segments: OutgoingMessageSegment[]): Promise<ChatMessage> {
+    const result = await this.request<SendMessageResponse>(`${this.conversationPath(conversation)}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ segments }),
+    })
+    return result.message
   }
 
   async sendMessage(conversation: Conversation, content: string): Promise<ChatMessage> {
@@ -36,6 +83,10 @@ export class NapCatWorkspaceAdapter implements WorkspaceAdapter {
       body: JSON.stringify({ content }),
     })
     return result.message
+  }
+
+  async cacheMessages(conversation: Conversation, messages: ChatMessage[]): Promise<void> {
+    await this.cache.saveMessages(conversation, messages).catch(() => undefined)
   }
 
   async markRead(conversation: Conversation): Promise<void> {

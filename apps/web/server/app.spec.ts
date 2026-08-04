@@ -59,6 +59,7 @@ async function waitFor(predicate: () => Promise<boolean>, timeoutMs = 2_000): Pr
 }
 
 interface FakeNapCatOptions {
+  selfId?: string
   loginSelfId?: string
   reportSentEvent?: boolean
 }
@@ -73,10 +74,12 @@ interface FakeNapCatState {
 }
 
 function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
+  const connectionSelfId = options.selfId ?? selfId
   const actions: ActionRequest[] = []
   let lastSentText = ''
+  let lastSentMessage: Array<{ type: string; data?: Record<string, unknown> }> = []
   const state: FakeNapCatState = {
-    loginSelfId: options.loginSelfId ?? selfId,
+    loginSelfId: options.loginSelfId ?? connectionSelfId,
     groups: [{ group_id: 345678901, group_name: '真实测试群', group_remark: '', member_count: 42 }],
     friends: [{ user_id: 456789012, nickname: '真实好友', remark: '好友备注' }],
     recent: [
@@ -97,7 +100,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
   }
   const socket = new WebSocket(`ws://127.0.0.1:${port}/onebot/v11/ws`, {
     headers: {
-      'X-Self-ID': selfId,
+      'X-Self-ID': connectionSelfId,
       Authorization: `Bearer ${token}`,
       'X-Client-Role': 'Universal',
     },
@@ -139,20 +142,20 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         data = state.recent
         break
       case 'get_group_msg_history':
-        data = { messages: [realGroupMessage()] }
+        data = { messages: [realGroupMessage('来自真实 NapCat 的消息', { self_id: Number(connectionSelfId) })] }
         break
       case 'get_friend_msg_history':
         data = {
           messages: [
             {
-              self_id: Number(selfId),
+              self_id: Number(connectionSelfId),
               time: 1_785_742_400,
               message_id: 201,
               message_seq: 201,
               user_id: 456789012,
               message_type: 'private',
               post_type: 'message_sent',
-              sender: { user_id: Number(selfId), nickname: '真实机器人' },
+              sender: { user_id: Number(connectionSelfId), nickname: '真实机器人' },
               message: [{ type: 'text', data: { text: '本账号发出的私聊历史' } }],
               raw_message: '本账号发出的私聊历史',
             },
@@ -160,17 +163,23 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         }
         break
       case 'send_group_msg':
-        lastSentText = String((request.params.message as Array<{ data?: { text?: string } }>)[0]?.data?.text ?? '')
+        lastSentMessage = request.params.message as Array<{ type: string; data?: Record<string, unknown> }>
+        lastSentText = lastSentMessage
+          .filter((segment) => segment.type === 'text')
+          .map((segment) => String(segment.data?.text ?? ''))
+          .join('')
         data = { message_id: 102 }
         if (state.reportSentEvent) {
           socket.send(
             JSON.stringify(
               realGroupMessage(lastSentText, {
+                self_id: Number(connectionSelfId),
                 post_type: 'message_sent',
                 message_id: 102,
                 message_seq: 102,
-                user_id: Number(selfId),
-                sender: { user_id: Number(selfId), nickname: '真实机器人' },
+                user_id: Number(connectionSelfId),
+                sender: { user_id: Number(connectionSelfId), nickname: '真实机器人' },
+                message: lastSentMessage,
               }),
             ),
           )
@@ -179,10 +188,12 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
       case 'get_msg':
         data = {
           ...realGroupMessage(lastSentText),
+          self_id: Number(connectionSelfId),
           message_id: 102,
           message_seq: 102,
-          user_id: Number(selfId),
-          sender: { user_id: Number(selfId), nickname: '真实机器人' },
+          user_id: Number(connectionSelfId),
+          sender: { user_id: Number(connectionSelfId), nickname: '真实机器人' },
+          message: lastSentMessage,
         }
         break
       case 'mark_group_msg_as_read':
@@ -286,6 +297,168 @@ describe('Dududa NapCat gateway', () => {
     expect(sentBody.message).toMatchObject({ content: '由真实动作通道发送', mine: true })
     expect(napcat.actions.some((item) => item.action === 'send_group_msg')).toBe(true)
     napcat.socket.close()
+  })
+
+  it('publishes explicit capabilities, signed history cursors, and typed rich sends', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = (await response.json()) as { actions?: Record<string, { status?: string }> }
+      return body.actions?.['history.cursor']?.status === 'supported'
+    })
+
+    const capabilities = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+    ).json()) as {
+      implementation: { name: string; version: string }
+      actions: Record<string, { status: string; reason?: string }>
+    }
+    expect(capabilities.implementation).toEqual({
+      name: 'NapCat.Onebot',
+      version: '4.18.13',
+      protocol: 'onebot-v11',
+    })
+    expect(capabilities.actions['history.cursor']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['directory.peer_pin']).toMatchObject({
+      status: 'unsupported',
+      reason: expect.stringContaining('NapCat'),
+    })
+    expect(capabilities.actions['message.send.image']).toMatchObject({
+      status: 'unsupported',
+      reason: expect.stringContaining('网关'),
+    })
+
+    const messageUrl = `${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`
+    const first = (await (await fetch(`${messageUrl}?limit=1`)).json()) as {
+      messages: Array<{ messageSeq: string; segments: unknown[] }>
+      beforeCursor: string
+      afterCursor: string
+      hasMoreBefore: boolean
+      hasMoreAfter: boolean
+    }
+    expect(first.messages[0]).toMatchObject({ messageSeq: '101', segments: [{ type: 'text' }] })
+    expect(first.beforeCursor).toBeTruthy()
+    expect(first.afterCursor).toBeTruthy()
+    expect(first.hasMoreBefore).toBe(true)
+    expect(first.hasMoreAfter).toBe(false)
+
+    const older = await fetch(`${messageUrl}?limit=1&before=${encodeURIComponent(first.beforeCursor)}`)
+    expect(older.status).toBe(200)
+    expect(napcat.actions.filter((action) => action.action === 'get_group_msg_history').at(-1)?.params).toMatchObject({
+      group_id: '345678901',
+      count: 2,
+      message_seq: '101',
+      reverse_order: false,
+    })
+
+    const sent = await fetch(messageUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({
+        segments: [
+          { type: 'reply', messageId: '91' },
+          { type: 'text', text: '真实富消息' },
+          { type: 'mention', userId: '234567890', label: '成员', all: false },
+          { type: 'face', faceId: '14', name: '微笑', market: false },
+        ],
+      }),
+    })
+    expect(sent.status).toBe(201)
+    const action = napcat.actions.filter((item) => item.action === 'send_group_msg').at(-1)
+    expect(action?.params.message).toEqual([
+      { type: 'reply', data: { id: '91' } },
+      { type: 'text', data: { text: '真实富消息' } },
+      { type: 'at', data: { qq: '234567890' } },
+      { type: 'face', data: { id: '14' } },
+    ])
+
+    const rejected = await fetch(messageUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'image', file: '/tmp/private.png' }] }),
+    })
+    expect(rejected.status).toBe(400)
+    expect(napcat.actions.filter((item) => item.action === 'send_group_msg')).toHaveLength(1)
+
+    const malformed = await fetch(messageUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: '{',
+    })
+    expect(malformed.status).toBe(400)
+    expect(napcat.actions.filter((item) => item.action === 'send_group_msg')).toHaveLength(1)
+    napcat.socket.close()
+  })
+
+  it('isolates signed cursors, actions, and live events across concurrent accounts', async () => {
+    const secondSelfId = '987654321'
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const firstNapcat = connectFakeNapCat(port)
+    const secondNapcat = connectFakeNapCat(port, { selfId: secondSelfId })
+    await Promise.all([firstNapcat.ready, secondNapcat.ready])
+    const firstAccount = `qq-${selfId}`
+    const secondAccount = `qq-${secondSelfId}`
+    await waitFor(
+      async () =>
+        hub.workspaceSnapshot().conversations.filter((item) => item.peerId === '345678901').length === 2,
+    )
+    const snapshot = hub.workspaceSnapshot()
+    expect(snapshot.conversations.filter((item) => item.peerId === '345678901').map((item) => item.accountId).sort()).toEqual([
+      firstAccount,
+      secondAccount,
+    ])
+
+    const firstUrl = `${baseUrl}/api/accounts/${firstAccount}/conversations/group/345678901/messages`
+    const secondUrl = `${baseUrl}/api/accounts/${secondAccount}/conversations/group/345678901/messages`
+    const firstPage = (await (await fetch(`${firstUrl}?limit=1`)).json()) as { beforeCursor: string }
+    const secondHistoryBefore = secondNapcat.actions.filter((item) => item.action === 'get_group_msg_history').length
+    const crossAccount = await fetch(`${secondUrl}?limit=1&before=${encodeURIComponent(firstPage.beforeCursor)}`)
+    expect(crossAccount.status).toBe(400)
+    expect(secondNapcat.actions.filter((item) => item.action === 'get_group_msg_history')).toHaveLength(
+      secondHistoryBefore,
+    )
+
+    const sent = await fetch(secondUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ content: '只由二号账号发送' }),
+    })
+    expect(sent.status).toBe(201)
+    expect(secondNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(true)
+    expect(firstNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+
+    const eventPromise = new Promise<{ conversation: { accountId: string }; message: { accountId: string } }>((resolve) => {
+      const listener = (event: unknown) => {
+        if ((event as { type?: string }).type !== 'message.created') return
+        const created = event as { conversation: { accountId: string }; message: { accountId: string } }
+        if (created.message.accountId !== secondAccount) return
+        hub.off('workspace-event', listener)
+        resolve(created)
+      }
+      hub.on('workspace-event', listener)
+    })
+    secondNapcat.socket.send(
+      JSON.stringify(
+        realGroupMessage('二号实时事件', {
+          self_id: Number(secondSelfId),
+          message_id: 302,
+          message_seq: 302,
+        }),
+      ),
+    )
+    await expect(eventPromise).resolves.toMatchObject({
+      conversation: { accountId: secondAccount },
+      message: { accountId: secondAccount },
+    })
+
+    firstNapcat.socket.close()
+    secondNapcat.socket.close()
   })
 
   it('normalizes live OneBot message events without exposing the raw event', async () => {

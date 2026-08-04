@@ -16,7 +16,7 @@ function readToken(environmentName: string, fileEnvironmentName: string, default
 }
 
 const publicDir = process.env.DUDUDA_WEB_PUBLIC_DIR || resolve(process.cwd(), 'dist')
-const host = process.env.DUDUDA_WEB_BIND || '0.0.0.0'
+const host = process.env.DUDUDA_WEB_BIND || '127.0.0.1'
 const port = Number(process.env.DUDUDA_WEB_INTERNAL_PORT || 8000)
 const oneBotToken = readToken('DUDUDA_ONEBOT_TOKEN', 'DUDUDA_ONEBOT_TOKEN_FILE', '/run/secrets/onebot_access_token')
 const hub = new OneBotHub({ token: oneBotToken })

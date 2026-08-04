@@ -11,8 +11,28 @@ Last sync: unix:1785826597
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- The selective Web baseline is committed and the Foundation now exposes
+  account-scoped rich-message, capability, signed cursor-history and Dexie
+  contracts while preserving the existing text workspace.
+- Production data remains NapCat-authoritative; browser persistence contains
+  only normalized real data, coverage and drafts.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added Mew-compatible foundation dependencies, ordered message segments, safe
+  OneBot conversion, explicit capability gaps and HMAC-bound history cursors.
+- Added two-account gateway isolation, mapper/schema, Dexie partition/sanitizer,
+  existing UI, Playwright and full repository regression evidence.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Rich media/file upload, message operations and Mew user-facing components are
+  deliberately owned by downstream Chat and Directory branches.
+- Real-account read-only and authorized mutation verification remains owned by
+  the final Web audit.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Downstream branches must consume `MessageSegment`, `HistoryPage`,
+  `AccountCapabilityDocument`, `WorkspaceAdapter` and `WorkspaceCache`; they
+  must not bypass them with raw OneBot actions or unscoped local keys.

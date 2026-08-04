@@ -4,6 +4,55 @@ export type AgentTab = 'conversation' | 'run' | 'settings'
 export type MobilePanel = 'inbox' | 'chat' | 'agent'
 export type ThemeMode = 'light' | 'dark'
 
+export type CapabilityName =
+  | 'history.cursor'
+  | 'directory.friends'
+  | 'directory.groups'
+  | 'directory.peer_pin'
+  | 'message.send.text'
+  | 'message.send.mention'
+  | 'message.send.reply'
+  | 'message.send.face'
+  | 'message.send.image'
+  | 'message.send.audio'
+  | 'message.send.video'
+  | 'message.send.file'
+  | 'message.recall'
+  | 'message.forward'
+  | 'message.nudge'
+  | 'message.read'
+  | 'message.custom_faces'
+  | 'request.friend.history'
+  | 'request.group.history'
+  | 'group.members'
+  | 'group.admin'
+  | 'group.kick'
+  | 'group.card'
+  | 'group.rename'
+  | 'group.mute_all'
+  | 'group.quit'
+  | 'group.essence'
+  | 'group.announcements'
+  | 'group.files'
+  | 'group.folder.rename'
+
+export type CapabilityStatus = 'supported' | 'unsupported' | 'forbidden' | 'unavailable'
+
+export interface AccountCapability {
+  status: CapabilityStatus
+  reason?: string
+}
+
+export interface AccountCapabilityDocument {
+  accountId: string
+  implementation: {
+    name: string
+    version?: string
+    protocol: 'onebot-v11'
+  }
+  actions: Record<CapabilityName, AccountCapability>
+}
+
 export interface Account {
   id: string
   botId: string
@@ -14,6 +63,8 @@ export interface Account {
   unread: number
   role: 'bot' | 'operator'
   accent: 'cyan' | 'green' | 'coral'
+  implementation?: AccountCapabilityDocument['implementation']
+  capabilities?: AccountCapabilityDocument['actions']
 }
 
 export interface Conversation {
@@ -40,19 +91,130 @@ export interface MessageReply {
 }
 
 export interface MessageAttachment {
-  kind: 'image' | 'file'
+  kind: 'image' | 'audio' | 'video' | 'file'
   name?: string
   size?: string
   url?: string
 }
 
+export interface TextMessageSegment {
+  type: 'text'
+  text: string
+}
+
+export interface MentionMessageSegment {
+  type: 'mention'
+  userId?: string
+  label: string
+  all: boolean
+}
+
+export interface ReplyMessageSegment {
+  type: 'reply'
+  messageId?: string
+  messageSeq?: string
+  senderId?: string
+  senderName?: string
+  preview?: string
+}
+
+export interface FaceMessageSegment {
+  type: 'face'
+  faceId: string
+  name?: string
+  url?: string
+  market: boolean
+}
+
+export interface MessageResource {
+  resourceId?: string
+  url?: string
+  name?: string
+  mime?: string
+  size?: number
+  width?: number
+  height?: number
+  duration?: number
+}
+
+export interface ImageMessageSegment extends MessageResource {
+  type: 'image'
+  summary?: string
+  sticker: boolean
+}
+
+export interface AudioMessageSegment extends MessageResource {
+  type: 'audio'
+}
+
+export interface VideoMessageSegment extends MessageResource {
+  type: 'video'
+  thumbnailUrl?: string
+}
+
+export interface FileMessageSegment extends MessageResource {
+  type: 'file'
+  fileId?: string
+}
+
+export interface ForwardMessageSegment {
+  type: 'forward'
+  forwardId: string
+  count?: number
+  preview?: string
+}
+
+export interface MarkdownMessageSegment {
+  type: 'markdown'
+  content: string
+}
+
+export interface LightAppMessageSegment {
+  type: 'light_app'
+  app?: string
+  title?: string
+  description?: string
+  url?: string
+}
+
+export interface UnknownMessageSegment {
+  type: 'unknown'
+  segmentType: string
+  summary: string
+}
+
+export type MessageSegment =
+  | TextMessageSegment
+  | MentionMessageSegment
+  | ReplyMessageSegment
+  | FaceMessageSegment
+  | ImageMessageSegment
+  | AudioMessageSegment
+  | VideoMessageSegment
+  | FileMessageSegment
+  | ForwardMessageSegment
+  | MarkdownMessageSegment
+  | LightAppMessageSegment
+  | UnknownMessageSegment
+
+export type OutgoingMessageSegment =
+  | TextMessageSegment
+  | Pick<MentionMessageSegment, 'type' | 'userId' | 'label' | 'all'>
+  | Pick<ReplyMessageSegment, 'type' | 'messageId' | 'messageSeq'>
+  | Pick<FaceMessageSegment, 'type' | 'faceId' | 'name' | 'market'>
+
 export interface ChatMessage {
   id: string
+  accountId: string
+  conversationId: string
+  messageId: string
+  messageSeq?: string
   senderId: string
   senderName: string
   senderAvatar: string
   timestamp: string
   content: string
+  segments: MessageSegment[]
   mine: boolean
   bot?: boolean
   role?: 'owner' | 'admin' | 'member'
@@ -60,7 +222,24 @@ export interface ChatMessage {
   attachments?: MessageAttachment[]
   reactions?: Array<{ emoji: string; count: number }>
   runId?: string
+  status?: 'sent' | 'failed' | 'recalled'
+  timestampMs?: number
   sequence?: string
+}
+
+export interface HistoryPage {
+  messages: ChatMessage[]
+  beforeCursor?: string
+  afterCursor?: string
+  hasMoreBefore: boolean
+  hasMoreAfter: boolean
+}
+
+export interface ConversationDraft {
+  accountId: string
+  conversationId: string
+  content: unknown
+  updatedAt: number
 }
 
 export interface AgentSession {
@@ -171,6 +350,7 @@ export interface WorkspaceSnapshot {
     reverseWebSocketPath: string
   }
   accounts: Account[]
+  capabilities?: Record<string, AccountCapabilityDocument>
   conversations: Conversation[]
   messages: Record<string, ChatMessage[]>
   sessions: AgentSession[]
@@ -182,5 +362,6 @@ export interface WorkspaceSnapshot {
 export type WorkspaceEvent =
   | { type: 'workspace.refresh' }
   | { type: 'message.created'; conversation: Conversation; message: ChatMessage }
-  | { type: 'message.deleted'; conversationId: string; messageId: string }
+  | { type: 'message.deleted'; accountId: string; conversationId: string; messageId: string }
+  | { type: 'capabilities.changed'; accountId: string; capabilities: AccountCapabilityDocument }
   | { type: 'runtime.status'; status: WorkspaceSnapshot['runtime'] }

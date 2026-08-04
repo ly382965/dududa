@@ -14,28 +14,28 @@ Title: NapCat Web Foundation
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Existing real NapCat workspace behavior remains green after the baseline.
-- [ ] Typed normalized rich messages preserve ordered known segments and safely
+- [x] Existing real NapCat workspace behavior remains green after the baseline.
+- [x] Typed normalized rich messages preserve ordered known segments and safely
   degrade unknown segments without leaking raw OneBot events.
-- [ ] History supports bounded opaque before/after cursors and stable
+- [x] History supports bounded opaque before/after cursors and stable
   deduplication.
-- [ ] Every request/event/cache/draft/capability is isolated by account and a
+- [x] Every request/event/cache/draft/capability is isolated by account and a
   concurrent two-account contract test proves no cross-talk.
-- [ ] IndexedDB stores only real normalized QQ data, coverage and drafts and can
+- [x] IndexedDB stores only real normalized QQ data, coverage and drafts and can
   be cleared without server mutation.
-- [ ] OneBot token, cookies, local paths and arbitrary action forwarding remain
+- [x] OneBot token, cookies, local paths and arbitrary action forwarding remain
   impossible from the browser API.
-- [ ] Unit, gateway, typecheck and production build verification pass.
+- [x] Unit, gateway, typecheck and production build verification pass.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Commit only the accepted Web baseline and TreeWork metadata.
-- [ ] Add shared dependencies and account-scoped domain/schema modules.
-- [ ] Implement capability and cursor-history gateway endpoints/events.
-- [ ] Implement Dexie cache/draft/range services and migration-safe tests.
-- [ ] Adapt the current workspace adapter/composable to the new contracts while
+- [x] Commit only the accepted Web baseline and TreeWork metadata.
+- [x] Add shared dependencies and account-scoped domain/schema modules.
+- [x] Implement capability and cursor-history gateway endpoints/events.
+- [x] Implement Dexie cache/draft/range services and migration-safe tests.
+- [x] Adapt the current workspace adapter/composable to the new contracts while
   retaining the real text path.
-- [ ] Run focused and repository regression verification, record evidence and
+- [x] Run focused and repository regression verification, record evidence and
   commit the branch.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
@@ -45,8 +45,8 @@ Title: NapCat Web Foundation
 
 ## Dependencies (local or external prerequisites; branch-to-branch order belongs in tree.yaml)
 
-1. Existing Web files are untracked/dirty in the control workspace and require
-   selective baselining before an isolated worktree can consume them.
+1. The selective real-NapCat Web baseline is committed at `30c2bf3` and this
+   isolated branch consumes it without Sub2API paths.
 2. NapCat availability is not required for deterministic transport tests, but
    no test fixture may enter the production bundle.
 

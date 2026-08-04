@@ -1,4 +1,10 @@
-import type { Account, ChatMessage, Conversation, MessageAttachment } from '../src/types/workspace'
+import type {
+  Account,
+  ChatMessage,
+  Conversation,
+  MessageAttachment,
+  MessageSegment,
+} from '../src/types/workspace'
 
 export interface OneBotSegment {
   type: string
@@ -66,6 +72,31 @@ function text(value: unknown): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 }
 
+function boundedText(value: unknown, limit = 20_000): string {
+  return text(value).slice(0, limit)
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  const candidate = Number(value)
+  return Number.isFinite(candidate) && candidate > 0 ? candidate : undefined
+}
+
+function opaqueResourceId(value: unknown): string | undefined {
+  const candidate = text(value)
+  return candidate && candidate.length <= 512 && !/[\\/:]/.test(candidate) ? candidate : undefined
+}
+
+function safeExternalUrl(value: unknown): string | undefined {
+  const candidate = boundedText(value, 2_048)
+  if (!candidate) return undefined
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function formatTime(timestamp: number): string {
   if (!Number.isFinite(timestamp) || timestamp <= 0) return ''
   const date = new Date(timestamp * 1000)
@@ -80,63 +111,199 @@ function safeRole(role: unknown): ChatMessage['role'] {
   return role === 'owner' || role === 'admin' || role === 'member' ? role : undefined
 }
 
-function segmentPreview(segment: OneBotSegment): string {
+function parseLightApp(data: Record<string, unknown>): Extract<MessageSegment, { type: 'light_app' }> {
+  let parsed: Record<string, unknown> = {}
+  const serialized = text(data.data) || text(data.json)
+  if (serialized.length <= 128 * 1024) {
+    try {
+      const value = JSON.parse(serialized) as unknown
+      if (value && typeof value === 'object' && !Array.isArray(value)) parsed = value as Record<string, unknown>
+    } catch {
+      // The summary remains useful even when a third-party card is malformed.
+    }
+  }
+  const meta = parsed.meta && typeof parsed.meta === 'object' ? (parsed.meta as Record<string, unknown>) : {}
+  const detail = Object.values(meta).find(
+    (value): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value)),
+  )
+  return {
+    type: 'light_app',
+    app: boundedText(parsed.app || data.app, 128) || undefined,
+    title: boundedText(detail?.title || parsed.prompt || data.title, 512) || undefined,
+    description: boundedText(detail?.desc || detail?.summary || data.summary, 2_000) || undefined,
+    url: safeExternalUrl(detail?.jumpUrl || detail?.url || data.url),
+  }
+}
+
+export function normalizeSegment(segment: OneBotSegment, registerMedia: RegisterMedia): MessageSegment {
   const data = segment.data ?? {}
   switch (segment.type) {
     case 'text':
-      return text(data.text)
-    case 'at':
-      return `@${text(data.name) || text(data.qq)}`
+      return { type: 'text', text: boundedText(data.text) }
+    case 'at': {
+      const qq = text(data.qq || data.user_id)
+      const all = qq === 'all' || qq === '0'
+      return {
+        type: 'mention',
+        userId: all ? undefined : qq || undefined,
+        label: boundedText(data.name || data.text, 128) || (all ? '全体成员' : qq),
+        all,
+      }
+    }
+    case 'reply':
+      return {
+        type: 'reply',
+        messageId: boundedText(data.id || data.message_id, 128) || undefined,
+        messageSeq: boundedText(data.seq || data.message_seq, 128) || undefined,
+        senderId: boundedText(data.qq || data.user_id, 24) || undefined,
+        senderName: boundedText(data.name, 128) || undefined,
+        preview: boundedText(data.text || data.preview, 1_000) || undefined,
+      }
+    case 'face':
+    case 'mface': {
+      const source = text(data.url)
+      return {
+        type: 'face',
+        faceId: boundedText(data.id || data.face_id || data.emoji_id, 128) || 'unknown',
+        name: boundedText(data.summary || data.name, 128) || undefined,
+        url: source ? registerMedia(source) : undefined,
+        market: segment.type === 'mface',
+      }
+    }
+    case 'image': {
+      const source = text(data.url) || text(data.file)
+      return {
+        type: 'image',
+        resourceId: opaqueResourceId(data.resource_id || data.file_id),
+        url: source ? registerMedia(source) : undefined,
+        name: boundedText(data.name, 256) || undefined,
+        mime: boundedText(data.mime || data.content_type, 128) || undefined,
+        size: positiveNumber(data.file_size || data.size),
+        width: positiveNumber(data.width),
+        height: positiveNumber(data.height),
+        summary: boundedText(data.summary, 256) || undefined,
+        sticker: Boolean(data.sub_type === 1 || data.type === 'flash' || data.is_emoji),
+      }
+    }
+    case 'record': {
+      const source = text(data.url) || text(data.file)
+      return {
+        type: 'audio',
+        resourceId: opaqueResourceId(data.resource_id || data.file_id),
+        url: source ? registerMedia(source) : undefined,
+        name: boundedText(data.name, 256) || undefined,
+        mime: boundedText(data.mime || data.content_type, 128) || undefined,
+        size: positiveNumber(data.file_size || data.size),
+        duration: positiveNumber(data.duration),
+      }
+    }
+    case 'video': {
+      const source = text(data.url) || text(data.file)
+      const thumbnail = text(data.thumb || data.thumbnail)
+      return {
+        type: 'video',
+        resourceId: opaqueResourceId(data.resource_id || data.file_id),
+        url: source ? registerMedia(source) : undefined,
+        thumbnailUrl: thumbnail ? registerMedia(thumbnail) : undefined,
+        name: boundedText(data.name, 256) || undefined,
+        mime: boundedText(data.mime || data.content_type, 128) || undefined,
+        size: positiveNumber(data.file_size || data.size),
+        duration: positiveNumber(data.duration),
+        width: positiveNumber(data.width),
+        height: positiveNumber(data.height),
+      }
+    }
+    case 'file':
+    case 'onlinefile': {
+      const source = text(data.url)
+      return {
+        type: 'file',
+        fileId: opaqueResourceId(data.file_id || data.id),
+        resourceId: opaqueResourceId(data.resource_id),
+        url: source ? registerMedia(source) : undefined,
+        name: boundedText(data.name || data.file_name, 512) || '文件',
+        mime: boundedText(data.mime || data.content_type, 128) || undefined,
+        size: positiveNumber(data.file_size || data.size),
+      }
+    }
+    case 'forward':
+    case 'node':
+      return {
+        type: 'forward',
+        forwardId: boundedText(data.id || data.forward_id || data.resid, 512) || 'unknown',
+        count: positiveNumber(data.count),
+        preview: boundedText(data.summary || data.preview, 1_000) || undefined,
+      }
+    case 'markdown':
+      return { type: 'markdown', content: boundedText(data.content || data.data, 64 * 1024) }
+    case 'json':
+    case 'xml':
+    case 'miniapp':
+    case 'light_app':
+      return parseLightApp(data)
+    default:
+      return {
+        type: 'unknown',
+        segmentType: boundedText(segment.type, 128) || 'unknown',
+        summary: `[不支持的消息: ${boundedText(segment.type, 128) || 'unknown'}]`,
+      }
+  }
+}
+
+export function normalizeSegments(segments: OneBotSegment[], registerMedia: RegisterMedia): MessageSegment[] {
+  return segments.slice(0, 1_000).map((segment) => normalizeSegment(segment, registerMedia))
+}
+
+function normalizedSegmentPreview(segment: MessageSegment): string {
+  switch (segment.type) {
+    case 'text':
+      return segment.text
+    case 'mention':
+      return `@${segment.label || segment.userId || '成员'}`
+    case 'reply':
+      return ''
+    case 'face':
+      return segment.name || '[表情]'
     case 'image':
-      return text(data.summary) || '[图片]'
-    case 'record':
+      return segment.summary || '[图片]'
+    case 'audio':
       return '[语音]'
     case 'video':
       return '[视频]'
     case 'file':
-    case 'onlinefile':
-      return `[文件] ${text(data.name)}`.trim()
-    case 'reply':
-      return ''
-    case 'face':
-    case 'mface':
-      return text(data.summary) || '[表情]'
+      return `[文件] ${segment.name || ''}`.trim()
     case 'forward':
-    case 'node':
       return '[转发消息]'
-    case 'json':
-    case 'xml':
-    case 'miniapp':
-      return '[卡片消息]'
-    default:
-      return `[${segment.type}]`
+    case 'markdown':
+      return segment.content
+    case 'light_app':
+      return segment.title || segment.description || '[卡片消息]'
+    case 'unknown':
+      return segment.summary
   }
 }
 
 export function messagePreview(message: OneBotMessage | undefined): string {
   if (!message) return ''
   if (Array.isArray(message.message)) {
-    return message.message.map(segmentPreview).join('').replace(/\s+/g, ' ').trim()
+    return normalizeSegments(message.message, () => undefined)
+      .map(normalizedSegmentPreview)
+      .join('')
+      .replace(/\s+/g, ' ')
+      .trim()
   }
   return text(message.message) || text(message.raw_message)
 }
 
-function segmentAttachments(segments: OneBotSegment[], registerMedia: RegisterMedia): MessageAttachment[] {
+function segmentAttachments(segments: MessageSegment[]): MessageAttachment[] {
   const attachments: MessageAttachment[] = []
   for (const segment of segments) {
-    const data = segment.data ?? {}
-    if (segment.type === 'image') {
-      const source = text(data.url) || text(data.file)
-      const url = registerMedia(source)
-      if (url) attachments.push({ kind: 'image', url, name: text(data.summary) || undefined })
-      continue
-    }
-    if (segment.type === 'file' || segment.type === 'onlinefile') {
-      const size = Number(data.file_size ?? data.size)
+    if (segment.type === 'image' || segment.type === 'audio' || segment.type === 'video' || segment.type === 'file') {
       attachments.push({
-        kind: 'file',
-        name: text(data.name) || text(data.file) || '文件',
-        size: Number.isFinite(size) && size > 0 ? formatBytes(size) : undefined,
+        kind: segment.type,
+        name: segment.name || (segment.type === 'file' ? '文件' : undefined),
+        size: segment.size ? formatBytes(segment.size) : undefined,
+        url: segment.url,
       })
     }
   }
@@ -248,6 +415,7 @@ export function mapMessage(
   registerMedia: RegisterMedia,
   privatePeerId?: string,
 ): ChatMessage | undefined {
+  if (raw.self_id !== undefined && text(raw.self_id) !== selfId) return undefined
   const messageType = raw.message_type === 'group' ? 'group' : raw.message_type === 'private' ? 'private' : undefined
   if (!messageType) return undefined
   const senderId = text(raw.sender?.user_id || raw.user_id)
@@ -257,23 +425,40 @@ export function mapMessage(
       : privatePeerId || (senderId === selfId ? text(raw.target_id) || senderId : senderId)
   if (!peerId || !senderId) return undefined
   const segments = Array.isArray(raw.message) ? raw.message : []
-  const messageId = text(raw.message_id) || `${raw.time ?? Date.now()}-${senderId}`
+  const messageId = text(raw.message_id) || text(raw.message_seq || raw.real_seq) || `${raw.time ?? Date.now()}-${senderId}`
+  const messageSeq = text(raw.message_seq || raw.real_seq) || undefined
   const senderName = text(raw.sender?.card) || text(raw.sender?.nickname) || senderId
-  const content = messagePreview(raw) || '[空消息]'
-  const replySegment = segments.find((segment) => segment.type === 'reply')
+  const normalizedSegments = Array.isArray(raw.message)
+    ? normalizeSegments(segments, registerMedia)
+    : [{ type: 'text' as const, text: boundedText(raw.message || raw.raw_message) }]
+  const content = normalizedSegments.map(normalizedSegmentPreview).join('').replace(/\s+/g, ' ').trim() || '[空消息]'
+  const replySegment = normalizedSegments.find(
+    (segment): segment is Extract<MessageSegment, { type: 'reply' }> => segment.type === 'reply',
+  )
+  const conversation = conversationId(account, messageType, peerId)
+  const timestampSeconds = Number(raw.time ?? 0)
   return {
-    id: `${account}:${messageType}:${peerId}:${messageId}`,
+    id: `${conversation}:${messageId}`,
+    accountId: account,
+    conversationId: conversation,
+    messageId,
+    messageSeq,
     senderId,
     senderName,
     senderAvatar: userAvatar(senderId),
     timestamp: formatTime(Number(raw.time ?? 0)),
     content,
+    segments: normalizedSegments,
     mine: senderId === selfId,
     bot: senderId === selfId,
     role: safeRole(raw.sender?.role),
-    reply: replySegment ? { sender: '引用消息', content: '查看被引用的消息' } : undefined,
-    attachments: segmentAttachments(segments, registerMedia),
-    sequence: text(raw.message_seq || raw.real_seq) || undefined,
+    reply: replySegment
+      ? { sender: replySegment.senderName || '引用消息', content: replySegment.preview || '查看被引用的消息' }
+      : undefined,
+    attachments: segmentAttachments(normalizedSegments),
+    status: 'sent',
+    timestampMs: Number.isFinite(timestampSeconds) && timestampSeconds > 0 ? timestampSeconds * 1_000 : undefined,
+    sequence: messageSeq,
   }
 }
 
