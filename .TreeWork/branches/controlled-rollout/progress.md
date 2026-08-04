@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: controlled-rollout
 Parent: root
-Status: in_progress
+Status: complete
 Verification: verified
-Last sync: unix:1785816445
+Last sync: unix:1785816722
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
