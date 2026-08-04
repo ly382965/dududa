@@ -19,9 +19,9 @@ Last sync: unix:1785851465
 - S08-S11 local implementation and the cross-stage completion audit are
   complete and verified. Authorized real-group testing is a deferred final
   project stage, not an S08-S11 completion blocker.
-- `apps/web` is now an accepted Mew/NapCat parity scope. Its current untracked
-  prototype has a real multi-account reverse-WebSocket gateway but only a
-  flattened text chat surface.
+- The Mew/NapCat Web epic is complete, verified and deployed on loopback. It
+  provides rich chat, contacts, notifications, group management/resources,
+  settings, multi-account isolation and bounded real-data persistence.
 - Sub2API remains concurrent unrelated work and is excluded from Web branches.
 - Tree revision 2 adds the Mew/NapCat epic after explicit user approval of real
   NapCat data caching and the Mew source baseline.
@@ -31,8 +31,8 @@ Last sync: unix:1785851465
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials, but is intentionally not actionable until all
   accepted module, Web testing and local audit work is complete.
-- Web parity still requires a selective baseline commit before isolated branch
-  work can consume the untracked prototype.
+- Real Web mutation evidence and a two-real-account manual run were not
+  authorized/available; contract and two-transport tests cover those paths.
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 
@@ -46,3 +46,6 @@ Last sync: unix:1785851465
 - The user confirmed that real group-chat scenario testing belongs after all
   development and local verification; current Web work needs no extra audit for
   this sequencing correction.
+- The Web foundation, chat, directory/group and final audit branches returned
+  complete/verified. The audit passed 66 frontend, 42 server, 6 Playwright and
+  352 repository tests and preserved the running NapCat/AstrBot containers.

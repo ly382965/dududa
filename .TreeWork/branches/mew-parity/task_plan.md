@@ -11,16 +11,16 @@ Title: Mew And NapCat Web Parity
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Foundation, chat and directory branches satisfy their acceptance and the
+- [x] Foundation, chat and directory branches satisfy their acceptance and the
   audit proves their integration without cross-account leakage or demo data.
-- [ ] Every confirmed NapCat gap has an explicit UI capability state and no
+- [x] Every confirmed NapCat gap has an explicit UI capability state and no
   operation reports success without a real OneBot response.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Establish and verify the shared Foundation.
-- [ ] Integrate Chat and Directory slices after Foundation completion.
-- [ ] Run the joint real-account and repository audit.
+- [x] Establish and verify the shared Foundation.
+- [x] Integrate Chat and Directory slices after Foundation completion.
+- [x] Run the joint real-account and repository audit.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

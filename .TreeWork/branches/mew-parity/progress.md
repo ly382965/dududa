@@ -4,15 +4,39 @@
 <!-- treework:status:start -->
 Branch: mew-parity
 Parent: root
-Status: pending
-Verification: unverified
-Last sync: unix:1785826169
+Status: in_progress
+Verification: verified
+Last sync: unix:1785851747
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Foundation, chat, directory/group and audit children are complete and
+  verified. The integrated client is deployed at `127.0.0.1:5173` over the
+  real server-side NapCat connection.
+- Production has no browser authentication form or local QQ fixtures. The
+  OneBot token remains in the server secret file, while IndexedDB may retain
+  bounded account-scoped real QQ data and operator drafts.
+- The connected NapCat account reports 30 supported capabilities and explicit
+  unsupported states for peer pinning, ordinary friend-request history and
+  group-folder rename.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- The final audit compared the pinned Mew/NapCat sources, closed custom-face,
+  NFKC/pinyin search and draft-marker deltas, then passed 66 frontend tests, 42
+  server tests, 6 Playwright scenarios and 352 repository tests.
+- Web-only deployment preserved the NapCat and AstrBot container identities;
+  real read-only probes and desktop/mobile browser inspection passed.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No Web-epic implementation issue remains. External mutating QQ evidence and
+  a two-real-account manual run were unavailable and are documented rather
+  than simulated.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Mew/NapCat Web parity is ready to return to the project control branch.
+- Agent Console runtime work remains explicitly separate. The next project
+  gate is the independently authorized real-group Agent shadow/canary.
