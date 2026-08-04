@@ -26,6 +26,33 @@ data_root() {
   fi
 }
 
+web_data_root() {
+  local root
+  root="${DUDUDA_WEB_DATA_ROOT:-$(env_value DUDUDA_WEB_DATA_ROOT "$ENV_FILE")}"
+  root="${root:-./runtime/web}"
+  if [[ "$root" = /* ]]; then
+    printf '%s\n' "$root"
+  else
+    printf '%s\n' "$ROOT_DIR/${root#./}"
+  fi
+}
+
+ensure_web_secrets() {
+  local root token_file
+  root="$(web_data_root)"
+  mkdir -p "$root/secrets"
+  chmod 700 "$root" "$root/secrets" 2>/dev/null || true
+  token_file="$root/secrets/onebot_access_token"
+  if [[ ! -f "$token_file" ]]; then
+    if command -v openssl >/dev/null 2>&1; then
+      openssl rand -hex 32 >"$token_file"
+    else
+      od -An -N32 -tx1 /dev/urandom | tr -d ' \n' >"$token_file"
+    fi
+  fi
+  chmod 600 "$token_file"
+}
+
 project_name() {
   local name
   name="${COMPOSE_PROJECT_NAME:-$(env_value COMPOSE_PROJECT_NAME "$ENV_FILE")}"
@@ -57,7 +84,9 @@ usage() {
     '  plugins     Install locked third-party plugins into runtime data' \
     '  sync        Merge the icourse MCP template into runtime config' \
     '  seed        Install the Dududa persona and MCP config into AstrBot' \
-    '  up          Build and start the complete AstrBot + NapCat stack' \
+    '  up          Build and start the complete AstrBot + NapCat + Web stack' \
+    '  web-up      Build and start only the Dududa QQ workspace' \
+    '  web-connect Add the workspace reverse WS to this stack and restart NapCat' \
     '  down        Stop and remove containers and private network' \
     '  restart     Restart all services, or one service' \
     '  logs        Follow logs for all services, or one service' \
@@ -78,6 +107,7 @@ case "$cmd" in
     runtime_root="$(data_root)"
     mkdir -p "$runtime_root/astrbot/plugins" "$runtime_root/napcat/config" "$runtime_root/napcat/ntqq"
     chmod 700 "$runtime_root" "$runtime_root/astrbot" "$runtime_root/napcat" 2>/dev/null || true
+    ensure_web_secrets
     python3 scripts/sync_runtime.py --data-root "$runtime_root"
     ;;
   plugins)
@@ -102,6 +132,20 @@ case "$cmd" in
     "${COMPOSE[@]}" up -d --build
     "$0" seed
     "${COMPOSE[@]}" restart astrbot
+    ;;
+  web-up)
+    ensure_web_secrets
+    ensure_edge_network
+    "${COMPOSE[@]}" up -d --build web
+    ;;
+  web-connect)
+    "$0" init
+    runtime_root="$(data_root)"
+    python3 scripts/configure_napcat_web.py \
+      --config-dir "$runtime_root/napcat/config" \
+      --token-file "$(web_data_root)/secrets/onebot_access_token" \
+      --apply
+    "${COMPOSE[@]}" restart napcat
     ;;
   down)
     "${COMPOSE[@]}" down

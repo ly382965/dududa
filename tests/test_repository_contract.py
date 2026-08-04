@@ -27,7 +27,7 @@ class RepositoryContractTests(unittest.TestCase):
             match = re.match(r"^  ([a-zA-Z0-9_.-]+):\s*$", line) if in_services else None
             if match:
                 services.add(match.group(1))
-        self.assertEqual(services, {"astrbot", "napcat"})
+        self.assertEqual(services, {"web", "astrbot", "napcat"})
 
         for component in ("sub2api", "postgres", "redis", "xray", "caddy", "authelia"):
             self.assertFalse((ROOT / component).exists(), component)

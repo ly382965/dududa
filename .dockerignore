@@ -9,8 +9,10 @@ backups
 **/*.pyc
 **/.venv
 **/.ruff_cache
+**/node_modules
 **/build
 **/dist
+**/dist-server
 **/*.egg-info
 **/*.db
 **/*.sqlite3

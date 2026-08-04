@@ -1,6 +1,35 @@
 name: ${COMPOSE_PROJECT_NAME:-dududa}
 
 services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    image: ${DUDUDA_WEB_IMAGE:-dududa/web:local}
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      DUDUDA_WEB_BIND: 0.0.0.0
+      DUDUDA_WEB_INTERNAL_PORT: 8000
+      DUDUDA_ONEBOT_TOKEN_FILE: /run/secrets/onebot_access_token
+    ports:
+      - host_ip: ${DUDUDA_WEB_HOST:-127.0.0.1}
+        published: "${DUDUDA_WEB_PORT:-5173}"
+        target: 8000
+        protocol: tcp
+    volumes:
+      - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/onebot_access_token:/run/secrets/onebot_access_token:ro
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    networks:
+      bot_net:
+      edge:
+        aliases:
+          - dududa-web-api
+
   astrbot:
     build:
       context: .
