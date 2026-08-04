@@ -17,6 +17,7 @@ export type CapabilityName =
   | 'message.send.audio'
   | 'message.send.video'
   | 'message.send.file'
+  | 'message.download.file'
   | 'message.recall'
   | 'message.forward'
   | 'message.nudge'
@@ -157,11 +158,18 @@ export interface FileMessageSegment extends MessageResource {
   fileId?: string
 }
 
+export interface StagedMediaMessageSegment {
+  type: 'image' | 'audio' | 'video'
+  uploadId: string
+  name?: string
+}
+
 export interface ForwardMessageSegment {
   type: 'forward'
   forwardId: string
   count?: number
   preview?: string
+  messages?: ChatMessage[]
 }
 
 export interface MarkdownMessageSegment {
@@ -202,6 +210,28 @@ export type OutgoingMessageSegment =
   | Pick<MentionMessageSegment, 'type' | 'userId' | 'label' | 'all'>
   | Pick<ReplyMessageSegment, 'type' | 'messageId' | 'messageSeq'>
   | Pick<FaceMessageSegment, 'type' | 'faceId' | 'name' | 'market'>
+  | StagedMediaMessageSegment
+
+export interface UploadReceipt {
+  uploadId: string
+  kind: 'image' | 'audio' | 'video'
+  name: string
+  mime: string
+  size: number
+  expiresAt: number
+}
+
+export interface FileSendReceipt {
+  kind: 'file'
+  fileId?: string
+  name: string
+  size: number
+}
+
+export interface ForwardedMessageBundle {
+  forwardId: string
+  messages: ChatMessage[]
+}
 
 export interface ChatMessage {
   id: string

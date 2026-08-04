@@ -62,6 +62,8 @@ interface FakeNapCatOptions {
   selfId?: string
   loginSelfId?: string
   reportSentEvent?: boolean
+  sendMessageDelayMs?: number
+  appVersion?: string
 }
 
 interface FakeNapCatState {
@@ -130,7 +132,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         data = { online: true, good: true, stat: {} }
         break
       case 'get_version_info':
-        data = { app_name: 'NapCat.Onebot', protocol_version: 'v11', app_version: '4.18.13' }
+        data = { app_name: 'NapCat.Onebot', protocol_version: 'v11', app_version: options.appVersion ?? '4.18.13' }
         break
       case 'get_group_list':
         data = state.groups
@@ -185,15 +187,80 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
           )
         }
         break
-      case 'get_msg':
+      case 'upload_group_file':
+      case 'upload_private_file':
+        data = { file_id: 'uploaded-file-1' }
+        break
+      case 'get_group_file_url':
+      case 'get_private_file_url':
+        data = { url: 'https://gchat.qpic.cn/download/real-file' }
+        break
+      case 'delete_msg':
+      case 'group_poke':
+      case 'friend_poke':
+        data = null
+        break
+      case 'forward_group_single_msg':
+      case 'forward_friend_single_msg':
+        data = null
+        break
+      case 'get_forward_msg':
         data = {
-          ...realGroupMessage(lastSentText),
-          self_id: Number(connectionSelfId),
-          message_id: 102,
-          message_seq: 102,
-          user_id: Number(connectionSelfId),
-          sender: { user_id: Number(connectionSelfId), nickname: '真实机器人' },
-          message: lastSentMessage,
+          messages: [
+            {
+              type: 'node',
+              data: {
+                time: 1_785_742_400,
+                user_id: 234567890,
+                nickname: '转发成员',
+                message: [
+                  { type: 'text', data: { text: '转发中的真实消息' } },
+                  {
+                    type: 'node',
+                    data: {
+                      message: [
+                        {
+                          type: 'node',
+                          data: {
+                            user_id: 345678901,
+                            nickname: '内层成员',
+                            message: [{ type: 'text', data: { text: '内层真实消息' } }],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }
+        break
+      case 'get_msg':
+        if (String(request.params.message_id) === '101') {
+          data = realGroupMessage('来自真实 NapCat 的消息', { self_id: Number(connectionSelfId) })
+        } else if (String(request.params.message_id) === '201') {
+          data = {
+            self_id: Number(connectionSelfId),
+            time: 1_785_742_400,
+            message_id: 201,
+            message_seq: 201,
+            user_id: Number(connectionSelfId),
+            message_type: 'private',
+            post_type: 'message_sent',
+            sender: { user_id: Number(connectionSelfId), nickname: '真实机器人' },
+            message: [{ type: 'text', data: { text: '本账号发出的私聊历史' } }],
+          }
+        } else {
+          data = {
+            ...realGroupMessage(lastSentText),
+            self_id: Number(connectionSelfId),
+            message_id: Number(request.params.message_id),
+            message_seq: Number(request.params.message_id),
+            user_id: Number(connectionSelfId),
+            sender: { user_id: Number(connectionSelfId), nickname: '真实机器人' },
+            message: lastSentMessage,
+          }
         }
         break
       case 'mark_group_msg_as_read':
@@ -203,7 +270,12 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         socket.send(JSON.stringify({ status: 'failed', retcode: 1404, data: null, message: 'unsupported', echo: request.echo }))
         return
     }
-    socket.send(JSON.stringify({ status: 'ok', retcode: 0, data, message: '', echo: request.echo }))
+    const response = JSON.stringify({ status: 'ok', retcode: 0, data, message: '', echo: request.echo })
+    if (options.sendMessageDelayMs && ['send_group_msg', 'send_private_msg'].includes(request.action)) {
+      setTimeout(() => socket.send(response), options.sendMessageDelayMs)
+    } else {
+      socket.send(response)
+    }
   })
   return { socket, actions, state, ready, closed }
 }
@@ -328,10 +400,7 @@ describe('Dududa NapCat gateway', () => {
       status: 'unsupported',
       reason: expect.stringContaining('NapCat'),
     })
-    expect(capabilities.actions['message.send.image']).toMatchObject({
-      status: 'unsupported',
-      reason: expect.stringContaining('网关'),
-    })
+    expect(capabilities.actions['message.send.image']).toEqual({ status: 'supported' })
 
     const messageUrl = `${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`
     const first = (await (await fetch(`${messageUrl}?limit=1`)).json()) as {
@@ -395,6 +464,30 @@ describe('Dududa NapCat gateway', () => {
     napcat.socket.close()
   })
 
+  it('disables version-gated actions for an older NapCat implementation', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { appVersion: '4.7.0' })
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = (await response.json()) as { implementation?: { version?: string } }
+      return body.implementation?.version === '4.7.0'
+    })
+    const capabilities = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+    ).json()) as { actions: Record<string, { status: string; reason?: string }> }
+    expect(capabilities.actions['message.forward']).toMatchObject({
+      status: 'unsupported',
+      reason: expect.stringContaining('4.8.0'),
+    })
+    expect(capabilities.actions['message.download.file']).toMatchObject({ status: 'unsupported' })
+    expect(capabilities.actions['message.send.text']).toEqual({ status: 'supported' })
+    napcat.socket.close()
+  })
+
   it('isolates signed cursors, actions, and live events across concurrent accounts', async () => {
     const secondSelfId = '987654321'
     const { hub, server, port, baseUrl } = await startTestServer()
@@ -433,6 +526,24 @@ describe('Dududa NapCat gateway', () => {
     expect(secondNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(true)
     expect(firstNapcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
 
+    const firstUploadForm = new FormData()
+    firstUploadForm.append('file', new Blob([Buffer.from('account-one-image')], { type: 'image/png' }), '一号图片.png')
+    const firstUpload = (await (
+      await fetch(`${firstUrl.replace(/\/messages$/, '')}/uploads?purpose=media`, {
+        method: 'POST',
+        headers: { Origin: baseUrl },
+        body: firstUploadForm,
+      })
+    ).json()) as { uploadId: string }
+    const secondActionCount = secondNapcat.actions.filter((item) => item.action === 'send_group_msg').length
+    const crossUpload = await fetch(secondUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'image', uploadId: firstUpload.uploadId }] }),
+    })
+    expect(crossUpload.status).toBe(400)
+    expect(secondNapcat.actions.filter((item) => item.action === 'send_group_msg')).toHaveLength(secondActionCount)
+
     const eventPromise = new Promise<{ conversation: { accountId: string }; message: { accountId: string } }>((resolve) => {
       const listener = (event: unknown) => {
         if ((event as { type?: string }).type !== 'message.created') return
@@ -459,6 +570,208 @@ describe('Dududa NapCat gateway', () => {
 
     firstNapcat.socket.close()
     secondNapcat.socket.close()
+  })
+
+  it('stages browser media and executes file, recall, forward, nudge, and forwarded-message actions', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { sendMessageDelayMs: 30 })
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const workspace = (await (await fetch(`${baseUrl}/api/workspace`)).json()) as { conversations: unknown[] }
+      return workspace.conversations.length === 2
+    })
+    const groupBase = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+
+    const invalidPurpose = await fetch(`${groupBase}/uploads?purpose=other`, {
+      method: 'POST',
+      headers: { Origin: baseUrl },
+    })
+    expect(invalidPurpose.status).toBe(400)
+
+    const mediaForm = new FormData()
+    mediaForm.append('file', new Blob([Buffer.from('real-image-bytes')], { type: 'image/png' }), '真实图片.png')
+    const stagedResponse = await fetch(`${groupBase}/uploads?purpose=media`, {
+      method: 'POST',
+      headers: { Origin: baseUrl },
+      body: mediaForm,
+    })
+    expect(stagedResponse.status).toBe(201)
+    const staged = (await stagedResponse.json()) as { uploadId: string; kind: string; name: string }
+    expect(staged).toMatchObject({ kind: 'image', name: '真实图片.png' })
+
+    const mediaSend = await fetch(`${groupBase}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'image', uploadId: staged.uploadId, name: staged.name }] }),
+    })
+    expect(mediaSend.status).toBe(201)
+    const sentAction = napcat.actions.filter((item) => item.action === 'send_group_msg').at(-1)!
+    expect(sentAction.params.message).toEqual([
+      {
+        type: 'image',
+        data: { file: `base64://${Buffer.from('real-image-bytes').toString('base64')}`, summary: '真实图片.png' },
+      },
+    ])
+
+    const replay = await fetch(`${groupBase}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ segments: [{ type: 'image', uploadId: staged.uploadId, name: staged.name }] }),
+    })
+    expect(replay.status).toBe(400)
+
+    const concurrentForm = new FormData()
+    concurrentForm.append('file', new Blob([Buffer.from('concurrent-image')], { type: 'image/png' }), '并发图片.png')
+    const concurrentStaged = (await (
+      await fetch(`${groupBase}/uploads?purpose=media`, {
+        method: 'POST',
+        headers: { Origin: baseUrl },
+        body: concurrentForm,
+      })
+    ).json()) as { uploadId: string }
+    const concurrentBody = JSON.stringify({
+      segments: [{ type: 'image', uploadId: concurrentStaged.uploadId, name: '并发图片.png' }],
+    })
+    const concurrentResponses = await Promise.all([
+      fetch(`${groupBase}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: concurrentBody,
+      }),
+      fetch(`${groupBase}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+        body: concurrentBody,
+      }),
+    ])
+    expect(concurrentResponses.map((response) => response.status).sort()).toEqual([201, 400])
+
+    const fileForm = new FormData()
+    fileForm.append('file', new Blob([Buffer.from('real-file')], { type: 'text/plain' }), '../报告.txt')
+    const fileResponse = await fetch(`${groupBase}/uploads?purpose=file`, {
+      method: 'POST',
+      headers: { Origin: baseUrl },
+      body: fileForm,
+    })
+    expect(fileResponse.status).toBe(201)
+    expect(await fileResponse.json()).toMatchObject({ kind: 'file', fileId: 'uploaded-file-1', name: '报告.txt' })
+    expect(napcat.actions.filter((item) => item.action === 'upload_group_file').at(-1)?.params).toMatchObject({
+      group_id: '345678901',
+      name: '报告.txt',
+      file: `base64://${Buffer.from('real-file').toString('base64')}`,
+    })
+
+    const fileUrlResponse = await fetch(`${groupBase}/files/real-file-token/url?name=${encodeURIComponent('报告.pdf')}`)
+    expect(fileUrlResponse.status).toBe(200)
+    const fileUrl = (await fileUrlResponse.json()) as { url: string }
+    expect(fileUrl).toMatchObject({ url: expect.stringMatching(/^\/api\/media\/file\//) })
+    expect(napcat.actions.filter((item) => item.action === 'get_group_file_url').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      file_id: 'real-file-token',
+    })
+
+    const realFetch = globalThis.fetch
+    const fileFetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (input, init) => {
+      if (String(input) === 'https://gchat.qpic.cn/download/real-file') {
+        return new Response(Buffer.from('%PDF-real-file'), {
+          status: 200,
+          headers: { 'Content-Type': 'application/pdf', 'Content-Length': '14' },
+        })
+      }
+      return realFetch(input, init)
+    }) as typeof fetch)
+    try {
+      const downloaded = await realFetch(`${baseUrl}${fileUrl.url}`)
+      expect(downloaded.status).toBe(200)
+      expect(downloaded.headers.get('content-type')).toBe('application/pdf')
+      expect(downloaded.headers.get('content-disposition')).toContain("filename*=UTF-8''%E6%8A%A5%E5%91%8A.pdf")
+      expect(Buffer.from(await downloaded.arrayBuffer()).toString()).toBe('%PDF-real-file')
+    } finally {
+      fileFetchSpy.mockRestore()
+    }
+
+    const refreshedMessage = await fetch(`${groupBase}/messages/101`)
+    expect(refreshedMessage.status).toBe(200)
+    expect(await refreshedMessage.json()).toMatchObject({ message: { messageId: '101', conversationId: `${account}:group:345678901` } })
+
+    const receivedRecall = await fetch(`${groupBase}/messages/101`, { method: 'DELETE', headers: { Origin: baseUrl } })
+    expect(receivedRecall.status).toBe(400)
+    expect(napcat.actions.some((item) => item.action === 'delete_msg')).toBe(false)
+
+    const recalled = await fetch(`${groupBase}/messages/102`, { method: 'DELETE', headers: { Origin: baseUrl } })
+    expect(recalled.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'delete_msg').at(-1)?.params).toEqual({ message_id: '102' })
+
+    const nudged = await fetch(`${groupBase}/nudge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ userId: '234567890' }),
+    })
+    expect(nudged.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'group_poke').at(-1)?.params).toEqual({
+      group_id: '345678901',
+      user_id: '234567890',
+    })
+
+    const privateBase = `${baseUrl}/api/accounts/${account}/conversations/private/456789012`
+    const wrongPrivateNudge = await fetch(`${privateBase}/nudge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ userId: '234567890' }),
+    })
+    expect(wrongPrivateNudge.status).toBe(400)
+    expect(napcat.actions.some((item) => item.action === 'friend_poke')).toBe(false)
+    const privateNudge = await fetch(`${privateBase}/nudge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ userId: '456789012' }),
+    })
+    expect(privateNudge.status).toBe(200)
+    expect(napcat.actions.filter((item) => item.action === 'friend_poke').at(-1)?.params).toEqual({
+      user_id: '456789012',
+    })
+
+    const wrongSourceForward = await fetch(`${groupBase}/messages/201/forward`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ target: { accountId: account, type: 'private', peerId: '456789012' } }),
+    })
+    expect(wrongSourceForward.status).toBe(400)
+    expect(napcat.actions.some((item) => item.action === 'forward_group_single_msg')).toBe(false)
+
+    const forwarded = await fetch(`${groupBase}/messages/101/forward`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ target: { accountId: account, type: 'private', peerId: '456789012' } }),
+    })
+    expect(forwarded.status).toBe(201)
+    expect(napcat.actions.filter((item) => item.action === 'forward_group_single_msg').at(-1)?.params).toEqual({
+      user_id: '456789012',
+      message_id: '101',
+    })
+
+    const bundle = await fetch(`${groupBase}/forwards/forward-1`)
+    expect(bundle.status).toBe(200)
+    expect(await bundle.json()).toMatchObject({
+      forwardId: 'forward-1',
+      messages: [
+        {
+          senderName: '转发成员',
+          content: '转发中的真实消息[转发消息]',
+          segments: [
+            { type: 'text', text: '转发中的真实消息' },
+            {
+              type: 'forward',
+              count: 1,
+              messages: [{ senderName: '内层成员', content: '内层真实消息' }],
+            },
+          ],
+        },
+      ],
+    })
+    napcat.socket.close()
   })
 
   it('normalizes live OneBot message events without exposing the raw event', async () => {
@@ -624,6 +937,72 @@ describe('Dududa NapCat gateway', () => {
       expect(hub.mediaUrl(keys[2]!)).toBeUndefined()
     } finally {
       dateSpy.mockRestore()
+    }
+    napcat.socket.close()
+  })
+
+  it('proxies valid media ranges and preserves an upstream 416 response', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.name === '真实机器人')
+    let route = ''
+    hub.on('workspace-event', (event) => {
+      const candidate = event as { type?: string; message?: { attachments?: Array<{ url?: string }> } }
+      if (candidate.type === 'message.created') route = candidate.message?.attachments?.[0]?.url ?? ''
+    })
+    napcat.socket.send(
+      JSON.stringify(
+        realGroupMessage('Range 媒体', {
+          message_id: 390,
+          message_seq: 390,
+          message: [{ type: 'video', data: { url: 'https://gchat.qpic.cn/range-video.mp4' } }],
+        }),
+      ),
+    )
+    await waitFor(async () => Boolean(route))
+
+    const realFetch = globalThis.fetch
+    const remoteRanges: string[] = []
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (input, init) => {
+      if (String(input).startsWith('https://gchat.qpic.cn/')) {
+        const range = new Headers(init?.headers).get('range') ?? ''
+        remoteRanges.push(range)
+        if (range === 'bytes=99-100') {
+          return new Response(null, {
+            status: 416,
+            headers: { 'Content-Range': 'bytes */10', 'Accept-Ranges': 'bytes' },
+          })
+        }
+        return new Response(Buffer.from('bcd'), {
+          status: 206,
+          headers: {
+            'Content-Type': 'video/mp4',
+            'Content-Length': '3',
+            'Content-Range': 'bytes 1-3/10',
+            'Accept-Ranges': 'bytes',
+          },
+        })
+      }
+      return realFetch(input, init)
+    }) as typeof fetch)
+    try {
+      const partial = await realFetch(`${baseUrl}${route}`, { headers: { Range: 'bytes=1-3' } })
+      expect(partial.status).toBe(206)
+      expect(partial.headers.get('content-range')).toBe('bytes 1-3/10')
+      expect(Buffer.from(await partial.arrayBuffer()).toString()).toBe('bcd')
+
+      const unsatisfied = await realFetch(`${baseUrl}${route}`, { headers: { Range: 'bytes=99-100' } })
+      expect(unsatisfied.status).toBe(416)
+      expect(unsatisfied.headers.get('content-range')).toBe('bytes */10')
+      expect(remoteRanges).toEqual(['bytes=1-3', 'bytes=99-100'])
+
+      const malformed = await realFetch(`${baseUrl}${route}`, { headers: { Range: 'bytes=1-2,4-5' } })
+      expect(malformed.status).toBe(400)
+      expect(remoteRanges).toEqual(['bytes=1-3', 'bytes=99-100'])
+    } finally {
+      fetchSpy.mockRestore()
     }
     napcat.socket.close()
   })

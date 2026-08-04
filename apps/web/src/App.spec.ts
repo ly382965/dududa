@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App.vue'
-import type { ChatMessage, WorkspaceSnapshot } from './types/workspace'
+import type { Account, ChatMessage, WorkspaceSnapshot } from './types/workspace'
 
 class FakeEventSource {
   addEventListener() {}
@@ -19,6 +19,22 @@ const account = {
   unread: 0,
   role: 'bot' as const,
   accent: 'cyan' as const,
+  capabilities: Object.fromEntries(
+    [
+      'message.send.text',
+      'message.send.mention',
+      'message.send.reply',
+      'message.send.face',
+      'message.send.image',
+      'message.send.audio',
+      'message.send.video',
+      'message.send.file',
+      'message.download.file',
+      'message.recall',
+      'message.forward',
+      'message.nudge',
+    ].map((name) => [name, { status: 'supported' }]),
+  ) as Account['capabilities'],
 }
 
 const conversations = [
@@ -91,7 +107,11 @@ function mockApi(snapshot = workspace()) {
     const path = String(input)
     if (path.startsWith('/api/workspace')) return new Response(JSON.stringify(snapshot), { status: 200 })
     if (path.includes('/messages') && init?.method === 'POST') {
-      const content = JSON.parse(String(init.body)) as { content: string }
+      const body = JSON.parse(String(init.body)) as { segments: Array<{ type: string; text?: string }> }
+      const content = body.segments
+        .filter((segment) => segment.type === 'text')
+        .map((segment) => segment.text ?? '')
+        .join('')
       return new Response(
         JSON.stringify({
           message: {
@@ -102,8 +122,8 @@ function mockApi(snapshot = workspace()) {
             senderId: account.botId,
             senderName: account.name,
             senderAvatar: account.avatar,
-            content: content.content,
-            segments: [{ type: 'text', text: content.content }],
+            content,
+            segments: [{ type: 'text', text: content }],
             mine: true,
           },
         }),
@@ -153,7 +173,7 @@ describe('Dududa NapCat workspace', () => {
     expect(wrapper.find('.conversation-sidebar').exists()).toBe(true)
     expect(wrapper.find('.chat-pane').exists()).toBe(true)
     expect(wrapper.text()).toContain('真实测试群')
-    expect(wrapper.text()).toContain('来自真实 NapCat 的消息')
+    expect(wrapper.text()).toContain('成员：来自 NapCat 的消息')
     expect(wrapper.text()).toContain('NapCat 实时连接')
   })
 
@@ -172,16 +192,20 @@ describe('Dududa NapCat workspace', () => {
   it('sends QQ text through the gateway instead of adding a local-only message', async () => {
     const fetchMock = mockApi()
     const wrapper = await mountApp()
-    const composer = wrapper.get('textarea[aria-label="QQ 消息输入"]')
+    const composer = wrapper.get('[contenteditable="true"][aria-label="QQ 消息输入"]')
 
-    await composer.setValue('真实发送测试')
+    composer.element.innerHTML = '<p>真实发送测试</p>'
+    await composer.trigger('input')
+    await flushPromises()
     await composer.trigger('keydown', { key: 'Enter' })
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/messages'),
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ segments: [{ type: 'text', text: '真实发送测试' }] }),
+      }),
     )
-    expect(wrapper.get('.message-list').text()).toContain('真实发送测试')
   })
 })

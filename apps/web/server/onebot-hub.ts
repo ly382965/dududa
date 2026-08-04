@@ -11,8 +11,11 @@ import type {
   CapabilityName,
   ChatMessage,
   Conversation,
+  FileSendReceipt,
+  ForwardedMessageBundle,
   HistoryPage,
   OutgoingMessageSegment,
+  UploadReceipt,
   WorkspaceEvent,
   WorkspaceSnapshot,
 } from '../src/types/workspace'
@@ -32,6 +35,7 @@ import {
   type OneBotLoginInfo,
   type OneBotMessage,
   type OneBotRecentContact,
+  type OneBotSegment,
 } from './mapper'
 
 interface OneBotResponse<T = unknown> {
@@ -49,6 +53,16 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>
 }
 
+class OneBotActionError extends Error {
+  constructor(
+    message: string,
+    readonly outcome: 'rejected' | 'unknown',
+  ) {
+    super(message)
+    this.name = 'OneBotActionError'
+  }
+}
+
 interface AccountState {
   selfId: string
   account: Account
@@ -64,6 +78,32 @@ interface AccountState {
 interface MediaEntry {
   url: string
   expiresAt: number
+  kind: 'message' | 'file'
+  fileName?: string
+}
+
+interface StagedUpload {
+  accountId: string
+  type: 'group' | 'private'
+  peerId: string
+  kind: UploadReceipt['kind']
+  fileName: string
+  mime: string
+  size: number
+  buffer: Buffer
+  expiresAt: number
+  consuming: boolean
+}
+
+interface OneBotForwardNode {
+  type?: string
+  data?: {
+    user_id?: number | string
+    nickname?: string
+    time?: number
+    message?: Array<OneBotSegment | OneBotForwardNode> | string
+    content?: Array<OneBotSegment | OneBotForwardNode> | string
+  }
 }
 
 export interface HubOptions {
@@ -73,12 +113,18 @@ export interface HubOptions {
   messageHistoryCount?: number
   mediaTtlMs?: number
   mediaMaxEntries?: number
+  uploadTtlMs?: number
+  uploadMaxEntries?: number
+  uploadMaxTotalBytes?: number
 }
 
 const emittedMessageTtlMs = 5 * 60_000
 const emittedMessageMaxEntries = 5_000
 const defaultMediaTtlMs = 30 * 60_000
 const defaultMediaMaxEntries = 2_000
+const defaultUploadTtlMs = 10 * 60_000
+const defaultUploadMaxEntries = 32
+const defaultUploadMaxTotalBytes = 100 * 1024 * 1024
 
 const capabilityNames: CapabilityName[] = [
   'history.cursor',
@@ -93,6 +139,7 @@ const capabilityNames: CapabilityName[] = [
   'message.send.audio',
   'message.send.video',
   'message.send.file',
+  'message.download.file',
   'message.recall',
   'message.forward',
   'message.nudge',
@@ -149,7 +196,7 @@ export class OneBotConnection {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(echo)
-        reject(new Error(`NapCat action 超时: ${action}`))
+        reject(new OneBotActionError(`NapCat action 超时: ${action}`, 'unknown'))
       }, timeoutMs)
       timer.unref?.()
       this.pending.set(echo, {
@@ -161,7 +208,7 @@ export class OneBotConnection {
         if (!error) return
         clearTimeout(timer)
         this.pending.delete(echo)
-        reject(error)
+        reject(new OneBotActionError(error.message, 'unknown'))
       })
     })
   }
@@ -189,7 +236,12 @@ export class OneBotConnection {
       if (response.status === 'ok' && Number(response.retcode ?? 0) === 0) {
         pending.resolve(response.data)
       } else {
-        pending.reject(new Error(response.message || response.wording || `NapCat action 失败: ${response.retcode}`))
+        pending.reject(
+          new OneBotActionError(
+            response.message || response.wording || `NapCat action 失败: ${response.retcode}`,
+            'rejected',
+          ),
+        )
       }
       return
     }
@@ -201,7 +253,7 @@ export class OneBotConnection {
     this.closed = true
     for (const request of this.pending.values()) {
       clearTimeout(request.timer)
-      request.reject(new Error('NapCat 连接已断开'))
+      request.reject(new OneBotActionError('NapCat 连接已断开', 'unknown'))
     }
     this.pending.clear()
     this.closeHandler()
@@ -213,11 +265,15 @@ export class OneBotHub extends EventEmitter {
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 50 * 1024 * 1024 })
   private readonly accounts = new Map<string, AccountState>()
   private readonly media = new Map<string, MediaEntry>()
+  private readonly uploads = new Map<string, StagedUpload>()
   private readonly actionTimeoutMs: number
   private readonly recentConversationCount: number
   private readonly messageHistoryCount: number
   private readonly mediaTtlMs: number
   private readonly mediaMaxEntries: number
+  private readonly uploadTtlMs: number
+  private readonly uploadMaxEntries: number
+  private readonly uploadMaxTotalBytes: number
   private closed = false
 
   constructor(private readonly options: HubOptions) {
@@ -227,6 +283,9 @@ export class OneBotHub extends EventEmitter {
     this.messageHistoryCount = options.messageHistoryCount ?? 50
     this.mediaTtlMs = Math.max(1, Math.floor(options.mediaTtlMs ?? defaultMediaTtlMs))
     this.mediaMaxEntries = Math.max(1, Math.floor(options.mediaMaxEntries ?? defaultMediaMaxEntries))
+    this.uploadTtlMs = Math.max(1, Math.floor(options.uploadTtlMs ?? defaultUploadTtlMs))
+    this.uploadMaxEntries = Math.max(1, Math.floor(options.uploadMaxEntries ?? defaultUploadMaxEntries))
+    this.uploadMaxTotalBytes = Math.max(1, Math.floor(options.uploadMaxTotalBytes ?? defaultUploadMaxTotalBytes))
     this.wss.on('connection', (socket, request) => this.acceptConnection(socket, request))
   }
 
@@ -304,6 +363,104 @@ export class OneBotHub extends EventEmitter {
     return this.capabilityDocument(this.requireAccount(account))
   }
 
+  assertConversation(account: string, type: 'group' | 'private', peerId: string): void {
+    this.requireConversation(account, type, peerId)
+  }
+
+  stageMediaUpload(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    input: { buffer: Buffer; fileName: string; mime: string; size: number },
+  ): UploadReceipt {
+    const state = this.requireConversation(account, type, peerId)
+    const kind: UploadReceipt['kind'] = input.mime.startsWith('image/')
+      ? 'image'
+      : input.mime.startsWith('audio/')
+        ? 'audio'
+        : input.mime.startsWith('video/')
+          ? 'video'
+          : (() => {
+              throw new Error('该文件类型不能作为媒体消息发送')
+            })()
+    this.requireCapability(state, `message.send.${kind}` as CapabilityName)
+    if (input.size !== input.buffer.length || input.size <= 0 || input.size > 25 * 1024 * 1024) {
+      throw new Error('上传文件大小无效')
+    }
+    const now = Date.now()
+    this.pruneUploads(now)
+    const uploadId = randomUUID()
+    const entry: StagedUpload = {
+      accountId: account,
+      type,
+      peerId,
+      kind,
+      fileName: input.fileName,
+      mime: input.mime,
+      size: input.size,
+      buffer: input.buffer,
+      expiresAt: now + this.uploadTtlMs,
+      consuming: false,
+    }
+    this.uploads.set(uploadId, entry)
+    this.pruneUploads(now)
+    if (!this.uploads.has(uploadId)) throw new Error('上传暂存空间不足')
+    return {
+      uploadId,
+      kind,
+      name: input.fileName,
+      mime: input.mime,
+      size: input.size,
+      expiresAt: entry.expiresAt,
+    }
+  }
+
+  async sendFile(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    input: { buffer: Buffer; fileName: string; size: number },
+  ): Promise<FileSendReceipt> {
+    const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'message.send.file')
+    if (input.size !== input.buffer.length || input.size <= 0 || input.size > 25 * 1024 * 1024) {
+      throw new Error('上传文件大小无效')
+    }
+    const action = type === 'group' ? 'upload_group_file' : 'upload_private_file'
+    const key = type === 'group' ? 'group_id' : 'user_id'
+    const result = await state.connection.request<{ file_id?: string | null }>(
+      action,
+      {
+        [key]: peerId,
+        file: `base64://${input.buffer.toString('base64')}`,
+        name: input.fileName,
+      },
+      120_000,
+    )
+    return { kind: 'file', fileId: result.file_id ?? undefined, name: input.fileName, size: input.size }
+  }
+
+  async fileDownloadUrl(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    fileId: string,
+    fileName = 'QQ文件',
+  ): Promise<{ url: string }> {
+    const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'message.download.file')
+    if (!fileId || fileId.length > 2_048 || /[\u0000-\u001f\u007f]/.test(fileId)) throw new Error('文件标识无效')
+    const action = type === 'group' ? 'get_group_file_url' : 'get_private_file_url'
+    const result = await state.connection.request<{ url?: string }>(
+      action,
+      type === 'group' ? { group_id: peerId, file_id: fileId } : { file_id: fileId },
+      30_000,
+    )
+    const url = result.url ? this.registerFileMedia(result.url, fileName) : undefined
+    if (!url) throw new Error('NapCat 未返回可用的文件下载地址')
+    return { url }
+  }
+
   async history(account: string, type: 'group' | 'private', peerId: string, limit?: number): Promise<ChatMessage[]> {
     return (await this.historyPage(account, type, peerId, { limit })).messages
   }
@@ -315,6 +472,7 @@ export class OneBotHub extends EventEmitter {
     request: HistoryPageRequest = {},
   ): Promise<HistoryPage> {
     const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'history.cursor')
     const count = Math.min(Math.max(Number(request.limit) || this.messageHistoryCount, 1), 100)
     if (request.before && request.after) throw new Error('before 与 after 不能同时使用')
     const cursor = request.before || request.after
@@ -384,13 +542,52 @@ export class OneBotHub extends EventEmitter {
     segments: OutgoingMessageSegment[],
   ): Promise<ChatMessage> {
     const state = this.requireConversation(account, type, peerId)
+    for (const segment of segments) {
+      const capability: CapabilityName =
+        segment.type === 'text'
+          ? 'message.send.text'
+          : segment.type === 'mention'
+            ? 'message.send.mention'
+            : segment.type === 'reply'
+              ? 'message.send.reply'
+              : segment.type === 'face'
+                ? 'message.send.face'
+                : (`message.send.${segment.type}` as CapabilityName)
+      this.requireCapability(state, capability)
+    }
     const action = type === 'group' ? 'send_group_msg' : 'send_private_msg'
     const key = type === 'group' ? 'group_id' : 'user_id'
-    const outgoing = segments.map((segment) => this.toOneBotSegment(segment))
-    const result = await state.connection.request<{ message_id: number | string }>(action, {
-      [key]: peerId,
-      message: outgoing,
-    })
+    const reservedUploads: string[] = []
+    let outgoing: Array<{ type: string; data: Record<string, string> }>
+    let result: { message_id: number | string }
+    let actionStarted = false
+    try {
+      outgoing = segments.map((segment) =>
+        this.toOneBotSegment(state, account, type, peerId, segment, reservedUploads),
+      )
+      actionStarted = true
+      result = await state.connection.request<{ message_id: number | string }>(
+        action,
+        {
+          [key]: peerId,
+          message: outgoing,
+        },
+        reservedUploads.length ? 120_000 : this.actionTimeoutMs,
+      )
+    } catch (error) {
+      const retrySafe =
+        !actionStarted || (error instanceof OneBotActionError && error.outcome === 'rejected')
+      for (const uploadId of reservedUploads) {
+        if (!retrySafe) {
+          this.uploads.delete(uploadId)
+          continue
+        }
+        const upload = this.uploads.get(uploadId)
+        if (upload) upload.consuming = false
+      }
+      throw error
+    }
+    reservedUploads.forEach((uploadId) => this.uploads.delete(uploadId))
     let raw: OneBotMessage | undefined
     try {
       raw = await state.connection.request<OneBotMessage>('get_msg', { message_id: result.message_id }, 10_000)
@@ -435,18 +632,117 @@ export class OneBotHub extends EventEmitter {
 
   async markRead(account: string, type: 'group' | 'private', peerId: string): Promise<void> {
     const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'message.read')
     const action = type === 'group' ? 'mark_group_msg_as_read' : 'mark_private_msg_as_read'
     const key = type === 'group' ? 'group_id' : 'user_id'
     await state.connection.request(action, { [key]: peerId }, 10_000)
   }
 
+  async recallMessage(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    messageId: string,
+  ): Promise<void> {
+    if (!/^\d{1,24}$/.test(messageId)) throw new Error('消息标识无效')
+    const { state, message } = await this.requireMessageInConversation(account, type, peerId, messageId)
+    this.requireCapability(state, 'message.recall')
+    const senderId = String(message.sender?.user_id ?? message.user_id ?? '')
+    if (senderId !== state.selfId) throw new Error('消息标识与本账号撤回权限不匹配')
+    await state.connection.request('delete_msg', { message_id: messageId }, 20_000)
+    this.broadcast({
+      type: 'message.deleted',
+      accountId: account,
+      conversationId: conversationId(account, type, peerId),
+      messageId: `${account}:${type}:${peerId}:${messageId}`,
+    })
+  }
+
+  async refreshMessage(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    messageId: string,
+  ): Promise<ChatMessage> {
+    if (!/^\d{1,24}$/.test(messageId)) throw new Error('消息标识无效')
+    const { state, message } = await this.requireMessageInConversation(account, type, peerId, messageId)
+    this.requireCapability(state, 'history.cursor')
+    const mapped = mapMessage(
+      account,
+      state.selfId,
+      message,
+      (url) => this.registerMedia(url),
+      type === 'private' ? peerId : undefined,
+    )
+    if (!mapped) throw new Error('NapCat 返回了无法识别的消息')
+    return mapped
+  }
+
+  async nudge(account: string, type: 'group' | 'private', peerId: string, userId: string): Promise<void> {
+    const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'message.nudge')
+    if (!/^\d{5,20}$/.test(userId)) throw new Error('QQ 号无效')
+    if (type === 'private' && userId !== peerId) throw new Error('戳一戳目标与当前私聊不匹配')
+    const action = type === 'group' ? 'group_poke' : 'friend_poke'
+    await state.connection.request(action, type === 'group' ? { group_id: peerId, user_id: userId } : { user_id: userId })
+  }
+
+  async forwardMessage(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    messageId: string,
+    target: { accountId: string; type: 'group' | 'private'; peerId: string },
+  ): Promise<{ messageId?: string }> {
+    if (!/^\d{1,24}$/.test(messageId)) throw new Error('消息标识无效')
+    const source = await this.requireMessageInConversation(account, type, peerId, messageId)
+    this.requireCapability(source.state, 'message.forward')
+    if (target.accountId !== account) throw new Error('消息转发不能跨 QQ 账号')
+    const state = this.requireConversation(target.accountId, target.type, target.peerId)
+    const action = type === 'group' ? 'forward_group_single_msg' : 'forward_friend_single_msg'
+    const key = target.type === 'group' ? 'group_id' : 'user_id'
+    await state.connection.request<null>(action, {
+      [key]: target.peerId,
+      message_id: messageId,
+    })
+    return {}
+  }
+
+  async forwardedMessages(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    forwardId: string,
+  ): Promise<ForwardedMessageBundle> {
+    const state = this.requireConversation(account, type, peerId)
+    if (!forwardId || forwardId.length > 512) throw new Error('转发消息标识无效')
+    const data = await state.connection.request<{ messages?: Array<OneBotForwardNode | OneBotMessage> }>(
+      'get_forward_msg',
+      { message_id: forwardId },
+      30_000,
+    )
+    const messages = this.mapForwardNodes(account, state, type, peerId, data.messages ?? [], forwardId, {
+      remaining: 500,
+    })
+    return { forwardId, messages }
+  }
+
   mediaUrl(key: string): string | undefined {
     this.pruneMedia(Date.now())
     const entry = this.media.get(key)
-    if (!entry) return undefined
+    if (!entry || entry.kind !== 'message') return undefined
     this.media.delete(key)
     this.media.set(key, entry)
     return entry.url
+  }
+
+  fileMedia(key: string): { url: string; fileName: string } | undefined {
+    this.pruneMedia(Date.now())
+    const entry = this.media.get(key)
+    if (!entry || entry.kind !== 'file') return undefined
+    this.media.delete(key)
+    this.media.set(key, entry)
+    return { url: entry.url, fileName: entry.fileName || 'QQ文件' }
   }
 
   close(): void {
@@ -455,6 +751,7 @@ export class OneBotHub extends EventEmitter {
     for (const state of this.accounts.values()) state.connection.close(1001, 'server shutting down')
     this.accounts.clear()
     this.media.clear()
+    this.uploads.clear()
     this.wss.close()
   }
 
@@ -632,6 +929,11 @@ export class OneBotHub extends EventEmitter {
     return state
   }
 
+  private requireCapability(state: AccountState, name: CapabilityName): void {
+    const capability = this.capabilityDocument(state).actions[name]
+    if (capability.status !== 'supported') throw new Error(capability.reason || `QQ 能力当前不可用: ${name}`)
+  }
+
   private broadcast(event: WorkspaceEvent): void {
     this.emit('workspace-event', event)
   }
@@ -645,6 +947,14 @@ export class OneBotHub extends EventEmitter {
       'message.send.mention',
       'message.send.reply',
       'message.send.face',
+      'message.send.image',
+      'message.send.audio',
+      'message.send.video',
+      'message.send.file',
+      'message.download.file',
+      'message.recall',
+      'message.forward',
+      'message.nudge',
       'message.read',
     ])
     const napCatGaps = new Map<CapabilityName, string>([
@@ -652,10 +962,25 @@ export class OneBotHub extends EventEmitter {
       ['request.friend.history', '当前 NapCat 无法回填普通好友申请历史'],
       ['group.folder.rename', '当前 NapCat 未提供群文件夹重命名 action'],
     ])
+    const minimumVersions = new Map<CapabilityName, string>([
+      ['message.download.file', '4.8.0'],
+      ['message.forward', '4.8.0'],
+      ['message.nudge', '4.8.0'],
+    ])
     const actions = Object.fromEntries(
       capabilityNames.map((name) => {
         if (!state.compatible) return [name, { status: 'unavailable' as const, reason: '连接端不是兼容的 NapCat OneBot v11' }]
-        if (state.account.status === 'offline') return [name, { status: 'unavailable' as const, reason: 'QQ 账号当前离线' }]
+        if (state.account.status !== 'online') return [name, { status: 'unavailable' as const, reason: 'QQ 账号连接状态异常' }]
+        const minimumVersion = minimumVersions.get(name)
+        if (minimumVersion && !this.versionAtLeast(state.implementationVersion, minimumVersion)) {
+          return [
+            name,
+            {
+              status: 'unsupported' as const,
+              reason: `需要 NapCat ${minimumVersion} 或更高版本，当前为 ${state.implementationVersion || '未知版本'}`,
+            },
+          ]
+        }
         if (implemented.has(name)) return [name, { status: 'supported' as const }]
         return [
           name,
@@ -677,7 +1002,14 @@ export class OneBotHub extends EventEmitter {
     }
   }
 
-  private toOneBotSegment(segment: OutgoingMessageSegment): { type: string; data: Record<string, string> } {
+  private toOneBotSegment(
+    state: AccountState,
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    segment: OutgoingMessageSegment,
+    reservedUploads: string[],
+  ): { type: string; data: Record<string, string> } {
     switch (segment.type) {
       case 'text':
         return { type: 'text', data: { text: segment.text } }
@@ -687,7 +1019,148 @@ export class OneBotHub extends EventEmitter {
         return { type: 'reply', data: { id: segment.messageId ?? segment.messageSeq ?? '' } }
       case 'face':
         return { type: 'face', data: { id: segment.faceId } }
+      case 'image':
+      case 'audio':
+      case 'video': {
+        const upload = this.uploads.get(segment.uploadId)
+        if (!upload || upload.expiresAt <= Date.now()) throw new Error('上传内容已过期，请重新选择文件')
+        if (
+          upload.accountId !== account ||
+          upload.type !== type ||
+          upload.peerId !== peerId ||
+          upload.kind !== segment.type ||
+          !this.isCurrent(state)
+        ) {
+          throw new Error('上传内容与当前 QQ 会话不匹配')
+        }
+        if (upload.consuming) throw new Error('上传内容正在发送或已被使用')
+        upload.consuming = true
+        reservedUploads.push(segment.uploadId)
+        return {
+          type: segment.type === 'audio' ? 'record' : segment.type,
+          data: {
+            file: `base64://${upload.buffer.toString('base64')}`,
+            ...(segment.type === 'image' ? { summary: segment.name || upload.fileName } : {}),
+          },
+        }
+      }
     }
+  }
+
+  private async requireMessageInConversation(
+    account: string,
+    type: 'group' | 'private',
+    peerId: string,
+    messageId: string,
+  ): Promise<{ state: AccountState; message: OneBotMessage }> {
+    const state = this.requireConversation(account, type, peerId)
+    const message = await state.connection.request<OneBotMessage>('get_msg', { message_id: messageId }, 10_000)
+    if (String(message.message_id ?? '') !== messageId || message.message_type !== type) {
+      throw new Error('消息标识与当前 QQ 会话不匹配')
+    }
+    if (type === 'group') {
+      if (String(message.group_id ?? '') !== peerId) throw new Error('消息标识与当前 QQ 会话不匹配')
+      return { state, message }
+    }
+
+    const senderId = String(message.sender?.user_id ?? message.user_id ?? '')
+    const directPeerId = senderId && senderId !== state.selfId ? senderId : String(message.target_id ?? '')
+    if (directPeerId === peerId) return { state, message }
+
+    const messageSeq = String(message.message_seq ?? message.real_seq ?? '')
+    if (!/^\d{1,24}$/.test(messageSeq)) throw new Error('消息标识与当前 QQ 会话不匹配')
+    const history = await state.connection.request<{ messages?: OneBotMessage[] }>(
+      'get_friend_msg_history',
+      {
+        user_id: peerId,
+        count: 3,
+        message_seq: messageSeq,
+        reverse_order: false,
+        disable_get_url: true,
+        parse_mult_msg: false,
+      },
+      20_000,
+    )
+    if (!(history.messages ?? []).some((candidate) => String(candidate.message_id ?? '') === messageId)) {
+      throw new Error('消息标识与当前 QQ 会话不匹配')
+    }
+    return { state, message }
+  }
+
+  private mapForwardNodes(
+    account: string,
+    state: AccountState,
+    type: 'group' | 'private',
+    peerId: string,
+    nodes: Array<OneBotForwardNode | OneBotMessage>,
+    path: string,
+    budget: { remaining: number },
+    depth = 0,
+  ): ChatMessage[] {
+    const messages: ChatMessage[] = []
+    for (let index = 0; index < nodes.length && budget.remaining > 0; index += 1) {
+      const raw = nodes[index]!
+      const node = raw as OneBotForwardNode
+      const nodeData = node.type === 'node' && node.data && typeof node.data === 'object' ? node.data : undefined
+      const flat = raw as OneBotMessage & { content?: OneBotMessage['message'] }
+      const senderId = String(nodeData?.user_id ?? flat.user_id ?? flat.sender?.user_id ?? state.selfId)
+      const rawContent = nodeData?.message ?? nodeData?.content ?? flat.message ?? flat.content ?? []
+      const messageId = flat.message_id ?? `forward-${depth}-${index + 1}`
+      const mapped = mapMessage(
+        account,
+        state.selfId,
+        {
+          ...flat,
+          self_id: state.selfId,
+          message_type: type,
+          group_id: type === 'group' ? peerId : undefined,
+          target_id: type === 'private' ? peerId : undefined,
+          user_id: senderId,
+          sender: {
+            ...flat.sender,
+            user_id: senderId,
+            nickname: nodeData?.nickname ?? flat.sender?.nickname,
+          },
+          time: nodeData?.time ?? flat.time,
+          message_id: messageId,
+          message_seq: flat.message_seq ?? messageId,
+          message: rawContent as OneBotMessage['message'],
+        },
+        (url) => this.registerMedia(url),
+        type === 'private' ? peerId : undefined,
+      )
+      if (!mapped) continue
+      budget.remaining -= 1
+      if (Array.isArray(rawContent)) {
+        mapped.segments = mapped.segments.map((segment, segmentIndex) => {
+          const rawSegment = rawContent[segmentIndex] as OneBotForwardNode | undefined
+          const nested = rawSegment?.type === 'node' ? rawSegment.data?.message ?? rawSegment.data?.content : undefined
+          if (!Array.isArray(nested)) return segment
+          const nestedMessages =
+            depth >= 7
+              ? []
+              : this.mapForwardNodes(
+                  account,
+                  state,
+                  type,
+                  peerId,
+                  nested as Array<OneBotForwardNode | OneBotMessage>,
+                  `${path}.${index}.${segmentIndex}`,
+                  budget,
+                  depth + 1,
+                )
+          return {
+            type: 'forward' as const,
+            forwardId: `inline:${path}.${index}.${segmentIndex}`,
+            count: nestedMessages.length,
+            preview: nestedMessages.length ? '嵌套转发消息' : '嵌套转发内容过深或为空',
+            messages: nestedMessages,
+          }
+        })
+      }
+      messages.push(mapped)
+    }
+    return messages
   }
 
   private encodeHistoryCursor(
@@ -777,6 +1250,14 @@ export class OneBotHub extends EventEmitter {
   }
 
   private registerMedia(source: string): string | undefined {
+    return this.registerMediaEntry(source, 'message')
+  }
+
+  private registerFileMedia(source: string, fileName: string): string | undefined {
+    return this.registerMediaEntry(source, 'file', fileName)
+  }
+
+  private registerMediaEntry(source: string, kind: MediaEntry['kind'], fileName?: string): string | undefined {
     if (!source) return undefined
     let url: URL
     try {
@@ -787,15 +1268,15 @@ export class OneBotHub extends EventEmitter {
     if (!['http:', 'https:'].includes(url.protocol) || !this.mediaHostAllowed(url.hostname)) return undefined
     const now = Date.now()
     this.pruneMedia(now)
-    const key = createHash('sha256').update(source).digest('hex').slice(0, 32)
+    const key = createHash('sha256').update(`${kind}\0${source}\0${fileName ?? ''}`).digest('hex').slice(0, 32)
     this.media.delete(key)
-    this.media.set(key, { url: source, expiresAt: now + this.mediaTtlMs })
+    this.media.set(key, { url: source, expiresAt: now + this.mediaTtlMs, kind, fileName })
     while (this.media.size > this.mediaMaxEntries) {
       const oldest = this.media.keys().next().value as string | undefined
       if (!oldest) break
       this.media.delete(oldest)
     }
-    return `/api/media/message/${key}`
+    return `/api/media/${kind}/${key}`
   }
 
   private pruneMedia(now: number): void {
@@ -804,11 +1285,35 @@ export class OneBotHub extends EventEmitter {
     }
   }
 
+  private pruneUploads(now: number): void {
+    for (const [uploadId, entry] of this.uploads) {
+      if (entry.expiresAt <= now) this.uploads.delete(uploadId)
+    }
+    const totalBytes = () => [...this.uploads.values()].reduce((total, entry) => total + entry.size, 0)
+    while (this.uploads.size > this.uploadMaxEntries || totalBytes() > this.uploadMaxTotalBytes) {
+      const oldest = this.uploads.keys().next().value as string | undefined
+      if (!oldest) break
+      this.uploads.delete(oldest)
+    }
+  }
+
   private mediaHostAllowed(hostname: string): boolean {
     const host = hostname.toLowerCase()
     return ['qq.com', 'qq.com.cn', 'qpic.cn', 'gtimg.cn', 'qlogo.cn'].some(
       (suffix) => host === suffix || host.endsWith(`.${suffix}`),
     )
+  }
+
+  private versionAtLeast(actual: string | undefined, minimum: string): boolean {
+    if (!actual) return false
+    const parse = (value: string) => value.split('.').slice(0, 3).map((part) => Number.parseInt(part, 10) || 0)
+    const left = parse(actual)
+    const right = parse(minimum)
+    for (let index = 0; index < 3; index += 1) {
+      if ((left[index] ?? 0) > (right[index] ?? 0)) return true
+      if ((left[index] ?? 0) < (right[index] ?? 0)) return false
+    }
+    return true
   }
 
   private authorized(header: string | undefined): boolean {

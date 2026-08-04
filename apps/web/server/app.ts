@@ -6,8 +6,14 @@ import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 import type { WorkspaceEvent } from '../src/types/workspace'
-import { historyQuerySchema, sendMessageRequestSchema } from '../src/schemas/workspace'
+import {
+  forwardRequestSchema,
+  historyQuerySchema,
+  nudgeRequestSchema,
+  sendMessageRequestSchema,
+} from '../src/schemas/workspace'
 import { OneBotHub } from './onebot-hub'
+import { readBrowserUpload } from './uploads'
 
 export interface DududaServerOptions {
   hub: OneBotHub
@@ -49,7 +55,9 @@ function routeError(response: ServerResponse, error: unknown): void {
     ? 503
     : /不存在|not found/i.test(message)
       ? 404
-      : /游标|before|after|参数无效|JSON|请求正文|消息内容/.test(message)
+      : /游标|before|after|Range|参数无效|JSON|请求正文|消息内容|上传|消息标识|QQ 号|转发|文件类型|不匹配/.test(
+            message,
+          )
         ? 400
         : 502
   json(response, status, { error: message })
@@ -94,29 +102,49 @@ function remoteHostAllowed(hostname: string): boolean {
   )
 }
 
-async function fetchAllowedRemote(source: string): Promise<Response> {
+async function fetchAllowedRemote(source: string, range?: string): Promise<Response> {
   let url = new URL(source)
   for (let redirect = 0; redirect < 4; redirect += 1) {
     if (!['https:', 'http:'].includes(url.protocol) || !remoteHostAllowed(url.hostname)) throw new Error('媒体地址不在允许范围内')
-    const response = await fetch(url, {
-      redirect: 'manual',
-      headers: { 'User-Agent': 'Dududa-QQ-Workspace/1.0' },
-      signal: AbortSignal.timeout(15_000),
-    })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 15_000)
+    timer.unref?.()
+    let response: Response
+    try {
+      response = await fetch(url, {
+        redirect: 'manual',
+        headers: {
+          'User-Agent': 'Dududa-QQ-Workspace/1.0',
+          ...(range && /^bytes=\d*-\d*$/.test(range) ? { Range: range } : {}),
+        },
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location')
       if (!location) throw new Error('媒体重定向缺少地址')
       url = new URL(location, url)
       continue
     }
-    if (!response.ok || !response.body) throw new Error(`媒体请求失败: ${response.status}`)
+    if (!response.ok && response.status !== 416) throw new Error(`媒体请求失败: ${response.status}`)
     return response
   }
   throw new Error('媒体重定向次数过多')
 }
 
+function validatedRange(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  const match = /^bytes=(?:(\d+)-(\d*)|-(\d+))$/.exec(value)
+  if (!match) throw new Error('Range 请求格式无效')
+  if (match[1] && match[2] && Number(match[1]) > Number(match[2])) throw new Error('Range 请求格式无效')
+  return value
+}
+
 async function proxyImage(response: ServerResponse, source: string, cacheControl: string): Promise<void> {
   const upstream = await fetchAllowedRemote(source)
+  if (!upstream.body) throw new Error('图片响应内容为空')
   const contentType = upstream.headers.get('content-type')?.split(';', 1)[0] ?? ''
   if (!contentType.startsWith('image/')) throw new Error('上游内容不是图片')
   const declaredSize = Number(upstream.headers.get('content-length') ?? 0)
@@ -134,6 +162,101 @@ async function proxyImage(response: ServerResponse, source: string, cacheControl
   response.statusCode = 200
   response.setHeader('Content-Type', contentType)
   response.setHeader('Cache-Control', cacheControl)
+  await pipeline(Readable.fromWeb(upstream.body as never), limiter, response)
+}
+
+async function proxyMessageMedia(
+  request: IncomingMessage,
+  response: ServerResponse,
+  source: string,
+  cacheControl: string,
+): Promise<void> {
+  const upstream = await fetchAllowedRemote(source, validatedRange(request.headers.range))
+  if (upstream.status === 416) {
+    securityHeaders(response)
+    response.statusCode = 416
+    response.setHeader('Cache-Control', 'no-store')
+    const contentRange = upstream.headers.get('content-range')
+    const acceptRanges = upstream.headers.get('accept-ranges')
+    if (contentRange) response.setHeader('Content-Range', contentRange)
+    if (acceptRanges) response.setHeader('Accept-Ranges', acceptRanges)
+    await upstream.body?.cancel()
+    response.end()
+    return
+  }
+  if (!upstream.body) throw new Error('消息媒体响应内容为空')
+  const contentType = upstream.headers.get('content-type')?.split(';', 1)[0] ?? 'application/octet-stream'
+  if (!/^(?:image|audio|video)\//.test(contentType) && contentType !== 'application/octet-stream') {
+    throw new Error('上游内容不是受支持的消息媒体')
+  }
+  const declaredSize = Number(upstream.headers.get('content-length') ?? 0)
+  const maxBytes = 100 * 1024 * 1024
+  if (declaredSize > maxBytes) throw new Error('消息媒体超过大小限制')
+  let received = 0
+  const limiter = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      received += chunk.length
+      if (received > maxBytes) callback(new Error('消息媒体超过大小限制'))
+      else callback(null, chunk)
+    },
+  })
+  securityHeaders(response)
+  response.statusCode = upstream.status === 206 ? 206 : 200
+  response.setHeader('Content-Type', contentType)
+  response.setHeader('Cache-Control', cacheControl)
+  const contentRange = upstream.headers.get('content-range')
+  const acceptRanges = upstream.headers.get('accept-ranges')
+  if (contentRange) response.setHeader('Content-Range', contentRange)
+  if (acceptRanges) response.setHeader('Accept-Ranges', acceptRanges)
+  if (declaredSize > 0) response.setHeader('Content-Length', declaredSize)
+  await pipeline(Readable.fromWeb(upstream.body as never), limiter, response)
+}
+
+function attachmentHeader(fileName: string): string {
+  const safe = fileName.replace(/[\\/\u0000-\u001f\u007f"]/g, '_').trim().slice(0, 255) || 'QQ-file'
+  const ascii = safe.replace(/[^\x20-\x7e]/g, '_')
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(safe)}`
+}
+
+async function proxyMessageFile(
+  request: IncomingMessage,
+  response: ServerResponse,
+  source: string,
+  fileName: string,
+): Promise<void> {
+  const upstream = await fetchAllowedRemote(source, validatedRange(request.headers.range))
+  if (upstream.status === 416) {
+    securityHeaders(response)
+    response.statusCode = 416
+    response.setHeader('Cache-Control', 'no-store')
+    const contentRange = upstream.headers.get('content-range')
+    if (contentRange) response.setHeader('Content-Range', contentRange)
+    response.end()
+    await upstream.body?.cancel()
+    return
+  }
+  if (!upstream.body) throw new Error('文件响应内容为空')
+  const declaredSize = Number(upstream.headers.get('content-length') ?? 0)
+  const maxBytes = 512 * 1024 * 1024
+  if (declaredSize > maxBytes) throw new Error('文件超过下载大小限制')
+  let received = 0
+  const limiter = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      received += chunk.length
+      if (received > maxBytes) callback(new Error('文件超过下载大小限制'))
+      else callback(null, chunk)
+    },
+  })
+  securityHeaders(response)
+  response.statusCode = upstream.status === 206 ? 206 : 200
+  response.setHeader('Content-Type', upstream.headers.get('content-type')?.split(';', 1)[0] || 'application/octet-stream')
+  response.setHeader('Content-Disposition', attachmentHeader(fileName))
+  response.setHeader('Cache-Control', 'private, max-age=60')
+  const contentRange = upstream.headers.get('content-range')
+  const acceptRanges = upstream.headers.get('accept-ranges')
+  if (contentRange) response.setHeader('Content-Range', contentRange)
+  if (acceptRanges) response.setHeader('Accept-Ranges', acceptRanges)
+  if (declaredSize > 0) response.setHeader('Content-Length', declaredSize)
   await pipeline(Readable.fromWeb(upstream.body as never), limiter, response)
 }
 
@@ -240,6 +363,139 @@ export function createDududaServer(options: DududaServerOptions) {
           return
         }
       }
+      const uploadsRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/uploads$/.exec(
+        url.pathname,
+      )
+      if (method === 'POST' && uploadsRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const account = decodeURIComponent(uploadsRoute[1]!)
+        const type = uploadsRoute[2] as 'group' | 'private'
+        const peerId = decodeURIComponent(uploadsRoute[3]!)
+        options.hub.assertConversation(account, type, peerId)
+        const purpose = url.searchParams.get('purpose')
+        if (purpose !== 'media' && purpose !== 'file') {
+          json(response, 400, { error: '上传 purpose 必须是 media 或 file' })
+          return
+        }
+        const upload = await readBrowserUpload(request)
+        if (purpose === 'file') {
+          json(response, 201, await options.hub.sendFile(account, type, peerId, upload))
+        } else {
+          json(response, 201, options.hub.stageMediaUpload(account, type, peerId, upload))
+        }
+        return
+      }
+      const messageActionRoute =
+        /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/messages\/([^/]+)$/.exec(url.pathname)
+      if (method === 'GET' && messageActionRoute) {
+        const message = await options.hub.refreshMessage(
+          decodeURIComponent(messageActionRoute[1]!),
+          messageActionRoute[2] as 'group' | 'private',
+          decodeURIComponent(messageActionRoute[3]!),
+          decodeURIComponent(messageActionRoute[4]!),
+        )
+        json(response, 200, { message })
+        return
+      }
+      if (method === 'DELETE' && messageActionRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        await options.hub.recallMessage(
+          decodeURIComponent(messageActionRoute[1]!),
+          messageActionRoute[2] as 'group' | 'private',
+          decodeURIComponent(messageActionRoute[3]!),
+          decodeURIComponent(messageActionRoute[4]!),
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const forwardActionRoute =
+        /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/messages\/([^/]+)\/forward$/.exec(
+          url.pathname,
+        )
+      if (method === 'POST' && forwardActionRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = forwardRequestSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || '转发目标无效' })
+          return
+        }
+        json(
+          response,
+          201,
+          await options.hub.forwardMessage(
+            decodeURIComponent(forwardActionRoute[1]!),
+            forwardActionRoute[2] as 'group' | 'private',
+            decodeURIComponent(forwardActionRoute[3]!),
+            decodeURIComponent(forwardActionRoute[4]!),
+            parsed.data.target,
+          ),
+        )
+        return
+      }
+      const forwardedRoute =
+        /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/forwards\/([^/]+)$/.exec(url.pathname)
+      if (method === 'GET' && forwardedRoute) {
+        json(
+          response,
+          200,
+          await options.hub.forwardedMessages(
+            decodeURIComponent(forwardedRoute[1]!),
+            forwardedRoute[2] as 'group' | 'private',
+            decodeURIComponent(forwardedRoute[3]!),
+            decodeURIComponent(forwardedRoute[4]!),
+          ),
+        )
+        return
+      }
+      const nudgeRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/nudge$/.exec(
+        url.pathname,
+      )
+      if (method === 'POST' && nudgeRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '跨站写请求已拒绝' })
+          return
+        }
+        const parsed = nudgeRequestSchema.safeParse(await readJson(request, maxRequestBytes))
+        if (!parsed.success) {
+          json(response, 400, { error: parsed.error.issues[0]?.message || 'QQ 号无效' })
+          return
+        }
+        await options.hub.nudge(
+          decodeURIComponent(nudgeRoute[1]!),
+          nudgeRoute[2] as 'group' | 'private',
+          decodeURIComponent(nudgeRoute[3]!),
+          parsed.data.userId,
+        )
+        json(response, 200, { ok: true })
+        return
+      }
+      const fileUrlRoute =
+        /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/files\/([^/]+)\/url$/.exec(
+          url.pathname,
+        )
+      if (method === 'GET' && fileUrlRoute) {
+        json(
+          response,
+          200,
+          await options.hub.fileDownloadUrl(
+            decodeURIComponent(fileUrlRoute[1]!),
+            fileUrlRoute[2] as 'group' | 'private',
+            decodeURIComponent(fileUrlRoute[3]!),
+            decodeURIComponent(fileUrlRoute[4]!),
+            url.searchParams.get('name') || 'QQ文件',
+          ),
+        )
+        return
+      }
       const readRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/read$/.exec(url.pathname)
       if (method === 'POST' && readRoute) {
         if (!sameOrigin(request)) {
@@ -271,7 +527,17 @@ export function createDududaServer(options: DududaServerOptions) {
           json(response, 404, { error: '媒体地址已过期' })
           return
         }
-        await proxyImage(response, source, 'private, max-age=300')
+        await proxyMessageMedia(request, response, source, 'private, max-age=300')
+        return
+      }
+      const fileMediaRoute = /^\/api\/media\/file\/([a-f0-9]{32})$/.exec(url.pathname)
+      if (method === 'GET' && fileMediaRoute) {
+        const entry = options.hub.fileMedia(fileMediaRoute[1]!)
+        if (!entry) {
+          json(response, 404, { error: '文件地址已过期' })
+          return
+        }
+        await proxyMessageFile(request, response, entry.url, entry.fileName)
         return
       }
       if (url.pathname.startsWith('/api/')) {

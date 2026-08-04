@@ -11,22 +11,22 @@ Title: Mew Chat Parity
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] All accepted incoming segment types render or show an honest fallback.
-- [ ] All supported outgoing segments and message operations issue the correct
+- [x] All accepted incoming segment types render or show an honest fallback.
+- [x] All supported outgoing segments and message operations issue the correct
   account-scoped typed gateway action and expose real success/failure.
-- [ ] Cached-first bidirectional history, virtual anchors, unread/jump/latest,
+- [x] Cached-first bidirectional history, virtual anchors, unread/jump/latest,
   local search and drafts match adapted Mew behavior tests.
-- [ ] Desktop and mobile chat interactions remain usable with the account rail
+- [x] Desktop and mobile chat interactions remain usable with the account rail
   and Agent unavailable surface.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Port Mew chat services/composables and make every singleton/account key
+- [x] Port Mew chat services/composables and make every singleton/account key
   account-scoped.
-- [ ] Port renderers, media/forward dialogs and message actions.
-- [ ] Port Tiptap composer, face/mention/reply/draft and upload flows.
-- [ ] Adapt Mew Unit/E2E tests and add NapCat/cross-account failure coverage.
-- [ ] Verify, record and commit the branch.
+- [x] Port renderers, media/forward dialogs and message actions.
+- [x] Port Tiptap composer, face/mention/reply/draft and upload flows.
+- [x] Adapt Mew Unit/E2E tests and add NapCat/cross-account failure coverage.
+- [x] Verify, record and commit the branch.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

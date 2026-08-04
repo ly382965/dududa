@@ -108,6 +108,49 @@ describe('WorkspaceCache', () => {
     ).rejects.toThrow('草稿账号与会话不匹配')
   })
 
+  it('preserves draft text that resembles a path while removing ephemeral URLs', async () => {
+    const storage = cache()
+    const target = conversation('qq-111111111')
+    await storage.saveDraft({
+      accountId: target.accountId,
+      conversationId: target.id,
+      content: { text: '/help 和 /tmp/说明', preview: 'blob:temporary-image' },
+      updatedAt: 1,
+    })
+
+    expect(await storage.draft(target.accountId, target.id)).toMatchObject({
+      content: { text: '/help 和 /tmp/说明' },
+    })
+  })
+
+  it('paginates every cached message when timestamps are identical', async () => {
+    const storage = cache()
+    const target = conversation('qq-111111111')
+    const messages = [message(target, 1, '第一条'), message(target, 2, '第二条'), message(target, 3, '第三条')]
+    messages.forEach((item) => (item.timestampMs = 10_000))
+    await storage.saveHistoryPage(target, page(messages))
+
+    const first = await storage.searchMessages({
+      accountId: target.accountId,
+      conversationId: target.id,
+      query: '条',
+      limit: 2,
+    })
+    expect(first.messages.map((item) => item.messageId)).toEqual(['3', '2'])
+    expect(first.hasMore).toBe(true)
+    const cursor = first.messages.at(-1)!
+    const second = await storage.searchMessages({
+      accountId: target.accountId,
+      conversationId: target.id,
+      query: '条',
+      beforeTimestampMs: cursor.timestampMs,
+      beforeCacheId: cursor.id,
+      limit: 2,
+    })
+    expect(second.messages.map((item) => item.messageId)).toEqual(['1'])
+    expect(second.hasMore).toBe(false)
+  })
+
   it('merges before and after coverage without losing the opposite cursor', async () => {
     const storage = cache()
     const target = conversation('qq-111111111')
