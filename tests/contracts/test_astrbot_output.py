@@ -1,29 +1,35 @@
 from __future__ import annotations
 
 import asyncio
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import unittest
 
 from dududa.contracts.binding import NegotiatedBindingReceipt
 from dududa.contracts.canonical import canonical_digest
-from dududa.contracts.delivery import delivery_payload_digest, delivery_request_digest
 from dududa.contracts.delivery import (
     delivery_authorization_metadata,
     delivery_authorization_resource,
+    delivery_payload_digest,
+    delivery_request_digest,
 )
 from dududa.domain.content import (
     ContentSafetyDecision,
     FinalResponse,
-    RenderMetadata,
-    RenderValidationResult,
     RenderedBlock,
     RenderedContent,
+    RenderMetadata,
+    RenderValidationResult,
     SafetyStage,
     ValidatedFinalResponse,
 )
-from dududa.domain.delivery import DeliveryConstraints, DeliveryRequest, DeliveryStatus
+from dududa.domain.delivery import (
+    DeliveryConstraints,
+    DeliveryRequest,
+    DeliveryStatus,
+    plan_delivery_parts,
+)
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.message import MessageReference
 from dududa.domain.primitives import (
@@ -47,6 +53,7 @@ from dududa.security.digests import (
     scope_digest,
 )
 from dududa.security.models import AuthorizationDecision, AuthorizationEffect
+
 from plugins.astrbot_plugin_dududa_core.adapters.output import (
     ASTRBOT_OUTPUT_REVISION,
     AstrBotOutputAdapter,
@@ -111,7 +118,7 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             TraceContext("trace-1"),
             self.now + timedelta(minutes=1),
             NeverCancelled(),
-            RuntimeBudget(0, 0, 0, 0, 100, Decimal("0")),
+            RuntimeBudget(0, 0, 0, 0, 100, Decimal(0)),
             "policy-v1",
         )
 
@@ -188,12 +195,21 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             ASTRBOT_OUTPUT_REVISION,
             self.now,
         )
+        constraints = DeliveryConstraints(
+            1,
+            4,
+            5,
+            False,
+            frozenset(),
+            timedelta(minutes=5),
+        )
+        payload_digest = delivery_payload_digest(response)
         request = DeliveryRequest(
             1,
             delivery_id,
             "run-1",
             DigestString("pending"),
-            delivery_payload_digest(response),
+            payload_digest,
             idempotency_key,
             1,
             Outcome.RESPONSE,
@@ -201,7 +217,15 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             None,
             self.scope,
             reply_to,
-            DeliveryConstraints(4, 5, False),
+            constraints,
+            plan_delivery_parts(
+                delivery_id,
+                response,
+                None,
+                reply_to=reply_to,
+                constraints=constraints,
+                payload_digest=payload_digest,
+            ),
             authorization,
             (),
             binding,
@@ -322,10 +346,19 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         )
         original = self.request()
         changed_response = self.response("changed")
+        changed_payload_digest = delivery_payload_digest(changed_response)
         reused = replace(
             original,
             response=changed_response,
-            payload_digest=delivery_payload_digest(changed_response),
+            payload_digest=changed_payload_digest,
+            part_intents=plan_delivery_parts(
+                original.delivery_id,
+                changed_response,
+                None,
+                reply_to=original.reply_to,
+                constraints=original.constraints,
+                payload_digest=changed_payload_digest,
+            ),
         )
         reused = replace(reused, request_digest=delivery_request_digest(reused))
         with self.assertRaises(DududaError):

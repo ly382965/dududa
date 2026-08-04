@@ -10,6 +10,7 @@ from dududa.errors import ErrorCategory, error, validation_error
 from dududa.ports.context import PortCallContext
 
 from .contracts import (
+    ClarificationKey,
     DecisionSignals,
     PerceptionResult,
     SocialAction,
@@ -77,72 +78,8 @@ class DeterministicSocialDecisionPolicy:
                 "request.timeout",
             )
 
-        action: SocialAction
-        reasons: tuple[str, ...]
-        if signals.duplicate_or_self_message:
-            action = SocialAction.IGNORE
-            reasons = ("duplicate_or_self_message",)
-        elif not signals.known_target or not perception.target_identity_refs:
-            action = SocialAction.IGNORE
-            reasons = ("unknown_response_target",)
-        elif not signals.authorization.can_respond:
-            action = SocialAction.IGNORE
-            reasons = ("response_not_authorized",)
-        elif signals.rate_limited:
-            action = SocialAction.IGNORE
-            reasons = ("interaction_rate_limited",)
-        elif signals.private_data_boundary:
-            action = SocialAction.DEFER
-            reasons = ("private_data_boundary",)
-        elif not signals.explicit_interaction and not signals.private_conversation:
-            action = SocialAction.IGNORE
-            reasons = ("no_explicit_interaction",)
-        elif perception.need_tools:
-            action = SocialAction.DEFER
-            if not signals.authorization.can_use_tools:
-                reasons = ("tool_use_not_authorized",)
-            elif not signals.tools_enabled:
-                reasons = ("tools_disabled",)
-            else:
-                reasons = ("tool_execution_out_of_scope",)
-        else:
-            clarification = next(
-                (
-                    ambiguity.clarification_key
-                    for ambiguity in perception.ambiguities
-                    if ambiguity.clarification_key is not None
-                ),
-                None,
-            )
-            if clarification is not None and (
-                perception.conflicting_evidence
-                or perception.confidence
-                < self._config.clarification_confidence_threshold
-                or perception.ambiguities
-            ):
-                action = SocialAction.ASK_CLARIFICATION
-                reasons = ("bounded_clarification_required",)
-            elif perception.conflicting_evidence:
-                action = SocialAction.DEFER
-                reasons = ("conflicting_evidence_without_clarification",)
-            else:
-                action = SocialAction.DIRECT_REPLY
-                reasons = ("explicit_direct_reply",)
-
-        targets = (
-            perception.target_identity_refs if action is not SocialAction.IGNORE else ()
-        )
-        clarification_key = None
-        if action is SocialAction.ASK_CLARIFICATION:
-            clarification_key = next(
-                ambiguity.clarification_key
-                for ambiguity in perception.ambiguities
-                if ambiguity.clarification_key is not None
-            )
-        confidence = (
-            1.0
-            if action in {SocialAction.IGNORE, SocialAction.DEFER}
-            else perception.confidence
+        action, reasons, targets, clarification_key, confidence = (
+            _social_decision_values(perception, signals, self._config)
         )
         return SocialDecision(
             schema_version=1,
@@ -157,3 +94,122 @@ class DeterministicSocialDecisionPolicy:
             policy_revision=self._config.policy_revision,
             decided_at=now,
         )
+
+
+def validate_social_decision(
+    decision: SocialDecision,
+    perception: PerceptionResult,
+    signals: DecisionSignals,
+    config: SocialDecisionConfig,
+) -> SocialDecision:
+    """Validate the stable policy result without replaying clock or cancellation."""
+
+    if not isinstance(decision, SocialDecision):
+        raise validation_error("invalid_social_decision")
+    if not isinstance(perception, PerceptionResult):
+        raise validation_error("invalid_perception_result")
+    if not isinstance(signals, DecisionSignals):
+        raise validation_error("invalid_decision_signals")
+    if not isinstance(config, SocialDecisionConfig):
+        raise validation_error("invalid_social_decision_config")
+    action, reasons, targets, clarification_key, confidence = _social_decision_values(
+        perception,
+        signals,
+        config,
+    )
+    expected = SocialDecision(
+        schema_version=1,
+        decision_id=decision.decision_id,
+        perception_result_digest=perception_result_digest(perception),
+        action=action,
+        confidence=confidence,
+        reason_codes=reasons,
+        target_identity_refs=targets,
+        clarification_key=clarification_key,
+        response_constraints=config.response_constraints,
+        policy_revision=config.policy_revision,
+        decided_at=decision.decided_at,
+    )
+    if decision != expected:
+        raise validation_error("social_decision_binding_mismatch")
+    return decision
+
+
+def _social_decision_values(
+    perception: PerceptionResult,
+    signals: DecisionSignals,
+    config: SocialDecisionConfig,
+) -> tuple[
+    SocialAction,
+    tuple[str, ...],
+    tuple[str, ...],
+    ClarificationKey | None,
+    float,
+]:
+    action: SocialAction
+    reasons: tuple[str, ...]
+    if signals.duplicate_or_self_message:
+        action = SocialAction.IGNORE
+        reasons = ("duplicate_or_self_message",)
+    elif not signals.known_target or not perception.target_identity_refs:
+        action = SocialAction.IGNORE
+        reasons = ("unknown_response_target",)
+    elif not signals.authorization.can_respond:
+        action = SocialAction.IGNORE
+        reasons = ("response_not_authorized",)
+    elif signals.rate_limited:
+        action = SocialAction.IGNORE
+        reasons = ("interaction_rate_limited",)
+    elif signals.private_data_boundary:
+        action = SocialAction.DEFER
+        reasons = ("private_data_boundary",)
+    elif not signals.explicit_interaction and not signals.private_conversation:
+        action = SocialAction.IGNORE
+        reasons = ("no_explicit_interaction",)
+    elif perception.need_tools:
+        action = SocialAction.DEFER
+        if not signals.authorization.can_use_tools:
+            reasons = ("tool_use_not_authorized",)
+        elif not signals.tools_enabled:
+            reasons = ("tools_disabled",)
+        else:
+            reasons = ("tool_execution_out_of_scope",)
+    else:
+        clarification = next(
+            (
+                ambiguity.clarification_key
+                for ambiguity in perception.ambiguities
+                if ambiguity.clarification_key is not None
+            ),
+            None,
+        )
+        if clarification is not None and (
+            perception.conflicting_evidence
+            or perception.confidence < config.clarification_confidence_threshold
+            or perception.ambiguities
+        ):
+            action = SocialAction.ASK_CLARIFICATION
+            reasons = ("bounded_clarification_required",)
+        elif perception.conflicting_evidence:
+            action = SocialAction.DEFER
+            reasons = ("conflicting_evidence_without_clarification",)
+        else:
+            action = SocialAction.DIRECT_REPLY
+            reasons = ("explicit_direct_reply",)
+
+    targets = (
+        perception.target_identity_refs if action is not SocialAction.IGNORE else ()
+    )
+    clarification_key = None
+    if action is SocialAction.ASK_CLARIFICATION:
+        clarification_key = next(
+            ambiguity.clarification_key
+            for ambiguity in perception.ambiguities
+            if ambiguity.clarification_key is not None
+        )
+    confidence = (
+        1.0
+        if action in {SocialAction.IGNORE, SocialAction.DEFER}
+        else perception.confidence
+    )
+    return action, reasons, targets, clarification_key, confidence

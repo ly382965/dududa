@@ -11,8 +11,39 @@ Last sync: unix:1785785642
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S10 now provides the complete offline direct-chat path from a validated start
+  request through S09 complexity/tiering, S08 static routing, composition,
+  validation and an immutable caller-owned DeliveryRequest.
+- Runtime state persists and revalidates policy, authorization, Perception,
+  complexity, Social, Tier and route evidence; duplicate starts are single-flight
+  through Store CAS and do not repeat the model chain.
+- Delivery acknowledgement is resumable across its three persisted phases,
+  reconciliation uses CAS retry across Runtime instances, missing parts are
+  canonical UNKNOWN evidence, and checkpoint lifetime covers the reconciliation
+  window.
+- Shadow exposes only a bounded machine-code/digest receipt and has no Output,
+  Memory, Tool or event-stop capability.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added versioned S10 DTOs, Offline composition Protocols, Context/Identity,
+  budget, Perception execution receipts, Direct Chat, composition, Store,
+  Orchestrator, Delivery Driver and Shadow Runner.
+- Added adversarial state-evidence, 50-way duplicate, cross-Runtime delivery
+  concurrency, interrupted acknowledgement recovery and forbidden-side-effect
+  tests.
+- Python 3.10 and 3.12 each pass 325 tests with the same two AstrBot-host-only
+  skips; warnings-as-errors Runtime tests, Ruff 0.12.7, compile, secret and
+  whitespace checks pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No branch-local implementation issue remains. Real AstrBot Provider/QQ send
+  and group canary evidence is intentionally owned by S11 and its deployment
+  environment.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- S10 is ready for Lead completion and integration into `codex/s08-s11`.
+- Enter `controlled-rollout` next; preserve the offline Runtime boundary and do
+  not add Bandit, Memory, MCP/Tool execution or proactive group behavior.

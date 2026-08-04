@@ -11,6 +11,7 @@ from dududa.runtime.state import (
     RuntimeResult,
     RuntimeStartRequest,
 )
+from dududa.runtime.contracts import DeliveryReconciliationReceipt
 
 
 RawEventT = TypeVar("RawEventT")
@@ -36,11 +37,15 @@ class FakeAgentRuntime:
         self,
         run: Callable[[RuntimeStartRequest], RuntimeResult],
         acknowledge: Callable[[DeliveryReceipt], CompletionReceipt],
+        reconcile: Callable[[DeliveryReceipt], DeliveryReconciliationReceipt]
+        | None = None,
     ) -> None:
         self._run = run
         self._acknowledge = acknowledge
+        self._reconcile = reconcile
         self.run_calls: list[tuple[RuntimeStartRequest, PortCallContext]] = []
         self.acknowledge_calls: list[tuple[DeliveryReceipt, PortCallContext]] = []
+        self.reconcile_calls: list[tuple[DeliveryReceipt, PortCallContext]] = []
 
     async def run(
         self,
@@ -59,3 +64,14 @@ class FakeAgentRuntime:
     ) -> CompletionReceipt:
         self.acknowledge_calls.append((receipt, call))
         return self._acknowledge(receipt)
+
+    async def reconcile_delivery(
+        self,
+        receipt: DeliveryReceipt,
+        *,
+        call: PortCallContext,
+    ) -> DeliveryReconciliationReceipt:
+        self.reconcile_calls.append((receipt, call))
+        if self._reconcile is None:
+            raise RuntimeError("Fake Agent Runtime reconciliation is not scripted")
+        return self._reconcile(receipt)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from dududa.contracts.canonical import canonical_digest
+from dududa.domain.content import SafetyStage
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.primitives import DigestString, JsonValue, ResourceRef, ResourceUsage
-from typing import Mapping
 
 from .models import (
     AuditEvent,
@@ -135,6 +137,19 @@ def content_safety_request_digest(request: ContentSafetyRequest) -> DigestString
         },
         domain="security:content-safety-request:v1",
     )
+
+
+def content_safety_content_digest(
+    content: JsonValue,
+    stage: SafetyStage,
+) -> DigestString:
+    if stage is SafetyStage.DRAFT_OUTPUT:
+        domain = "response:draft:v1"
+    elif stage is SafetyStage.FINAL_OUTPUT:
+        domain = "response:final:v1"
+    else:
+        domain = "security:content:v1"
+    return canonical_digest(content, domain=domain)
 
 
 def audit_event_digest(event: AuditEvent) -> DigestString:

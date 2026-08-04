@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from dududa.domain.primitives import PrivacyLevel, RuntimeBudget
+from dududa.domain.primitives import ConversationType, PrivacyLevel, RuntimeBudget
 from dududa.domain.task import TaskComplexityAssessment
 from dududa.errors import validation_error
 from dududa.models.contracts import ModelRole
@@ -13,8 +13,65 @@ from dududa.models.policy import (
 )
 from dududa.models.tiering import validate_tier_decision
 from dududa.perception.complexity import ComplexityAssessorConfig
+from dududa.perception.contracts import (
+    AuthorizationView,
+    DecisionSignals,
+    GroupInteractionMode,
+)
 from dududa.perception.merge import PerceptionMergeConfig
 from dududa.ports.models import ModelTierPolicy
+from dududa.security.models import AuthorizationDecision, AuthorizationEffect
+
+
+def project_s10_decision_signals(
+    *,
+    authorization: AuthorizationDecision,
+    duplicate_or_self_message: bool,
+    explicit_interaction: bool,
+    conversation_type: ConversationType,
+    data_classification: PrivacyLevel,
+    group_mode: GroupInteractionMode,
+    known_target: bool,
+) -> DecisionSignals:
+    if not isinstance(authorization, AuthorizationDecision):
+        raise validation_error("invalid_response_authorization")
+    if type(duplicate_or_self_message) is not bool:
+        raise validation_error("invalid_duplicate_or_self_signal")
+    if type(explicit_interaction) is not bool:
+        raise validation_error("invalid_explicit_interaction_signal")
+    if not isinstance(conversation_type, ConversationType):
+        raise validation_error("invalid_decision_conversation_type")
+    if not isinstance(data_classification, PrivacyLevel):
+        raise validation_error("invalid_decision_data_classification")
+    if not isinstance(group_mode, GroupInteractionMode):
+        raise validation_error("invalid_decision_group_mode")
+    if type(known_target) is not bool:
+        raise validation_error("invalid_known_target_signal")
+    authorization_reasons = authorization.reason_codes or (
+        "authorization_reason_unspecified",
+    )
+    private_data_boundary = (
+        conversation_type is not ConversationType.PRIVATE
+        and data_classification
+        in {PrivacyLevel.PERSONAL, PrivacyLevel.SENSITIVE, PrivacyLevel.RESTRICTED}
+    )
+    return DecisionSignals(
+        schema_version=1,
+        authorization=AuthorizationView(
+            schema_version=1,
+            can_respond=authorization.effect is AuthorizationEffect.ALLOW,
+            can_use_tools=False,
+            reason_codes=authorization_reasons,
+        ),
+        duplicate_or_self_message=duplicate_or_self_message,
+        explicit_interaction=explicit_interaction,
+        private_conversation=conversation_type is ConversationType.PRIVATE,
+        group_mode=group_mode,
+        rate_limited=False,
+        private_data_boundary=private_data_boundary,
+        tools_enabled=False,
+        known_target=known_target,
+    )
 
 
 def project_tier_selection_context(

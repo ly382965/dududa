@@ -180,6 +180,25 @@ class DeterministicComplexityAssessor:
         )
 
 
+def validate_task_complexity_assessment(
+    assessment: TaskComplexityAssessment,
+    context: PerceptionContext,
+    perception: PerceptionResult,
+    config: ComplexityAssessorConfig,
+) -> TaskComplexityAssessment:
+    """Recompute every deterministic assessment field against its source evidence."""
+
+    if not isinstance(assessment, TaskComplexityAssessment):
+        raise validation_error("invalid_task_complexity_assessment")
+    expected = DeterministicComplexityAssessor(
+        config,
+        id_factory=lambda: assessment.assessment_id,
+    ).assess(context, perception)
+    if assessment != expected:
+        raise validation_error("task_complexity_assessment_binding_mismatch")
+    return assessment
+
+
 def _context_pressure(
     tokens: int,
     config: ComplexityAssessorConfig,

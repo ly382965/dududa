@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timezone
 
-from dududa.contracts.canonical import canonical_digest
 from dududa.domain.content import ContentSafetyDecision
 from dududa.domain.primitives import (
     ComponentRevision,
@@ -14,7 +13,7 @@ from dududa.domain.primitives import (
 from dududa.errors import ErrorCategory, error
 from dududa.ports.context import PortCallContext
 
-from .digests import content_safety_request_digest
+from .digests import content_safety_content_digest, content_safety_request_digest
 from .models import ContentSafetyRequest, RedactionRequest
 from .redaction import DefaultRedactor
 
@@ -56,9 +55,9 @@ class DefaultContentSafetyPolicy:
                 ErrorCategory.VALIDATION,
                 "security.content_rejected",
             )
-        expected_content = canonical_digest(
+        expected_content = content_safety_content_digest(
             request.content,
-            domain="security:content:v1",
+            request.stage,
         )
         if expected_content != request.content_digest:
             raise error(

@@ -15,44 +15,44 @@ Title: S10 Offline Runtime
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Runtime/Delivery public contracts are versioned, immutable,
+- [x] Runtime/Delivery public contracts are versioned, immutable,
   canonical-digestible and consistent with the S10 Spec.
-- [ ] Perception exposes sanitized execution evidence and total two-call budget
+- [x] Perception exposes sanitized execution evidence and total two-call budget
   accounting is conservative under success/fallback/failure.
-- [ ] Current-message Context is bounded/de-identified and opaque targets map
+- [x] Current-message Context is bounded/de-identified and opaque targets map
   back only through a validated current-Scope identity binding.
-- [ ] In-memory Store proves atomic create, revision CAS, dedup conflict,
+- [x] In-memory Store proves atomic create, revision CAS, dedup conflict,
   same-process single-flight, TTL and non-evicting tombstone capacity.
-- [ ] Orchestrator runs explicit private/group-mention direct chat through
+- [x] Orchestrator runs explicit private/group-mention direct chat through
   Complexity, TierPolicy, S08 Router, Composer, Renderer and validation.
-- [ ] Ignore, clarification, tools-disabled, invalid output, budget, deadline
+- [x] Ignore, clarification, tools-disabled, invalid output, budget, deadline
   and cancellation paths produce safe typed state/results.
-- [ ] DeliveryRequest authorization/digests bind one intent; four real receipt
+- [x] DeliveryRequest authorization/digests bind one intent; four real receipt
   statuses, exact replay and monotonic reconciliation are tested.
-- [ ] Shadow public output is non-deliverable and tests prove zero Output,
+- [x] Shadow public output is non-deliverable and tests prove zero Output,
   Memory, Tool and event-stop calls.
-- [ ] Focused/full verification passes on Python 3.10 and 3.12 with all external
+- [x] Focused/full verification passes on Python 3.10 and 3.12 with all external
   evidence gaps recorded.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Add S10 cross-stage DTOs, execution receipts, canonical digests and public
+- [x] Add S10 cross-stage DTOs, execution receipts, canonical digests and public
   Protocol exports.
-- [ ] Correct `DeliveryConstraints`, Completion status, RuntimeResult binding,
+- [x] Correct `DeliveryConstraints`, Completion status, RuntimeResult binding,
   `reconcile_delivery()` and AstrBot exact-replay/UTF-8 splitting behavior.
-- [ ] Implement and test current-message Context Builder plus identity binding.
-- [ ] Implement and test budget reservations and execution-capable Perception.
-- [ ] Implement and test in-memory Runtime State Store, state invariants and
+- [x] Implement and test current-message Context Builder plus identity binding.
+- [x] Implement and test budget reservations and execution-capable Perception.
+- [x] Implement and test in-memory Runtime State Store, state invariants and
   duplicate single-flight waiting.
-- [ ] Implement and test Direct Chat request/projection over S08 Router.
-- [ ] Implement and test Composer, deterministic Persona renderer, render
+- [x] Implement and test Direct Chat request/projection over S08 Router.
+- [x] Implement and test Composer, deterministic Persona renderer, render
   validator and content-safety binding.
-- [ ] Implement Orchestrator phase flow, terminal reducers and route/budget
+- [x] Implement Orchestrator phase flow, terminal reducers and route/budget
   receipts with focused failure/cancellation tests.
-- [ ] Implement Delivery builder, offline delivery driver, acknowledgement and
+- [x] Implement Delivery builder, offline delivery driver, acknowledgement and
   reconciliation with adversarial concurrent receipts.
-- [ ] Implement sanitized Shadow Runner and forbidden-side-effect tests.
-- [ ] Run adversarial review and full verification matrix; synchronize Progress,
+- [x] Implement sanitized Shadow Runner and forbidden-side-effect tests.
+- [x] Run adversarial review and full verification matrix; synchronize Progress,
   Findings and Verification and commit the branch handoff.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)

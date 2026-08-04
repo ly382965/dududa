@@ -32,10 +32,27 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.models.contracts",
     "dududa.models.errors",
     "dududa.models.policy",
+    "dududa.perception.complexity",
     "dududa.perception.contracts",
+    "dududa.perception.social",
     "dududa.ports.context",
     "dududa.ports.models",
     "dududa.ports.perception",
+    "dududa.ports.runtime",
+    "dududa.runtime.composition",
+    "dududa.runtime.context",
+    "dududa.runtime.contracts",
+    "dududa.runtime.authorization",
+    "dududa.runtime.budget",
+    "dududa.runtime.delivery",
+    "dududa.runtime.direct_chat",
+    "dududa.runtime.offline",
+    "dududa.runtime.orchestrator",
+    "dududa.runtime.perception",
+    "dududa.runtime.selection",
+    "dududa.runtime.shadow",
+    "dududa.runtime.state",
+    "dududa.runtime.store",
     "dududa.security.models",
 )
 
@@ -46,6 +63,133 @@ FORBIDDEN_INTERNAL_IMPORTS = {
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s10_expected_exports_are_visible_and_owned_by_their_modules(self) -> None:
+        import importlib
+
+        ports = importlib.import_module("dududa.ports")
+        runtime = importlib.import_module("dududa.runtime")
+        expected_ports = {
+            "AgentRuntime",
+            "OfflineFinalResponseValidator",
+            "OfflinePersonaRenderer",
+            "OfflineRenderValidator",
+            "OfflineResponseComposer",
+            "RuntimePerceptionEngine",
+            "RuntimeStateStore",
+            "ShadowReceiptSink",
+        }
+        expected_runtime_owners = {
+            "CurrentMessageContextBuilder": "dududa.runtime.context",
+            "DeliveryRequestBuilder": "dududa.runtime.delivery",
+            "DirectChatModelCall": "dududa.runtime.direct_chat",
+            "InMemoryRuntimeStateStore": "dududa.runtime.store",
+            "OfflineDeliveryDriver": "dududa.runtime.offline",
+            "OfflineRuntimeOrchestrator": "dududa.runtime.orchestrator",
+            "RuntimeModelBudgetPlan": "dududa.runtime.budget",
+            "ShadowRunner": "dududa.runtime.shadow",
+        }
+        expected_runtime = {
+            "CompletionReceipt",
+            "ConnectorResult",
+            "CurrentMessageContext",
+            "CurrentMessageContextBuilder",
+            "CurrentMessageContextBuilderConfig",
+            "DeliveryReconciliationAction",
+            "DeliveryReconciliationReceipt",
+            "DeliveryRequestBuilder",
+            "DeliveryRequestBuilderConfig",
+            "DeliveryRequestPlan",
+            "DeterministicPersonaRenderer",
+            "DeterministicPersonaRendererConfig",
+            "DeterministicRenderValidator",
+            "DirectChatContent",
+            "DirectChatExecutionReceipt",
+            "DirectChatFailureReceipt",
+            "DirectChatModelCall",
+            "DirectChatModelCallConfig",
+            "FinalResponseSafetyValidator",
+            "HybridPerceptionEngine",
+            "InMemoryRuntimeStateStore",
+            "InMemoryRuntimeStateStoreConfig",
+            "MinimalResponseComposer",
+            "MinimalResponseComposerConfig",
+            "OfflineDeliveryDriver",
+            "OfflineDeliveryRunResult",
+            "OfflinePreprocessReceipt",
+            "OfflineRuntimeOrchestrator",
+            "OfflineRuntimeOrchestratorConfig",
+            "OfflineRuntimePolicySnapshot",
+            "Outcome",
+            "PerceptionExecutionReceipt",
+            "RouterBackedModelPerception",
+            "RouterBackedModelPerceptionConfig",
+            "RuntimeAdmissionAction",
+            "RuntimeCheckpoint",
+            "RuntimeCommitDisposition",
+            "RuntimeCommitRequest",
+            "RuntimeCommitResult",
+            "RuntimeDedupRecord",
+            "RuntimeDirectChatFailure",
+            "RuntimeIdentityBinding",
+            "RuntimeInvocationOptions",
+            "RuntimeModelBudgetPlan",
+            "RuntimeModelPerceptionFailure",
+            "RuntimePhase",
+            "RuntimeResult",
+            "RuntimeSelectionSummary",
+            "RuntimeStartRequest",
+            "RuntimeState",
+            "ShadowRunReceipt",
+            "ShadowRunner",
+            "TraceEvent",
+            "TraceSummary",
+            "acknowledge_delivery_state",
+            "current_message_context_digest",
+            "delivery_acknowledgement_states",
+            "direct_chat_content_digest",
+            "project_s10_decision_signals",
+            "project_tier_selection_context",
+            "reconcile_completed_delivery",
+            "runtime_start_digest",
+            "select_model_tier",
+            "serialize_perception_context",
+            "transition",
+            "validate_runtime_state",
+            "validate_selection_configuration",
+        }
+        self.assertLessEqual(expected_ports, set(ports.__all__))
+        self.assertEqual(expected_runtime, set(runtime.__all__))
+        self.assertEqual(len(runtime.__all__), len(set(runtime.__all__)))
+        self.assertLessEqual(set(ports.__all__), set(dir(ports)))
+        self.assertLessEqual(set(runtime.__all__), set(dir(runtime)))
+        for name, module_name in expected_runtime_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(runtime, name), getattr(owner, name))
+
+    def test_s10_default_composition_implements_offline_ports(self) -> None:
+        from dududa.ports.runtime import (
+            OfflineFinalResponseValidator,
+            OfflinePersonaRenderer,
+            OfflineRenderValidator,
+            OfflineResponseComposer,
+        )
+        from dududa.runtime.composition import (
+            DeterministicPersonaRenderer,
+            DeterministicRenderValidator,
+            FinalResponseSafetyValidator,
+            MinimalResponseComposer,
+        )
+
+        for implementation, protocol in (
+            (MinimalResponseComposer, OfflineResponseComposer),
+            (DeterministicPersonaRenderer, OfflinePersonaRenderer),
+            (DeterministicRenderValidator, OfflineRenderValidator),
+            (FinalResponseSafetyValidator, OfflineFinalResponseValidator),
+        ):
+            with self.subTest(implementation=implementation.__name__):
+                self.assertTrue(issubclass(implementation, protocol))
+
     def test_core_has_only_standard_library_and_internal_imports(self) -> None:
         violations: list[str] = []
         for path in SOURCE.rglob("*.py"):
@@ -87,10 +231,45 @@ class ImportBoundaryTests(unittest.TestCase):
                             )
         self.assertEqual(violations, [])
 
+    def test_shadow_runtime_has_no_side_effect_capability_imports(self) -> None:
+        path = SOURCE / "runtime" / "shadow.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.level:
+                    imported.add(f"dududa.runtime.{node.module}")
+                else:
+                    imported.add(node.module)
+        forbidden = (
+            "dududa.ports.output",
+            "dududa.ports.memory",
+            "dududa.memory",
+            "dududa.runtime.offline",
+            "dududa.runtime.delivery",
+            "dududa.capabilities",
+            "astrbot",
+            "plugins",
+            "mcp",
+        )
+        violations = sorted(
+            name
+            for name in imported
+            if any(
+                name == prefix or name.startswith(f"{prefix}.") for prefix in forbidden
+            )
+        )
+        self.assertEqual(violations, [])
+
     def test_public_packages_are_valid_first_imports(self) -> None:
         for module in PUBLIC_PACKAGES + ORDER_SENSITIVE_MODULES:
             with self.subTest(module=module):
-                self._assert_clean_import((module,))
+                self._assert_clean_import(
+                    (module,),
+                    resolve_exports=module in ORDER_SENSITIVE_MODULES,
+                )
 
     def test_public_exports_survive_forward_and_reverse_import_order(self) -> None:
         for modules in (PUBLIC_PACKAGES, tuple(reversed(PUBLIC_PACKAGES))):

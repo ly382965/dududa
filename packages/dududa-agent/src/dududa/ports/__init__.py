@@ -36,7 +36,17 @@ if TYPE_CHECKING:
         TaskComplexityAssessor,
     )
     from .output import OutputAdapter
-    from .runtime import AgentRuntime, InputConnector
+    from .runtime import (
+        AgentRuntime,
+        OfflineFinalResponseValidator,
+        OfflinePersonaRenderer,
+        OfflineRenderValidator,
+        OfflineResponseComposer,
+        InputConnector,
+        RuntimePerceptionEngine,
+        RuntimeStateStore,
+        ShadowReceiptSink,
+    )
 
 __all__ = [
     "AgentRuntime",
@@ -44,6 +54,10 @@ __all__ = [
     "BoundedAttachmentStream",
     "BootstrapModelTierPolicy",
     "CancellationToken",
+    "OfflineFinalResponseValidator",
+    "OfflinePersonaRenderer",
+    "OfflineRenderValidator",
+    "OfflineResponseComposer",
     "InputConnector",
     "ManualCancellationToken",
     "MemoryRepository",
@@ -64,6 +78,9 @@ __all__ = [
     "PerceptionMerger",
     "PerceptionValidator",
     "RulePerception",
+    "RuntimePerceptionEngine",
+    "RuntimeStateStore",
+    "ShadowReceiptSink",
     "ScopeSelectorVerifier",
     "ServiceCallContext",
     "ServicePrincipal",
@@ -156,8 +173,42 @@ def __getattr__(name: str) -> object:
             "SocialDecisionEngine": SocialDecisionEngine,
             "TaskComplexityAssessor": TaskComplexityAssessor,
         }[name]
-    if name in {"AgentRuntime", "InputConnector"}:
-        from .runtime import AgentRuntime, InputConnector
+    if name in {
+        "AgentRuntime",
+        "OfflineFinalResponseValidator",
+        "OfflinePersonaRenderer",
+        "OfflineRenderValidator",
+        "OfflineResponseComposer",
+        "InputConnector",
+        "RuntimePerceptionEngine",
+        "RuntimeStateStore",
+        "ShadowReceiptSink",
+    }:
+        from .runtime import (
+            AgentRuntime,
+            OfflineFinalResponseValidator,
+            OfflinePersonaRenderer,
+            OfflineRenderValidator,
+            OfflineResponseComposer,
+            InputConnector,
+            RuntimePerceptionEngine,
+            RuntimeStateStore,
+            ShadowReceiptSink,
+        )
 
-        return {"AgentRuntime": AgentRuntime, "InputConnector": InputConnector}[name]
+        return {
+            "AgentRuntime": AgentRuntime,
+            "OfflineFinalResponseValidator": OfflineFinalResponseValidator,
+            "OfflinePersonaRenderer": OfflinePersonaRenderer,
+            "OfflineRenderValidator": OfflineRenderValidator,
+            "OfflineResponseComposer": OfflineResponseComposer,
+            "InputConnector": InputConnector,
+            "RuntimePerceptionEngine": RuntimePerceptionEngine,
+            "RuntimeStateStore": RuntimeStateStore,
+            "ShadowReceiptSink": ShadowReceiptSink,
+        }[name]
     raise AttributeError(name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

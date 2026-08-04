@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import unittest
 
 from dududa.config import parse_security_config
-from dududa.contracts.canonical import canonical_digest
 from dududa.domain.content import SafetyStage
 from dududa.domain.primitives import DigestString, RuntimeBudget, TraceContext
 from dududa.errors import DududaError, ErrorCategory, error
 from dududa.ports.context import NeverCancelled, PortCallContext
 from dududa.security.authorization import LegacyActorInput, LegacyRolePolicy
 from dududa.security.content_safety import DefaultContentSafetyPolicy
-from dududa.security.digests import content_safety_request_digest
+from dududa.security.digests import (
+    content_safety_content_digest,
+    content_safety_request_digest,
+)
 from dududa.security.models import ContentSafetyRequest
 
 
@@ -82,7 +84,7 @@ class ConfigContentCompatibilityTests(unittest.IsolatedAsyncioTestCase):
             TraceContext("trace-1"),
             now + timedelta(minutes=1),
             NeverCancelled(),
-            RuntimeBudget(1, 0, 0, 100, 100, Decimal("1")),
+            RuntimeBudget(1, 0, 0, 100, 100, Decimal(1)),
             "policy-v1",
         )
         content = {"text": "safe response"}
@@ -92,7 +94,7 @@ class ConfigContentCompatibilityTests(unittest.IsolatedAsyncioTestCase):
             DigestString("pending"),
             SafetyStage.FINAL_OUTPUT,
             content,
-            canonical_digest(content, domain="security:content:v1"),
+            content_safety_content_digest(content, SafetyStage.FINAL_OUTPUT),
             DigestString("actor"),
             DigestString("scope"),
         )

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
         ComplexityAssessorConfig,
         DeterministicComplexityAssessor,
         default_complexity_assessor_config,
+        validate_task_complexity_assessment,
     )
     from .contracts import (
         AmbiguityCandidate,
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
     from .social import (
         DeterministicSocialDecisionPolicy,
         SocialDecisionConfig,
+        validate_social_decision,
     )
 
 __all__ = [
@@ -100,6 +102,8 @@ __all__ = [
     "validate_model_projection",
     "validate_perception_result",
     "validate_rule_result",
+    "validate_social_decision",
+    "validate_task_complexity_assessment",
 ]
 
 _CONTRACT_EXPORTS = {
@@ -136,12 +140,14 @@ def __getattr__(name: str) -> object:
     if name in {
         "DeterministicSocialDecisionPolicy",
         "SocialDecisionConfig",
+        "validate_social_decision",
     }:
         return getattr(import_module(".social", __name__), name)
     if name in {
         "ComplexityAssessorConfig",
         "DeterministicComplexityAssessor",
         "default_complexity_assessor_config",
+        "validate_task_complexity_assessment",
     }:
         return getattr(import_module(".complexity", __name__), name)
     if name in _CONTRACT_EXPORTS:

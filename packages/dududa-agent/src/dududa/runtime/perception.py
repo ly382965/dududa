@@ -16,6 +16,8 @@ from dududa.models.contracts import (
     ModelRequest,
     ModelResponse,
     ModelRole,
+    ModelUsage,
+    RouteDecision,
 )
 from dududa.models.digests import model_request_fingerprint, route_decision_digest
 from dududa.models.errors import ModelInvocationError
@@ -37,6 +39,8 @@ from dududa.perception.validation import validate_model_projection
 from dududa.ports.context import PortCallContext
 from dududa.ports.models import BootstrapModelTierPolicy, ModelRouter
 from dududa.ports.perception import ModelPerception, PerceptionMerger, RulePerception
+
+from .contracts import PerceptionExecutionReceipt
 
 
 _PERCEPTION_INSTRUCTION = (
@@ -92,6 +96,10 @@ class RuntimeModelPerceptionFailure(DududaError):
         *,
         code: str,
         route_receipt_digest: DigestString | None,
+        model_call_started: bool = False,
+        request_fingerprint: DigestString | None = None,
+        route_decision: RouteDecision | None = None,
+        reported_usage: ModelUsage | None = None,
     ) -> None:
         if status not in {
             PerceptionModelStatus.INVALID,
@@ -116,6 +124,18 @@ class RuntimeModelPerceptionFailure(DududaError):
         )
         self.status = status
         self.route_receipt_digest = route_receipt_digest
+        self.model_call_started = model_call_started
+        self.request_fingerprint = request_fingerprint
+        self.route_decision = route_decision
+        self.reported_usage = reported_usage
+
+
+@dataclass(frozen=True, slots=True)
+class _ModelPerceptionExecution:
+    projection: ModelPerceptionProjection
+    request_fingerprint: DigestString
+    route_decision: RouteDecision
+    reported_usage: ModelUsage | None
 
 
 class RouterBackedModelPerception:
@@ -150,6 +170,15 @@ class RouterBackedModelPerception:
         *,
         call: PortCallContext,
     ) -> ModelPerceptionProjection:
+        execution = await self.perceive_with_receipt(context, call=call)
+        return execution.projection
+
+    async def perceive_with_receipt(
+        self,
+        context: PerceptionContext,
+        *,
+        call: PortCallContext,
+    ) -> _ModelPerceptionExecution:
         if not isinstance(context, PerceptionContext):
             raise validation_error("invalid_perception_context")
         if context.limits != self._config.limits:
@@ -214,6 +243,7 @@ class RouterBackedModelPerception:
             request,
             idempotency_key=str(model_request_fingerprint(request)),
         )
+        request_fingerprint = model_request_fingerprint(request)
         response = await self._router.invoke(request, authority, call=call)
         _raise_if_stopped(call, self._clock())
         if not isinstance(response, ModelResponse):
@@ -221,6 +251,8 @@ class RouterBackedModelPerception:
                 PerceptionModelStatus.INVALID,
                 code="invalid_model_perception_response",
                 route_receipt_digest=None,
+                model_call_started=True,
+                request_fingerprint=request_fingerprint,
             )
         schema_digest = request.output_schema.digest if request.output_schema else None
         if (
@@ -231,6 +263,10 @@ class RouterBackedModelPerception:
                 PerceptionModelStatus.INVALID,
                 code="model_perception_response_binding_mismatch",
                 route_receipt_digest=route_decision_digest(response.route_decision),
+                model_call_started=bool(response.route_decision.attempts),
+                request_fingerprint=request_fingerprint,
+                route_decision=response.route_decision,
+                reported_usage=response.usage,
             )
         route_receipt = route_decision_digest(response.route_decision)
         projection: ModelPerceptionProjection | None = None
@@ -252,8 +288,17 @@ class RouterBackedModelPerception:
                 PerceptionModelStatus.INVALID,
                 code="invalid_model_perception_projection",
                 route_receipt_digest=route_receipt,
+                model_call_started=bool(response.route_decision.attempts),
+                request_fingerprint=request_fingerprint,
+                route_decision=response.route_decision,
+                reported_usage=response.usage,
             )
-        return projection
+        return _ModelPerceptionExecution(
+            projection=projection,
+            request_fingerprint=request_fingerprint,
+            route_decision=response.route_decision,
+            reported_usage=response.usage,
+        )
 
 
 class HybridPerceptionEngine:
@@ -327,6 +372,92 @@ class HybridPerceptionEngine:
             projection if status is PerceptionModelStatus.VALID else None,
             model_status=status,
             model_route_receipt_digest=route_receipt,
+        )
+
+    async def perceive_with_receipt(
+        self,
+        context: PerceptionContext,
+        *,
+        call: PortCallContext,
+    ) -> PerceptionExecutionReceipt:
+        _raise_if_stopped(call, self._clock())
+        method = getattr(self._model, "perceive_with_receipt", None)
+        if not callable(method):
+            raise validation_error("model_perception_execution_receipt_unsupported")
+        rules = self._rules.perceive(context)
+        projection: ModelPerceptionProjection | None = None
+        status = PerceptionModelStatus.UNAVAILABLE
+        route_receipt: DigestString | None = None
+        route_decision: RouteDecision | None = None
+        request_fingerprint: DigestString | None = None
+        reported_usage: ModelUsage | None = None
+        model_call_started = False
+        failure_code: str | None = None
+        try:
+            execution = await method(context, call=call)
+            if not isinstance(execution, _ModelPerceptionExecution):
+                raise validation_error("invalid_model_perception_execution_receipt")
+            _raise_if_stopped(call, self._clock())
+            projection = execution.projection
+            validate_model_projection(context, projection)
+            status = PerceptionModelStatus.VALID
+            route_decision = execution.route_decision
+            route_receipt = route_decision_digest(route_decision)
+            request_fingerprint = execution.request_fingerprint
+            reported_usage = execution.reported_usage
+            model_call_started = bool(route_decision.attempts)
+        except RuntimeModelPerceptionFailure as failure:
+            status = failure.status
+            route_receipt = failure.route_receipt_digest
+            route_decision = failure.route_decision
+            request_fingerprint = failure.request_fingerprint
+            reported_usage = failure.reported_usage
+            model_call_started = failure.model_call_started
+            failure_code = failure.info.code
+        except ModelInvocationError as failure:
+            if failure.info.category in {
+                ErrorCategory.CANCELLED,
+                ErrorCategory.TIMEOUT,
+            }:
+                raise
+            status = (
+                PerceptionModelStatus.INVALID
+                if failure.info.category is ErrorCategory.VALIDATION
+                else PerceptionModelStatus.UNAVAILABLE
+            )
+            route_decision = failure.route_decision
+            route_receipt = route_decision_digest(route_decision)
+            request_fingerprint = route_decision.model_request_fingerprint
+            model_call_started = bool(route_decision.attempts)
+            failure_code = failure.info.code
+        except DududaError as failure:
+            if failure.info.category in {
+                ErrorCategory.CANCELLED,
+                ErrorCategory.TIMEOUT,
+            }:
+                raise
+            status = (
+                PerceptionModelStatus.INVALID
+                if failure.info.category is ErrorCategory.VALIDATION
+                else PerceptionModelStatus.UNAVAILABLE
+            )
+            failure_code = failure.info.code
+        result = self._merger.merge(
+            context,
+            rules,
+            projection if status is PerceptionModelStatus.VALID else None,
+            model_status=status,
+            model_route_receipt_digest=route_receipt,
+        )
+        return PerceptionExecutionReceipt(
+            schema_version=1,
+            result=result,
+            model_call_started=model_call_started,
+            request_fingerprint=request_fingerprint,
+            route_decision=route_decision,
+            reported_usage=reported_usage,
+            model_status=status,
+            failure_code=failure_code,
         )
 
 

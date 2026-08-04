@@ -5,7 +5,6 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Protocol
 
-from dududa.contracts.canonical import canonical_digest
 from dududa.contracts.delivery import (
     delivery_authorization_metadata,
     delivery_authorization_resource,
@@ -59,7 +58,7 @@ class _AstrBotComponentFactory:
         return self._reply(id=message_id)
 
     def chain(self, components: list[object]) -> object:
-        return getattr(self._event, "chain_result")(components)
+        return self._event.chain_result(components)
 
 
 class InMemoryDeliveryLedger:
@@ -110,9 +109,7 @@ class AstrBotOutputAdapter:
         call: PortCallContext,
     ) -> DeliveryReceipt:
         now = self._clock()
-        if call.cancellation.is_cancelled or call.deadline <= now:
-            raise _output_error("delivery_cancelled_or_expired")
-        self._validate_request(request, call, now)
+        self._validate_request(request, call)
         async with self._ledger.lock:
             by_id = self._ledger.get(request.delivery_id)
             by_key = self._ledger.get_by_idempotency_key(request.idempotency_key)
@@ -126,7 +123,10 @@ class AstrBotOutputAdapter:
                 ):
                     raise _output_error("delivery_idempotency_conflict")
                 return duplicate
-            receipt = await self._send(request, now)
+            if call.cancellation.is_cancelled or call.deadline <= now:
+                raise _output_error("delivery_cancelled_or_expired")
+            self._validate_fresh_authorization(request, now)
+            receipt = await self._send(request, call, now)
             self._ledger.store(receipt)
             return receipt
 
@@ -134,14 +134,16 @@ class AstrBotOutputAdapter:
         self,
         request: DeliveryRequest,
         call: PortCallContext,
-        now: datetime,
     ) -> None:
         if call.run_id != request.run_id:
             raise _output_error("delivery_run_mismatch")
         if delivery_request_digest(request) != request.request_digest:
             raise _output_error("delivery_request_digest_mismatch")
         payload = request.response if request.response is not None else request.reaction
-        if payload is None or delivery_payload_digest(payload) != request.payload_digest:
+        if (
+            payload is None
+            or delivery_payload_digest(payload) != request.payload_digest
+        ):
             raise _output_error("delivery_payload_digest_mismatch")
         expected_scope = scope_digest(request.scope)
         authorization = request.authorization
@@ -156,8 +158,6 @@ class AstrBotOutputAdapter:
             != resource_digest(delivery_authorization_resource(request))
             or authorization.metadata_digest
             != authorization_metadata_digest(expected_metadata)
-            or authorization.decided_at > now
-            or authorization.expires_at <= now
             or str(authorization.action) != "message.send"
         ):
             raise _output_error("delivery_not_authorized")
@@ -166,7 +166,6 @@ class AstrBotOutputAdapter:
             if (
                 safety.actor_digest != authorization.actor_digest
                 or safety.scope_digest != expected_scope
-                or safety.decided_at > now
             ):
                 raise _output_error("delivery_content_safety_binding_mismatch")
         binding = request.adapter_binding
@@ -197,27 +196,48 @@ class AstrBotOutputAdapter:
             raise _output_error("delivery_event_scope_mismatch")
         if request.attachment_access:
             raise _output_error("delivery_attachments_not_enabled")
+        if request.constraints.allow_forward_bundle:
+            raise _output_error("delivery_forward_bundle_not_supported")
 
-    async def _send(self, request: DeliveryRequest, now: datetime) -> DeliveryReceipt:
+    def _validate_fresh_authorization(
+        self,
+        request: DeliveryRequest,
+        now: datetime,
+    ) -> None:
+        authorization = request.authorization
+        if authorization.decided_at > now or authorization.expires_at <= now:
+            raise _output_error("delivery_not_authorized")
+        if (
+            request.response is not None
+            and request.response.content_safety.decided_at > now
+        ):
+            raise _output_error("delivery_content_safety_binding_mismatch")
+
+    async def _send(
+        self,
+        request: DeliveryRequest,
+        call: PortCallContext,
+        now: datetime,
+    ) -> DeliveryReceipt:
         if request.outcome is Outcome.REACTION:
+            intent = request.part_intents[0]
             part = DeliveryPartReceipt(
                 1,
-                f"{request.delivery_id}:0001",
-                request.payload_digest,
+                intent.part_id,
+                intent.content_digest,
                 DeliveryPartStatus.FAILED,
                 None,
                 "reaction_not_supported",
             )
-            return self._receipt(request, DeliveryStatus.FAILED, (part,), now, "reaction_not_supported")
-        texts = _response_text(request)
-        parts = _split_parts(
-            texts,
-            maximum_characters=request.constraints.max_part_characters,
-            maximum_parts=request.constraints.max_parts,
-        )
+            return self._receipt(
+                request, DeliveryStatus.FAILED, (part,), now, "reaction_not_supported"
+            )
         receipts: list[DeliveryPartReceipt] = []
-        for index, text in enumerate(parts, start=1):
-            part_id = f"{request.delivery_id}:{index:04d}"
+        for index, intent in enumerate(request.part_intents, start=1):
+            if intent.text is None:
+                raise _output_error("delivery_response_part_missing_text")
+            text = intent.text
+            part_id = intent.part_id
             target_ids = (
                 tuple(
                     target.actor_ref.opaque_actor_id
@@ -227,15 +247,32 @@ class AstrBotOutputAdapter:
                 else ()
             )
             reply_to = request.reply_to if index == 1 else None
-            digest = canonical_digest(
-                {
-                    "part_id": part_id,
-                    "reply_to": reply_to,
-                    "target_user_ids": target_ids,
-                    "text": text,
-                },
-                domain="delivery:part:v1",
-            )
+            digest = intent.content_digest
+            if call.cancellation.is_cancelled or call.deadline <= self._clock():
+                receipts.append(
+                    DeliveryPartReceipt(
+                        1,
+                        part_id,
+                        digest,
+                        DeliveryPartStatus.FAILED,
+                        None,
+                        "delivery_cancelled_before_part",
+                    )
+                )
+                status = (
+                    DeliveryStatus.PARTIAL
+                    if any(
+                        item.status is DeliveryPartStatus.SUCCEEDED for item in receipts
+                    )
+                    else DeliveryStatus.FAILED
+                )
+                return self._receipt(
+                    request,
+                    status,
+                    tuple(receipts),
+                    self._clock(),
+                    "delivery_cancelled_before_part",
+                )
             send_started = False
             try:
                 components: list[object] = []
@@ -246,7 +283,7 @@ class AstrBotOutputAdapter:
                 components.append(self._factory.plain(text))
                 chain = self._factory.chain(components)
                 send_started = True
-                await getattr(self._event, "send")(chain)
+                await self._event.send(chain)
             except asyncio.CancelledError:
                 receipts.append(
                     DeliveryPartReceipt(
@@ -268,7 +305,7 @@ class AstrBotOutputAdapter:
                 )
                 self._ledger.store(receipt)
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001 - normalize platform boundary failures
                 part_status = (
                     DeliveryPartStatus.UNKNOWN
                     if send_started
@@ -343,41 +380,10 @@ class AstrBotOutputAdapter:
         )
 
 
-def _response_text(request: DeliveryRequest) -> tuple[str, ...]:
-    if request.response is None:
-        raise _output_error("delivery_response_missing")
-    result: list[str] = []
-    for block in request.response.response.blocks:
-        if block.content.text is not None:
-            result.append(block.content.text)
-        else:
-            raise _output_error("generated_asset_delivery_not_enabled")
-    if not result:
-        raise _output_error("empty_delivery_response")
-    return tuple(result)
-
-
-def _split_parts(
-    texts: tuple[str, ...],
-    *,
-    maximum_characters: int,
-    maximum_parts: int,
-) -> tuple[str, ...]:
-    result: list[str] = []
-    for text in texts:
-        for offset in range(0, len(text), maximum_characters):
-            part = text[offset : offset + maximum_characters]
-            if part:
-                result.append(part)
-    if not result or len(result) > maximum_parts:
-        raise _output_error("delivery_part_limit_exceeded")
-    return tuple(result)
-
-
 def _safe_call(value: object, name: str) -> str:
     try:
         return str(getattr(value, name)() or "").strip()
-    except Exception:
+    except Exception:  # noqa: BLE001 - platform accessors are untrusted callbacks
         return ""
 
 

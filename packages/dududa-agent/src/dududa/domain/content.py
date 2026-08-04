@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from dududa._compat import StrEnum
+from dududa.contracts.canonical import canonical_digest
 from dududa.errors import validation_error
 
 from .identity import ResolvedIdentityRef
@@ -266,7 +267,14 @@ class ValidatedFinalResponse:
             != self.response.render_metadata.draft_digest
         ):
             raise validation_error("draft_digest_mismatch")
-        if self.content_safety.content_digest != self.render_validation.rendered_digest:
+        actual_rendered_digest = canonical_digest(
+            self.response,
+            domain="response:final:v1",
+        )
+        if (
+            self.render_validation.rendered_digest != actual_rendered_digest
+            or self.content_safety.content_digest != actual_rendered_digest
+        ):
             raise validation_error("rendered_digest_mismatch")
         if not _constraints_satisfy(
             self.response.immutable_constraints,
