@@ -218,10 +218,19 @@
       "title": "Mew Parity Audit",
       "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1785826169"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-parity-audit",
+        "git_branch": "treework/mew-parity-audit",
+        "managed_by_treework": false,
+        "created_at": "unix:1785846916",
+        "last_entered_at": "unix:1785846916",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1785851465"
     }
   ]
 }
