@@ -127,19 +127,19 @@
       "title": "S08-S11 Completion Audit",
       "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/completion-audit",
         "git_branch": "treework/completion-audit",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1785816767",
         "last_entered_at": "unix:1785816767",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785817796"
+      "last_sync": "unix:1785817990"
     }
   ]
 }
