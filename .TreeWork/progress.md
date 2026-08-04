@@ -6,7 +6,7 @@ Stage: work_tree
 Lead cursor: offline-runtime
 Accepted tree revision: 1
 Tree editing: closed
-Last sync: unix:1785812616
+Last sync: unix:1785812875
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)
