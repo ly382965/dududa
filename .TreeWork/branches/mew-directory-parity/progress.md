@@ -4,15 +4,41 @@
 <!-- treework:status:start -->
 Branch: mew-directory-parity
 Parent: mew-parity
-Status: in_progress
-Verification: unverified
-Last sync: unix:1785834834
+Status: complete
+Verification: verified
+Last sync: unix:1785846762
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Directory, notification, group management/resource and settings surfaces are
+  implemented over typed real NapCat endpoints with no production demo data.
+- Real QQ browser data is cached in bounded account-scoped IndexedDB stores and
+  can be cleared by conversation date, account or globally without QQ writes.
+- Browser writes are loopback same-origin only; signed resource handles,
+  authoritative group-role checks and upload uncertainty guards prevent
+  cross-scope or duplicate mutations.
+- Desktop, compact desktop, portrait mobile and short-landscape workflows are
+  covered by the branch E2E suite.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Completed security review corrections for notification-resolution races,
+  exact member role/group binding, NapCat error sanitization, DNS rebinding,
+  stale cleanup writes and concurrent/restarted group-file uploads.
+- Final verification on 2026-08-04 passed 59 frontend tests, 40 server tests,
+  six Playwright E2E flows, production build, zero-vulnerability runtime audit
+  and `git diff --check`.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- None inside this branch. Read-only real NapCat evidence and deployment belong
+  to `mew-parity-audit`; no real QQ mutation was performed without explicit
+  authorization.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Final audit should rebuild/restart only Dududa Web, never the NapCat container,
+  then probe account/directory/notification/resource counts read-only.
+- Vite still reports a non-blocking main client chunk warning at about 918 kB;
+  code splitting is a later performance optimization, not a parity blocker.

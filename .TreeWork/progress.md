@@ -6,7 +6,7 @@ Stage: work_tree
 Lead cursor: mew-directory-parity
 Accepted tree revision: 2
 Tree editing: closed
-Last sync: unix:1785834834
+Last sync: unix:1785846762
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)

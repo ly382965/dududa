@@ -198,19 +198,19 @@
       "title": "Mew Directory And Group Parity",
       "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-directory-parity",
         "git_branch": "treework/mew-directory-parity",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1785828496",
         "last_entered_at": "unix:1785834834",
-        "last_status": "reused existing worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1785834834"
+      "last_sync": "unix:1785846762"
     },
     {
       "path": "mew-parity-audit",
