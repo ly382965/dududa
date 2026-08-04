@@ -11,8 +11,34 @@ Last sync: unix:1785851465
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- The integrated Mew/NapCat client is deployed at `127.0.0.1:5173` from Web
+  commit `854ebb4`; only `dududa-web-1` was rebuilt/recreated.
+- One real NapCat account is connected. Read-only probes returned 14
+  conversations, 3 friends, 9 groups and 30/33 supported capabilities.
+- Browser persistence is enabled for real account-scoped QQ data and drafts,
+  with bounded retention, cleanup barriers and no persisted media blobs.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Audited the pinned Mew and NapCat sources, implemented custom favorites,
+  NFKC/pinyin message search and all-conversation draft markers, then reran Web,
+  repository, artifact, deployment and live-account checks.
+- Final Web verification passed 66 frontend tests, 42 server tests, 6
+  Playwright scenarios and the production build. Full repository verification
+  passed 352 tests with 2 AstrBot-host-only skips.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- External destructive/user-visible mutation evidence was not authorized.
+- A second real account was unavailable; concurrent-account evidence is
+  automated. The three explicit NapCat gaps and minor non-identical details are
+  frozen in `findings.md`.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Deployment from this worktree must set
+  `DUDUDA_WEB_DATA_ROOT=/home/mmdustc/Code/dududa/runtime/web`; the worktree has
+  no secret file of its own.
+- The NapCat and AstrBot container IDs and start times remained unchanged.
+- Final real-group Agent shadow/canary work remains a later project gate and was
+  not started by this Web audit.

@@ -2,12 +2,14 @@
 import { Bot, Check, Inbox, Pin, Search, SlidersHorizontal, VolumeX } from '@lucide/vue'
 import { computed } from 'vue'
 
+import { hasComposerDraft } from '../services/composer-content'
 import type { Account, Conversation } from '../types/workspace'
 import AppAvatar from './AppAvatar.vue'
 
 const props = defineProps<{
   accounts: Account[]
   conversations: Conversation[]
+  drafts: Record<string, string>
   selectedConversationId: string
   selectedAccountId: string
   searchQuery: string
@@ -116,6 +118,7 @@ function accountFor(conversation: Conversation): Account | undefined {
             <time>{{ conversation.lastMessageAt }}</time>
           </span>
           <span class="conversation-preview-row">
+            <span v-if="hasComposerDraft(drafts[conversation.id] ?? '')" class="draft-label">草稿</span>
             <span class="conversation-preview">{{ conversation.lastMessage }}</span>
             <VolumeX v-if="conversation.muted" :size="13" class="muted-icon" />
             <span v-if="conversation.unread" class="unread-badge">{{ conversation.unread > 99 ? '99+' : conversation.unread }}</span>
@@ -407,6 +410,13 @@ function accountFor(conversation: Conversation): Account | undefined {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.draft-label {
+  flex: 0 0 auto;
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .muted-icon {

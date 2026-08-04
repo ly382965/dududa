@@ -5,7 +5,7 @@ import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import { UndoRedo } from '@tiptap/extensions/undo-redo'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { AtSign, ImagePlus, LoaderCircle, Paperclip, Search, SendHorizontal, Smile, X } from '@lucide/vue'
+import { AtSign, Heart, ImagePlus, LoaderCircle, Paperclip, RefreshCw, Search, SendHorizontal, Smile, X } from '@lucide/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import {
@@ -27,7 +27,13 @@ import {
   qqFaceCatalogLoading,
   type QqFaceDefinition,
 } from '../../services/qq-faces'
-import type { AccountCapabilityDocument, CapabilityName, ChatMessage } from '../../types/workspace'
+import type {
+  AccountCapabilityDocument,
+  CapabilityName,
+  ChatMessage,
+  CustomFaceCatalog,
+  CustomFaceItem,
+} from '../../types/workspace'
 
 export interface PendingComposerFile {
   fileId: string
@@ -42,6 +48,7 @@ const props = withDefaults(
     mentionCandidates?: Array<{ userId: string; name: string }>
     canMentionAll?: boolean
     capabilities?: AccountCapabilityDocument['actions']
+    loadCustomFaces?: () => Promise<CustomFaceCatalog>
     sending?: boolean
     uploadStatus?: string
   }>(),
@@ -50,6 +57,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   send: [segments: ComposerContentSegment[], files: PendingComposerFile[], complete: (success: boolean) => void]
   filesSelected: [files: File[]]
+  favoriteSelected: [handle: string]
   searchRequested: []
 }>()
 
@@ -57,6 +65,10 @@ const pendingImages = new Map<string, { file: File; previewUrl: string }>()
 const imageInput = ref<HTMLInputElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const showFaces = ref(false)
+type FacePickerMode = 'default' | 'favorites'
+const facePickerMode = ref<FacePickerMode>('default')
+const favoriteFaces = ref<CustomFaceItem[]>([])
+const favoriteFacesState = ref<'idle' | 'loading' | 'loaded' | 'error'>('idle')
 const showMentions = ref(false)
 const mentionQuery = ref('')
 const mentionRange = ref<{ from: number; to: number } | null>(null)
@@ -71,6 +83,9 @@ const faces = computed(() => [
   ...qqFaceCatalog.value.superFaces,
   ...qqFaceCatalog.value.emojiFaces,
 ].slice(0, 180))
+const canOpenFaces = computed(
+  () => capabilitySupported('message.send.face') || capabilitySupported('message.custom_faces'),
+)
 const filteredMentions = computed(() => {
   const query = mentionQuery.value.toLocaleLowerCase('zh-CN')
   const candidates = props.mentionCandidates
@@ -89,11 +104,19 @@ function capabilityTitle(name: CapabilityName, label: string): string {
   return capability?.status === 'supported' ? label : capability?.reason || `${label}当前不可用`
 }
 
+function facePickerTitle(): string {
+  if (canOpenFaces.value) return 'QQ 表情'
+  return props.capabilities?.['message.send.face']?.reason ||
+    props.capabilities?.['message.custom_faces']?.reason ||
+    'QQ 表情当前不可用'
+}
+
 function segmentSupported(segment: ComposerContentSegment): boolean {
   if (segment.type === 'text') return capabilitySupported('message.send.text')
   if (segment.type === 'mention') return capabilitySupported('message.send.mention')
   if (segment.type === 'reply') return capabilitySupported('message.send.reply')
   if (segment.type === 'face') return capabilitySupported('message.send.face')
+  if (segment.type === 'custom_face') return capabilitySupported('message.custom_faces')
   return capabilitySupported('message.send.image')
 }
 
@@ -232,10 +255,55 @@ function insertFace(face: QqFaceDefinition): void {
 }
 
 function toggleFaces(): void {
-  if (!capabilitySupported('message.send.face')) return
+  if (!canOpenFaces.value) return
   showFaces.value = !showFaces.value
   closeMentions()
-  if (showFaces.value) void loadQqFaceCatalog().catch(() => undefined)
+  if (!showFaces.value) return
+  if (!capabilitySupported('message.send.face')) facePickerMode.value = 'favorites'
+  if (facePickerMode.value === 'favorites') void loadFavoriteFaces()
+  else void loadQqFaceCatalog().catch(() => undefined)
+}
+
+async function loadFavoriteFaces(force = false): Promise<void> {
+  if (
+    !props.loadCustomFaces ||
+    !capabilitySupported('message.custom_faces') ||
+    favoriteFacesState.value === 'loading' ||
+    (favoriteFacesState.value === 'loaded' && !force)
+  ) {
+    return
+  }
+  favoriteFacesState.value = 'loading'
+  try {
+    const catalog = await props.loadCustomFaces()
+    favoriteFaces.value = catalog.items
+    favoriteFacesState.value = 'loaded'
+  } catch {
+    favoriteFacesState.value = 'error'
+  }
+}
+
+function selectFacePickerMode(mode: FacePickerMode): void {
+  if (mode === 'default' && !capabilitySupported('message.send.face')) return
+  if (mode === 'favorites' && !capabilitySupported('message.custom_faces')) return
+  facePickerMode.value = mode
+  if (mode === 'favorites') void loadFavoriteFaces()
+  else void loadQqFaceCatalog().catch(() => undefined)
+}
+
+function selectFavoriteFace(face: CustomFaceItem): void {
+  if (props.sending) return
+  if (face.expiresAt <= Date.now()) {
+    void loadFavoriteFaces(true)
+    return
+  }
+  emit('favoriteSelected', face.handle)
+  showFaces.value = false
+  editor.value?.commands.focus()
+}
+
+function removeUnavailableFavorite(handle: string): void {
+  favoriteFaces.value = favoriteFaces.value.filter((face) => face.handle !== handle)
 }
 
 function insertImages(files: Iterable<File>): void {
@@ -338,7 +406,7 @@ defineExpose({ clear, focus, chooseMention })
     </div>
     <div class="composer-toolbar">
       <div>
-        <button type="button" :title="capabilityTitle('message.send.face', 'QQ 表情')" :disabled="!capabilitySupported('message.send.face')" @click="toggleFaces"><Smile :size="18" /></button>
+        <button type="button" :title="facePickerTitle()" :disabled="!canOpenFaces" @click="toggleFaces"><Smile :size="18" /></button>
         <button type="button" :title="capabilityTitle('message.send.mention', '提及成员')" :disabled="!capabilitySupported('message.send.mention')" @click="openMention"><AtSign :size="18" /></button>
         <button type="button" :title="capabilityTitle('message.send.image', '选择图片')" :disabled="!capabilitySupported('message.send.image')" @click="imageInput?.click()"><ImagePlus :size="18" /></button>
         <button type="button" :title="canChooseFiles ? '选择文件' : '当前账号不支持文件或媒体发送'" :disabled="!canChooseFiles" @click="fileInput?.click()"><Paperclip :size="18" /></button>
@@ -360,11 +428,62 @@ defineExpose({ clear, focus, chooseMention })
         <span v-if="!filteredMentions.length">没有匹配的最近发言成员</span>
       </div>
       <div v-if="showFaces" class="face-picker">
-        <div v-if="qqFaceCatalogLoading" class="picker-state"><LoaderCircle class="spin" :size="18" />加载 QQ 表情</div>
-        <button v-for="face in faces" v-else :key="face.id" type="button" :title="face.name" @click="insertFace(face)">
-          <img :src="face.apngUrl || face.pngUrl" :alt="face.name" />
-        </button>
-        <button v-if="qqFaceCatalogError" class="picker-retry" type="button" @click="loadQqFaceCatalog(true)">重新加载</button>
+        <div class="face-picker-content">
+          <template v-if="facePickerMode === 'default'">
+            <div v-if="qqFaceCatalogLoading" class="picker-state"><LoaderCircle class="spin" :size="18" />加载 QQ 表情</div>
+            <div v-else-if="qqFaceCatalogError" class="picker-state picker-error" role="alert">
+              <span>QQ 表情加载失败</span>
+              <button type="button" title="重新加载 QQ 表情" @click="loadQqFaceCatalog(true)"><RefreshCw :size="15" /></button>
+            </div>
+            <div v-else class="face-grid" data-testid="qq-face-picker">
+              <button v-for="face in faces" :key="face.id" type="button" :title="face.name" :aria-label="face.name" @click="insertFace(face)">
+                <img :src="face.apngUrl || face.pngUrl" :alt="face.name" loading="lazy" decoding="async" />
+              </button>
+            </div>
+          </template>
+          <template v-else>
+            <div v-if="favoriteFacesState === 'loading'" class="picker-state" role="status"><LoaderCircle class="spin" :size="18" />正在加载收藏表情</div>
+            <div v-else-if="favoriteFacesState === 'error'" class="picker-state picker-error" role="alert">
+              <span>收藏表情加载失败</span>
+              <button type="button" title="重新加载收藏表情" @click="loadFavoriteFaces(true)"><RefreshCw :size="15" /></button>
+            </div>
+            <div v-else-if="!favoriteFaces.length" class="picker-state">暂无收藏表情</div>
+            <div v-else class="favorite-face-grid" data-testid="favorite-face-picker">
+              <button
+                v-for="(face, index) in favoriteFaces"
+                :key="face.handle"
+                type="button"
+                :aria-label="`发送收藏表情 ${index + 1}`"
+                :disabled="sending"
+                @click="selectFavoriteFace(face)"
+              >
+                <img :src="face.previewUrl" alt="" loading="lazy" decoding="async" @error="removeUnavailableFavorite(face.handle)" />
+              </button>
+            </div>
+          </template>
+        </div>
+        <div class="face-picker-tabs" role="tablist" aria-label="表情类型">
+          <button
+            type="button"
+            role="tab"
+            title="默认表情"
+            aria-label="默认表情"
+            :aria-selected="facePickerMode === 'default'"
+            :class="{ active: facePickerMode === 'default' }"
+            :disabled="!capabilitySupported('message.send.face')"
+            @click="selectFacePickerMode('default')"
+          ><Smile :size="17" /></button>
+          <button
+            type="button"
+            role="tab"
+            :title="capabilityTitle('message.custom_faces', '我的收藏')"
+            aria-label="我的收藏"
+            :aria-selected="facePickerMode === 'favorites'"
+            :class="{ active: facePickerMode === 'favorites' }"
+            :disabled="!capabilitySupported('message.custom_faces')"
+            @click="selectFacePickerMode('favorites')"
+          ><Heart :size="17" /></button>
+        </div>
       </div>
     </div>
     <div class="composer-footer">
@@ -399,21 +518,31 @@ defineExpose({ clear, focus, chooseMention })
 :deep(.qq-composer-mention) { color: var(--brand-strong); font-weight: 650; }
 :deep(.qq-composer-face) { display: inline-block; width: 24px; height: 24px; object-fit: contain; vertical-align: middle; }
 :deep(.qq-composer-image) { display: block; max-width: 240px; max-height: 130px; margin: 5px 0; border-radius: 6px; object-fit: contain; }
-.mention-picker, .face-picker { position: absolute; z-index: 40; left: 4px; bottom: calc(100% + 4px); max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); box-shadow: var(--floating-shadow); padding: 5px; }
-.mention-picker { display: grid; width: min(300px, calc(100vw - 40px)); }
+.mention-picker, .face-picker { position: absolute; z-index: 40; left: 4px; bottom: calc(100% + 4px); border: 1px solid var(--border); border-radius: 6px; background: var(--surface); box-shadow: var(--floating-shadow); }
+.mention-picker { display: grid; width: min(300px, calc(100vw - 40px)); max-height: 260px; overflow-y: auto; padding: 5px; }
 .mention-picker button { display: flex; cursor: pointer; align-items: center; justify-content: space-between; gap: 12px; border: 0; border-radius: 4px; color: var(--text); background: transparent; padding: 7px 8px; text-align: left; }
 .mention-picker button:hover { background: var(--surface-hover); }
 .mention-picker span, .mention-picker button span { color: var(--text-muted); font-size: 9px; }
-.face-picker { display: grid; width: min(390px, calc(100vw - 40px)); grid-template-columns: repeat(9, 34px); gap: 3px; }
-.face-picker button { display: grid; width: 34px; height: 34px; cursor: pointer; place-items: center; border: 0; border-radius: 4px; background: transparent; }
-.face-picker button:hover { background: var(--surface-hover); }
-.face-picker img { width: 25px; height: 25px; object-fit: contain; }
-.picker-state { display: flex; grid-column: 1 / -1; align-items: center; justify-content: center; gap: 7px; color: var(--text-muted); padding: 18px; font-size: 10px; }
-.face-picker .picker-retry { width: auto; grid-column: 1 / -1; color: var(--danger); }
+.face-picker { display: flex; width: min(390px, calc(100vw - 40px)); height: min(292px, calc(100vh - 190px)); min-height: 210px; flex-direction: column; overflow: hidden; }
+.face-picker-content { min-height: 0; flex: 1; overflow-y: auto; padding: 6px; }
+.face-grid { display: grid; grid-template-columns: repeat(9, 34px); gap: 3px; }
+.face-grid button, .face-picker-tabs button, .picker-error button { display: grid; width: 34px; height: 34px; cursor: pointer; place-items: center; border: 0; border-radius: 4px; color: var(--text-muted); background: transparent; }
+.face-grid button:hover, .face-picker-tabs button:hover, .picker-error button:hover { color: var(--brand-strong); background: var(--surface-hover); }
+.face-grid img { width: 25px; height: 25px; object-fit: contain; }
+.favorite-face-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.favorite-face-grid button { display: grid; width: 100%; aspect-ratio: 1; cursor: pointer; place-items: center; overflow: hidden; border: 0; border-radius: 4px; background: var(--surface-subtle); }
+.favorite-face-grid button:hover { background: var(--surface-hover); }
+.favorite-face-grid button:disabled { cursor: wait; opacity: .55; }
+.favorite-face-grid img { width: 100%; height: 100%; object-fit: contain; }
+.picker-state { display: flex; min-height: 180px; align-items: center; justify-content: center; gap: 7px; color: var(--text-muted); padding: 18px; font-size: 10px; }
+.picker-error { color: var(--danger); }
+.face-picker-tabs { display: flex; height: 40px; flex: 0 0 auto; align-items: center; gap: 3px; border-top: 1px solid var(--border); padding: 3px 7px; }
+.face-picker-tabs button.active { color: var(--brand-strong); background: var(--brand-soft); }
+.face-picker-tabs button:disabled { cursor: not-allowed; opacity: .35; }
 .composer-footer { height: 31px; color: var(--text-muted); font-size: 9px; }
 .composer-send { display: grid; width: 38px; height: 30px; cursor: pointer; place-items: center; border: 0; border-radius: 6px; color: #fff; background: var(--brand); }
 .composer-send:disabled { cursor: not-allowed; opacity: .42; }
 .spin { animation: spin 800ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 560px) { .composer-toolbar small { display: none; } .face-picker { grid-template-columns: repeat(7, 34px); } }
+@media (max-width: 560px) { .composer-toolbar small { display: none; } .face-grid { grid-template-columns: repeat(7, 34px); } .favorite-face-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 </style>

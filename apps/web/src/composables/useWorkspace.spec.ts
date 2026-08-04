@@ -1,10 +1,15 @@
+import 'fake-indexeddb/auto'
+
 import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { WorkspaceCache, WorkspaceDatabase } from '../services/database'
 import type { WorkspaceAdapter } from '../services/workspace-adapter'
 import type { Account, ChatMessage, Conversation, HistoryPage, WorkspaceEvent, WorkspaceSnapshot } from '../types/workspace'
 import { useWorkspace } from './useWorkspace'
+
+const databases: WorkspaceDatabase[] = []
 
 function account(id: string): Account {
   const botId = id.slice(3)
@@ -30,6 +35,7 @@ function account(id: string): Account {
         'message.send.audio',
         'message.send.video',
         'message.send.file',
+        'message.custom_faces',
       ].map((name) => [name, { status: 'supported' }]),
     ) as Account['capabilities'],
   }
@@ -76,9 +82,10 @@ function deferred<T>() {
 }
 
 describe('useWorkspace account-scoped state', () => {
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
     window.localStorage.clear()
+    await Promise.all(databases.splice(0).map((database) => database.delete()))
   })
   it('loads the initially selected history once and deletes recalled cache data', async () => {
     const first = account('qq-111111111')
@@ -153,6 +160,219 @@ describe('useWorkspace account-scoped state', () => {
     await flushPromises()
     expect(adapter.deleteCachedMessage).toHaveBeenCalledWith(first.id, firstConversation.id, historyMessage.id)
     expect(snapshot.messages[firstConversation.id]?.[0]).toMatchObject({ status: 'recalled', content: '此消息已撤回' })
+    wrapper.unmount()
+  })
+
+  it('loads and sends only opaque custom-face handles for the selected conversation', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      capabilities: {},
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const handle = 'a'.repeat(32)
+    const catalog = {
+      accountId: owner.id,
+      conversationId: target.id,
+      items: [{
+        handle,
+        previewUrl: `/api/accounts/${owner.id}/conversations/group/${target.peerId}/custom-faces/${handle}/preview`,
+        expiresAt: Date.now() + 60_000,
+      }],
+      refreshedAt: Date.now(),
+    }
+    const sentMessage: ChatMessage = {
+      ...message(target),
+      id: `${target.id}:102`,
+      messageId: '102',
+      messageSeq: '102',
+      senderId: owner.botId,
+      senderName: owner.name,
+      content: '[表情]',
+      segments: [{ type: 'image', summary: '[表情]', sticker: true }],
+      mine: true,
+    }
+    const adapter = {
+      load: vi.fn(async () => snapshot),
+      loadCachedMessages: vi.fn(async () => []),
+      loadHistory: vi.fn(async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false })),
+      loadDraft: vi.fn(async () => undefined),
+      markRead: vi.fn(async () => undefined),
+      loadCustomFaces: vi.fn(async () => catalog),
+      sendSegments: vi.fn(async () => sentMessage),
+      cacheMessages: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await flushPromises()
+
+    await expect(workspace.loadCustomFaces()).resolves.toEqual(catalog)
+    expect(adapter.loadCustomFaces).toHaveBeenCalledWith(target)
+    await expect(workspace.sendCustomFace(handle)).resolves.toBe(true)
+    expect(adapter.sendSegments).toHaveBeenCalledWith(
+      expect.objectContaining({ id: target.id, accountId: owner.id, peerId: target.peerId }),
+      [{ type: 'custom_face', handle }],
+    )
+    expect(workspace.chatMessages.value.at(-1)).toEqual(sentMessage)
+    wrapper.unmount()
+  })
+
+  it('does not restore a stale cached draft after a successful send clears it', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      capabilities: {},
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const staleDraft = deferred<{ accountId: string; conversationId: string; content: string; updatedAt: number } | undefined>()
+    const sentMessage: ChatMessage = {
+      ...message(target),
+      id: `${target.id}:102`,
+      messageId: '102',
+      messageSeq: '102',
+      senderId: owner.botId,
+      senderName: owner.name,
+      content: '已发送',
+      segments: [{ type: 'text', text: '已发送' }],
+      mine: true,
+    }
+    const adapter = {
+      load: vi.fn(async () => snapshot),
+      loadCachedMessages: vi.fn(async () => []),
+      loadHistory: vi.fn(async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false })),
+      loadDraft: vi.fn(() => staleDraft.promise),
+      saveDraft: vi.fn(async () => undefined),
+      sendSegments: vi.fn(async () => sentMessage),
+      cacheMessages: vi.fn(async () => undefined),
+      markRead: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    expect(adapter.loadDraft).toHaveBeenCalledWith(target)
+
+    const complete = vi.fn()
+    await workspace.sendRichMessage([{ type: 'text', text: '已发送' }], [], complete)
+    staleDraft.resolve({
+      accountId: owner.id,
+      conversationId: target.id,
+      content: '不应恢复的旧草稿',
+      updatedAt: 1,
+    })
+    await flushPromises()
+
+    expect(complete).toHaveBeenCalledWith(true)
+    expect(workspace.drafts.value[target.id]).toBe('')
+    expect(adapter.saveDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ accountId: owner.id, conversationId: target.id, content: '' }),
+    )
+    wrapper.unmount()
+  })
+
+  it('restores every valid conversation draft from IndexedDB without crossing account or conversation scopes', async () => {
+    const first = account('qq-111111111')
+    const second = account('qq-222222222')
+    const firstValid = conversation(first, '345678901')
+    const firstAccountMismatch = conversation(first, '456789012')
+    const secondValid = conversation(second, '345678901')
+    const secondConversationMismatch = conversation(second, '567890123')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [first, second],
+      capabilities: {},
+      conversations: [firstValid, firstAccountMismatch, secondValid, secondConversationMismatch],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const database = new WorkspaceDatabase(`dududa-draft-test-${crypto.randomUUID()}`)
+    databases.push(database)
+    const storage = new WorkspaceCache(database)
+    await storage.saveDraft({
+      accountId: first.id,
+      conversationId: firstValid.id,
+      content: '账号一草稿',
+      updatedAt: 1,
+    })
+    await storage.saveDraft({
+      accountId: second.id,
+      conversationId: secondValid.id,
+      content: '账号二草稿',
+      updatedAt: 2,
+    })
+    await database.drafts.bulkPut([
+      {
+        id: firstAccountMismatch.id,
+        accountId: second.id,
+        conversationId: firstAccountMismatch.id,
+        content: '不应恢复的串号草稿',
+        updatedAt: 3,
+      },
+      {
+        id: secondConversationMismatch.id,
+        accountId: second.id,
+        conversationId: secondValid.id,
+        content: '不应恢复的串会话草稿',
+        updatedAt: 4,
+      },
+    ])
+    const loadDraft = vi.fn((target: Conversation) => storage.draft(target.accountId, target.id))
+    const adapter = {
+      load: vi.fn(async () => snapshot),
+      loadCachedMessages: vi.fn(async () => []),
+      loadHistory: vi.fn(async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false })),
+      loadDraft,
+      markRead: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await flushPromises()
+
+    expect(loadDraft).toHaveBeenCalledTimes(snapshot.conversations.length)
+    expect(new Set(loadDraft.mock.calls.map(([target]) => target.id))).toEqual(
+      new Set(snapshot.conversations.map((item) => item.id)),
+    )
+    expect(workspace.drafts.value).toEqual({
+      [firstValid.id]: '账号一草稿',
+      [secondValid.id]: '账号二草稿',
+    })
+    expect(workspace.chatDraft.value).toBe('账号一草稿')
     wrapper.unmount()
   })
 

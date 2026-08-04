@@ -32,6 +32,7 @@ const account = {
       'message.send.audio',
       'message.send.video',
       'message.send.file',
+      'message.custom_faces',
       'message.download.file',
       'message.recall',
       'message.forward',

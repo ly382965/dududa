@@ -15,7 +15,7 @@ import {
 import { computed, nextTick, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import type { ComposerContentSegment } from '../services/composer-content'
-import type { Account, ChatMessage, Conversation, MessageSegment } from '../types/workspace'
+import type { Account, ChatMessage, Conversation, CustomFaceCatalog, MessageSegment } from '../types/workspace'
 import AppAvatar from './AppAvatar.vue'
 import FileSendDialog from './chat/FileSendDialog.vue'
 import MergedForwardViewerDialog from './chat/MergedForwardViewerDialog.vue'
@@ -56,6 +56,8 @@ const props = defineProps<{
     complete: (success: boolean) => void,
   ) => Promise<void>
   sendFiles: (files: File[]) => Promise<boolean>
+  loadCustomFaces: () => Promise<CustomFaceCatalog>
+  sendCustomFace: (handle: string) => Promise<boolean>
   recallMessage: (message: ChatMessage) => Promise<void>
   refreshMessage: (message: ChatMessage) => Promise<void>
   loadMessageFile: (message: ChatMessage, fileId: string) => Promise<void>
@@ -253,6 +255,14 @@ function sendPlusOne(messageId: string): void {
   void props.sendRich(repeated.segments, [], () => undefined)
 }
 
+async function sendFavoriteFace(handle: string): Promise<void> {
+  if (props.sending) return
+  const sending = props.sendCustomFace(handle)
+  await nextTick()
+  await scrollToLatest()
+  await sending
+}
+
 function queueFiles(files: File[]): void {
   pendingFiles.value = files
 }
@@ -366,12 +376,14 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
         :mention-candidates="mentionCandidates"
         :can-mention-all="canMentionAll"
         :capabilities="account?.capabilities"
+        :load-custom-faces="loadCustomFaces"
         :sending="sending"
         :upload-status="uploadStatus"
         @update:draft="emit('updateDraft', conversation.id, $event)"
         @update:reply-to="emit('updateReplyTo', conversation.id, $event)"
         @send="sendRich"
         @files-selected="queueFiles"
+        @favorite-selected="sendFavoriteFace"
         @search-requested="searchOpen = true"
       />
 

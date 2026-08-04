@@ -43,6 +43,13 @@ const faceSegmentSchema = z
   })
   .strict()
 
+const customFaceSegmentSchema = z
+  .object({
+    type: z.literal('custom_face'),
+    handle: z.string().regex(/^[a-f0-9]{32}$/),
+  })
+  .strict()
+
 const stagedMediaSegmentSchema = z
   .object({
     type: z.enum(['image', 'audio', 'video']),
@@ -56,6 +63,7 @@ export const outgoingMessageSegmentSchema = z.discriminatedUnion('type', [
   mentionSegmentSchema,
   replySegmentSchema,
   faceSegmentSchema,
+  customFaceSegmentSchema,
   stagedMediaSegmentSchema,
 ])
 

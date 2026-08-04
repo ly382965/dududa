@@ -74,4 +74,28 @@ describe('NapCat workspace cache cleanup barrier', () => {
       expect(await cache.recentMessages(accountId, conversation.id)).toEqual([])
     },
   )
+
+  it('loads only the conversation-scoped custom-face handle catalog', async () => {
+    const { accountId, conversation, adapter } = fixture()
+    const catalog = {
+      accountId,
+      conversationId: conversation.id,
+      items: [
+        {
+          handle: 'a'.repeat(32),
+          previewUrl: `/api/accounts/${accountId}/conversations/group/${conversation.peerId}/custom-faces/${'a'.repeat(32)}/preview`,
+          expiresAt: Date.now() + 60_000,
+        },
+      ],
+      refreshedAt: Date.now(),
+    }
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(catalog), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(adapter.loadCustomFaces(conversation)).resolves.toEqual(catalog)
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/accounts/${accountId}/conversations/group/${conversation.peerId}/custom-faces`,
+      { headers: { Accept: 'application/json' } },
+    )
+  })
 })

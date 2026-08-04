@@ -172,6 +172,37 @@ describe('WorkspaceCache', () => {
     expect(second.hasMore).toBe(false)
   })
 
+  it('matches NFKC, case, pinyin and multiple terms without crossing cache scopes', async () => {
+    const storage = cache()
+    const target = conversation('qq-111111111')
+    const sibling = {
+      ...conversation(target.accountId),
+      id: `${target.accountId}:group:987654321`,
+      peerId: '987654321',
+    }
+    const otherAccount = conversation('qq-222222222')
+    await storage.saveHistoryPage(target, page([
+      message(target, 1, 'Mew ＡＩ 工作台'),
+      message(target, 2, '中国科学技术大学 QQ 群'),
+    ]))
+    await storage.saveHistoryPage(sibling, page([message(sibling, 3, '中国科学技术大学 QQ 群')]))
+    await storage.saveHistoryPage(otherAccount, page([message(otherAccount, 4, '中国科学技术大学 QQ 群')]))
+
+    const normalized = await storage.searchMessages({
+      accountId: target.accountId,
+      conversationId: target.id,
+      query: 'ｍｅｗ ai',
+    })
+    expect(normalized.messages.map((item) => item.messageId)).toEqual(['1'])
+
+    const pinyin = await storage.searchMessages({
+      accountId: target.accountId,
+      conversationId: target.id,
+      query: 'zhongguo kexue qq',
+    })
+    expect(pinyin.messages.map((item) => item.messageId)).toEqual(['2'])
+  })
+
   it('merges before and after coverage without losing the opposite cursor', async () => {
     const storage = cache()
     const target = conversation('qq-111111111')
