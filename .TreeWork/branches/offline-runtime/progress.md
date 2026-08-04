@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: offline-runtime
 Parent: root
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1785750151
+Last sync: unix:1785785642
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

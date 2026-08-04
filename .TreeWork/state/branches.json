@@ -87,10 +87,19 @@
       "title": "S10 Offline Runtime",
       "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "in_progress",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1785750151"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/offline-runtime",
+        "git_branch": "treework/offline-runtime",
+        "managed_by_treework": true,
+        "created_at": "unix:1785785642",
+        "last_entered_at": "unix:1785785642",
+        "last_status": "created managed worktree"
+      },
+      "last_sync": "unix:1785812616"
     },
     {
       "path": "controlled-rollout",
