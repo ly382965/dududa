@@ -14,13 +14,17 @@
 
 - [ ] Every success criterion in `requirements.md` has direct implementation
   and verification evidence.
-- [ ] Fixed snapshots make model selection reproducible and no user input can
+- [x] Fixed snapshots make model selection reproducible and no user input can
   bypass privacy, capability, budget or tier policy.
-- [ ] The offline runtime completes and acknowledges a direct reply without
+- [x] The offline runtime completes and acknowledges a direct reply without
   tools or memory and handles cancellation/failure safely.
-- [ ] Shadow is proven side-effect-free and canary ownership is proven
+- [x] Shadow is proven side-effect-free and canary ownership is proven
   single-path under concurrency and restart simulation.
-- [ ] The legacy path and unrelated workspace changes remain intact.
+- [x] The legacy path and unrelated workspace changes remain intact.
+
+The first project checkbox remains open only because the authorized real-group
+criterion in `requirements.md` has no supplied authority or credentials. All
+local S08-S11 criteria and the completion audit are satisfied.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 
@@ -41,9 +45,9 @@
 
 ## External Dependencies (user decisions, systems, or inputs outside tree.yaml)
 
-1. Existing S01-S07 uncommitted work must be selectively baselined before
-   isolated branches can import it.
-2. AstrBot runtime tests require the derived image because the host environment
-   does not install AstrBot.
-3. A real S11 group run requires explicit authorization, group identifiers,
+1. S01-S07 are integrated in `c83d742`; S08-S11 local implementation branches
+   are integrated through `716e227`.
+2. AstrBot runtime tests passed in the derived `s11-audit` image; ordinary host
+   Python still records the two expected host-only skips.
+3. A real S11 group run still requires explicit authorization, group identifiers,
    credentials and a user-approved external send window.

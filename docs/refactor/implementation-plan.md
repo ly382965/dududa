@@ -1,7 +1,7 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S07 的增量实施步骤已完成；S08 及后续尚未开始。旧 AstrBot Handler
-仍是生产权威入口，目标 Runtime 尚未切流。
+状态：S01–S11 的本地增量实施步骤已完成。旧 AstrBot Handler 在 `off/shadow`
+模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群验证尚未授权。
 
 ## 交付规则
 
@@ -33,25 +33,25 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 
 ### 当前模块完成度
 
-下表按 2026-08-02 工作区和 Dududa 2.0 的统一完成定义判断。S01–S07 的代码步骤可以
-标记为完成，但这不等于对应产品模块已经完成：真实 Adapter、Runtime 编排、State Store、
-shadow、选择性切流和回滚证据仍是模块完成门禁。
+下表按 2026-08-04 的 `716e227` 和 Dududa 2.0 统一完成定义判断。S08-S11 已补齐静态
+路由、语义/难度判断、离线 Runtime、Shadow、受控 Canary 与回滚边界；真实 Provider 效果、
+Memory/Tool、附件和授权群放量仍按各模块独立门禁判断。
 
 | 模块或工作流 | 状态 | 已有证据 | 达到完成仍缺少 |
 | --- | --- | --- | --- |
 | Phase 0 审计、`v1alpha` 接口与迁移计划 | 已完成 | 当前状态、依赖、设计、ADR、迁移和实施文档已形成，并通过文档门禁 | 不包含 Runtime 代码；进入 S01 后按实现证据重新判断 |
-| 核心 Package 与 Agent Runtime | 部分完成 | 可安装的纯 Python Package、领域 DTO、Runtime State、Port/Fake、canonical/binding 和契约测试已实现 | Orchestrator、State Store、端到端 Trace、shadow 与生产切流 |
-| 输入 Connector 与 Output Adapter | 部分完成 | 已实现 AstrBot Connector、Output、Attachment Repository、四元去重键、Delivery Receipt 和 conformance fixture | 真实 Attachment Source、跨进程/跨 Runtime 原子去重、Runtime Bridge 和选择性切流 |
-| 模型路由器 | 未完成 | Core、TargetTalk 和图像入口存在三条兼容 Provider 路径 | `ModelRoutingRegistry`、静态 Route、逐 Endpoint descriptor、预算/隐私过滤、fallback 和 Adapter 契约 |
+| 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Tool/Attachment Runtime 与授权生产证据 |
+| 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现 | 真实 Attachment Source、第二平台与授权真实群 delivery 证据 |
+| 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
 | Memory | 部分完成 | Memory v2 Scope/Selector/Repository/Write Gate、内存/JSON 参考 Adapter、fail-closed Iris Protocol Adapter、隔离矩阵和可逆迁移工具已实现 | 真实 Iris SDK Backend、Context Builder 接入、删除/导出闭环、效果 Eval、shadow 和生产切流 |
 | MCP 集成 | 部分完成 | iCourse stdio Server、SQLite、AstrBot 配置和 10 个 Tool 已存在 | Unified Client、Server Registry、Schema cache、allowlist、错误/健康/熔断和单 Client 切换 |
 | Capability 与 Tool Runtime | 部分完成 | 课程命令已有固定手工调用流程 | Registry、Retrieval、有限 Planner、逐步授权 Executor、Validator 和副作用/预算门禁 |
-| 语义理解与 Social Decision | 部分完成 | 课程局部抽取、规则 fallback 和 TargetTalk 信号存在 | 通用 Intent/Entity/Reference/Evidence Schema、Merger、Validator、六动作 Policy 和 Eval |
-| OC 与 Persona | 部分完成 | Persona seed、TargetTalk Prompt、style JSON 和 ReplyPolish 存在 | Composer/Renderer 分层、Fact Anchor、Render Validator、版本发布及事实保持测试 |
-| 在线学习 / Bandit | 未完成 | `v1alpha` 决策、日志、反馈和评估设计已形成 | 实现、propensity 日志、shadow、受控 canary、OPE 证据和自动回滚 |
-| Trace、Eval 与 CI | 部分完成 | 116 项宿主/3.10 测试、Contract/负向测试、wheel、镜像 registry、MCP 和干净启动 smoke 已验证；CI 覆盖 3.10/3.12 与 wheel 安装 | 贯穿 run 的 Trace、版本化 Eval 数据集、发布阈值、线上指标与故障注入 |
+| 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
+| OC 与 Persona | 部分完成 | 最小 Composer、确定性单 Persona Renderer、Fact/target/constraint 保持与 Render Validator 已进入 S10 | 完整 OC 资产、多 Persona、版本发布和人工风格 Eval |
+| 在线学习 / Bandit | 未完成（明确延期） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；后续仍需 propensity/support、OPE 与单独安全评审 |
+| Trace、Eval 与 CI | 部分完成 | 350 项双版本测试、S09 版本化 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI / Control Plane | 未完成 | 只有规划条目；当前文档站不是产品 Control Plane | ADR、只读 API、权限/脱敏/审计、Trace/Eval Viewer，之后才考虑写操作 |
-| 大规模真实群测试与 Debug | 未完成 | 固定快照没有生产群测试证据 | 白名单 shadow/canary、3–5 群分层放量、SLO、故障注入、kill switch 和复盘 |
+| 大规模真实群测试与 Debug | 未完成 | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 经授权的真实群 shadow/canary、3–5 群分层放量、冻结 SLO 和复盘 |
 
 ### 实施步骤完成度
 
@@ -65,8 +65,11 @@ shadow、选择性切流和回滚证据仍是模块完成门禁。
 | S05 | 已完成 | Core 薄入口、命令/生命周期拆分、TargetTalk/ReplyPolish 纯逻辑；镜像内 `42/1/1` registry、priority 8 和一次性数据启动通过 | 旧 Handler 保持权威，不删除兼容入口 |
 | S06 | 已完成 | Memory Scope/Selector/Record/Repository、显式 Write Gate、内存/JSON Adapter 与完整隔离矩阵 | 自动写入和生产 Memory v2 均保持关闭 |
 | S07 | 已完成 | fail-closed Iris Protocol Adapter、缺 metadata 隔离、dry-run/backup/receipt/rollback 迁移工具 | 真实 Iris SDK Backend、生产数据迁移和 Runtime 接入未做 |
-| S08 | 下一步 | Spec 和顺序已冻结 | 实现静态 Model Router，不做 Bandit 或生产切流 |
-| S09–S22 | 未开始 | 仅有冻结设计与顺序 | 严格按前置门禁逐步进入 |
+| S08 | 已完成 | 三 Tier 静态 Model Router、Registry、流量 admission、fallback、Fake/Adapter conformance | 真实 Provider 效果证据不作为静态路由逻辑的完成声明 |
+| S09 | 已完成 | Rule/Model Perception、Merger/Validator、Social、Complexity、TierPolicy 和 320 条固定 Eval | 人工标签与真实数据校准保留为效果门禁 |
+| S10 | 已完成 | 显式 @ 直聊离线闭环、两次模型预算、CAS/single-flight、Composition、Delivery/reconciliation 与 Shadow | 生产 Provider 与 Memory/Tool/Attachment 不在 S10 范围 |
+| S11 | 已完成（本地） | typed rollout、SQLite claim/tombstone、AstrBot Bridge、发送前熔断、指标和可执行回滚 | 授权真实 QQ 群证据仍未执行 |
+| S12–S22 | 未开始 | 仅保留既有冻结设计与顺序 | 真实 Canary 门禁或负责人重新排序后再逐步进入 |
 
 ### 公共开工门禁
 

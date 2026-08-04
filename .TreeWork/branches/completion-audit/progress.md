@@ -5,14 +5,39 @@
 Branch: completion-audit
 Parent: root
 Status: in_progress
-Verification: unverified
-Last sync: unix:1785816767
+Verification: verified
+Last sync: unix:1785817796
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S08-S11 local implementation and simulation requirements have direct code,
+  test and branch-verification evidence. No Runtime behavior changed in this
+  audit branch.
+- Root requirements now mark S10, Shadow, S11 and regression/scope criteria
+  complete. The authorized real-group criterion remains deliberately unchecked.
+- Chinese progress and implementation-plan documents now describe the current
+  deterministic Router/Runtime/rollout state rather than the pre-S08 baseline.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Python 3.10 and 3.12 each passed 350 tests; Runtime/rollout `-W error`
+  passed 109 tests on each version.
+- The digest-pinned S11 image built successfully and passed 19 affected plugin
+  tests under `--network none`; package import and `pip check` passed.
+- Ruff, import boundaries, compileall, repository safety over 372 files, Shell,
+  Compose, CLI, Bandit/scope scans and whitespace checks passed.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- A real QQ group shadow/canary and frozen SLO evidence require explicit user
+  authorization, group IDs, credentials and a send window. None were supplied.
+- S09's synthetic policy-gold dataset remains pending human label confirmation;
+  no empirical minimum-tier quality claim is made.
+- The local repository scanner passed; the configured GitHub gitleaks job still
+  runs only after the commits are pushed.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Completion audit is locally complete. Keep the project-level real-group
+  criterion open until authorized external evidence exists.

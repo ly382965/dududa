@@ -16,8 +16,8 @@ Last sync: unix:1785817796
 - The clean integrated S09 snapshot passes 257 tests with two AstrBot-host-only
   skips on both Python 3.10 and 3.12; its synthetic Eval technical gate passes
   while human template review remains pending.
-- S10 Offline Runtime and S11 Controlled Rollout are locally implemented and
-  verified. The next frontier is the cross-stage `completion-audit` branch.
+- S08-S11 local implementation and the cross-stage completion audit are
+  complete and verified. The authorized real-group criterion remains external.
 - `apps/web` and Sub2API paths are concurrent unrelated work and excluded.
 - TreeWork was initialized for the integrated S08-S11 objective.
 
@@ -32,3 +32,6 @@ Last sync: unix:1785817796
   reconciliation and side-effect-free Shadow evidence.
 - S11 locally passes 350 tests on Python 3.10/3.12 with persistent single-owner
   canary, pre-send kill switch, sanitized metrics and rollback evidence.
+- The completion audit rebuilt the digest-pinned AstrBot image, passed 19
+  affected host/plugin tests offline and synchronized the requirements and
+  Chinese status documents without integrating WebUI/Sub2API paths.

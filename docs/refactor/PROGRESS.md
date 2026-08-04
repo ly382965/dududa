@@ -1,14 +1,15 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-02
+更新时间：2026-08-04
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S07 的**增量实施步骤已完成**，S08 是下一步。
-- 对应产品模块仍是**部分完成**：旧 AstrBot Handler 继续处理生产消息，尚无新 Runtime
-  Orchestrator、State Store、shadow、canary 或选择性切流。
+- S01–S11 的**本地增量实施步骤已完成**；S08-S11 已实现确定性模型选择、难度判断、
+  离线 Runtime、无发送 Shadow 和受控 Canary 边界。
+- 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
+  取得持久单一所有权。真实 QQ 群运行尚未授权。
 - S04、S06、S07 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。
@@ -29,20 +30,45 @@
 | S06 Memory 安全边界 | 已完成 | MemoryScope/Selector/Record/Repository、显式 Write Gate、内存/JSON 参考 Adapter、隔离矩阵 | embedding、Graph、Reranker、自动摘要或自动写入 |
 | S07 Iris/迁移边界 | 已完成 | fail-closed Iris Protocol Adapter、缺 metadata 隔离区、backup/dry-run/receipt/rollback CLI | 真实 Iris SDK Backend、生产数据迁移、语义检索、Runtime 接入 |
 
+## S08–S11 实施状态
+
+| 步骤 | 状态 | 已交付 | 明确未做 |
+| --- | --- | --- | --- |
+| S08 静态 Model Router | 已完成 | Haiku/Sonnet/Opus 契约、Registry、硬过滤、流量 admission、容量、fallback、Fake 与兼容 Adapter | Bandit、随机路由、真实多 Provider 效果声明 |
+| S09 Perception 与 Tiering | 已完成 | Rule/Model/Merger/Validator、Social Decision、Complexity、TierPolicy、320 条合成/固定 Eval | 人工标签确认、真实群数据校准、多轮与附件语义 |
+| S10 Offline Runtime | 已完成 | Connector 到 Delivery receipt 的显式 @ 直聊闭环、两次模型预算、CAS/single-flight、Composition、reconciliation 与 Shadow | Tool、Memory、Attachment、生产 Provider 和主动群聊 |
+| S11 Controlled Rollout | 已完成（本地） | typed mode、白名单、SQLite claim/tombstone、priority-100 AstrBot Bridge、发送前熔断、脱敏指标和回滚 CLI | 未经授权的真实 QQ 群发送、广泛生产切流 |
+
 ## 产品模块完成度
 
 | 模块 | 状态 | 判断依据 |
 | --- | --- | --- |
-| 核心 Package | 部分完成 | Package、DTO、State、Port 和测试已完成；Orchestrator/State Store/切流未完成 |
-| 安全组件 | 部分完成 | v2 组件及负向测试已完成；生产仍使用兼容权限入口，尚未贯穿新 Runtime |
-| Connector / Output / Attachment | 部分完成 | 单 Adapter 契约已完成；真实附件读取、持久去重和生产 Bridge 未完成 |
+| 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow 和 rollout Ports 已完成；真实 Provider/Tool/Memory/Attachment 全能力未完成 |
+| 安全组件 | 部分完成 | 授权、预算、内容安全、隐私、持久 claim 和发送前熔断已贯穿 S10/S11；旧命令兼容权限仍保留 |
+| Connector / Output / Attachment | 部分完成 | AstrBot Connector/Output、持久 rollout 去重、Bridge 和发送 tombstone 已完成；真实附件读取和第二平台未完成 |
 | Memory | 部分完成 | 安全边界与迁移工具已完成；真实 Iris、Context Builder、生产读取/写入未完成 |
-| 插件拆分 | 部分完成 | 源码拆分和真实 AstrBot registry 已验证；旧 Handler 仍是权威入口 |
-| 模型路由、语义理解、OC Runtime | 未完成 | 仅有冻结设计；从 S08 开始实现 |
+| 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
+| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | Unified MCP / Capability Runtime | 部分完成 | 现有 iCourse Server 和 10 个工具可用；统一 Client/Registry/Planner 尚未实现 |
-| Bandit、WebUI、真实群聊放量 | 未完成 | 只有计划与安全边界，无实现或线上证据 |
+| Bandit、WebUI、真实群聊放量 | 未完成 | Bandit 明确无 hook；WebUI 不在本分支；真实群只有本地仿真和安全边界，无线上证据 |
 
-## 2026-08-02 验证证据
+## 2026-08-04 S08–S11 验证证据
+
+| 门禁 | 结果 |
+| --- | --- |
+| Python 3.12 / 3.10 全仓 | 两个版本均 Pass：350 tests，宿主机各有 2 个 AstrBot-only skip |
+| Runtime/rollout warnings-as-errors | 两个版本均 Pass：109 tests |
+| S09 Eval | 320 条版本化合成/固定数据集通过策略回归；人工确认仍为 false |
+| 静态与边界 | Ruff、独立首次导入、Bandit 禁止扫描、WebUI/Sub2API 历史 scope 扫描通过 |
+| Python / Shell / Compose | compileall、Shell syntax、两个 CLI `--help`、Compose parse 通过 |
+| 仓库安全 | safety scan Pass：372 files；`git diff --check` 通过 |
+| 派生 AstrBot 镜像 | `dududa/astrbot@sha256:a72637301a6df1fe2a120a7ed3cb77406999e4c7f69f878ed64887d2d2d1ec09` |
+| 镜像插件 smoke | `--network none` 下 19 tests 全通过；Core registry 43 handlers、rollout priority 100 |
+| 镜像 Package | `dududa-agent==0.1.0a1`、`dududa.rollout` 可导入、`pip check` 通过 |
+
+完整要求到证据映射见 `s08-s11-completion-audit.md`。
+
+## 2026-08-02 S01–S07 验证证据
 
 | 门禁 | 结果 |
 | --- | --- |
@@ -80,12 +106,12 @@
 
 ## 残余边界
 
-1. **生产入口未切流。** `astrbot_plugin_dududa_core.main` 仍注册并委托旧 Handler；当前没有
-   Agent Runtime Orchestrator、RuntimeStateStore、shadow、canary 或 kill switch 证据。
+1. **真实群证据未授权。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据，但没有授权
+   群 ID、凭据或发送窗口，不能声称生产 SLO 或真实发送完成。
 2. **Attachment Actor 绑定不完整。** `AttachmentAccessRequest` 没有独立 `Actor` 字段；当前
    只能验证 `AuthorizationDecision.actor_digest`，Repository 没有第二份当前 Actor 做交叉核对。
-3. **去重只完成键和单 Adapter 语义。** `(platform, bot_id, conversation_id, message_id)` 四元键
-   已定义并测试；跨进程/跨 Runtime 原子唯一约束和 tombstone 留待 State Store。
+3. **去重分层。** S10 Runtime Store 证明同进程 CAS/single-flight；S11 SQLite rollout ledger
+   证明跨进程 claim 与发送 tombstone。通用多平台持久 RuntimeState 仍未实现。
 4. **真实附件读取未实现。** AstrBot 组合层使用 fail-closed `RejectingAttachmentSource`，不会
    静默丢弃或越权读取附件。
 5. **真实 Iris 未接入。** 当前只有 `IrisBackend` Protocol、fail-closed Repository 和 Fake
@@ -97,9 +123,9 @@
 
 ## 下一步
 
-严格进入 S08：实现单 Provider、`PERCEPTION`/`DIRECT_CHAT` 两角色的静态 Model Router，
-先完成 descriptor、隐私/预算/健康硬过滤、错误映射、fallback 和共享 Contract Test。
-S08 不接生产 Event，不实现多 Provider 优化、图片角色或 Bandit；通过后再进入 S09。
+先完成经授权的单群 `shadow -> canary` 外部门禁，或由负责人明确选择后续 S12 模块。
+真实运行前必须冻结群 ID、凭据、SLO、发送窗口和 digest-pinned image/plugin/config 回滚清单。
+Bandit、Tool/Memory 自动接入和广泛群放量仍不得顺带开启。
 
 ## 历史基线
 

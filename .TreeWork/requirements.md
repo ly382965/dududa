@@ -44,22 +44,27 @@ and do not implement or connect Bandit learning yet.
   sanitized evaluation set and report.
 - [x] The bootstrap `PERCEPTION` call always uses an allowed `haiku` endpoint;
   only the validated assessment influences the later `DIRECT_CHAT` tier.
-- [ ] S10 runs the offline sequence Connector -> Context -> Perception ->
+- [x] S10 runs the offline sequence Connector -> Context -> Perception ->
   Complexity -> TierPolicy -> Router -> Direct Chat -> Composer -> one
   deterministic Persona renderer -> DeliveryRequest/receipt, with total
   deadline, cancellation, budget, state, and route receipts verified.
-- [ ] S10 shadow tests prove zero calls to real delivery, memory write, tool
+- [x] S10 shadow tests prove zero calls to real delivery, memory write, tool
   execution, and event stopping while the old path remains authoritative.
-- [ ] S11 provides typed off/shadow/canary configuration, persistent dedup and
+- [x] S11 provides typed off/shadow/canary configuration, persistent dedup and
   delivery tombstones, allowlist and explicit-mention ownership, a second
   pre-delivery kill-switch check, sanitized metrics, and an executable rollback
   procedure.
 - [ ] An authorized real-group shadow/canary run, when credentials and group
   authorization are supplied, records zero duplicate/wrong-target/unauthorized
   or sensitive-trace incidents and captures the frozen SLO evidence.
-- [ ] Existing S01-S07 tests and repository safety/import boundaries remain
+- [x] Existing S01-S07 tests and repository safety/import boundaries remain
   green; unrelated WebUI and Sub2API work is neither modified nor committed by
   this project.
+
+The authorized real-group criterion remains unchecked because no group IDs,
+credentials, authorization or send window were supplied. Local simulation and
+an AstrBot image smoke are recorded separately and are not substituted for
+external evidence.
 
 ## Non-Goals (explicit boundaries; not a backlog of unrelated future ideas)
 
