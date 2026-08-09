@@ -98,3 +98,170 @@ tree:
       depends_on:
       - mew-chat-parity
       - mew-directory-parity
+  - id: agent-expansion
+    title: Offline Agent Expansion
+    purpose: >-
+      Complete the governed S12-S22 and bounded S20 engineering chain before any
+      real-group validation.
+    spec: branches/agent-expansion/spec.md
+    children:
+    - id: production-shape
+      title: S12 Entry Gate Production Shape
+      purpose: >-
+        Make the existing runtime safely composable, default-off and reproducible
+        without enabling a real Endpoint.
+      spec: branches/agent-expansion/production-shape/spec.md
+      depends_on:
+      - completion-audit
+    - id: semantic-contract
+      title: S09 Additive Semantic Contract
+      purpose: >-
+        Add span, entity, reference and explicit uncertainty contracts with a
+        synthetic Schema pilot.
+      spec: branches/agent-expansion/semantic-contract/spec.md
+      depends_on:
+      - production-shape
+    - id: mcp-v2-spike
+      title: S12A MCP V2 Spike
+      purpose: >-
+        Decide MCP v2 adoption using iCourse compatibility and isolated Fake
+        lifecycle evidence.
+      spec: branches/agent-expansion/mcp-v2-spike/spec.md
+      depends_on:
+      - semantic-contract
+    - id: unified-mcp
+      title: S12 Unified MCP
+      purpose: >-
+        Implement one Core-owned multi-Server Client and Registry with iCourse as
+        the sole real compatibility Adapter.
+      spec: branches/agent-expansion/unified-mcp/spec.md
+      depends_on:
+      - mcp-v2-spike
+    - id: bounded-capability
+      title: S13 Bounded Capability Runtime
+      purpose: >-
+        Map explicitly authorized business Capabilities to governed Provider calls
+        and bounded Observations.
+      spec: branches/agent-expansion/bounded-capability/spec.md
+      depends_on:
+      - unified-mcp
+    - id: memory-retrieval
+      title: S14 Memory Lifecycle And Retrieval
+      purpose: >-
+        Complete Memory administration, deletion and lexical retrieval without
+        weakening Scope authority.
+      spec: branches/agent-expansion/memory-retrieval/spec.md
+      depends_on:
+      - bounded-capability
+    - id: response-persona
+      title: S15 Response Profile And Persona
+      purpose: >-
+        Add deterministic short, medium and long Response Plans with fact-preserving
+        composition and rendering.
+      spec: branches/agent-expansion/response-persona/spec.md
+      depends_on:
+      - memory-retrieval
+    - id: proactive-outbound
+      title: S15A-S15E Controlled Proactive Outbound
+      purpose: >-
+        Build the default-off initiated-run, scheduling, source and no-send Shadow
+        sequence.
+      spec: branches/agent-expansion/proactive-outbound/spec.md
+      children:
+      - id: proactive-contracts
+        title: S15A Proactive Contracts
+        purpose: >-
+          Freeze target-bound initiation, authorization, preview, dispatch and
+          reconciliation contracts.
+        spec: branches/agent-expansion/proactive-outbound/proactive-contracts/spec.md
+        depends_on:
+        - response-persona
+      - id: durable-scheduler
+        title: S15B Durable Scheduler
+        purpose: >-
+          Materialize time-zone-aware occurrences and durable single-owner claims
+          under an injected clock.
+        spec: branches/agent-expansion/proactive-outbound/durable-scheduler/spec.md
+        depends_on:
+        - proactive-contracts
+      - id: governed-sources
+        title: S15C Governed Source Contracts
+        purpose: >-
+          Define source-neutral contracts and prove them with fixed fixtures rather
+          than fictitious live MCP Servers.
+        spec: branches/agent-expansion/proactive-outbound/governed-sources/spec.md
+        depends_on:
+        - durable-scheduler
+      - id: digest-shadow
+        title: S15D Digest Shadow
+        purpose: >-
+          Compose fixture-backed scheduled digests in a recommendation-only runtime
+          with no delivery capability.
+        spec: branches/agent-expansion/proactive-outbound/digest-shadow/spec.md
+        depends_on:
+        - governed-sources
+      - id: probe-shadow
+        title: S15E Probe Shadow
+        purpose: >-
+          Detect bounded group-level opportunities and prove the no-send proactive
+          policy against synthetic conversations.
+        spec: branches/agent-expansion/proactive-outbound/probe-shadow/spec.md
+        depends_on:
+        - digest-shadow
+    - id: operations-hardening
+      title: S16 Operations Hardening
+      purpose: >-
+        Prove health, backup, restore, upgrade and rollback from a versioned release
+        manifest.
+      spec: branches/agent-expansion/operations-hardening/spec.md
+      depends_on:
+      - probe-shadow
+    - id: layout-migration
+      title: S17 Layout Migration
+      purpose: >-
+        Move repository surfaces incrementally while preserving compatibility and a
+        recoverable previous release.
+      spec: branches/agent-expansion/layout-migration/spec.md
+      depends_on:
+      - operations-hardening
+    - id: evaluation-ci
+      title: S18 Evaluation And CI
+      purpose: >-
+        Unify versioned fixtures, traces, fault injection and reproducible repository
+        verification.
+      spec: branches/agent-expansion/evaluation-ci/spec.md
+      depends_on:
+      - layout-migration
+    - id: local-integration-audit
+      title: S19 Local Integration Audit
+      purpose: >-
+        Prove the complete release-required offline chain and freeze its rollback
+        evidence without real traffic.
+      spec: branches/agent-expansion/local-integration-audit/spec.md
+      depends_on:
+      - evaluation-ci
+    - id: legacy-cleanup
+      title: S22 Evidence-Based Legacy Cleanup
+      purpose: >-
+        Remove only compatibility surfaces whose consumers have migrated and whose
+        previous release remains independently recoverable.
+      spec: branches/agent-expansion/legacy-cleanup/spec.md
+      depends_on:
+      - local-integration-audit
+    - id: bandit-offline
+      title: S20 Offline Bandit Foundation
+      purpose: >-
+        Add replayable same-role and same-tier decision, support and estimator
+        contracts without training or exploration.
+      spec: branches/agent-expansion/bandit-offline/spec.md
+      depends_on:
+      - legacy-cleanup
+    - id: real-group-validation
+      title: S23 Authorized Real-Group Validation
+      purpose: >-
+        Run separately authorized inbound, digest and probe canaries only after every
+        release-required local gate is complete.
+      spec: branches/agent-expansion/real-group-validation/spec.md
+      depends_on:
+      - legacy-cleanup
+      - mew-parity-audit

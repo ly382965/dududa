@@ -3,10 +3,12 @@
 ## User Intent (the outcome the user is trying to achieve; not a proposed implementation)
 
 Continue long-running development of Dududa beyond the completed local S08-S11
-runtime and Mew/NapCat Web client. Add deterministic short/medium/long answer
-planning, controlled low-frequency proactive conversation probes, and opt-in
-scheduled campus, industry, and arXiv digests while retaining the existing
-security, capability, delivery, rollback, and final real-group gates.
+runtime and Mew/NapCat Web client. Complete every S12-S22 engineering outcome
+that can be proven with local Fakes, fixtures, injected clocks and derived test
+images, including deterministic answer planning and controlled proactive
+outbound foundations, while retaining the existing security, rollback and
+terminal real-group gates. Missing credentials, live sources and human data do
+not block this offline development scope and must not be fabricated.
 
 ## Target User (who experiences the result and whose constraints matter)
 
@@ -46,6 +48,11 @@ security, capability, delivery, rollback, and final real-group gates.
   industry updates, and recent arXiv items in an IANA time zone. MCP-backed
   capabilities retrieve normalized public source items; Scheduler, policy,
   composition, authorization, delivery, and unsubscribe remain Dududa-owned.
+- iCourse is the only currently implemented real MCP Server. Dududa exposes one
+  framework-neutral MCP Client and Server Registry so later Servers require
+  configuration and explicit Capability mapping rather than Core changes or a
+  copied Client. Fixed Fake Servers prove this extension boundary without
+  pretending that other production MCPs already exist.
 - The first complete runtime handles explicit mentions, direct chat only, with
   tools and memory disabled. Shadow execution has no user-visible or persistent
   side effects.
@@ -114,6 +121,24 @@ security, capability, delivery, rollback, and final real-group gates.
 - [x] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
   action access never reach the browser; destructive actions use a typed
   server allowlist and the unauthenticated Web service remains loopback-only.
+- [ ] The pre-S12 production shape installs one default-off Runtime composition,
+  projects only proven sampling parameters, publishes bounded health snapshots
+  and uses a SQLite strategy outside the known WAL-reset hazard, with partial
+  startup and shutdown verified offline.
+- [ ] The additive S09 semantic contract preserves v1 readers and Connector
+  authority while adding validated spans, entity/reference evidence and
+  `ACCEPT | CLARIFY | ABSTAIN`; synthetic evidence is not called real Chinese
+  quality.
+- [ ] S12 provides a framework-neutral Unified MCP Client, multi-Server
+  Registry, per-Server lifecycle and Dududa-owned Schema snapshots. iCourse and
+  a Fake Server pass the same Contract, and adding the Fake requires no Domain,
+  Runtime or generic Client change.
+- [ ] S13 maps only explicitly approved business Capabilities to MCP tools and
+  fails closed for unauthorized, stale, unknown, injected or over-budget plans;
+  dynamic discovery never grants permission.
+- [ ] S14 closes Memory write/read/delete/export/conflict/recovery behavior and
+  a CJK lexical baseline without cross-Scope, expired or deleted records
+  becoming visible.
 - [ ] A versioned Response Plan deterministically selects short/medium/long,
   binds visible character/token/part limits, respects explicit current-message
   detail requests, and is consumed by Router, Composer, Renderer, and final
@@ -126,10 +151,17 @@ security, capability, delivery, rollback, and final real-group gates.
   bounded misfire handling, source and delivery deduplication, public read-only
   Capability/MCP results with freshness and citations, and effective
   pause/unsubscribe/revision invalidation before delivery.
+- [ ] S15C defines a source-neutral Provider and normalized source contract and
+  proves it with local campus/arXiv/industry fixtures. It does not claim live
+  Adapters or create fictitious MCP Servers.
 - [ ] Offline/fake-clock and recommendation-only shadow evidence records zero
   wrong-target, duplicate, quiet-hour, revoked-subscription, uncited,
   prompt-injected, sensitive-trace, or unauthorized-send incidents before any
   proactive real-group canary is considered.
+- [ ] S16-S19 and S22 provide offline operations, migration, Eval/CI, full local
+  integration and evidence-based compatibility cleanup with a recoverable
+  previous release; S20 provides only replayable offline Bandit contracts and
+  synthetic estimator goldens.
 - [ ] Only after every accepted module, Web testing task and local integration
   audit is complete, an explicitly authorized real-group shadow/canary run
   records zero duplicate, wrong-target, unauthorized-send or sensitive-trace
@@ -153,6 +185,8 @@ substituted for the later external run.
 - Private/sensitive campus records, arbitrary-URL crawling, MCP-managed
   scheduling/sending, automatic Memory writes, image roles, or multiple
   personas in the first proactive release.
+- Treating a Fake, fixture, planned source or configuration placeholder as a
+  second real MCP Server or a live public-source Adapter.
 - Dynamic cost/latency optimization across Providers; health and load only
   determine eligibility in this scope.
 - Replacing the legacy AstrBot Handler before the S11 canary gates pass.
@@ -205,3 +239,14 @@ substituted for the later external run.
 15. MCP is an optional infrastructure path for public source retrieval only.
     It never owns schedules, subscriptions, target selection, policy, message
     composition, or delivery.
+16. iCourse is the only real MCP Server in the current repository. S12 builds
+    the reusable Client/Registry/Capability boundary and uses a Fake as the
+    second conformance implementation; it does not invent other real Servers.
+17. S15C completes source contracts and fixed fixtures only. Real campus,
+    arXiv and industry Adapters remain external work until their sources and
+    operator policies are supplied.
+18. The current Goal may complete S20's offline decision/log/support and
+    estimator foundations, but may not train, run a production worker, or
+    perform Shadow/live exploration.
+19. No S23 activity, real Provider call, live source fetch, running-container
+    mutation or user-data read is authorized by this offline Goal.

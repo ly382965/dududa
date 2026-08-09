@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 2,
-  "source_hash": "fnv1a64:92d44206bcb383d0",
-  "state_hash": "fnv1a64:19a5812a329fdffd",
-  "accepted_at": "unix:1785826169",
+  "revision": 3,
+  "source_hash": "fnv1a64:fd5453733f505538",
+  "state_hash": "fnv1a64:76d9ea93c31c52a1",
+  "accepted_at": "unix:1786272840",
   "root": "root",
   "nodes": [
     {
@@ -133,6 +133,232 @@
       "depends_on": [
         "mew-chat-parity",
         "mew-directory-parity"
+      ]
+    },
+    {
+      "id": "agent-expansion",
+      "parent": "root",
+      "title": "Offline Agent Expansion",
+      "purpose": "Complete the governed S12-S22 and bounded S20 engineering chain before any real-group validation.",
+      "spec": "branches/agent-expansion/spec.md",
+      "sibling_order": 5
+    },
+    {
+      "id": "production-shape",
+      "parent": "agent-expansion",
+      "title": "S12 Entry Gate Production Shape",
+      "purpose": "Make the existing runtime safely composable, default-off and reproducible without enabling a real Endpoint.",
+      "spec": "branches/agent-expansion/production-shape/spec.md",
+      "sibling_order": 0,
+      "depends_on": [
+        "completion-audit"
+      ]
+    },
+    {
+      "id": "semantic-contract",
+      "parent": "agent-expansion",
+      "title": "S09 Additive Semantic Contract",
+      "purpose": "Add span, entity, reference and explicit uncertainty contracts with a synthetic Schema pilot.",
+      "spec": "branches/agent-expansion/semantic-contract/spec.md",
+      "sibling_order": 1,
+      "depends_on": [
+        "production-shape"
+      ]
+    },
+    {
+      "id": "mcp-v2-spike",
+      "parent": "agent-expansion",
+      "title": "S12A MCP V2 Spike",
+      "purpose": "Decide MCP v2 adoption using iCourse compatibility and isolated Fake lifecycle evidence.",
+      "spec": "branches/agent-expansion/mcp-v2-spike/spec.md",
+      "sibling_order": 2,
+      "depends_on": [
+        "semantic-contract"
+      ]
+    },
+    {
+      "id": "unified-mcp",
+      "parent": "agent-expansion",
+      "title": "S12 Unified MCP",
+      "purpose": "Implement one Core-owned multi-Server Client and Registry with iCourse as the sole real compatibility Adapter.",
+      "spec": "branches/agent-expansion/unified-mcp/spec.md",
+      "sibling_order": 3,
+      "depends_on": [
+        "mcp-v2-spike"
+      ]
+    },
+    {
+      "id": "bounded-capability",
+      "parent": "agent-expansion",
+      "title": "S13 Bounded Capability Runtime",
+      "purpose": "Map explicitly authorized business Capabilities to governed Provider calls and bounded Observations.",
+      "spec": "branches/agent-expansion/bounded-capability/spec.md",
+      "sibling_order": 4,
+      "depends_on": [
+        "unified-mcp"
+      ]
+    },
+    {
+      "id": "memory-retrieval",
+      "parent": "agent-expansion",
+      "title": "S14 Memory Lifecycle And Retrieval",
+      "purpose": "Complete Memory administration, deletion and lexical retrieval without weakening Scope authority.",
+      "spec": "branches/agent-expansion/memory-retrieval/spec.md",
+      "sibling_order": 5,
+      "depends_on": [
+        "bounded-capability"
+      ]
+    },
+    {
+      "id": "response-persona",
+      "parent": "agent-expansion",
+      "title": "S15 Response Profile And Persona",
+      "purpose": "Add deterministic short, medium and long Response Plans with fact-preserving composition and rendering.",
+      "spec": "branches/agent-expansion/response-persona/spec.md",
+      "sibling_order": 6,
+      "depends_on": [
+        "memory-retrieval"
+      ]
+    },
+    {
+      "id": "proactive-outbound",
+      "parent": "agent-expansion",
+      "title": "S15A-S15E Controlled Proactive Outbound",
+      "purpose": "Build the default-off initiated-run, scheduling, source and no-send Shadow sequence.",
+      "spec": "branches/agent-expansion/proactive-outbound/spec.md",
+      "sibling_order": 7
+    },
+    {
+      "id": "proactive-contracts",
+      "parent": "proactive-outbound",
+      "title": "S15A Proactive Contracts",
+      "purpose": "Freeze target-bound initiation, authorization, preview, dispatch and reconciliation contracts.",
+      "spec": "branches/agent-expansion/proactive-outbound/proactive-contracts/spec.md",
+      "sibling_order": 0,
+      "depends_on": [
+        "response-persona"
+      ]
+    },
+    {
+      "id": "durable-scheduler",
+      "parent": "proactive-outbound",
+      "title": "S15B Durable Scheduler",
+      "purpose": "Materialize time-zone-aware occurrences and durable single-owner claims under an injected clock.",
+      "spec": "branches/agent-expansion/proactive-outbound/durable-scheduler/spec.md",
+      "sibling_order": 1,
+      "depends_on": [
+        "proactive-contracts"
+      ]
+    },
+    {
+      "id": "governed-sources",
+      "parent": "proactive-outbound",
+      "title": "S15C Governed Source Contracts",
+      "purpose": "Define source-neutral contracts and prove them with fixed fixtures rather than fictitious live MCP Servers.",
+      "spec": "branches/agent-expansion/proactive-outbound/governed-sources/spec.md",
+      "sibling_order": 2,
+      "depends_on": [
+        "durable-scheduler"
+      ]
+    },
+    {
+      "id": "digest-shadow",
+      "parent": "proactive-outbound",
+      "title": "S15D Digest Shadow",
+      "purpose": "Compose fixture-backed scheduled digests in a recommendation-only runtime with no delivery capability.",
+      "spec": "branches/agent-expansion/proactive-outbound/digest-shadow/spec.md",
+      "sibling_order": 3,
+      "depends_on": [
+        "governed-sources"
+      ]
+    },
+    {
+      "id": "probe-shadow",
+      "parent": "proactive-outbound",
+      "title": "S15E Probe Shadow",
+      "purpose": "Detect bounded group-level opportunities and prove the no-send proactive policy against synthetic conversations.",
+      "spec": "branches/agent-expansion/proactive-outbound/probe-shadow/spec.md",
+      "sibling_order": 4,
+      "depends_on": [
+        "digest-shadow"
+      ]
+    },
+    {
+      "id": "operations-hardening",
+      "parent": "agent-expansion",
+      "title": "S16 Operations Hardening",
+      "purpose": "Prove health, backup, restore, upgrade and rollback from a versioned release manifest.",
+      "spec": "branches/agent-expansion/operations-hardening/spec.md",
+      "sibling_order": 8,
+      "depends_on": [
+        "probe-shadow"
+      ]
+    },
+    {
+      "id": "layout-migration",
+      "parent": "agent-expansion",
+      "title": "S17 Layout Migration",
+      "purpose": "Move repository surfaces incrementally while preserving compatibility and a recoverable previous release.",
+      "spec": "branches/agent-expansion/layout-migration/spec.md",
+      "sibling_order": 9,
+      "depends_on": [
+        "operations-hardening"
+      ]
+    },
+    {
+      "id": "evaluation-ci",
+      "parent": "agent-expansion",
+      "title": "S18 Evaluation And CI",
+      "purpose": "Unify versioned fixtures, traces, fault injection and reproducible repository verification.",
+      "spec": "branches/agent-expansion/evaluation-ci/spec.md",
+      "sibling_order": 10,
+      "depends_on": [
+        "layout-migration"
+      ]
+    },
+    {
+      "id": "local-integration-audit",
+      "parent": "agent-expansion",
+      "title": "S19 Local Integration Audit",
+      "purpose": "Prove the complete release-required offline chain and freeze its rollback evidence without real traffic.",
+      "spec": "branches/agent-expansion/local-integration-audit/spec.md",
+      "sibling_order": 11,
+      "depends_on": [
+        "evaluation-ci"
+      ]
+    },
+    {
+      "id": "legacy-cleanup",
+      "parent": "agent-expansion",
+      "title": "S22 Evidence-Based Legacy Cleanup",
+      "purpose": "Remove only compatibility surfaces whose consumers have migrated and whose previous release remains independently recoverable.",
+      "spec": "branches/agent-expansion/legacy-cleanup/spec.md",
+      "sibling_order": 12,
+      "depends_on": [
+        "local-integration-audit"
+      ]
+    },
+    {
+      "id": "bandit-offline",
+      "parent": "agent-expansion",
+      "title": "S20 Offline Bandit Foundation",
+      "purpose": "Add replayable same-role and same-tier decision, support and estimator contracts without training or exploration.",
+      "spec": "branches/agent-expansion/bandit-offline/spec.md",
+      "sibling_order": 13,
+      "depends_on": [
+        "legacy-cleanup"
+      ]
+    },
+    {
+      "id": "real-group-validation",
+      "parent": "agent-expansion",
+      "title": "S23 Authorized Real-Group Validation",
+      "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
+      "spec": "branches/agent-expansion/real-group-validation/spec.md",
+      "sibling_order": 14,
+      "depends_on": [
+        "legacy-cleanup",
+        "mew-parity-audit"
       ]
     }
   ]

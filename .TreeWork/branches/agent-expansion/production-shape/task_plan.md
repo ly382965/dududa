@@ -1,0 +1,53 @@
+# Task Plan
+
+Branch: production-shape
+Parent: agent-expansion
+Title: S12 Entry Gate Production Shape
+
+## Scope (owned work and boundary; not progress notes or implementation history)
+
+- Make SQLite journal mode explicit, version-gated and safe by default.
+- Align Runtime sampling with proven Endpoint capability.
+- Add bounded health evidence and freshness transitions.
+- Install and close exactly one default-off production Runtime composition.
+- Prove off/shadow behavior with Fakes and no external side effects.
+
+## Acceptance (done checklist; not exploratory todos unless they decide completion)
+
+- [ ] Rollout persistence defaults to rollback journal and retains atomic CAS.
+- [ ] WAL is rejected below SQLite 3.51.3 and the effective mode is verified.
+- [ ] Perception and Direct Chat use `temperature=None`; Adapters never drop it silently.
+- [ ] Health transitions are replayable and stale/failed evidence returns to UNKNOWN.
+- [ ] Router continues to reject UNKNOWN and stale health with stable reasons.
+- [ ] One composition root installs at most one bridge and is default-off.
+- [ ] Partial initialization and repeated termination leak no owned resource.
+- [ ] Offline off/shadow smoke records zero model, delivery and persistent-write effects.
+- [ ] Focused and affected repository tests pass without touching running containers.
+
+## Local Steps (durable working steps toward acceptance; not session-only todos)
+
+- [ ] Add journal policy/configuration and persistence failure tests.
+- [ ] Remove forced Runtime sampling and update request/Adapter contracts.
+- [ ] Implement the health evidence state machine and Router-facing snapshots.
+- [ ] Build the transactional production composition and lifecycle owner.
+- [ ] Add Fake-based plugin composition and no-side-effect smoke tests.
+- [ ] Run focused, dual-Python affected and repository safety verification.
+- [ ] Record Verification, Findings and the coherent local commit.
+
+## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
+
+- Real Endpoint enablement, model credentials or Provider quality claims.
+- Running-container, Compose deployment or real QQ changes.
+- Static Router redesign, semantic v2, MCP, Memory or proactive behavior.
+
+## Dependencies (local or external prerequisites; branch-to-branch order belongs in tree.yaml)
+
+1. Completed S08-S11 contracts and the completion audit.
+2. Existing production-shape preflight evidence.
+3. No external credentials or user data are required.
+
+## Branch Intake Gate (inspect/reuse/create judgment; not after-the-fact branch sprawl justification)
+
+- Inspect: S08-S11 completion audit, production preflight and current composition.
+- Reuse check: S11 remains complete; this branch owns only its production reachability gate.
+- New branch rationale: Created from declarative `.TreeWork/tree.yaml`.

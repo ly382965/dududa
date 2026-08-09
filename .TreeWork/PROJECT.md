@@ -63,11 +63,10 @@ and directory slices and a joint audit.
 ## Current Direction
 
 The local S08-S11 implementation/audit and the independent Mew/NapCat Web
-parity epic are complete and verified. The Web client is deployed against real
-NapCat with account-scoped caching and explicit capability gaps. Alignment is
-now reopened for the next Agent expansion: deterministic short/medium/long
-answer planning, opt-in low-frequency conversation probes, and subscription-
-based campus/industry/arXiv digests over governed read-only capabilities. No
-implementation or real-group send is authorized by this design update. The
-accepted Tree must be revised after review so the final real-group gate remains
-terminal and depends on the new local audit.
+parity epic are complete and verified. The user approved the next Agent
+expansion through every offline S12-S22 engineering gate plus the bounded S20
+foundation. Production-shape and additive semantic gates come first; iCourse is
+the only real MCP Server, while later MCPs and proactive sources receive
+framework-neutral Ports, Registry entries, Fakes and fixtures rather than
+invented production integrations. Real Endpoint evidence, human quality data,
+live sources, online Bandit learning and S23 group sends remain external gates.

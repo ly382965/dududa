@@ -6,6 +6,11 @@
   selection.
 - Static endpoint routing, Provider compatibility and reliability boundaries.
 - Structured perception and deterministic social/tier policy.
+- A production-reachable but default-off composition and additive semantic
+  contract proven without real Provider traffic or human data.
+- One generic multi-Server MCP boundary with iCourse as the only real Adapter,
+  plus bounded Capability planning and execution.
+- Memory lifecycle, administration and lexical retrieval baselines.
 - Offline direct-chat runtime and side-effect-free shadow composition.
 - Controlled AstrBot shadow/canary boundary, kill switch, dedup, observability
   and rollback evidence.
@@ -21,6 +26,8 @@
   settings workflows with account-scoped real-data persistence.
 - A final authorized real-group scenario gate after all module, Web testing and
   local integration work is complete.
+- An isolated S20 offline logging/support/OPE foundation that never controls
+  safety, proactive behavior or the S23 prerequisite chain.
 
 ## Project Acceptance (project-level completion criteria; not branch-local steps)
 
@@ -39,6 +46,9 @@
   workflows pass adapted Unit and E2E contracts on desktop and mobile.
 - [x] Concurrent accounts remain isolated through gateway actions, events,
   browser caches, drafts and uploads, with the OneBot token server-only.
+- [ ] Production shape, additive semantic contracts, Unified MCP/iCourse
+  migration, bounded Capability and Memory lifecycle/retrieval pass their local
+  negative and compatibility contracts.
 - [ ] Response Profile selection, dynamic output budgeting and final length/
   completeness validation pass a task-complexity by answer-profile matrix.
 - [ ] Proactive probes and scheduled digests pass default-off, authorization,
@@ -46,6 +56,8 @@
   idempotency across Adapter revisions, fake-clock, concurrency, MCP-source,
   citation, deduplication, quiet-hour, unsubscribe, delivery and rollback
   contracts without using real groups.
+- [ ] Source-provider fixtures and S20 synthetic estimator goldens are clearly
+  separated from live Source Adapters and online learning claims.
 - [ ] After every earlier acceptance item and local audit passes, the authorized
   real-group shadow/canary records the frozen safety and SLO evidence.
 
@@ -76,11 +88,12 @@ authorized external run after these local criteria and their audit pass.
     semantics, health snapshots and the single rollout composition root.
 12. Add the compatible semantic span/decision contract and complete its
     synthetic/Schema pilot without claiming real Chinese multi-turn quality.
-13. Run the MCP v2 Client/Server migration Spike, then implement Unified MCP and
-    bounded Capability before completing Memory and deterministic Response Plan.
-14. Implement proactive outbound contracts, then durable scheduling and
-    subscriptions, then one public campus source, arXiv, allowlisted industry
-    sources, digest Shadow, and finally probe Shadow.
+13. Run the MCP v2 Client/Server migration Spike, then implement Unified MCP
+    with iCourse as the only real Adapter and one Fake extension proof. Continue
+    through bounded Capability, Memory and deterministic Response Plan.
+14. Implement proactive outbound contracts and durable scheduling, then prove
+    source-neutral contracts with fixed campus/arXiv/industry fixtures before
+    digest Shadow and probe Shadow. Live Source Adapters remain external.
 15. Run fake-clock long-duration simulation, fault injection, repository-wide
     regression and a new local expansion audit.
 16. After every accepted module and local audit is complete, freeze the SLO and
@@ -125,3 +138,6 @@ arrive.
 8. Source rollout needs operator-frozen campus/publisher/category allowlists,
    arXiv revision policy, IANA zone, quiet hours, misfire window and item/rate
    limits. Public fixtures remain sufficient for Adapter contract development.
+9. The repository currently contains only the iCourse real MCP Server. New real
+   MCP Servers and live Source Adapters are not prerequisites for the generic
+   S12/S13 or fixture-based S15C acceptance boundaries.

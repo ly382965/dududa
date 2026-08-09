@@ -18,6 +18,13 @@ Agent expansion rather than a new product Control Plane. Unrelated and isolated
 repositories are outside this workspace's development evidence and are never
 used as implementation inputs.
 
+iCourse is the sole real MCP Server currently present. Its dedicated plugin
+Client hard-codes the Server process and opens a new session per operation;
+the accepted Unified MCP ADR is design, not implementation. This expansion
+therefore treats iCourse as the compatibility Adapter and a local Fake as the
+extension proof. Campus, arXiv and industry fixtures establish source contracts
+without implying that their live MCP Servers or Adapters exist.
+
 ### Integrated Model Selection Architecture
 
 ```text
@@ -272,6 +279,36 @@ Memory services cannot obtain broader Scope, automatic writes or telemetry;
 Graph/temporal memory remains deferred until a simpler baseline shows a measured
 failure.
 
+### S12 Unified MCP And S13 Capability Runtime
+
+Core owns immutable MCP request/result, health, tool descriptor and Schema
+snapshot contracts plus one `UnifiedMcpClient` Port. Infrastructure owns the
+SDK and transport. A configuration-backed `McpServerRegistry` is the only
+source of command/URL, transport, SecretRef, tool allowlist, timeout, retry,
+circuit-breaker and concurrency facts; models and Capability arguments cannot
+alter connection configuration.
+
+The production Client keeps one bounded lifecycle and generation per Server.
+Disconnect or material configuration change retires the generation, closes its
+resources and requires a fresh initialize/discover cycle. Dududa publishes the
+canonical Schema snapshot atomically and retains last-known-good evidence;
+discovery changes facts but grants no Capability. Unknown write outcomes are
+not retried without business idempotency evidence.
+
+iCourse is the only real compatibility Adapter in this Goal. Its existing
+command behavior and cache path remain rollback-compatible while approved
+read-only tools migrate behind the unified Port. Crawl, refresh, robots and
+export stay outside model-visible Capability. One Fake Server must pass the
+same Client Contract and be addable through Registry plus Capability mapping
+without changing Domain, Runtime or the generic Client.
+
+S13 keeps the MCP Registry separate from the Capability Registry. Retrieval
+filters stable business definitions by actor permission, Scope, privacy, risk,
+health, budget and freshness before a bounded Planner sees Top-K summaries.
+Executor revalidates mapping and schemas at every step and converts all Server
+content into untrusted, bounded Observations. Unknown tools, stale snapshots,
+injected instructions and incomplete authorization fail closed.
+
 ### Planned Response Profiles And Controlled Outbound
 
 This section is a pre-implementation target for the next Agent expansion. It
@@ -364,6 +401,13 @@ items and allowlisted industry updates. Arbitrary URLs, private campus data,
 MCP message-send tools and dynamically discovered unapproved tools are outside
 the first release. External source content is an untrusted Observation and can
 never become instructions.
+
+For the offline S15C boundary, `SourceProvider` and normalized
+`SourceItem/SourceBatch` contracts are implemented against fixed campus, arXiv
+and industry fixtures through Fake Capabilities. No live Adapter or additional
+MCP Server is claimed. A future real source may be added through Server
+configuration and Capability mapping without changing Scheduler, Composer or
+proactive policy.
 
 The Unified MCP Spike fixes one long-lived Client/session and generation per
 Server, bounded reconnect, explicit v1 legacy mode, a Dududa-owned canonical
@@ -524,6 +568,8 @@ finish their local audits, freeze the release/SLO/rollback inputs, and only then
 run authorized single-group shadow and canary. Wider group testing and debugging
 may follow only if the single-group safety gate passes.
 
-Bandit, random weights and learned online routing have no implementation hook in
-this project beyond reproducible static decision receipts that a later S20 can
-consume after a separate design review.
+S20 may add versioned before-action decisions, complete action-set/propensity
+logging, support validation, deterministic replay and synthetic IPS/SNIPS/DR
+goldens. It cannot train or load a production policy, run Shadow/live
+exploration, or rank anything outside already legal same-role/tier Endpoint
+compatibility classes.

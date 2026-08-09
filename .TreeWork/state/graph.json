@@ -167,6 +167,334 @@
       "kind": "depends_on",
       "user_label": "mew-directory-parity depends on mew-parity-foundation",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-22",
+      "from": "root",
+      "to": "agent-expansion",
+      "kind": "parent_of",
+      "user_label": "root contains agent-expansion",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-23",
+      "from": "agent-expansion",
+      "to": "production-shape",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains production-shape",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-24",
+      "from": "agent-expansion",
+      "to": "semantic-contract",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains semantic-contract",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-25",
+      "from": "agent-expansion",
+      "to": "mcp-v2-spike",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains mcp-v2-spike",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-26",
+      "from": "agent-expansion",
+      "to": "unified-mcp",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains unified-mcp",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-27",
+      "from": "agent-expansion",
+      "to": "bounded-capability",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains bounded-capability",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-28",
+      "from": "agent-expansion",
+      "to": "memory-retrieval",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains memory-retrieval",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-29",
+      "from": "agent-expansion",
+      "to": "response-persona",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains response-persona",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-30",
+      "from": "agent-expansion",
+      "to": "proactive-outbound",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains proactive-outbound",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-31",
+      "from": "proactive-outbound",
+      "to": "proactive-contracts",
+      "kind": "parent_of",
+      "user_label": "proactive-outbound contains proactive-contracts",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-32",
+      "from": "proactive-outbound",
+      "to": "durable-scheduler",
+      "kind": "parent_of",
+      "user_label": "proactive-outbound contains durable-scheduler",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-33",
+      "from": "proactive-outbound",
+      "to": "governed-sources",
+      "kind": "parent_of",
+      "user_label": "proactive-outbound contains governed-sources",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-34",
+      "from": "proactive-outbound",
+      "to": "digest-shadow",
+      "kind": "parent_of",
+      "user_label": "proactive-outbound contains digest-shadow",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-35",
+      "from": "proactive-outbound",
+      "to": "probe-shadow",
+      "kind": "parent_of",
+      "user_label": "proactive-outbound contains probe-shadow",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-36",
+      "from": "agent-expansion",
+      "to": "operations-hardening",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains operations-hardening",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-37",
+      "from": "agent-expansion",
+      "to": "layout-migration",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains layout-migration",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-38",
+      "from": "agent-expansion",
+      "to": "evaluation-ci",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains evaluation-ci",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-39",
+      "from": "agent-expansion",
+      "to": "local-integration-audit",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains local-integration-audit",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-40",
+      "from": "agent-expansion",
+      "to": "legacy-cleanup",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains legacy-cleanup",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-41",
+      "from": "agent-expansion",
+      "to": "bandit-offline",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains bandit-offline",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-42",
+      "from": "agent-expansion",
+      "to": "real-group-validation",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains real-group-validation",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-43",
+      "from": "bandit-offline",
+      "to": "legacy-cleanup",
+      "kind": "depends_on",
+      "user_label": "bandit-offline depends on legacy-cleanup",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-44",
+      "from": "operations-hardening",
+      "to": "probe-shadow",
+      "kind": "depends_on",
+      "user_label": "operations-hardening depends on probe-shadow",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-45",
+      "from": "local-integration-audit",
+      "to": "evaluation-ci",
+      "kind": "depends_on",
+      "user_label": "local-integration-audit depends on evaluation-ci",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-46",
+      "from": "response-persona",
+      "to": "memory-retrieval",
+      "kind": "depends_on",
+      "user_label": "response-persona depends on memory-retrieval",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-47",
+      "from": "legacy-cleanup",
+      "to": "local-integration-audit",
+      "kind": "depends_on",
+      "user_label": "legacy-cleanup depends on local-integration-audit",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-48",
+      "from": "memory-retrieval",
+      "to": "bounded-capability",
+      "kind": "depends_on",
+      "user_label": "memory-retrieval depends on bounded-capability",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-49",
+      "from": "governed-sources",
+      "to": "durable-scheduler",
+      "kind": "depends_on",
+      "user_label": "governed-sources depends on durable-scheduler",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-50",
+      "from": "semantic-contract",
+      "to": "production-shape",
+      "kind": "depends_on",
+      "user_label": "semantic-contract depends on production-shape",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-51",
+      "from": "digest-shadow",
+      "to": "governed-sources",
+      "kind": "depends_on",
+      "user_label": "digest-shadow depends on governed-sources",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-52",
+      "from": "layout-migration",
+      "to": "operations-hardening",
+      "kind": "depends_on",
+      "user_label": "layout-migration depends on operations-hardening",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-53",
+      "from": "mcp-v2-spike",
+      "to": "semantic-contract",
+      "kind": "depends_on",
+      "user_label": "mcp-v2-spike depends on semantic-contract",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-54",
+      "from": "unified-mcp",
+      "to": "mcp-v2-spike",
+      "kind": "depends_on",
+      "user_label": "unified-mcp depends on mcp-v2-spike",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-55",
+      "from": "real-group-validation",
+      "to": "mew-parity-audit",
+      "kind": "depends_on",
+      "user_label": "real-group-validation depends on mew-parity-audit",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-56",
+      "from": "bounded-capability",
+      "to": "unified-mcp",
+      "kind": "depends_on",
+      "user_label": "bounded-capability depends on unified-mcp",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-57",
+      "from": "evaluation-ci",
+      "to": "layout-migration",
+      "kind": "depends_on",
+      "user_label": "evaluation-ci depends on layout-migration",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-58",
+      "from": "durable-scheduler",
+      "to": "proactive-contracts",
+      "kind": "depends_on",
+      "user_label": "durable-scheduler depends on proactive-contracts",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-59",
+      "from": "probe-shadow",
+      "to": "digest-shadow",
+      "kind": "depends_on",
+      "user_label": "probe-shadow depends on digest-shadow",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-60",
+      "from": "real-group-validation",
+      "to": "legacy-cleanup",
+      "kind": "depends_on",
+      "user_label": "real-group-validation depends on legacy-cleanup",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-61",
+      "from": "production-shape",
+      "to": "completion-audit",
+      "kind": "depends_on",
+      "user_label": "production-shape depends on completion-audit",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-62",
+      "from": "proactive-contracts",
+      "to": "response-persona",
+      "kind": "depends_on",
+      "user_label": "proactive-contracts depends on response-persona",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

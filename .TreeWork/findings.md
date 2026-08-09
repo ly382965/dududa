@@ -23,6 +23,9 @@
   Initial length numbers are pilot defaults and must not become enum semantics.
 - MCP transports approved capabilities but owns neither Schema freshness,
   scheduling nor delivery. Scheduler occurrence/CAS remains Dududa-owned.
+- iCourse is currently the only real MCP Server. Its plugin Client is a
+  hard-coded per-call stdio compatibility path; the accepted Unified MCP Port,
+  Registry, shared lifecycle and Capability Provider remain S12/S13 work.
 - The current S09 Eval and Memory retrieval are narrower than their interface
   names imply: the former is synthetic policy gold, and the latter is exact
   Scope/TTL plus substring/recency rather than semantic retrieval.
@@ -39,6 +42,9 @@
   Composer, Persona and final validators; no later component reselects profile.
 - Memory rankers receive only already Scope/TTL/visibility-filtered candidate
   IDs. Repository, WriteGate, deletion and export remain Core authorities.
+- MCP extensibility is proven by adding a Fake through Registry configuration
+  and Capability mapping while reusing the same Contract. It is not proven by
+  AstrBot merely preserving an unknown Server entry in its JSON file.
 
 ## Risks And Unknowns (project-wide residual hazards; not unfinished branch work)
 
