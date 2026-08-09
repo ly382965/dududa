@@ -14,6 +14,11 @@ if TYPE_CHECKING:
     from .authorization import CapabilityAuthorizationPurpose
     from .config import ConfigCapabilityRegistry
     from .health import PollingCapabilityHealthRegistry
+    from .planning import (
+        DeterministicArgumentBinder,
+        DeterministicToolPlanner,
+        DeterministicToolPlanValidator,
+    )
     from .registry import (
         InMemoryCapabilityProviderRegistry,
         InMemoryCapabilityRegistry,
@@ -146,7 +151,10 @@ __all__ = [
     "CapabilitySchemaDocument",
     "ConfigCapabilityRegistry",
     "CostHint",
+    "DeterministicArgumentBinder",
     "DeterministicCapabilityRetriever",
+    "DeterministicToolPlanValidator",
+    "DeterministicToolPlanner",
     "Idempotency",
     "InMemoryCapabilityProviderRegistry",
     "InMemoryCapabilityRegistry",
@@ -246,6 +254,22 @@ def __getattr__(name: str) -> object:
         from .retrieval import DeterministicCapabilityRetriever
 
         return DeterministicCapabilityRetriever
+    if name in {
+        "DeterministicArgumentBinder",
+        "DeterministicToolPlanner",
+        "DeterministicToolPlanValidator",
+    }:
+        from .planning import (
+            DeterministicArgumentBinder,
+            DeterministicToolPlanner,
+            DeterministicToolPlanValidator,
+        )
+
+        return {
+            "DeterministicArgumentBinder": DeterministicArgumentBinder,
+            "DeterministicToolPlanner": DeterministicToolPlanner,
+            "DeterministicToolPlanValidator": DeterministicToolPlanValidator,
+        }[name]
     if name in {
         "InMemoryCapabilityProviderRegistry",
         "InMemoryCapabilityRegistry",

@@ -1008,6 +1008,7 @@ class ToolPlanValidationRequest:
     retrieval: CapabilityRetrievalResult
     plan: ToolPlan
     maximum_attempts: int = DEFAULT_TOOL_ATTEMPTS
+    maximum_cost_units: int | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -1028,6 +1029,11 @@ class ToolPlanValidationRequest:
             or not 1 <= self.maximum_attempts <= MAX_TOOL_ATTEMPTS
         ):
             raise validation_error("invalid_tool_plan_attempt_limit")
+        if self.maximum_cost_units is not None and (
+            type(self.maximum_cost_units) is not int
+            or not 0 <= self.maximum_cost_units <= 1_000_000_000
+        ):
+            raise validation_error("invalid_tool_plan_cost_limit")
         _check_digest(
             self.request_digest,
             {
@@ -1036,6 +1042,7 @@ class ToolPlanValidationRequest:
                 "retrieval": self.retrieval,
                 "plan": self.plan,
                 "maximum_attempts": self.maximum_attempts,
+                "maximum_cost_units": self.maximum_cost_units,
             },
             domain="capability.tool-plan-validation-request:v1",
             code="tool_plan_validation_request_digest_mismatch",
@@ -1085,6 +1092,7 @@ class ToolPlanValidationResult:
 class ArgumentBindingRequest:
     schema_version: int
     request_digest: DigestString
+    plan: ToolPlan
     step: ToolStep
     accepted_observations: tuple[ToolObservation, ...]
     input_schema: CapabilitySchemaDocument
@@ -1092,8 +1100,12 @@ class ArgumentBindingRequest:
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
+        if not isinstance(self.plan, ToolPlan):
+            raise validation_error("invalid_argument_binding_plan")
         if not isinstance(self.step, ToolStep):
             raise validation_error("invalid_argument_binding_step")
+        if self.step not in self.plan.steps:
+            raise validation_error("argument_binding_step_not_in_plan")
         observations = _typed_tuple(
             self.accepted_observations,
             ToolObservation,
@@ -1104,6 +1116,12 @@ class ArgumentBindingRequest:
             item.status is not ToolExecutionStatus.SUCCEEDED for item in observations
         ):
             raise validation_error("binding_observation_not_successful")
+        if any(
+            item.plan_id != self.plan.plan_id
+            or item.plan_digest != self.plan.plan_digest
+            for item in observations
+        ):
+            raise validation_error("binding_observation_plan_mismatch")
         if not isinstance(self.input_schema, CapabilitySchemaDocument):
             raise validation_error("invalid_binding_input_schema")
         fixed = _mapping(
@@ -1117,6 +1135,7 @@ class ArgumentBindingRequest:
             self.request_digest,
             {
                 "schema_version": self.schema_version,
+                "plan": self.plan,
                 "step": self.step,
                 "accepted_observations": observations,
                 "input_schema": self.input_schema,
