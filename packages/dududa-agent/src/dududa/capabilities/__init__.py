@@ -11,12 +11,14 @@ from dududa.domain.capability import (
 )
 
 if TYPE_CHECKING:
+    from .authorization import CapabilityAuthorizationPurpose
     from .config import ConfigCapabilityRegistry
     from .health import PollingCapabilityHealthRegistry
     from .registry import (
         InMemoryCapabilityProviderRegistry,
         InMemoryCapabilityRegistry,
     )
+    from .retrieval import DeterministicCapabilityRetriever
 from .contracts import (
     DEFAULT_TOOL_ATTEMPTS,
     MAX_ARGUMENT_BYTES,
@@ -121,6 +123,7 @@ __all__ = [
     "ArgumentBindingRequest",
     "ArgumentBindingResult",
     "ArgumentTemplate",
+    "CapabilityAuthorizationPurpose",
     "CapabilityCandidate",
     "CapabilityCatalogPublishReceipt",
     "CapabilityCatalogSnapshot",
@@ -143,6 +146,7 @@ __all__ = [
     "CapabilitySchemaDocument",
     "ConfigCapabilityRegistry",
     "CostHint",
+    "DeterministicCapabilityRetriever",
     "Idempotency",
     "InMemoryCapabilityProviderRegistry",
     "InMemoryCapabilityRegistry",
@@ -170,6 +174,9 @@ __all__ = [
     "ValidationAction",
     "argument_binding_request_digest",
     "argument_binding_result_digest",
+    "build_capability_authorization_request",
+    "capability_authorization_allows",
+    "capability_authorization_resource",
     "capability_candidate_digest",
     "capability_catalog_digest",
     "capability_catalog_publish_receipt_digest",
@@ -206,6 +213,27 @@ __all__ = [
 
 
 def __getattr__(name: str) -> object:
+    if name in {
+        "CapabilityAuthorizationPurpose",
+        "build_capability_authorization_request",
+        "capability_authorization_allows",
+        "capability_authorization_resource",
+    }:
+        from .authorization import (
+            CapabilityAuthorizationPurpose,
+            build_capability_authorization_request,
+            capability_authorization_allows,
+            capability_authorization_resource,
+        )
+
+        return {
+            "CapabilityAuthorizationPurpose": CapabilityAuthorizationPurpose,
+            "build_capability_authorization_request": (
+                build_capability_authorization_request
+            ),
+            "capability_authorization_allows": capability_authorization_allows,
+            "capability_authorization_resource": capability_authorization_resource,
+        }[name]
     if name == "ConfigCapabilityRegistry":
         from .config import ConfigCapabilityRegistry
 
@@ -214,6 +242,10 @@ def __getattr__(name: str) -> object:
         from .health import PollingCapabilityHealthRegistry
 
         return PollingCapabilityHealthRegistry
+    if name == "DeterministicCapabilityRetriever":
+        from .retrieval import DeterministicCapabilityRetriever
+
+        return DeterministicCapabilityRetriever
     if name in {
         "InMemoryCapabilityProviderRegistry",
         "InMemoryCapabilityRegistry",

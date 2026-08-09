@@ -4,6 +4,11 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .capabilities import (
+        CapabilityRetrievalEvalCase,
+        CapabilityRetrievalEvalReport,
+        evaluate_capability_retrieval,
+    )
     from .s09 import generate_s09_bundle, run_s09_eval
     from .semantic_v2 import (
         check_semantic_schema_pilot,
@@ -11,7 +16,10 @@ if TYPE_CHECKING:
     )
 
 __all__ = [
+    "CapabilityRetrievalEvalCase",
+    "CapabilityRetrievalEvalReport",
     "check_semantic_schema_pilot",
+    "evaluate_capability_retrieval",
     "generate_s09_bundle",
     "run_s09_eval",
     "run_semantic_schema_pilot",
@@ -19,6 +27,12 @@ __all__ = [
 
 
 def __getattr__(name: str) -> object:
+    if name in {
+        "CapabilityRetrievalEvalCase",
+        "CapabilityRetrievalEvalReport",
+        "evaluate_capability_retrieval",
+    }:
+        return getattr(import_module(".capabilities", __name__), name)
     if name in {"generate_s09_bundle", "run_s09_eval"}:
         return getattr(import_module(".s09", __name__), name)
     if name in {"check_semantic_schema_pilot", "run_semantic_schema_pilot"}:
