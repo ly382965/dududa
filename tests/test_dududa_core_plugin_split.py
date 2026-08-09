@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "plugins" / "astrbot_plugin_dududa_core" / "main.py"
 COMMANDS = ROOT / "plugins" / "astrbot_plugin_dududa_core" / "commands"
+COURSE_COMMANDS = COMMANDS / "course.py"
 
 
 EXPECTED_HANDLERS = (
@@ -82,6 +83,66 @@ def _handler_contract() -> tuple[tuple[str, str, str], ...]:
 
 
 class DududaCorePluginSplitTests(unittest.TestCase):
+    def test_course_subcommands_gate_before_every_mcp_call(self) -> None:
+        tree = ast.parse(COURSE_COMMANDS.read_text(encoding="utf-8"))
+        imports_time = any(
+            isinstance(node, ast.Import)
+            and any(alias.name == "time" for alias in node.names)
+            for node in tree.body
+        )
+        self.assertTrue(imports_time)
+        owner = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "CoreCourseCommands"
+        )
+        methods = {
+            node.name: node
+            for node in owner.body
+            if isinstance(node, ast.AsyncFunctionDef)
+        }
+        for name in (
+            "course_stats",
+            "course_search",
+            "course_review",
+            "course_compare",
+            "course_refresh",
+        ):
+            method = methods[name]
+            blocked_lines = [
+                node.lineno
+                for node in ast.walk(method)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "_blocked"
+            ]
+            mcp_lines = [
+                node.lineno
+                for node in ast.walk(method)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in {"call", "_answer_natural_course_query"}
+            ]
+            self.assertEqual(len(blocked_lines), 1, name)
+            self.assertTrue(mcp_lines, name)
+            self.assertLess(blocked_lines[0], min(mcp_lines), name)
+        refresh = methods["course_refresh"]
+        trusted_line = next(
+            node.lineno
+            for node in ast.walk(refresh)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "is_trusted"
+        )
+        blocked_line = next(
+            node.lineno
+            for node in ast.walk(refresh)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "_blocked"
+        )
+        self.assertLess(blocked_line, trusted_line)
+
     def test_handler_order_signatures_and_decorators_are_stable(self) -> None:
         self.assertEqual(_handler_contract(), EXPECTED_HANDLERS)
         self.assertEqual(len(EXPECTED_HANDLERS), 43)

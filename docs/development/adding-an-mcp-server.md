@@ -2,9 +2,9 @@
 
 ## 1. 适用范围
 
-本文说明如何在目标目录 `services/mcp/<server-id>/` 中新增 MCP Server，并通过 `configs/mcp/` 和 Capability Registry 接入嘟嘟哒。Phase 1 只定义规范，当前部署仍使用 `services/icourse-mcp/` 和现有 AstrBot 配置。
+本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。S12 当前的权威 Registry 路径是 `config/mcp/servers/*.json`；iCourse 是唯一真实 Server，位于 `services/icourse-mcp/`。`services/mcp/<server-id>/` 和 `configs/` 是 S17 目录迁移后的目标命名，迁移完成前不得把它们写成当前路径。
 
-MCP Server 是外部能力边界，不是完整 Agent。它负责清晰、原子、结构化的操作；它不负责理解整段群聊、决定是否回复、选择 Persona 或授予权限。
+MCP Server 和 worker 是传输/集成边界，不是完整 Agent。它们负责清晰、原子、结构化的操作和协议生命周期；它们不负责理解整段群聊、决定是否回复、选择 Persona、授予 Capability、判断 Schema freshness、调度或发送。模型可见性由独立的 Capability Registry 决定。
 
 ## 2. 何时使用 MCP
 
@@ -24,7 +24,9 @@ MCP Server 是外部能力边界，不是完整 Agent。它负责清晰、原子
 - 任意 shell、自由 SQL、任意 URL 代理或任意文件系统网关；
 - 依赖整段自然语言 Prompt 才能确定参数的“万能工具”。
 
-## 3. 目标目录
+## 3. 服务目录
+
+新服务在 S17 前可以沿用现有 `services/<server-id>-mcp/` 形态；S17 完成后目标目录如下。目录迁移不能与业务接入隐式绑定。
 
 ```text
 services/mcp/example/
@@ -57,15 +59,18 @@ services/mcp/example/
 
 ## 4. 设计原子 Tool
 
-一个 Tool 应完成一个可命名、可校验、可审计的操作。例如 iCourse 优先提供：
+一个 Tool 应完成一个可命名、可校验、可审计的操作。当前 iCourse transport allowlist 是：
 
 ```text
+icourse_stats
 search_courses
 get_course
 get_reviews
-compare_courses
-refresh_course
+search_site_courses
+crawl_course
 ```
+
+其中未来 S13 首版模型 Capability 只允许 `icourse_stats`、`search_courses`、`get_course(refresh=false)` 和 `get_reviews`。`search_site_courses`、`crawl_course` 有外部/缓存副作用，只供确定性兼容命令使用。`check_robots`、`crawl_courses`、`crawl_latest_reviews`、`export_dataset` 明确位于 transport deny 集合。
 
 而不是：
 
@@ -150,36 +155,44 @@ export_anywhere
 
 ## 6. 配置 Server Registry
 
-目标配置文件位于 `configs/mcp/servers/<server-id>.yaml`：
+当前配置文件位于 `config/mcp/servers/<server-id>.json`，并由标准库严格 JSON parser 读取：
 
-```yaml
-schema_version: 1
-server_id: example
-transport: stdio
-endpoint:
-  command: /usr/local/bin/python
-  args: [-m, example_mcp.transport]
-  cwd: /opt/dududa/services/mcp/example
-  env_allowlist: [TZ]
-secret_refs: []
-allowed_tools:
-  - search_items
-  - get_item
-denied_tools: []
-timeouts:
-  connect_ms: 10000
-  discovery_ms: 10000
-  call_ms: 30000
-  max_call_ms: 120000
-retry:
-  max_attempts: 2
-  base_delay_ms: 250
-circuit_breaker:
-  failures: 5
-  window_ms: 60000
-  open_ms: 120000
-max_concurrency: 4
-enabled: true
+```json
+{
+  "schema_version": 1,
+  "server_id": "example",
+  "enabled": false,
+  "transport": "stdio",
+  "protocol_mode": "auto",
+  "endpoint": {
+    "command": "/usr/local/bin/python",
+    "args": ["-m", "example_mcp.transport"],
+    "cwd": "/opt/dududa/services/example-mcp",
+    "env_allowlist": ["TZ"]
+  },
+  "secret_refs": [],
+  "allowed_tools": ["search_items", "get_item"],
+  "denied_tools": [],
+  "timeouts_seconds": {
+    "connect": 10,
+    "discovery": 10,
+    "call": 30,
+    "maximum_call": 120,
+    "close": 5
+  },
+  "retry": {
+    "maximum_attempts": 2,
+    "base_delay_ms": 250
+  },
+  "circuit": {
+    "failure_threshold": 5,
+    "failure_window_seconds": 60,
+    "open_duration_seconds": 120
+  },
+  "maximum_concurrency": 4,
+  "schema_ttl_seconds": 300,
+  "config_revision": "example-transport-v1"
+}
 ```
 
 规则：
@@ -190,10 +203,13 @@ enabled: true
 - `allowed_tools` 必填，Server 新增 Tool 不会自动暴露；
 - Registry ID 与 Capability Provider ID 分开；一个 Server 可以提供多个 Capability；
 - 配置模板与运行覆盖分离，运行覆盖不得提交 Git。
+- 未知字段、重复 JSON key、文件名与 `server_id` 不一致、非有限数和部分替换均 fail closed；
+- reload 只有在完整候选 Snapshot 验证成功后才原子发布，失败时继续使用精确的 last-known-good Snapshot；
+- 当前生产目录只能包含 iCourse；其他 Server 本阶段仅能放在测试 fixture 中。
 
 ## 7. Capability 映射
 
-发现一个 MCP Tool 不代表 Planner 能看到它。为每个允许进入 Agent 的操作单独创建 CapabilityDefinition：
+发现一个 MCP Tool 不代表 Planner 能看到它。S12 的 discovery 只记录事实，零授权；正式 CapabilityDefinition、mapping loader 和 Registry 由 S13 冻结。S12 只保留标记为 `provisional_for_s13` 的测试 fixture，证明连接配置与业务授权相互独立：
 
 ```yaml
 capability_id: example.search_items.v1
@@ -206,6 +222,8 @@ privacy_level: public
 required_permissions: [capability.example.read]
 idempotency: read_only
 ```
+
+iCourse 的 provisional fixture 将 `get_course` 固定为 `refresh=false`。任何动态发现、transport allowlist 或管理命令都不能自行生成 Capability。
 
 Capability Provider 负责：
 
@@ -278,6 +296,12 @@ Server 不得跨 Scope 缓存私人结果。公共数据缓存也需要来源、
 - 镜像安装 package，源码挂载仅用于明确的开发模式；
 - 依赖更新单独 PR，附 contract 和 smoke 结果。
 
+### 10.1 MCP SDK 隔离
+
+AstrBot 主解释器、iCourse Server 和仓库根环境固定使用 `mcp==1.29.0`。统一 Client 通过 `services/unified-mcp-worker/` 的独立 lock/virtualenv 使用 `mcp==2.0.0`；iCourse 由 worker 的 legacy mode 连接，原生 v2 Fake 使用 auto mode。两套 SDK 不得安装进同一解释器。
+
+worker 只实现 initialize/discover/call/cancel/close 的 SDK Session Adapter。它不拥有 Registry、Capability、Schema freshness、重试、熔断、调度、目标或发送。父进程为 worker 和 stdio Server 分别持有 kill scope，取消、崩溃和 close 后必须证明两棵进程树均已回收。AstrBot Compose 使用 `init: true` 回收 worker 崩溃后被 PID 1 收养的进程；派生镜像故障测试必须带 `--init --network none`。
+
 ## 11. 测试
 
 ### Unit
@@ -295,6 +319,8 @@ Server 不得跨 Scope 缓存私人结果。公共数据缓存也需要来源、
 - `allowed_tools` 与 Capability 映射一致；
 - 每个声明 error code 均有 fixture；
 - Server 新增 Tool 不会自动进入 Planner。
+- 原生 v2 Fake 与本地空库 iCourse v1 通过同一 Session Contract；
+- Streamable HTTP 使用注入 Fake transport 和禁网 socket 哨兵验证，Contract 不访问真实 URL。
 
 ### Integration
 
@@ -328,17 +354,19 @@ Server README 至少包含：
 同时更新：
 
 - `docs/design/capability-and-mcp.md` 的 Server/Capability 清单；
-- `configs/mcp/` Registry 配置；
-- `configs/capabilities/` 显式映射；
+- `config/mcp/servers/` 严格 JSON Registry 配置；
+- S13 后的 Capability 显式映射；S12 只能增加 test-only provisional fixture；
 - 部署镜像与健康检查；
 - contract、integration、smoke 和 Eval；
 - 第三方 manifest 和 notices。
 
 ## 13. iCourse 参考迁移
 
-iCourse 是第一个标准样板，但当前实现不是所有新 Server 都应复制的最终模板。迁移时应保留其 parser、crawler、SQLite 和 FastMCP 资产，同时修正：
+iCourse 是当前唯一真实 Server，也是统一传输的兼容样板。S12 已保留其 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
 
-- 将模型能力限制为 `search_courses`、`get_course`、`get_reviews` 和受控 `compare_courses`；
+- `ICourseClient` 成为 Unified MCP facade；`LegacyICourseClient` 保留为显式回滚实现；
+- 六项 transport allowlist 与四项 management deny 分离；未来模型能力仅为四项公开只读映射；
+- `get_course` 只有在 `refresh=false` 时属于只读语义；
 - 将 refresh 设为 trusted/admin、限流且有明确 timeout；
 - 将 bulk crawl、robots 和 export 放入运维面；
 - export 只写受控目录；
@@ -346,7 +374,10 @@ iCourse 是第一个标准样板，但当前实现不是所有新 Server 都应�
 - 给依赖和 SQLite schema 加锁与版本；
 - 统一成功/失败 envelope；
 - 为 HTML parser 建立脱网 fixture 和格式漂移测试；
-- 通过 Unified MCP Client 复用 session，删除每次调用启动进程的直连实现。
+- Unified Client 复用长生命周期 Session，iCourse Server 在同一进程生命周期复用 crawler/limiter；
+- AstrBot 原生 MCP 模板默认 `disabled=true`，避免形成没有 Tool allowlist 的第二条业务路径。
+
+调用失败后不得自动回退 Legacy，否则 unknown outcome 可能被重复执行。Legacy 只能由启动期配置显式选择，或在统一基础设施缺失/无效时由 composition 以稳定 reason 选择；S22 只有在所有消费者迁移和上一 Release 可恢复均有证据后才能删除它。
 
 ## 14. 发布与回滚
 
@@ -355,7 +386,7 @@ iCourse 是第一个标准样板，但当前实现不是所有新 Server 都应�
 3. 注册 Capability，但仅在测试策略中可见；
 4. canary 验证权限、延迟、错误和审计；
 5. 再逐步开放上下文和用户；
-6. 回滚优先禁用 Capability 和 Server 配置；
+6. 回滚优先禁用 Capability 和 Server 配置；iCourse 可在启动期显式选择 `legacy`，不得在单次调用失败后 fallback；
 7. 数据 schema 变更必须有向后兼容窗口和恢复验证。
 
 不得用删除数据库、清空缓存或复制生产凭据完成回滚。

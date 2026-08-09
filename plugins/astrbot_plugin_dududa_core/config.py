@@ -21,6 +21,15 @@ ICOURSE_DB_PATH = Path(
         str(DATA_ROOT / "icourse-cache" / "icourse.sqlite3"),
     )
 )
+MCP_REGISTRY_DIR = Path(
+    os.environ.get("DUDUDA_MCP_REGISTRY_DIR", "/opt/dududa/config/mcp/servers")
+)
+MCP_WORKER_PYTHON = Path(
+    os.environ.get(
+        "DUDUDA_MCP_WORKER_PYTHON",
+        "/opt/dududa/unified-mcp-worker/.venv/bin/python",
+    )
+)
 ROLLOUT_LEDGER_PATH = PLUGIN_DATA_DIR / "rollout.sqlite3"
 
 

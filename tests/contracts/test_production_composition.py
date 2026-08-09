@@ -333,6 +333,18 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(flaky.close_calls, 2)
         self.assertTrue(assembly.closed)
         self.assertIsNone(plugin.runtime_assembly)
+    async def test_termination_retries_failed_icourse_close(self) -> None:
+        plugin = self._plugin()
+        plugin.icourse = _FailOnceCloseable()
+
+        with self.assertRaisesRegex(RuntimeError, "transient close failure"):
+            await plugin.terminate()
+        self.assertIsNotNone(plugin.icourse)
+        self.assertFalse(plugin._dududa_runtime_terminated)
+
+        await plugin.terminate()
+        self.assertIsNone(plugin.icourse)
+        self.assertTrue(plugin._dududa_runtime_terminated)
 
 
 if __name__ == "__main__":

@@ -4,15 +4,50 @@
 <!-- treework:status:start -->
 Branch: unified-mcp
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: in_progress
+Verification: verified
+Last sync: unix:1786295630
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S12 transport/lifecycle scope is implemented and locally verified. Core owns
+  framework-neutral MCP contracts, a strict JSON multi-Server Registry and one
+  managed Client; the MCP SDK remains outside Core.
+- iCourse is still the only real Server. It now runs through the Unified facade
+  by default in the derived image, while `LegacyICourseClient` is an explicit
+  startup rollback selection retained until S22.
+- Discovery records Schema facts and grants no Capability. The two provisional
+  mapping fixtures are test evidence for S13 intake, not runtime grants or real
+  additional MCP Servers.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added per-Server generation/session/health/Schema ownership, bounded retry and
+  circuit behavior, schema-drift fail-closed handling, sanitized errors and
+  results, and cancellation-aware process-tree cleanup.
+- Isolated `mcp==2.0.0` in a locked worker while retaining `mcp==1.29.0` in the
+  root/AstrBot/iCourse environment; native v2 Fake and legacy iCourse pass the
+  same no-network Contract.
+- Migrated all current iCourse consumers through the compatibility facade,
+  disabled the raw AstrBot MCP template, preserved command authorization and
+  limiter lifetime, and verified the derived AstrBot image without changing a
+  running container.
+- Final gates passed on Python 3.10.20 and 3.12.13, in the worker environments,
+  in the derived image, and across Web/build/import/secret/format checks.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No S12-owned implementation issue remains. Capability Registry/Planner is
+  deliberately owned by S13; real additional Servers, credentials and online
+  Source Adapters remain external gates.
+- Legacy iCourse direct transport cannot be deleted before S22 proves consumer
+  migration and independent previous-Release recovery.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Complete this branch through TreeWork, integrate it into `codex/s08-s11`, then
+  enter `bounded-capability`. Do not reopen S12 contracts from S13 unless a
+  proven incompatibility requires a deliberate Spec change.
+- Preserve `compose.yml` `init: true`: container-init reaping is part of the
+  verified worker/server cleanup boundary.

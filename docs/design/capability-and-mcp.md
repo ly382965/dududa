@@ -2,14 +2,16 @@
 
 ## 1. 文档状态
 
-- 阶段：iCourse stdio Server、SQLite 与现有固定命令路径已存在；S12 Unified Client/Registry、
-  S13 Capability Runtime 和 S15C 主动日报公开来源尚未实现。
+- 阶段：S12 Unified Client/Registry、隔离 worker 和 iCourse compatibility facade 已实现并
+  正在验证；S13 Capability Runtime 尚未实现；S15C 只批准 source-neutral Contract、Fake
+  Provider 和本地固定 fixture，不包含真实主动日报来源 Adapter。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
 - MCP Server 目标目录：`services/mcp/`。
 - 配置目标目录：`configs/capabilities/`、`configs/mcp/`。
+- S12 当前 Registry 路径：`config/mcp/servers/*.json`；目标目录命名等待 S17。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 `services/icourse-mcp/`。
 
-本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。本文不实现代码，不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
+本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12 已实现其中的传输和生命周期部分；本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
 
 ## 2. 目标与非目标
 
@@ -21,7 +23,7 @@
 - 由一个 MCP Registry 和一个 Unified MCP Client 统一管理发现、连接、超时、重试、熔断和错误；
 - 让内建能力和 MCP 能力使用相同的执行、审计和结果校验契约；
 - 使 iCourse 成为首个标准 Capability Provider 和 MCP Server 样板；
-- 为主动日报提供固定、公开、只读、带来源与新鲜度的校园/arXiv/行业 Capability；
+- 为主动日报预留 source-neutral、公开只读、带来源与新鲜度的 Capability 边界，当前只用固定 fixture 证明；
 - 保留现有入口，在新链路验证完成前可按提交回滚。
 
 非目标：
@@ -805,7 +807,7 @@ class UnifiedMcpClient(Protocol):
 
 Client 不负责 Capability Retrieval、业务权限定义、自然语言规划或 Persona 渲染。
 
-### 8.1 后台公开来源调用
+### 8.1 后台来源调用（S15C 预留）
 
 定时日报是 `proactive-messaging.md` 拥有的 initiated-run。Scheduler 只产生
 `ScheduleOccurrence`；它不能直接调用 Tool。Proactive Orchestrator 在订阅和主动读取授权仍有效
@@ -817,7 +819,7 @@ MCP Client 执行。
 deadline、预算和审计。动态发现的 Tool、任意 URL、私人校园数据、外部写和 `message_send` 不得
 进入该 Plan。
 
-首版稳定能力：
+下表只是未来 Adapter 的候选映射，不表示对应 MCP Server、Capability 或实时来源已经存在：
 
 | Capability | 允许输入 | 标准输出 | 风险 |
 | --- | --- | --- | --- |
@@ -1030,7 +1032,8 @@ class CapabilityResult:
 
 ## 14. 当前状态与扩展点
 
-当前已有 iCourse stdio Server、SQLite、AstrBot 配置和固定命令路径；通用 Capability Registry、
-Unified MCP Client、Tool Runtime 与后台公开来源 Provider 仍未实现，现有 iCourse 行为未切换。
+当前已有 iCourse stdio Server、SQLite、严格 JSON Registry、Unified MCP Client、隔离 v2 worker
+和经统一 Client 转发的 compatibility facade；Legacy 仍作为启动期显式回滚保留。通用 Capability
+Registry、Tool Runtime 与真实后台来源 Provider 尚未实现，S12 discovery 不授予模型能力。
 
 后续新增教务、第二课堂、校园通知、开课查询和培养方案 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。

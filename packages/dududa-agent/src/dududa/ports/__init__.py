@@ -14,6 +14,15 @@ from .context import (
 if TYPE_CHECKING:
     from .attachments import AttachmentRepository, BoundedAttachmentStream
     from .memory import MemoryRepository, ScopeSelectorVerifier
+    from .mcp import (
+        McpEnvironmentProvider,
+        McpSchemaValidator,
+        McpSecretResolver,
+        McpServerRegistry,
+        McpTransportSession,
+        McpTransportSessionFactory,
+        UnifiedMcpClient,
+    )
     from .models import (
         BootstrapModelTierPolicy,
         ModelAdmissionController,
@@ -63,6 +72,12 @@ __all__ = [
     "InputConnector",
     "ManualCancellationToken",
     "MemoryRepository",
+    "McpEnvironmentProvider",
+    "McpSchemaValidator",
+    "McpSecretResolver",
+    "McpServerRegistry",
+    "McpTransportSession",
+    "McpTransportSessionFactory",
     "ModelAdmissionController",
     "ModelCatalogPublisher",
     "ModelInvocationEstimator",
@@ -90,10 +105,39 @@ __all__ = [
     "ServicePrincipal",
     "SocialDecisionEngine",
     "TaskComplexityAssessor",
+    "UnifiedMcpClient",
 ]
 
 
 def __getattr__(name: str) -> object:
+    if name in {
+        "McpEnvironmentProvider",
+        "McpSchemaValidator",
+        "McpSecretResolver",
+        "McpServerRegistry",
+        "McpTransportSession",
+        "McpTransportSessionFactory",
+        "UnifiedMcpClient",
+    }:
+        from .mcp import (
+            McpEnvironmentProvider,
+            McpSchemaValidator,
+            McpSecretResolver,
+            McpServerRegistry,
+            McpTransportSession,
+            McpTransportSessionFactory,
+            UnifiedMcpClient,
+        )
+
+        return {
+            "McpEnvironmentProvider": McpEnvironmentProvider,
+            "McpSchemaValidator": McpSchemaValidator,
+            "McpSecretResolver": McpSecretResolver,
+            "McpServerRegistry": McpServerRegistry,
+            "McpTransportSession": McpTransportSession,
+            "McpTransportSessionFactory": McpTransportSessionFactory,
+            "UnifiedMcpClient": UnifiedMcpClient,
+        }[name]
     if name in {"MemoryRepository", "ScopeSelectorVerifier"}:
         from .memory import MemoryRepository, ScopeSelectorVerifier
 

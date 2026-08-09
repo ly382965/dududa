@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "server_id": "fake-b",
+  "enabled": true,
+  "transport": "stdio",
+  "protocol_mode": "auto",
+  "endpoint": {
+    "command": "/opt/dududa-test/fake-mcp",
+    "args": [],
+    "cwd": "/opt/dududa-test",
+    "env_allowlist": []
+  },
+  "secret_refs": [],
+  "allowed_tools": [
+    "echo"
+  ],
+  "denied_tools": [],
+  "timeouts_seconds": {
+    "connect": 2,
+    "discovery": 2,
+    "call": 3,
+    "maximum_call": 5,
+    "close": 1
+  },
+  "retry": {
+    "maximum_attempts": 1,
+    "base_delay_ms": 0
+  },
+  "circuit": {
+    "failure_threshold": 3,
+    "failure_window_seconds": 60,
+    "open_duration_seconds": 10
+  },
+  "maximum_concurrency": 1,
+  "schema_ttl_seconds": 300,
+  "config_revision": "s12-fake-extension-v1"
+}

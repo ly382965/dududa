@@ -17,36 +17,36 @@ Title: S12 Unified MCP
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Core imports no MCP SDK, AstrBot or iCourse type and exposes versioned immutable MCP DTOs plus one `UnifiedMcpClient` Port.
-- [ ] Registry snapshots strictly bind every endpoint, SecretRef, allowlist, timeout, retry, circuit, concurrency and Schema-freshness fact and retain last-known-good on invalid reload.
-- [ ] The root/AstrBot/iCourse environment remains on MCP v1.29 while a separately locked worker uses MCP v2.0.0 without forming a second governance plane.
-- [ ] Each Server has one long-lived session/generation, isolated concurrency, health and circuit state; config change or disconnect closes the old generation.
-- [ ] Discovery is canonical, bypasses SDK cache authority, publishes compatible facts atomically and grants zero Capability.
-- [ ] Stale, expired, missing or incompatible allowlisted Tool Schema fails closed while last-known-good evidence remains bound.
-- [ ] Deadlines and cancellation cover connect/discover/semaphore/call/backoff/close without task, pipe or child leaks.
-- [ ] Retry is bounded by semantics, caller budget and deadline; unknown outcomes and unkeyed non-idempotent work are never retried.
-- [ ] Results and errors are bounded, immutable, Schema-checked and sanitized; raw transport details and secret values never reach consumers.
-- [ ] Native v2 Fake and local empty-DB iCourse v1 pass the same worker/session Contract with no live network or real cache access.
-- [ ] Adding a second Fake uses only Registry configuration and a Capability mapping fixture, with no Domain, Runtime or generic Client edit.
-- [ ] `ICourseClient` forwards through Unified MCP, explicit legacy rollback remains selectable, and plugin termination closes the complete lifecycle.
-- [ ] iCourse management Tools are absent from model Capability fixtures; the first mapping surface contains approved public read-only queries only.
-- [ ] The AstrBot-native iCourse template is disabled as a business path; course commands preserve blocked/role gates and the iCourse limiter survives across Tool calls.
-- [ ] Dual-Python, focused fault injection, root regression, build/import, derived-image, Web, secret, lock, Ruff and whitespace gates pass.
+- [x] Core imports no MCP SDK, AstrBot or iCourse type and exposes versioned immutable MCP DTOs plus one `UnifiedMcpClient` Port.
+- [x] Registry snapshots strictly bind every endpoint, SecretRef, allowlist, timeout, retry, circuit, concurrency and Schema-freshness fact and retain last-known-good on invalid reload.
+- [x] The root/AstrBot/iCourse environment remains on MCP v1.29 while a separately locked worker uses MCP v2.0.0 without forming a second governance plane.
+- [x] Each Server has one long-lived session/generation, isolated concurrency, health and circuit state; config change or disconnect closes the old generation.
+- [x] Discovery is canonical, bypasses SDK cache authority, publishes compatible facts atomically and grants zero Capability.
+- [x] Stale, expired, missing or incompatible allowlisted Tool Schema fails closed while last-known-good evidence remains bound.
+- [x] Deadlines and cancellation cover connect/discover/semaphore/call/backoff/close without task, pipe or child leaks.
+- [x] Retry is bounded by semantics, caller budget and deadline; unknown outcomes and unkeyed non-idempotent work are never retried.
+- [x] Results and errors are bounded, immutable, Schema-checked and sanitized; raw transport details and secret values never reach consumers.
+- [x] Native v2 Fake and local empty-DB iCourse v1 pass the same worker/session Contract with no live network or real cache access.
+- [x] Adding a second Fake uses only Registry configuration and a Capability mapping fixture, with no Domain, Runtime or generic Client edit.
+- [x] `ICourseClient` forwards through Unified MCP, explicit legacy rollback remains selectable, and plugin termination closes the complete lifecycle.
+- [x] iCourse management Tools are absent from model Capability fixtures; the first mapping surface contains approved public read-only queries only.
+- [x] The AstrBot-native iCourse template is disabled as a business path; course commands preserve blocked/role gates and the iCourse limiter survives across Tool calls.
+- [x] Dual-Python, focused fault injection, root regression, build/import, derived-image, Web, secret, lock, Ruff and whitespace gates pass.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Implement MCP contracts, validation, digests and Core Port exports.
-- [ ] Implement strict JSON Registry, snapshots, reload and Fake resolvers.
-- [ ] Implement managed lifecycle, Schema publication, result normalization,
+- [x] Implement MCP contracts, validation, digests and Core Port exports.
+- [x] Implement strict JSON Registry, snapshots, reload and Fake resolvers.
+- [x] Implement managed lifecycle, Schema publication, result normalization,
   deadline/cancel, retry and circuit state machine against Fake sessions.
-- [ ] Implement the locked MCP v2 worker and parent subprocess session Adapter.
-- [ ] Add iCourse and Fake configuration/mapping fixtures plus shared Contract.
-- [ ] Migrate the iCourse facade/composition/lifecycle and preserve explicit
+- [x] Implement the locked MCP v2 worker and parent subprocess session Adapter.
+- [x] Add iCourse and Fake configuration/mapping fixtures plus shared Contract.
+- [x] Migrate the iCourse facade/composition/lifecycle and preserve explicit
   legacy rollback.
-- [ ] Disable the raw AstrBot MCP template and add course permission, cooldown
+- [x] Disable the raw AstrBot MCP template and add course permission, cooldown
   and server-limiter regression coverage.
-- [ ] Update derived image and operator/development documentation.
-- [ ] Run focused and full verification, synchronize TreeWork records and
+- [x] Update derived image and operator/development documentation.
+- [x] Run focused and full verification, synchronize TreeWork records and
   commit the branch coherently.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)

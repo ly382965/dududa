@@ -47,9 +47,15 @@ class CoreLifecycleMixin:
                 first_error = first_error or exc
             else:
                 self.runtime_assembly = None
-        pending_cleanup = tuple(
-            getattr(self, "_dududa_runtime_cleanup_assemblies", ())
-        )
+        icourse = getattr(self, "icourse", None)
+        if icourse is not None:
+            try:
+                await icourse.close()
+            except BaseException as exc:
+                first_error = first_error or exc
+            else:
+                self.icourse = None
+        pending_cleanup = tuple(getattr(self, "_dududa_runtime_cleanup_assemblies", ()))
         failed_cleanup: list[object] = []
         for candidate in reversed(pending_cleanup):
             try:
@@ -61,6 +67,7 @@ class CoreLifecycleMixin:
         self._dududa_runtime_terminated = (
             getattr(self, "rollout_bridge", None) is None
             and getattr(self, "runtime_assembly", None) is None
+            and getattr(self, "icourse", None) is None
             and not self._dududa_runtime_cleanup_assemblies
         )
         if self._dududa_runtime_terminated:
@@ -128,7 +135,9 @@ class CoreLifecycleMixin:
             {"mode": "normal", "reply_rate": 100, "meme_rate": 20},
         )
 
-    def _new_confirmation(self, event: AstrMessageEvent, action: str, payload: dict[str, Any]) -> str:
+    def _new_confirmation(
+        self, event: AstrMessageEvent, action: str, payload: dict[str, Any]
+    ) -> str:
         token = secrets.token_hex(3).upper()
         self.pending[token] = PendingAction(
             action=action,

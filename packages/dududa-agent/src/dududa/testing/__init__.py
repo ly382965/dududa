@@ -7,12 +7,26 @@ from .models import (
     RecordingFakeModelProvider,
     provider_failure,
 )
+from .mcp import (
+    FakeMcpSessionPlan,
+    MappingMcpEnvironmentProvider,
+    MappingMcpSecretResolver,
+    RecordingFakeMcpSession,
+    RecordingFakeMcpSessionFactory,
+    RecordingMcpSchemaValidator,
+)
 
 __all__ = [
     "FakeAgentRuntime",
+    "FakeMcpSessionPlan",
+    "MappingMcpEnvironmentProvider",
+    "MappingMcpSecretResolver",
     "FakeInputConnector",
     "ProviderOutcome",
     "ProviderSuccess",
     "RecordingFakeModelProvider",
+    "RecordingFakeMcpSession",
+    "RecordingFakeMcpSessionFactory",
+    "RecordingMcpSchemaValidator",
     "provider_failure",
 ]

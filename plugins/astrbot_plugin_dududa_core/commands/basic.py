@@ -16,6 +16,7 @@ class CoreBasicCommands:
         else:
             yield event.plain_result(module_help(module or ""))
         event.stop_event()
+
     async def dududa_help(self, event: AstrMessageEvent, module: str | None = None):
         """查看嘟嘟哒帮助"""
         if self._blocked(event):
@@ -44,16 +45,19 @@ class CoreBasicCommands:
         if self._blocked(event):
             return
         cfg = load_astrbot_config()
-        default_provider = cfg.get("provider_settings", {}).get("default_provider_id", "未知")
+        default_provider = cfg.get("provider_settings", {}).get(
+            "default_provider_id", "未知"
+        )
         role = self.perms.role(event)
         group = self._group_record(event)
+        icourse_mode = getattr(self, "icourse_mode", "legacy")
         yield event.plain_result(
             "嘟嘟哒状态\n"
             f"角色：{role}\n"
             f"默认模型：{default_provider}\n"
             "多模态：支持，gpt-image-2 可用但较慢\n"
             f"群模式：{group.get('mode')}\n"
-            "评课 MCP：icourse 已接入"
+            f"评课 MCP：icourse（{icourse_mode}）"
         )
         event.stop_event()
 

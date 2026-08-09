@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 
 from astrbot.api import logger
@@ -603,6 +604,11 @@ class CoreCourseCommands:
 
     async def course_stats(self, event: AstrMessageEvent):
         """查看课程缓存规模"""
+        blocked = self._blocked(event)
+        if blocked:
+            yield event.plain_result(blocked)
+            event.stop_event()
+            return
         try:
             stats = await self.icourse.call("icourse_stats", {})
             yield event.plain_result(format_stats(stats))
@@ -612,6 +618,11 @@ class CoreCourseCommands:
 
     async def course_search(self, event: AstrMessageEvent, query: GreedyStr):
         """搜索课程"""
+        blocked = self._blocked(event)
+        if blocked:
+            yield event.plain_result(blocked)
+            event.stop_event()
+            return
         q = str(query).strip()
         if not q:
             yield event.plain_result("用法：/course search <关键词>")
@@ -629,6 +640,11 @@ class CoreCourseCommands:
 
     async def course_review(self, event: AstrMessageEvent, query: GreedyStr):
         """总结公开评课"""
+        blocked = self._blocked(event)
+        if blocked:
+            yield event.plain_result(blocked)
+            event.stop_event()
+            return
         q = str(query).strip()
         search = await self.icourse.call("search_courses", {"query": q, "limit": 1})
         items = search.get("items") or []
@@ -648,6 +664,11 @@ class CoreCourseCommands:
 
     async def course_compare(self, event: AstrMessageEvent, query: GreedyStr):
         """比较两个课程或老师"""
+        blocked = self._blocked(event)
+        if blocked:
+            yield event.plain_result(blocked)
+            event.stop_event()
+            return
         text = str(query)
         parts = [part.strip() for part in text.replace(" vs ", "|").replace(" VS ", "|").split("|") if part.strip()]
         if len(parts) != 2:
@@ -670,6 +691,11 @@ class CoreCourseCommands:
 
     async def course_refresh(self, event: AstrMessageEvent, course_id: int):
         """刷新单门课程缓存"""
+        blocked = self._blocked(event)
+        if blocked:
+            yield event.plain_result(blocked)
+            event.stop_event()
+            return
         if not self.perms.is_trusted(event):
             yield event.plain_result("刷新课程缓存需要 trusted/admin 权限。")
             event.stop_event()

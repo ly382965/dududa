@@ -1,8 +1,13 @@
 # ADR 0004：Agent Core 只使用统一 MCP Client
 
-- 状态：已接受，计划在 Phase 7 实施
+- 状态：已接受，S12 已实施
 - 日期：2026-07-18
 - 决策范围：Agent Runtime 到 MCP Server 的发现、连接、调用和治理
+
+实施状态（2026-08-10）：S12 已完成严格 JSON `config/mcp/servers/*.json`、Core-owned
+`UnifiedMcpClient`、独立 MCP 2.0 worker、iCourse compatibility facade 和 TreeWork
+Verification。根/AstrBot/iCourse 仍固定 MCP 1.29；`LegacyICourseClient` 仅作启动期
+显式回滚并保留到 S22。Capability Registry/Provider 仍属于 S13，discovery 不授予能力。
 
 ## 背景
 
@@ -39,7 +44,7 @@ Client 实现由 AstrBot composition root 注入 Agent Runtime。离线测试注
 
 ### 2. Server Registry 是唯一连接来源
 
-MCP command、args、cwd、transport、SecretRef、Tool allowlist、timeout、retry、circuit breaker 和并发上限由 `configs/mcp/` 的 Registry 定义。消息、模型和 Capability 参数不能生成或覆盖连接配置。
+MCP command、args、cwd、transport、SecretRef、Tool allowlist、timeout、retry、circuit breaker 和并发上限由 `config/mcp/servers/*.json` 的严格 Registry 定义。消息、模型和 Capability 参数不能生成或覆盖连接配置。
 
 ```python
 class McpServerRegistry(Protocol):

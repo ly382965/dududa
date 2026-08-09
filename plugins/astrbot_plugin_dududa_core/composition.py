@@ -21,15 +21,17 @@ from dududa.rollout import (
 from dududa.runtime.shadow import ShadowRunner
 
 from .adapters.message import AstrBotInputConnector
+from .adapters.mcp_runtime import build_icourse_client
 from .adapters.output import InMemoryDeliveryLedger
 from .config import (
     PLUGIN_DATA_DIR,
+    MCP_REGISTRY_DIR,
+    MCP_WORKER_PYTHON,
     ROLLOUT_LEDGER_PATH,
     AstrBotRolloutControlProvider,
     ensure_dirs,
     load_json,
 )
-from .course import ICourseClient
 from .rollout_bridge import AstrBotRolloutBridge, AstrBotRuntimeRequestFactory
 
 
@@ -157,7 +159,13 @@ def initialize_plugin(
     ensure_dirs()
     plugin.perms = PermissionManager(plugin.config)
     plugin.audit = AuditLog()
-    plugin.icourse = ICourseClient()
+    plugin.icourse, plugin.icourse_mode, icourse_reason = build_icourse_client(
+        plugin.config,
+        registry_directory=MCP_REGISTRY_DIR,
+        worker_python=MCP_WORKER_PYTHON,
+    )
+    if plugin.icourse_mode != "unified":
+        logger.warning("Unified iCourse MCP unavailable: reason=%s", icourse_reason)
     plugin.pending = {}
     plugin.course_refresh_at = {}
     plugin.user_state_path = PLUGIN_DATA_DIR / "user_state.json"

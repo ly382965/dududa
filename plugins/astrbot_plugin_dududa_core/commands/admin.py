@@ -46,10 +46,14 @@ class CoreAdminCommands:
             return
         plugins_dir = Path(__file__).resolve().parents[2]
         names = sorted(p.name for p in plugins_dir.iterdir() if p.is_dir())
-        yield event.plain_result("已安装插件：\n" + "\n".join(f"- {name}" for name in names))
+        yield event.plain_result(
+            "已安装插件：\n" + "\n".join(f"- {name}" for name in names)
+        )
         event.stop_event()
 
-    async def admin_mcp(self, event: AstrMessageEvent, action: str = "list", name: str | None = None):
+    async def admin_mcp(
+        self, event: AstrMessageEvent, action: str = "list", name: str | None = None
+    ):
         """管理 MCP"""
         err = self._require_admin(event)
         if err:
@@ -57,13 +61,24 @@ class CoreAdminCommands:
             event.stop_event()
             return
         if action == "test":
+            target = str(name or "icourse").strip().lower()
+            if target != "icourse":
+                yield event.plain_result(f"未知 MCP Server：{target}")
+                event.stop_event()
+                return
             tools = await self.icourse.list_tools()
-            yield event.plain_result(f"MCP {name or 'icourse'} 可用工具：\n" + "\n".join(f"- {tool}" for tool in tools))
+            yield event.plain_result(
+                "MCP icourse 已批准传输工具：\n"
+                + "\n".join(f"- {tool}" for tool in tools)
+            )
         else:
-            yield event.plain_result("MCP 列表：\n- icourse：已接入")
+            mode = getattr(self, "icourse_mode", "legacy")
+            yield event.plain_result(f"MCP 列表：\n- icourse：{mode}")
         event.stop_event()
 
-    async def admin_group(self, event: AstrMessageEvent, action: str, value: str | None = None):
+    async def admin_group(
+        self, event: AstrMessageEvent, action: str, value: str | None = None
+    ):
         """设置群模式和概率"""
         err = self._require_admin(event)
         if err:
@@ -78,7 +93,9 @@ class CoreAdminCommands:
         elif action == "meme-rate" and value and value.isdigit():
             rec["meme_rate"] = max(0, min(100, int(value)))
         else:
-            yield event.plain_result("用法：/admin group mode <quiet|normal|active> 或 reply-rate/meme-rate <0-100>")
+            yield event.plain_result(
+                "用法：/admin group mode <quiet|normal|active> 或 reply-rate/meme-rate <0-100>"
+            )
             event.stop_event()
             return
         self._save_group_state()
@@ -95,7 +112,9 @@ class CoreAdminCommands:
             return
         group_id = self._group(event)
         if not group_id:
-            yield event.plain_result("群级禁用请在群聊中执行；全局禁用请由 owner 使用 /admin permission grant <QQ> muted。")
+            yield event.plain_result(
+                "群级禁用请在群聊中执行；全局禁用请由 owner 使用 /admin permission grant <QQ> muted。"
+            )
             event.stop_event()
             return
         rec = self._group_record(event)
@@ -107,12 +126,18 @@ class CoreAdminCommands:
             muted.discard(str(qq))
             msg = f"已解除 {qq} 在本群的调用限制。"
         else:
-            yield event.plain_result("用法：/admin user mute <QQ> 或 /admin user unmute <QQ>")
+            yield event.plain_result(
+                "用法：/admin user mute <QQ> 或 /admin user unmute <QQ>"
+            )
             event.stop_event()
             return
         rec["muted_users"] = sorted(muted)
         self._save_group_state()
-        self.audit.write(event, "admin_user", {"action": action, "target": qq, "group_scope": group_id})
+        self.audit.write(
+            event,
+            "admin_user",
+            {"action": action, "target": qq, "group_scope": group_id},
+        )
         yield event.plain_result(msg)
         event.stop_event()
 
@@ -124,16 +149,28 @@ class CoreAdminCommands:
             event.stop_event()
             return
         if action == "summary":
-            total = sum(len(v.get("memories", [])) for v in self.user_state.values() if isinstance(v, dict))
-            yield event.plain_result(f"嘟嘟哒核心轻量记忆：用户 {len(self.user_state)} 个，条目 {total} 条。Iris 记忆请在 Iris 面板查看。")
+            total = sum(
+                len(v.get("memories", []))
+                for v in self.user_state.values()
+                if isinstance(v, dict)
+            )
+            yield event.plain_result(
+                f"嘟嘟哒核心轻量记忆：用户 {len(self.user_state)} 个，条目 {total} 条。Iris 记忆请在 Iris 面板查看。"
+            )
         elif action == "clear-short":
             token = self._new_confirmation(event, "memory_clear_short", {})
-            yield event.plain_result(f"该操作会清理嘟嘟哒核心临时确认队列。请回复 /confirm {token}")
+            yield event.plain_result(
+                f"该操作会清理嘟嘟哒核心临时确认队列。请回复 /confirm {token}"
+            )
         else:
-            yield event.plain_result("用法：/admin memory summary 或 /admin memory clear-short")
+            yield event.plain_result(
+                "用法：/admin memory summary 或 /admin memory clear-short"
+            )
         event.stop_event()
 
-    async def admin_logs(self, event: AstrMessageEvent, action: str = "errors", value: str | None = None):
+    async def admin_logs(
+        self, event: AstrMessageEvent, action: str = "errors", value: str | None = None
+    ):
         """查看脱敏日志摘要"""
         err = self._require_admin(event)
         if err:
@@ -150,14 +187,19 @@ class CoreAdminCommands:
             if value and value.isdigit():
                 limit = max(1, min(50, int(value)))
         elif action != "errors":
-            yield event.plain_result("用法：/admin logs errors 或 /admin logs tail <行数>")
+            yield event.plain_result(
+                "用法：/admin logs errors 或 /admin logs tail <行数>"
+            )
             event.stop_event()
             return
         records = self.audit.tail(limit)
         if not records:
             yield event.plain_result("审计日志暂无记录。")
         else:
-            lines = [f"- {r.get('time')} {r.get('action')} sender={r.get('sender')} group={r.get('group')}" for r in records]
+            lines = [
+                f"- {r.get('time')} {r.get('action')} sender={r.get('sender')} group={r.get('group')}"
+                for r in records
+            ]
             yield event.plain_result("最近审计：\n" + "\n".join(lines))
         event.stop_event()
 
@@ -180,11 +222,15 @@ class CoreAdminCommands:
             event.stop_event()
             return
         if service not in {"astrbot", "napcat"}:
-            yield event.plain_result("只能申请重启 astrbot 或 napcat。NapCat 不会由 QQ 命令直接重启。")
+            yield event.plain_result(
+                "只能申请重启 astrbot 或 napcat。NapCat 不会由 QQ 命令直接重启。"
+            )
             event.stop_event()
             return
         token = self._new_confirmation(event, "restart", {"service": service})
-        yield event.plain_result(f"重启 {service} 是高风险操作。请回复 /confirm {token}")
+        yield event.plain_result(
+            f"重启 {service} 是高风险操作。请回复 /confirm {token}"
+        )
         event.stop_event()
 
     async def admin_model(
@@ -202,15 +248,21 @@ class CoreAdminCommands:
                 event.stop_event()
                 return
             if not scene or not model:
-                yield event.plain_result("用法：/admin model set <default|image> <模型ID>")
+                yield event.plain_result(
+                    "用法：/admin model set <default|image> <模型ID>"
+                )
                 event.stop_event()
                 return
             if scene not in {"default", "image"}:
                 yield event.plain_result("当前只支持设置 default 或 image 场景。")
                 event.stop_event()
                 return
-            token = self._new_confirmation(event, "model_set", {"scene": scene, "model": model})
-            yield event.plain_result(f"切换 {scene} 模型到 {model} 需要确认。请回复 /confirm {token}")
+            token = self._new_confirmation(
+                event, "model_set", {"scene": scene, "model": model}
+            )
+            yield event.plain_result(
+                f"切换 {scene} 模型到 {model} 需要确认。请回复 /confirm {token}"
+            )
             event.stop_event()
             return
         err = self._require_admin(event)
@@ -227,7 +279,9 @@ class CoreAdminCommands:
         )
         event.stop_event()
 
-    async def admin_permission(self, event: AstrMessageEvent, action: str, qq: str, role: str):
+    async def admin_permission(
+        self, event: AstrMessageEvent, action: str, qq: str, role: str
+    ):
         """修改全局权限"""
         err = self._require_owner(event)
         if err:
@@ -235,8 +289,15 @@ class CoreAdminCommands:
             event.stop_event()
             return
         role_key = role.strip().lower()
-        if action not in {"grant", "revoke"} or role_key not in {"owner", "admin", "trusted", "muted"}:
-            yield event.plain_result("用法：/admin permission <grant|revoke> <QQ> <owner|admin|trusted|muted>")
+        if action not in {"grant", "revoke"} or role_key not in {
+            "owner",
+            "admin",
+            "trusted",
+            "muted",
+        }:
+            yield event.plain_result(
+                "用法：/admin permission <grant|revoke> <QQ> <owner|admin|trusted|muted>"
+            )
             event.stop_event()
             return
         token = self._new_confirmation(
@@ -260,7 +321,9 @@ class CoreAdminCommands:
             event.stop_event()
             return
         token = self._new_confirmation(event, "broadcast", {"chars": len(text)})
-        yield event.plain_result(f"群发是高风险操作，已记录摘要但不会回显原文。请回复 /confirm {token}")
+        yield event.plain_result(
+            f"群发是高风险操作，已记录摘要但不会回显原文。请回复 /confirm {token}"
+        )
         event.stop_event()
 
     async def confirm(self, event: AstrMessageEvent, token: str):
@@ -303,7 +366,9 @@ class CoreAdminCommands:
             self.pending.clear()
             return "已清理嘟嘟哒核心临时确认队列。"
         if pending.action == "backup_create":
-            backup = ASTRBOT_CONFIG_PATH.with_suffix(f".json.bak_dududa_{int(time.time())}")
+            backup = ASTRBOT_CONFIG_PATH.with_suffix(
+                f".json.bak_dududa_{int(time.time())}"
+            )
             backup.write_bytes(ASTRBOT_CONFIG_PATH.read_bytes())
             return f"已创建配置备份：{backup.name}"
         if pending.action == "permission_change":
@@ -360,9 +425,13 @@ class CoreAdminCommands:
             }
             if model not in provider_ids:
                 return f"未找到 provider：{model}，未切换默认模型。"
-            backup = ASTRBOT_CONFIG_PATH.with_suffix(f".json.bak_model_set_{int(time.time())}")
+            backup = ASTRBOT_CONFIG_PATH.with_suffix(
+                f".json.bak_model_set_{int(time.time())}"
+            )
             backup.write_bytes(ASTRBOT_CONFIG_PATH.read_bytes())
-            astrbot_cfg.setdefault("provider_settings", {})["default_provider_id"] = model
+            astrbot_cfg.setdefault("provider_settings", {})["default_provider_id"] = (
+                model
+            )
             save_astrbot_config(astrbot_cfg)
             cfg = load_plugin_config() or dict(self.config)
             cfg["default_model_id"] = model

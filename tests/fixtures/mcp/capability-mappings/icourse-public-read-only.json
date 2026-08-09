@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "provisional_for_s13",
+  "mapping_revision": "s12-icourse-public-read-only-v1",
+  "mappings": [
+    {
+      "capability_id": "icourse.stats.read.v1",
+      "server_id": "icourse",
+      "tool_name": "icourse_stats",
+      "semantics": "read_only",
+      "fixed_arguments": {}
+    },
+    {
+      "capability_id": "icourse.courses.search.v1",
+      "server_id": "icourse",
+      "tool_name": "search_courses",
+      "semantics": "read_only",
+      "fixed_arguments": {}
+    },
+    {
+      "capability_id": "icourse.course.get.v1",
+      "server_id": "icourse",
+      "tool_name": "get_course",
+      "semantics": "read_only",
+      "fixed_arguments": {
+        "refresh": false
+      }
+    },
+    {
+      "capability_id": "icourse.reviews.get.v1",
+      "server_id": "icourse",
+      "tool_name": "get_reviews",
+      "semantics": "read_only",
+      "fixed_arguments": {}
+    }
+  ]
+}
