@@ -5,14 +5,40 @@
 Branch: semantic-contract
 Parent: agent-expansion
 Status: in_progress
-Verification: unverified
-Last sync: unix:1786277571
+Verification: verified
+Last sync: unix:1786280599
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- The additive semantic v2 envelope, strict Schema, codec, NFC/code-point span
+  validation and Connector-authority validation are implemented. The existing
+  v1 DTO, reader, digest, Perception Port and Runtime path remain authoritative
+  and unchanged.
+- Five fixed synthetic 3-, 6- and 12-turn windows pass the Schema pilot. The
+  committed report is explicitly `schema_only`, binds the case and Schema
+  digests, and records zero user data and zero real model calls.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added digest-bound entity, reference, intent, decision and projection DTOs,
+  UTF-8/UTF-16 offset conversion, v1/v2 encode/decode and whole-envelope
+  validation with exact v1 candidate projection.
+- Added fail-closed coverage for unknown versions/properties/references,
+  Unicode and numeric edge cases, bad spans/digests, dangling slots, forged
+  structural references and inconsistent decisions.
+- Focused verification passed 35 tests. Python 3.10.20 and 3.12.13 each passed
+  all 410 repository tests with the two existing AstrBot-host-only skips. Ruff,
+  wheel/import, compile, lock, secret, shell, Compose and whitespace gates pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No in-branch issue remains. Product taxonomy, required-slot metadata,
+  calibrated thresholds and Chinese multi-turn quality still require authorized
+  data, independent annotation and held-out human evaluation.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- The branch is ready to merge and complete. The next dependency-ready branch
+  is `mcp-v2-spike`; semantic v2 must not be used to grant Scope, Capability,
+  Tier, target or side-effect authority there.
