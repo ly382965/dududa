@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: semantic-contract
 Parent: agent-expansion
-Status: in_progress
+Status: complete
 Verification: verified
-Last sync: unix:1786280599
+Last sync: unix:1786280837
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

@@ -278,19 +278,19 @@
       "title": "S09 Additive Semantic Contract",
       "purpose": "Add span, entity, reference and explicit uncertainty contracts with a synthetic Schema pilot.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/semantic-contract",
         "git_branch": "treework/semantic-contract",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1786277571",
         "last_entered_at": "unix:1786277571",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1786280599"
+      "last_sync": "unix:1786280837"
     },
     {
       "path": "mcp-v2-spike",
