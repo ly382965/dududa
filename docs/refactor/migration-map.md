@@ -175,7 +175,7 @@ The first service move keeps distribution/import names stable.
 | `storage.py` | infrastructure SQLite repository | Fix export root and comment replacement semantics |
 | `models.py` | iCourse service domain | Do not move course entities to generic Agent domain |
 | `cli.py` | service operator CLI | Separate model-eligible tools from admin crawling/export |
-| MCP examples | `configs/mcp/servers/icourse.yaml` and service examples | Registry is canonical |
+| MCP examples | `config/mcp/servers/icourse.json` and service examples | Strict JSON Registry is canonical; `configs/` naming waits for S17 |
 
 Core receives an `ICourseCapabilityProvider` over generic MCP contracts. It
 never imports service modules.

@@ -34,6 +34,7 @@ class RuntimeSyncTests(unittest.TestCase):
             )
             merged = json.loads(config_path.read_text(encoding="utf-8"))
             self.assertEqual(set(merged["mcpServers"]), {"existing", "icourse"})
+            self.assertTrue(merged["mcpServers"]["icourse"]["disabled"])
             self.assertEqual(config_path.stat().st_mode & 0o777, 0o600)
 
 

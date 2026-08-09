@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "provisional_for_s13",
+  "mapping_revision": "s12-fake-extension-v1",
+  "mappings": [
+    {
+      "capability_id": "fixture.echo.read.v1",
+      "server_id": "fake-b",
+      "tool_name": "echo",
+      "semantics": "read_only",
+      "fixed_arguments": {}
+    }
+  ]
+}

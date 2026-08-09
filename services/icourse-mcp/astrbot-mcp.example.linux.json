@@ -6,5 +6,6 @@
     "/AstrBot/data/icourse-cache/icourse.sqlite3",
     "--request-delay",
     "1.0"
-  ]
+  ],
+  "disabled": true
 }

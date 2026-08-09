@@ -31,7 +31,9 @@ class RepositoryContractTests(unittest.TestCase):
                 continue
             if in_services and line and not line.startswith(" "):
                 break
-            match = re.match(r"^  ([a-zA-Z0-9_.-]+):\s*$", line) if in_services else None
+            match = (
+                re.match(r"^  ([a-zA-Z0-9_.-]+):\s*$", line) if in_services else None
+            )
             if match:
                 services.add(match.group(1))
         self.assertEqual(services, {"web", "astrbot", "napcat"})
@@ -69,14 +71,25 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_mcp_template_has_only_icourse(self) -> None:
         config = json.loads(
-            (ROOT / "config" / "astrbot" / "mcp_server.json").read_text(encoding="utf-8")
+            (ROOT / "config" / "astrbot" / "mcp_server.json").read_text(
+                encoding="utf-8"
+            )
         )
         self.assertEqual(set(config["mcpServers"]), {"icourse"})
-        self.assertEqual(config["mcpServers"]["icourse"]["command"], "/usr/local/bin/python")
+        self.assertEqual(
+            config["mcpServers"]["icourse"]["command"], "/usr/local/bin/python"
+        )
+        self.assertTrue(config["mcpServers"]["icourse"]["disabled"])
         self.assertIn(
             "/AstrBot/data/icourse-cache/icourse.sqlite3",
             config["mcpServers"]["icourse"]["args"],
         )
+        plugin_schema = json.loads(
+            (
+                ROOT / "plugins" / "astrbot_plugin_dududa_core" / "_conf_schema.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(plugin_schema["icourse_mcp_mode"]["default"], "unified")
 
     def test_compose_keeps_owned_code_read_only(self) -> None:
         compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
@@ -88,6 +101,17 @@ class RepositoryContractTests(unittest.TestCase):
             "astrbot_plugin_sub2api_readonly",
         ):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
+
+    def test_astrbot_image_keeps_mcp_v1_and_v2_isolated(self) -> None:
+        dockerfile = (ROOT / "docker" / "astrbot" / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"mcp==1.29.0"', dockerfile)
+        self.assertIn("services/unified-mcp-worker", dockerfile)
+        self.assertIn("--locked --no-dev", dockerfile)
+        self.assertIn('version("mcp") == "2.0.0"', dockerfile)
+        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        self.assertIn("  astrbot:\n    init: true\n", compose)
 
     def test_persona_seed_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
