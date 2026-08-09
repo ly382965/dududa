@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: mcp-v2-spike
 Parent: agent-expansion
-Status: in_progress
+Status: complete
 Verification: verified
-Last sync: unix:1786284257
+Last sync: unix:1786284488
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
