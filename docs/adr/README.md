@@ -14,3 +14,4 @@ Current records:
 - `0003-fail-closed-memory-scope.md`
 - `0004-unified-mcp-client.md`
 - `0005-third-party-manifest-v2.md`
+- `0006-adopt-mcp-v2-for-unified-client.md`

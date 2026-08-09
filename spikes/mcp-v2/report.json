@@ -1,0 +1,104 @@
+{
+  "classifications": {
+    "crash_after_effect": "outcome_unknown",
+    "crash_before_effect": "safe_retry_eligible",
+    "deadlines": [
+      "connect_timeout",
+      "discovery_timeout",
+      "tool_call_timeout"
+    ],
+    "schema_drift": "mapped_tool_schema_changed",
+    "schema_expiry": "schema_expired"
+  },
+  "deadline_evidence": {
+    "call_timeout": {
+      "child_closed": true,
+      "close_bounded": true,
+      "elapsed_bounded": true,
+      "timed_out": true
+    },
+    "discovery_timeout": {
+      "child_closed": true,
+      "close_bounded": true,
+      "elapsed_bounded": true,
+      "timed_out": true
+    },
+    "handshake_timeout": {
+      "child_closed": true,
+      "close_bounded": true,
+      "elapsed_bounded": true,
+      "timed_out": true
+    }
+  },
+  "decision": "adopt",
+  "external_gates": [
+    "production_unified_client_and_registry",
+    "icourse_v2_server_migration",
+    "real_provider_credentials",
+    "live_mcp_sources",
+    "authorized_qq_validation"
+  ],
+  "fixtures": {
+    "capability_grants": 0,
+    "legacy": "current_icourse_v1_empty_db",
+    "native": "local_v2_fake",
+    "network_attempts": 0,
+    "off_policy_database_opens": 0
+  },
+  "hard_gates": {
+    "bounded_concurrency": true,
+    "bounded_deadlines": true,
+    "cancellation_cleanup": true,
+    "crash_generation_recovery": true,
+    "crash_phases_classified": true,
+    "discovery_grants_no_capability": true,
+    "legacy_fixture_isolated": true,
+    "legacy_v1_contract": true,
+    "native_v2_contract": true,
+    "resource_close": true,
+    "schema_drift_not_published": true,
+    "single_long_lived_session": true,
+    "unknown_outcome_not_retried": true
+  },
+  "metrics": {
+    "before_effect_call_attempts": 1,
+    "before_effect_count": 0,
+    "concurrent_calls": 20,
+    "generation_count": 2,
+    "legacy_process_starts": 1,
+    "legacy_tool_count": 10,
+    "max_active_calls": 4,
+    "native_process_starts": 1,
+    "native_tools_listed": 1,
+    "sequential_calls": 100,
+    "unknown_call_attempts": 1,
+    "unknown_effect_count": 1
+  },
+  "report_digest": "sha-256:ddebd93ef0b32cb00618c2df29caef7d61b3d3f523683736353357c5fad32590",
+  "schema": {
+    "capability_grants_after": 0,
+    "capability_grants_before": 0,
+    "compatible_digest": "sha-256:36fc4367a2b55a528b3d99889cccb37f2f59435fade232ad8d7b5bd6827ac83f",
+    "compatible_published": true,
+    "drift_reason_code": "mapped_tool_schema_changed",
+    "drift_rejected": true,
+    "expired_rejected": true,
+    "expiry_reason_code": "schema_expired",
+    "first_digest": "sha-256:848513a1c074ab6392e86390c8b43c913469b8298eba01b3e5c872ae819f999c",
+    "health_after_drift": "stale",
+    "health_after_expiry": "unavailable",
+    "last_known_good_unchanged": true,
+    "new_tool_observed": true,
+    "observed_drift_digest": "sha-256:5b4baa951045126ee7599a1668c4242cebc89bf0e21a4cfa5124c456f83c3b69",
+    "published_digest": "sha-256:36fc4367a2b55a528b3d99889cccb37f2f59435fade232ad8d7b5bd6827ac83f",
+    "resource_closed": true
+  },
+  "schema_version": 1,
+  "sdk": {
+    "client": "mcp==2.0.0",
+    "legacy_protocol": "2025-11-25",
+    "native_protocol": "2026-07-28",
+    "types": "mcp-types==2.0.0"
+  },
+  "spike_id": "s12a-mcp-v2-spike-v1"
+}
