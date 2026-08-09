@@ -103,7 +103,7 @@ class CapabilityProviderRegistry(Protocol):
 class CapabilityHealthRegistry(Protocol):
     async def snapshot(
         self,
-        providers: tuple[CapabilityProviderDescriptor, ...],
+        catalog: CapabilityCatalogSnapshot,
         *,
         call: CapabilityCallerContext,
     ) -> CapabilityHealthSnapshot: ...

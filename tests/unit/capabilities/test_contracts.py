@@ -32,8 +32,11 @@ from dududa.capabilities import (
     ValidationAction,
     capability_candidate_digest,
     capability_catalog_digest,
+    capability_catalog_revision,
     capability_definition_digest,
+    capability_mapping_revision,
     capability_provider_descriptor_digest,
+    capability_provider_registry_revision,
     capability_query_digest,
     capability_retrieval_result_digest,
     capability_run_receipt_digest,
@@ -151,6 +154,35 @@ def mapping(item: CapabilityDefinition) -> McpCapabilityMapping:
         mapping_digest=mcp_capability_mapping_digest(values),
         **values,
     )
+
+
+def catalog_values(
+    definitions,
+    schema_documents,
+    provider_descriptors,
+    mcp_mappings,
+):
+    definitions = tuple(definitions)
+    schema_documents = tuple(schema_documents)
+    provider_descriptors = tuple(provider_descriptors)
+    mcp_mappings = tuple(mcp_mappings)
+    return {
+        "schema_version": 1,
+        "catalog_revision": capability_catalog_revision(
+            definitions,
+            schema_documents,
+            provider_descriptors,
+            mcp_mappings,
+        ),
+        "mapping_revision": capability_mapping_revision(mcp_mappings),
+        "provider_registry_revision": capability_provider_registry_revision(
+            provider_descriptors
+        ),
+        "definitions": definitions,
+        "schema_documents": schema_documents,
+        "provider_descriptors": provider_descriptors,
+        "mcp_mappings": mcp_mappings,
+    }
 
 
 def query() -> CapabilityQuery:
@@ -327,16 +359,12 @@ class CapabilityContractTests(unittest.TestCase):
     def test_catalog_binds_definition_schema_provider_and_mcp_mapping(self) -> None:
         descriptor = provider_descriptor(self.definition)
         formal_mapping = mapping(self.definition)
-        values = {
-            "schema_version": 1,
-            "catalog_revision": "catalog-v1",
-            "mapping_revision": "mapping-v1",
-            "provider_registry_revision": "providers-v1",
-            "definitions": (self.definition,),
-            "schema_documents": (self.input_document, self.output_document),
-            "provider_descriptors": (descriptor,),
-            "mcp_mappings": (formal_mapping,),
-        }
+        values = catalog_values(
+            (self.definition,),
+            (self.input_document, self.output_document),
+            (descriptor,),
+            (formal_mapping,),
+        )
         snapshot = CapabilityCatalogSnapshot(
             snapshot_id="snapshot-v1",
             catalog_digest=capability_catalog_digest(values),
@@ -346,6 +374,73 @@ class CapabilityContractTests(unittest.TestCase):
         self.assertEqual(snapshot.definitions, (self.definition,))
         with self.assertRaises(DududaError):
             replace(snapshot, mcp_mappings=())
+
+    def test_catalog_rejects_ghost_surfaces_and_semantic_drift(self) -> None:
+        descriptor = provider_descriptor(self.definition)
+        descriptor_values = {
+            "schema_version": 1,
+            "provider": descriptor.provider,
+            "kind": descriptor.kind,
+            "capability_ids": frozenset(
+                {self.definition.capability_id, "fixture.ghost.read.v1"}
+            ),
+        }
+        ghost_descriptor = CapabilityProviderDescriptor(
+            descriptor_digest=capability_provider_descriptor_digest(descriptor_values),
+            **descriptor_values,
+        )
+        formal_mapping = mapping(self.definition)
+        base = catalog_values(
+            (self.definition,),
+            (self.input_document, self.output_document),
+            (ghost_descriptor,),
+            (formal_mapping,),
+        )
+        with self.assertRaises(DududaError):
+            CapabilityCatalogSnapshot(
+                snapshot_id="snapshot-ghost",
+                catalog_digest=capability_catalog_digest(base),
+                acquired_at=NOW,
+                **base,
+            )
+
+        mapping_values = {
+            "schema_version": formal_mapping.schema_version,
+            "capability_id": formal_mapping.capability_id,
+            "capability_definition_digest": (
+                formal_mapping.capability_definition_digest
+            ),
+            "server_id": formal_mapping.server_id,
+            "tool_name": formal_mapping.tool_name,
+            "expected_input_schema_digest": (
+                formal_mapping.expected_input_schema_digest
+            ),
+            "expected_output_schema_digest": (
+                formal_mapping.expected_output_schema_digest
+            ),
+            "semantics": McpOperationSemantics.IDEMPOTENT,
+            "fixed_arguments": formal_mapping.fixed_arguments,
+            "argument_mapping_revision": formal_mapping.argument_mapping_revision,
+            "result_mapping_revision": formal_mapping.result_mapping_revision,
+            "enabled": formal_mapping.enabled,
+        }
+        drifted_mapping = McpCapabilityMapping(
+            mapping_digest=mcp_capability_mapping_digest(mapping_values),
+            **mapping_values,
+        )
+        semantic_drift = catalog_values(
+            (self.definition,),
+            (self.input_document, self.output_document),
+            (descriptor,),
+            (drifted_mapping,),
+        )
+        with self.assertRaises(DududaError):
+            CapabilityCatalogSnapshot(
+                snapshot_id="snapshot-semantic-drift",
+                catalog_digest=capability_catalog_digest(semantic_drift),
+                acquired_at=NOW,
+                **semantic_drift,
+            )
 
     def test_candidate_and_retrieval_order_are_stable_and_tamper_evident(self) -> None:
         result = retrieval(self.definition)

@@ -57,7 +57,7 @@ class _ProviderRegistry:
 
 
 class _HealthRegistry:
-    async def snapshot(self, providers, *, call):
+    async def snapshot(self, catalog, *, call):
         raise NotImplementedError
 
 
@@ -84,7 +84,7 @@ class _Binder:
 class _Provider:
     @property
     def descriptor(self):
-        raise NotImplementedError
+        return None
 
     async def health(self, *, call):
         raise NotImplementedError

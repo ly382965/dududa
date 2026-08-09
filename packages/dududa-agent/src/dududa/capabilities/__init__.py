@@ -1,5 +1,7 @@
 """Governed business-capability contracts and canonical evidence."""
 
+from typing import TYPE_CHECKING
+
 from dududa.domain.capability import (
     CapabilityDefinition,
     CostHint,
@@ -8,6 +10,13 @@ from dududa.domain.capability import (
     ProviderRef,
 )
 
+if TYPE_CHECKING:
+    from .config import ConfigCapabilityRegistry
+    from .health import PollingCapabilityHealthRegistry
+    from .registry import (
+        InMemoryCapabilityProviderRegistry,
+        InMemoryCapabilityRegistry,
+    )
 from .contracts import (
     DEFAULT_TOOL_ATTEMPTS,
     MAX_ARGUMENT_BYTES,
@@ -28,6 +37,7 @@ from .contracts import (
     CapabilityEndpointHealth,
     CapabilityExecutionContext,
     CapabilityHealthSnapshot,
+    CapabilityHealthStatus,
     CapabilityProviderDescriptor,
     CapabilityProviderHealth,
     CapabilityProviderKind,
@@ -92,6 +102,11 @@ from .digests import (
     tool_validation_request_digest,
     tool_validation_result_digest,
 )
+from .revisions import (
+    capability_catalog_revision,
+    capability_mapping_revision,
+    capability_provider_registry_revision,
+)
 
 __all__ = [
     "DEFAULT_TOOL_ATTEMPTS",
@@ -114,6 +129,7 @@ __all__ = [
     "CapabilityEndpointHealth",
     "CapabilityExecutionContext",
     "CapabilityHealthSnapshot",
+    "CapabilityHealthStatus",
     "CapabilityProviderDescriptor",
     "CapabilityProviderHealth",
     "CapabilityProviderKind",
@@ -125,11 +141,15 @@ __all__ = [
     "CapabilityRunRequest",
     "CapabilityRunStatus",
     "CapabilitySchemaDocument",
+    "ConfigCapabilityRegistry",
     "CostHint",
     "Idempotency",
+    "InMemoryCapabilityProviderRegistry",
+    "InMemoryCapabilityRegistry",
     "LatencyHint",
     "McpCapabilityMapping",
     "ObservationBinding",
+    "PollingCapabilityHealthRegistry",
     "ProviderInvocation",
     "ProviderRef",
     "ToolError",
@@ -153,11 +173,14 @@ __all__ = [
     "capability_candidate_digest",
     "capability_catalog_digest",
     "capability_catalog_publish_receipt_digest",
+    "capability_catalog_revision",
     "capability_catalog_update_digest",
     "capability_definition_digest",
     "capability_health_snapshot_digest",
+    "capability_mapping_revision",
     "capability_provider_descriptor_digest",
     "capability_provider_health_digest",
+    "capability_provider_registry_revision",
     "capability_query_digest",
     "capability_result_digest",
     "capability_retrieval_request_digest",
@@ -180,3 +203,32 @@ __all__ = [
     "tool_validation_request_digest",
     "tool_validation_result_digest",
 ]
+
+
+def __getattr__(name: str) -> object:
+    if name == "ConfigCapabilityRegistry":
+        from .config import ConfigCapabilityRegistry
+
+        return ConfigCapabilityRegistry
+    if name == "PollingCapabilityHealthRegistry":
+        from .health import PollingCapabilityHealthRegistry
+
+        return PollingCapabilityHealthRegistry
+    if name in {
+        "InMemoryCapabilityProviderRegistry",
+        "InMemoryCapabilityRegistry",
+    }:
+        from .registry import (
+            InMemoryCapabilityProviderRegistry,
+            InMemoryCapabilityRegistry,
+        )
+
+        return {
+            "InMemoryCapabilityProviderRegistry": (InMemoryCapabilityProviderRegistry),
+            "InMemoryCapabilityRegistry": InMemoryCapabilityRegistry,
+        }[name]
+    raise AttributeError(name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

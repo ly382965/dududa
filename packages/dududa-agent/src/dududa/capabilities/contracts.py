@@ -39,6 +39,12 @@ from dududa.mcp.contracts import McpOperationSemantics
 from dududa.security.digests import actor_digest, resource_digest, scope_digest
 from dududa.security.models import AuthorizationDecision, AuthorizationEffect
 
+from .revisions import (
+    capability_catalog_revision,
+    capability_mapping_revision,
+    capability_provider_registry_revision,
+)
+
 MAX_CAPABILITY_DEFINITIONS = 256
 MAX_CAPABILITY_CANDIDATES = 20
 DEFAULT_TOOL_ATTEMPTS = 4
@@ -388,6 +394,15 @@ class CapabilityCatalogSnapshot:
             required=False,
         )
         _validate_catalog_bindings(definitions, schemas, providers, mappings)
+        _validate_catalog_revisions(
+            self.catalog_revision,
+            self.mapping_revision,
+            self.provider_registry_revision,
+            definitions,
+            schemas,
+            providers,
+            mappings,
+        )
         object.__setattr__(self, "definitions", definitions)
         object.__setattr__(self, "schema_documents", schemas)
         object.__setattr__(self, "provider_descriptors", providers)
@@ -431,32 +446,50 @@ class CapabilityCatalogUpdate:
             "provider_registry_revision",
         ):
             _identifier(getattr(self, field_name), field_name)
-        definitions = _typed_tuple(
+        definitions = _sorted_unique_objects(
             self.definitions,
             CapabilityDefinition,
-            "catalog_update_definitions",
+            key=lambda item: item.capability_id,
+            field="catalog_update_definitions",
             maximum=MAX_CAPABILITY_DEFINITIONS,
             required=True,
         )
-        schemas = _typed_tuple(
+        schemas = _sorted_unique_objects(
             self.schema_documents,
             CapabilitySchemaDocument,
-            "catalog_update_schemas",
+            key=lambda item: (
+                item.schema_ref.schema_id,
+                item.schema_ref.schema_version,
+            ),
+            field="catalog_update_schemas",
             maximum=MAX_CAPABILITY_DEFINITIONS * 2,
             required=True,
         )
-        providers = _typed_tuple(
+        providers = _sorted_unique_objects(
             self.provider_descriptors,
             CapabilityProviderDescriptor,
-            "catalog_update_providers",
+            key=lambda item: item.provider.provider_id,
+            field="catalog_update_providers",
             maximum=128,
             required=True,
         )
-        mappings = _typed_tuple(
+        mappings = _sorted_unique_objects(
             self.mcp_mappings,
             McpCapabilityMapping,
-            "catalog_update_mappings",
+            key=lambda item: item.capability_id,
+            field="catalog_update_mappings",
             maximum=MAX_CAPABILITY_DEFINITIONS,
+            required=False,
+        )
+        _validate_catalog_bindings(definitions, schemas, providers, mappings)
+        _validate_catalog_revisions(
+            self.catalog_revision,
+            self.mapping_revision,
+            self.provider_registry_revision,
+            definitions,
+            schemas,
+            providers,
+            mappings,
         )
         object.__setattr__(self, "definitions", definitions)
         object.__setattr__(self, "schema_documents", schemas)
@@ -1916,7 +1949,11 @@ def _validate_catalog_bindings(
     schema_refs = {item.schema_ref for item in schemas}
     provider_by_ref = {item.provider: item for item in providers}
     mapping_by_capability = {item.capability_id: item for item in mappings}
+    definition_ids_by_provider: dict[ProviderRef, set[str]] = {}
     for definition in definitions:
+        definition_ids_by_provider.setdefault(definition.provider, set()).add(
+            definition.capability_id
+        )
         if (
             definition.input_schema not in schema_refs
             or definition.output_schema not in schema_refs
@@ -1951,6 +1988,57 @@ def _validate_catalog_bindings(
                 "non_mcp_capability_has_mcp_mapping",
                 definition.capability_id,
             )
+    for descriptor in providers:
+        expected = frozenset(definition_ids_by_provider.get(descriptor.provider, set()))
+        if descriptor.capability_ids != expected:
+            raise validation_error(
+                "capability_provider_surface_mismatch",
+                descriptor.provider.provider_id,
+            )
+    mcp_definition_ids = {
+        definition.capability_id
+        for definition in definitions
+        if provider_by_ref[definition.provider].kind is CapabilityProviderKind.MCP
+    }
+    if set(mapping_by_capability) != mcp_definition_ids:
+        raise validation_error("mcp_capability_mapping_surface_mismatch")
+    expected_semantics = {
+        Idempotency.READ_ONLY: McpOperationSemantics.READ_ONLY,
+        Idempotency.IDEMPOTENT_WRITE: McpOperationSemantics.IDEMPOTENT,
+        Idempotency.NON_IDEMPOTENT: McpOperationSemantics.NON_IDEMPOTENT,
+    }
+    for definition in definitions:
+        mapping = mapping_by_capability.get(definition.capability_id)
+        if (
+            mapping is not None
+            and mapping.semantics is not expected_semantics[definition.idempotency]
+        ):
+            raise validation_error(
+                "mcp_mapping_operation_semantics_mismatch",
+                definition.capability_id,
+            )
+
+
+def _validate_catalog_revisions(
+    catalog_revision: str,
+    mapping_revision: str,
+    provider_registry_revision: str,
+    definitions: tuple[CapabilityDefinition, ...],
+    schemas: tuple[CapabilitySchemaDocument, ...],
+    providers: tuple[CapabilityProviderDescriptor, ...],
+    mappings: tuple[McpCapabilityMapping, ...],
+) -> None:
+    if catalog_revision != capability_catalog_revision(
+        definitions,
+        schemas,
+        providers,
+        mappings,
+    ):
+        raise validation_error("capability_catalog_revision_mismatch")
+    if mapping_revision != capability_mapping_revision(mappings):
+        raise validation_error("capability_mapping_revision_mismatch")
+    if provider_registry_revision != capability_provider_registry_revision(providers):
+        raise validation_error("capability_provider_registry_revision_mismatch")
 
 
 def _execution_payload(
