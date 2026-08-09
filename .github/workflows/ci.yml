@@ -28,7 +28,9 @@ jobs:
       - name: Build and install Dududa package wheel
         run: |
           mkdir -p "$RUNNER_TEMP/dududa-wheel"
-          uv build --wheel packages/dududa-agent --out-dir "$RUNNER_TEMP/dududa-wheel"
+          uv build packages/dududa-agent \
+            --out-dir "$RUNNER_TEMP/dududa-wheel" \
+            --clear
           uv pip install --python .venv/bin/python --reinstall \
             "$RUNNER_TEMP"/dududa-wheel/dududa_agent-*.whl
           uv pip check --python .venv/bin/python
