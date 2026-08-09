@@ -14,6 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
+    def test_derived_image_installs_framework_neutral_core(self) -> None:
+        dockerfile = (ROOT / "docker" / "astrbot" / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("COPY packages/dududa-agent", dockerfile)
+        self.assertIn("/opt/dududa/dududa-agent", dockerfile)
+
     def test_compose_contains_only_bot_services(self) -> None:
         compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
         services: set[str] = set()
@@ -78,6 +85,7 @@ class RepositoryContractTests(unittest.TestCase):
             "astrbot_plugin_dududa_core",
             "astrbot_plugin_reply_polish",
             "astrbot_plugin_target_talk",
+            "astrbot_plugin_sub2api_readonly",
         ):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
 

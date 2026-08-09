@@ -11,11 +11,14 @@ QQ / QQ Group
       |
     NapCat
       | OneBot v11
+      +---------------------- Dududa Web multi-account workspace
+      |
     AstrBot ---------------- External OpenAI-compatible provider
       |
       +-- Dududa Core
       +-- Reply Polish
       +-- Target Talk
+      +-- Sub2API Readonly ---- Sub2API admin UI read-only JSON endpoints
       +-- locked third-party plugins
       +-- icourse MCP -------- icourse.club public pages
 ```
@@ -27,23 +30,24 @@ Bot 和 NapCat 默认加入外部 Docker 网络 `mmdustc-edge`，并保留原主
 
 ```text
 plugins/                 # 嘟嘟哒自研 AstrBot 插件
+packages/dududa-agent/   # 框架无关的 Dududa 2.0 核心契约包
 services/icourse-mcp/    # 评课社区 MCP 服务
 vendor/                  # 无法从公开上游复现的第三方源码
 patches/                 # 上游隐私修补
 config/                  # 可提交的人格和 MCP 初始化模板
 scripts/                 # 安装、同步、初始化和安全检查
 docs/                    # 项目设计与路线图
-compose.yml              # AstrBot + NapCat
+compose.yml              # AstrBot + NapCat + Dududa Web
 plugins.lock.json        # 第三方插件精确版本
 ```
 
 ## Dududa 2.0 Refactor
 
-The Phase 0 audit and Phase 1 target design are indexed in
-[Dududa 2.0 Design Overview](docs/design/dududa-2.0-overview.md). The verified
-current state, migration map, phase plan, ADRs, deployment design, and rollback
-contract are documentation only at this point: the runtime still uses the
-paths and commands described above, and Phase 2 implementation has not started.
+Phase 0–1 的审计与目标设计见
+[Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)。S01–S07 已以增量方式
+实现核心契约、安全组件、AstrBot 兼容拆分和 Memory 安全边界；旧 AstrBot Handler
+仍是生产权威入口，新 Runtime、Connector、Output 与 Memory v2 尚未切流。当前实现证据、
+残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 为准。
 
 ## Requirements
 
@@ -70,7 +74,7 @@ chmod 600 .env
 `up` performs the complete clean-clone bootstrap:
 
 1. Creates private runtime directories under `data/`.
-2. Mounts the three owned plugins read-only from the repository.
+2. Mounts the four owned plugins read-only from the repository.
 3. Installs third-party plugins at the commits in `plugins.lock.json`.
 4. Builds AstrBot with the `icourse-mcp` Python dependencies.
 5. Starts AstrBot and NapCat.
@@ -80,6 +84,7 @@ Local management URLs:
 
 - AstrBot: `http://127.0.0.1:6185`
 - NapCat: `http://127.0.0.1:6099`
+- Dududa Web: `http://127.0.0.1:5173`
 
 NapCat requires an interactive QQ login. Its login state remains under
 `data/napcat/` and is ignored by Git.
@@ -95,6 +100,8 @@ runtime data.
 ./manage.sh ps
 ./manage.sh logs astrbot
 ./manage.sh logs napcat
+./manage.sh web-up
+./manage.sh web-connect
 ./manage.sh restart
 ./manage.sh upgrade
 ./manage.sh down
@@ -118,6 +125,9 @@ the command does not copy provider credentials, databases or QQ login state.
   `bot-astrbot-qq-astrbot:6185` and `bot-astrbot-qq-napcat:6099`.
 - Course data: public pages from `https://icourse.club/`, with a local SQLite
   cache excluded from Git.
+- Sub2API statistics: optional access to the same read-only JSON endpoints used
+  by the Sub2API admin UI. Credentials live only in private runtime config; QQ
+  commands are denied unless their group or private user is explicitly allowed.
 
 Sub2API, PostgreSQL, Redis, xray, Caddy and Authelia are explicitly outside this
 repository. See [architecture.md](docs/architecture.md) for the ownership
@@ -125,9 +135,12 @@ boundary.
 
 ## Development
 
+For the reproducible Ubuntu setup and troubleshooting steps, see
+[本地开发环境](docs/development/local-environment.md).
+
 ```bash
-python -m pip install -e services/icourse-mcp
-python -m compileall -q plugins services scripts
+python -m pip install -e packages/dududa-agent -e services/icourse-mcp
+python -m compileall -q packages plugins services scripts tests
 python -m unittest discover -s tests -v
 python scripts/check_secrets.py
 docker compose --env-file .env.example config --quiet
