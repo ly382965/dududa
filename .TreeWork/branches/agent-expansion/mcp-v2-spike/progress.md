@@ -5,14 +5,42 @@
 Branch: mcp-v2-spike
 Parent: agent-expansion
 Status: in_progress
-Verification: unverified
-Last sync: unix:1786280889
+Verification: verified
+Last sync: unix:1786284257
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S12A concludes `ADOPT` for MCP Python SDK v2 in the subsequent S12
+  infrastructure Adapter. The root workspace and current iCourse Server remain
+  on MCP v1.29; no production Unified Client or Registry exists yet.
+- The committed report contains 13 passing hard gates and is byte-identical
+  when regenerated on Python 3.10.20 and 3.12.13 with isolated uv caches.
+- iCourse remains the only real MCP Server. The native v2 Server is a local
+  Fake, and its discovery creates no Capability grant.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added the independently locked v2 harness, native Fake, legacy iCourse
+  fixture, socket/SQLite guard, process/effect journals and shared lifecycle
+  contract.
+- Verified 100 sequential calls in one session, 20 calls at maximum active 4,
+  bounded deadline/cancel/close, both crash phases, generation recovery and
+  compatible/incompatible/expired Schema publication behavior.
+- Added digest-bound `report.json`, ADR 0006 and a root artifact Contract Test.
+- Both Python versions pass 414 repository tests with two AstrBot-image-only
+  skips; package build, compile, lock, secret, import, shell, Compose, Ruff and
+  whitespace gates pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- None inside S12A. Production lifecycle policy, Registry, iCourse migration
+  and rollback compatibility belong to the dependent `unified-mcp` branch.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- S12 may use the v2 Client/Server API and explicit legacy mode under ADR 0006.
+- Preserve the caller's virtualenv launcher path; resolving `.venv/bin/python`
+  selects the uv base interpreter and loses the installed v1 SDK.
+- Run cross-Python PEP 723 verification serially or with separate
+  `UV_CACHE_DIR` values.
