@@ -24,6 +24,7 @@ from .digests import (
     capability_catalog_digest,
     capability_catalog_publish_receipt_digest,
 )
+from .mapping_policy import validate_mcp_mapping_policy
 
 CapabilityCallContext = PortCallContext | ServiceCallContext
 
@@ -145,6 +146,12 @@ class InMemoryCapabilityRegistry:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._history_limit = history_limit
+        self._retired_bindings: set[tuple[ProviderRef, str]] = {
+            (definition.provider, definition.capability_id)
+            for definition in initial.definitions
+            for mapping in initial.mcp_mappings
+            if mapping.capability_id == definition.capability_id and not mapping.enabled
+        }
         self._validate_bound_snapshot(initial)
         self._provider_registry._bind_catalog(initial)
         self._current = initial
@@ -249,11 +256,17 @@ class InMemoryCapabilityRegistry:
                 acquired_at=now,
                 **values,
             )
+            _validate_catalog_transition(
+                current,
+                candidate,
+                self._retired_bindings,
+            )
             self._validate_bound_snapshot(candidate)
             receipt = self._receipt(current, candidate, now)
             self._provider_registry._bind_catalog(candidate)
             self._current = candidate
             self._remember(candidate)
+            self._retired_bindings.update(_newly_retired_bindings(current, candidate))
             return receipt
 
     def _receipt(
@@ -292,6 +305,22 @@ class InMemoryCapabilityRegistry:
     def _validate_bound_snapshot(self, snapshot: CapabilityCatalogSnapshot) -> None:
         for document in snapshot.schema_documents:
             self._schema_validator.check_schema(document)
+        definitions = {item.capability_id: item for item in snapshot.definitions}
+        schemas = {item.schema_ref: item for item in snapshot.schema_documents}
+        for mapping in snapshot.mcp_mappings:
+            definition = definitions[mapping.capability_id]
+            try:
+                validate_mcp_mapping_policy(
+                    definition,
+                    mapping,
+                    schemas[definition.input_schema],
+                    schemas[definition.output_schema],
+                    self._schema_validator,
+                )
+            except (KeyError, TypeError, ValueError):
+                raise validation_error(
+                    "unsupported_mcp_capability_mapping_policy"
+                ) from None
         for descriptor in snapshot.provider_descriptors:
             self._provider_registry.resolve_descriptor(descriptor)
 
@@ -366,6 +395,87 @@ def _provider_descriptor(provider: CapabilityProvider) -> CapabilityProviderDesc
     if not isinstance(descriptor, CapabilityProviderDescriptor):
         raise validation_error("invalid_capability_provider_descriptor")
     return descriptor
+
+
+def _validate_catalog_transition(
+    current: CapabilityCatalogSnapshot,
+    candidate: CapabilityCatalogSnapshot,
+    retired_bindings: set[tuple[ProviderRef, str]],
+) -> None:
+    current_definitions = {item.capability_id: item for item in current.definitions}
+    current_mappings = {item.capability_id: item for item in current.mcp_mappings}
+    candidate_mappings = {item.capability_id: item for item in candidate.mcp_mappings}
+    for definition in candidate.definitions:
+        next_mapping = candidate_mappings.get(definition.capability_id)
+        if (
+            (definition.provider, definition.capability_id) in retired_bindings
+            and definition.enabled
+            and (next_mapping is None or next_mapping.enabled)
+        ):
+            raise validation_error("retired_capability_requires_provider_revision")
+        previous_definition = current_definitions.get(definition.capability_id)
+        if (
+            previous_definition is None
+            or previous_definition.provider != definition.provider
+        ):
+            continue
+        if previous_definition.definition_digest != definition.definition_digest:
+            raise validation_error(
+                "capability_definition_change_requires_provider_revision"
+            )
+        previous_mapping = current_mappings.get(definition.capability_id)
+        if previous_mapping == next_mapping:
+            continue
+        if (
+            previous_mapping is None
+            or next_mapping is None
+            or not previous_mapping.enabled
+            or next_mapping.enabled
+            or not _same_mapping_contract(previous_mapping, next_mapping)
+        ):
+            raise validation_error("mcp_mapping_change_requires_provider_revision")
+
+
+def _newly_retired_bindings(
+    current: CapabilityCatalogSnapshot,
+    candidate: CapabilityCatalogSnapshot,
+) -> set[tuple[ProviderRef, str]]:
+    candidate_definitions = {item.capability_id: item for item in candidate.definitions}
+    candidate_mappings = {item.capability_id: item for item in candidate.mcp_mappings}
+    retired: set[tuple[ProviderRef, str]] = set()
+    for definition in current.definitions:
+        next_definition = candidate_definitions.get(definition.capability_id)
+        if next_definition is None or next_definition.provider != definition.provider:
+            retired.add((definition.provider, definition.capability_id))
+            continue
+        previous_mapping = next(
+            (
+                item
+                for item in current.mcp_mappings
+                if item.capability_id == definition.capability_id
+            ),
+            None,
+        )
+        next_mapping = candidate_mappings.get(definition.capability_id)
+        if (
+            previous_mapping is not None
+            and previous_mapping.enabled
+            and next_mapping is not None
+            and not next_mapping.enabled
+        ):
+            retired.add((definition.provider, definition.capability_id))
+    return retired
+
+
+def _same_mapping_contract(
+    left: McpCapabilityMapping,
+    right: McpCapabilityMapping,
+) -> bool:
+    return all(
+        getattr(left, field) == getattr(right, field)
+        for field in left.__dataclass_fields__
+        if field not in {"enabled", "mapping_digest"}
+    )
 
 
 def _validate_call(call: CapabilityCallContext, now: datetime) -> None:

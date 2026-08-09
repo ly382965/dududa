@@ -12,10 +12,11 @@ from dududa.domain.capability import (
 
 if TYPE_CHECKING:
     from .authorization import CapabilityAuthorizationPurpose
-    from .config import ConfigCapabilityRegistry
+    from .config import ConfigCapabilityRegistry, load_capability_catalog_snapshot
     from .executor import GovernedToolExecutor
     from .health import PollingCapabilityHealthRegistry
     from .ledger import InMemoryToolInvocationLedger
+    from .mcp_provider import McpCapabilityProvider
     from .planning import (
         DeterministicArgumentBinder,
         DeterministicToolPlanner,
@@ -172,6 +173,7 @@ __all__ = [
     "InMemoryToolInvocationLedger",
     "LatencyHint",
     "McpCapabilityMapping",
+    "McpCapabilityProvider",
     "ObservationBinding",
     "PollingCapabilityHealthRegistry",
     "ProviderInvocation",
@@ -216,6 +218,7 @@ __all__ = [
     "capability_run_receipt_digest",
     "capability_run_request_digest",
     "capability_schema_document_digest",
+    "load_capability_catalog_snapshot",
     "mcp_capability_mapping_digest",
     "provider_invocation_digest",
     "tool_execution_request_digest",
@@ -256,10 +259,16 @@ def __getattr__(name: str) -> object:
             "capability_authorization_allows": capability_authorization_allows,
             "capability_authorization_resource": capability_authorization_resource,
         }[name]
-    if name == "ConfigCapabilityRegistry":
-        from .config import ConfigCapabilityRegistry
+    if name in {"ConfigCapabilityRegistry", "load_capability_catalog_snapshot"}:
+        from .config import (
+            ConfigCapabilityRegistry,
+            load_capability_catalog_snapshot,
+        )
 
-        return ConfigCapabilityRegistry
+        return {
+            "ConfigCapabilityRegistry": ConfigCapabilityRegistry,
+            "load_capability_catalog_snapshot": load_capability_catalog_snapshot,
+        }[name]
     if name == "GovernedToolExecutor":
         from .executor import GovernedToolExecutor
 
@@ -268,6 +277,10 @@ def __getattr__(name: str) -> object:
         from .health import PollingCapabilityHealthRegistry
 
         return PollingCapabilityHealthRegistry
+    if name == "McpCapabilityProvider":
+        from .mcp_provider import McpCapabilityProvider
+
+        return McpCapabilityProvider
     if name == "DeterministicCapabilityRetriever":
         from .retrieval import DeterministicCapabilityRetriever
 

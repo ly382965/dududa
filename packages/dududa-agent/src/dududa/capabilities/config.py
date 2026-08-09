@@ -123,22 +123,31 @@ class ConfigCapabilityRegistry:
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
         history_limit: int = 32,
+        initial_snapshot: CapabilityCatalogSnapshot | None = None,
     ) -> None:
         self._definitions_directory = Path(definitions_directory)
         self._mappings_directory = Path(mappings_directory)
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
-        content = _load_content(
-            self._definitions_directory,
-            self._mappings_directory,
-        )
-        acquired_at = self._now()
-        initial = CapabilityCatalogSnapshot(
-            snapshot_id=self._new_id("capability-catalog"),
-            catalog_digest=capability_catalog_digest(content),
-            acquired_at=acquired_at,
-            **content,
-        )
+        if initial_snapshot is None:
+            initial = load_capability_catalog_snapshot(
+                self._definitions_directory,
+                self._mappings_directory,
+                snapshot_id=self._new_id("capability-catalog"),
+                acquired_at=self._now(),
+            )
+        else:
+            if not isinstance(initial_snapshot, CapabilityCatalogSnapshot):
+                raise TypeError("initial_snapshot must be a CapabilityCatalogSnapshot")
+            content = _load_content(
+                self._definitions_directory,
+                self._mappings_directory,
+            )
+            if not _snapshot_matches_content(initial_snapshot, content):
+                raise validation_error(
+                    "capability_bootstrap_snapshot_configuration_mismatch"
+                )
+            initial = initial_snapshot
         self._registry = InMemoryCapabilityRegistry(
             initial,
             schema_validator=schema_validator,
@@ -197,6 +206,7 @@ class ConfigCapabilityRegistry:
             self._definitions_directory,
             self._mappings_directory,
         )
+        content = _apply_deleted_mapping_revocations(content, current)
         values = {
             **content,
             "expected_revision": current.catalog_revision,
@@ -244,6 +254,47 @@ class ConfigCapabilityRegistry:
         ):
             raise validation_error("invalid_capability_config_clock")
         return value
+
+
+def load_capability_catalog_snapshot(
+    definitions_directory: Path,
+    mappings_directory: Path,
+    *,
+    snapshot_id: str,
+    acquired_at: datetime,
+) -> CapabilityCatalogSnapshot:
+    """Load a strict, provider-independent bootstrap snapshot from configuration."""
+
+    if (
+        not isinstance(acquired_at, datetime)
+        or acquired_at.tzinfo is None
+        or acquired_at.utcoffset() is None
+    ):
+        raise validation_error("invalid_capability_bootstrap_acquired_at")
+    content = _load_content(Path(definitions_directory), Path(mappings_directory))
+    return CapabilityCatalogSnapshot(
+        snapshot_id=snapshot_id,
+        catalog_digest=capability_catalog_digest(content),
+        acquired_at=acquired_at,
+        **content,
+    )
+
+
+def _snapshot_matches_content(
+    snapshot: CapabilityCatalogSnapshot,
+    content: Mapping[str, object],
+) -> bool:
+    return (
+        snapshot.schema_version == content["schema_version"]
+        and snapshot.catalog_revision == content["catalog_revision"]
+        and snapshot.mapping_revision == content["mapping_revision"]
+        and snapshot.provider_registry_revision == content["provider_registry_revision"]
+        and snapshot.definitions == content["definitions"]
+        and snapshot.schema_documents == content["schema_documents"]
+        and snapshot.provider_descriptors == content["provider_descriptors"]
+        and snapshot.mcp_mappings == content["mcp_mappings"]
+        and snapshot.catalog_digest == capability_catalog_digest(content)
+    )
 
 
 def _load_content(definitions_directory: Path, mappings_directory: Path):
@@ -307,6 +358,66 @@ def _load_content(definitions_directory: Path, mappings_directory: Path):
         )
     )
     mappings = tuple(sorted(mappings, key=lambda item: item.capability_id))
+    return _catalog_content(definitions, schemas, descriptors, mappings)
+
+
+def _apply_deleted_mapping_revocations(
+    content: Mapping[str, object],
+    current: CapabilityCatalogSnapshot,
+) -> dict[str, object]:
+    definitions = tuple(content["definitions"])
+    schemas = tuple(content["schema_documents"])
+    descriptors = tuple(content["provider_descriptors"])
+    mappings = tuple(content["mcp_mappings"])
+    definitions_by_id = {item.capability_id: item for item in definitions}
+    current_definitions = {item.capability_id: item for item in current.definitions}
+    loaded_ids = {item.capability_id for item in mappings}
+    tombstones: list[McpCapabilityMapping] = []
+    for previous in current.mcp_mappings:
+        if previous.capability_id in loaded_ids:
+            continue
+        definition = definitions_by_id.get(previous.capability_id)
+        if definition is None:
+            continue
+        current_definition = current_definitions.get(previous.capability_id)
+        if current_definition != definition:
+            raise validation_error("deleted_mcp_mapping_definition_revision_mismatch")
+        tombstones.append(_disabled_mapping(previous))
+    if not tombstones:
+        return dict(content)
+    merged = tuple(
+        sorted((*mappings, *tombstones), key=lambda item: item.capability_id)
+    )
+    return _catalog_content(definitions, schemas, descriptors, merged)
+
+
+def _disabled_mapping(mapping: McpCapabilityMapping) -> McpCapabilityMapping:
+    values = {
+        "schema_version": mapping.schema_version,
+        "capability_id": mapping.capability_id,
+        "capability_definition_digest": mapping.capability_definition_digest,
+        "server_id": mapping.server_id,
+        "tool_name": mapping.tool_name,
+        "expected_input_schema_digest": mapping.expected_input_schema_digest,
+        "expected_output_schema_digest": mapping.expected_output_schema_digest,
+        "semantics": mapping.semantics,
+        "fixed_arguments": mapping.fixed_arguments,
+        "argument_mapping_revision": mapping.argument_mapping_revision,
+        "result_mapping_revision": mapping.result_mapping_revision,
+        "enabled": False,
+    }
+    return McpCapabilityMapping(
+        mapping_digest=mcp_capability_mapping_digest(values),
+        **values,
+    )
+
+
+def _catalog_content(
+    definitions: tuple[CapabilityDefinition, ...],
+    schemas: tuple[CapabilitySchemaDocument, ...],
+    descriptors: tuple[CapabilityProviderDescriptor, ...],
+    mappings: tuple[McpCapabilityMapping, ...],
+) -> dict[str, object]:
     return {
         "schema_version": 1,
         "catalog_revision": capability_catalog_revision(

@@ -1,0 +1,11 @@
+{
+  "policy_revision": "fixture-fake-b-v1",
+  "roles": {
+    "member": {
+      "permissions": [
+        "capability.fixture.echo"
+      ]
+    }
+  },
+  "schema_version": 1
+}

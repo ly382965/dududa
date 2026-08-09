@@ -8,7 +8,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
-from dududa.capabilities.config import ConfigCapabilityRegistry
+from dududa.capabilities.config import (
+    ConfigCapabilityRegistry,
+    load_capability_catalog_snapshot,
+)
 from dududa.capabilities.contracts import CapabilityCatalogSnapshot
 from dududa.capabilities.registry import InMemoryCapabilityProviderRegistry
 from dududa.errors import DududaError
@@ -137,20 +140,87 @@ def _registry(root: Path, snapshot: CapabilityCatalogSnapshot):
         clock=lambda: NOW,
         id_factory=lambda: next(identifiers),
     )
-    return registry, definitions, mappings
+    return registry, definitions, mappings, providers
 
 
 class CapabilityConfigTests(unittest.IsolatedAsyncioTestCase):
+    async def test_deleted_mapping_publishes_atomic_revocation_tombstone(
+        self,
+    ) -> None:
+        source, _, _ = catalog_fixture()
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registry, _, mappings, _ = _registry(root, source)
+            before = registry.acquire_snapshot()
+            path = next(mappings.iterdir())
+            path.unlink()
+
+            revoked = await registry.reload(call=call())
+
+            self.assertIsNot(revoked, before)
+            self.assertFalse(revoked.mcp_mappings[0].enabled)
+            self.assertNotEqual(revoked.mapping_revision, before.mapping_revision)
+            self.assertIs(await registry.reload(call=call()), revoked)
+
+    def test_initial_bootstrap_still_requires_every_mcp_mapping(self) -> None:
+        source, _, _ = catalog_fixture()
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            definitions, mappings = _write_catalog(root, source)
+            next(mappings.iterdir()).unlink()
+            provider = FakeProvider(source.provider_descriptors[0])
+
+            with self.assertRaises(DududaError):
+                ConfigCapabilityRegistry(
+                    definitions,
+                    mappings,
+                    schema_validator=SchemaValidator(),
+                    provider_registry=InMemoryCapabilityProviderRegistry((provider,)),
+                    clock=lambda: NOW,
+                )
+
+    def test_public_bootstrap_snapshot_breaks_provider_configuration_cycle(
+        self,
+    ) -> None:
+        source, _, _ = catalog_fixture()
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            definitions, mappings = _write_catalog(root, source)
+            initial = load_capability_catalog_snapshot(
+                definitions,
+                mappings,
+                snapshot_id="capability-catalog:bootstrap",
+                acquired_at=NOW,
+            )
+            provider = FakeProvider(initial.provider_descriptors[0])
+            providers = InMemoryCapabilityProviderRegistry((provider,))
+
+            registry = ConfigCapabilityRegistry(
+                definitions,
+                mappings,
+                schema_validator=SchemaValidator(),
+                provider_registry=providers,
+                clock=lambda: NOW,
+                initial_snapshot=initial,
+            )
+
+            self.assertIs(registry.acquire_snapshot(), initial)
+            self.assertEqual(
+                registry.acquire_snapshot().definitions,
+                source.definitions,
+            )
+
     async def test_load_and_atomic_reload_use_content_addressed_revisions(self) -> None:
         source, _, _ = catalog_fixture()
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            registry, _, _ = _registry(root, source)
+            registry, _, _, providers = _registry(root, source)
             initial = registry.acquire_snapshot()
             self.assertEqual(initial.catalog_digest, source.catalog_digest)
             self.assertIs(await registry.reload(call=call()), initial)
 
-            update = update_for(initial, 2)
+            update = update_for(initial, 2, bump_provider_revision=True)
+            providers.register(FakeProvider(update.provider_descriptors[0]))
             definition_path = next((root / "definitions").iterdir())
             mapping_path = next((root / "mappings").iterdir())
             fixture = SimpleNamespace(
@@ -175,7 +245,7 @@ class CapabilityConfigTests(unittest.IsolatedAsyncioTestCase):
         source, _, _ = catalog_fixture()
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            registry, definitions, _ = _registry(root, source)
+            registry, definitions, _, _ = _registry(root, source)
             before = registry.acquire_snapshot()
             path = next(definitions.iterdir())
             path.write_text(

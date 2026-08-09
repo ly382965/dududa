@@ -1,0 +1,98 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "icourse.stats.read.v1",
+  "category": "campus.course-review",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:e1093388362b430e3b8cfc883793c5699e7d8b1767afd21c6c9b07e0d1ff5a55",
+  "description": "Read public iCourse cache counts; never returns local storage paths.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.icourse.stats.read.v1.input:v1:sha-256:0df74299dfdeca6b199744b73acb6805c7276bd02f76deaa03116cb6a6757dc9",
+    "document": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "schema_id": "capability.icourse.stats.read.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 20,
+    "maximum_ms": 2000
+  },
+  "name": "Read iCourse public-cache statistics without exposing storage paths.",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.icourse.stats.read.v1.output:v1:sha-256:02761ce4ff015538215a56691109dfe076614dc77d8ff6a23b8f5c32830d63f3",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "courses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "courses_with_detail": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last_detail_crawled_at": {
+          "maxLength": 64,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_list_crawled_at": {
+          "maxLength": 64,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "public_reviews": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "courses",
+        "courses_with_detail",
+        "public_reviews",
+        "last_detail_crawled_at",
+        "last_list_crawled_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.icourse.stats.read.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.icourse",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:9cfe5a3297f08eee13cfe4403150448260b394bcc8ebfb61d93742f181cf303a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "icourse-public-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.icourse.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "cache",
+    "course",
+    "icourse",
+    "statistics"
+  ]
+}

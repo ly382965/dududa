@@ -151,8 +151,8 @@ def mapping_for(
         ),
         "semantics": McpOperationSemantics.READ_ONLY,
         "fixed_arguments": {},
-        "argument_mapping_revision": "arguments-v1",
-        "result_mapping_revision": "results-v1",
+        "argument_mapping_revision": "identity-v1",
+        "result_mapping_revision": "structured-content-v1",
         "enabled": enabled,
     }
     return McpCapabilityMapping(

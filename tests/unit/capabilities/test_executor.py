@@ -58,7 +58,12 @@ from tests.unit.capabilities.test_planning import (
     planning_request,
     validation_request,
 )
-from tests.unit.capabilities.test_registry import SchemaValidator, catalog_fixture
+from tests.unit.capabilities.test_registry import (
+    SchemaValidator,
+    catalog_fixture,
+    mapping_update,
+)
+from tests.unit.capabilities.test_registry import call as catalog_call
 from tests.unit.capabilities.test_retrieval import (
     StaticHealthRegistry,
     authorization_for,
@@ -504,6 +509,20 @@ class GovernedToolExecutorTests(unittest.IsolatedAsyncioTestCase):
             await executor.execute(self._request(), call=execution_call())
         self.assertIs(caught.exception.info.category, ErrorCategory.AUTHORIZATION)
         self.assertEqual(self.provider.requests, [])
+
+    async def test_current_mapping_revocation_blocks_historical_plan(self) -> None:
+        historical_request = self._request()
+        await self.registry.publish(
+            mapping_update(self.catalog, False),
+            call=catalog_call(),
+        )
+
+        with self.assertRaises(DududaError) as revoked:
+            await self.executor.execute(historical_request, call=execution_call())
+
+        self.assertEqual(revoked.exception.info.code, "tool_execution_mapping_mismatch")
+        self.assertEqual(self.provider.requests, [])
+        self.assertEqual(self.authorization.requests, [])
 
     async def test_limiter_budget_and_audit_start_failures_terminalize_without_call(
         self,

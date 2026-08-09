@@ -83,7 +83,10 @@ def schema(schema_id: str) -> CapabilitySchemaDocument:
     document = {
         "type": "object",
         "additionalProperties": False,
-        "properties": {"query": {"type": "string", "maxLength": 100}},
+        "properties": {
+            "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+            "query": {"type": "string", "maxLength": 100},
+        },
     }
     reference = SchemaRef(
         schema_id,
@@ -157,8 +160,8 @@ def mapping(item: CapabilityDefinition) -> McpCapabilityMapping:
         ),
         "semantics": McpOperationSemantics.READ_ONLY,
         "fixed_arguments": {"limit": 20},
-        "argument_mapping_revision": "arguments-v1",
-        "result_mapping_revision": "results-v1",
+        "argument_mapping_revision": "identity-v1",
+        "result_mapping_revision": "structured-content-v1",
         "enabled": True,
     }
     return McpCapabilityMapping(
@@ -638,9 +641,7 @@ class CapabilityContractTests(unittest.TestCase):
         }
         with self.assertRaises(DududaError):
             CapabilityRunReceipt(
-                receipt_digest=capability_run_receipt_digest(
-                    duplicate_receipt_values
-                ),
+                receipt_digest=capability_run_receipt_digest(duplicate_receipt_values),
                 **duplicate_receipt_values,
             )
 

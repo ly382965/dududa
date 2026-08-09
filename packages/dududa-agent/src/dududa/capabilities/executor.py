@@ -92,6 +92,7 @@ from .digests import (
     tool_invocation_receipt_digest,
     tool_observation_digest,
 )
+from .mapping_policy import fixed_arguments_match
 
 _PRIVACY_ORDER = {
     PrivacyLevel.PUBLIC: 0,
@@ -221,13 +222,26 @@ class GovernedToolExecutor:
         )
         if expected_validation != request.plan_validation_result:
             raise validation_error("tool_execution_plan_evidence_untrusted")
-        catalog = self._registry.snapshot_by_id(
+        planned_catalog = self._registry.snapshot_by_id(
             request.catalog_snapshot_id,
             expected_digest=request.catalog_digest,
         )
+        planned_definition = self._registry.get_definition(
+            planned_catalog,
+            request.capability_id,
+        )
+        self._validate_definition(request, planned_definition)
+        planned_mapping = self._mapping(
+            planned_catalog,
+            request,
+            planned_definition,
+        )
+        catalog = self._registry.acquire_snapshot()
         definition = self._registry.get_definition(catalog, request.capability_id)
         self._validate_definition(request, definition)
         mapping = self._mapping(catalog, request, definition)
+        if definition != planned_definition or mapping != planned_mapping:
+            raise validation_error("tool_execution_current_catalog_mismatch")
         input_schema = self._registry.get_schema(catalog, definition.input_schema)
         validated_arguments = self._schemas.validate(
             request.resolved_arguments,
@@ -341,10 +355,9 @@ class GovernedToolExecutor:
                 or not mapping.enabled
                 or mapping.capability_definition_digest != definition.definition_digest
                 or mapping.mapping_digest != request.mapping_digest
-                or any(
-                    key not in request.resolved_arguments
-                    or request.resolved_arguments[key] != value
-                    for key, value in mapping.fixed_arguments.items()
+                or not fixed_arguments_match(
+                    request.resolved_arguments,
+                    mapping.fixed_arguments,
                 )
             ):
                 raise validation_error("tool_execution_mapping_mismatch")
@@ -876,10 +889,7 @@ class GovernedToolExecutor:
             budget_lease,
             at=now,
         )
-        catalog = self._registry.snapshot_by_id(
-            request.catalog_snapshot_id,
-            expected_digest=request.catalog_digest,
-        )
+        catalog = self._registry.acquire_snapshot()
         if (
             catalog != facts.catalog
             or self._registry.get_definition(catalog, request.capability_id)
@@ -1235,17 +1245,13 @@ def _valid_budget_receipt(
 
 def _within_lease(reserved_at: datetime, expires_at: datetime, at: datetime) -> bool:
     return bool(
-        _aware(reserved_at)
-        and _aware(expires_at)
-        and reserved_at <= at < expires_at
+        _aware(reserved_at) and _aware(expires_at) and reserved_at <= at < expires_at
     )
 
 
 def _recorded_after(reserved_at: datetime, recorded_at: datetime, at: datetime) -> bool:
     return bool(
-        _aware(reserved_at)
-        and _aware(recorded_at)
-        and reserved_at <= recorded_at <= at
+        _aware(reserved_at) and _aware(recorded_at) and reserved_at <= recorded_at <= at
     )
 
 
