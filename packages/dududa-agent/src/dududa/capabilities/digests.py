@@ -37,6 +37,7 @@ from .contracts import (
     ToolPlanValidationResult,
     ToolValidationRequest,
     ToolValidationResult,
+    UnobservedToolAttempt,
 )
 
 
@@ -287,6 +288,16 @@ def capability_run_receipt_digest(receipt: CapabilityRunReceipt) -> DigestString
     )
 
 
+def unobserved_tool_attempt_digest(
+    attempt: UnobservedToolAttempt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        attempt,
+        "attempt_digest",
+        domain="capability.unobserved-tool-attempt:v1",
+    )
+
+
 def tool_idempotency_key(
     *,
     run_id: str,
@@ -355,4 +366,5 @@ __all__: Iterable[str] = (
     "tool_planning_request_digest",
     "tool_validation_request_digest",
     "tool_validation_result_digest",
+    "unobserved_tool_attempt_digest",
 )

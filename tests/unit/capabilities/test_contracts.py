@@ -17,6 +17,7 @@ from dududa.capabilities import (
     CapabilityQuery,
     CapabilityRetrievalResult,
     CapabilityRunReceipt,
+    CapabilityRunRequest,
     CapabilityRunStatus,
     CapabilitySchemaDocument,
     CostHint,
@@ -45,6 +46,7 @@ from dududa.capabilities import (
     capability_query_digest,
     capability_retrieval_result_digest,
     capability_run_receipt_digest,
+    capability_run_request_digest,
     mcp_capability_mapping_digest,
     tool_execution_request_digest,
     tool_observation_digest,
@@ -468,11 +470,50 @@ class CapabilityContractTests(unittest.TestCase):
     def test_plan_observation_validation_and_run_receipt_are_bound(self) -> None:
         tool_plan = plan(self.definition)
         accepted = observation(self.definition, tool_plan)
+        retrieved = retrieval(self.definition)
+        plan_validation_values = {
+            "schema_version": 1,
+            "query": query(),
+            "retrieval": retrieved,
+            "plan": tool_plan,
+            "maximum_attempts": 4,
+            "maximum_cost_units": 4,
+        }
+        plan_validation_request = ToolPlanValidationRequest(
+            request_digest=tool_plan_validation_request_digest(plan_validation_values),
+            **plan_validation_values,
+        )
+        plan_validation_result_values = {
+            "schema_version": 1,
+            "request_digest": plan_validation_request.request_digest,
+            "plan_digest": tool_plan.plan_digest,
+            "valid": True,
+            "reason_codes": ("plan_valid",),
+            "validator_revision": revision("capability.plan-validator"),
+        }
+        plan_validation_result = ToolPlanValidationResult(
+            result_digest=tool_plan_validation_result_digest(
+                plan_validation_result_values
+            ),
+            **plan_validation_result_values,
+        )
+        result_validation_values = {
+            "schema_version": 1,
+            "retrieval": retrieved,
+            "plan": tool_plan,
+            "plan_validation_request": plan_validation_request,
+            "plan_validation_result": plan_validation_result,
+            "observations": (accepted,),
+            "output_schemas": (self.output_document,),
+            "maximum_attempts": 4,
+        }
+        result_validation_request = ToolValidationRequest(
+            request_digest=tool_validation_request_digest(result_validation_values),
+            **result_validation_values,
+        )
         validation_values = {
             "schema_version": 1,
-            "request_digest": canonical_digest(
-                {}, domain="fixture.validation-request:v1"
-            ),
+            "request_digest": result_validation_request.request_digest,
             "action": ValidationAction.FINISH,
             "accepted_observations": (accepted,),
             "retry_step_id": None,
@@ -484,14 +525,39 @@ class CapabilityContractTests(unittest.TestCase):
             result_digest=tool_validation_result_digest(validation_values),
             **validation_values,
         )
+        actor = Actor("qq", "bot", "user", frozenset({RoleId("member")}))
+        scope = ConversationScope(
+            "qq",
+            "bot",
+            ConversationType.GROUP,
+            "group",
+            "group",
+            "dududa",
+        )
+        run_request_values = {
+            "schema_version": 1,
+            "query": query(),
+            "actor": actor,
+            "conversation_scope": scope,
+            "data_classification": PrivacyLevel.PUBLIC,
+            "available_input_schemas": (self.input_document.schema_ref,),
+            "maximum_attempts": 4,
+        }
+        run_request = CapabilityRunRequest(
+            request_digest=capability_run_request_digest(run_request_values),
+            **run_request_values,
+        )
         receipt_values = {
             "schema_version": 1,
             "run_id": "run-v1",
-            "request_digest": canonical_digest({}, domain="fixture.run-request:v1"),
+            "request": run_request,
+            "request_digest": run_request.request_digest,
             "status": CapabilityRunStatus.COMPLETED,
-            "retrieval": retrieval(self.definition),
+            "retrieval": retrieved,
             "plan": tool_plan,
             "observations": (accepted,),
+            "unobserved_attempts": (),
+            "validation_request": result_validation_request,
             "validation": validation,
             "usage": ResourceUsage(1, tool_steps=1, cost_units=Decimal(1)),
             "reason_codes": ("completed",),
@@ -505,6 +571,78 @@ class CapabilityContractTests(unittest.TestCase):
         self.assertTrue(receipt.observations[0].untrusted)
         with self.assertRaises(DududaError):
             replace(receipt, observations=())
+        with self.assertRaises(DududaError):
+            replace(
+                receipt,
+                usage=ResourceUsage(1, tool_steps=1, cost_units=Decimal(2)),
+            )
+
+        duplicate_values = {
+            name: getattr(accepted, name)
+            for name in accepted.__dataclass_fields__
+            if name != "observation_digest"
+        }
+        duplicate_values.update(
+            {
+                "execution_request_digest": canonical_digest(
+                    {"attempt": 2}, domain="fixture.execution-request:v1"
+                ),
+                "provider_invocation_digest": canonical_digest(
+                    {"attempt": 2}, domain="fixture.provider-invocation:v1"
+                ),
+                "provider_result_digest": canonical_digest(
+                    {"attempt": 2}, domain="fixture.provider-result:v1"
+                ),
+                "invocation_id": "invocation-v2",
+                "attempt": 2,
+                "usage": ResourceUsage(
+                    1,
+                    tool_steps=1,
+                    retries=1,
+                    cost_units=Decimal(1),
+                ),
+            }
+        )
+        duplicate = ToolObservation(
+            observation_digest=tool_observation_digest(duplicate_values),
+            **duplicate_values,
+        )
+        duplicate_request_values = {
+            **result_validation_values,
+            "observations": (accepted, duplicate),
+        }
+        duplicate_request = ToolValidationRequest(
+            request_digest=tool_validation_request_digest(duplicate_request_values),
+            **duplicate_request_values,
+        )
+        duplicate_validation_values = {
+            **validation_values,
+            "request_digest": duplicate_request.request_digest,
+            "accepted_observations": (accepted, duplicate),
+        }
+        duplicate_validation = ToolValidationResult(
+            result_digest=tool_validation_result_digest(duplicate_validation_values),
+            **duplicate_validation_values,
+        )
+        duplicate_receipt_values = {
+            **receipt_values,
+            "observations": (accepted, duplicate),
+            "validation_request": duplicate_request,
+            "validation": duplicate_validation,
+            "usage": ResourceUsage(
+                1,
+                tool_steps=2,
+                retries=1,
+                cost_units=Decimal(2),
+            ),
+        }
+        with self.assertRaises(DududaError):
+            CapabilityRunReceipt(
+                receipt_digest=capability_run_receipt_digest(
+                    duplicate_receipt_values
+                ),
+                **duplicate_receipt_values,
+            )
 
     def test_execution_context_reuses_actor_and_exact_conversation_scope(self) -> None:
         actor = Actor("qq", "bot", "user", frozenset({RoleId("member")}))
@@ -516,13 +654,14 @@ class CapabilityContractTests(unittest.TestCase):
             "group",
             "dududa",
         )
-        context = CapabilityExecutionContext(1, actor, scope)
+        context = CapabilityExecutionContext(1, actor, scope, PrivacyLevel.PUBLIC)
         self.assertEqual(context.conversation_scope, scope)
         with self.assertRaises(DududaError):
             CapabilityExecutionContext(
                 1,
                 replace(actor, bot_id="other"),
                 scope,
+                PrivacyLevel.PUBLIC,
             )
 
     def test_execution_and_result_validation_carry_full_plan_evidence(self) -> None:
@@ -583,7 +722,12 @@ class CapabilityContractTests(unittest.TestCase):
             "source_invocation_ids": (),
             "idempotency_key": "tool-key-v1",
             "attempt": 1,
-            "context": CapabilityExecutionContext(1, actor, scope),
+            "context": CapabilityExecutionContext(
+                1,
+                actor,
+                scope,
+                PrivacyLevel.PUBLIC,
+            ),
         }
         execution = ToolExecutionRequest(
             request_digest=tool_execution_request_digest(execution_values),

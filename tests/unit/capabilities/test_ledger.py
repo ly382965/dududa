@@ -71,8 +71,13 @@ def _request(
     execution: str,
     *,
     key: str = "tool-key-v1",
+    attempt: int | None = None,
+    maximum_attempts: int = 8,
     expires_at: datetime = NOW + timedelta(seconds=30),
 ) -> ToolInvocationClaimRequest:
+    if attempt is None:
+        suffix = execution.removeprefix("attempt-")
+        attempt = int(suffix) if suffix.isdigit() else 1
     values = {
         "schema_version": 1,
         "idempotency_key": key,
@@ -80,6 +85,8 @@ def _request(
             {"execution": execution},
             domain="fixture.tool-execution:v1",
         ),
+        "attempt": attempt,
+        "maximum_attempts": maximum_attempts,
         "expires_at": expires_at,
     }
     return ToolInvocationClaimRequest(
@@ -105,6 +112,7 @@ def _observation(
     invocation_id: str = "invocation-v1",
     retryable: bool | None = None,
     execution_request_digest=None,
+    attempt: int = 1,
 ) -> ToolObservation:
     unknown = status is ToolExecutionStatus.UNKNOWN
     failure = None
@@ -150,7 +158,7 @@ def _observation(
         "mapping_digest": None,
         "policy_revision": "policy-v1",
         "idempotency_key": key,
-        "attempt": 1,
+        "attempt": attempt,
         "status": status,
         "data": data,
         "error": failure,
@@ -287,6 +295,7 @@ class ToolInvocationLedgerTests(unittest.IsolatedAsyncioTestCase):
                 ToolExecutionStatus.FAILED,
                 invocation_id="invocation-v2",
                 execution_request_digest=retry.execution_request_digest,
+                attempt=2,
             ),
             call=_call(),
         )
@@ -337,10 +346,14 @@ class ToolInvocationLedgerTests(unittest.IsolatedAsyncioTestCase):
                     ToolExecutionStatus.FAILED,
                     invocation_id=f"invocation-{attempt}",
                     execution_request_digest=previous.execution_request_digest,
+                    attempt=attempt,
                 ),
                 call=_call(),
             )
-        ceiling = await self.ledger.acquire(_request("attempt-9"), call=_call())
+        ceiling = await self.ledger.acquire(
+            _request("beyond-ceiling", attempt=8),
+            call=_call(),
+        )
         self.assertIs(
             ceiling.disposition,
             ToolInvocationDisposition.DUPLICATE_COMPLETED,
@@ -483,6 +496,75 @@ class ToolInvocationLedgerTests(unittest.IsolatedAsyncioTestCase):
             call=_call(deadline=self.clock.now + timedelta(seconds=20)),
         )
         self.assertIs(replacement.disposition, ToolInvocationDisposition.ACQUIRED)
+
+    async def test_expired_pending_is_sealed_and_reclaims_active_capacity(self) -> None:
+        ledger = InMemoryToolInvocationLedger(
+            maximum_records=1,
+            maximum_history=8,
+            terminal_retention=timedelta(seconds=10),
+            clock=self.clock,
+            id_factory=_Ids(),
+        )
+        await ledger.acquire(
+            _request("abandoned", expires_at=NOW + timedelta(seconds=5)),
+            call=_call(deadline=NOW + timedelta(seconds=10)),
+        )
+        self.clock.now = NOW + timedelta(seconds=6)
+        replacement = await ledger.acquire(
+            _request(
+                "replacement",
+                key="tool-key-v2",
+                expires_at=self.clock.now + timedelta(seconds=5),
+            ),
+            call=_call(deadline=self.clock.now + timedelta(seconds=10)),
+        )
+        self.assertIs(replacement.disposition, ToolInvocationDisposition.ACQUIRED)
+        sealed = await ledger.acquire(
+            _request(
+                "abandoned-replay",
+                expires_at=self.clock.now + timedelta(seconds=5),
+            ),
+            call=_call(deadline=self.clock.now + timedelta(seconds=10)),
+        )
+        self.assertIs(sealed.disposition, ToolInvocationDisposition.CONFLICT)
+
+    async def test_claim_attempt_must_be_sequential_and_within_approved_limit(
+        self,
+    ) -> None:
+        first = await self.ledger.acquire(
+            _request("attempt-1", maximum_attempts=4),
+            call=_call(),
+        )
+        await self.ledger.complete(
+            first,
+            _observation(ToolExecutionStatus.FAILED),
+            call=_call(),
+        )
+        skipped = await self.ledger.acquire(
+            _request("attempt-3", attempt=3, maximum_attempts=4),
+            call=_call(),
+        )
+        self.assertIs(
+            skipped.disposition,
+            ToolInvocationDisposition.DUPLICATE_COMPLETED,
+        )
+        second = await self.ledger.acquire(
+            _request("attempt-2", maximum_attempts=4),
+            call=_call(),
+        )
+        self.assertIs(second.disposition, ToolInvocationDisposition.ACQUIRED)
+        await self.ledger.complete(
+            second,
+            _observation(
+                ToolExecutionStatus.FAILED,
+                invocation_id="invocation-v2",
+                execution_request_digest=second.execution_request_digest,
+                attempt=2,
+            ),
+            call=_call(),
+        )
+        with self.assertRaises(DududaError):
+            _request("invalid-approved", attempt=3, maximum_attempts=2)
 
     async def test_claim_and_completion_conflicts_fail_closed(self) -> None:
         claim = await self.ledger.acquire(_request("attempt-1"), call=_call())

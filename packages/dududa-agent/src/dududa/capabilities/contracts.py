@@ -4,6 +4,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from types import MappingProxyType
 
 from dududa._compat import StrEnum
@@ -1198,10 +1199,13 @@ class CapabilityExecutionContext:
     schema_version: int
     actor: Actor
     conversation_scope: ConversationScope
+    data_classification: PrivacyLevel
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
         _identity_scope(self.actor, self.conversation_scope)
+        if not isinstance(self.data_classification, PrivacyLevel):
+            raise validation_error("invalid_execution_data_classification")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1794,12 +1798,20 @@ class ToolInvocationClaimRequest:
     request_digest: DigestString
     idempotency_key: str
     execution_request_digest: DigestString
+    attempt: int
+    maximum_attempts: int
     expires_at: datetime
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
         _identifier(self.idempotency_key, "tool_invocation_idempotency_key")
         _digest(self.execution_request_digest, "execution_request_digest")
+        if (
+            type(self.attempt) is not int
+            or type(self.maximum_attempts) is not int
+            or not 1 <= self.attempt <= self.maximum_attempts <= MAX_TOOL_ATTEMPTS
+        ):
+            raise validation_error("invalid_tool_invocation_claim_attempt")
         require_aware(self.expires_at, "tool_invocation_claim_expiry")
         _check_digest(
             self.request_digest,
@@ -1807,6 +1819,8 @@ class ToolInvocationClaimRequest:
                 "schema_version": self.schema_version,
                 "idempotency_key": self.idempotency_key,
                 "execution_request_digest": self.execution_request_digest,
+                "attempt": self.attempt,
+                "maximum_attempts": self.maximum_attempts,
                 "expires_at": self.expires_at,
             },
             domain="capability.tool-invocation-claim-request:v1",
@@ -1822,6 +1836,8 @@ class ToolInvocationClaim:
     claim_request_digest: DigestString
     idempotency_key: str
     execution_request_digest: DigestString
+    attempt: int
+    maximum_attempts: int
     disposition: ToolInvocationDisposition
     terminal_receipt_digest: DigestString | None
     claimed_at: datetime
@@ -1833,6 +1849,12 @@ class ToolInvocationClaim:
         _digest(self.claim_request_digest, "tool_claim_request_digest")
         _identifier(self.idempotency_key, "tool_invocation_idempotency_key")
         _digest(self.execution_request_digest, "execution_request_digest")
+        if (
+            type(self.attempt) is not int
+            or type(self.maximum_attempts) is not int
+            or not 1 <= self.attempt <= self.maximum_attempts <= MAX_TOOL_ATTEMPTS
+        ):
+            raise validation_error("invalid_tool_invocation_claim_attempt")
         if not isinstance(self.disposition, ToolInvocationDisposition):
             raise validation_error("invalid_tool_invocation_disposition")
         if self.terminal_receipt_digest is not None:
@@ -1859,6 +1881,8 @@ class ToolInvocationClaim:
                 "claim_request_digest": self.claim_request_digest,
                 "idempotency_key": self.idempotency_key,
                 "execution_request_digest": self.execution_request_digest,
+                "attempt": self.attempt,
+                "maximum_attempts": self.maximum_attempts,
                 "disposition": self.disposition,
                 "terminal_receipt_digest": self.terminal_receipt_digest,
                 "claimed_at": self.claimed_at,
@@ -1906,6 +1930,103 @@ class ToolInvocationReceipt:
             },
             domain="capability.tool-invocation-receipt:v1",
             code="tool_invocation_receipt_digest_mismatch",
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class UnobservedToolAttempt:
+    """Conservative accounting when dispatch may have happened without evidence."""
+
+    schema_version: int
+    attempt_digest: DigestString
+    execution_request_digest: DigestString
+    invocation_id: str
+    plan_id: str
+    plan_digest: DigestString
+    step_id: str
+    logical_operation_id: str
+    capability_id: str
+    definition_digest: DigestString
+    catalog_snapshot_id: str
+    catalog_digest: DigestString
+    provider: ProviderRef
+    mapping_digest: DigestString | None
+    policy_revision: str
+    idempotency_key: str
+    attempt: int
+    usage: ResourceUsage
+    reason_codes: tuple[str, ...]
+    recorded_at: datetime
+    dispatch_may_have_occurred: bool = True
+    outcome_unknown: bool = True
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _digest(self.execution_request_digest, "unobserved_execution_request_digest")
+        for field_name in (
+            "invocation_id",
+            "plan_id",
+            "step_id",
+            "logical_operation_id",
+            "capability_id",
+            "catalog_snapshot_id",
+            "policy_revision",
+            "idempotency_key",
+        ):
+            _identifier(getattr(self, field_name), field_name)
+        for field_name in ("plan_digest", "definition_digest", "catalog_digest"):
+            _digest(getattr(self, field_name), field_name)
+        if not isinstance(self.provider, ProviderRef):
+            raise validation_error("invalid_unobserved_attempt_provider")
+        if self.mapping_digest is not None:
+            _digest(self.mapping_digest, "unobserved_attempt_mapping_digest")
+        if type(self.attempt) is not int or not 1 <= self.attempt <= MAX_TOOL_ATTEMPTS:
+            raise validation_error("invalid_unobserved_attempt_number")
+        if not isinstance(self.usage, ResourceUsage) or self.usage.tool_steps != 1:
+            raise validation_error("invalid_unobserved_attempt_usage")
+        if (
+            self.usage.model_calls != 0
+            or self.usage.input_tokens != 0
+            or self.usage.output_tokens != 0
+            or self.usage.retries != (1 if self.attempt > 1 else 0)
+        ):
+            raise validation_error("invalid_unobserved_attempt_usage_shape")
+        reasons = _strings(
+            self.reason_codes,
+            "unobserved_attempt_reason_codes",
+            required=True,
+        )
+        require_aware(self.recorded_at, "unobserved_attempt_recorded_at")
+        if self.dispatch_may_have_occurred is not True or self.outcome_unknown is not True:
+            raise validation_error("invalid_unobserved_attempt_flags")
+        object.__setattr__(self, "reason_codes", reasons)
+        _check_digest(
+            self.attempt_digest,
+            {
+                "schema_version": self.schema_version,
+                "execution_request_digest": self.execution_request_digest,
+                "invocation_id": self.invocation_id,
+                "plan_id": self.plan_id,
+                "plan_digest": self.plan_digest,
+                "step_id": self.step_id,
+                "logical_operation_id": self.logical_operation_id,
+                "capability_id": self.capability_id,
+                "definition_digest": self.definition_digest,
+                "catalog_snapshot_id": self.catalog_snapshot_id,
+                "catalog_digest": self.catalog_digest,
+                "provider": self.provider,
+                "mapping_digest": self.mapping_digest,
+                "policy_revision": self.policy_revision,
+                "idempotency_key": self.idempotency_key,
+                "attempt": self.attempt,
+                "usage": self.usage,
+                "reason_codes": reasons,
+                "recorded_at": self.recorded_at,
+                "dispatch_may_have_occurred": self.dispatch_may_have_occurred,
+                "outcome_unknown": self.outcome_unknown,
+            },
+            domain="capability.unobserved-tool-attempt:v1",
+            code="unobserved_tool_attempt_digest_mismatch",
         )
 
 
@@ -1960,11 +2081,14 @@ class CapabilityRunReceipt:
     schema_version: int
     receipt_digest: DigestString
     run_id: str
+    request: CapabilityRunRequest
     request_digest: DigestString
     status: CapabilityRunStatus
     retrieval: CapabilityRetrievalResult | None
     plan: ToolPlan | None
     observations: tuple[ToolObservation, ...]
+    unobserved_attempts: tuple[UnobservedToolAttempt, ...]
+    validation_request: ToolValidationRequest | None
     validation: ToolValidationResult | None
     usage: ResourceUsage
     reason_codes: tuple[str, ...]
@@ -1973,7 +2097,11 @@ class CapabilityRunReceipt:
     def __post_init__(self) -> None:
         _v1(self.schema_version)
         _identifier(self.run_id, "capability_run_id")
+        if not isinstance(self.request, CapabilityRunRequest):
+            raise validation_error("invalid_capability_run_request_evidence")
         _digest(self.request_digest, "capability_run_request_digest")
+        if self.request_digest != self.request.request_digest:
+            raise validation_error("capability_run_request_evidence_mismatch")
         if not isinstance(self.status, CapabilityRunStatus):
             raise validation_error("invalid_capability_run_status")
         if self.retrieval is not None and not isinstance(
@@ -1996,18 +2124,59 @@ class CapabilityRunReceipt:
             "capability_run_observations",
             maximum=MAX_TOOL_ATTEMPTS,
         )
+        unobserved_attempts = _typed_tuple(
+            self.unobserved_attempts,
+            UnobservedToolAttempt,
+            "capability_run_unobserved_attempts",
+            maximum=MAX_TOOL_ATTEMPTS,
+        )
+        if len(observations) + len(unobserved_attempts) > MAX_TOOL_ATTEMPTS:
+            raise validation_error("capability_run_attempt_limit_exceeded")
+        if len(observations) + len(unobserved_attempts) > self.request.maximum_attempts:
+            raise validation_error("capability_run_approved_attempt_limit_exceeded")
+        if len(unobserved_attempts) > 1:
+            raise validation_error("multiple_unobserved_tool_attempts")
+        if self.validation_request is not None and not isinstance(
+            self.validation_request,
+            ToolValidationRequest,
+        ):
+            raise validation_error("invalid_capability_run_validation_request")
         if self.validation is not None and not isinstance(
             self.validation, ToolValidationResult
         ):
             raise validation_error("invalid_capability_run_validation")
         if self.validation is not None and self.plan is None:
             raise validation_error("capability_run_validation_without_plan")
+        if (self.validation_request is None) is not (self.validation is None):
+            raise validation_error("capability_run_validation_evidence_incomplete")
+        if self.validation_request is not None and (
+            self.retrieval is None
+            or self.plan is None
+            or self.validation_request.retrieval != self.retrieval
+            or self.validation_request.plan != self.plan
+            or self.validation_request.observations != observations
+            or self.validation is None
+            or self.validation.request_digest != self.validation_request.request_digest
+        ):
+            raise validation_error("capability_run_validation_evidence_mismatch")
         if self.status is CapabilityRunStatus.COMPLETED and (
             self.validation is None
             or self.validation.action is not ValidationAction.FINISH
             or not self.validation.accepted_observations
         ):
             raise validation_error("completed_capability_run_not_accepted")
+        if (
+            self.validation is not None
+            and self.validation.action is ValidationAction.FINISH
+        ) is not (self.status is CapabilityRunStatus.COMPLETED):
+            raise validation_error("capability_run_finish_status_mismatch")
+        if unobserved_attempts and (
+            self.status
+            in {CapabilityRunStatus.COMPLETED, CapabilityRunStatus.DEFERRED}
+            or self.validation_request is not None
+            or self.validation is not None
+        ):
+            raise validation_error("unobserved_attempt_has_accepted_validation")
         if self.plan is not None:
             step_by_id = {step.step_id: step for step in self.plan.steps}
             for observation in observations:
@@ -2029,17 +2198,63 @@ class CapabilityRunReceipt:
                         "capability_run_observation_binding_mismatch"
                     )
         invocation_ids = tuple(item.invocation_id for item in observations)
+        invocation_ids += tuple(item.invocation_id for item in unobserved_attempts)
         if len(invocation_ids) != len(set(invocation_ids)):
             raise validation_error("duplicate_capability_run_invocation")
+        if self.plan is not None:
+            step_by_id = {step.step_id: step for step in self.plan.steps}
+            for attempt in unobserved_attempts:
+                step = step_by_id.get(attempt.step_id)
+                if (
+                    attempt.plan_id != self.plan.plan_id
+                    or attempt.plan_digest != self.plan.plan_digest
+                    or step is None
+                    or attempt.logical_operation_id != step.logical_operation_id
+                    or attempt.capability_id != step.capability_id
+                    or attempt.definition_digest != step.definition_digest
+                    or self.retrieval is None
+                    or attempt.catalog_snapshot_id != self.retrieval.catalog_snapshot_id
+                    or attempt.catalog_digest != self.retrieval.catalog_digest
+                    or attempt.policy_revision != self.retrieval.policy_revision
+                ):
+                    raise validation_error(
+                        "capability_run_unobserved_attempt_binding_mismatch"
+                    )
+                candidate = next(
+                    (
+                        item
+                        for item in self.retrieval.candidates
+                        if item.capability_id == attempt.capability_id
+                        and item.definition_digest == attempt.definition_digest
+                    ),
+                    None,
+                )
+                expected_cost = (
+                    None
+                    if attempt.usage.cost_units is None
+                    else Decimal(candidate.cost_hint.units)
+                    if candidate is not None
+                    else None
+                )
+                if candidate is None or attempt.usage.cost_units != expected_cost:
+                    raise validation_error(
+                        "capability_run_unobserved_attempt_cost_mismatch"
+                    )
         if self.validation is not None and any(
             accepted not in observations
             for accepted in self.validation.accepted_observations
         ):
             raise validation_error("capability_run_validation_observation_mismatch")
+        if self.status is CapabilityRunStatus.COMPLETED and self.plan is not None:
+            accepted_steps = tuple(
+                item.step_id for item in self.validation.accepted_observations
+            )
+            if accepted_steps != tuple(step.step_id for step in self.plan.steps):
+                raise validation_error("completed_capability_run_plan_incomplete")
         if not isinstance(self.usage, ResourceUsage):
             raise validation_error("invalid_capability_run_usage")
-        if self.usage.tool_steps != len(observations):
-            raise validation_error("capability_run_usage_step_mismatch")
+        if self.usage != _summed_usage((*observations, *unobserved_attempts)):
+            raise validation_error("capability_run_usage_mismatch")
         reasons = _strings(
             self.reason_codes,
             "capability_run_reason_codes",
@@ -2047,17 +2262,21 @@ class CapabilityRunReceipt:
         )
         require_aware(self.completed_at, "capability_run_completed_at")
         object.__setattr__(self, "observations", observations)
+        object.__setattr__(self, "unobserved_attempts", unobserved_attempts)
         object.__setattr__(self, "reason_codes", reasons)
         _check_digest(
             self.receipt_digest,
             {
                 "schema_version": self.schema_version,
                 "run_id": self.run_id,
+                "request": self.request,
                 "request_digest": self.request_digest,
                 "status": self.status,
                 "retrieval": self.retrieval,
                 "plan": self.plan,
                 "observations": observations,
+                "unobserved_attempts": unobserved_attempts,
+                "validation_request": self.validation_request,
                 "validation": self.validation,
                 "usage": self.usage,
                 "reason_codes": reasons,
@@ -2191,6 +2410,28 @@ def _execution_payload(
         and not error.info.outcome_unknown
     ):
         raise validation_error("unknown_tool_outcome_flag_missing")
+
+
+def _summed_usage(
+    attempts: tuple[ToolObservation | UnobservedToolAttempt, ...],
+) -> ResourceUsage:
+    cost_is_tracked = all(item.usage.cost_units is not None for item in attempts)
+    return ResourceUsage(
+        1,
+        model_calls=sum(item.usage.model_calls for item in attempts),
+        tool_steps=sum(item.usage.tool_steps for item in attempts),
+        retries=sum(item.usage.retries for item in attempts),
+        input_tokens=sum(item.usage.input_tokens for item in attempts),
+        output_tokens=sum(item.usage.output_tokens for item in attempts),
+        cost_units=(
+            sum(
+                (item.usage.cost_units for item in attempts if item.usage.cost_units),
+                Decimal(0),
+            )
+            if cost_is_tracked
+            else None
+        ),
+    )
 
 
 def _identity_scope(actor: Actor, scope: ConversationScope) -> None:

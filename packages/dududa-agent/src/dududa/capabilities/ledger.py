@@ -62,6 +62,7 @@ class InMemoryToolInvocationLedger:
         self._history: OrderedDict[str, ToolInvocationReceipt] = OrderedDict()
         self._history_by_request: dict[tuple[str, str], str] = {}
         self._seen_by_key: dict[str, set[str]] = {}
+        self._sealed_until: OrderedDict[str, datetime] = OrderedDict()
         self._lock = asyncio.Lock()
 
     async def acquire(
@@ -85,10 +86,15 @@ class InMemoryToolInvocationLedger:
                 raise validation_error("tool_invocation_claim_expired")
             if request.expires_at > call.deadline:
                 raise validation_error("tool_invocation_claim_exceeds_call_deadline")
-            self._collect_expired_terminals(now)
+            self._collect_expired(now)
             record = self._records.get(request.idempotency_key)
             historical = self._historical_receipt(request)
-            disposition, receipt = self._disposition(record, historical, request)
+            disposition, receipt = self._disposition(
+                record,
+                historical,
+                request,
+                sealed=request.idempotency_key in self._sealed_until,
+            )
             claim = self._claim(request, disposition, receipt, now)
             if disposition is ToolInvocationDisposition.ACQUIRED:
                 if record is None and len(self._records) >= self._maximum_records:
@@ -132,6 +138,8 @@ class InMemoryToolInvocationLedger:
                 raise _conflict("tool_invocation_observation_key_mismatch")
             if observation.execution_request_digest != claim.execution_request_digest:
                 raise _conflict("tool_invocation_observation_execution_mismatch")
+            if observation.attempt != claim.attempt:
+                raise _conflict("tool_invocation_observation_attempt_mismatch")
             values = {
                 "schema_version": 1,
                 "claim_id": claim.claim_id,
@@ -205,9 +213,13 @@ class InMemoryToolInvocationLedger:
         record: _InvocationRecord | None,
         historical: ToolInvocationReceipt | None,
         request: ToolInvocationClaimRequest,
+        *,
+        sealed: bool,
     ) -> tuple[ToolInvocationDisposition, ToolInvocationReceipt | None]:
         if historical is not None:
             return ToolInvocationDisposition.DUPLICATE_COMPLETED, historical
+        if sealed:
+            return ToolInvocationDisposition.CONFLICT, None
         if record is None:
             return ToolInvocationDisposition.ACQUIRED, None
         if record.receipt is None:
@@ -221,8 +233,11 @@ class InMemoryToolInvocationLedger:
             _is_known_retryable_failure(record.receipt.observation)
             and record.owner.execution_request_digest
             != request.execution_request_digest
+            and request.maximum_attempts == record.owner.maximum_attempts
+            and request.attempt == record.owner.attempt + 1
+            and request.attempt <= request.maximum_attempts
             and len(self._seen_by_key.get(request.idempotency_key, ()))
-            < MAX_TOOL_ATTEMPTS
+            < request.maximum_attempts
         ):
             return ToolInvocationDisposition.ACQUIRED, None
         return ToolInvocationDisposition.DUPLICATE_COMPLETED, record.receipt
@@ -249,6 +264,8 @@ class InMemoryToolInvocationLedger:
             "claim_request_digest": request.request_digest,
             "idempotency_key": request.idempotency_key,
             "execution_request_digest": request.execution_request_digest,
+            "attempt": request.attempt,
+            "maximum_attempts": request.maximum_attempts,
             "disposition": disposition,
             "terminal_receipt_digest": (
                 receipt.receipt_digest if receipt is not None else None
@@ -304,15 +321,22 @@ class InMemoryToolInvocationLedger:
             if self._history_by_request.get(forgotten_key) == forgotten_digest:
                 del self._history_by_request[forgotten_key]
 
-    def _collect_expired_terminals(self, now: datetime) -> None:
-        expired = tuple(
+    def _collect_expired(self, now: datetime) -> None:
+        expired_seals = tuple(
+            key for key, retain_until in self._sealed_until.items() if retain_until <= now
+        )
+        for key in expired_seals:
+            del self._sealed_until[key]
+            self._seen_by_key.pop(key, None)
+
+        expired_terminals = tuple(
             key
             for key, record in self._records.items()
             if record.receipt is not None
             and record.retain_until is not None
             and record.retain_until <= now
         )
-        for key in expired:
+        for key in expired_terminals:
             del self._records[key]
             self._seen_by_key.pop(key, None)
             forgotten = tuple(
@@ -325,6 +349,19 @@ class InMemoryToolInvocationLedger:
                 request_key = (key, str(receipt.execution_request_digest))
                 if self._history_by_request.get(request_key) == digest:
                     del self._history_by_request[request_key]
+
+        available_seals = self._maximum_history - len(self._sealed_until)
+        if available_seals <= 0:
+            return
+        expired_pending = tuple(
+            (key, record)
+            for key, record in self._records.items()
+            if record.receipt is None and record.owner.expires_at <= now
+        )[:available_seals]
+        for key, record in expired_pending:
+            record.changed.set()
+            del self._records[key]
+            self._sealed_until[key] = now + self._terminal_retention
 
     def _new_id(self, prefix: str) -> str:
         try:

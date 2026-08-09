@@ -13,6 +13,7 @@ from dududa.domain.capability import (
 if TYPE_CHECKING:
     from .authorization import CapabilityAuthorizationPurpose
     from .config import ConfigCapabilityRegistry
+    from .executor import GovernedToolExecutor
     from .health import PollingCapabilityHealthRegistry
     from .ledger import InMemoryToolInvocationLedger
     from .planning import (
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
         InMemoryCapabilityRegistry,
     )
     from .retrieval import DeterministicCapabilityRetriever
+    from .runtime import DeterministicBoundedCapabilityRuntime
+    from .validation import DeterministicToolResultValidator
 from .contracts import (
     DEFAULT_TOOL_ATTEMPTS,
     MAX_ARGUMENT_BYTES,
@@ -76,6 +79,7 @@ from .contracts import (
     ToolStep,
     ToolValidationRequest,
     ToolValidationResult,
+    UnobservedToolAttempt,
     ValidationAction,
 )
 from .digests import (
@@ -110,6 +114,7 @@ from .digests import (
     tool_planning_request_digest,
     tool_validation_request_digest,
     tool_validation_result_digest,
+    unobserved_tool_attempt_digest,
 )
 from .revisions import (
     capability_catalog_revision,
@@ -155,9 +160,12 @@ __all__ = [
     "ConfigCapabilityRegistry",
     "CostHint",
     "DeterministicArgumentBinder",
+    "DeterministicBoundedCapabilityRuntime",
     "DeterministicCapabilityRetriever",
     "DeterministicToolPlanValidator",
     "DeterministicToolPlanner",
+    "DeterministicToolResultValidator",
+    "GovernedToolExecutor",
     "Idempotency",
     "InMemoryCapabilityProviderRegistry",
     "InMemoryCapabilityRegistry",
@@ -183,6 +191,7 @@ __all__ = [
     "ToolStep",
     "ToolValidationRequest",
     "ToolValidationResult",
+    "UnobservedToolAttempt",
     "ValidationAction",
     "argument_binding_request_digest",
     "argument_binding_result_digest",
@@ -221,6 +230,7 @@ __all__ = [
     "tool_planning_request_digest",
     "tool_validation_request_digest",
     "tool_validation_result_digest",
+    "unobserved_tool_attempt_digest",
 ]
 
 
@@ -250,6 +260,10 @@ def __getattr__(name: str) -> object:
         from .config import ConfigCapabilityRegistry
 
         return ConfigCapabilityRegistry
+    if name == "GovernedToolExecutor":
+        from .executor import GovernedToolExecutor
+
+        return GovernedToolExecutor
     if name == "PollingCapabilityHealthRegistry":
         from .health import PollingCapabilityHealthRegistry
 
@@ -258,6 +272,14 @@ def __getattr__(name: str) -> object:
         from .retrieval import DeterministicCapabilityRetriever
 
         return DeterministicCapabilityRetriever
+    if name == "DeterministicBoundedCapabilityRuntime":
+        from .runtime import DeterministicBoundedCapabilityRuntime
+
+        return DeterministicBoundedCapabilityRuntime
+    if name == "DeterministicToolResultValidator":
+        from .validation import DeterministicToolResultValidator
+
+        return DeterministicToolResultValidator
     if name in {
         "DeterministicArgumentBinder",
         "DeterministicToolPlanner",
