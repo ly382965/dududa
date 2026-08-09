@@ -1,0 +1,454 @@
+{
+  "schema_version": 2,
+  "bundle_version": "s09-semantic-schema-pilot-v2",
+  "quality_claim": "schema_only",
+  "cases": [
+    {
+      "case_id": "zh-3turn-structural-reply",
+      "tags": ["3_turn", "chinese", "structural_reply"],
+      "context": {
+        "conversation_type": "group",
+        "identities": [
+          {"identity_ref": "identity:bot", "is_bot": true},
+          {"identity_ref": "identity:user", "is_bot": false}
+        ],
+        "messages": [
+          {
+            "message_ref": "message:1",
+            "author_identity_ref": "identity:bot",
+            "text": "请告诉我你想比较哪些方案。",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": true
+          },
+          {
+            "message_ref": "message:2",
+            "author_identity_ref": "identity:user",
+            "text": "我在看甲方案和乙方案。",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": false
+          },
+          {
+            "message_ref": "message:3",
+            "author_identity_ref": "identity:user",
+            "text": "请比较这两个方案的限制。",
+            "reply_to_message_ref": "message:2",
+            "mentioned_identity_refs": [],
+            "is_bot_authored": false
+          }
+        ],
+        "current_message_ref": "message:3",
+        "bot_identity_ref": "identity:bot"
+      },
+      "projection": {
+        "schema_version": 2,
+        "target_identity_refs": ["identity:user"],
+        "speech_acts": ["question", "request"],
+        "topics": [],
+        "intents": [
+          {
+            "intent_id": "general.compare",
+            "confidence": 0.95,
+            "evidence_refs": ["message:3"]
+          }
+        ],
+        "entities": [],
+        "references": [
+          {
+            "reference_id": "reference:reply",
+            "kind": "message",
+            "target_ref": "message:2",
+            "confidence": 1.0,
+            "evidence_refs": ["message:3"]
+          }
+        ],
+        "ambiguities": [],
+        "need_tools": false,
+        "capability_categories": [],
+        "task_kind": "comparison",
+        "reasoning_depth": "shallow",
+        "expected_tool_steps": 0,
+        "verification_required": false,
+        "complexity_signals": [],
+        "confidence": 0.95,
+        "semantic": {
+          "schema_version": 2,
+          "entities": [],
+          "references": [
+            {
+              "reference_id": "reference:reply",
+              "kind": "message",
+              "mention_span": {
+                "message_ref": "message:3",
+                "start": 3,
+                "end": 8,
+                "surface": "这两个方案",
+                "text_digest": "dududa-c14n-v1:perception:text-nfc:v1:sha-256:aa53a53e4f4f0f77fa9119429689a01f9a4058cee967d88e67b66439a811d3e4"
+              },
+              "target_ref": "message:2",
+              "link_source": "structural",
+              "confidence": 1.0,
+              "evidence_refs": ["message:3"]
+            }
+          ],
+          "intents": [
+            {
+              "intent_id": "general.compare",
+              "slot_entity_refs": [],
+              "confidence": 0.95,
+              "evidence_refs": ["message:3"]
+            }
+          ],
+          "decision": {
+            "action": "accept",
+            "reason_codes": ["synthetic_clear_intent"]
+          }
+        }
+      },
+      "expected": {"decision": "accept"}
+    },
+    {
+      "case_id": "zh-6turn-unicode-mention",
+      "tags": ["6_turn", "chinese", "decomposed_unicode", "emoji", "structural_mention"],
+      "context": {
+        "conversation_type": "group",
+        "identities": [
+          {"identity_ref": "identity:bot", "is_bot": true},
+          {"identity_ref": "identity:user", "is_bot": false}
+        ],
+        "messages": [
+          {
+            "message_ref": "message:1",
+            "author_identity_ref": "identity:user",
+            "text": "今天想找一个安静的地方。",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": false
+          },
+          {
+            "message_ref": "message:2",
+            "author_identity_ref": "identity:bot",
+            "text": "可以给我一些偏好吗？",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": true
+          },
+          {
+            "message_ref": "message:3",
+            "author_identity_ref": "identity:user",
+            "text": "最好能喝咖啡。",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": false
+          },
+          {
+            "message_ref": "message:4",
+            "author_identity_ref": "identity:bot",
+            "text": "你更喜欢室内还是室外？",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": true
+          },
+          {
+            "message_ref": "message:5",
+            "author_identity_ref": "identity:user",
+            "text": "室内。",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": [],
+            "is_bot_authored": false
+          },
+          {
+            "message_ref": "message:6",
+            "author_identity_ref": "identity:user",
+            "text": "Café 😀 @嘟嘟哒 也算一个关键词。",
+            "reply_to_message_ref": null,
+            "mentioned_identity_refs": ["identity:bot"],
+            "is_bot_authored": false
+          }
+        ],
+        "current_message_ref": "message:6",
+        "bot_identity_ref": "identity:bot"
+      },
+      "projection": {
+        "schema_version": 2,
+        "target_identity_refs": ["identity:user"],
+        "speech_acts": ["statement"],
+        "topics": [],
+        "intents": [
+          {
+            "intent_id": "place.search",
+            "confidence": 0.9,
+            "evidence_refs": ["message:6"]
+          }
+        ],
+        "entities": [
+          {
+            "entity_id": "entity:cafe",
+            "kind": "artifact",
+            "value": "Café",
+            "confidence": 1.0,
+            "evidence_refs": ["message:6"]
+          }
+        ],
+        "references": [
+          {
+            "reference_id": "reference:mention",
+            "kind": "identity",
+            "target_ref": "identity:bot",
+            "confidence": 1.0,
+            "evidence_refs": ["message:6"]
+          }
+        ],
+        "ambiguities": [],
+        "need_tools": false,
+        "capability_categories": [],
+        "task_kind": "place_search",
+        "reasoning_depth": "shallow",
+        "expected_tool_steps": 0,
+        "verification_required": false,
+        "complexity_signals": [],
+        "confidence": 0.9,
+        "semantic": {
+          "schema_version": 2,
+          "entities": [
+            {
+              "entity_id": "entity:cafe",
+              "kind": "artifact",
+              "span": {
+                "message_ref": "message:6",
+                "start": 0,
+                "end": 4,
+                "surface": "Café",
+                "text_digest": "dududa-c14n-v1:perception:text-nfc:v1:sha-256:e8035ce1663ea38f275c6fb25104500c751403a5797ae458690356233d89f0b4"
+              },
+              "normalized_value": "Café",
+              "confidence": 1.0,
+              "evidence_refs": ["message:6"]
+            }
+          ],
+          "references": [
+            {
+              "reference_id": "reference:mention",
+              "kind": "identity",
+              "mention_span": {
+                "message_ref": "message:6",
+                "start": 8,
+                "end": 11,
+                "surface": "嘟嘟哒",
+                "text_digest": "dududa-c14n-v1:perception:text-nfc:v1:sha-256:e8035ce1663ea38f275c6fb25104500c751403a5797ae458690356233d89f0b4"
+              },
+              "target_ref": "identity:bot",
+              "link_source": "structural",
+              "confidence": 1.0,
+              "evidence_refs": ["message:6"]
+            }
+          ],
+          "intents": [
+            {
+              "intent_id": "place.search",
+              "slot_entity_refs": ["entity:cafe"],
+              "confidence": 0.9,
+              "evidence_refs": ["message:6"]
+            }
+          ],
+          "decision": {
+            "action": "accept",
+            "reason_codes": ["synthetic_normalized_slot"]
+          }
+        }
+      },
+      "expected": {"decision": "accept"}
+    },
+    {
+      "case_id": "zh-12turn-linguistic-pronoun",
+      "tags": ["12_turn", "chinese", "linguistic_pronoun"],
+      "context": {
+        "conversation_type": "group",
+        "identities": [
+          {"identity_ref": "identity:bot", "is_bot": true},
+          {"identity_ref": "identity:user", "is_bot": false}
+        ],
+        "messages": [
+          {"message_ref": "message:1", "author_identity_ref": "identity:user", "text": "我们继续讨论报名安排。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:2", "author_identity_ref": "identity:bot", "text": "可以，先确认项目名称。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:3", "author_identity_ref": "identity:user", "text": "是暑期研究项目。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:4", "author_identity_ref": "identity:bot", "text": "我会只依据当前对话整理。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:5", "author_identity_ref": "identity:user", "text": "材料包括成绩单。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:6", "author_identity_ref": "identity:bot", "text": "还需要导师确认。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:7", "author_identity_ref": "identity:user", "text": "时间信息也请记在本轮上下文。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:8", "author_identity_ref": "identity:bot", "text": "项目报名截止日期是八月三十一日。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:9", "author_identity_ref": "identity:user", "text": "明白。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:10", "author_identity_ref": "identity:bot", "text": "还有其他问题吗？", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:11", "author_identity_ref": "identity:user", "text": "有一个。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:12", "author_identity_ref": "identity:user", "text": "它刚才提到的截止日期是什么？", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false}
+        ],
+        "current_message_ref": "message:12",
+        "bot_identity_ref": "identity:bot"
+      },
+      "projection": {
+        "schema_version": 2,
+        "target_identity_refs": ["identity:user"],
+        "speech_acts": ["question"],
+        "topics": [],
+        "intents": [
+          {"intent_id": "deadline.lookup", "confidence": 0.88, "evidence_refs": ["message:12"]}
+        ],
+        "entities": [],
+        "references": [
+          {"reference_id": "reference:pronoun", "kind": "message", "target_ref": "message:8", "confidence": 0.82, "evidence_refs": ["message:12"]}
+        ],
+        "ambiguities": [],
+        "need_tools": false,
+        "capability_categories": [],
+        "task_kind": "deadline_lookup",
+        "reasoning_depth": "shallow",
+        "expected_tool_steps": 0,
+        "verification_required": false,
+        "complexity_signals": [],
+        "confidence": 0.86,
+        "semantic": {
+          "schema_version": 2,
+          "entities": [],
+          "references": [
+            {
+              "reference_id": "reference:pronoun",
+              "kind": "message",
+              "mention_span": {
+                "message_ref": "message:12",
+                "start": 0,
+                "end": 1,
+                "surface": "它",
+                "text_digest": "dududa-c14n-v1:perception:text-nfc:v1:sha-256:47ebc78a57ce2b010a1cb41d845af8d7650504b9e2d4e0b748a7cd98e25a163f"
+              },
+              "target_ref": "message:8",
+              "link_source": "linguistic",
+              "confidence": 0.82,
+              "evidence_refs": ["message:12"]
+            }
+          ],
+          "intents": [
+            {"intent_id": "deadline.lookup", "slot_entity_refs": [], "confidence": 0.88, "evidence_refs": ["message:12"]}
+          ],
+          "decision": {"action": "accept", "reason_codes": ["synthetic_linguistic_reference"]}
+        }
+      },
+      "expected": {"decision": "accept"}
+    },
+    {
+      "case_id": "zh-3turn-missing-slot",
+      "tags": ["3_turn", "ambiguity", "chinese", "missing_slot"],
+      "context": {
+        "conversation_type": "group",
+        "identities": [
+          {"identity_ref": "identity:bot", "is_bot": true},
+          {"identity_ref": "identity:user", "is_bot": false}
+        ],
+        "messages": [
+          {"message_ref": "message:1", "author_identity_ref": "identity:user", "text": "我想查一门课。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:2", "author_identity_ref": "identity:bot", "text": "请告诉我课程名称或教师。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:3", "author_identity_ref": "identity:user", "text": "帮我查一下那个。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false}
+        ],
+        "current_message_ref": "message:3",
+        "bot_identity_ref": "identity:bot"
+      },
+      "projection": {
+        "schema_version": 2,
+        "target_identity_refs": ["identity:user"],
+        "speech_acts": ["request"],
+        "topics": [],
+        "intents": [
+          {"intent_id": "course.lookup", "confidence": 0.55, "evidence_refs": ["message:3"]}
+        ],
+        "entities": [],
+        "references": [
+          {"reference_id": "reference:unresolved", "kind": "unresolved", "target_ref": null, "confidence": 0.5, "evidence_refs": ["message:3"]}
+        ],
+        "ambiguities": [
+          {"ambiguity_id": "ambiguity:course", "kind": "tool_input", "clarification_key": "clarify.tool_input", "confidence": 0.9, "evidence_refs": ["message:3"]}
+        ],
+        "need_tools": false,
+        "capability_categories": [],
+        "task_kind": "course_lookup",
+        "reasoning_depth": "shallow",
+        "expected_tool_steps": 0,
+        "verification_required": false,
+        "complexity_signals": [],
+        "confidence": 0.55,
+        "semantic": {
+          "schema_version": 2,
+          "entities": [],
+          "references": [
+            {
+              "reference_id": "reference:unresolved",
+              "kind": "unresolved",
+              "mention_span": {
+                "message_ref": "message:3",
+                "start": 5,
+                "end": 7,
+                "surface": "那个",
+                "text_digest": "dududa-c14n-v1:perception:text-nfc:v1:sha-256:adc75f7f5190046a02facfc9d3b3e6dafa7f69527249a85e416d3008e822a9a2"
+              },
+              "target_ref": null,
+              "link_source": "linguistic",
+              "confidence": 0.5,
+              "evidence_refs": ["message:3"]
+            }
+          ],
+          "intents": [
+            {"intent_id": "course.lookup", "slot_entity_refs": [], "confidence": 0.55, "evidence_refs": ["message:3"]}
+          ],
+          "decision": {"action": "clarify", "reason_codes": ["synthetic_missing_required_slot"]}
+        }
+      },
+      "expected": {"decision": "clarify"}
+    },
+    {
+      "case_id": "zh-6turn-oos-abstain",
+      "tags": ["6_turn", "chinese", "oos"],
+      "context": {
+        "conversation_type": "group",
+        "identities": [
+          {"identity_ref": "identity:bot", "is_bot": true},
+          {"identity_ref": "identity:user", "is_bot": false}
+        ],
+        "messages": [
+          {"message_ref": "message:1", "author_identity_ref": "identity:user", "text": "先讨论公开课程信息。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:2", "author_identity_ref": "identity:bot", "text": "我只能在已授权能力内提供帮助。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:3", "author_identity_ref": "identity:user", "text": "明白。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:4", "author_identity_ref": "identity:bot", "text": "你可以继续问公开信息。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": true},
+          {"message_ref": "message:5", "author_identity_ref": "identity:user", "text": "那我换一个要求。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false},
+          {"message_ref": "message:6", "author_identity_ref": "identity:user", "text": "替我进入后台修改所有成绩。", "reply_to_message_ref": null, "mentioned_identity_refs": [], "is_bot_authored": false}
+        ],
+        "current_message_ref": "message:6",
+        "bot_identity_ref": "identity:bot"
+      },
+      "projection": {
+        "schema_version": 2,
+        "target_identity_refs": ["identity:user"],
+        "speech_acts": ["command_like"],
+        "topics": [],
+        "intents": [],
+        "entities": [],
+        "references": [],
+        "ambiguities": [],
+        "need_tools": false,
+        "capability_categories": [],
+        "task_kind": "unsupported_action",
+        "reasoning_depth": "shallow",
+        "expected_tool_steps": 0,
+        "verification_required": true,
+        "complexity_signals": [],
+        "confidence": 0.99,
+        "semantic": {
+          "schema_version": 2,
+          "entities": [],
+          "references": [],
+          "intents": [],
+          "decision": {"action": "abstain", "reason_codes": ["synthetic_out_of_scope"]}
+        }
+      },
+      "expected": {"decision": "abstain"}
+    }
+  ]
+}

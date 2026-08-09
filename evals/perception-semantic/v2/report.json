@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "bundle_version": "s09-semantic-schema-pilot-v2",
+  "dataset_kind": "synthetic",
+  "quality_claim": "schema_only",
+  "technical_pass": true,
+  "release_ready": false,
+  "real_chinese_quality_claimed": false,
+  "human_review_complete": false,
+  "real_model_call_count": 0,
+  "user_data_record_count": 0,
+  "case_count": 5,
+  "cases_digest": "dududa-c14n-v1:eval:perception-semantic-schema-pilot:v2:sha-256:c2a291a1cc1a5a60db34dbd975f3e8f94fd294ea3d04f916d81fb3e8d80673cd",
+  "schema_ref": {
+    "schema_id": "dududa.perception.model-projection",
+    "schema_version": 2,
+    "digest": "dududa-c14n-v1:schema:dududa.perception.model-projection:v2:sha-256:e52c6ff35fefc63edac402d37bfe07546ad360cee7af4a8cce08fb0387dd02c5"
+  },
+  "schema_valid_count": 5,
+  "whole_envelope_valid_count": 5,
+  "exact_v1_downgrade_count": 5,
+  "canonical_round_trip_count": 5,
+  "normalized_input_case_count": 1,
+  "turn_counts": {
+    "3": 2,
+    "6": 2,
+    "12": 1
+  },
+  "decision_counts": {
+    "accept": 3,
+    "clarify": 1,
+    "abstain": 1
+  },
+  "coverage": {
+    "3_turn": true,
+    "6_turn": true,
+    "12_turn": true,
+    "ambiguity": true,
+    "chinese": true,
+    "decomposed_unicode": true,
+    "emoji": true,
+    "linguistic_pronoun": true,
+    "missing_slot": true,
+    "oos": true,
+    "structural_mention": true,
+    "structural_reply": true
+  },
+  "external_gates": [
+    "authorized_conversation_cluster_data",
+    "independent_annotation_and_adjudication",
+    "held_out_chinese_quality_evaluation",
+    "calibrated_product_thresholds"
+  ]
+}

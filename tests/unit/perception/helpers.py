@@ -14,6 +14,7 @@ from dududa.perception.contracts import (
     PerceptionLimits,
     PerceptionMessage,
 )
+from dududa.perception.semantic import semantic_text_digest
 
 
 NOW = datetime(2026, 8, 4, 12, 0, tzinfo=timezone.utc)
@@ -125,17 +126,57 @@ def model_payload(**overrides: object) -> dict[str, object]:
         "verification_required": True,
         "complexity_signals": [
             {
-                "code": "multi_constraint_synthesis",
-                "confidence": 0.9,
-                "evidence_refs": ["message:current"],
-            },
-            {
                 "code": "independent_verification",
                 "confidence": 0.85,
                 "evidence_refs": ["message:current"],
             },
+            {
+                "code": "multi_constraint_synthesis",
+                "confidence": 0.9,
+                "evidence_refs": ["message:current"],
+            },
         ],
         "confidence": 0.85,
+    }
+    values.update(overrides)
+    return values
+
+
+def model_payload_v2(**overrides: object) -> dict[str, object]:
+    current = context().current_message
+    values = model_payload(schema_version=2)
+    values["semantic"] = {
+        "schema_version": 2,
+        "entities": [],
+        "references": [
+            {
+                "reference_id": "reference:reply",
+                "kind": "message",
+                "mention_span": {
+                    "message_ref": current.message_ref,
+                    "start": 16,
+                    "end": 21,
+                    "surface": "these",
+                    "text_digest": str(semantic_text_digest(current.text)),
+                },
+                "target_ref": "message:bot",
+                "link_source": "structural",
+                "confidence": 1.0,
+                "evidence_refs": [current.message_ref],
+            }
+        ],
+        "intents": [
+            {
+                "intent_id": "general.compare",
+                "slot_entity_refs": [],
+                "confidence": 0.9,
+                "evidence_refs": [current.message_ref],
+            }
+        ],
+        "decision": {
+            "action": "accept",
+            "reason_codes": ["synthetic_schema_accept"],
+        },
     }
     values.update(overrides)
     return values
