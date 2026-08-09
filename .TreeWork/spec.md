@@ -42,8 +42,10 @@ other's DTOs, and the Router never calls Perception recursively.
 
 `ModelRole` describes the responsibility of a call. `ModelTier` describes an
 operator-defined capability/cost class. `ReasoningProfile` describes requested
-reasoning behavior. They are orthogonal and no enum ordinal implies a fallback
-edge. A model or user message never selects a Provider directly.
+reasoning behavior. `AnswerProfile` describes the length and structure of the
+visible answer. These four dimensions are orthogonal and no enum ordinal
+implies a fallback edge. A model or user message never selects a Provider
+directly.
 
 ### Shared Contracts
 
@@ -63,6 +65,10 @@ the existing canonical digest and component-revision conventions.
   codes determine the signal count used by TierPolicy.
 - `TierDecision` records requested tier, policy revision, assessment digest,
   confidence handling, and reason codes.
+- `ResponsePlan` records `short | medium | long`, current-message preference
+  evidence, visible character/token and delivery-part bounds, hard minimum
+  content requirements, policy revision and a stable decision fingerprint. It
+  contains no tier, Provider, endpoint or hidden chain of thought.
 - `ModelEndpointDescriptor` has stable `endpoint_id`, Provider-native
   `model_id`, tier, capabilities, supported reasoning profiles, privacy and
   processing declarations, and an opaque shared quota-pool reference.
@@ -224,6 +230,139 @@ completed locally first. No external shadow/canary begins until every accepted
 module, Web testing task and local integration audit is complete; the final run
 then requires an explicitly authorized group, credentials, frozen SLO and a
 verified rollback bundle.
+
+### Planned Response Profiles And Controlled Outbound
+
+This section is a pre-implementation target for the next Agent expansion. It
+does not extend the historical S08-S11 completion claim and does not authorize
+real messages.
+
+#### Response Planning
+
+Visible answer length is selected by a deterministic `ResponseProfilePolicy`
+after validated Perception, complexity and Social Decision, and before the
+downstream content-model request:
+
+```text
+Perception + current-message detail preference evidence
+  -> TaskComplexityAssessment
+  -> SocialDecision
+  -> ResponseProfilePolicy -> ResponsePlan(short | medium | long)
+  -> Runtime budget projection
+  -> TierPolicy
+  -> StaticModelRouter
+  -> Direct Chat or Tool/Composition
+  -> Persona Renderer
+  -> Final ResponseProfile/length/completeness validator
+```
+
+The policy order is current-message explicit preference, task and verification
+needs, conversation type/group policy, allowed persistent preference, then
+configured default. Security notices, required citations, platform delivery
+limits and runtime budget remain hard constraints. A request for detail cannot
+create budget or remove a platform limit; an operator cap cannot silently
+truncate a refusal reason, required warning or citation.
+
+`SHORT` provides a conclusion or natural daily-chat reply. `MEDIUM` provides a
+conclusion plus the necessary explanation. `LONG` provides an organized
+summary of assumptions, steps, alternatives and sources without exposing
+hidden reasoning. Concrete character/token/part bounds are versioned policy,
+not enum semantics. The Router consumes a `response_plan_digest`, visible-output
+upper bound and total generated-token reservation only for capability, budget
+and admission checks; it never maps `SHORT=HAIKU`, `MEDIUM=SONNET` or
+`LONG=OPUS`. Required test counterexamples include `OPUS + DEEP + SHORT` and
+`HAIKU + LIGHT + LONG`.
+
+Each visible path creates one final plan: direct chat after Social Decision and
+before its user-visible model request; tool-backed response after Observation
+validation and before RESPONSE_COMPOSITION. Tool Planning never consumes an
+AnswerProfile, and no later stage silently expands the selected plan.
+
+#### Initiated Runs
+
+Inbound `AgentRuntime` continues to require a real `ConnectorResult`. A timer,
+subscription or proactive policy must not fabricate a user Actor, message or
+mention. A separate `ProactiveDeliveryOrchestrator` accepts a versioned,
+target-bound initiated-run request produced from one of two triggers:
+
+- `SCHEDULED_DIGEST`: an occurrence of an explicit subscription;
+- `CONVERSATION_PROBE`: one low-frequency group-level topic probe after a
+  deterministic eligibility and interruption-cost decision.
+
+The first release is default-off. A probe is group-scoped, short, does not
+mention an individual, does not read personal Memory, and does not send a
+second question when no response arrives. A digest is subscription-scoped,
+normally medium length, and contains only new public items with normalized
+source identity, publication/observation times, freshness and citations.
+
+```text
+Durable Scheduler or bounded topic trigger
+  -> ScheduleOccurrence / ProactiveTrigger + exact ProactiveTargetPolicyRef
+  -> persistent CAS claim
+  -> ProactiveInitiationPolicy
+  -> fixed public read-only Capability plan
+  -> Capability Provider -> Unified MCP Client -> MCP Server
+  -> normalized SourceBatch + source/item dedup
+  -> deterministic ResponsePlan -> Digest/Probe Composer
+  -> Persona Renderer + final validators
+  -> proactive authorization, quiet-hour/rate/kill-switch recheck
+  -> DeliveryRequest -> OutputAdapter -> DeliveryReceipt/reconciliation
+```
+
+MCP owns neither timing nor delivery. It only transports calls for explicitly
+mapped, public, read-only capabilities such as campus notices, recent arXiv
+items and allowlisted industry updates. Arbitrary URLs, private campus data,
+MCP message-send tools and dynamically discovered unapproved tools are outside
+the first release. External source content is an untrusted Observation and can
+never become instructions.
+
+Every target policy is versioned and canonically binds the enabling operator
+grant, group-policy grant, exact target Scope, allowed trigger kinds, status,
+expiry, revision and digest. The same immutable target-policy reference travels
+through an opportunity snapshot, trigger and initiated-run request; a digest
+subscription also binds it. Every subscription additionally binds creator
+authorization, categories, IANA time zone, local schedule, quiet hours,
+freshness limits, item and output bounds, policy/config revisions and status.
+Missing or corrupt configuration, an empty allowlist, stale authorization,
+revoked/paused policy or subscription, a replaced Scope/revision/digest, audit
+or limiter failure, and kill-switch activation all produce no send. The owning
+service resolves and rechecks those facts immediately before delivery under the
+distinct `message.send.proactive` action; ordinary `message.send` authority and
+a `ServiceCallContext` are insufficient.
+
+Scheduler state is durable and clock-injected. Each local-date occurrence can
+be claimed once under CAS; a bounded misfire window may recover a recent missed
+occurrence, while older work is skipped rather than burst-sent at restart.
+Source cursors and delivery ledgers are separate. Delivery idempotency binds
+trigger kind, the persisted canonical occurrence/opportunity digest, exact target Scope and
+final item-set/content digest. It excludes attempt, worker and Output Adapter
+revision so one business occurrence keeps the same key across deployment;
+adapter binding and receipt revision are validated separately. `UNKNOWN`
+delivery is reconciled, never blindly replayed.
+
+No new source items produces silence. Total source failure produces an
+operator-visible health event, not a group failure post. A partial batch may be
+sent only when a frozen freshness/minimum-content policy passes and the message
+labels unavailable sources honestly. Pause, unsubscribe, target change or
+revision change invalidates prepared but unsent work.
+
+#### Outbound Rollout And Learning Boundary
+
+Outbound rollout has independent modes and kill switches for digest and probe:
+`off -> collect/log-only -> recommendation-only shadow -> preview -> authorized
+canary`. Preview is a separate typed Port returning a controlled
+`ValidatedFinalResponse` under the separate `proactive.subscription.preview`
+action to an authorized operator. It never creates a schedule occurrence,
+prepared dispatch, delivery request or delivery receipt, and its body is
+excluded from ordinary receipts and Trace.
+Shadow composition has no `OutputAdapter` or message-send capability. Static
+inbound canary is proven first; digest and probe canaries are separately
+authorized and measured last.
+
+Bandit cannot choose send/skip, target, schedule, subscription, answer profile,
+probe frequency or follow-up. Those choices remain deterministic even after
+S20. Model-route learning may rank only same-tier endpoints that already passed
+all hard filters and cannot weaken proactive policy.
 
 ### Mew/NapCat Web Parity
 

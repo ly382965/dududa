@@ -16,10 +16,16 @@ Contextual Bandit 适合在**已经通过确定性硬约束的有限候选集合
 | Persona Style | 在 Persona 与用户显式偏好允许的 style variant 中选择 | P2；不能改事实、拒绝或目标 |
 | Recommendation | 在独立推荐边界中优化排序 | 可用，但需单独的曝光与反馈契约 |
 | Reply/Ignore | 只做离线或 shadow 研究 | 默认禁止 live exploration，避免用群聊成员承担试验成本 |
+| Answer Profile | 不作为首版 Bandit 决策点 | `SHORT/MEDIUM/LONG` 由确定性策略选择，显式用户要求与硬上限优先 |
+| Proactive Send/Skip | 禁止作为 Bandit 决策点 | 目标、订阅、日程、频率、probe/follow-up 均保持确定性，禁止 live/shadow 候选取得发送权 |
 
 高风险/不可逆 Tool、敏感数据 Provider、权限结果、Memory Scope、Confirmation、Content
 Safety 和 Output 目标不进入探索。硬约束失败时返回确定性 baseline；Bandit 不能通过高奖励
 抵消任何安全违规。
+
+主动日报/探测即使进入最终 canary，Bandit 也不能选择是否发送、发送给谁、何时发送、推送
+主题、Answer Profile、频率或无人响应后的动作。模型路由 Bandit 可以把 trigger/profile 当作
+低基数上下文特征，但只能在已经固定 Role+Tier 且通过全部主动策略硬门禁的 Endpoint 中选择。
 
 ## 2. 决策契约
 
@@ -306,6 +312,8 @@ action coverage、reward/feature drift 与 calibration；漂移超阈值回 base
 - shadow 推荐与实际 baseline 执行严格分离，feedback 只归因给实际执行动作；
 - 日志失败、Policy 不可用、action 漂移或预算耗尽稳定回退 baseline；
 - 高风险、敏感数据和无授权搜索的 exploration probability 恒为 0；
+- `SEND/SKIP`、主动目标、订阅/日程/频率、Answer Profile 和 probe/follow-up 不存在可执行
+  Bandit action；伪造这些 decision point 的请求整体拒绝；
 - delayed/partial/censored feedback 不被误记为零；重复 feedback 幂等；
 - IPS/SNIPS/DR 使用合成已知策略进行 estimator bias/coverage 测试；
 - group-level bootstrap、drift、回滚和 last-known-good 发布测试；

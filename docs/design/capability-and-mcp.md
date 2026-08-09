@@ -2,7 +2,8 @@
 
 ## 1. 文档状态
 
-- 阶段：Phase 1，目标设计，尚未实现。
+- 阶段：iCourse stdio Server、SQLite 与现有固定命令路径已存在；S12 Unified Client/Registry、
+  S13 Capability Runtime 和 S15C 主动日报公开来源尚未实现。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
 - MCP Server 目标目录：`services/mcp/`。
 - 配置目标目录：`configs/capabilities/`、`configs/mcp/`。
@@ -20,6 +21,7 @@
 - 由一个 MCP Registry 和一个 Unified MCP Client 统一管理发现、连接、超时、重试、熔断和错误；
 - 让内建能力和 MCP 能力使用相同的执行、审计和结果校验契约；
 - 使 iCourse 成为首个标准 Capability Provider 和 MCP Server 样板；
+- 为主动日报提供固定、公开、只读、带来源与新鲜度的校园/arXiv/行业 Capability；
 - 保留现有入口，在新链路验证完成前可按提交回滚。
 
 非目标：
@@ -29,6 +31,7 @@
 - 不把 AstrBot Event、MCP SDK 类型或具体 Server 实现放入 Domain；
 - 不在本阶段训练 Tool Planner 模型；
 - 不把批量抓取、文件导出和诊断工具默认暴露给模型。
+- 不让 MCP 或 Capability Provider 创建订阅、决定发送时间/目标、生成发送授权或直接投递消息。
 
 ## 3. 总体关系
 
@@ -802,7 +805,32 @@ class UnifiedMcpClient(Protocol):
 
 Client 不负责 Capability Retrieval、业务权限定义、自然语言规划或 Persona 渲染。
 
-### 8.1 默认可靠性策略
+### 8.1 后台公开来源调用
+
+定时日报是 `proactive-messaging.md` 拥有的 initiated-run。Scheduler 只产生
+`ScheduleOccurrence`；它不能直接调用 Tool。Proactive Orchestrator 在订阅和主动读取授权仍有效
+时构造**固定只读 Capability Plan**，通过与入站 Runtime 相同的 Executor、Provider 和 Unified
+MCP Client 执行。
+
+后台 `ServiceCallContext` 只标识 Worker，不替代创建订阅的 Actor/管理员授权证据。每次调用仍
+绑定 exact target Scope、subscription/occurrence digest、Capability definition revision、总
+deadline、预算和审计。动态发现的 Tool、任意 URL、私人校园数据、外部写和 `message_send` 不得
+进入该 Plan。
+
+首版稳定能力：
+
+| Capability | 允许输入 | 标准输出 | 风险 |
+| --- | --- | --- | --- |
+| `campus.list_public_notices.v1` | 预审单位、时间窗、数量上限 | 官方通知 SourceItem | public/network-read |
+| `research.list_recent_arxiv.v1` | 预审分类/关键词、时间窗、数量上限 | arXiv SourceItem | public/network-read |
+| `industry.list_allowlisted_updates.v1` | 预审 Feed/source ID、时间窗、数量上限 | 行业 SourceItem | public/network-read |
+
+标准结果必须包含 source/external ID、规范 URL、published/observed time、source revision、内容
+digest、引用和 warning。Provider 对来源 host/redirect/大小/新鲜度执行硬限制；外部摘要仍为不
+可信 Observation。无 ID 时的 URL/digest 去重、订阅条目账本、日报排序和是否发送由 Proactive
+模块负责，不放入 Unified Client。
+
+### 8.2 默认可靠性策略
 
 建议默认值：
 
@@ -1002,6 +1030,7 @@ class CapabilityResult:
 
 ## 14. 当前状态与扩展点
 
-当前仍是 Phase 1 设计。尚未创建 Capability Registry、Unified MCP Client 或 Tool Runtime，也没有改变 iCourse 行为。
+当前已有 iCourse stdio Server、SQLite、AstrBot 配置和固定命令路径；通用 Capability Registry、
+Unified MCP Client、Tool Runtime 与后台公开来源 Provider 仍未实现，现有 iCourse 行为未切换。
 
 后续新增教务、第二课堂、校园通知、开课查询和培养方案 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。

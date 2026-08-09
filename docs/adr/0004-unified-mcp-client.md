@@ -120,6 +120,22 @@ Client 将 MCP SDK 的 text、image、resource 和 structured content 转为受�
 
 迁移期间不移动 `services/icourse-mcp`，不改变 `icourse` Server ID，也不迁移 SQLite schema。回滚只需切回旧 Adapter 和前一提交。
 
+### 8. 定时推送只把 MCP 作为公开数据 Provider
+
+校园公开信息、arXiv 和行业 allowlist 日报仍通过 Capability Provider 和本 ADR 的唯一
+`UnifiedMcpClient` 调用。Scheduler 只产生版本化 occurrence，不直接调用 Tool；MCP Client
+不创建订阅、不选择目标/时间、不决定是否发送，也不持有 Output Adapter。
+
+后台 Worker 的 `ServiceCallContext` 不能替代创建订阅或启用群策略的 Actor 授权证据。每次
+调用绑定订阅/occurrence、精确目标 Scope、固定只读 Capability、deadline、预算和审计；动态
+发现的 Tool 不自动可用。首版只允许显式映射的公开只读能力，禁止任意 URL、私人校园数据、
+外部写和 `message_send` Tool。
+
+MCP 结果必须标准化为带 source/external ID、规范 URL、published/observed time、source
+revision、content digest、引用和 warning 的 `SourceItem`。网页、Feed 和 structured content
+均视为不可信 Observation；来源净化、新鲜度、条目/订阅去重、摘要、发送授权和 Delivery
+reconciliation 由上层拥有。完整设计见 `../design/proactive-messaging.md`。
+
 ## 安全约束
 
 - 模型不可指定 command、server URL、cwd、env 或 SecretRef；
@@ -129,6 +145,7 @@ Client 将 MCP SDK 的 text、image、resource 和 structured content 转为受�
 - 审计记录 ID、shape、hash、状态和延迟，不记录完整正文或凭据；
 - Server 返回内容一律视为不可信 Observation；
 - 权限、隐私、风险和最大步数由确定性代码执行。
+- 定时 Worker 不得伪造用户 Actor；Scheduler/MCP 不得拥有订阅、目标、发送决策或投递能力；
 
 ## 被否决的方案
 
@@ -177,6 +194,8 @@ Client 将 MCP SDK 的 text、image、resource 和 structured content 转为受�
 - Security：未授权调用次数为零，任意路径和未声明 Tool 被拒绝；
 - iCourse：旧命令行为、缓存路径、查询结果和 refresh 权限保持兼容；
 - Smoke：派生镜像中持久 stdio session 可以启动、调用并关闭。
+- Proactive source：固定公开 Capability、订阅/occurrence/Scope 绑定、来源 allowlist、
+  provenance/freshness、Prompt Injection、重复条目和 Scheduler 不可直调 Tool 的契约测试。
 
 ## 重新评估条件
 

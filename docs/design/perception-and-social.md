@@ -2,7 +2,8 @@
 
 ## 1. 文档状态与边界
 
-- 阶段：Phase 1，目标设计，尚未实现。
+- 阶段：S09 的 Rule/Model/Merger/Validator、Social Policy、Complexity 与 TierPolicy 已完成
+  本地范围；真实数据校准、多轮/附件、Answer Profile hint 与无入站主动消息尚未实现。
 - 目标代码：`packages/dududa-agent/src/dududa/runtime/perception.py`、`social_decision.py` 及对应 Domain 类型。
 - 兼容来源：`astrbot_plugin_target_talk` 的现有目标匹配、概率、关键词和冷却规则。
 
@@ -10,6 +11,9 @@ Perception 和 Social Decision 是两个不同阶段：
 
 - Perception 说明“消息表达了什么、指向谁、可能需要什么”；
 - Social Decision 说明“嘟嘟哒现在是否以及如何介入”。
+
+本文只处理**收到真实入站消息后**的感知与社交决策。无入站消息的定时日报和主动探测使用
+独立 initiated-run 边界，见 `proactive-messaging.md`；Scheduler 不得伪造用户消息进入本流程。
 
 两者都不能被 Persona 控制。Persona 只能在动作和事实已经确定后改变表达风格。
 
@@ -111,6 +115,7 @@ class PerceptionResult:
     resolved_references: tuple[ResolvedReference, ...]
     possible_intents: tuple[IntentCandidate, ...]
     need_tools: bool
+    answer_profile_hint: AnswerProfileHint | None
     confidence: float
     ambiguities: tuple[Ambiguity, ...]
 ```
@@ -138,6 +143,13 @@ class Ambiguity:
     code: str
     description: str
     clarification_question: str | None
+
+@dataclass(frozen=True, slots=True)
+class AnswerProfileHint:
+    requested_profile: AnswerProfile
+    confidence: float
+    evidence_refs: tuple[str, ...]
+    source: Literal["current_message", "conversation_context"]
 ```
 
 ### 4.2 校验规则
@@ -149,6 +161,8 @@ class Ambiguity:
 - `target_users` 只能引用 Context Builder 已知的匿名身份引用；
 - `resolved_references` 必须指出依据消息 ID，不能只给模型自由文本结论；
 - `need_tools=True` 不代表允许调用工具；权限和 Capability Retrieval 在后续执行；
+- `answer_profile_hint` 只是“简短”“详细”等用户表达的结构化候选，不授予额外预算、不选择
+  Tier，也不能覆盖安全、引用、群级或平台上限；只有当前消息证据可获得最高优先级；
 - 未知 intent 保留为 namespaced ID，例如 `legacy.course_review_search`，不得映射成任意代码调用；
 - Schema 校验失败时整个模型结果无效，不采用“能解析多少算多少”的宽松策略。
 
@@ -276,6 +290,17 @@ Identity/Dedup Gate
  -> Decision Validator
 ```
 
+### 6.3 Response Plan 所有权
+
+`response_constraints` 继续承载事实、安全、目标和平台硬限制，但 `SocialDecisionEngine` 不选择
+最终 `SHORT | MEDIUM | LONG`。Runtime 在 Social Decision 之后调用确定性的
+`ResponseProfilePolicy`，输入经过校验的 `answer_profile_hint`、TaskComplexityAssessment、
+会话/群策略、允许的用户偏好和 Runtime Budget，生成版本化 `ResponsePlan`。
+
+回答长度、模型 Tier 和 Reasoning Profile 相互独立。Social Decision 不能通过请求 `LONG`
+升级模型，也不能通过 `SHORT` 降低处理高复杂度问题所需的能力。具体契约见
+`model-routing.md` 的“回答档位与动态输出预算”。
+
 ## 7. 决策规则
 
 ### 7.1 硬规则
@@ -366,6 +391,9 @@ class LegacyTargetTalkPolicy(Protocol):
 
 模型错误不能默认变成主动回复。社交判断的安全降级是更少介入，而不是更积极介入。
 
+这里的“主动搭话”仍指收到入站群消息后考虑介入。定时或无入站消息的 probe 在其独立
+Proactive Policy、授权、quiet hours、持久 claim 和 kill switch 不可用时同样 fail closed。
+
 ## 10. 隐私与安全
 
 - Perception 请求使用匿名身份引用，不需要向模型发送 QQ 或群号；
@@ -392,6 +420,8 @@ class LegacyTargetTalkPolicy(Protocol):
 | active 群模式、Legacy TargetTalk 命中 | `DIRECT_REPLY` |
 | quiet 模式且无直接提问 | `IGNORE` |
 | 模型超时但直接回复 Bot | 规则降级 `DIRECT_REPLY` |
+| 高复杂度问题明确要求一句话 | `DIRECT_REPLY` + `OPUS/DEEP` 候选 + `SHORT` hint |
+| 低复杂度任务明确要求详细列表 | 合法低/中 Tier 候选 + `LONG` hint，不因长度自动升 Tier |
 
 还需测试：
 
@@ -403,6 +433,9 @@ class LegacyTargetTalkPolicy(Protocol):
 - 私聊内容不会成为群聊 reference；
 - TargetTalk 原配置的目标级覆盖和 fallback；
 - reason code 稳定性。
+- 当前消息明确简短/详细的提取、上下文弱 hint 不覆盖当前消息，以及 hint 不能扩大预算/权限；
+- Profile macro-F1、混淆矩阵、相邻/跨两档错误和明确用户要求满足率；
+- 回答档位与 Tier 的 3x3 正交性、最终可见长度、分片和必要引用/警告保持。
 
 Eval 数据使用脱敏 JSONL，至少标注：`should_consider_response`、`target_users`、`speech_acts`、`intent`、`need_tools`、`expected_action`、`allowed_actions`、`reason_codes`。允许多种合理动作时用集合而不是强制单一文案。
 
@@ -416,13 +449,13 @@ paired bootstrap 95% 置信区间和预先冻结的最小效果量；未达到�
 
 | 项目 | 当前事实 | 目标差距 |
 | --- | --- | --- |
-| 通用 Perception | 不存在 | 只有 `/course` 的局部意图抽取和文本规则 |
-| Structured Output | 手工从模型文本提取 JSON | 缺少统一 Schema、版本和严格校验 |
-| Social Decision | TargetTalk 的二元 ignore/reply | 缺少六种动作、权限和回复价值模型 |
-| Context | TargetTalk 进程内按群 deque | 缺少 Scope、回复链、附件和受控记忆 |
-| 群策略 | core 保存 mode/rate，但未消费 | 需要接入 Policy Chain |
-| 限流 | TargetTalk 和课程各自内存冷却 | 缺少统一接口、可测试时钟和持久语义 |
-| 权限 | core 单独判断 Event | 未注入 Social Decision，插件间不共享 |
+| 通用 Perception | S09 Rule/Model/Merger/Validator 已实现并有合成策略回归 | 缺少真实脱敏数据、人工标注确认、多轮和附件效果证据 |
+| Structured Output | 版本化严格 Schema、整包校验和越界引用拒绝已实现 | 真实 Provider 输出与标签稳定性尚未验证 |
+| Social Decision | S09 六动作契约和确定性硬 Gate 已实现；Legacy TargetTalk 仍保留 | 生产 composition、回复价值真实 Eval 和主动机会策略未闭合 |
+| Context | S09 有界去标识 Context 已实现 | 可信多轮回复链、附件摘要和生产 Memory 接入未完成 |
+| 群策略/限流/权限 | 已进入 S09 确定性决策输入和 S10/S11 受控路径 | 旧插件兼容入口、真实长期限流和跨实例主动预算仍需迁移 |
+| Answer Profile | 只有静态 `MAX_LENGTH`/字数约束 | 缺少独立 ResponsePlan、动态预算和最终长度/完整性校验 |
+| 无入站主动消息 | 不属于当前 Perception/Social Runtime | 由 `proactive-messaging.md` 的独立 initiated-run 设计负责 |
 
 ## 13. 扩展点
 
@@ -431,4 +464,6 @@ paired bootstrap 95% 置信区间和预先冻结的最小效果量；未达到�
 - 可用群级策略插件增加安静时段、Bot 发言预算和话题白名单；
 - 可增加“已有群友回答”检测器作为 Decision Signal；
 - 可用学习排序替换软打分，但硬规则和 Protocol 不变；
+- 可增加 AnswerProfile hint 提取器，但最终档位仍由确定性 Response Policy 决定；
+- 定时日报和 Conversation Probe 不扩展 `SocialAction`，使用独立 Proactive Trigger/Policy；
 - 可逐步移除 `LegacyTargetTalkPolicy`，移除条件是新决策已覆盖配置语义、Eval 通过并具备回滚开关。

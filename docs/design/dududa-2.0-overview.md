@@ -1,6 +1,7 @@
 # Dududa 2.0 Design Overview
 
-状态：Phase 1 设计已冻结，S01–S07 已增量实现；生产 Runtime 尚未切流。当前证据以
+状态：S01–S11 本地范围已实现并审计；生产完整切流及 S12 以后模块尚未完成。2026-08-09
+新增 Answer Profile 与主动出站 Alignment 设计，均未实现。当前证据以
 `../refactor/PROGRESS.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
@@ -16,6 +17,7 @@ runtime, service, operation, and compatibility changes together.
 - Capability and unified MCP runtime: `capability-and-mcp.md`
 - Model-role routing: `model-routing.md`
 - Conservative online learning and Contextual Bandit: `online-learning.md`
+- Proactive conversation probes, subscriptions and scheduled digests: `proactive-messaging.md`
 - Persona and OC rendering: `persona.md`
 - Security, privacy, audit, and rate limits: `security.md`
 - Target repository layout: `repository-layout.md`
@@ -43,6 +45,14 @@ runtime, service, operation, and compatibility changes together.
     bounded authorized streams cross adapter boundaries.
 12. Online learning ranks only hard-filtered actions; propensity is logged before
     execution, and reward never offsets a security or privacy violation.
+13. Answer Profile, Model Tier and Reasoning Profile are independent; Router
+    consumes a validated visible-output budget but does not infer answer length.
+14. Scheduler, Capability/MCP retrieval and platform delivery have separate
+    owners. A timer never forges an inbound user message, and MCP never owns a
+    subscription, target, send decision or DeliveryReceipt.
+15. Proactive behavior is default-off and target-bound. Empty allowlists,
+    missing authorization, quiet hours, limiter/audit failure, unsubscribe and
+    kill switch all fail closed before delivery.
 
 ## Delivery Strategy
 

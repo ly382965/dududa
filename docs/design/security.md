@@ -595,6 +595,43 @@ adapters constrain component type, size, URL scheme, attachment source, and QQ
 forward-node limits. A global decoration hook remains compatibility behavior,
 not the final output-security boundary.
 
+### Proactive Outbound Authorization
+
+主动探测和订阅日报使用独立动作 `message.send.proactive`，不得复用收到消息后的
+`message.respond`，也不得仅凭普通 `message.send` 决策放行。版本化 `ProactiveTargetPolicy`
+必须用 canonical digest 同时绑定启用该目标的 operator grant、group-policy grant、精确
+ConversationScope、trigger kind、status、revision 和有效期；Snapshot、Trigger、InitiatedRunRequest
+必须携带同一个不可变 Ref。日报还必须绑定订阅 Owner、subscription/occurrence digest 和最终
+item-set/content digest。
+
+Grant Ref 不是裸 ID；它至少绑定 grant kind、revision、authorization-decision digest、policy
+revision 和 grant digest。解析后必须复核 action、Scope、expiry/revocation，三类 grant 不得互换。
+
+后台 Worker 的 `ServiceCallContext` 只证明服务身份；持久命令必须保留创建订阅或启用群策略的
+Actor/授权证据。每次发送前重新解析当前 Owner/管理员权限，并重新检查：
+
+- subscription/target policy 仍 active，operator/group-policy grant 仍有效，且 Scope/revision/digest
+  未漂移；
+- exact platform/Bot/conversation 在主动 allowlist 中；空 allowlist 表示全部拒绝；
+- quiet hours、全局/群级预算、InteractionLease 和无响应冷却允许；
+- rollout mode、digest/probe 独立 kill switch 和 Output health 允许；
+- occurrence/opportunity、PreparedDispatch 和内容授权尚未过期；
+- Content Safety、Response Profile、来源/引用和 Delivery constraints 绑定同一最终内容。
+
+任一安全依赖、Audit、Limiter、订阅解析或 re-authorization 不可用时零发送。订阅暂停/撤销、
+目标或群策略变化必须使已准备但未发送命令失效。投递业务幂等键不含 Adapter revision；binding
+和回执 revision 单独校验，Adapter 升级不能绕过账本。`UNKNOWN` Delivery 进入 reconciliation，
+不能因 Scheduler 再次 tick 而盲重发。
+
+`PREVIEW` 使用独立 `proactive.subscription.preview` 权限和 Port，由 Port 对完整当前 Actor 实时
+授权，只向有权查看订阅/目标的操作者返回受控 `ValidatedFinalResponse`；它不授予
+`message.send.proactive`，不创建 occurrence、PreparedDispatch、DeliveryRequest/Receipt，预览
+正文也不进入普通 Trace 或 receipt。
+
+主动 Probe 首版不得读取个人 Memory、选择个人目标或主动私聊。公开校园/arXiv/行业来源也要
+经过 Capability 权限和 MCP allowlist；公开不等于可信，外部文本仍执行 Prompt Injection、URL、
+大小、来源和 Content Safety Gate。完整流程见 `proactive-messaging.md`。
+
 ## Runtime Configuration And Secrets
 
 - Repository config contains only schemas, safe defaults, and symbolic IDs.
@@ -663,6 +700,15 @@ closed for privileged operations.
 - Prompt injection in message, web, review, MCP, and Provider error content.
 - Planner maximum steps, repeated calls, timeout, and retry budget.
 - Output component size, node count, truncation, and URL scheme.
+- `message.send.proactive` 与普通 respond/send 权限不可互换；空 allowlist、缺配置、审计/限流/
+  授权故障、quiet hours 和 kill switch 均产生零发送；
+- `proactive.subscription.preview` 与发送权限不可互换；Preview 对完整 Actor/request/Scope 实时授权，
+  不产生 occurrence/dispatch/delivery，正文不写入普通 Trace 或 receipt；
+- TargetPolicy/Grant Ref 的 kind/ID/revision/digest/Scope 不可替换，任一 grant 撤销后已准备发送失效；
+- 订阅撤销、Owner 权限变化、target/revision/content digest 漂移可阻止已准备命令；并发 claim、
+  重启和 `UNKNOWN` receipt 不产生重复主动消息，恢复不得重跑模型换内容生成新幂等键；
+- Proactive Worker 的 ServiceCallContext 不能替代订阅 Actor/管理员授权，Probe 不读取个人
+  Memory、不主动私聊或 @ 个人，来源正文/URL/ID 不泄漏到 Trace；
 - Manifest integrity, patch hash, license fields, and safe install target.
 - Container mount and network contract tests.
 

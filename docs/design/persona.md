@@ -2,7 +2,8 @@
 
 ## 1. 文档状态与原则
 
-- 阶段：Phase 1，目标设计，尚未实现。
+- 阶段：S10 最小确定性单 Persona Renderer/Validator 已完成本地范围；S15 的完整资产、
+  ResponsePlan 执行、模型 Renderer、用户偏好和人工风格 Eval 尚未实现。
 - 目标代码：`packages/dududa-agent/src/dududa/persona/`。
 - 当前资产：`config/personas/dududa.json`、`dududa.md` 及幂等 Persona seed 流程。
 
@@ -100,6 +101,10 @@ class RendererPolicy:
 
 `safety_notes` 是给 Renderer 的表达提示，不是唯一安全实现。未成年人性化、隐私泄漏、危险操作等硬限制仍由独立 Security Policy 执行。
 
+`VoiceRules.sentence_length` 只描述句式节奏，不是回答档位。`SHORT | MEDIUM | LONG` 由上游
+`ResponseProfilePolicy` 生成的 `ResponsePlan` 决定；Persona 不能因为“可爱”“认真”或用户 style
+偏好自行扩大输出预算、升级 Model Tier 或把短回答改成长回答。
+
 ### 4.2 可提交配置
 
 目标配置建议拆为机器可校验元数据和版本化内容：
@@ -156,6 +161,7 @@ class DraftResponse:
     schema_version: int
     response_id: str
     producer: ComponentRevision
+    response_plan_digest: DigestString
     intent: str
     content_blocks: tuple[ContentBlock, ...]
     fact_anchors: tuple[FactAnchor, ...]
@@ -198,6 +204,7 @@ class RenderContext:
     conversation_type: ConversationType
     surface: Literal["chat", "web_preview"]
     conversation_mode: str
+    response_plan: ResponsePlan
     user_style_preference: str | None
     response_constraints: ResponseConstraints
     target_aliases: Mapping[str, str]
@@ -338,6 +345,10 @@ Registry 加载后执行 Schema 校验、digest 计算和版本检查。一次 R
 - 技术问题使用清晰条理，闲聊使用更自然短句；
 - 按用户已授权的 style preference 在“简洁、详细、可爱、认真”等范围内微调；
 - 将标准错误说明转换为稳定、友好的用户文案。
+
+Renderer 只能执行 `ResponsePlan.selected_profile` 和其可见长度/分片预算，不能重新选择 Profile。
+自动 Conversation Probe 固定 SHORT，订阅日报默认 MEDIUM；主动出站的 Persona 规则不能删除
+来源、新鲜度警告、退订语义或部分来源失败说明。
 
 ### 7.2 禁止改变
 
@@ -535,6 +546,8 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 - 数字、日期和课程 ID 不因语气改写变化；
 - Prompt Injection 样本不能让 Renderer 输出系统 Prompt 或忽略安全规则；
 - 长度压缩不删除安全警告和关键来源。
+- SHORT/MEDIUM/LONG 的实际可见长度、结构目标和分片上限通过；Renderer 不改变
+  `response_plan_digest`，也不把主动 Probe/Digest 扩展到更长 Profile；
 
 ### Golden/Eval
 

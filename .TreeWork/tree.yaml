@@ -1,85 +1,100 @@
 version: 1
-
 tree:
   id: root
   title: Dududa Runtime And Operator Client
-  purpose: Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.
+  purpose: >-
+    Deliver the deterministic Agent runtime and a real NapCat-backed multi-account
+    QQ operator client.
   spec: spec.md
-
   children:
-    - id: model-selection
-      title: Model Selection Epic
-      purpose: Own the shared architecture for task complexity, tier policy, and static endpoint routing.
-      spec: branches/model-selection/spec.md
-      children:
-        - id: selection-contracts
-          title: S08 Selection Contracts
-          purpose: Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.
-          spec: branches/selection-contracts/spec.md
-
-        - id: static-router
-          title: S08 Static Router
-          purpose: Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.
-          spec: branches/static-router/spec.md
-          depends_on:
-            - selection-contracts
-
-        - id: perception-tiering
-          title: S09 Perception And Tiering
-          purpose: Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.
-          spec: branches/perception-tiering/spec.md
-          depends_on:
-            - static-router
-
-    - id: offline-runtime
-      title: S10 Offline Runtime
-      purpose: Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.
-      spec: branches/offline-runtime/spec.md
+  - id: model-selection
+    title: Model Selection Epic
+    purpose: >-
+      Own the shared architecture for task complexity, tier policy, and static
+      endpoint routing.
+    spec: branches/model-selection/spec.md
+    children:
+    - id: selection-contracts
+      title: S08 Selection Contracts
+      purpose: >-
+        Freeze versioned tier, complexity projection, endpoint, traffic, and decision
+        contracts.
+      spec: branches/model-selection/selection-contracts/spec.md
+    - id: static-router
+      title: S08 Static Router
+      purpose: >-
+        Implement deterministic filtering, admission, reliability, registry, Fake, and
+        one compatible Adapter.
+      spec: branches/model-selection/static-router/spec.md
       depends_on:
-        - perception-tiering
-
-    - id: controlled-rollout
-      title: S11 Controlled Rollout
-      purpose: Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.
-      spec: branches/controlled-rollout/spec.md
+      - selection-contracts
+    - id: perception-tiering
+      title: S09 Perception And Tiering
+      purpose: >-
+        Implement validated perception, complexity assessment, deterministic tier
+        policy, social decision, and Eval.
+      spec: branches/model-selection/perception-tiering/spec.md
       depends_on:
-        - offline-runtime
-
-    - id: completion-audit
-      title: S08-S11 Completion Audit
-      purpose: Prove every accepted requirement with cross-stage verification and record external evidence gaps.
-      spec: branches/completion-audit/spec.md
+      - static-router
+  - id: offline-runtime
+    title: S10 Offline Runtime
+    purpose: >-
+      Build the explicit-mention direct-chat vertical loop and prove shadow has no
+      side effects.
+    spec: branches/offline-runtime/spec.md
+    depends_on:
+    - perception-tiering
+  - id: controlled-rollout
+    title: S11 Controlled Rollout
+    purpose: >-
+      Add typed rollout modes, persistent idempotency, canary ownership, kill switch,
+      metrics, and rollback.
+    spec: branches/controlled-rollout/spec.md
+    depends_on:
+    - offline-runtime
+  - id: completion-audit
+    title: S08-S11 Completion Audit
+    purpose: >-
+      Prove every accepted requirement with cross-stage verification and record
+      external evidence gaps.
+    spec: branches/completion-audit/spec.md
+    depends_on:
+    - controlled-rollout
+  - id: mew-parity
+    title: Mew And NapCat Web Parity
+    purpose: >-
+      Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat
+      backend.
+    spec: branches/mew-parity/spec.md
+    children:
+    - id: mew-parity-foundation
+      title: NapCat Web Foundation
+      purpose: >-
+        Establish account-scoped rich-message, capability, cursor-history and
+        persistence contracts.
+      spec: branches/mew-parity/mew-parity-foundation/spec.md
+    - id: mew-chat-parity
+      title: Mew Chat Parity
+      purpose: >-
+        Port Mew chat rendering, composition, history, search, drafts and message
+        actions to NapCat.
+      spec: branches/mew-parity/mew-chat-parity/spec.md
       depends_on:
-        - controlled-rollout
-
-    - id: mew-parity
-      title: Mew And NapCat Web Parity
-      purpose: Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.
-      spec: branches/mew-parity/spec.md
-      children:
-        - id: mew-parity-foundation
-          title: NapCat Web Foundation
-          purpose: Establish account-scoped rich-message, capability, cursor-history and persistence contracts.
-          spec: branches/mew-parity-foundation/spec.md
-
-        - id: mew-chat-parity
-          title: Mew Chat Parity
-          purpose: Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.
-          spec: branches/mew-chat-parity/spec.md
-          depends_on:
-            - mew-parity-foundation
-
-        - id: mew-directory-parity
-          title: Mew Directory And Group Parity
-          purpose: Port contacts, notifications, group management, resources and settings with capability gating.
-          spec: branches/mew-directory-parity/spec.md
-          depends_on:
-            - mew-parity-foundation
-
-        - id: mew-parity-audit
-          title: Mew Parity Audit
-          purpose: Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.
-          spec: branches/mew-parity-audit/spec.md
-          depends_on:
-            - mew-chat-parity
-            - mew-directory-parity
+      - mew-parity-foundation
+    - id: mew-directory-parity
+      title: Mew Directory And Group Parity
+      purpose: >-
+        Port contacts, notifications, group management, resources and settings with
+        capability gating.
+      spec: branches/mew-parity/mew-directory-parity/spec.md
+      depends_on:
+      - mew-parity-foundation
+    - id: mew-parity-audit
+      title: Mew Parity Audit
+      purpose: >-
+        Prove real NapCat multi-account behavior, security and desktop/mobile Mew
+        parity.
+      spec: branches/mew-parity/mew-parity-audit/spec.md
+      depends_on:
+      - mew-chat-parity
+      - mew-directory-parity

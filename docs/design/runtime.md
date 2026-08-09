@@ -2,8 +2,8 @@
 
 ## 1. 文档状态
 
-- 阶段：Phase 1 设计已冻结；S01–S05 的 DTO、State、Port、Fake 和 AstrBot 兼容
-  Adapter 已实现，Orchestrator、State Store 与生产切流尚未实现。
+- 阶段：S10 入站显式 @ 离线 Runtime 与 S11 本地 rollout 边界已实现并审计；真实 Provider
+  composition、Tool/Memory/Attachment 产品接入、ResponsePlan 和主动出站尚未完成。
 - 目标代码位置：`packages/dududa-agent/src/dududa/runtime/`。
 - 适用入口：AstrBot、后续 Web/测试入口以及不依赖具体平台的离线 Eval。
 - 兼容约束：迁移期间保留 `astrbot_plugin_dududa_core`、`astrbot_plugin_target_talk`、`astrbot_plugin_reply_polish` 三个插件 ID、配置和事件语义。
@@ -21,8 +21,10 @@ RuntimeStartRequest(ConnectorResult + options + digest)
   -> Context Builder
   -> Perception
   -> Social Decision
-  -> optional hard-filtered Bandit ranking
-  -> Direct Reply | Capability/Tool Loop | No Reply
+  -> No Reply
+     | Direct Reply: deterministic Response Planning -> user-visible model call
+     | Capability/Tool Loop -> validated observations -> deterministic Response Planning
+  -> optional hard-filtered Bandit ranking inside each owning model/capability router
   -> Response Composer
   -> Persona Renderer
   -> RuntimeResult + authoritative DeliveryRequest (when visible)
@@ -49,6 +51,8 @@ Runtime 不负责：
 - 启动某个具体 MCP Server；
 - 决定 Persona 的文学设定；
 - 把安全、权限或事实正确性交给 Persona Prompt。
+- 把定时器伪造成用户消息；无入站消息的日报和主动探测由独立
+  `ProactiveDeliveryOrchestrator` 负责，见 `proactive-messaging.md`。
 
 ## 3. 依赖方向
 
@@ -511,6 +515,7 @@ class RuntimePhase(StrEnum):
     TOOLS_PLANNED = "tools_planned"
     TOOLS_EXECUTED = "tools_executed"
     VALIDATED = "validated"
+    RESPONSE_PLANNED = "response_planned"
     COMPOSED = "composed"
     RENDERED = "rendered"
     READY_TO_EMIT = "ready_to_emit"
@@ -541,6 +546,7 @@ class RuntimeState:
     context_build: ContextBuildResult | None = None
     perception: PerceptionResult | None = None
     social_decision: SocialDecision | None = None
+    response_plan: ResponsePlan | None = None
     capability_retrieval: CapabilityRetrievalResult | None = None
     tool_plan: ToolPlan | None = None
     tool_observations: tuple[ToolObservation, ...] = ()
@@ -954,6 +960,7 @@ class ComposeRequest:
     message: MessageEnvelope
     context: ContextSnapshot
     decision: SocialDecision
+    response_plan: ResponsePlan
     direct_content: DraftContent | None
     verified_observations: tuple[ToolObservation, ...]
     tool_validation: ToolValidationResult | None
@@ -1214,7 +1221,33 @@ Perception 输出结构化语义信号；Social Decision 将其与确定性权�
 
 不变量：Persona 不参与是否回复和是否允许调用工具的判断。
 
-### 6.4 能力与工具循环
+### 6.4 回答档位规划
+
+只有可见动作进入 `ResponseProfilePolicy`。策略输入当前消息中的明确简短/详细证据、经过校验的
+TaskComplexityAssessment、SocialDecision、会话/群策略、允许的用户偏好、平台限制和 Runtime
+Budget，输出版本化 `ResponsePlan(SHORT | MEDIUM | LONG)`。
+
+每条可见路径只形成一个最终 ResponsePlan：直接回答在 Social Decision 后、构造用户可见
+ModelRequest 前生成；工具路径在 Observation Validator 完成后、进入
+`RESPONSE_COMPOSITION` 前生成。Tool Planner 不消费 Answer Profile，也不存在随后悄悄扩大
+预算的“初始计划”。当前消息明确要求优先于持久偏好，安全警告、拒绝原因、必要引用和平台
+上限始终优先。
+
+状态转换是分支汇合，而不是固定把 RESPONSE_PLANNED 放在工具之前：
+
+```text
+DECIDED
+  -> DIRECT_REPLY -> RESPONSE_PLANNED
+  -> TOOLS_PLANNED -> TOOLS_EXECUTED -> VALIDATED -> RESPONSE_PLANNED
+RESPONSE_PLANNED -> COMPOSED -> RENDERED -> READY_TO_EMIT
+```
+
+不变量：Answer Profile 不选择 Model Tier 或 Provider。Runtime 只把可见输出上限、Response
+Plan digest 和结合 Reasoning Profile 后的总生成预算投影给 TierPolicy/Router。Renderer 不得
+扩展到计划之外，Final Validator 必须检查实际 Unicode grapheme、可见 Token、投递分片及必要
+内容保持。
+
+### 6.5 能力与工具循环
 
 仅当动作是 `USE_TOOLS` 时进入：
 
@@ -1230,14 +1263,17 @@ Capability Retrieval -> Planner -> Executor -> Observation -> Validator
 - Validator 只能要求继续、重试、澄清或结束，不能绕过最大步数；
 - 每个 Observation 标记来源、耗时、错误和数据敏感级别。
 
-### 6.5 合成、人格与输出
+### 6.6 合成、人格与输出
 
 Response Composer 先生成事实稳定的 `DraftResponse`，包括正文语义、来源、警告、错误和
 不可修改约束。Persona Renderer 只调整表达。Runtime 返回同时含验证后内容与权威
 `DeliveryRequest` 的 `RuntimeResult` 并停在 `READY_TO_EMIT`；调用方只能把该 request 原样
 交给绑定 revision 的 Output Adapter。QQ 的 `Plain`、`At`、`Image`、`Nodes` 由 Adapter 创建。
 
-### 6.6 记忆写入
+Composer 和 Persona 都消费同一 `ResponsePlan`。内容短于上限不代表 Profile 正确；Validator
+还需验证 SHORT/MEDIUM/LONG 的结构目标、明确用户详略要求、必要事实/引用和冗余边界。
+
+### 6.7 记忆写入
 
 Output Adapter 投递后调用 `acknowledge_delivery()`。Runtime 先记录受控
 `DeliveryReceipt`，再让 Memory Write Gate 对自动候选逐一判断来源、事实性、敏感度、
@@ -1245,6 +1281,18 @@ Output Adapter 投递后调用 `acknowledge_delivery()`。Runtime 先记录受�
 授权写命令随 checkpoint 原子写入 Outbox，只返回 `QUEUED` submission，不把排队说成已经
 持久化。输出失败、部分成功或未知时不得记录“已成功告知用户”一类事件。显式
 `/remember` 等用户事务可走独立、可审计的写入用例，不依赖回复投递成功。
+
+### 6.8 无入站消息的主动出站边界
+
+定时日报和 Conversation Probe 不进入 `AgentRuntime.run(RuntimeStartRequest)`，因为它们没有
+真实 ConnectorResult、用户 Actor 或入站 message ID。独立 `ProactiveDeliveryOrchestrator`
+使用 target-bound `InitiatedRunRequest`、服务主体与原订阅/操作员授权证据，复用 Capability、
+Composer、Persona、Output 和 Delivery reconciliation。
+
+Scheduler 只能产生 occurrence，不能调用 MCP 或发送；现有 `DomainEventOutbox` 也继续禁止调用
+Tool 和平台消息。主动发送使用独立持久 Dispatch Store、CAS claim 和
+`message.send.proactive` 权限，并在发送前复核 quiet hours、频控、订阅 revision、授权与 kill
+switch。完整契约见 `proactive-messaging.md`。
 
 ## 7. 超时、取消与错误
 
@@ -1467,6 +1515,8 @@ Registry snapshot 和评测代码引用；无法解析任一 revision 的运行�
 - 晚到 Delivery 单调 reconciliation、窗口过期、冲突引用和 SUCCESS_REQUIRED 候选只提交一次；
 - ContextAccessGrant 完整性/过期/purpose，以及 ConversationContextStore 的跨 Scope、TTL、Sensitivity 负向矩阵与有界读取；
 - 六种 Social Action 的分支；
+- ResponseProfilePolicy 优先级、3x3 Complexity/Profile 正交矩阵、动态预算和 Final Profile
+  Validator；
 - 工具最大步数、重试上限和 Validator 终止；
 - Persona 失败走确定性 Finalizer，且输出仍通过 Render Validator 与 Content Safety；
 - Memory 读取失败的无记忆降级。
@@ -1477,7 +1527,7 @@ Registry snapshot 和评测代码引用；无法解析任一 revision 的运行�
   `ContextAccessPolicy`、`ConversationContextStore`、`ContextBuilder`、`PerceptionEngine`、
   `SocialDecisionEngine`、`ModelRouter`、Memory Repository、Capability Provider、
   `MemoryCandidateExtractor`、`MemoryWriteGate`、`MemoryAdministration`、
-  `ResponseComposer`、`PersonaRenderer`、`RenderValidator`、`OutputAdapter`、
+  `ResponseProfilePolicy`、`ResponseComposer`、`PersonaRenderer`、`RenderValidator`、`OutputAdapter`、
   `DomainEventOutbox` 及 security.md 定义的 Safeguard Ports；
 - AstrBot Event/Result 与 MessageEnvelope/FinalResponse 的双向转换；
 - Protocol 实现的错误必须归一化，不能泄漏供应商异常类型。
@@ -1492,29 +1542,34 @@ Registry snapshot 和评测代码引用；无法解析任一 revision 的运行�
 - Outbox lease 重领、发布幂等、重复 Event ID、dead-letter 和 state/event 原子写入失败；
 - ServiceCallContext Worker 不能继承用户权限，queued Memory command 必须重验原授权；
 - TargetTalk 与通用入口对同一消息不重复回复。
+- initiated-run 不接受伪造 ConnectorResult，Proactive Scheduler/Policy/Dispatch 与普通
+  Runtime/DomainEventOutbox 权限和幂等空间严格分离；
 
 ### Privacy/Eval
 
 - A 群、B 群、私聊、不同用户和不同 Persona 的隔离矩阵；
 - Trace 和错误日志无原文、凭据及真实标识；
-- 是否应回复、工具选择、参数抽取和 OC 一致性的 JSONL Eval。
-- Bandit action-set/propensity/before-action 日志、IPS/SNIPS/DR、删失反馈、群级 bootstrap 与 baseline 回滚。
+- 是否应回复、Answer Profile、工具选择、参数抽取和 OC 一致性的 JSONL Eval。
+- 主动日报/Probe 的 fake-clock、来源新鲜度/引用、错误目标、重复/quiet-hour/退订后发送和
+  no-send Shadow Eval；
+- 仅在独立 S20 获批并实施时，验证 Bandit action-set/propensity/before-action 日志、
+  IPS/SNIPS/DR、删失反馈、群级 bootstrap 与 baseline 回滚；它不是 S18/S19 或主动出站门禁。
 
 ## 12. 当前实现状态与迁移顺序
 
 | 能力 | 当前状态 | 首个迁移动作 |
 | --- | --- | --- |
-| Message Envelope | 不存在，直接读取 AstrBot Event | 新增 Domain 类型和 AstrBot Adapter 测试 |
-| Runtime State/Orchestrator | 不存在，流程散在插件方法 | 建立不改变行为的状态骨架 |
-| Context Builder | TargetTalk 有进程内最近消息拼接 | 抽象只读 Context 端口 |
-| Perception | `/course` 有局部 LLM JSON 解析 | 迁入结构化 Perception Adapter |
-| Social Decision | TargetTalk 有规则版 ignore/reply | 先包装 Legacy Policy |
+| Message Envelope/Connector | S01-S04 已实现版本化 Domain 类型和 AstrBot Adapter | 真实 Attachment Source 与第二平台仍未实现 |
+| Runtime State/Orchestrator | S10 已实现显式 @、Memory/Tool-off 的离线闭环与 CAS/single-flight | 生产 composition、Tool/Memory/Attachment 和主动出站未闭合 |
+| Context Builder | S09/S10 有界当前消息 Context 已实现 | 可信多轮、附件与生产 Memory 接入未完成 |
+| Perception/Social Decision | S09 Rule/Model/Merger/Validator、Complexity、TierPolicy 和硬 Gate 已实现 | 真实数据校准、多轮/附件与生产装配仍缺 |
 | Tool Runtime | iCourse 是固定手工流程 | 抽为首个 Capability Provider |
-| Response Composer | 课程和 TargetTalk 各自拼接 | 建立 DraftResponse 契约 |
-| Persona Renderer | 由 AstrBot Persona Prompt 承担 | 增加独立 Renderer，先透传 |
-| Trace | 只有日志和 JSONL 审计 | 新增脱敏阶段事件 |
+| Response Composer/Persona | S10 最小事实保持 Composer 和确定性 Renderer 已实现 | S15 ResponsePlan、完整资产、模型 Renderer 和人工 Eval |
+| Trace/Rollout | S10 receipt 与 S11 脱敏指标/持久 claim 已实现 | 后续模块、真实 SLO 和最终授权证据 |
+| Proactive Orchestrator | 未实现 | 按 S15A-S15E 建立独立 initiated-run，不修改入站历史语义 |
 
-建议顺序：Domain 契约 -> Runtime 空骨架 -> AstrBot Adapter 合约 -> 安全/配置端口 -> TargetTalk/ReplyPolish 纯逻辑抽取 -> 课程 Capability -> 完整工具循环。每一步保持原命令和部署可运行。
+后续顺序以 `../refactor/implementation-plan.md` 为准：S12-S15 -> S15A-S15E -> S16-S19 ->
+S22 -> 最终 S23。每一步保持原命令和部署可运行。
 
 ## 13. 扩展点
 

@@ -3,9 +3,10 @@
 ## User Intent (the outcome the user is trying to achieve; not a proposed implementation)
 
 Continue long-running development of Dududa beyond the completed local S08-S11
-runtime by adding a real QQ multi-account Web client. Reproduce the observable
-QQ-client functionality of USTC-XeF2/mew-ui as closely as NapCat permits while
-retaining Dududa's server-side OneBot boundary and without shipping demo data.
+runtime and Mew/NapCat Web client. Add deterministic short/medium/long answer
+planning, controlled low-frequency proactive conversation probes, and opt-in
+scheduled campus, industry, and arXiv digests while retaining the existing
+security, capability, delivery, rollback, and final real-group gates.
 
 ## Target User (who experiences the result and whose constraints matter)
 
@@ -14,6 +15,10 @@ retaining Dududa's server-side OneBot boundary and without shipping demo data.
 - QQ users in an explicitly authorized test group eventually experience the
   direct-chat canary, while all other users remain on the existing AstrBot
   path.
+- An operator explicitly enables each proactive target and subscription. Group
+  members experience bounded, attributable messages with quiet hours,
+  frequency limits, source citations, pause/unsubscribe controls, and no hidden
+  individual targeting.
 - The Dududa operator uses one browser workspace to read and operate multiple
   real QQ accounts connected by NapCat, with Mew-equivalent chat, directory,
   notification, group-management, resource and settings workflows.
@@ -29,6 +34,18 @@ retaining Dududa's server-side OneBot boundary and without shipping demo data.
 - Low-confidence or conflicting difficulty evidence uses a conservative
   deterministic default; user prompt text cannot force an expensive tier or
   bypass safety and privacy filters.
+- Dududa selects a versioned `short`, `medium`, or `long` answer profile for
+  each visible response. Answer profile, model tier, and reasoning depth remain
+  independent: a deep task may require a short answer, and a simple task may
+  legitimately request a long enumerated result.
+- In an explicitly enabled allowlisted group, Dududa may initiate one bounded
+  topic-relevant probe after deterministic eligibility, quiet-hour, cooldown,
+  target, and delivery checks. A probe does not target an individual, read
+  personal Memory, or automatically follow up when nobody responds.
+- Explicit subscriptions may schedule campus public information, allowlisted
+  industry updates, and recent arXiv items in an IANA time zone. MCP-backed
+  capabilities retrieve normalized public source items; Scheduler, policy,
+  composition, authorization, delivery, and unsubscribe remain Dududa-owned.
 - The first complete runtime handles explicit mentions, direct chat only, with
   tools and memory disabled. Shadow execution has no user-visible or persistent
   side effects.
@@ -97,6 +114,22 @@ retaining Dududa's server-side OneBot boundary and without shipping demo data.
 - [x] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
   action access never reach the browser; destructive actions use a typed
   server allowlist and the unauthenticated Web service remains loopback-only.
+- [ ] A versioned Response Plan deterministically selects short/medium/long,
+  binds visible character/token/part limits, respects explicit current-message
+  detail requests, and is consumed by Router, Composer, Renderer, and final
+  validation without equating answer length to model tier.
+- [ ] Proactive conversation probes are default-off and require a target-bound
+  proactive-send authorization, allowlist, quiet hours, persistent occurrence
+  claim, global/per-scope frequency budget, pre-send kill-switch recheck,
+  delivery reconciliation, and a no-response cooldown.
+- [ ] Scheduled subscriptions use durable time-zone-aware occurrences,
+  bounded misfire handling, source and delivery deduplication, public read-only
+  Capability/MCP results with freshness and citations, and effective
+  pause/unsubscribe/revision invalidation before delivery.
+- [ ] Offline/fake-clock and recommendation-only shadow evidence records zero
+  wrong-target, duplicate, quiet-hour, revoked-subscription, uncited,
+  prompt-injected, sensitive-trace, or unauthorized-send incidents before any
+  proactive real-group canary is considered.
 - [ ] Only after every accepted module, Web testing task and local integration
   audit is complete, an explicitly authorized real-group shadow/canary run
   records zero duplicate, wrong-target, unauthorized-send or sensitive-trace
@@ -110,11 +143,16 @@ substituted for the later external run.
 
 ## Non-Goals (explicit boundaries; not a backlog of unrelated future ideas)
 
-- Contextual Bandit, learned online exploration, random weighted routing, or
-  counterfactual policy claims.
-- Tool/MCP execution, Memory retrieval or automatic writes, free-form proactive
-  group interruption, image roles, multiple personas, or broad production
-  rollout.
+- Using Contextual Bandit or another learner to choose proactive send/skip,
+  target group/user, subscription topic, schedule, frequency, answer profile,
+  or follow-up behavior. S20 may optimize only separately approved safe
+  decision points such as same-tier model endpoints.
+- Free-form or default-on proactive interruption, unsolicited private messages,
+  automatic personal targeting, repeated unanswered probes, or broad
+  production rollout.
+- Private/sensitive campus records, arbitrary-URL crawling, MCP-managed
+  scheduling/sending, automatic Memory writes, image roles, or multiple
+  personas in the first proactive release.
 - Dynamic cost/latency optimization across Providers; health and load only
   determine eligibility in this scope.
 - Replacing the legacy AstrBot Handler before the S11 canary gates pass.
@@ -138,7 +176,8 @@ substituted for the later external run.
 2. Difficulty assessment and model routing are one integrated development
    scope.
 3. The three logical tiers are `haiku`, `sonnet`, and `opus`.
-4. Bandit is explicitly deferred.
+4. Bandit is a later S20 scope and remains prohibited for proactive send/skip,
+   target, schedule, frequency, subscription, and answer-profile decisions.
 5. Existing S01-S07 foundations and legacy production behavior are preserved
    unless an S08-S11 acceptance item requires an additive change.
 6. USTC-XeF2/mew-ui commit `97df34b3c8ca1747b92003fa3bb6566a58668a3f`
@@ -155,5 +194,14 @@ substituted for the later external run.
 11. The Agent Console runtime is deferred until QQ/Mew parity is independently
     implemented and audited.
 12. Real group-chat scenario testing runs last, after all accepted modules,
-    Web testing work and local integration audits are complete. Bandit remains
-    separately deferred and is not pulled into the critical path by this rule.
+    Web testing work and local integration audits are complete. Static inbound
+    canary runs before separately authorized digest and probe canaries.
+13. Visible answers have three profiles: `short`, `medium`, and `long`.
+    Response profile, model tier, and reasoning depth are separate authorities;
+    Router consumes the resulting budget but does not infer the profile.
+14. Conversation probes and scheduled digests are default-off initiated runs,
+    not forged Connector messages. They require a dedicated proactive-send
+    permission, exact target Scope, durable claim, and pre-send revalidation.
+15. MCP is an optional infrastructure path for public source retrieval only.
+    It never owns schedules, subscriptions, target selection, policy, message
+    composition, or delivery.

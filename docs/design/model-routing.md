@@ -2,9 +2,8 @@
 
 ## 1. 文档状态与目标
 
-- 阶段：S08 selection-contracts 已集成；Registry、Estimator、Admission、Static Router、
-  Recording Fake、严格 Codec 和保守 AstrBot Adapter 已在 `static-router` 分支实现，
-  当前状态为完成分支验收与集成前的验证阶段。
+- 阶段：S08 静态路由本地实现与审计已完成；真实多 Provider 生产装配仍未闭合。
+  2026-08-09 新增的 Answer Profile/ResponsePlan 是 S15 目标契约，尚未实现。
 - 目标代码：`packages/dududa-agent/src/dududa/models/`。
 - 配置目标：`configs/models/` 下可提交的无凭据路由策略；真实 Provider 凭据继续只存在于 AstrBot 私有运行配置。
 
@@ -89,7 +88,7 @@ class ModelRole(StrEnum):
 
 ### 4.1 档位与思考深度
 
-`ModelRole`、`ModelTier` 和 `ReasoningProfile` 是三个正交维度：
+`ModelRole`、`ModelTier`、`ReasoningProfile` 和 `AnswerProfile` 是四个正交维度：
 
 ```python
 class ModelTier(StrEnum):
@@ -103,14 +102,24 @@ class ReasoningDepth(StrEnum):
     BALANCED = "balanced"
     DEEP = "deep"
     MAXIMUM = "maximum"
+
+class AnswerProfile(StrEnum):
+    SHORT = "short"
+    MEDIUM = "medium"
+    LONG = "long"
 ```
 
 - Role 描述本次调用负责什么；
 - Tier 是运营方配置的能力/成本档，不从模型名称推断；
 - Reasoning Profile 描述本次调用需要的思考行为，由 Adapter 显式映射到供应商参数。
+- Answer Profile 描述用户可见答案的详略、结构和输出预算，由确定性 Response Policy 决定。
 
 同一 Tier 可以包含多个 Provider Endpoint，同一实际模型也可以提供多个 Reasoning
 Profile。枚举顺序不代表 fallback 顺序；跨档回退只能沿配置中的显式无环边执行。
+
+回答档位不映射模型档位：高复杂度证明题要求“一句话给结论”可以是
+`OPUS + DEEP + SHORT`；简单任务要求“详细列出大量条目”可以是
+`HAIKU + LIGHT + LONG`。长回答不能单独升级 Tier，短回答也不能单独降级 Tier。
 
 `PERCEPTION` 的启动路由固定为允许的 Haiku Endpoint，避免“需要先判断难度才能选择
 感知模型、又需要先选择模型才能判断难度”的递归。普通 `DIRECT_CHAT` 默认 Sonnet；
@@ -142,6 +151,63 @@ token（已包含 reasoning）和 cost units。`TierDecision` 同时记录 `unca
 `selected_tier`；只有 `BUDGET_CAPPED` 可以令二者不同，因此离线 Eval 能区分“本来就是
 Sonnet”与“Opus 因预算降为 Sonnet”。Tier policy digest 和不含随机 ID/时间的 selection
 fingerprint 与完整执行 receipt digest 分开保存。
+
+### 4.3 回答档位与动态输出预算
+
+Perception 可以提取“简短回答”“详细说明”等非权威候选，最终由 Runtime 中独立的
+`ResponseProfilePolicy` 在 Social Decision 之后选择：
+
+```text
+current-message explicit detail request
+  -> task complexity / verification need
+  -> conversation and group policy
+  -> allowed persistent preference
+  -> configured default
+  -> ResponsePlan
+```
+
+当前消息的明确要求优先于持久偏好；安全警告、必要引用、平台分片上限、群级长度上限和总预算
+始终可以收窄结果。若最低合规内容无法放入硬上限，应澄清、分页或 `DEFER`，不能静默删除引用、
+拒绝理由或安全提示。
+
+没有显式详略要求时，首版默认先验符合产品语义：问候、情绪回应和日常闲聊选择 SHORT；普通
+事实问答、解释和常规操作选择 MEDIUM；需要多步论证、方案比较、重要验证或完整研究摘要的任务
+选择 LONG。它只是 Response Policy 的可评测默认，不是 Tier 映射；复杂任务也可以因用户明确
+要求选择 SHORT，简单任务也可以因交付格式选择 LONG。
+
+```python
+@dataclass(frozen=True, slots=True)
+class ResponsePlan:
+    schema_version: int
+    requested_profile: AnswerProfile | None
+    uncapped_profile: AnswerProfile
+    selected_profile: AnswerProfile
+    visible_output_tokens_upper_bound: int
+    max_visible_characters: int
+    max_delivery_parts: int
+    required_sections: tuple[str, ...]
+    complexity_assessment_digest: DigestString | None
+    decision_authority_digest: DigestString
+    reason_codes: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    policy_revision: str
+    selection_fingerprint: DigestString
+```
+
+`SHORT` 表示结论或自然日常回应；`MEDIUM` 表示结论加必要解释；`LONG` 表示组织完整的假设、
+步骤、替代方案和来源摘要，但不输出隐藏 Chain of Thought。具体字符、Token、分片和 required
+section 由版本化策略定义，不写死在枚举中。
+
+入站回复的 `decision_authority_digest` 绑定 `SocialDecision`；无入站消息的日报/Probe 绑定
+`ProactivePolicyDecision`。后者可能没有入站 `TaskComplexityAssessment`，因此 complexity digest
+可以为空，但必须由独立、可重放的内容任务评估或固定 Policy reason codes 支撑输出预算。
+
+Response Plan 只约束可见输出。Runtime 再结合 Reasoning Profile 和 Provider 记账语义计算
+`generated_tokens_upper_bound`；后者包含供应商计入生成量的 reasoning，是 ModelRequest、预算和
+Admission 使用的总生成上限。两者不可混为同一字段，也不能重复收费。
+
+`ResponsePlan` 由 `dududa.responses`/共享 Domain 边界拥有，不放进模型 Registry。Models 模块
+只接收其 digest 和数字预算投影，不反向 import Composer、Persona、Social 或 Proactive 实现。
 
 ## 5. 数据契约
 
@@ -228,6 +294,8 @@ class ModelRequest:
     role: ModelRole
     input: ModelInput
     output_schema: SchemaRef | None
+    response_plan_digest: DigestString | None
+    visible_output_tokens_upper_bound: int | None
     max_output_tokens: int
     content_input_tokens_upper_bound: int
     temperature: float | None
@@ -239,6 +307,13 @@ class ModelRequest:
 ```
 
 `ModelInput` 只能包含该角色需要的数据。`SchemaRef` 使用稳定 Schema ID、版本和 digest，不能把 Python class 或供应商专属 Schema 对象传到进程外。Provider Adapter 负责将输入和 Schema 转换为供应商消息格式；Core 不构造 OpenAI 专属 payload。
+
+对用户可见正文角色，`response_plan_digest` 和 `visible_output_tokens_upper_bound` 必须同时非空，
+绑定本次经校验的 `ResponsePlan`，且可见上限不得超过计划。`max_output_tokens` 仍表示 Provider
+总生成上限并包含 reasoning；Router 校验三者与 Reasoning Profile、Endpoint 能力和预算的一致性。
+Perception、Tool Planning 等无用户可见正文的结构化角色中这两个字段必须同时为空，继续使用
+角色 Route Policy 的固定 Schema/预算；不得伪造用户回答档位。one-of/成对空值由 ModelRequest
+Validator 在路由前执行。
 
 `content_input_tokens_upper_bound` 只描述进入路由前可知的内容上界，供 TierPolicy 做早期预算
 门禁；它不是最终 Provider token 估算。调用前必须由 `ModelInvocationEstimator` 在具体
@@ -730,7 +805,8 @@ Git 忽略的运行目录。
 1. 校验请求 Role 与 `BootstrapTierDecision | TierDecision`，确定本次 Tier；
 2. 从同一不可变 snapshot 读取角色策略和候选 Endpoint；
 3. 应用 Tier allowlist、数据分类、external processing、驻留和 retention；
-4. 验证输入/输出模态、Structured Output、Reasoning Profile、输入/总 Context 和输出上限；
+4. 验证输入/输出模态、Structured Output、Reasoning Profile、Response Plan digest、输入/总
+   Context、可见输出和总生成上限；
 5. 检查总 deadline、调用/token/cost 预算；
 6. 排除不健康、cooldown、过期/未知 load 和超过硬流量阈值的候选；
 7. 合法 `route_hint` 只能重排仍然 eligible 的 Endpoint；
@@ -762,6 +838,11 @@ waiter，并使每个已发 lease 最终得到一个 `SETTLED | RELEASED` receip
 - 是否允许流式输出；
 - 是否允许带图片或敏感数据；
 - fallback 候选和确定性降级。
+
+回答档位由上游 Response Policy 选择，Router 只能消费其动态预算。仅改变 Answer Profile 时，
+在复杂度、隐私、预算和 Endpoint 能力均不变的条件下，不得改变 Tier；如果更长的输出导致某
+Endpoint 容量不足，RouteDecision 必须记录 `output_capacity` 或 `budget_capped`，不能把它
+伪装成语义复杂度升级。
 
 S08-S11 中成本和延迟只参与硬预算/资格判断，不参与动态排序。它们不能降低权限、事实和
 隐私要求，也不能让过载状态把任务重新解释成另一个难度。
@@ -896,6 +977,11 @@ fallback；三者分别受限并共享 `max_total_attempts`。`RouteAttemptKind`
 - Structured Output 首次失败、修复重试和最终失败；
 - 敏感数据不允许的 Provider 被排除；
 - 熔断、429、认证、安全拒绝的不同回退语义。
+- `TaskComplexity x AnswerProfile` 3x3 正交矩阵，覆盖 HIGH+SHORT 和 LOW+LONG；
+- 固定复杂度、隐私和预算时只改变 Answer Profile 不改变 Tier；输出容量不足必须产生明确
+  `output_capacity`/`budget_capped` 原因；
+- `ResponsePlan` digest、可见输出上限、总生成上限和 Reasoning Profile 任一错配均在 Provider
+  调用前拒绝。
 
 ### Provider Contract
 
@@ -917,6 +1003,7 @@ fallback；三者分别受限并共享 `max_total_attempts`。`RouteAttemptKind`
 - gpt-image 类超时、401、403、429、5xx 和内容拒绝；
 - Route Policy 热加载失败时保留最后一份有效配置；
 - Persona Rendering 与 Response Composition 可独立配置、回退和评测；
+- Composer/Persona/Final Validator 实际执行 Answer Profile，并保留必要引用、安全提示和拒绝理由；
 - 无 Provider 的完整 Runtime 降级。
 
 ### Security
@@ -949,6 +1036,7 @@ fallback；三者分别受限并共享 `max_total_attempts`。`RouteAttemptKind`
 ## 15. 扩展点
 
 - 增加本地小模型承担 Perception/Social Decision；
+- 增加新的 Answer Profile 或语言/平台预算策略时扩展 `ResponseProfilePolicy`，不修改 Tier 枚举；
 - 增加 OCR、语音和多模态 Provider Adapter；
 - 增加按群策略、成本预算或延迟 SLO 的候选排序；
 - 增加 Provider 健康探针、熔断和调用统计；

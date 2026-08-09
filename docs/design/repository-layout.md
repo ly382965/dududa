@@ -2,7 +2,7 @@
 
 ## 1. 状态与范围
 
-- 状态：Phase 1 设计稿
+- 状态：Phase 1 设计稿；2026-08-09 增补 responses/proactive 扩展边界，尚未执行目录移动
 - 基线提交：`2767cc9768d4bce63d4b4ee811add951ebce6870`
 - 适用范围：嘟嘟哒 Bot Runtime Monorepo
 - 不在本阶段执行：目录移动、import 切换、Compose 路径切换和运行数据迁移
@@ -90,7 +90,9 @@ dududa/
 │           ├── memory/
 │           ├── capabilities/
 │           ├── models/
+│           ├── responses/
 │           ├── persona/
+│           ├── proactive/
 │           ├── security/
 │           ├── config/
 │           └── infrastructure/
@@ -102,6 +104,8 @@ dududa/
 │   ├── personas/
 │   ├── models/
 │   ├── capabilities/
+│   ├── proactive/
+│   ├── sources/
 │   ├── policies/
 │   └── mcp/
 ├── deploy/
@@ -147,6 +151,8 @@ dududa/
 | `apps/astrbot-plugins` | Event 转换、命令注册、AstrBot 生命周期、回复适配 | Agent 决策、Memory Scope、MCP 路由主体 |
 | `packages/dududa-agent` | Domain、Runtime、接口、策略和可测试核心 | AstrBot 类型、Compose 路径、具体 Provider SDK |
 | `services/mcp` | 原子化外部能力和自己的存储实现 | 群聊决策、Persona、上层权限判断 |
+| `packages/dududa-agent/src/dududa/responses` | AnswerProfile、ResponsePlan Policy 与最终 Profile Validator | Provider 选择、Persona 文案或平台分片实现 |
+| `packages/dududa-agent/src/dududa/proactive` | Trigger、Subscription、Scheduler/Dispatch Protocol、主动 Policy 与 Orchestrator | 具体 MCP SDK、AstrBot Event、平台发送实现或私人来源 |
 | `configs` | 可提交、无密钥、带 schema 的模板 | 运行时覆盖、真实 ID、Token、Cookie |
 | `deploy` | 镜像与 Compose 声明 | 复杂迁移逻辑、运行数据 |
 | `ops` | 幂等编排 CLI、迁移、备份和恢复工具 | Agent 业务规则 |

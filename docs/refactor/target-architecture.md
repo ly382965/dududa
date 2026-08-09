@@ -1,6 +1,7 @@
 # Dududa 2.0 Target Architecture
 
-Status: Phase 1 design; not yet implemented
+Status: S01-S11 local scope implemented; S12+ and the 2026-08-09
+ResponseProfile/proactive-outbound alignment are not implemented
 Baseline: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## Objectives
@@ -23,6 +24,10 @@ The architecture must make these statements true:
    only.
 9. AstrBot plugins become thin, separately loadable compatibility adapters.
 10. Deployment remains reproducible, reviewable, and rollback-capable.
+11. Answer Profile, Model Tier, and Reasoning Profile remain independent;
+    Router consumes a validated output budget but never infers visible length.
+12. Proactive probes and scheduled digests use a target-bound initiated-run;
+    Scheduler, MCP, policy, composition, and delivery keep separate authority.
 
 ## End-To-End Flow
 
@@ -37,15 +42,16 @@ flowchart TD
     P --> S["Social Decision"]
     S -->|"IGNORE"| Z["No-output completion"]
     S -->|"REACT"| RR
-    S -->|"DIRECT_REPLY"| RC
-    S -->|"ASK_CLARIFICATION"| RC
-    S -->|"DEFER"| RC
+    S -->|"DIRECT_REPLY"| RP["Response Plan: SHORT / MEDIUM / LONG"]
+    S -->|"ASK_CLARIFICATION"| RP
+    S -->|"DEFER"| RP
     S -->|"USE_TOOLS"| CR["Capability Retrieval"]
     CR --> TP["Tool Planner"]
     TP --> TE["Tool Executor"]
     TE --> V["Result Validator"]
     V -->|"retry / continue within budget"| TP
-    V -->|"complete / fail"| RC
+    V -->|"complete / fail"| RP
+    RP --> RC["Response Composer"]
     RC --> O["OC Renderer + Validator"]
     O --> RR["ValidatedFinalResponse / READY_TO_EMIT"]
     RR --> OA["Output adapter"]
@@ -54,6 +60,23 @@ flowchart TD
     Z --> W
     W --> MEM["MemoryRepository"]
 ```
+
+No-inbound-message behavior enters through a separate application flow:
+
+```text
+Durable Scheduler / bounded conversation opportunity
+  -> ProactiveTrigger + persistent claim
+  -> ProactiveInitiationPolicy
+  -> fixed public read-only Capability -> Unified MCP Client
+  -> normalized SourceBatch
+  -> ResponsePlan -> Composer -> Persona/validators
+  -> proactive authorization/quiet-hour/rate/kill-switch recheck
+  -> DeliveryRequest -> OutputAdapter -> DeliveryReceipt/reconciliation
+```
+
+A timer never fabricates `MessageEnvelope`, Actor, mention, or user authority.
+MCP retrieves public source data only and never owns subscription, schedule,
+target, send policy, composition, or delivery.
 
 Every transition appends a redacted trace event. A transition cannot be hidden
 inside one prompt. Models may produce structured proposals, but deterministic
@@ -113,7 +136,9 @@ dududa/
 │           ├── memory/
 │           ├── capabilities/
 │           ├── models/
+│           ├── responses/
 │           ├── persona/
+│           ├── proactive/
 │           ├── security/
 │           ├── config/
 │           └── infrastructure/
@@ -125,6 +150,8 @@ dududa/
 │   ├── personas/
 │   ├── models/
 │   ├── capabilities/
+│   ├── proactive/
+│   ├── sources/
 │   ├── policies/
 │   └── mcp/
 ├── deploy/
@@ -279,6 +306,7 @@ conversation_scope
 preprocess_result, memory_retrieval, context_build
 perception
 social_decision
+response_plan
 capability_retrieval
 tool_plan
 tool_observations
@@ -296,7 +324,8 @@ The state machine stages are:
 
 ```text
 RECEIVED -> PREPROCESSED -> CONTEXT_READY -> PERCEIVED -> DECIDED
-  -> [TOOLS_PLANNED -> TOOLS_EXECUTED -> VALIDATED]*
+  -> [DIRECT_REPLY] -> RESPONSE_PLANNED
+  -> [TOOLS_PLANNED -> TOOLS_EXECUTED -> VALIDATED]* -> RESPONSE_PLANNED
   -> COMPOSED -> RENDERED -> READY_TO_EMIT
   -> [Output Adapter] -> DELIVERY_ACKNOWLEDGED
   -> MEMORY_EVALUATED -> COMPLETED
@@ -412,6 +441,14 @@ already-eligible endpoints; it logs propensity before action and cannot alter
 hard permissions, privacy, or budgets. Model IDs and Provider sources do not
 belong in command code.
 
+`ResponseProfilePolicy` runs before user-visible model requests and produces a
+versioned `ResponsePlan(SHORT | MEDIUM | LONG)`. Profile controls visible
+structure and character/token/part bounds. Router sees the plan digest,
+visible-output upper bound, and total generated-token reservation only for
+capability, budget, context, and admission checks. It never maps LONG to Opus
+or SHORT to Haiku; required counterexamples are `OPUS + DEEP + SHORT` and
+`HAIKU + LIGHT + LONG`.
+
 ## Response Composer And OC Renderer
 
 Response Composer merges direct answers and validated observations, preserves
@@ -423,9 +460,41 @@ address terms, and light expression. It may not alter numbers, citations,
 permissions, tool status, safety decisions, or error semantics. A post-render
 fact guard compares protected spans or structured response parts.
 
+Composer and Renderer consume the same immutable ResponsePlan. The final
+validator checks actual visible length, structure, delivery parts and required
+facts/citations/warnings; satisfying a character maximum alone is insufficient.
+Conversation probes are fixed SHORT and scheduled digests default MEDIUM.
+
 ReplyPolish's pure splitting function becomes Output Adapter formatting. Its
 global AstrBot hook remains in compatibility mode until every affected output
 contract is tested.
+
+## Proactive Initiated Runs
+
+`ProactiveDeliveryOrchestrator` is separate from inbound `AgentRuntime`. It
+accepts only `SCHEDULED_DIGEST` occurrences or bounded `CONVERSATION_PROBE`
+opportunities. The first release is default-off, exact-Scope allowlisted and
+uses the distinct `message.send.proactive` action. Blank allowlists, invalid
+configuration, quiet hours, exhausted limits, unavailable audit/authorization,
+revoked subscriptions, stale revisions and kill switch all fail closed.
+
+A versioned `ProactiveTargetPolicyRef` binds the enabling operator grant,
+group-policy grant, exact Scope, trigger kinds, revision and canonical digest.
+The same Ref must survive Snapshot/Subscription -> Trigger -> initiated run and
+be resolved again before delivery. Preview is a separate typed Port under the
+`proactive.subscription.preview` action: it returns a validated response to an
+authorized operator but cannot create an occurrence, dispatch, delivery request
+or ordinary response-body trace.
+
+The durable scheduler materializes IANA-time-zone occurrences and claims them
+with CAS. Misfires outside a bounded window are skipped, not burst-sent after
+restart. Source cursors, subscription item ledgers and delivery ledgers are
+separate. `PARTIAL/UNKNOWN` delivery is reconciled and never blindly replayed.
+The business idempotency key excludes Output Adapter revision; adapter binding
+is validated independently so an upgrade cannot create a second business send.
+Probe and digest use independent modes, budgets, metrics and kill switches.
+Shadow composition has no OutputAdapter. Full contracts are in
+`../design/proactive-messaging.md`.
 
 ## Security, Privacy, And Audit
 
@@ -454,10 +523,12 @@ external response bodies are not returned to users.
 
 A trace contains redacted stage transitions, durations, selected model role,
 candidate capability IDs, tool call status, retry reason, memory counts by type,
-decision reason codes, and final outcome. It excludes raw secrets and defaults
+Answer Profile, proactive trigger/source/dedup dispositions, decision reason
+codes, and final outcome. It excludes raw secrets and defaults
 to excluding message content.
 
-Evaluation fixtures cover reply decisions, targets, intent, references, tool
+Evaluation fixtures cover reply decisions, targets, intent, references,
+TaskComplexity x AnswerProfile, tool
 selection, arguments, memory isolation, result validation, and OC consistency.
 Unit, contract, integration, eval, and smoke layers have distinct ownership.
 
@@ -481,18 +552,18 @@ layer.
 
 | Target area | Current status |
 | --- | --- |
-| Message Envelope and Runtime State | Not implemented |
-| Context Builder and Perception interface | Not implemented |
-| Explicit SocialAction | Not implemented; TargetTalk is partial legacy behavior |
-| Scoped MemoryRepository and Write Gate | Not implemented; Iris is independent |
+| Core package and security contracts | S01-S03 local scope complete; legacy compatibility paths remain |
+| Message Envelope, Runtime State and delivery | S04/S10/S11 inbound explicit-mention local scope complete; production full composition remains |
+| Context Builder, Perception and SocialAction | S09/S10 bounded local scope complete; real data, multi-turn and attachment evidence remain |
+| Scoped MemoryRepository and Write Gate | S06/S07 safety boundary complete; real Iris/runtime retrieval not implemented |
 | Capability Registry and Retrieval | Not implemented |
 | Unified MCP Client and Registry | Not implemented; two iCourse paths exist |
 | Tool Planner/Executor/Validator loop | Not implemented |
-| Role-based Model Router | Not implemented; three concrete paths exist |
-| Response Composer / OC Renderer split | Not implemented |
-| Domain permission and audit contracts | Not implemented; framework-coupled code exists |
+| Role-based Model Router | S08 static local core complete; real multi-Provider production composition remains |
+| Response Composer / OC Renderer split | S10 minimal deterministic path complete; S15 productization remains |
+| AnswerProfile / ResponsePlan | Not implemented; only static length/token primitives exist |
+| Proactive initiated runs, Scheduler and digests | Not implemented; design only |
 | Operation stages and rollback | Partially implemented by `manage.sh` |
-| Core package | Not implemented |
 
 Detailed migration steps and removal gates are in `migration-map.md` and
 `implementation-plan.md`.

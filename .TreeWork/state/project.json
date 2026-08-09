@@ -1,10 +1,11 @@
 {
   "schema_version": "0.1",
-  "stage": "work_tree",
+  "stage": "alignment",
   "current_branch": "mew-parity",
-  "last_event_seq": 45,
+  "artifact_layout_version": 2,
+  "last_event_seq": 46,
   "tree_revision": 2,
   "tree_editing": null,
-  "tree_hash": "fnv1a64:0f7a27ea99378f56",
-  "last_sync": "unix:1785851856"
+  "tree_hash": "fnv1a64:92d44206bcb383d0",
+  "last_sync": "unix:1786249319"
 }

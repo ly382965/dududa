@@ -2,7 +2,12 @@
 
 状态：S01–S11 的本地增量实施步骤已完成。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
-统一延期到所有当前范围模块、WebUI 测试工作和本地集成审计完成之后。
+统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
+不属于该发布前置。
+
+2026-08-09 Alignment 新增规划：短/中/长三档回答、低频 Conversation Probe，以及基于公开
+Capability/MCP 来源的校园/行业/arXiv 订阅日报。三项均**尚未实现**，不扩大 S08-S11 的历史
+完成范围，也不授权真实发送。
 
 ## 交付规则
 
@@ -25,7 +30,7 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 本节中的 P0/P1/P2 表示开发优先级，不是上文的 Phase 编号。对应关系为：
 
 - P0：Phase 2–5，建立公共契约、安全边界、兼容层和可重复 Eval 基线；
-- P1：Phase 6–7，形成可选择性切换的端到端 Runtime 与工具闭环；
+- P1：Phase 6–7，形成可选择性切换的端到端 Runtime、工具闭环与受控主动出站闭环；
 - P2：Phase 8–10，完成规模化质量优化、Control Plane、部署和兼容清理。
 
 原 4 人并行估算只保留为历史参考。当前按 **1 人、WIP=1** 执行：任何时刻只实现一个
@@ -48,11 +53,13 @@ Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再�
 | MCP 集成 | 部分完成 | iCourse stdio Server、SQLite、AstrBot 配置和 10 个 Tool 已存在 | Unified Client、Server Registry、Schema cache、allowlist、错误/健康/熔断和单 Client 切换 |
 | Capability 与 Tool Runtime | 部分完成 | 课程命令已有固定手工调用流程 | Registry、Retrieval、有限 Planner、逐步授权 Executor、Validator 和副作用/预算门禁 |
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
+| 回答档位与动态输出预算 | 未完成 | 现有 `max_output_tokens`、`MAX_LENGTH` 和静态字数上限可作为原语 | 缺少独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router 正交性和最终长度/完整性 Validator |
 | OC 与 Persona | 部分完成 | 最小 Composer、确定性单 Persona Renderer、Fact/target/constraint 保持与 Render Validator 已进入 S10 | 完整 OC 资产、多 Persona、版本发布和人工风格 Eval |
-| 在线学习 / Bandit | 未完成（明确延期） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；后续仍需 propensity/support、OPE 与单独安全评审 |
+| 主动消息与订阅推送 | 未完成（S15A-S15E） | Legacy TargetTalk、Delivery/rollout、iCourse MCP 和 Scheduler 需求可提供局部场景 | 缺少 initiated-run、主动授权、Subscription/Scheduler/Source ledger、公开来源、Digest/Probe Shadow 和回滚闭环 |
+| 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
 | Trace、Eval 与 CI | 部分完成 | 350 项双版本测试、S09 版本化 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI / Control Plane | 未完成 | 只有规划条目；当前文档站不是产品 Control Plane | ADR、只读 API、权限/脱敏/审计、Trace/Eval Viewer，之后才考虑写操作 |
-| 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有模块、WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘 |
+| 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有当前发布必需模块、既定 WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
 
 ### 实施步骤完成度
 
@@ -70,7 +77,8 @@ Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再�
 | S09 | 已完成 | Rule/Model Perception、Merger/Validator、Social、Complexity、TierPolicy 和 320 条固定 Eval | 人工标签与真实数据校准保留为效果门禁 |
 | S10 | 已完成 | 显式 @ 直聊离线闭环、两次模型预算、CAS/single-flight、Composition、Delivery/reconciliation 与 Shadow | 生产 Provider 与 Memory/Tool/Attachment 不在 S10 范围 |
 | S11 | 已完成（本地） | typed rollout、SQLite claim/tombstone、AstrBot Bridge、发送前熔断、指标和可执行回滚 | 授权真实 QQ 群证据延期到最终 S23 |
-| S12–S23 | 未开始/进行中 | 后续模块与 WebUI 测试按 WIP=1 推进；Bandit 保持延期 | 先完成所有本地模块与总审计，最后才进入 S23 真实群验证 |
+| S12–S19、S22–S23 | 未开始/进行中 | 发布主线与既定 WebUI 测试按 WIP=1 推进；主动出站和回答档位只有设计 | 先完成所有发布必需模块与本地总审计，最后才进入 S23 真实群验证 |
+| S20、S21 | 独立可选/未开始 | S20 只有设计；S21 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期，不阻塞 S23 |
 
 ### 公共开工门禁
 
@@ -97,15 +105,17 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | MCP 集成 | ⭐⭐⭐⭐ | 等直聊闭环稳定后，只切只读 `/course search`，再通用化 | 固定 iCourse 10 个 Tool 的 Discovery/Input/Output/Error fixture；定义 `McpServerRegistry`、`UnifiedMcpClient`、allowlist、错误和 Fake Client | 先让只读 `/course search` 通过固定安全 Plan、Executor、Validator 和持久 stdio Session；加入 timeout、有限 retry、熔断、审计和 feature flag | 扩展多 Server、Streamable HTTP、Schema cache、热更新、并发与指标；验证唯一 Client 后删除每次调用新建进程的旧路径 |
 | 输入 Connector | ⭐⭐⭐ | 首批实现；只支持 AstrBot，接口稳定后才考虑第二平台 | 实现 AstrBot Event 到 `MessageEnvelope` 与 `Actor` 的转换、真实 conversation ID、引用/@/附件引用、幂等键和 conformance fixture；不做意图判断 | 接入附件 Preprocessor、Context 来源、Output Adapter 和 `DeliveryReceipt`；在 shadow Runtime 中验证不重复发送 | 提炼 Connector SDK，支持新平台能力协商、背压、顺序和版本兼容；新增平台不修改 Core Runtime |
 | 语义理解（意图/实体） | ⭐⭐⭐⭐ | 规则 baseline 先行，模型只补规则无法覆盖的结构化结果 | 定义 `PerceptionResult`、Intent/Entity/Reference/Evidence Schema、标注规范和 200–500 条脱敏/合成基线集；实现 RulePerception、Validator 和确定性 Social Policy | 经 Model Router 接入 ModelPerception，固定 Rule -> Model -> Merger -> Validator；实现实体、指代、歧义和工具需求，shadow 对比 TargetTalk | 扩展多轮、多意图、QQ 口语、附件摘要和置信度校准；基于真实错误做 Active Learning，只有 Eval 支持时才微调模型 |
+| 回答档位 / Response Plan | ⭐⭐⭐ | 作为 S15 首个子步骤；不重做 S08/S09，不把长度映射为 Tier | 定义 `AnswerProfile`、`ResponsePlan`、显式详略 hint、可见 Token/字符/分片和必要内容契约；固定 SHORT/MEDIUM/LONG policy | Runtime 将 Plan digest/动态预算交给 TierPolicy/Router/Composer/Renderer/Final Validator；覆盖 HIGH+SHORT、LOW+LONG | 多语言/平台预算与用户偏好；只有离线证据支持时优化 Profile policy，Bandit 不选择 Profile |
 | OC 撰写与 Persona | ⭐ | 先复用一个版本化 Persona 和确定性 Renderer；多 Persona/A-B 后置 | 整理角色背景、Voice Rules、禁用表达、技术/闲聊示例和版本化 Persona 资产；不在 Persona 中写权限或事实规则 | 接入 `DraftResponse -> PersonaRenderer -> RenderValidator`；事实锚点、引用、拒绝、目标和附件不可改变，失败时确定性 fallback | 多 Persona、版本回滚、受限用户偏好、Golden/Eval 和 A/B；新增 Persona 不修改 Social Decision、Memory 或 Tool Policy |
+| 主动消息与订阅推送 | ⭐⭐⭐⭐⭐ | S15A-S15E 串行；先契约/时钟/持久性，再来源，再 Shadow；默认 off | 独立 initiated-run、`message.send.proactive`、Subscription/Schedule/Occurrence/Source/Dispatch 契约、Fake Clock/Store/Output、空 allowlist 拒绝 | 持久 Scheduler、CAS claim、订阅/退订、校园/arXiv/行业公开只读 MCP、来源净化/去重、Digest/Probe no-send Shadow | S23 分别授权日报与 Probe canary；不使用 Bandit 选择发送/目标/时间/频率，不读个人 Memory，不自动追问 |
 
 ### 横向交付计划
 
 | 任务 | P0 | P1 | P2 | 退出证据 |
 | --- | --- | --- | --- | --- |
-| Trace、Eval 与测试框架 | 建立版本化 fixture、Fake、Contract Test、run/trace ID 和隐私安全记录格式 | 将 Runtime、Router、Memory、Capability、MCP 和 OC 指标接入同一回放/Eval 入口 | 纳入完整 CI、趋势对比、故障注入和发布门禁 | 同一版本数据与配置可重复运行；安全门禁不可设为非阻塞 |
+| Trace、Eval 与测试框架 | 建立版本化 fixture、Fake、Contract Test、run/trace ID 和隐私安全记录格式 | 将 Runtime、Router、ResponsePlan、Memory、Capability、MCP、OC 和 Proactive 指标接入同一回放/Eval 入口 | 纳入完整 CI、fake-clock 长期仿真、趋势对比、故障注入和发布门禁 | 同一版本数据与配置可重复运行；安全门禁不可设为非阻塞 |
 | WebUI / Control Plane | 先提交 ADR，再定义权限、脱敏、审计、配置版本和只读查询 API；不抢先制作第二套业务逻辑 | 提供只读 Trace Viewer、Agent Playground、Eval 结果和 Model/MCP Health | 增加 RBAC、Memory Explorer、Persona/Model/Capability 配置、成本性能和告警 | UI 不绕过 Runtime Policy 或 Repository；所有写操作有审计、确认和回滚 |
-| 集成与真实群聊测试 | 使用合成 Event、离线回放和跨 Scope 负向 fixture，不读取生产聊天 | 完成跨模块离线集成、故障注入和 no-send/no-write 仿真，不连接真实测试群 | 冻结全仓回归、SLO、授权清单和回滚包；真实群执行仍留到最终 S23 | S23 依次通过单群 shadow、单群 canary 和分层放量；重复回复、未授权 Tool、跨 Scope Memory 和敏感 Trace 均为 0 |
+| 集成与真实群聊测试 | 使用合成 Event、fake clock、公开来源 fixture、离线回放和跨 Scope 负向数据，不读取生产聊天 | 完成跨模块离线集成、30 日调度仿真、故障注入和 no-send/no-write 仿真，不连接真实测试群 | 冻结全仓回归、SLO、各行为授权清单和回滚包；真实群执行仍留到最终 S23 | S23 依次通过入站 Shadow/明确 @ Canary、手动日报、定时日报、低频 Probe，再决定分层放量；所有错误目标、重复/静默时段/撤销后发送、未授权 Tool、跨 Scope Memory 和敏感 Trace 为 0 |
 
 ### 依赖与单人执行原则
 
@@ -118,11 +128,17 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
    `/course search`。这两个闭环稳定前不实现通用 Planner。
 5. Memory 的 Scope/隔离契约必须先完成，但效果研究不阻塞空 Memory Runtime；Memory 只有
    通过隔离门禁后才能进入 Context Builder。
-6. 真实群验证是最终阶段：所有模块、WebUI 测试和本地总审计完成后，才允许准备白名单
-   canary；此前只做离线/仿真。进入最终阶段前必须具备 kill switch、上一版本镜像、无副作用
-   shadow 证据和明确回滚命令，不能把真实群聊当集成测试环境。
-7. Bandit 依赖稳定 Router、before-action 日志、延迟反馈和足够流量；WebUI 依赖稳定只读 API、
-   权限和脱敏。二者都不在首个可用版本关键路径上。
+6. Response Plan 作为 S15 首个子步骤完成；Answer Profile、Tier、Reasoning Profile 正交，
+   Router 只消费计划 digest 和动态输出预算，不负责推断回答长短。
+7. S15A-S15E 依次完成主动契约、持久 Scheduler、公开来源、日报 Shadow 和 Probe Shadow；
+   MCP 只取数，Scheduler 不直调 Tool，定时器不伪造 Connector 消息，主动链不读个人 Memory。
+8. 真实群验证是最终阶段：所有当前发布必需模块、既定 WebUI 测试和本地总审计完成后，才允许
+   准备白名单 canary；此前只做离线/仿真。独立可选 S20 不属于该发布前置。进入最终阶段前
+   必须具备 kill switch、上一版本镜像、无副作用 shadow 证据和明确回滚命令，不能把真实群聊
+   当集成测试环境。
+9. Bandit 依赖稳定 Router、before-action 日志、延迟反馈和足够流量；WebUI 依赖稳定只读 API、
+   权限和脱敏。Bandit 永不选择主动 send/skip、目标、订阅、日程、频率、Answer Profile 或
+   follow-up；二者都不在首个主动闭环关键路径上。
 
 ### 单人完整开发流程
 
@@ -146,23 +162,35 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S12 | 7A | 实现 Unified MCP Client/Server Registry，把 iCourse 映射为第一个 Provider；只切只读 `/course search`，使用固定安全 Plan | Discovery/Schema cache、持久 Session、timeout/retry/重启/熔断、export root、抓取上限和 handshake smoke 通过 | 通用多步 Planner、写操作和其他 MCP Server |
 | S13 | 7B | 实现 Capability Registry/Retrieval、有限 Planner、逐步授权 Executor、Observation 和 Validator；先覆盖课程只读路径 | 候选资格/Top-K、参数 Schema、最多步数、重复调用、未知结果、Prompt Injection 和预算测试通过；可按 Capability 回滚 | 高风险/不可逆 Tool 和任意动态 Tool 暴露 |
 | S14 | 6E | 接入 Memory Retrieval 与 Write Gate：先 exact/recency/BM25 baseline，再 shadow 对比 embedding | Scope 泄漏为 0；显式写入、TTL、冲突、删除/导出、Delivery 依赖和迁移核对通过；复杂检索确有增益 | Graph/Temporal Memory、未确认自动写入 |
-| S15 | 6F | 完成 OC/Persona 产品化：版本化资产、Composer/Renderer 分层、Render Validator、用户偏好隔离和 Golden/盲评 | Fact/Citation/Refusal/Target/Attachment 变化为 0；版本回滚与 fallback 可执行 | 多 Persona 市场、在线风格探索 |
+| S15 | 6F | 先实现确定性 `ResponsePlan(SHORT/MEDIUM/LONG)` 和动态输出预算，再完成 OC/Persona 产品化：版本化资产、Composer/Renderer 分层、Render/Profile Validator、用户偏好隔离和 Golden/盲评 | 3x3 Complexity/Profile 正交矩阵、明确详略要求、实际长度/分片通过；Fact/Citation/Refusal/Target/Attachment 变化为 0；版本回滚与 fallback 可执行 | 把长度绑定 Tier、多 Persona 市场、在线风格/Profile 探索 |
+| S15A | 主动出站 A | 冻结 initiated-run、TargetPolicy/Grant Ref、Trigger、Subscription、Schedule、Preview、Source、Policy、Dispatch、Receipt、`message.send.proactive` 和 `proactive.subscription.preview` 契约；实现 Fake Clock/Store/Output，默认 off | operator/group-policy grant、canonical digest、Scope/授权/revision/quiet-hour/限流/空 allowlist/kill switch、Preview 零投递、恢复复用 PreparedDispatch 和跨 Adapter 版本稳定幂等键的负向 Contract Test 通过 | 网络、模型、真实来源、真实发送 |
+| S15B | 主动出站 B | 实现持久 Scheduler、IANA 时区、occurrence、CAS claim、misfire、pause/unsubscribe 和 Dispatch Store；只产生结构化 trigger | 双 Worker、重复 tick、重启、时钟回拨、DST 和 30 日 fake-clock 仿真无重复/过期补发/撤销后任务 | MCP、内容生成、OutputAdapter |
+| S15C | 主动出站 C | 依次接一个校园官方公开源、arXiv 和行业 allowlist 来源；固定只读 Capability Plan，经 Unified MCP Client 输出 SourceBatch | provenance/freshness/Schema/URL/大小/来源游标/条目去重，以及断网/超时/取消/熔断/注入 Contract 通过 | 任意 URL、私人校园信息、外部写、MCP 发送 |
+| S15D | 主动出站 D | 接入日报 ResponsePlan、Composer、Persona、来源/引用/长度 Validator；运行 collect、真实公开源 Shadow 和独立 `PREVIEW` Port | Shadow/Preview 构造无 OutputAdapter；Preview 不创建 occurrence/dispatch/receipt 且正文不进普通 Trace；30 日来源/摘要/去重/故障仿真和回滚通过 | 自动真实发送、LONG 默认日报 |
+| S15E | 主动出站 E | 实现群级 Conversation Opportunity、确定性 Proactive Policy、SHORT Probe 与 no-response 长冷却；独立 Shadow/kill switch | 错误目标、重复、quiet-hour、频控、个人/敏感内容和自动追问违规均为 0 | 主动私聊、@个人、个人 Memory、Bandit send/skip |
 | S16 | 8A | 先做运维硬化：health、backup、restore、upgrade receipt、rollback、最小 mount/network 和 Release manifest | 一次性数据完成 bootstrap -> start -> health -> backup -> upgrade -> restore -> rollback | 大规模目录移动或删除兼容入口 |
 | S17 | 8B | 用 `git mv` 分批迁移 `apps/`、`packages/`、`services/`、`configs/`、`deploy/ops`、`third_party/`；根入口保持兼容 | 每次路径切换的消费者契约、容器 smoke、根包装层和上一 Release 回滚通过 | 同一 PR 同时移动全部路径或运行数据 |
-| S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、run 关联、模型/MCP/Memory/OC 指标、故障注入、镜像与容器 smoke | 完整 unit/contract/integration/eval/smoke 矩阵通过；Trace 不含原文/凭据/真实标识；发布阈值冻结 | 通过删除安全测试恢复绿色状态 |
-| S19 | 本地总集成 | 汇总所有已完成模块，执行全仓回归、离线回放、故障注入、长期仿真、SLO 预注册和发布候选审计 | 所有模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
-| S20 | P2 在线优化 | 仅在 Model Route 的合法 Endpoint 中实现 Bandit：先日志与合成 estimator，再 shadow、极小 canary、IPS/SNIPS/DR | 有足够 support/有效样本量；群级 bootstrap、baseline floor、零安全 Gate 违规和自动回滚通过 | 权限、Memory Scope、高风险 Tool、敏感 Provider 或 Reply/Ignore 探索 |
-| S21 | 规划项 | 在 ADR 批准后实现只读 WebUI：Trace/Eval/Model/MCP Health；稳定后才讨论带审计和回滚的写操作 | API 复用 Runtime 权限/Scope/脱敏；RBAC、审计、CSRF/越权和回滚测试通过 | 在 UI 重写第二套业务逻辑或抢先做完整 Control Plane |
+| S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、run 关联、模型/ResponsePlan/MCP/Memory/OC/Proactive 指标、fake-clock、故障注入、镜像与容器 smoke | 完整 unit/contract/integration/eval/smoke 矩阵通过；Trace 不含原文/凭据/真实标识；回答档位与主动安全阈值冻结 | 通过删除安全测试恢复绿色状态 |
+| S19 | 本地总集成 | 汇总所有当前发布必需模块，执行全仓回归、离线回放、30 日调度/Probe no-send 仿真、故障注入、SLO 预注册和发布候选审计 | 发布必需模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
 | S22 | 10 | 按 `migration-map.md` 逐项删除旧 Client、Handler、Import、Mount 和路径；每次只清一个兼容面 | 生产入口和测试只消费新实现；移除清单为 0；迁移/回滚完成并保留可独立恢复 Release | 顺手重构或没有消费者证据的批量删除 |
-| S23 | 最终真实场景 | 所有当前范围模块、WebUI 测试和本地审计完成后，依次执行授权单群 no-send shadow、明确 @ canary、3–5 群分层放量与长时间 Debug | 重复回复、错误目标、未授权发送/Tool、跨 Scope Memory 和敏感 Trace 为 0；冻结 SLO、kill switch、回滚与复盘全部通过 | 提前上线、无指标放量，或在任一前置模块未完成时进入真实群 |
+| S23 | 最终真实场景 | 所有当前发布必需模块、既定 WebUI 测试和本地审计完成后，在同一授权单群依次执行 no-send shadow、明确 @ canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，再考虑 3–5 群分层放量 | 重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
 
-达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S22 且通过
-S19 本地总审计后，才允许进入 S23 真实群验证。S20 Bandit 明确延期，不是 S23 的前置；
-WebUI 仅按当前测试计划完成，不追加超出其范围的核验。
+以下阶段不属于上述严格发布主线，只有单独 ADR/Spec 获批后才排期：
+
+| 可选阶段 | 定位 | 本步只实现 | 完成门禁 | 明确不做 |
+| --- | --- | --- | --- | --- |
+| S20 | P2 在线优化 | 仅在 Model Route 的同 Role+Tier 合法 Endpoint 中实现 Bandit：先日志与合成 estimator，再 shadow、极小 canary、IPS/SNIPS/DR | 有足够 support/有效样本量；群级 bootstrap、baseline floor、零安全 Gate 违规和自动回滚通过 | 权限、Memory Scope、高风险 Tool、敏感 Provider、Reply/Ignore、主动发送/目标/日程/频率、Answer Profile 探索 |
+| S21 | 后续规划 | 在 ADR 批准后实现只读 WebUI：Trace/Eval/Model/MCP Health；稳定后才讨论带审计和回滚的写操作 | API 复用 Runtime 权限/Scope/脱敏；RBAC、审计、CSRF/越权和回滚测试通过 | 既定 WebUI 测试已在发布主线内；不得在 UI 重写第二套业务逻辑或抢先做完整 Control Plane |
+
+达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S15E 算“主动出站
+本地 Shadow 完整”，发布主线固定为 `S15E -> S16 -> S17 -> S18 -> S19 -> S22 -> S23`。
+达到 S22 且通过 S19 本地总审计后，才允许进入 S23 真实群验证。S20 Bandit 是独立可选阶段，
+不是主动出站或 S23 的前置；既定 WebUI 测试仍是前置，但不追加可写控制面。
 
 单人阶段主动暂停以下范围：第二聊天平台、通用高风险 Tool、自动 Memory 写入、Graph Memory、
-模型微调、neural bandit、多 Persona 市场和可写 Control Plane。只有前一里程碑的真实错误证据
-证明它们必要时，才把其中一项加入新的 Spec 和顺序表。
+主动私聊/个人目标、私人校园 Feed、自动 LONG 推送、模型微调、neural bandit、多 Persona 市场
+和可写 Control Plane。只有前一里程碑的真实错误证据证明它们必要时，才把其中一项加入新的
+Spec 和顺序表。
 
 ### 可扩展框架约束
 
@@ -186,7 +214,10 @@ Connector / Output / Provider / Repository Adapter
 | 新 MCP Server | `McpServerRegistry`、`UnifiedMcpClient` | 连接配置、Tool allowlist、Schema snapshot、健康和错误契约 | 否 |
 | 新业务能力 | `CapabilityDefinition`、`CapabilityProvider` | 版本化 Schema、权限/风险、Validator、Eval 和审计 | 否 |
 | 新语义实现 | `PerceptionEngine` | 完整结构化输出、Validator、固定 Eval 集和降级实现 | 否 |
+| 新回答档位/预算策略 | `ResponseProfilePolicy`、`ResponsePlan` | Profile 语义、动态 Token/字符/分片、正交路由与最终 Validator | 否 |
 | 新 Persona | `PersonaRegistry`、`PersonaRenderer` | 版本、Digest、事实保持测试、安全评审和回滚 | 否 |
+| 新主动来源 | `CapabilityProvider`、`SourceNormalizer` | 公共只读 Schema、provenance、freshness、allowlist、去重和注入测试 | 否 |
+| 新调度实现 | `ProactiveScheduler`、`ProactiveDispatchStore` | IANA 时区、可测试 Clock、CAS claim、misfire、幂等、暂停/撤销和恢复测试 | 否 |
 
 扩展性不等于允许任意模块互相调用。Runtime 只依赖 Core 拥有的 Protocol；具体 SDK、
 AstrBot Event、MCP Session、数据库 Client、Credential 和可变配置对象不得进入 Domain。
@@ -202,6 +233,8 @@ Registry 只保存版本化定义和 Provider 引用，动态发现的模型或 
 - deadline、cancellation、幂等键、隐私等级和 Trace Context 必须贯穿所有异步 Port；
 - Model Router 只选择模型，Capability Retrieval/Planner 只选择业务能力，两者不得合并；
 - 权限、Scope、风险、预算和最终状态转换由确定性 Runtime 持有，模型只能产生候选结果。
+- Scheduler 只物化 occurrence，MCP 只读取公开来源，Proactive Policy 只决定是否允许进入准备，
+  Output Adapter 只投递；任何一层都不能吞并其他层的权限。
 
 ### 科学性与研究任务
 
@@ -215,7 +248,10 @@ P0 Research Spike 需要限时：Memory 初次调研 5–7 个工作日，语义
 | Memory 检索 | no-memory、recency、BM25、embedding、hybrid | 脱敏/合成的多群、多用户、私聊、时间和冲突样本；按 conversation 切分 | Scope 泄漏率、Precision@K、Recall@K、MRR/nDCG、错误归属率、P95、Token/成本 | Scope 泄漏必须为 0；复杂方案必须在 held-out 集上稳定优于简单基线，才允许进入 shadow |
 | Memory 写入 | 全拒绝、仅显式 `/remember`、规则 Write Gate、模型 Candidate + Gate | 敏感、重复、冲突、过期、未送达和确认样本 | 保存准确率、敏感拒绝率、重复率、冲突发现率、删除完整性 | 自动写入保持关闭，直到负向集全过且人工抽检达到发布阈值 |
 | 语义理解 | Rules、LLM Structured Output、Rules + LLM Merger | 首版 200–500 条；按完整会话划分 train/dev/test，部分样本双人标注并仲裁 | 标注一致率/κ、Intent macro-F1、Entity span/type F1、Reference exact match、tool-need recall、误插话率、校准误差 | 硬规则违规必须为 0；模型方案需报告置信区间和分层错误，不以单一总体准确率决定上线 |
+| 回答档位 | 固定 MEDIUM、规则 Response Policy、规则+模型 hint | TaskComplexity x AnswerProfile 3x3；按完整会话/任务族切分，包含 HIGH+SHORT、LOW+LONG 和明确用户要求 | Profile macro-F1/混淆矩阵、明确要求满足率、可见字符/Token/分片、完整性、事实/引用保持、冗余度 | 长度与 Tier 正交；跨两档错误、硬上限、引用/警告丢失为发布阻断；质量不能仅按字数判断 |
 | Router/MCP | 单 Provider、静态路由、带 fallback 路由；每次新建进程与复用 Session | 固定请求、错误注入和并发场景 | Schema-valid rate、成功率、P50/P95、重试、进程创建数、恢复时间和成本 | 未授权路由/Tool 暴露必须为 0；优化不能降低错误可解释性或回滚能力 |
+| 主动日报 | no-send、确定性来源排序/模板、候选 Composer | 30 日 fake-clock，多来源波动/重复/重启/DST/退订/部分失败；真实公开源只用于 Shadow | 新内容覆盖、重复率、来源多样性、新鲜度、引用/事实完整率、打扰度、P95、Token/成本 | 错误目标、重复、quiet-hour、退订后、无引用/过期内容和敏感 Trace 必须为 0；复杂摘要需盲评优于模板 |
+| Conversation Probe | 永不发送、固定规则 eligibility、候选软打分 | 按 group/topic/date 聚类的脱敏/合成机会集和长期 no-send 仿真 | eligible/send 建议率、错误目标、无响应、明确参与、相关性、打扰度、冷却遵守 | 首版策略确定性；不因沉默增大发送；零安全违规后才允许独立 Canary，Bandit 禁止 send/skip |
 
 Memory 调研可以覆盖 Iris、Mem0、Letta、Zep/Graphiti，以及 LoCoMo、LongMemEval
 等项目或评测方法；结论必须落为带日期、版本、许可、适用边界和可复现实验的研究记录或
@@ -411,7 +447,7 @@ Repository 和 fail-closed Iris Adapter。
 ### 目标
 
 实现 Context Builder、Perception 接口、Social Decision、Runtime Orchestrator/状态
-转换、Response Composer、OC 边界和 Trace。
+转换、确定性 ResponsePlan、Response Composer、OC 边界和 Trace。
 
 ### 迁移模式
 
@@ -430,6 +466,7 @@ Repository 和 fail-closed Iris Adapter。
 - 状态转换和预算测试。
 - Structured Output 无效及 fallback 测试。
 - Social Action 决策表和 Eval fixture。
+- Answer Profile 3x3 正交矩阵、明确详略要求、动态输出预算和最终长度/完整性测试。
 - Response 的事实/错误/引用保护，以及 OC 一致性测试。
 - 证明 shadow 模式绝不发送消息或写入 Memory。
 
@@ -443,13 +480,15 @@ Repository 和 fail-closed Iris Adapter。
 
 实现 Capability Registry/Retrieval、Planner、Executor、Validator、统一 MCP
 Client/Server Registry，以及 iCourse Capability Provider。在选择性切换后消除
-iCourse 双 Client 路径。
+iCourse 双 Client 路径；随后为主动日报提供固定、公开、只读、带 provenance/freshness 的
+校园、arXiv 和行业来源 Capability。
 
 ### 不变量
 
 - 当前课程命令和输出继续可用。
 - iCourse 保持为独立的 Service Package。
 - Planner 不能看到不符合条件或高风险的工具。
+- Scheduler 不直接调用 MCP；后台来源只执行固定只读 Capability Plan，MCP 不拥有订阅或发送。
 
 ### 风险
 
@@ -468,6 +507,48 @@ iCourse 双 Client 路径。
 
 按 Capability 设置 feature flag，将课程命令路由回兼容 Client。在单 Client 指标与
 smoke 测试通过前，不移除旧 MCP 配置或 Client。
+
+## Phase 7.5：主动消息与订阅推送
+
+### 目标
+
+按 S15A-S15E 串行实现独立 initiated-run、主动授权、持久 Scheduler/Subscription/Dispatch、
+公开来源、日报合成和低频 Conversation Probe。完整契约见
+`../design/proactive-messaging.md`。
+
+### 不变量
+
+- 默认 off；空 allowlist、缺配置、审计/授权/限流故障全部拒绝；
+- 定时器不伪造 `MessageEnvelope` 或用户 Actor，MCP 不调度、不决定目标、不发送；
+- Snapshot/Subscription、Trigger 和 initiated-run 使用同一 target-policy Ref；该 Policy 的 digest
+  绑定 operator/group-policy grant、精确 Scope 和 revision；
+- Probe 固定 SHORT、不 @ 个人、不读个人 Memory、无人回应不追问；日报默认 MEDIUM；
+- 订阅、目标、quiet hours、频控、kill switch、内容 digest 在发送前重新校验；
+- Preview 使用独立 Port，不创建 occurrence/dispatch/delivery，正文不进普通 Trace/receipt；
+- 投递业务幂等键跨 Adapter revision 稳定，binding 单独校验；
+- Shadow 没有 OutputAdapter，真实群验证仍只在最终 S23。
+
+### 风险
+
+- 重启/并发/DST 产生重复或集中补发；
+- 退订、授权撤销或群策略变化后仍发送；
+- MCP 来源提示注入、过期/无引用信息或私人校园数据进入群；
+- `UNKNOWN` Delivery 被盲重发；主动探测打扰用户或形成自动追问。
+
+### 验证
+
+- Fake Clock/Store/Output 的 30 日并发、重启、DST、misfire、pause/unsubscribe 仿真；
+- TargetPolicy/Grant Ref 替换与撤销、Preview 独立授权/零投递/正文不落普通 Trace，以及
+  Adapter revision 变化和 `UNKNOWN` 恢复时复用 PreparedDispatch/业务幂等键；
+- 公开来源 Contract、provenance/freshness/URL/Schema/注入/去重和部分失败测试；
+- Digest/Probe 独立 no-send Shadow、指标、kill switch 和回滚演练；
+- 错误目标、重复、quiet-hour、退订后、未授权、无引用/过期内容和敏感 Trace 为 0。
+
+### 回滚
+
+Digest 和 Probe 使用独立 mode/kill switch。回滚先原子切回 `off`，使未发送 occurrence 和
+PreparedDispatch 全部失效，再停 Scheduler/Worker；保留最小 dedup/reconciliation tombstone，
+不删除仍在窗口内的 `PARTIAL/UNKNOWN` 投递证据。
 
 ## Phase 8：部署与第三方目录布局
 
@@ -509,13 +590,15 @@ smoke 测试通过前，不移除旧 MCP 配置或 Client。
 ### 目标
 
 汇总并强化从 Phase 0 起已经存在的版本化 Eval 数据集、Runtime Trace、MCP/模型指标、
-Memory 隔离回归、Bandit 反事实评估、导入/分层检查和完整 smoke Job；本阶段不是首次增加
-Eval 或 Trace。
+ResponsePlan、Memory 隔离回归、Proactive fake-clock/来源/投递指标、导入/分层检查和完整
+smoke Job；本阶段不是首次增加 Eval 或 Trace。Bandit estimator 与 OPE 只属于独立可选的 S20，
+不在本 Phase 汇总或实现。
 
 ### 必需的 Eval 维度
 
-回复决策、目标、意图、指代、工具选择、参数、隔离、结果校验、fallback 和 OC
-一致性。Fixture 只能使用合成 ID 以及公开或合成文本。
+回复决策、目标、意图、指代、Answer Profile、工具选择、参数、隔离、结果校验、fallback、
+OC 一致性、调度/订阅/来源新鲜度/去重和主动打扰度。Fixture 只能使用合成 ID 以及公开或
+合成文本。
 
 ### 验证
 
@@ -543,19 +626,23 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**继续本地模块与 WebUI 测试工作，真实群验证最后执行**
+标题：**先完成回答档位、主动出站与其本地审计，真实群验证最后执行**
 
-S01–S11 的本地实现已经完成。接下来继续当前已接受的模块与 WebUI 测试计划，每次仍保持
-`WIP=1`，并为每个步骤完成 Unit、Contract、负向、故障和回滚证据。所有模块完成后执行
-S19 本地总集成与 S22 最终兼容审计；只有这些门禁全部通过，才准备 S23：
+S01–S11 的本地实现已经完成。接下来按 WIP=1 完成 S12-S15、S15A-S15E、既定 WebUI 测试、
+S16-S18、S19 本地总集成与 S22 最终兼容审计。回答档位和主动出站目前只有设计，不得跳过
+本地门禁。只有全部通过后，才准备 S23：
 
 1. 冻结授权群、测试用户、发送窗口、SLO 和 digest-pinned 回滚包；
 2. 单群执行 no-send/no-write Shadow，先检查脱敏指标；
-3. 同一授权群仅对结构化明确 @ 执行 Canary；
-4. 单群门禁通过后，才扩展到 3–5 群和长时间 Debug；
-5. 任一重复、错误目标、越权、敏感 Trace 或熔断异常立即回滚。
+3. 同一授权群仅对结构化明确 @ 执行入站 Canary；
+4. 单独授权并验证手动日报，再验证定时日报；
+5. 前述门禁通过后，单独授权一次低频 Conversation Probe；
+6. 所有单群行为门禁通过后，才考虑 3–5 群和长时间 Debug；
+7. 任一重复、错误目标、quiet-hour/退订后发送、越权、无引用内容、敏感 Trace 或熔断异常
+   立即关闭对应行为并回滚。
 
-Bandit 继续延期；WebUI 只按既定测试范围验证，不为进入 S23 追加新的产品范围。
+Bandit 不作为主动出站或 S23 的前置，且禁止探索 send/skip、目标、日程、频率和 Answer
+Profile；WebUI 只按既定测试范围验证，不追加可写控制面。
 
 ## Phase 验收矩阵
 
@@ -567,7 +654,8 @@ Bandit 继续延期；WebUI 只按既定测试范围验证，不为进入 S23 �
 | 5 | Memory 边界 | 完整隔离和迁移回滚 |
 | 6 | Runtime 决策/合成 | 状态、Eval、shadow 无副作用测试 |
 | 7 | Capability/MCP Runtime | 有界工具循环和 MCP 契约 |
+| 7.5 | 主动消息/订阅推送 | 默认拒绝、fake-clock/持久 claim、公开来源、无发送 Shadow 和独立回滚 |
 | 8 | 运维/布局/Manifest | 一次性完整生命周期和回滚 |
-| 9 | Trace/Eval/CI | 完整 CI 矩阵和隐私安全 Fixture |
+| 9 | Trace/Eval/CI | 回答档位、主动调度/来源/投递与完整 CI/隐私安全 Fixture |
 | 10 | 无兼容依赖 | 无旧消费者，并具备回滚 Release |
-| 最终真实场景 | 授权群 Shadow/Canary | 所有前置模块和本地审计完成；冻结 SLO、回滚包和授权窗口 |
+| 最终真实场景 | 入站、日报、Probe 分行为授权群 Shadow/Canary | 所有前置模块和本地审计完成；冻结分行为 SLO、kill switch、回滚包和授权窗口 |

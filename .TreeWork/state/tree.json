@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "revision": 2,
-  "source_hash": "fnv1a64:0f7a27ea99378f56",
-  "state_hash": "fnv1a64:969e7dbc635a0bbe",
+  "source_hash": "fnv1a64:92d44206bcb383d0",
+  "state_hash": "fnv1a64:19a5812a329fdffd",
   "accepted_at": "unix:1785826169",
   "root": "root",
   "nodes": [
@@ -27,7 +27,7 @@
       "parent": "model-selection",
       "title": "S08 Selection Contracts",
       "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
-      "spec": "branches/selection-contracts/spec.md",
+      "spec": "branches/model-selection/selection-contracts/spec.md",
       "sibling_order": 0
     },
     {
@@ -35,7 +35,7 @@
       "parent": "model-selection",
       "title": "S08 Static Router",
       "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
-      "spec": "branches/static-router/spec.md",
+      "spec": "branches/model-selection/static-router/spec.md",
       "sibling_order": 1,
       "depends_on": [
         "selection-contracts"
@@ -46,7 +46,7 @@
       "parent": "model-selection",
       "title": "S09 Perception And Tiering",
       "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
-      "spec": "branches/perception-tiering/spec.md",
+      "spec": "branches/model-selection/perception-tiering/spec.md",
       "sibling_order": 2,
       "depends_on": [
         "static-router"
@@ -98,7 +98,7 @@
       "parent": "mew-parity",
       "title": "NapCat Web Foundation",
       "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
-      "spec": "branches/mew-parity-foundation/spec.md",
+      "spec": "branches/mew-parity/mew-parity-foundation/spec.md",
       "sibling_order": 0
     },
     {
@@ -106,7 +106,7 @@
       "parent": "mew-parity",
       "title": "Mew Chat Parity",
       "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
-      "spec": "branches/mew-chat-parity/spec.md",
+      "spec": "branches/mew-parity/mew-chat-parity/spec.md",
       "sibling_order": 1,
       "depends_on": [
         "mew-parity-foundation"
@@ -117,7 +117,7 @@
       "parent": "mew-parity",
       "title": "Mew Directory And Group Parity",
       "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
-      "spec": "branches/mew-directory-parity/spec.md",
+      "spec": "branches/mew-parity/mew-directory-parity/spec.md",
       "sibling_order": 2,
       "depends_on": [
         "mew-parity-foundation"
@@ -128,7 +128,7 @@
       "parent": "mew-parity",
       "title": "Mew Parity Audit",
       "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
-      "spec": "branches/mew-parity-audit/spec.md",
+      "spec": "branches/mew-parity/mew-parity-audit/spec.md",
       "sibling_order": 3,
       "depends_on": [
         "mew-chat-parity",

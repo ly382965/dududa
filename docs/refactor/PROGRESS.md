@@ -1,6 +1,6 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-04
+更新时间：2026-08-09
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
@@ -9,8 +9,11 @@
 - S01–S11 的**本地增量实施步骤已完成**；S08-S11 已实现确定性模型选择、难度判断、
   离线 Runtime、无发送 Shadow 和受控 Canary 边界。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
-  取得持久单一所有权。真实 QQ 群运行统一延期到所有模块、WebUI 测试和本地总审计完成之后。
+  取得持久单一所有权。真实 QQ 群运行统一延期到所有当前发布必需模块、既定 WebUI 测试和本地
+  总审计完成之后；独立可选 S20 不属于该发布前置。
 - S04、S06、S07 新路径默认关闭；未迁移、改写或读取生产 Memory。
+- 2026-08-09 新增的短/中/长回答、Conversation Probe 和校园/行业/arXiv 订阅日报
+  仅完成 Alignment/设计文档，**实现均未开始**；不扩大 S08-S11 的历史完成结论。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。
 
@@ -49,10 +52,12 @@
 | Memory | 部分完成 | 安全边界与迁移工具已完成；真实 Iris、Context Builder、生产读取/写入未完成 |
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
+| 回答档位 / ResponsePlan | 未完成 | 现有只有静态 Token/字数上限；缺少 SHORT/MEDIUM/LONG 决策、动态预算、与 Tier 正交性和最终长度/完整性校验 |
 | Unified MCP / Capability Runtime | 部分完成 | 现有 iCourse Server 和 10 个工具可用；统一 Client/Registry/Planner 尚未实现 |
-| Bandit | 明确延期 | 当前无配置或执行 hook，不在现阶段关键路径 |
+| 主动消息/订阅推送 | 未完成 | TargetPolicy/Grant Ref、独立 Preview、稳定投递幂等与 S15A-S15E 只有 Alignment 设计；initiated-run、主动授权、Scheduler/Subscription/Source ledger、Digest/Probe Shadow 均未实现 |
+| Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |
-| 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有模块、WebUI 测试和本地总审计完成 |
+| 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
 
 ## 2026-08-04 S08–S11 验证证据
 
@@ -109,7 +114,8 @@
 ## 残余边界
 
 1. **真实群验证延期到最终阶段。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据；
-   即使提前具备群 ID、凭据和发送窗口，也要等所有模块、WebUI 测试和本地总审计完成后才执行。
+   即使提前具备群 ID、凭据和发送窗口，也要等所有当前发布必需模块、既定 WebUI 测试和本地
+   总审计完成后才执行。独立可选 S20 不属于该发布前置。
 2. **Attachment Actor 绑定不完整。** `AttachmentAccessRequest` 没有独立 `Actor` 字段；当前
    只能验证 `AuthorizationDecision.actor_digest`，Repository 没有第二份当前 Actor 做交叉核对。
 3. **去重分层。** S10 Runtime Store 证明同进程 CAS/single-flight；S11 SQLite rollout ledger
@@ -122,13 +128,18 @@
    CLI 只允许离线显式执行。
 7. **Hook 证据分层。** 宿主机两个 AstrBot 测试会 skip；真实 Hook 证据来自本次重建镜像，
    不能把宿主测试与镜像 smoke 合并成同一结果。
+8. **新回答档位只有设计。** 不得把长回答映射 Opus 或短回答映射 Haiku；在实现
+   `ResponsePlan` 和最终 Validator 前，不声称已支持三档回答。
+9. **主动出站全部未实现。** 定时器不得伪造用户消息，MCP 不得拥有订阅/调度/发送；
+   在 S15A-S15E 的默认拒绝、fake-clock、来源、Shadow 和回滚门禁完成前不进真实群。
 
 ## 下一步
 
-继续完成后续模块与既定 WebUI 测试工作，再执行全仓本地回归、故障注入和回滚审计。
-所有前置工作关闭后，才冻结群 ID、凭据、SLO、发送窗口和 digest-pinned
-image/plugin/config 回滚清单，并按“单群 Shadow -> 单群 Canary -> 分层放量”执行最终真实场景。
-Bandit 继续延期，不能因真实群验证顺序调整而顺带开启。
+先完成 S12-S15、S15A-S15E 和既定 WebUI 测试，再执行 S16-S19 本地回归、
+30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
+凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
+Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
+前置，也不得对主动行为开启探索。
 
 ## 历史基线
 
