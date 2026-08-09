@@ -130,6 +130,8 @@ class InMemoryToolInvocationLedger:
                 raise _conflict("tool_invocation_already_completed")
             if observation.idempotency_key != claim.idempotency_key:
                 raise _conflict("tool_invocation_observation_key_mismatch")
+            if observation.execution_request_digest != claim.execution_request_digest:
+                raise _conflict("tool_invocation_observation_execution_mismatch")
             values = {
                 "schema_version": 1,
                 "claim_id": claim.claim_id,

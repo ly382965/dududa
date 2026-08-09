@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from dududa.capabilities import (
+    TOOL_COMPLETION_ALL_STEPS,
     ArgumentTemplate,
     CapabilityCandidate,
     CapabilityCatalogSnapshot,
@@ -24,10 +25,14 @@ from dududa.capabilities import (
     McpCapabilityMapping,
     ObservationBinding,
     ProviderRef,
+    ToolExecutionRequest,
     ToolExecutionStatus,
     ToolObservation,
     ToolPlan,
+    ToolPlanValidationRequest,
+    ToolPlanValidationResult,
     ToolStep,
+    ToolValidationRequest,
     ToolValidationResult,
     ValidationAction,
     capability_candidate_digest,
@@ -41,8 +46,12 @@ from dududa.capabilities import (
     capability_retrieval_result_digest,
     capability_run_receipt_digest,
     mcp_capability_mapping_digest,
+    tool_execution_request_digest,
     tool_observation_digest,
     tool_plan_digest,
+    tool_plan_validation_request_digest,
+    tool_plan_validation_result_digest,
+    tool_validation_request_digest,
     tool_validation_result_digest,
 )
 from dududa.contracts.canonical import canonical_digest, canonical_schema_digest
@@ -278,7 +287,7 @@ def plan(item: CapabilityDefinition) -> ToolPlan:
         "query_digest": query().query_digest,
         "retrieval_result_digest": retrieval(item).result_digest,
         "steps": (step,),
-        "completion_criteria": ("one validated result",),
+        "completion_criteria": (TOOL_COMPLETION_ALL_STEPS,),
         "planner_revision": revision("capability.planner"),
     }
     return ToolPlan(plan_digest=tool_plan_digest(values), **values)
@@ -287,6 +296,12 @@ def plan(item: CapabilityDefinition) -> ToolPlan:
 def observation(item: CapabilityDefinition, tool_plan: ToolPlan) -> ToolObservation:
     values = {
         "schema_version": 1,
+        "execution_request_digest": canonical_digest(
+            {}, domain="fixture.execution-request:v1"
+        ),
+        "provider_invocation_digest": canonical_digest(
+            {}, domain="fixture.provider-invocation:v1"
+        ),
         "provider_result_digest": canonical_digest(
             {}, domain="fixture.provider-result:v1"
         ),
@@ -509,6 +524,96 @@ class CapabilityContractTests(unittest.TestCase):
                 replace(actor, bot_id="other"),
                 scope,
             )
+
+    def test_execution_and_result_validation_carry_full_plan_evidence(self) -> None:
+        tool_plan = plan(self.definition)
+        retrieved = retrieval(self.definition)
+        validation_request_values = {
+            "schema_version": 1,
+            "query": query(),
+            "retrieval": retrieved,
+            "plan": tool_plan,
+            "maximum_attempts": 4,
+            "maximum_cost_units": 4,
+        }
+        validation_request = ToolPlanValidationRequest(
+            request_digest=tool_plan_validation_request_digest(
+                validation_request_values
+            ),
+            **validation_request_values,
+        )
+        validation_result_values = {
+            "schema_version": 1,
+            "request_digest": validation_request.request_digest,
+            "plan_digest": tool_plan.plan_digest,
+            "valid": True,
+            "reason_codes": ("plan_valid",),
+            "validator_revision": revision("capability.plan-validator"),
+        }
+        validation_result = ToolPlanValidationResult(
+            result_digest=tool_plan_validation_result_digest(validation_result_values),
+            **validation_result_values,
+        )
+        actor = Actor("qq", "bot", "user", frozenset({RoleId("member")}))
+        scope = ConversationScope(
+            "qq",
+            "bot",
+            ConversationType.GROUP,
+            "group",
+            "group",
+            "dududa",
+        )
+        step = tool_plan.steps[0]
+        execution_values = {
+            "schema_version": 1,
+            "invocation_id": "invocation-v1",
+            "plan_id": tool_plan.plan_id,
+            "plan_digest": tool_plan.plan_digest,
+            "plan_validation_request": validation_request,
+            "plan_validation_result": validation_result,
+            "step_id": step.step_id,
+            "logical_operation_id": step.logical_operation_id,
+            "capability_id": step.capability_id,
+            "definition_digest": step.definition_digest,
+            "catalog_snapshot_id": retrieved.catalog_snapshot_id,
+            "catalog_digest": retrieved.catalog_digest,
+            "provider": self.definition.provider,
+            "mapping_digest": mapping(self.definition).mapping_digest,
+            "resolved_arguments": {"query": "database"},
+            "source_invocation_ids": (),
+            "idempotency_key": "tool-key-v1",
+            "attempt": 1,
+            "context": CapabilityExecutionContext(1, actor, scope),
+        }
+        execution = ToolExecutionRequest(
+            request_digest=tool_execution_request_digest(execution_values),
+            **execution_values,
+        )
+        self.assertEqual(
+            execution.plan_validation_result,
+            validation_result,
+        )
+        with self.assertRaises(DududaError):
+            replace(execution, step_id="foreign-step")
+
+        accepted = observation(self.definition, tool_plan)
+        result_validation_values = {
+            "schema_version": 1,
+            "retrieval": retrieved,
+            "plan": tool_plan,
+            "plan_validation_request": validation_request,
+            "plan_validation_result": validation_result,
+            "observations": (accepted,),
+            "output_schemas": (self.output_document,),
+            "maximum_attempts": 4,
+        }
+        result_validation = ToolValidationRequest(
+            request_digest=tool_validation_request_digest(result_validation_values),
+            **result_validation_values,
+        )
+        self.assertEqual(result_validation.maximum_attempts, 4)
+        with self.assertRaises(DududaError):
+            replace(result_validation, maximum_attempts=0)
 
 
 if __name__ == "__main__":

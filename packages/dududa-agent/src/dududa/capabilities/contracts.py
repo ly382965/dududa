@@ -54,6 +54,7 @@ MAX_ARGUMENT_BYTES = 65_536
 MAX_OBSERVATION_BYTES = 1_048_576
 MAX_PLAN_STEPS = 8
 MAX_SOURCE_REFS = 64
+TOOL_COMPLETION_ALL_STEPS = "validated_all_steps"
 _MAX_IDENTIFIER_BYTES = 128
 _MAX_REASON_CODES = 32
 _MAX_GOAL_BYTES = 8_192
@@ -937,6 +938,8 @@ class ToolPlan:
             maximum=32,
             maximum_bytes=512,
         )
+        if criteria != (TOOL_COMPLETION_ALL_STEPS,):
+            raise validation_error("unsupported_tool_completion_criteria")
         if not isinstance(self.planner_revision, ComponentRevision):
             raise validation_error("invalid_tool_planner_revision")
         object.__setattr__(self, "steps", steps)
@@ -1208,6 +1211,8 @@ class ToolExecutionRequest:
     invocation_id: str
     plan_id: str
     plan_digest: DigestString
+    plan_validation_request: ToolPlanValidationRequest
+    plan_validation_result: ToolPlanValidationResult
     step_id: str
     logical_operation_id: str
     capability_id: str
@@ -1236,6 +1241,37 @@ class ToolExecutionRequest:
             _identifier(getattr(self, field_name), field_name)
         for field_name in ("plan_digest", "definition_digest", "catalog_digest"):
             _digest(getattr(self, field_name), field_name)
+        if not isinstance(
+            self.plan_validation_request,
+            ToolPlanValidationRequest,
+        ) or not isinstance(self.plan_validation_result, ToolPlanValidationResult):
+            raise validation_error("invalid_execution_plan_validation")
+        validated_plan = self.plan_validation_request.plan
+        if (
+            validated_plan.plan_id != self.plan_id
+            or validated_plan.plan_digest != self.plan_digest
+            or self.plan_validation_result.request_digest
+            != self.plan_validation_request.request_digest
+            or self.plan_validation_result.plan_digest != self.plan_digest
+            or not self.plan_validation_result.valid
+        ):
+            raise validation_error("execution_plan_validation_mismatch")
+        matching_steps = tuple(
+            step for step in validated_plan.steps if step.step_id == self.step_id
+        )
+        if len(matching_steps) != 1:
+            raise validation_error("execution_step_not_in_validated_plan")
+        step = matching_steps[0]
+        if (
+            step.logical_operation_id != self.logical_operation_id
+            or step.capability_id != self.capability_id
+            or step.definition_digest != self.definition_digest
+            or self.plan_validation_request.retrieval.catalog_snapshot_id
+            != self.catalog_snapshot_id
+            or self.plan_validation_request.retrieval.catalog_digest
+            != self.catalog_digest
+        ):
+            raise validation_error("execution_validated_step_mismatch")
         if not isinstance(self.provider, ProviderRef):
             raise validation_error("invalid_execution_provider")
         if self.mapping_digest is not None:
@@ -1264,6 +1300,8 @@ class ToolExecutionRequest:
                 "invocation_id": self.invocation_id,
                 "plan_id": self.plan_id,
                 "plan_digest": self.plan_digest,
+                "plan_validation_request": self.plan_validation_request,
+                "plan_validation_result": self.plan_validation_result,
                 "step_id": self.step_id,
                 "logical_operation_id": self.logical_operation_id,
                 "capability_id": self.capability_id,
@@ -1398,6 +1436,7 @@ class ToolError:
 class CapabilityResult:
     schema_version: int
     result_digest: DigestString
+    provider_invocation_digest: DigestString
     invocation_id: str
     capability_id: str
     definition_digest: DigestString
@@ -1414,6 +1453,10 @@ class CapabilityResult:
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
+        _digest(
+            self.provider_invocation_digest,
+            "capability_result_provider_invocation_digest",
+        )
         _identifier(self.invocation_id, "capability_result_invocation_id")
         _identifier(self.capability_id, "capability_result_capability_id")
         _digest(self.definition_digest, "capability_result_definition_digest")
@@ -1451,6 +1494,7 @@ class CapabilityResult:
             self.result_digest,
             {
                 "schema_version": self.schema_version,
+                "provider_invocation_digest": self.provider_invocation_digest,
                 "invocation_id": self.invocation_id,
                 "capability_id": self.capability_id,
                 "definition_digest": self.definition_digest,
@@ -1474,6 +1518,8 @@ class CapabilityResult:
 class ToolObservation:
     schema_version: int
     observation_digest: DigestString
+    execution_request_digest: DigestString
+    provider_invocation_digest: DigestString
     provider_result_digest: DigestString
     invocation_id: str
     plan_id: str
@@ -1503,6 +1549,11 @@ class ToolObservation:
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
+        _digest(self.execution_request_digest, "observation_execution_request_digest")
+        _digest(
+            self.provider_invocation_digest,
+            "observation_provider_invocation_digest",
+        )
         _digest(self.provider_result_digest, "observation_provider_result_digest")
         for field_name in (
             "invocation_id",
@@ -1561,6 +1612,8 @@ class ToolObservation:
             self.observation_digest,
             {
                 "schema_version": self.schema_version,
+                "execution_request_digest": self.execution_request_digest,
+                "provider_invocation_digest": self.provider_invocation_digest,
                 "provider_result_digest": self.provider_result_digest,
                 "invocation_id": self.invocation_id,
                 "plan_id": self.plan_id,
@@ -1599,8 +1652,11 @@ class ToolValidationRequest:
     request_digest: DigestString
     retrieval: CapabilityRetrievalResult
     plan: ToolPlan
+    plan_validation_request: ToolPlanValidationRequest
+    plan_validation_result: ToolPlanValidationResult
     observations: tuple[ToolObservation, ...]
     output_schemas: tuple[CapabilitySchemaDocument, ...]
+    maximum_attempts: int
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -1610,6 +1666,20 @@ class ToolValidationRequest:
             raise validation_error("invalid_tool_validation_plan")
         if self.plan.retrieval_result_digest != self.retrieval.result_digest:
             raise validation_error("tool_validation_retrieval_mismatch")
+        if not isinstance(
+            self.plan_validation_request,
+            ToolPlanValidationRequest,
+        ) or not isinstance(self.plan_validation_result, ToolPlanValidationResult):
+            raise validation_error("invalid_tool_validation_plan_evidence")
+        if (
+            self.plan_validation_request.plan != self.plan
+            or self.plan_validation_request.retrieval != self.retrieval
+            or self.plan_validation_result.request_digest
+            != self.plan_validation_request.request_digest
+            or self.plan_validation_result.plan_digest != self.plan.plan_digest
+            or not self.plan_validation_result.valid
+        ):
+            raise validation_error("tool_validation_plan_evidence_mismatch")
         observations = _typed_tuple(
             self.observations,
             ToolObservation,
@@ -1623,6 +1693,12 @@ class ToolValidationRequest:
             maximum=MAX_PLAN_STEPS,
             required=True,
         )
+        if (
+            type(self.maximum_attempts) is not int
+            or not 1 <= self.maximum_attempts <= MAX_TOOL_ATTEMPTS
+            or len(observations) > self.maximum_attempts
+        ):
+            raise validation_error("invalid_tool_validation_attempt_limit")
         object.__setattr__(self, "observations", observations)
         object.__setattr__(self, "output_schemas", schemas)
         _check_digest(
@@ -1631,8 +1707,11 @@ class ToolValidationRequest:
                 "schema_version": self.schema_version,
                 "retrieval": self.retrieval,
                 "plan": self.plan,
+                "plan_validation_request": self.plan_validation_request,
+                "plan_validation_result": self.plan_validation_result,
                 "observations": observations,
                 "output_schemas": schemas,
+                "maximum_attempts": self.maximum_attempts,
             },
             domain="capability.tool-validation-request:v1",
             code="tool_validation_request_digest_mismatch",
@@ -1811,6 +1890,8 @@ class ToolInvocationReceipt:
             raise validation_error("invalid_tool_invocation_observation")
         if self.observation.idempotency_key != self.idempotency_key:
             raise validation_error("tool_invocation_receipt_key_mismatch")
+        if self.observation.execution_request_digest != self.execution_request_digest:
+            raise validation_error("tool_invocation_receipt_execution_mismatch")
         require_aware(self.completed_at, "tool_invocation_completed_at")
         _check_digest(
             self.receipt_digest,
@@ -1927,6 +2008,34 @@ class CapabilityRunReceipt:
             or not self.validation.accepted_observations
         ):
             raise validation_error("completed_capability_run_not_accepted")
+        if self.plan is not None:
+            step_by_id = {step.step_id: step for step in self.plan.steps}
+            for observation in observations:
+                step = step_by_id.get(observation.step_id)
+                if (
+                    observation.plan_id != self.plan.plan_id
+                    or observation.plan_digest != self.plan.plan_digest
+                    or step is None
+                    or observation.logical_operation_id != step.logical_operation_id
+                    or observation.capability_id != step.capability_id
+                    or observation.definition_digest != step.definition_digest
+                    or self.retrieval is None
+                    or observation.catalog_snapshot_id
+                    != self.retrieval.catalog_snapshot_id
+                    or observation.catalog_digest != self.retrieval.catalog_digest
+                    or observation.policy_revision != self.retrieval.policy_revision
+                ):
+                    raise validation_error(
+                        "capability_run_observation_binding_mismatch"
+                    )
+        invocation_ids = tuple(item.invocation_id for item in observations)
+        if len(invocation_ids) != len(set(invocation_ids)):
+            raise validation_error("duplicate_capability_run_invocation")
+        if self.validation is not None and any(
+            accepted not in observations
+            for accepted in self.validation.accepted_observations
+        ):
+            raise validation_error("capability_run_validation_observation_mismatch")
         if not isinstance(self.usage, ResourceUsage):
             raise validation_error("invalid_capability_run_usage")
         if self.usage.tool_steps != len(observations):
@@ -2070,6 +2179,12 @@ def _execution_payload(
             raise validation_error("invalid_successful_tool_payload")
     elif data is not None or not isinstance(error, ToolError):
         raise validation_error("invalid_failed_tool_payload")
+    if (
+        status is ToolExecutionStatus.FAILED
+        and error is not None
+        and error.info.outcome_unknown
+    ):
+        raise validation_error("failed_tool_outcome_marked_unknown")
     if (
         status is ToolExecutionStatus.UNKNOWN
         and error is not None
@@ -2250,6 +2365,7 @@ __all__ = [
     "MAX_SCHEMA_BYTES",
     "MAX_SOURCE_REFS",
     "MAX_TOOL_ATTEMPTS",
+    "TOOL_COMPLETION_ALL_STEPS",
     "ArgumentBindingRequest",
     "ArgumentBindingResult",
     "ArgumentTemplate",

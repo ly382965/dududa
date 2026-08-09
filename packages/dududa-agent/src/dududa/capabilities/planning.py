@@ -15,6 +15,7 @@ from dududa.ports.capabilities import CapabilityRegistry, CapabilitySchemaValida
 from dududa.ports.context import PortCallContext
 
 from .contracts import (
+    TOOL_COMPLETION_ALL_STEPS,
     ArgumentBindingRequest,
     ArgumentBindingResult,
     ArgumentTemplate,
@@ -102,7 +103,7 @@ class DeterministicToolPlanner:
             "query_digest": request.query.query_digest,
             "retrieval_result_digest": request.retrieval.result_digest,
             "steps": (step,),
-            "completion_criteria": ("validated_result",),
+            "completion_criteria": (TOOL_COMPLETION_ALL_STEPS,),
             "planner_revision": self._revision,
         }
         return ToolPlan(plan_digest=tool_plan_digest(values), **values)
@@ -170,6 +171,8 @@ class DeterministicToolPlanValidator:
         )
 
     def _invalid_reason(self, request: ToolPlanValidationRequest) -> str | None:
+        if request.plan.completion_criteria != (TOOL_COMPLETION_ALL_STEPS,):
+            return "plan_completion_criteria_invalid"
         try:
             catalog = self._registry.snapshot_by_id(
                 request.retrieval.catalog_snapshot_id,

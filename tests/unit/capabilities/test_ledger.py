@@ -104,6 +104,7 @@ def _observation(
     key: str = "tool-key-v1",
     invocation_id: str = "invocation-v1",
     retryable: bool | None = None,
+    execution_request_digest=None,
 ) -> ToolObservation:
     unknown = status is ToolExecutionStatus.UNKNOWN
     failure = None
@@ -126,6 +127,12 @@ def _observation(
         )
     values = {
         "schema_version": 1,
+        "execution_request_digest": execution_request_digest
+        or _request("attempt-1").execution_request_digest,
+        "provider_invocation_digest": canonical_digest(
+            {"invocation_id": invocation_id},
+            domain="fixture.provider-invocation:v1",
+        ),
         "provider_result_digest": canonical_digest(
             {"invocation_id": invocation_id, "status": status},
             domain="fixture.provider-result:v1",
@@ -279,6 +286,7 @@ class ToolInvocationLedgerTests(unittest.IsolatedAsyncioTestCase):
             _observation(
                 ToolExecutionStatus.FAILED,
                 invocation_id="invocation-v2",
+                execution_request_digest=retry.execution_request_digest,
             ),
             call=_call(),
         )
@@ -328,6 +336,7 @@ class ToolInvocationLedgerTests(unittest.IsolatedAsyncioTestCase):
                 _observation(
                     ToolExecutionStatus.FAILED,
                     invocation_id=f"invocation-{attempt}",
+                    execution_request_digest=previous.execution_request_digest,
                 ),
                 call=_call(),
             )
@@ -458,7 +467,10 @@ class ToolInvocationLedgerTests(unittest.IsolatedAsyncioTestCase):
         claim = await ledger.acquire(_request("first"), call=_call())
         await ledger.complete(
             claim,
-            _observation(ToolExecutionStatus.SUCCEEDED),
+            _observation(
+                ToolExecutionStatus.SUCCEEDED,
+                execution_request_digest=claim.execution_request_digest,
+            ),
             call=_call(),
         )
         self.clock.now = NOW + timedelta(seconds=31)
