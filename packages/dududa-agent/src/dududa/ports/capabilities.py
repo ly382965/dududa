@@ -32,7 +32,7 @@ from dududa.capabilities.contracts import (
     ToolValidationResult,
 )
 from dududa.domain.capability import CapabilityDefinition, ProviderRef
-from dududa.domain.primitives import JsonValue, SchemaRef
+from dududa.domain.primitives import DigestString, JsonValue, SchemaRef
 
 from .context import PortCallContext, ServiceCallContext
 
@@ -58,7 +58,7 @@ class CapabilityRegistry(Protocol):
         self,
         snapshot_id: str,
         *,
-        expected_digest: str | None = None,
+        expected_digest: DigestString | None = None,
     ) -> CapabilityCatalogSnapshot: ...
 
     def get_definition(
@@ -230,7 +230,7 @@ __all__ = [
     "CapabilitySchemaValidator",
     "ToolExecutor",
     "ToolInvocationLedger",
-    "ToolPlanner",
     "ToolPlanValidator",
+    "ToolPlanner",
     "ToolResultValidator",
 ]

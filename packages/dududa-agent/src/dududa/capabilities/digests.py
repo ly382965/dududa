@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import fields, is_dataclass
-from typing import Iterable
 
 from dududa.contracts.canonical import canonical_digest, canonical_schema_digest
 from dududa.domain.capability import capability_definition_digest
@@ -14,6 +13,7 @@ from .contracts import (
     CapabilityCandidate,
     CapabilityCatalogPublishReceipt,
     CapabilityCatalogSnapshot,
+    CapabilityCatalogUpdate,
     CapabilityHealthSnapshot,
     CapabilityProviderDescriptor,
     CapabilityProviderHealth,
@@ -27,6 +27,7 @@ from .contracts import (
     McpCapabilityMapping,
     ProviderInvocation,
     ToolExecutionRequest,
+    ToolInvocationClaim,
     ToolInvocationClaimRequest,
     ToolInvocationReceipt,
     ToolObservation,
@@ -95,6 +96,14 @@ def capability_catalog_digest(snapshot: CapabilityCatalogSnapshot) -> DigestStri
         "catalog_digest",
         "acquired_at",
         domain="capability.catalog:v1",
+    )
+
+
+def capability_catalog_update_digest(update: CapabilityCatalogUpdate) -> DigestString:
+    return _digest_without(
+        update,
+        "update_digest",
+        domain="capability.catalog-update:v1",
     )
 
 
@@ -241,8 +250,16 @@ def tool_invocation_claim_request_digest(
 ) -> DigestString:
     return _digest_without(
         request,
-        "claim_digest",
+        "request_digest",
         domain="capability.tool-invocation-claim-request:v1",
+    )
+
+
+def tool_invocation_claim_digest(claim: ToolInvocationClaim) -> DigestString:
+    return _digest_without(
+        claim,
+        "claim_digest",
+        domain="capability.tool-invocation-claim:v1",
     )
 
 
@@ -312,6 +329,7 @@ __all__: Iterable[str] = (
     "capability_candidate_digest",
     "capability_catalog_digest",
     "capability_catalog_publish_receipt_digest",
+    "capability_catalog_update_digest",
     "capability_definition_digest",
     "capability_health_snapshot_digest",
     "capability_provider_descriptor_digest",
@@ -327,6 +345,7 @@ __all__: Iterable[str] = (
     "provider_invocation_digest",
     "tool_execution_request_digest",
     "tool_idempotency_key",
+    "tool_invocation_claim_digest",
     "tool_invocation_claim_request_digest",
     "tool_invocation_receipt_digest",
     "tool_observation_digest",

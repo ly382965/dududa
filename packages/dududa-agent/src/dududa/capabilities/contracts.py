@@ -21,7 +21,6 @@ from dududa.domain.capability import (
 )
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.primitives import (
-    ActionId,
     ComponentRevision,
     DigestString,
     JsonValue,
@@ -417,6 +416,7 @@ class CapabilityCatalogUpdate:
     catalog_revision: str
     mapping_revision: str
     provider_registry_revision: str
+    update_digest: DigestString
     definitions: tuple[CapabilityDefinition, ...]
     schema_documents: tuple[CapabilitySchemaDocument, ...]
     provider_descriptors: tuple[CapabilityProviderDescriptor, ...]
@@ -431,13 +431,53 @@ class CapabilityCatalogUpdate:
             "provider_registry_revision",
         ):
             _identifier(getattr(self, field_name), field_name)
-        for field_name in (
-            "definitions",
-            "schema_documents",
-            "provider_descriptors",
-            "mcp_mappings",
-        ):
-            object.__setattr__(self, field_name, tuple(getattr(self, field_name)))
+        definitions = _typed_tuple(
+            self.definitions,
+            CapabilityDefinition,
+            "catalog_update_definitions",
+            maximum=MAX_CAPABILITY_DEFINITIONS,
+            required=True,
+        )
+        schemas = _typed_tuple(
+            self.schema_documents,
+            CapabilitySchemaDocument,
+            "catalog_update_schemas",
+            maximum=MAX_CAPABILITY_DEFINITIONS * 2,
+            required=True,
+        )
+        providers = _typed_tuple(
+            self.provider_descriptors,
+            CapabilityProviderDescriptor,
+            "catalog_update_providers",
+            maximum=128,
+            required=True,
+        )
+        mappings = _typed_tuple(
+            self.mcp_mappings,
+            McpCapabilityMapping,
+            "catalog_update_mappings",
+            maximum=MAX_CAPABILITY_DEFINITIONS,
+        )
+        object.__setattr__(self, "definitions", definitions)
+        object.__setattr__(self, "schema_documents", schemas)
+        object.__setattr__(self, "provider_descriptors", providers)
+        object.__setattr__(self, "mcp_mappings", mappings)
+        _check_digest(
+            self.update_digest,
+            {
+                "schema_version": self.schema_version,
+                "expected_revision": self.expected_revision,
+                "catalog_revision": self.catalog_revision,
+                "mapping_revision": self.mapping_revision,
+                "provider_registry_revision": self.provider_registry_revision,
+                "definitions": definitions,
+                "schema_documents": schemas,
+                "provider_descriptors": providers,
+                "mcp_mappings": mappings,
+            },
+            domain="capability.catalog-update:v1",
+            code="capability_catalog_update_digest_mismatch",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1574,6 +1614,11 @@ class ToolValidationResult:
             item.status is not ToolExecutionStatus.SUCCEEDED for item in observations
         ):
             raise validation_error("accepted_observation_not_successful")
+        invocation_ids = tuple(item.invocation_id for item in observations)
+        if len(invocation_ids) != len(set(invocation_ids)):
+            raise validation_error("duplicate_accepted_observation")
+        if self.action is ValidationAction.FINISH and not observations:
+            raise validation_error("tool_validation_finish_without_observation")
         if (self.retry_step_id is not None) is (
             self.action is not ValidationAction.RETRY
         ):
@@ -1615,7 +1660,7 @@ class ToolValidationResult:
 @dataclass(frozen=True, slots=True)
 class ToolInvocationClaimRequest:
     schema_version: int
-    claim_digest: DigestString
+    request_digest: DigestString
     idempotency_key: str
     execution_request_digest: DigestString
     expires_at: datetime
@@ -1626,7 +1671,7 @@ class ToolInvocationClaimRequest:
         _digest(self.execution_request_digest, "execution_request_digest")
         require_aware(self.expires_at, "tool_invocation_claim_expiry")
         _check_digest(
-            self.claim_digest,
+            self.request_digest,
             {
                 "schema_version": self.schema_version,
                 "idempotency_key": self.idempotency_key,
@@ -1641,6 +1686,7 @@ class ToolInvocationClaimRequest:
 @dataclass(frozen=True, slots=True)
 class ToolInvocationClaim:
     schema_version: int
+    claim_digest: DigestString
     claim_id: str
     claim_request_digest: DigestString
     idempotency_key: str
@@ -1664,16 +1710,32 @@ class ToolInvocationClaim:
                 "tool_terminal_receipt_digest",
             )
         if (
-            self.disposition is ToolInvocationDisposition.DUPLICATE
+            self.disposition is ToolInvocationDisposition.DUPLICATE_COMPLETED
             and self.terminal_receipt_digest is None
         ):
             raise validation_error("duplicate_tool_claim_without_receipt")
         if (
-            self.disposition is not ToolInvocationDisposition.DUPLICATE
+            self.disposition is not ToolInvocationDisposition.DUPLICATE_COMPLETED
             and self.terminal_receipt_digest is not None
         ):
             raise validation_error("nonduplicate_tool_claim_has_receipt")
         _fresh_window(self.claimed_at, self.expires_at, "tool_invocation_claim")
+        _check_digest(
+            self.claim_digest,
+            {
+                "schema_version": self.schema_version,
+                "claim_id": self.claim_id,
+                "claim_request_digest": self.claim_request_digest,
+                "idempotency_key": self.idempotency_key,
+                "execution_request_digest": self.execution_request_digest,
+                "disposition": self.disposition,
+                "terminal_receipt_digest": self.terminal_receipt_digest,
+                "claimed_at": self.claimed_at,
+                "expires_at": self.expires_at,
+            },
+            domain="capability.tool-invocation-claim:v1",
+            code="tool_invocation_claim_digest_mismatch",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1901,9 +1963,12 @@ def _execution_payload(
             raise validation_error("invalid_successful_tool_payload")
     elif data is not None or not isinstance(error, ToolError):
         raise validation_error("invalid_failed_tool_payload")
-    if status is ToolExecutionStatus.UNKNOWN and error is not None:
-        if not error.info.outcome_unknown:
-            raise validation_error("unknown_tool_outcome_flag_missing")
+    if (
+        status is ToolExecutionStatus.UNKNOWN
+        and error is not None
+        and not error.info.outcome_unknown
+    ):
+        raise validation_error("unknown_tool_outcome_flag_missing")
 
 
 def _identity_scope(actor: Actor, scope: ConversationScope) -> None:
@@ -1942,7 +2007,9 @@ def _identifier(value: object, field: str) -> str:
 
 
 def _digest(value: DigestString, field: str) -> None:
-    _bounded(str(value), field, 512)
+    encoded = _bounded(str(value), field, 512)
+    if _DIGEST.fullmatch(encoded) is None:
+        raise validation_error("invalid_capability_digest", field)
 
 
 def _strings(
@@ -2067,6 +2134,15 @@ def _check_digest(
 
 
 __all__ = [
+    "DEFAULT_TOOL_ATTEMPTS",
+    "MAX_ARGUMENT_BYTES",
+    "MAX_CAPABILITY_CANDIDATES",
+    "MAX_CAPABILITY_DEFINITIONS",
+    "MAX_OBSERVATION_BYTES",
+    "MAX_PLAN_STEPS",
+    "MAX_SCHEMA_BYTES",
+    "MAX_SOURCE_REFS",
+    "MAX_TOOL_ATTEMPTS",
     "ArgumentBindingRequest",
     "ArgumentBindingResult",
     "ArgumentTemplate",
@@ -2088,15 +2164,6 @@ __all__ = [
     "CapabilityRunRequest",
     "CapabilityRunStatus",
     "CapabilitySchemaDocument",
-    "DEFAULT_TOOL_ATTEMPTS",
-    "MAX_ARGUMENT_BYTES",
-    "MAX_CAPABILITY_CANDIDATES",
-    "MAX_CAPABILITY_DEFINITIONS",
-    "MAX_OBSERVATION_BYTES",
-    "MAX_PLAN_STEPS",
-    "MAX_SCHEMA_BYTES",
-    "MAX_SOURCE_REFS",
-    "MAX_TOOL_ATTEMPTS",
     "McpCapabilityMapping",
     "ObservationBinding",
     "ProviderInvocation",
@@ -2109,9 +2176,9 @@ __all__ = [
     "ToolInvocationReceipt",
     "ToolObservation",
     "ToolPlan",
-    "ToolPlanningRequest",
     "ToolPlanValidationRequest",
     "ToolPlanValidationResult",
+    "ToolPlanningRequest",
     "ToolStep",
     "ToolValidationRequest",
     "ToolValidationResult",

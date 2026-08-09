@@ -135,8 +135,12 @@ def mapping(item: CapabilityDefinition) -> McpCapabilityMapping:
         "capability_definition_digest": item.definition_digest,
         "server_id": "icourse",
         "tool_name": "search_courses",
-        "expected_input_schema_digest": DigestString("mcp-input-v1"),
-        "expected_output_schema_digest": DigestString("mcp-output-v1"),
+        "expected_input_schema_digest": canonical_digest(
+            {}, domain="fixture.mcp-input-schema:v1"
+        ),
+        "expected_output_schema_digest": canonical_digest(
+            {}, domain="fixture.mcp-output-schema:v1"
+        ),
         "semantics": McpOperationSemantics.READ_ONLY,
         "fixed_arguments": {"limit": 20},
         "argument_mapping_revision": "arguments-v1",
@@ -276,7 +280,7 @@ def observation(item: CapabilityDefinition, tool_plan: ToolPlan) -> ToolObservat
         "latency_ms": 10,
         "cache_status": "hit",
         "sensitivity": PrivacyLevel.PUBLIC,
-        "usage": ResourceUsage(1, tool_steps=1, cost_units=Decimal("1")),
+        "usage": ResourceUsage(1, tool_steps=1, cost_units=Decimal(1)),
         "truncated": False,
         "untrusted": True,
     }
@@ -379,7 +383,7 @@ class CapabilityContractTests(unittest.TestCase):
             "plan": tool_plan,
             "observations": (accepted,),
             "validation": validation,
-            "usage": ResourceUsage(1, tool_steps=1, cost_units=Decimal("1")),
+            "usage": ResourceUsage(1, tool_steps=1, cost_units=Decimal(1)),
             "reason_codes": ("completed",),
             "completed_at": NOW + timedelta(seconds=1),
         }
