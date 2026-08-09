@@ -14,25 +14,25 @@ Title: S12 Entry Gate Production Shape
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Rollout persistence defaults to rollback journal and retains atomic CAS.
-- [ ] WAL is rejected below SQLite 3.51.3 and the effective mode is verified.
-- [ ] Perception and Direct Chat use `temperature=None`; Adapters never drop it silently.
-- [ ] Health transitions are replayable and stale/failed evidence returns to UNKNOWN.
-- [ ] Router continues to reject UNKNOWN and stale health with stable reasons.
-- [ ] One composition root installs at most one bridge and is default-off.
-- [ ] Partial initialization and repeated termination leak no owned resource.
-- [ ] Offline off/shadow smoke records zero model, delivery and persistent-write effects.
-- [ ] Focused and affected repository tests pass without touching running containers.
+- [x] Rollout persistence defaults to rollback journal and retains atomic CAS.
+- [x] WAL is rejected below SQLite 3.51.3 and the effective mode is verified.
+- [x] Perception and Direct Chat use `temperature=None`; Adapters never drop it silently.
+- [x] Health transitions are replayable and stale/failed evidence returns to UNKNOWN.
+- [x] Router continues to reject UNKNOWN and stale health with stable reasons.
+- [x] One composition root installs at most one bridge and is default-off.
+- [x] Partial initialization and repeated termination leak no owned resource.
+- [x] Offline off records zero model calls; shadow records zero delivery and persistent writes.
+- [x] Focused and affected repository tests pass without touching running containers.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Add journal policy/configuration and persistence failure tests.
-- [ ] Remove forced Runtime sampling and update request/Adapter contracts.
-- [ ] Implement the health evidence state machine and Router-facing snapshots.
-- [ ] Build the transactional production composition and lifecycle owner.
-- [ ] Add Fake-based plugin composition and no-side-effect smoke tests.
-- [ ] Run focused, dual-Python affected and repository safety verification.
-- [ ] Record Verification, Findings and the coherent local commit.
+- [x] Add journal policy/configuration and persistence failure tests.
+- [x] Remove forced Runtime sampling and update request/Adapter contracts.
+- [x] Implement the health evidence state machine and Router-facing snapshots.
+- [x] Build the transactional production composition and lifecycle owner.
+- [x] Add Fake-based plugin composition and no-side-effect smoke tests.
+- [x] Run focused, dual-Python affected and repository safety verification.
+- [x] Record Verification, Findings and the coherent local commit.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

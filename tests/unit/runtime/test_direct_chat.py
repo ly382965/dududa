@@ -192,6 +192,7 @@ class DirectChatModelCallTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(raw, serialized)
         self.assertIn(envelope.text, serialized)
         self.assertEqual(request.route_hint, hint)
+        self.assertIsNone(request.temperature)
         self.assertIs(authority.selected_tier, ModelTier.SONNET)
         self.assertEqual(child_call.budget.model_calls_remaining, 1)
         self.assertEqual(child_call.budget.input_tokens_remaining, 10_000)

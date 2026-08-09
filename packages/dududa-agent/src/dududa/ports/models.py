@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from dududa.domain.primitives import ComponentRevision, JsonValue, SchemaRef
+from dududa.domain.primitives import (
+    ComponentRevision,
+    DigestString,
+    JsonValue,
+    SchemaRef,
+)
 from dududa.models.contracts import (
     EndpointAdmissionRequest,
     EndpointAdmissionResult,
@@ -105,6 +110,26 @@ class ModelCatalogPublisher(Protocol):
 @runtime_checkable
 class ModelOperationalStateRegistry(Protocol):
     def acquire_snapshot(self) -> ModelOperationalSnapshot: ...
+
+
+@runtime_checkable
+class ModelOperationalSnapshotResolver(Protocol):
+    def snapshot_by_id(
+        self,
+        snapshot_id: str,
+        *,
+        expected_digest: DigestString | None = None,
+    ) -> ModelOperationalSnapshot: ...
+
+
+@runtime_checkable
+class ModelOperationalSnapshotPublisher(Protocol):
+    async def publish(
+        self,
+        snapshot: ModelOperationalSnapshot,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> ModelOperationalSnapshot: ...
 
 
 @runtime_checkable

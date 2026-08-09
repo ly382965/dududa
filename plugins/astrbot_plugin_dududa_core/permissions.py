@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from astrbot.api.event import AstrMessageEvent
 from dududa.security.authorization import LegacyActorInput, LegacyRolePolicy
 
 from .config import load_astrbot_config, str_set
+
+if TYPE_CHECKING:
+    from astrbot.api.event import AstrMessageEvent
 
 
 @dataclass(frozen=True)

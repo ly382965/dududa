@@ -5,14 +5,16 @@ from datetime import datetime, timezone
 import os
 from pathlib import Path
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from astrbot.api.event import AstrMessageEvent
 from dududa.domain.primitives import Sensitivity
 from dududa.security.models import RedactionRequest
 from dududa.security.redaction import DefaultRedactor
 
 from .config import PLUGIN_DATA_DIR, ensure_dirs
+
+if TYPE_CHECKING:
+    from astrbot.api.event import AstrMessageEvent
 
 
 SENSITIVE_KEYS = ("key", "token", "secret", "password", "cookie", "authorization")

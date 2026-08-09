@@ -10,6 +10,7 @@ from dududa.ports.models import (
     ModelCatalogPublisher,
     ModelInvocationEstimator,
     ModelOperationalStateRegistry,
+    ModelOperationalSnapshotResolver,
     ModelOutputCodec,
     ModelProvider,
     ModelRouter,
@@ -64,6 +65,11 @@ class _OperationalState:
         raise NotImplementedError
 
 
+class _OperationalResolver:
+    def snapshot_by_id(self, snapshot_id, *, expected_digest=None):
+        raise NotImplementedError
+
+
 class _Admission:
     async def reserve(self, request, *, call):
         raise NotImplementedError
@@ -107,6 +113,7 @@ class ModelPortContractTests(unittest.TestCase):
             (_Registry(), ModelRoutingRegistry),
             (_Publisher(), ModelCatalogPublisher),
             (_OperationalState(), ModelOperationalStateRegistry),
+            (_OperationalResolver(), ModelOperationalSnapshotResolver),
             (_Admission(), ModelAdmissionController),
             (_Codec(), ModelOutputCodec),
             (_Estimator(), ModelInvocationEstimator),

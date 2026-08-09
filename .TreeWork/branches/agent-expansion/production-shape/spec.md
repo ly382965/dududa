@@ -35,6 +35,14 @@ and snapshot revisions make every transition replayable. The production
 AstrBot Adapter stays UNKNOWN until a real probe artifact exists; Fakes provide
 the AVAILABLE evidence used by offline composition tests.
 
+Evidence expiry and Catalog revision are retained in a bounded Registry view
+rather than added to the frozen v1 operational DTO. Each Router acquisition
+projects expired, unowned, changed or Catalog-mismatched evidence to a standard
+v1 UNKNOWN snapshot. This preserves the existing canonical digest while making
+freshness effective even when no later publisher tick occurs. Projected
+snapshots remain resolvable by exact ID and digest through the same bounded
+view, so Admission never consults a different operational fact than Router.
+
 ### Single Composition And Lifecycle
 
 One composition root owns Registry, Provider, Router, Perception, Direct Chat,
@@ -43,7 +51,12 @@ is `off`; missing Endpoint evidence leaves invocation unavailable rather than
 falling back to an optimistic route. Initialization is transactional: any
 failure closes already-created resources and preserves the legacy owner.
 Repeated initialization cannot install a second bridge. Termination closes the
-bridge, Provider/health resources and ledger idempotently.
+bridge, Provider/health resources and ledger idempotently. Assemblies rejected
+during synchronous installation are abort-signalled immediately and retained
+in a separate pending-cleanup set so the async lifecycle can close them without
+confusing them with the active composition. An Assembly is one-shot: aborted,
+closed, pending-cleanup or already-installed instances cannot be installed
+again, and repeated plugin initialization cannot overwrite a live owner.
 
 The `off` smoke proves zero model and delivery calls. `shadow` receives no
 Output capability and writes only sanitized receipts. No test reads running

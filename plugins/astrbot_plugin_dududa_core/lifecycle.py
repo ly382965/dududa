@@ -3,12 +3,12 @@ from __future__ import annotations
 import secrets
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from astrbot.api.event import AstrMessageEvent
+if TYPE_CHECKING:
+    from astrbot.api.event import AstrMessageEvent
 
 from .config import load_plugin_config, save_json, str_set
-from .permissions import PermissionManager
 
 
 @dataclass
@@ -21,14 +21,52 @@ class PendingAction:
 
 class CoreLifecycleMixin:
     async def _handle_controlled_rollout(self, event: AstrMessageEvent) -> None:
+        if not getattr(self, "enabled", False):
+            return
         bridge = getattr(self, "rollout_bridge", None)
         if bridge is not None:
             await bridge.handle(event)
 
     async def terminate(self) -> None:
+        if getattr(self, "_dududa_runtime_terminated", False):
+            return
         bridge = getattr(self, "rollout_bridge", None)
+        assembly = getattr(self, "runtime_assembly", None)
+        first_error: BaseException | None = None
         if bridge is not None:
-            await bridge.close()
+            try:
+                await bridge.close()
+            except BaseException as exc:
+                first_error = exc
+            else:
+                self.rollout_bridge = None
+        if assembly is not None:
+            try:
+                await assembly.close()
+            except BaseException as exc:
+                first_error = first_error or exc
+            else:
+                self.runtime_assembly = None
+        pending_cleanup = tuple(
+            getattr(self, "_dududa_runtime_cleanup_assemblies", ())
+        )
+        failed_cleanup: list[object] = []
+        for candidate in reversed(pending_cleanup):
+            try:
+                await candidate.close()
+            except BaseException as exc:
+                first_error = first_error or exc
+                failed_cleanup.append(candidate)
+        self._dududa_runtime_cleanup_assemblies = list(reversed(failed_cleanup))
+        self._dududa_runtime_terminated = (
+            getattr(self, "rollout_bridge", None) is None
+            and getattr(self, "runtime_assembly", None) is None
+            and not self._dududa_runtime_cleanup_assemblies
+        )
+        if self._dududa_runtime_terminated:
+            self._dududa_runtime_initialized = False
+        if first_error is not None:
+            raise first_error
 
     def _blocked(self, event: AstrMessageEvent) -> str | None:
         if not self.enabled:
@@ -69,6 +107,8 @@ class CoreLifecycleMixin:
         save_json(self.group_state_path, self.group_state)
 
     def _reload_permissions(self) -> None:
+        from .permissions import PermissionManager
+
         disk_config = load_plugin_config()
         if disk_config:
             self.config = disk_config

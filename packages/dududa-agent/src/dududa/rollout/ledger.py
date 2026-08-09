@@ -8,6 +8,7 @@ from pathlib import Path
 import sqlite3
 import threading
 
+from dududa._compat import StrEnum
 from dududa.domain.delivery import DeliveryReceipt, DeliveryStatus
 from dududa.domain.primitives import ComponentRevision, DigestString, require_aware
 from dududa.errors import ErrorCategory, error, validation_error
@@ -20,6 +21,11 @@ from .contracts import (
 )
 
 
+class SQLiteJournalMode(StrEnum):
+    DELETE = "delete"
+    WAL = "wal"
+
+
 @dataclass(frozen=True, slots=True)
 class SQLiteRolloutLedgerConfig:
     schema_version: int
@@ -28,6 +34,7 @@ class SQLiteRolloutLedgerConfig:
     terminal_ttl: timedelta
     maximum_records: int
     component_revision: ComponentRevision
+    journal_mode: SQLiteJournalMode = SQLiteJournalMode.DELETE
 
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
@@ -43,6 +50,8 @@ class SQLiteRolloutLedgerConfig:
             raise validation_error("invalid_rollout_ledger_capacity")
         if not isinstance(self.component_revision, ComponentRevision):
             raise validation_error("invalid_rollout_ledger_revision")
+        if not isinstance(self.journal_mode, SQLiteJournalMode):
+            raise validation_error("invalid_rollout_ledger_journal_mode")
         object.__setattr__(self, "path", path)
 
 
@@ -447,9 +456,30 @@ class SQLiteRolloutLedger:
             isolation_level=None,
         )
         connection.row_factory = sqlite3.Row
-        connection.execute(f"PRAGMA busy_timeout = {max(1, int(timeout * 1000))}")
-        connection.execute("PRAGMA journal_mode = WAL")
-        connection.execute("PRAGMA synchronous = FULL")
+        try:
+            connection.execute(f"PRAGMA busy_timeout = {max(1, int(timeout * 1000))}")
+            if self._config.journal_mode is SQLiteJournalMode.WAL:
+                runtime_version = _connection_sqlite_version(connection)
+                if runtime_version < (3, 51, 3):
+                    raise validation_error(
+                        "unsafe_sqlite_wal_version",
+                        ".".join(str(value) for value in runtime_version),
+                    )
+            effective_mode = str(
+                connection.execute(
+                    f"PRAGMA journal_mode = {self._config.journal_mode.value}"
+                ).fetchone()[0]
+            ).lower()
+            if effective_mode != self._config.journal_mode.value:
+                raise validation_error(
+                    "sqlite_journal_mode_mismatch",
+                    self._config.journal_mode.value,
+                    effective_mode,
+                )
+            connection.execute("PRAGMA synchronous = FULL")
+        except BaseException:
+            connection.close()
+            raise
         return connection
 
     def _transaction(self):
@@ -480,6 +510,19 @@ class SQLiteRolloutLedger:
         now = self._clock()
         require_aware(now, "rollout_ledger_now")
         return now.astimezone(timezone.utc)
+
+
+def _connection_sqlite_version(
+    connection: sqlite3.Connection,
+) -> tuple[int, int, int]:
+    row = connection.execute("SELECT sqlite_version()").fetchone()
+    raw = row[0] if row is not None and len(row) == 1 else None
+    if not isinstance(raw, str):
+        raise ValueError("invalid SQLite runtime version")
+    parts = raw.split(".")
+    if len(parts) != 3 or any(not part.isdigit() for part in parts):
+        raise ValueError("invalid SQLite runtime version")
+    return int(parts[0]), int(parts[1]), int(parts[2])
 
 
 class _SQLiteTransaction:

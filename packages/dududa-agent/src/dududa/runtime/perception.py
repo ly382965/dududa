@@ -226,7 +226,7 @@ class RouterBackedModelPerception:
                 context.content_input_tokens_upper_bound
                 + self._config.prompt_tokens_upper_bound
             ),
-            temperature=0,
+            temperature=None,
             privacy=ModelPrivacyPolicy(
                 schema_version=1,
                 data_classification=context.data_classification,

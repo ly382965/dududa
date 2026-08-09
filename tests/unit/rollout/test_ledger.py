@@ -3,8 +3,10 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
+import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 from dududa.domain.delivery import (
     DeliveryPartReceipt,
@@ -14,7 +16,11 @@ from dududa.domain.delivery import (
 )
 from dududa.domain.primitives import DigestString
 from dududa.errors import DududaError
-from dududa.rollout import RolloutClaimDisposition, RolloutOwnershipState
+from dududa.rollout import (
+    RolloutClaimDisposition,
+    RolloutOwnershipState,
+    SQLiteJournalMode,
+)
 
 from .helpers import NOW, ledger, revision
 
@@ -48,6 +54,43 @@ class SQLiteRolloutLedgerTests(unittest.TestCase):
             {RolloutClaimDisposition.ACQUIRED, RolloutClaimDisposition.EXISTING},
         )
         self.assertEqual({result.record.revision for result in results}, {1})
+
+    def test_rollback_journal_is_the_verified_default(self) -> None:
+        ledger(self.path)
+
+        with sqlite3.connect(self.path) as connection:
+            mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+
+        self.assertEqual(mode.lower(), SQLiteJournalMode.DELETE.value)
+
+    def test_wal_requires_a_fixed_sqlite_runtime(self) -> None:
+        with self.assertRaises(DududaError) as captured:
+            with patch(
+                "dududa.rollout.ledger._connection_sqlite_version",
+                return_value=(3, 51, 2),
+            ):
+                ledger(
+                    self.path,
+                    journal_mode=SQLiteJournalMode.WAL,
+                )
+        self.assertEqual(captured.exception.info.code, "unsafe_sqlite_wal_version")
+
+        if sqlite3.sqlite_version_info >= (3, 51, 3):
+            store = ledger(
+                self.path,
+                journal_mode=SQLiteJournalMode.WAL,
+            )
+            self.assertIs(store.config.journal_mode, SQLiteJournalMode.WAL)
+        else:
+            with self.assertRaises(DududaError) as actual:
+                ledger(
+                    self.path,
+                    journal_mode=SQLiteJournalMode.WAL,
+                )
+            self.assertEqual(
+                actual.exception.info.code,
+                "unsafe_sqlite_wal_version",
+            )
 
     def test_conflict_and_cas_are_fail_closed(self) -> None:
         store = ledger(self.path)

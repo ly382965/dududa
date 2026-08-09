@@ -12,7 +12,7 @@ from .contracts import (
     StaticRolloutControlProvider,
     parse_rollout_control_config,
 )
-from .ledger import SQLiteRolloutLedger, SQLiteRolloutLedgerConfig
+from .ledger import SQLiteJournalMode, SQLiteRolloutLedger, SQLiteRolloutLedgerConfig
 from .canary import (
     CanaryCoordinator,
     CanaryExecutionDisposition,
@@ -46,6 +46,7 @@ __all__ = [
     "RolloutOwnershipState",
     "SQLiteRolloutLedger",
     "SQLiteRolloutLedgerConfig",
+    "SQLiteJournalMode",
     "StaticRolloutControlProvider",
     "BoundedShadowSupervisor",
     "CanaryCoordinator",
