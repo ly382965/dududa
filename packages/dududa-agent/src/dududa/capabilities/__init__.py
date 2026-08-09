@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .authorization import CapabilityAuthorizationPurpose
     from .config import ConfigCapabilityRegistry
     from .health import PollingCapabilityHealthRegistry
+    from .ledger import InMemoryToolInvocationLedger
     from .planning import (
         DeterministicArgumentBinder,
         DeterministicToolPlanner,
@@ -158,6 +159,7 @@ __all__ = [
     "Idempotency",
     "InMemoryCapabilityProviderRegistry",
     "InMemoryCapabilityRegistry",
+    "InMemoryToolInvocationLedger",
     "LatencyHint",
     "McpCapabilityMapping",
     "ObservationBinding",
@@ -283,6 +285,10 @@ def __getattr__(name: str) -> object:
             "InMemoryCapabilityProviderRegistry": (InMemoryCapabilityProviderRegistry),
             "InMemoryCapabilityRegistry": InMemoryCapabilityRegistry,
         }[name]
+    if name == "InMemoryToolInvocationLedger":
+        from .ledger import InMemoryToolInvocationLedger
+
+        return InMemoryToolInvocationLedger
     raise AttributeError(name)
 
 
