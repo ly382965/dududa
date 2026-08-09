@@ -75,6 +75,7 @@ cd .
 - `cmd_config.json`：命令配置，已有多份备份。
 - `mcp_server.json`：MCP 配置文件，已接入 `icourse` 评课社区 MCP。
 - `plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
+- `plugins/astrbot_plugin_sub2api_readonly/`：Sub2API 用量、排名和账号状态只读查询。
 - `skills/`、`skills.json`：AstrBot skills 资源。
 - `t2i_templates/`：文本转图片模板。
 - `webchat/`、`workspaces/`：WebChat 与工作区数据。
@@ -105,6 +106,7 @@ cd .
 | 复读 | `astrbot_plugin_reread` | 已安装 | 群聊娱乐、氛围参与 |
 | 主动发言 | `astrbot_plugin_target_talk` | 已安装 | 低频主动参与或定向对话 |
 | 回复润色 | `astrbot_plugin_reply_polish` | 已安装 | 统一嘟嘟哒口吻 |
+| Sub2API 统计 | `astrbot_plugin_sub2api_readonly` | 已实现 | 白名单群内查询 Token、排名、区间和账号状态 |
 | 表情包 | `meme_manager` | 已安装 | 表情包管理、随机图、关键词图 |
 
 ### 2.4 pksq / icourse MCP 资源
@@ -153,7 +155,7 @@ cd .
 ├── manage.sh                         # 唯一运维入口
 ├── plugins.lock.json                 # 第三方插件精确版本
 ├── config/                           # 脱敏人格与 MCP 模板
-├── plugins/                          # 三个自研插件源码
+├── plugins/                          # 四个自研插件源码
 ├── patches/                          # Iris 记忆隔离补丁
 ├── services/icourse-mcp/             # 评课 MCP 源码
 ├── vendor/                           # 受上游许可证约束的依赖源码
@@ -172,6 +174,7 @@ NapCat
 AstrBot
     ├── 嘟嘟哒人格与回复策略
     ├── 嘟嘟哒核心插件：/help、权限、确认、审计、课程、管理入口
+    ├── Sub2API 只读插件：/sub2api 用量、排名和账号状态
     ├── 记忆系统：Iris Chat Memory
     ├── 群聊总结：ChatSummary v2
     ├── 提醒系统：Better Reminder

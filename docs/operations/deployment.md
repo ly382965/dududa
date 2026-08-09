@@ -14,7 +14,7 @@
 
 - AstrBot 派生镜像
 - NapCat 容器
-- 三套自研 AstrBot 插件
+- 四套自研 AstrBot 插件
 - 锁定的第三方 AstrBot 插件
 - 嘟嘟哒 Agent package
 - iCourse MCP Server
@@ -25,6 +25,7 @@
 - OpenAI-compatible 模型 Provider 及其凭据
 - QQ 网络和 NapCat 交互式登录
 - 可选的 `mmdustc-edge` Docker 网络及受保护网关
+- 可选的 Sub2API 管理站点及只读查询凭据
 - 宿主机防火墙、磁盘、备份介质和监控
 
 部署不得创建、复制或提交 Provider Key、QQ 登录态和真实用户数据。首次启动后，Provider 配置和 QQ 登录只能在私有运行环境完成。
@@ -155,7 +156,7 @@ Start 只负责容器和网络状态：
 - 验证或创建项目私有 `bot_net`。
 - 按策略验证外部 `edge`，不得静默加入未知网络。
 - 以明确 release image 启动 AstrBot。
-- 挂载三个插件到稳定的 `/AstrBot/data/plugins/<plugin-name>`。
+- 挂载四个插件到稳定的 `/AstrBot/data/plugins/<plugin-name>`。
 - 挂载私有运行数据，并保持源码、模板和运维脚本只读。
 - 启动 NapCat，但不清理或重置 QQ 登录态。
 
@@ -180,7 +181,7 @@ Health 必须只读并输出 JSON 及人类可读摘要。至少分层检查：
 
 1. `container`：两个容器存在、运行且无重启循环。
 2. `web`：AstrBot 和 NapCat 本地 HTTP 端点可响应。
-3. `plugin`：三套自研插件和 manifest 中第三方插件均已加载。
+3. `plugin`：四套自研插件和 manifest 中第三方插件均已加载。
 4. `persona`：`dududa` 存在，默认选择符合部署策略。
 5. `mcp`：完成 MCP initialize、list tools 和 `icourse_stats`。
 6. `data`：数据库与配置可读写，源码挂载仍为只读。
@@ -264,7 +265,7 @@ STACK_DATA_ROOT/
 - 配置合并、无效 JSON 和未知字段测试
 - 第三方 staging、patch、完整性和原子切换测试
 - Docker 构建 smoke
-- 三套 AstrBot 插件真实 import/注册测试
+- 四套 AstrBot 插件真实 import/注册测试
 - Persona seed 版本和用户字段保留测试
 - MCP initialize/list/call 集成测试
 - Health 的 healthy/degraded/failed 测试

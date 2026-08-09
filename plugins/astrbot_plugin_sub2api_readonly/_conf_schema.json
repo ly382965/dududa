@@ -1,0 +1,111 @@
+{
+  "enabled": {
+    "description": "启用插件",
+    "type": "bool",
+    "default": true
+  },
+  "base_url": {
+    "description": "Sub2API 站点地址",
+    "type": "string",
+    "default": "",
+    "hint": "填写站点根地址、/api/v1 地址或 /admin/dashboard 页面地址均可。运行时环境变量 SUB2API_BASE_URL 优先。"
+  },
+  "admin_email": {
+    "description": "Sub2API 管理员邮箱",
+    "type": "string",
+    "default": "",
+    "hint": "不得提交到 Git。运行时环境变量 SUB2API_ADMIN_EMAIL 优先。"
+  },
+  "admin_password": {
+    "description": "Sub2API 管理员密码",
+    "type": "string",
+    "default": "",
+    "hint": "不得提交到 Git 或发送到群聊。运行时环境变量 SUB2API_ADMIN_PASSWORD 优先。"
+  },
+  "group_whitelist": {
+    "description": "允许查询的 QQ 群白名单",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": [],
+    "hint": "默认拒绝所有群；必须显式填写群号。"
+  },
+  "exclusive_groups": {
+    "description": "仅允许 Sub2API 功能的群",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": [],
+    "hint": "这些群的普通聊天、@、戳一戳和其他命令会被静默拦截，只放行 /sub2api、/sub2 和 /用量。群号还必须同时加入 group_whitelist。"
+  },
+  "private_user_whitelist": {
+    "description": "允许私聊查询的 QQ 用户白名单",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": [],
+    "hint": "默认拒绝所有私聊；需要时显式填写 QQ 号。"
+  },
+  "timezone": {
+    "description": "统计时区",
+    "type": "string",
+    "default": "Asia/Shanghai"
+  },
+  "ranking_limit": {
+    "description": "用户排名条数",
+    "type": "int",
+    "default": 10,
+    "hint": "允许 1-100。"
+  },
+  "account_limit": {
+    "description": "单次展开账号数",
+    "type": "int",
+    "default": 30,
+    "hint": "允许 1-100。"
+  },
+  "model_limit": {
+    "description": "单次展开模型数",
+    "type": "int",
+    "default": 10,
+    "hint": "允许 1-50。"
+  },
+  "max_trend_rows": {
+    "description": "区间查询最多展开的每日趋势行数",
+    "type": "int",
+    "default": 14,
+    "hint": "超出的日期仍计入合计，只是不在群消息中逐日展开。"
+  },
+  "max_range_days": {
+    "description": "单次日期区间上限",
+    "type": "int",
+    "default": 90,
+    "hint": "避免一次查询产生过长消息；允许 1-3660。"
+  },
+  "request_timeout_seconds": {
+    "description": "请求超时秒数",
+    "type": "int",
+    "default": 15,
+    "hint": "运行时限制在 3-60 秒。"
+  },
+  "cache_ttl_seconds": {
+    "description": "只读统计缓存秒数",
+    "type": "int",
+    "default": 30,
+    "hint": "避免群内重复查询冲击管理接口；0 表示关闭，最多 600 秒。账号接口的原始响应不会进入缓存，只缓存剔除凭据后的状态字段。"
+  },
+  "reveal_user_identifiers": {
+    "description": "显示完整用户及账号注册邮箱",
+    "type": "bool",
+    "default": false,
+    "hint": "默认同时脱敏用户排名邮箱和账号注册邮箱；确认白名单群有权限后再开启。"
+  },
+  "show_account_names": {
+    "description": "显示上游账号名称",
+    "type": "bool",
+    "default": false,
+    "hint": "默认只显示账号 ID、平台和状态；确认白名单群有权限后再开启。"
+  }
+}

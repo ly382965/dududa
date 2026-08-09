@@ -46,6 +46,9 @@ services:
       HF_HOME: /AstrBot/data/model_cache/huggingface
       HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
       ICOURSE_MCP_DB_PATH: /AstrBot/data/icourse-cache/icourse.sqlite3
+      SUB2API_BASE_URL: ${SUB2API_BASE_URL:-}
+      SUB2API_ADMIN_EMAIL: ${SUB2API_ADMIN_EMAIL:-}
+      SUB2API_ADMIN_PASSWORD: ${SUB2API_ADMIN_PASSWORD:-}
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
@@ -56,6 +59,7 @@ services:
       - ./plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
       - ./plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
       - ./plugins/astrbot_plugin_target_talk:/AstrBot/data/plugins/astrbot_plugin_target_talk:ro
+      - ./plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
       - ./services/icourse-mcp:/AstrBot/data/icourse-mcp:ro
       - ./config:/opt/dududa/config:ro
       - ./scripts:/opt/dududa/scripts:ro

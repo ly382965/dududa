@@ -1,0 +1,16 @@
+name: astrbot_plugin_sub2api_readonly
+display_name: Sub2API 只读统计
+desc: 从 Sub2API 管理网页使用的只读接口查询 Token、用户排名、日期区间和账号状态。
+help: |
+  /sub2api help 查看命令。
+  /sub2api today 查看今日 Token 和用户排名。
+  /sub2api range YYYY-MM-DD YYYY-MM-DD 查看指定区间。
+  /sub2api trendtotal [天数d] 生成总 Token 用量趋势图。
+  /sub2api trenduser [天数d] 生成前 10 名用户 Token 趋势图。
+  /sub2api trenduser sum [天数d] 生成前 10 名用户区间累计趋势图。
+  /sub2api accounts 查看上游账号状态。
+version: v0.5.1
+author: mmdustc
+repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_sub2api_readonly
+support_platforms:
+  - aiocqhttp
