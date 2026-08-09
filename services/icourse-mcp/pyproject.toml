@@ -12,6 +12,8 @@ dependencies = [
     "beautifulsoup4>=4.12.3",
     "httpx>=0.27.0",
     "mcp>=1.2.0,<2.0.0",
+    # MCP 1.29 emits an unresolved lifespan warning with 2.15.x.
+    "pydantic-settings>=2.14.2,<2.15.0",
 ]
 
 [project.scripts]

@@ -55,6 +55,10 @@ uv sync --locked --python 3.12.13
 `datetime.UTC`。改用等价的 `timezone.utc` 后，针对性测试和 3.10 全仓测试均通过。这是
 兼容性门禁发现并修复的代码问题，不是通过放宽版本范围规避。
 
+MCP 1.29.0 与解析到的 `pydantic-settings 2.15.0` 组合还会产生 `lifespan` 前向引用警告。
+隔离对照证明 2.14.2 可在 `-W error` 下完成相同离线握手，因此 v1 过渡期显式限制为
+`>=2.14.2,<2.15.0`；迁移 MCP v2 时必须重新验证并删除该临时上界。
+
 ## 4. SQLite 安全约束
 
 SQLite 官方在 2026 年披露 WAL-reset corruption bug：3.7.0 至 3.51.2 在同一 WAL 数据库
