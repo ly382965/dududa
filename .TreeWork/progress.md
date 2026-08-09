@@ -6,7 +6,7 @@ Stage: work_tree
 Lead cursor: production-shape
 Accepted tree revision: 3
 Tree editing: closed
-Last sync: unix:1786277116
+Last sync: unix:1786277499
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)

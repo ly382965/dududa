@@ -258,19 +258,19 @@
       "title": "S12 Entry Gate Production Shape",
       "purpose": "Make the existing runtime safely composable, default-off and reproducible without enabling a real Endpoint.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/production-shape",
         "git_branch": "treework/production-shape",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1786273050",
         "last_entered_at": "unix:1786273050",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1786277116"
+      "last_sync": "unix:1786277499"
     },
     {
       "path": "semantic-contract",

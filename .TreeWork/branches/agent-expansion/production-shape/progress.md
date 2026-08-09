@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: production-shape
 Parent: agent-expansion
-Status: in_progress
+Status: complete
 Verification: verified
-Last sync: unix:1786277116
+Last sync: unix:1786277499
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
