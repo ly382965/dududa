@@ -52,7 +52,8 @@ Phase 0–1 的审计与目标设计见
 ## Requirements
 
 - Linux host with Docker Engine and Docker Compose v2
-- Python 3.10 or newer
+- uv 0.12.1 with the locked Python 3.10.20/3.12.13 development matrix
+- Node.js 22.18.0 and npm 10.9.3 for Web development
 - Git, for installing locked upstream plugins
 - An external OpenAI-compatible model provider
 
@@ -64,6 +65,12 @@ DaoCloud mirror. Teams may replace only the registry prefix in private `.env`
 files while retaining the digest.
 
 ## Quick Start
+
+The full-stack command below is for a clean host that does not already run an
+AstrBot/NapCat stack. On the current development machine, use only the Web or
+local test commands: the legacy stack already owns ports 6185/6099 and the
+compatibility aliases on `mmdustc-edge`. See the
+[production-shape preflight](docs/research/production-shape-preflight.md).
 
 ```bash
 cp .env.example .env
@@ -139,10 +146,11 @@ For the reproducible Ubuntu setup and troubleshooting steps, see
 [本地开发环境](docs/development/local-environment.md).
 
 ```bash
-python -m pip install -e packages/dududa-agent -e services/icourse-mcp
-python -m compileall -q packages plugins services scripts tests
-python -m unittest discover -s tests -v
-python scripts/check_secrets.py
+./scripts/setup_dev.sh
+uv lock --check
+uv run --locked python -m compileall -q packages plugins services scripts tests
+uv run --locked python -m unittest discover -s tests
+uv run --locked python scripts/check_secrets.py
 docker compose --env-file .env.example config --quiet
 ```
 

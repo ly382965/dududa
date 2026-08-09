@@ -1,0 +1,29 @@
+[project]
+name = "dududa-workspace"
+version = "0.0.0"
+description = "Locked development and test environment for the Dududa monorepo"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "dududa-agent",
+    "icourse-mcp",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27.0,<1.0.0",
+    "jsonschema>=4.10,<5.0",
+    "pillow>=10.0.0,<13.0.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+dududa-agent = { workspace = true }
+icourse-mcp = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    "packages/dududa-agent",
+    "services/icourse-mcp",
+]

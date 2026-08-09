@@ -14,32 +14,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.10.20", "3.12.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
-            packages/dududa-agent/pyproject.toml
-            services/icourse-mcp/pyproject.toml
-            plugins/astrbot_plugin_dududa_core/requirements.txt
-      - name: Build and install Dududa packages
+      - name: Install locked development environment
+        run: |
+          python -m pip install uv==0.12.1
+          uv lock --check
+          uv sync --locked --python "${{ matrix.python-version }}"
+      - name: Build and install Dududa package wheel
         run: |
           mkdir -p "$RUNNER_TEMP/dududa-wheel"
-          python -m pip wheel --no-deps \
-            --wheel-dir "$RUNNER_TEMP/dududa-wheel" \
-            packages/dududa-agent
-          python -m pip install "$RUNNER_TEMP"/dududa-wheel/dududa_agent-*.whl
-          python -m pip install -e services/icourse-mcp
-          python -m pip install -r plugins/astrbot_plugin_dududa_core/requirements.txt
-          python -m pip check
-          python -c 'import importlib.metadata, pathlib, dududa; assert importlib.metadata.version("dududa-agent") == dududa.__version__; assert (pathlib.Path(dududa.__file__).parent / "py.typed").is_file()'
+          uv build --wheel packages/dududa-agent --out-dir "$RUNNER_TEMP/dududa-wheel"
+          uv pip install --python .venv/bin/python --reinstall \
+            "$RUNNER_TEMP"/dududa-wheel/dududa_agent-*.whl
+          uv pip check --python .venv/bin/python
+          .venv/bin/python -c 'import importlib.metadata, pathlib, dududa; assert importlib.metadata.version("dududa-agent") == dududa.__version__; assert (pathlib.Path(dududa.__file__).parent / "py.typed").is_file()'
       - name: Compile Python sources
-        run: python -m compileall -q packages plugins services scripts tests
+        run: .venv/bin/python -m compileall -q packages plugins services scripts tests
       - name: Run unit tests
-        run: python -m unittest discover -s tests -v
+        run: .venv/bin/python -m unittest discover -s tests -v
       - name: Validate shell
         run: |
           bash -n manage.sh scripts/setup_dev.sh
@@ -47,11 +44,41 @@ jobs:
       - name: Validate memory migration entrypoint
         run: |
           test -x scripts/migrate_memory_v2.py
-          ./scripts/migrate_memory_v2.py --help
+          .venv/bin/python scripts/migrate_memory_v2.py --help
       - name: Validate Compose
         run: docker compose --env-file .env.example config --quiet
       - name: Check repository for secrets and runtime data
-        run: python scripts/check_secrets.py
+        run: .venv/bin/python scripts/check_secrets.py
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install locked Web dependencies
+        working-directory: apps/web
+        run: npm ci
+      - name: Audit production dependencies
+        working-directory: apps/web
+        run: npm audit --omit=dev --audit-level=high
+      - name: Run Web unit and contract tests
+        working-directory: apps/web
+        run: npm test
+      - name: Typecheck and build Web
+        working-directory: apps/web
+        run: |
+          npm run typecheck
+          npm run build
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - name: Run Web E2E
+        working-directory: apps/web
+        run: npm run test:e2e
 
   secrets:
     runs-on: ubuntu-latest

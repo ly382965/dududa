@@ -11,7 +11,7 @@ import re
 import shutil
 import stat
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -68,7 +68,7 @@ def merge_config(document: dict[str, Any], client: dict[str, Any]) -> tuple[dict
 
 
 def atomic_write(path: Path, document: dict[str, Any]) -> Path:
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup = path.with_name(f"{path.name}.bak.{timestamp}")
     shutil.copy2(path, backup, follow_symlinks=False)
     os.chmod(backup, 0o600)

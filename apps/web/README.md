@@ -74,6 +74,8 @@ http://127.0.0.1:5173
 ```bash
 ./manage.sh init
 cd apps/web
+npm ci
+npx playwright install chromium
 DUDUDA_ONEBOT_TOKEN_FILE=../../runtime/web/secrets/onebot_access_token \
 npm run dev
 ```
@@ -113,7 +115,9 @@ Agent Console 目前显示未连接状态，不会生成本地模拟结果。后
 ## Verification
 
 ```bash
+npm audit --omit=dev --audit-level=high
 npm run test
+npm run typecheck
 npm run build
 npm run test:e2e
 ```

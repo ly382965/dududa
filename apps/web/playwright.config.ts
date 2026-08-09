@@ -7,9 +7,9 @@ export default defineConfig({
   timeout: 30_000,
   use: {
     baseURL: 'http://127.0.0.1:4174',
+    browserName: 'chromium',
     locale: 'zh-CN',
     timezoneId: 'Asia/Shanghai',
-    channel: 'chrome',
     screenshot: 'only-on-failure',
   },
   webServer: {
