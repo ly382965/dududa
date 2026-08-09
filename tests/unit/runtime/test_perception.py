@@ -260,6 +260,7 @@ class RouterBackedModelPerceptionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(request.role, ModelRole.PERCEPTION)
         self.assertIsNone(request.route_hint)
         self.assertEqual(request.reasoning_profile_id, "quick")
+        self.assertIsNone(request.temperature)
         self.assertEqual(request.output_schema, fixture.schema_ref)
         self.assertEqual(request.idempotency_key, model_request_fingerprint(request))
         self.assertIs(authority.selected_tier, ModelTier.HAIKU)

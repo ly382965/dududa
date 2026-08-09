@@ -4,15 +4,44 @@
 <!-- treework:status:start -->
 Branch: production-shape
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: in_progress
+Verification: verified
+Last sync: unix:1786277116
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- The four Production Shape gates are locally closed without enabling a real
+  Endpoint: rollback journal is the default, Runtime sampling is unset,
+  health evidence is bounded and the AstrBot plugin installs one unavailable,
+  default-off composition.
+- The active Runtime remains deliberately unavailable without external
+  conformance evidence. The running AstrBot/NapCat containers were not read for
+  credentials, modified, restarted or used to send a message.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added a version-gated `SQLiteJournalMode`, verified effective journal mode,
+  bound the WAL gate to `sqlite_version()` from the actual connection, and
+  retained the existing `BEGIN IMMEDIATE`/CAS ownership behavior.
+- Added descriptor- and Catalog-bound health publication with a v1-compatible
+  bounded Registry projection. Missing, failed, expired, unowned or drifted
+  evidence becomes UNKNOWN at Router acquisition time.
+- Installed the default-off bridge from plugin initialization, added the global
+  enabled gate, rejected repeat initialization/reinstallation, and made active
+  and rejected Assembly cleanup idempotent and retryable.
+- Focused verification passed 85 tests. Python 3.10.20 and 3.12.13 each passed
+  394 repository tests with the two existing AstrBot-host-only skips; package,
+  import, compile, secret, shell and Compose gates passed.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No in-branch issue remains. Real Endpoint identity, sampling, health,
+  retention/residency and request conformance evidence are external gates and
+  therefore keep the installed Runtime unavailable.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- The next ready branch is `semantic-contract`. Do not weaken the health
+  projection, enable a Provider, or alter the running containers while moving
+  into that branch.

@@ -164,6 +164,7 @@ class AstrBotRolloutBridge:
         *,
         output_factory: Callable[[object, InMemoryDeliveryLedger, object], object]
         | None = None,
+        runtime_ready: bool = True,
     ) -> None:
         if not isinstance(controls, RolloutControlProvider):
             raise TypeError("controls do not implement RolloutControlProvider")
@@ -173,6 +174,8 @@ class AstrBotRolloutBridge:
             raise TypeError("invalid Canary coordinator")
         if not isinstance(output_ledger, InMemoryDeliveryLedger):
             raise TypeError("invalid AstrBot Output ledger")
+        if type(runtime_ready) is not bool:
+            raise TypeError("invalid Runtime readiness flag")
         self._controls = controls
         self._requests = requests
         self._shadow = shadow
@@ -185,6 +188,7 @@ class AstrBotRolloutBridge:
                 send_guard=guard,
             )
         )
+        self._runtime_ready = runtime_ready
 
     async def handle(self, event: object) -> AstrBotBridgeResult:
         try:
@@ -193,6 +197,8 @@ class AstrBotRolloutBridge:
             return _legacy("rollout_config_invalid")
         if config.mode.value == "off" or config.kill_switch:
             return _legacy("rollout_not_active")
+        if not self._runtime_ready:
+            return _legacy("rollout_runtime_unavailable")
         timeout = (
             config.shadow_timeout
             if config.mode.value == "shadow"

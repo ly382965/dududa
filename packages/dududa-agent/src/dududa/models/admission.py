@@ -9,6 +9,7 @@ import uuid
 
 from dududa.errors import validation_error
 from dududa.ports.context import PortCallContext, ServiceCallContext
+from dududa.ports.models import ModelOperationalSnapshotResolver
 
 from .contracts import (
     AdmissionDisposition,
@@ -21,10 +22,7 @@ from .contracts import (
     ModelUsage,
     StaleSnapshotPolicy,
 )
-from .registry import (
-    InMemoryModelOperationalStateRegistry,
-    InMemoryModelRoutingRegistry,
-)
+from .registry import InMemoryModelRoutingRegistry
 
 
 CallContext = PortCallContext | ServiceCallContext
@@ -51,7 +49,7 @@ class InMemoryModelAdmissionController:
     def __init__(
         self,
         routing_registry: InMemoryModelRoutingRegistry,
-        operational_registry: InMemoryModelOperationalStateRegistry,
+        operational_registry: ModelOperationalSnapshotResolver,
         *,
         admission_revision: str,
         clock: Callable[[], datetime] | None = None,
@@ -59,6 +57,8 @@ class InMemoryModelAdmissionController:
     ) -> None:
         if not isinstance(admission_revision, str) or not admission_revision.strip():
             raise ValueError("admission_revision must be non-empty")
+        if not isinstance(operational_registry, ModelOperationalSnapshotResolver):
+            raise ValueError("operational_registry does not resolve snapshots")
         self._routing_registry = routing_registry
         self._operational_registry = operational_registry
         self._admission_revision = admission_revision

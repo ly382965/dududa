@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .admission import InMemoryModelAdmissionController
     from .estimation import ConservativeModelInvocationEstimator, ModelTokenPricing
+    from .health import BoundedModelHealthPublisher, ModelHealthEvidence
     from .registry import (
         InMemoryModelOperationalStateRegistry,
         InMemoryModelRoutingRegistry,
@@ -128,6 +129,7 @@ __all__ = [
     "InMemoryModelAdmissionController",
     "InMemoryModelOperationalStateRegistry",
     "InMemoryModelRoutingRegistry",
+    "BoundedModelHealthPublisher",
     "FixedPerceptionBootstrapTierPolicy",
     "LoadCounterScope",
     "ModelCapabilities",
@@ -152,6 +154,7 @@ __all__ = [
     "ModelProviderDescriptor",
     "ModelProviderError",
     "ModelProviderHealth",
+    "ModelHealthEvidence",
     "ModelRequest",
     "ModelResponse",
     "ModelRetentionMode",
@@ -215,6 +218,8 @@ _IMPLEMENTATION_EXPORTS = {
     "InMemoryModelAdmissionController": ".admission",
     "InMemoryModelOperationalStateRegistry": ".registry",
     "InMemoryModelRoutingRegistry": ".registry",
+    "BoundedModelHealthPublisher": ".health",
+    "ModelHealthEvidence": ".health",
     "ModelTokenPricing": ".estimation",
     "StaticModelRouter": ".router",
     "DeterministicModelTierPolicy": ".tiering",

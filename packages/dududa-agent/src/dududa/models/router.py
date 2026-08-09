@@ -1164,6 +1164,12 @@ def _operational_reason(
         EndpointHealthStatus.UNKNOWN,
     }:
         return "provider_health_unavailable"
+    if provider_health.checked_at > now:
+        return "provider_health_from_future"
+    if (
+        now - provider_health.checked_at
+    ).total_seconds() > endpoint.traffic_policy.max_snapshot_age_seconds:
+        return "provider_health_stale"
     endpoint_health = next(
         (
             item

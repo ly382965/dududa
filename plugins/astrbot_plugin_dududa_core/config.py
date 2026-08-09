@@ -96,10 +96,10 @@ class AstrBotRolloutControlProvider:
         self,
         initial_config: dict[str, Any] | None,
         *,
-        path: Path = PLUGIN_CONFIG_PATH,
+        path: Path | None = None,
     ) -> None:
         self._initial = dict(initial_config or {})
-        self._path = path
+        self._path = path or PLUGIN_CONFIG_PATH
 
     def current(self) -> RolloutControlConfig:
         raw = self._read_current_mapping()

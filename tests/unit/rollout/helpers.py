@@ -13,7 +13,11 @@ from dududa.domain.primitives import (
     RoleId,
 )
 from dududa.rollout import RolloutControlConfig, RolloutMode
-from dududa.rollout.ledger import SQLiteRolloutLedger, SQLiteRolloutLedgerConfig
+from dududa.rollout.ledger import (
+    SQLiteJournalMode,
+    SQLiteRolloutLedger,
+    SQLiteRolloutLedgerConfig,
+)
 from dududa.runtime.state import ConnectorResult
 
 
@@ -72,7 +76,12 @@ def control(mode: RolloutMode = RolloutMode.CANARY, **changes: object):
     return replace(value, **changes)
 
 
-def ledger(path: Path, *, clock=lambda: NOW) -> SQLiteRolloutLedger:
+def ledger(
+    path: Path,
+    *,
+    clock=lambda: NOW,
+    journal_mode: SQLiteJournalMode = SQLiteJournalMode.DELETE,
+) -> SQLiteRolloutLedger:
     return SQLiteRolloutLedger(
         SQLiteRolloutLedgerConfig(
             1,
@@ -81,6 +90,7 @@ def ledger(path: Path, *, clock=lambda: NOW) -> SQLiteRolloutLedger:
             timedelta(days=30),
             1_000,
             revision("rollout-ledger"),
+            journal_mode,
         ),
         clock=clock,
     )
