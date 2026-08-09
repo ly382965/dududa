@@ -9,6 +9,9 @@
 Capability/MCP 来源的校园/行业/arXiv 订阅日报。三项均**尚未实现**，不扩大 S08-S11 的历史
 完成范围，也不授权真实发送。
 
+同日完成的开发环境预检、重点 Topic 调研、外部输入门禁和下一轮建议 Tree 汇总见
+`../research/recommendation-matrix.md`。这些结论用于开工排序，不构成 S12-S20 实现证据。
+
 ## 交付规则
 
 每个 PR 必须说明：
@@ -45,6 +48,7 @@ Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再�
 
 | 模块或工作流 | 状态 | 已有证据 | 达到完成仍缺少 |
 | --- | --- | --- | --- |
+| 开发环境与研究基线 | 已完成（本地） | TreeWork 0.1.7、根 uv lock、Python 3.10/3.12、Node 22、Playwright、干净构建及九个 Topic 研究报告已验证 | Production shape 仍有四个 P0；外部 Provider/数据/标注输入按各模块门禁补充 |
 | Phase 0 审计、`v1alpha` 接口与迁移计划 | 已完成 | 当前状态、依赖、设计、ADR、迁移和实施文档已形成，并通过文档门禁 | 不包含 Runtime 代码；进入 S01 后按实现证据重新判断 |
 | 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Tool/Attachment Runtime 与授权生产证据 |
 | 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现 | 真实 Attachment Source、第二平台与授权真实群 delivery 证据 |
@@ -57,8 +61,8 @@ Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再�
 | OC 与 Persona | 部分完成 | 最小 Composer、确定性单 Persona Renderer、Fact/target/constraint 保持与 Render Validator 已进入 S10 | 完整 OC 资产、多 Persona、版本发布和人工风格 Eval |
 | 主动消息与订阅推送 | 未完成（S15A-S15E） | Legacy TargetTalk、Delivery/rollout、iCourse MCP 和 Scheduler 需求可提供局部场景 | 缺少 initiated-run、主动授权、Subscription/Scheduler/Source ledger、公开来源、Digest/Probe Shadow 和回滚闭环 |
 | 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
-| Trace、Eval 与 CI | 部分完成 | 350 项双版本测试、S09 版本化 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI / Control Plane | 未完成 | 只有规划条目；当前文档站不是产品 Control Plane | ADR、只读 API、权限/脱敏/审计、Trace/Eval Viewer，之后才考虑写操作 |
+| Trace、Eval 与 CI | 部分完成 | 375 项双版本测试、S09 版本化 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
+| WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
 | 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有当前发布必需模块、既定 WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
 
 ### 实施步骤完成度

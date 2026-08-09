@@ -12,20 +12,38 @@
 - Real group-chat testing is a terminal validation stage. It must not interrupt
   unfinished module or Web testing work, and Bandit remains outside this
   critical path.
+- Local environment readiness and production readiness are separate claims.
+  The locked dual-Python/Node toolchain is green, while the running AstrBot
+  remains disconnected from Dududa Core and fails four production-shape gates.
+- Static routing remains the authority. Learning may later reorder only legal
+  same-role/tier compatibility classes after admission-aware propensity and
+  feedback contracts exist; Provider failure/fallback cannot reuse a sampled
+  action's propensity.
+- Response length, model tier and reasoning effort are independent decisions.
+  Initial length numbers are pilot defaults and must not become enum semantics.
+- MCP transports approved capabilities but owns neither Schema freshness,
+  scheduling nor delivery. Scheduler occurrence/CAS remains Dududa-owned.
+- The current S09 Eval and Memory retrieval are narrower than their interface
+  names imply: the former is synthetic policy gold, and the latter is exact
+  Scope/TTL plus substring/recency rather than semantic retrieval.
 
 ## Interface Or Contract Effects (effects crossing branch or product boundaries)
 
-- The duplicate `RouteHint` definitions must converge on one shared immutable
-  type before runtime integration.
-- Delivery completion currently rejects real delivery statuses and must be
-  corrected before S10 acknowledgement can be implemented.
-- Runtime state needs immutable tier and route receipts without adding a new
-  phase solely for model selection.
+- Semantic v2 is additive: existing Perception ports and v1 readers remain;
+  spans, linguistic references and `ACCEPT | CLARIFY | ABSTAIN` add evidence
+  without moving structural reply/mention authority out of Connector.
+- Real Provider enablement becomes a per-Endpoint, digest-bound conformance
+  artifact. Registry configuration alone cannot assert limits, reasoning,
+  sampling, usage, cancellation, residency, retention or health.
+- `ResponsePlan` is one immutable authority consumed by Router budgeting,
+  Composer, Persona and final validators; no later component reselects profile.
+- Memory rankers receive only already Scope/TTL/visibility-filtered candidate
+  IDs. Repository, WriteGate, deletion and export remain Core authorities.
 
 ## Risks And Unknowns (project-wide residual hazards; not unfinished branch work)
 
-- All S01-S07 implementation is currently uncommitted, so TreeWork isolation
-  cannot see it until a selective baseline is established.
+- S01-S11 and environment hardening are locally committed but not pushed; the
+  current control branch remains the only authority for this Alignment work.
 - Native DeepSeek and Anthropic model IDs/capabilities must remain Adapter
   configuration until verified; endpoint aliases cannot be treated as facts.
 - The workspace does not establish authorization or credentials for a real QQ
@@ -33,3 +51,9 @@
 - Token underestimation, stale load snapshots, duplicate delivery after restart,
   prompt-injected tier requests, and cross-tier privacy drift require explicit
   negative tests.
+- The running AstrBot SQLite 3.46.1 is affected by the official WAL-reset bug;
+  multi-connection WAL tests and durable rollout remain blocked until the image
+  or journal strategy changes.
+- Real semantic/Probe evaluation needs authorized de-identified group windows,
+  independent annotation and adjudication. Silence remains censored evidence,
+  not a negative reward.

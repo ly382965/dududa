@@ -13,6 +13,15 @@
   contracts.
 - `docs/design/security.md` and `docs/design/persona.md`: deterministic safety,
   budget and rendering invariants.
+- `docs/research/environment-readiness.md` and
+  `docs/research/production-shape-preflight.md`: locked local toolchain evidence
+  and the four production-shape gates that remain outside this Alignment goal.
+- `docs/research/mcp-scheduler-sources.md`, `memory-evaluation.md`,
+  `perception-routing-response.md`, `proactive-messaging.md`, and
+  `contextual-bandit.md`: versioned source review, experiment boundaries and
+  failure criteria for the next implementation Tree.
+- `docs/research/recommendation-matrix.md`: adopt/spike/defer/reject synthesis,
+  external-input gates and the proposed single-developer Tree order.
 
 ## External Design Evidence Reviewed 2026-08-03
 
@@ -29,6 +38,34 @@
 - OpenAI current model guidance confirms `gpt-5.6-luna`, `gpt-5.6-terra`, and
   `gpt-5.6-sol`, their context limits, and that reasoning mode/effort are
   independent of Dududa's logical tiers.
+
+## Expansion Evidence Reviewed 2026-08-09
+
+- MCP Python SDK v2.0.0 (`6f69a375`, MIT) introduces the Client/session shape
+  selected for an isolated S12 migration Spike. Its response cache does not
+  cache `server/discover`; Dududa remains Schema-freshness authority. MCP
+  v1.29.0 is a maintenance fallback, not the target architecture.
+- APScheduler 3.11.3 (`4308ec95`, MIT) supplies Trigger/DST behavior only. Its
+  documented multi-process job-store limitation and SQLite's WAL-reset bug
+  require Dududa-owned occurrence/CAS and SQLite 3.51.3+ or rollback journal.
+- USTC teaching RSS, official publisher feeds and arXiv RSS/API provide governed
+  metadata sources. Their feeds and robots status do not grant full-text
+  redistribution rights; the first release stores bounded metadata, limited
+  summaries and canonical links only.
+- Mem0, Letta and Graphiti are experiment subjects rather than Core contracts.
+  Scope, WriteGate, delete/export/conflict and telemetry isolation remain
+  Dududa-owned; lexical/CJK baselines must beat exact/recency before embedding
+  or graph retrieval can be adopted.
+- MASSIVE, CrossWOZ and CLINC OOS inform an additive span/OOS evaluation design.
+  The current S09 set is synthetic policy gold, not evidence of Chinese
+  multi-turn semantic quality or calibrated confidence.
+- RouteLLM, FrugalGPT, RouterBench and vLLM Semantic Router inform offline
+  baselines and conformance vocabulary. None replaces the static Router or may
+  choose a Tier, privacy boundary, AnswerProfile or proactive behavior.
+- Vowpal Wabbit 9.11.2 (BSD-3-Clause) is the isolated S20 Worker candidate;
+  Open Bandit Pipeline 0.5.7 (Apache-2.0) is research-only OPE verification.
+  Both remain unusable for policy claims without pre-action propensity,
+  support, two legal same-role/tier endpoints and attributable feedback.
 
 ## Evidence (external or project sources that materially informed requirements or Spec; not an undigested link dump)
 

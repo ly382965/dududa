@@ -72,14 +72,18 @@ authorized external run after these local criteria and their audit pass.
    settings with explicit capability degradation.
 10. Audit real NapCat multi-account behavior, desktop/mobile UX, security and
     the complete repository regression suite.
-11. Implement the remaining MCP/Capability, Memory, Persona and deterministic
-    Response Plan scopes in the single-developer sequence.
-12. Implement proactive outbound contracts, then durable scheduling and
+11. Close the production-shape gate: derived-image SQLite, Endpoint sampling
+    semantics, health snapshots and the single rollout composition root.
+12. Add the compatible semantic span/decision contract and complete its
+    synthetic/Schema pilot without claiming real Chinese multi-turn quality.
+13. Run the MCP v2 Client/Server migration Spike, then implement Unified MCP and
+    bounded Capability before completing Memory and deterministic Response Plan.
+14. Implement proactive outbound contracts, then durable scheduling and
     subscriptions, then one public campus source, arXiv, allowlisted industry
     sources, digest Shadow, and finally probe Shadow.
-13. Run fake-clock long-duration simulation, fault injection, repository-wide
+15. Run fake-clock long-duration simulation, fault injection, repository-wide
     regression and a new local expansion audit.
-14. After every accepted module and local audit is complete, freeze the SLO and
+16. After every accepted module and local audit is complete, freeze the SLO and
     rollback bundle, then run authorized single-group shadow, single-group
     inbound canary, separately authorized digest/probe canaries, and only
     afterward any layered group expansion/debugging.
@@ -95,7 +99,7 @@ arrive.
   answer profiles or other proactive behavior.
 - Unsolicited private messages, individual targeting, sensitive/private MCP
   feeds, automatic Memory writes, image generation, broad rollout, Agent
-  Console runtime integration and Sub2API.
+  Console runtime integration and isolated collaboration repositories.
 
 ## External Dependencies (user decisions, systems, or inputs outside tree.yaml)
 
@@ -111,3 +115,13 @@ arrive.
 5. Full Web verification requires at least one real logged-in NapCat account;
    destructive QQ mutations and public-network exposure require separate user
    authority.
+6. Real Endpoint enablement needs legal Provider/model identifiers, official
+   capability/price/retention/residency evidence, fixed SDK/image revisions and
+   low-quota synthetic conformance credentials. Missing inputs do not block
+   Fake contracts.
+7. Semantic, Probe and AnswerProfile quality claims need authorized data
+   governance, a second annotator/reviewer and profile examples. Until supplied,
+   only synthetic/Schema pilots and deterministic limits may be claimed.
+8. Source rollout needs operator-frozen campus/publisher/category allowlists,
+   arXiv revision policy, IANA zone, quiet hours, misfire window and item/rate
+   limits. Public fixtures remain sufficient for Adapter contract development.

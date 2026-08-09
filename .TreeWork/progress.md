@@ -11,18 +11,19 @@ Last sync: unix:1786249319
 
 ## Global Reality (current project reality and material corrections; not a branch table)
 
-- S01-S07 foundations, S08 static model selection and S09 deterministic
-  Perception/Tiering are committed on `codex/s08-s11` through `18d4958`.
-- The clean integrated S09 snapshot passes 257 tests with two AstrBot-host-only
-  skips on both Python 3.10 and 3.12; its synthetic Eval technical gate passes
-  while human template review remains pending.
+- S01-S07 foundations and S08-S11 local runtime are committed on
+  `codex/s08-s11`; environment hardening is committed through `fcd95a1`.
+- Clean uv environments on Python 3.10.20 and 3.12.13 each pass 375 tests with
+  two AstrBot-host-only skips. The S09 synthetic Eval remains a policy-regression
+  gate; human Chinese multi-turn quality and calibration are not established.
 - S08-S11 local implementation and the cross-stage completion audit are
   complete and verified. Authorized real-group testing is a deferred final
   project stage, not an S08-S11 completion blocker.
 - The Mew/NapCat Web epic is complete, verified and deployed on loopback. It
   provides rich chat, contacts, notifications, group management/resources,
   settings, multi-account isolation and bounded real-data persistence.
-- Sub2API remains concurrent unrelated work and is excluded from Web branches.
+- Isolated collaboration repositories remain outside the main development
+  environment and are not evidence for this Alignment.
 - Tree revision 2 adds the Mew/NapCat epic after explicit user approval of real
   NapCat data caching and the Mew source baseline.
 - On 2026-08-09 the user added three future requirements: deterministic
@@ -33,6 +34,17 @@ Last sync: unix:1786249319
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
   outside the terminal real-group prerequisite chain. User review is pending.
+- The locked root uv workspace, Node 22/npm environment, Playwright Chromium,
+  clean sdist-to-wheel path and warning-free MCP v1 fallback are reproducible.
+  The Web unit/server/type/build/E2E gates pass; the existing containers were
+  inspected read-only and were not restarted or switched.
+- Production is still NOT READY: the running AstrBot has no installed rollout
+  bridge, Runtime sampling conflicts with the Adapter, Adapter health remains
+  UNKNOWN, and its SQLite 3.46.1 is inside the WAL-reset bug range.
+- The 2026-08-09 research set now covers Unified MCP, Scheduler, public sources,
+  Memory, semantic evaluation, real Endpoint conformance, AnswerProfile,
+  Conversation Probe and same-role/tier Contextual Bandit. The recommendation
+  matrix records the next Tree order and external-input gates.
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
@@ -45,6 +57,12 @@ Last sync: unix:1786249319
   durable scheduling, proactive authorization, public-source providers and
   proactive rollout evidence are all unimplemented. The existing S10/S11
   completion claims remain limited to inbound explicit-mention behavior.
+- No real Provider Endpoint is currently enableable: composition, sampling,
+  health and conformance evidence must close first. No second legal same-role/
+  tier Endpoint, propensity log or attributable reward exists for Bandit.
+- Authorized Chinese multi-turn data, a second annotator, profile examples and
+  source/operator policy inputs are unavailable; related reports correctly stop
+  at synthetic/Schema or no-send Spike readiness.
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 
@@ -61,3 +79,6 @@ Last sync: unix:1786249319
 - The Web foundation, chat, directory/group and final audit branches returned
   complete/verified. The audit passed 66 frontend, 42 server, 6 Playwright and
   352 repository tests and preserved the running NapCat/AstrBot containers.
+- Environment hardening established TreeWork 0.1.7, locked Python/Node inputs,
+  clean package construction and the production-shape preflight without
+  changing any running container or sending a message.

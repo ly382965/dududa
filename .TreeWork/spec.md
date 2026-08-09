@@ -4,20 +4,19 @@
 
 ### Starting Point
 
-S01-S07 are committed as the framework foundation. S08 selection contracts and
-the static Router are integrated, and S09 Perception/Tiering is integrated and
-verified through Python 3.10/3.12 at control commit `18d4958`. The S09 synthetic
-Eval has 320 material profiles in 32 template families and reports
-`technical_pass=true`; `release_ready=false` remains honest until a human
-reviews those template families. The legacy AstrBot handlers remain production
-authority.
+S01-S11 are committed and locally verified as framework, static selection,
+Perception/Tiering, offline runtime and controlled-rollout foundations. The
+locked environment through `fcd95a1` rebuilds on Python 3.10.20/3.12.13 and
+Node 22.18.0. The S09 synthetic Eval remains a deterministic policy regression
+suite rather than evidence of real Chinese multi-turn quality. Legacy AstrBot
+handlers remain production authority because the running composition has not
+installed Dududa's rollout runtime.
 
-`apps/web` and its deployment integration are now an accepted project scope.
-They currently exist as an untracked/dirty but verified NapCat multi-account
-prototype in the control workspace. The Sub2API plugin remains unrelated user
-work and stays outside all Web commits. Before isolated Web branches begin, the
-Lead creates a selective Web baseline containing only Web-owned paths and
-Web-specific hunks; no Sub2API or model-runtime changes are staged with it.
+The Mew/NapCat Web epic is committed, complete and verified as the real
+multi-account QQ test/operator client. It remains a testing surface for the
+Agent expansion rather than a new product Control Plane. Unrelated and isolated
+repositories are outside this workspace's development evidence and are never
+used as implementation inputs.
 
 ### Integrated Model Selection Architecture
 
@@ -231,6 +230,48 @@ module, Web testing task and local integration audit is complete; the final run
 then requires an explicitly authorized group, credentials, frozen SLO and a
 verified rollback bundle.
 
+### Production-Shape Gate Before Expansion
+
+The verified S08-S11 libraries are not yet reachable through the running
+AstrBot composition. Before S12 or any real Endpoint enablement, one bounded
+branch closes four independent gates without redesigning the static Router:
+
+1. install exactly one rollout runtime from the production composition root and
+   prove partial-start cleanup and default-off behavior;
+2. project sampling parameters from proven Endpoint capabilities, using
+   `temperature=None` until a conformance artifact authorizes another value;
+3. publish bounded health snapshots with reproducible
+   `UNKNOWN -> AVAILABLE -> stale UNKNOWN` transitions while preserving the
+   Router's fail-closed treatment of UNKNOWN;
+4. use SQLite 3.51.3+ in the derived image or select rollback journal plus
+   `BEGIN IMMEDIATE`/CAS before any multi-connection persistent test.
+
+Endpoint enablement is digest-bound evidence, not configuration optimism. Each
+real endpoint must prove Provider/model binding, input/context/output limits,
+reasoning and sampling semantics, structured output, stream/cancel/deadline,
+usage/finish reason, error/rate-limit mapping, actual downstream request count,
+logging, retention, residency and health freshness. Missing or stale evidence
+keeps the endpoint disabled.
+
+### Semantic And Memory Evidence Boundary
+
+The S09 fixture remains valid as a deterministic policy regression suite, but
+its synthetic one/two-message templates cannot establish Chinese multi-turn
+quality. An additive contract introduces NFC-normalized, Unicode code-point
+half-open `TextSpan`, entity mentions, reference mentions and an explicit
+`ACCEPT | CLARIFY | ABSTAIN` decision. Connector reply/mention edges remain
+separate from inferred linguistic reference. Real-quality claims require
+authorized 3-12-turn windows, group/conversation-clustered splits, independent
+annotation and adjudication; without them only a Schema pilot may pass.
+
+Memory completion keeps Core authority over exact Scope, TTL, WriteGate,
+delete/export/conflict and provenance. The first retrieval experiment compares
+exact+recency with a CJK-capable lexical baseline, then optionally adds
+embedding/hybrid shadow candidates against the same frozen judgments. External
+Memory services cannot obtain broader Scope, automatic writes or telemetry;
+Graph/temporal memory remains deferred until a simpler baseline shows a measured
+failure.
+
 ### Planned Response Profiles And Controlled Outbound
 
 This section is a pre-implementation target for the next Agent expansion. It
@@ -272,6 +313,14 @@ upper bound and total generated-token reservation only for capability, budget
 and admission checks; it never maps `SHORT=HAIKU`, `MEDIUM=SONNET` or
 `LONG=OPUS`. Required test counterexamples include `OPUS + DEEP + SHORT` and
 `HAIKU + LIGHT + LONG`.
+
+The initial policy constants are explicitly pilot defaults, not semantic truth:
+SHORT is capped at 128 visible tokens/180 Chinese characters/one part, MEDIUM at
+512/720/two parts, and LONG at 1536/2400/five parts. The effective cap is the
+minimum of token, character and platform-part limits; there is no minimum length
+that would reward padding. The values freeze only after the operator supplies
+5-10 ideal and counter-example answers per profile. Safety, required citations,
+refusal reasons and platform hard limits take precedence over every profile.
 
 Each visible path creates one final plan: direct chat after Social Decision and
 before its user-visible model request; tool-backed response after Observation
@@ -315,6 +364,20 @@ items and allowlisted industry updates. Arbitrary URLs, private campus data,
 MCP message-send tools and dynamically discovered unapproved tools are outside
 the first release. External source content is an untrusted Observation and can
 never become instructions.
+
+The Unified MCP Spike fixes one long-lived Client/session and generation per
+Server, bounded reconnect, explicit v1 legacy mode, a Dududa-owned canonical
+Schema snapshot and last-known-good publication. SDK discovery never grants a
+Capability and SDK cache never becomes freshness authority. Cancellation is a
+cooperative signal; a write with an unknown outcome is not retried without a
+business idempotency contract.
+
+The Scheduler owns only deterministic occurrence materialization and lease/CAS
+claim. It uses IANA zones, explicit fold/gap policy, bounded misfire and stable
+business keys independent of worker/attempt/Adapter revision. APScheduler may
+serve as a Trigger oracle but is not the dual-worker claim authority. Source
+Adapters retain source-native identity and provenance; Feed presence or robots
+permission is never treated as a redistribution license.
 
 Every target policy is versioned and canonically binds the enabling operator
 grant, group-policy grant, exact target Scope, allowed trigger kinds, status,
