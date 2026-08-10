@@ -7,34 +7,34 @@ Title: S15C Governed Source Contracts
 ## Scope (owned work and boundary; not progress notes or implementation history)
 
 - S15C Source policy/provenance/cursor/identity/fetch contracts and canonical digests.
-- Source/Policy/Cursor/Item-ledger/Capability-reader Ports and deterministic reference services.
+- Source/Policy/atomic-state/Capability-reader Ports and deterministic reference services.
 - Synthetic campus/arXiv/industry fixture bundle, Fake reader and shared Contract tests.
 - Focused/full verification, status documents and local commits.
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Existing SourceItem/Batch/Failure v1 remains compatible; new source contracts are strict,
+- [x] Existing SourceItem/Batch/Failure v1 remains compatible; new source contracts are strict,
   immutable, versioned, digest-bound and framework-neutral.
-- [ ] Policy snapshot fixes source/category/capability/host/path/size/freshness/revision rules;
+- [x] Policy snapshot fixes source/category/capability/host/path/size/freshness/revision rules;
   unknown source, arbitrary URL/capability and stale/mismatched policy fail closed.
-- [ ] Strict observations produce only PUBLIC, cited, allowlisted, fresh, bounded SourceItems;
+- [x] Strict observations produce only PUBLIC, cited, allowlisted, fresh, bounded SourceItems;
   Schema drift, HTML/prompt injection, truncation and malformed identity/time fail the source.
-- [ ] Cursor CAS and subscription item identity/revision ledger make duplicate fetch idempotent;
+- [x] Atomic cursor CAS and subscription item identity/revision ledger make duplicate fetch idempotent;
   revisions are held unless the exact Definition opts in.
-- [ ] Synthetic campus/arXiv/industry readers share one Contract and partial/all failure,
+- [x] Synthetic campus/arXiv/industry readers share one Contract and partial/all failure,
   timeout/cancel/circuit and NO_NEW_ITEMS behavior is deterministic.
-- [ ] Adding a fourth Fake source changes only policy/binding/fixture, not Source Domain,
+- [x] Adding a fourth Fake source changes only policy/binding/fixture, not Source Domain,
   Scheduler, Runtime, MCP Client or the generic governed provider.
-- [ ] Python 3.10/3.12 focused/full, build/static/lock/secret/whitespace and necessary Web gates
-  pass; Progress/Findings/Verification and public status are synchronized.
+- [x] Python 3.10/3.12 focused、受影响 Contract/抽样回归、build/static/lock/secret/whitespace
+  通过；Web 未受影响则不运行，Progress/Findings/Verification 和公共状态同步。
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
 - [x] Reconcile approved S15C design/research/implementation constraints into this Spec/Plan.
-- [ ] Add source governance DTO/digests and framework-neutral Ports.
-- [ ] Implement strict normalizer, governed provider and in-memory cursor/item ledgers.
-- [ ] Add manifest-bound synthetic fixtures, Fake Capability Reader and extension Contract tests.
-- [ ] Run focused/full verification, synchronize docs, record TreeWork Verification, complete,
+- [x] Add source governance DTO/digests and framework-neutral Ports.
+- [x] Implement strict normalizer, governed provider and atomic in-memory source state store.
+- [x] Add manifest-bound synthetic fixtures, Fake Capability Reader and extension Contract tests.
+- [x] Run focused/full verification, synchronize docs, record TreeWork Verification, complete,
   locally merge and enter S15D.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)

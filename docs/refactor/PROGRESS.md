@@ -6,16 +6,16 @@
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S15B 的既定离线工程已完成到 S15B；S12/S13 已闭合统一 MCP 与受治理 Capability，
+- S01–S15C 的既定离线工程已完成到 S15C；S12/S13 已闭合统一 MCP 与受治理 Capability，
   S14 已闭合 Memory 生命周期、M0-M2 词法基线和固定合成 Eval，并通过双 Python、构建、
   Web 与安全综合 Verification；S15/S15A 已闭合回答档位/Persona 和主动出站默认拒绝契约。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
   取得持久单一所有权。真实 QQ 群运行统一延期到所有当前发布必需模块、既定 WebUI 测试和本地
   总审计完成之后；独立可选 S20 不属于该发布前置。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
-- 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约与
-  S15B 持久调度；Conversation Probe、校园/行业/arXiv 来源和日报仍等待 S15C-S15E，真实来源
-  与发送继续作为外部门禁。
+- 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
+  S15B 持久调度和 S15C 来源框架/合成 fixture；Digest/Probe Shadow 仍等待 S15D-S15E，真实
+  校园/行业/arXiv Adapter、实时内容与发送继续作为外部门禁。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。
 
@@ -168,18 +168,22 @@
    不能把宿主测试与镜像 smoke 合并成同一结果。
 8. **三档回答已完成机械契约。** 不得把长回答映射 Opus 或短回答映射 Haiku；当前
    `ResponsePlan` 和 Validator 证据不等于真实中文质量、Persona 风格或最终预算已校准。
-9. **主动出站完成到 S15B。** 定时器只产生结构化 Trigger claim，不伪造用户消息；MCP
-   不拥有订阅、调度或发送。S15B 是离线 SQLite 参考 authority，在 S15C-S15E 的来源、Shadow
-   和回滚门禁完成前不做生产组合或真实群发送。
+9. **主动出站完成到 S15C。** 定时器只产生结构化 Trigger claim，不伪造用户消息；MCP
+   不拥有订阅、调度或发送。S15C 只提供受治理来源契约、原子内存参考 state 和合成 fixture，
+   不是已存在的真实来源；在 S15D-S15E Shadow/回滚门禁完成前不做生产组合或真实群发送。
 
 ## 下一步
 
-S15B 综合 Verification 完成后，按 Tree 继续 S15C-S15E 和既定 WebUI 回归，
-再执行 S16-S19 本地回归、
+S15C Verification 完成后，按 Tree 继续 S15D-S15E；Web 未受影响时不重复回归，再执行
+S16-S19 本地回归、
 30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
 前置，也不得对主动行为开启探索。
+
+后续分支采用风险分层验证：优先运行受影响 Contract、聚焦 warning-as-error 与抽样仓库回归；
+只有跨模块高风险变更或 S19/最终总集成才重复双 Python 全仓，避免每个 Sxx 重复执行同一套
+600 余项测试。
 
 ## 历史基线
 

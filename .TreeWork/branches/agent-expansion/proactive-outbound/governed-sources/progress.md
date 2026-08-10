@@ -12,18 +12,25 @@ Last sync: unix:1786272840
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
 - S15B is verified and integrated. S15C is the sole active WIP branch.
-- Existing SourceItem/Batch/Failure v1 is retained; governed policy, provenance, cursor, identity,
-  dedup and SourceProvider interfaces do not yet exist.
+- Existing SourceItem/Batch/Failure v1 remains byte-contract compatible. S15C now implements
+  digest-bound source policy/provenance/cursor/identity/fetch contracts, a generic governed Provider,
+  atomic in-memory source state and manifest-bound synthetic fixtures.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
 - Reconciled the approved offline-only S15C boundary into a branch Spec and executable plan without
   inventing real campus/arXiv/industry MCP Servers.
+- Commit `4f76dd0` implements the source-neutral framework and 15 additive tests. Python 3.10.20 and
+  3.12.13 each pass 616 tests with two existing AstrBot-only skips; focused warning-as-error and
+  import-boundary checks pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Source governance contracts, reference services, fixture bundle, tests and verification remain.
+- No branch-local engineering issue remains. Web code and contract are untouched, so the
+  user-approved risk-based sampling policy skipped Web regression.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Work only in the S15C worktree and keep WIP=1; first slice owns additive contracts and Ports.
+- Preserve the fixture-only completion statement: no live campus/arXiv/industry Adapter, real-time
+  freshness, production source database or send path was added.
+- Ready for protected completion and local integration; next WIP branch is S15D Digest Shadow.

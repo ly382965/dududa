@@ -21,14 +21,18 @@ MCP Server/Adapter、不调用 Scheduler/模型/Composer/Memory/Output，也不�
 独立 canonical digest：
 
 - Definition 固定 source ID、类别、只读 Capability ID、host/path allowlist、payload/item 上限、
-  最大年龄、是否要求 external ID/发布时间及 revision 通知策略；不允许任意 URL。
+  最大年龄、独立 Capability Definition digest、是否要求 external ID/发布时间及 revision 通知
+  策略；不允许任意 URL。
 - Policy Snapshot 对排序后的全部 Definition 和 policy revision 整体签名；Subscription 继续只
-  保存现有 `source_policy_id`，Fetch Request 再绑定精确 snapshot ID/digest。
+  保存现有 `source_policy_id`，Fetch Request 再绑定精确 snapshot ID/digest 和有效期。
 - Cursor 是有界 opaque token 与 source snapshot revision；它只表示已观察位置，不授予权限。
 - Provenance 绑定 source/capability definition/provider result、policy、Schema/result mapping
   revision 和 observation time，不保存原始 Provider body。
 - Item Identity 将稳定业务身份与内容 revision 分离。优先 source-specific external identity；
-  只有 Definition 明确允许时才使用 canonical URL fallback。
+  只有 Definition 明确允许时才使用 canonical URL fallback；轮询时间只改变证据快照摘要，不
+  改变语义 revision digest。
+- Fetch Request 使用 typed `SCHEDULED_TRIGGER | PREVIEW_REQUEST` origin 与完整 origin digest，
+  不要求 Preview 伪造 Trigger；Preview 的隔离 state namespace 由 S15D 负责。
 - Fetch Receipt 状态固定为 `SUCCEEDED/PARTIAL/NO_NEW_ITEMS/FAILED/CANCELLED`；只读来源没有
   `UNKNOWN` 副作用状态。
 
@@ -38,8 +42,8 @@ MCP Server/Adapter、不调用 Scheduler/模型/Composer/Memory/Output，也不�
 
 - `SourcePolicyRegistry`：解析精确 snapshot ID/digest；
 - `SourceProvider`：接收 digest-bound Fetch Request，返回 Fetch Receipt；
-- `SourceCursorStore`：读取并 CAS 当前 cursor；
-- `SubscriptionSourceItemLedger`：按 subscription/source/item identity 分类和提交 dedup receipt；
+- `SourceStateStore`：分别保存 cursor authority 与 subscription item ledger，但以一个 digest-bound
+  Fetch plan 原子执行全部 cursor CAS、identity 分类和 commit，失败/取消不留下半提交；
 - `SourceCapabilityReader`：只执行 Definition 固定的公开只读 Capability，不接受模型生成的
   capability ID、URL 或任意 Planner step。
 
@@ -47,8 +51,9 @@ MCP Server/Adapter、不调用 Scheduler/模型/Composer/Memory/Output，也不�
 allowlist/freshness/citation/size/injection 校验、dedup 和 batch 状态。未来 MCP 只能通过 S13
 Capability 实现 `SourceCapabilityReader`；Source Domain 不 import MCP SDK/Client。
 
-Cursor Store、Subscription Item Ledger 与未来投递账本保持分离。S15C 提供确定性内存参考实现
-和 Contract Test，不在本分支增加 SQLite/生产迁移；S15D 只消费 Receipt/Batch。
+Cursor authority、Subscription Item Ledger 与未来投递账本保持逻辑分离；前两者共享 Unit of
+Work 只是为了原子提交。S15C 提供确定性内存参考实现和 Contract Test，不在本分支增加
+SQLite/生产迁移；S15D 只消费 Receipt/Batch。
 
 ### 4. 规范化与去重
 
@@ -56,6 +61,7 @@ Fixture observation 使用严格 JSON object：source ID、snapshot revision、n
 每个 item 只接受 Definition 允许的字段与类型；未知字段、Schema 漂移、截断结果、非 PUBLIC
 结果、host/path 越界、凭据 URL、fragment、tracking query、HTML/脚本/Prompt 指令、超长字段、
 未来发布时间或缺失必填 identity/time 均 fail closed 为该 source 的 `SourceFailure`。
+Freshness 使用 Dududa 注入时钟的 receive time，而不是信任 Provider 自报时间。
 
 同 batch 按 stable identity 至多保留一个 item。Ledger disposition 固定为 NEW、DUPLICATE、
 REVISION_HELD、REVISION_EMIT；默认 revision 只更新观察状态而不再次进入 batch，只有 Definition
@@ -74,5 +80,7 @@ CAS、identity/revision、重复抓取、部分/全部失败、timeout/cancel/ci
 扩展性门禁。增加第四个 Fake Source 只能增加 Definition、fixture 和 binding，不得修改 Core
 Domain、Scheduler、通用 Provider 或 MCP Client。
 
-完成前运行双 Python 全仓与 focused warning-as-error、Ruff/format、import、lock、compile、wheel、
-secret、whitespace 和必要 Web 回归。本分支不声明真实来源 Adapter、实时数据、生产运行或发送。
+完成前运行双 Python focused warning-as-error、受影响 Contract 与抽样仓库回归，以及
+Ruff/format、import、lock、compile、wheel、secret 和 whitespace；只有修改 Web 契约或代码时
+才运行 Web 回归。双 Python 全仓保留在高风险边界与 S19/最终总集成。本分支不声明真实来源
+Adapter、实时数据、生产运行或发送。
