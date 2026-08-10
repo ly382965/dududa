@@ -338,10 +338,19 @@
       "title": "S13 Bounded Capability Runtime",
       "purpose": "Map explicitly authorized business Capabilities to governed Provider calls and bounded Observations.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bounded-capability",
+        "git_branch": "treework/bounded-capability",
+        "managed_by_treework": false,
+        "created_at": "unix:1786295863",
+        "last_entered_at": "unix:1786295863",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786321449"
     },
     {
       "path": "memory-retrieval",
