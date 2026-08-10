@@ -12,6 +12,7 @@ SOURCE = ROOT / "packages" / "dududa-agent" / "src" / "dududa"
 PUBLIC_PACKAGES = (
     "dududa",
     "dududa.adapters",
+    "dududa.bandit",
     "dududa.capabilities",
     "dududa.compatibility",
     "dududa.config",
@@ -119,14 +120,16 @@ ORDER_SENSITIVE_MODULES = (
 
 FORBIDDEN_INTERNAL_IMPORTS = {
     "dududa.perception": ("dududa.models", "dududa.runtime"),
-    "dududa.models": ("dududa.perception", "dududa.runtime"),
+    "dududa.models": ("dududa.bandit", "dududa.perception", "dududa.runtime"),
     "dududa.responses": ("dududa.models", "dududa.runtime"),
     "dududa.persona": ("dududa.models", "dududa.runtime"),
     "dududa.proactive": (
+        "dududa.bandit",
         "dududa.mcp",
         "dududa.models",
         "dududa.runtime",
     ),
+    "dududa.runtime": ("dududa.bandit",),
 }
 
 

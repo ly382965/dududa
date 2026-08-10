@@ -1,0 +1,137 @@
+{
+  "samples": [
+    {
+      "action_id": "action-a",
+      "behavior_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.5"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.5"
+        }
+      ],
+      "behavior_propensity": "0.5",
+      "decision_digest": "synthetic:decision-1:digest",
+      "decision_id": "decision-1",
+      "evaluation_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.75"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.25"
+        }
+      ],
+      "evaluation_expected_prediction": "0.7",
+      "evaluation_probability": "0.75",
+      "feedback_disposition": "observed",
+      "logged_action_prediction": "0.6",
+      "reward": "1",
+      "sample_id": "sample-1",
+      "schema_version": 1
+    },
+    {
+      "action_id": "action-b",
+      "behavior_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.75"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.25"
+        }
+      ],
+      "behavior_propensity": "0.25",
+      "decision_digest": "synthetic:decision-2:digest",
+      "decision_id": "decision-2",
+      "evaluation_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.75"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.25"
+        }
+      ],
+      "evaluation_expected_prediction": "0.3",
+      "evaluation_probability": "0.25",
+      "feedback_disposition": "observed",
+      "logged_action_prediction": "0.2",
+      "reward": "0",
+      "sample_id": "sample-2",
+      "schema_version": 1
+    },
+    {
+      "action_id": "action-a",
+      "behavior_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.5"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.5"
+        }
+      ],
+      "behavior_propensity": "0.5",
+      "decision_digest": "synthetic:decision-3:digest",
+      "decision_id": "decision-3",
+      "evaluation_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.75"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.25"
+        }
+      ],
+      "evaluation_expected_prediction": "0.5",
+      "evaluation_probability": "0.75",
+      "feedback_disposition": "observed",
+      "logged_action_prediction": "0.4",
+      "reward": "0.5",
+      "sample_id": "sample-3",
+      "schema_version": 1
+    },
+    {
+      "action_id": "action-b",
+      "behavior_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.75"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.25"
+        }
+      ],
+      "behavior_propensity": "0.25",
+      "decision_digest": "synthetic:decision-4:digest",
+      "decision_id": "decision-4",
+      "evaluation_distribution": [
+        {
+          "action_id": "action-a",
+          "probability": "0.75"
+        },
+        {
+          "action_id": "action-b",
+          "probability": "0.25"
+        }
+      ],
+      "evaluation_expected_prediction": "0.8",
+      "evaluation_probability": "0.25",
+      "feedback_disposition": "observed",
+      "logged_action_prediction": "0.7",
+      "reward": "1",
+      "sample_id": "sample-4",
+      "schema_version": 1
+    }
+  ],
+  "schema_version": 1
+}

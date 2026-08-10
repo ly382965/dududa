@@ -1,0 +1,34 @@
+{
+  "dataset_digest": "dududa-c14n-v1:eval:bandit-offline-dataset:v1:sha-256:3079d07ca19eaee2f80c6aed5cf9230dfd460691e40ad06a48941f3e8c43f159",
+  "dataset_kind": "synthetic",
+  "expected": {
+    "doubly_robust": "0.787500000000",
+    "effective_sample_size": "3.846153846154",
+    "ips": "0.812500000000",
+    "snips": "0.650000000000"
+  },
+  "fixed_shuffle_seed": 20260810,
+  "generation_revision": "bandit-offline-v1",
+  "manifest_digest": "dududa-c14n-v1:eval:bandit-offline-manifest:v1:sha-256:da414298daf32cf4b371fd15a96265d06459183aa1dacec683def05e531a43c0",
+  "network_allowed": false,
+  "ope_policy": {
+    "decimal_places": 12,
+    "maximum_importance_weight": "10",
+    "minimum_behavior_propensity": "0.10",
+    "policy_id": "synthetic-ope-v1",
+    "policy_revision": "2026-08-10",
+    "rounding_mode": "half_even",
+    "schema_version": 1
+  },
+  "ope_policy_digest": "dududa-c14n-v1:bandit:ope-policy:v1:sha-256:71b24c7a745dd9a8dee766dca8bbbf375bbc3bad139fd6a899d3a77c1cddc7cf",
+  "policy_training_performed": false,
+  "production_hook_present": false,
+  "quality_claim": "offline_estimator_arithmetic_only",
+  "real_endpoint_claimed": false,
+  "real_model_call_count": 0,
+  "release_ready": false,
+  "sample_count": 4,
+  "samples_digest": "dududa-c14n-v1:eval:bandit-offline-samples:v1:sha-256:ea249d973dc55c4e2a78a463a1a70af55493bd5b18f32d508dd61a8fcd03c797",
+  "schema_version": 1,
+  "user_data_record_count": 0
+}
