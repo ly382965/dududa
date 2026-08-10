@@ -10,6 +10,13 @@ Branch: evaluation-ci
 - The suite manifest may select only fixed code Registry entries. Arbitrary
   callables, paths, environment values and Shell commands are not an
   extensibility mechanism.
+- Binding only runner kind and dimensions was insufficient because a catalog
+  could still weaken quality claims, external gates or profile membership. The
+  complete canonical catalog digest is now code-bound, so any such change
+  requires a reviewed code-and-catalog update.
+- Receipt correlation is generated internally as `eval-<uuid>`. The CLI no
+  longer accepts a caller-supplied run ID that could persist a real QQ/group ID
+  or token-like value.
 - Runtime Trace was previously a dormant contract: `TraceEvent` had no
   construction site and final summaries contained only one phase. S18 filled
   that existing contract instead of adding another tracing framework.
@@ -41,3 +48,5 @@ Branch: evaluation-ci
   image itself was deliberately not built until S19.
 - Eval receipts are low sensitivity, not anonymous production telemetry. Their
   internal run/source correlation must still follow a future retention policy.
+- A legitimate suite metadata or profile update must deliberately update the
+  code-bound catalog digest and its tamper tests; editing JSON alone fails.

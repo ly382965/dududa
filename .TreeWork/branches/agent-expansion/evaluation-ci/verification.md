@@ -4,6 +4,15 @@ Branch: evaluation-ci
 
 ## Latest Verification
 
+- Command: clean `4cd9ddc` Python 3.12 `committed-bundles` profile.
+- Result: four bundles passed with `source_dirty=false`, generated opaque
+  `eval-<uuid>` run identity and `0600` receipt; receipt digest
+  `dududa-c14n-v1:eval:suite-receipt:v1:sha-256:e7d892f95d74ca649d76d07540a131d8fe8cb94b47737c55439d3699d18f7c68`.
+- Command: `tests.unit.evaluation.test_suite` plus Runtime Trace tests, changed
+  Ruff/format and `git diff --check` after catalog/receipt hardening.
+- Result: seven tests passed; catalog revision, quality claim, external-gate and
+  profile shrink tampering all failed before execution, and no caller-provided
+  run-ID path remains.
 - Command: Python 3.12 `s18-focused` suite profile.
 - Result: passed four committed bundles (350 synthetic cases) and five focused
   Contract suites (146 cases); receipt digest

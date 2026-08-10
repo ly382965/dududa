@@ -11,7 +11,8 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- S18 implementation is committed at `5be566a`. `evals/suite-v1.json` indexes
+- S18 implementation is committed at `5be566a`, with catalog/receipt hardening
+  at `7e7cbab` and `4cd9ddc`. `evals/suite-v1.json` indexes
   ten fixed runners across fourteen required dimensions and exposes
   `committed-bundles`, `s18-focused` and `ci-python` profiles.
 - Runtime now records digest-bound, append-only, content-free phase events. The
@@ -34,6 +35,11 @@ Last sync: unix:1786272840
 - One Node 22 typecheck/build, clean wheel install/import/pip check, rendered
   Compose contract, YAML parse, changed-code Ruff and a secret scan over 817
   files passed. No container or running service was changed.
+- The complete catalog digest is now code-bound: revision, claim, external-gate
+  and profile-membership tampering all fail before execution. A clean `4cd9ddc`
+  committed-bundle replay passed with four results, a generated opaque run ID,
+  `0600` receipt, `source_dirty=false` and receipt digest
+  `dududa-c14n-v1:eval:suite-receipt:v1:sha-256:e7d892f95d74ca649d76d07540a131d8fe8cb94b47737c55439d3699d18f7c68`.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 

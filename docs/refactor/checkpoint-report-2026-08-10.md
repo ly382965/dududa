@@ -8,7 +8,7 @@
 - S16：由 `22dd4e0` 合并，TreeWork 由 `e04fd1d` 完成返回；
 - S17 工作树：`treework/layout-migration`；
 - S17 实现提交：`8597d70`、`92fd28c`、`6b4ee09`，旧 marker 兼容修复为 `43fe543`。
-- S18 设计/实现提交：`daf3111`、`5be566a`。
+- S18 设计/实现提交：`daf3111`、`5be566a`、`7e7cbab`、`4cd9ddc`。
 
 状态依据依次为 TreeWork lifecycle/verification、Git 提交、分支 Verification 和测试记录。
 “完成”只表示相应 Spec 批准的本地或离线范围已完成，不等于产品已经生产就绪。
@@ -47,7 +47,7 @@
 | S15E Probe Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；群级 hard gates、TTL、cooldown、no-response | 真实群 Projection、人工打扰度、投递 |
 | S16 Operations Hardening | 已完成、已验证、已合并（离线） | Release/State/Receipt、只读 Health、SQLite Backup、Restore Plan、失败单次回滚及 Compose contract | 真实容器升级/恢复、备份加密和生产 Driver |
 | S17 Layout Migration | **已完成、已验证、已合并** | `e2cc296` 冻结设计；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/worker/Compose/build 代表证据通过 | 一 Release 兼容链接留到 S22；Manifest v2 延期 |
-| S18 Evaluation/CI | **已完成（离线）、待集成** | `daf3111`/`5be566a`；十个固定 runner、十四维 catalog、低敏 receipt、append-only Runtime Trace、双 root/worker lock CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 642 项、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚包审计留给 S19；真实质量仍是外部门禁 |
+| S18 Evaluation/CI | **已完成（离线）、待集成** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt/内部生成 run ID、append-only Runtime Trace、双 root/worker lock CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 642 项、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚包审计留给 S19；真实质量仍是外部门禁 |
 | S19 Local Integration Audit | 未开始 | Tree 已定义 | 双 Python全仓、镜像/配置/回滚包、SLO 冻结 |
 | S22 Legacy Cleanup | 未开始 | Tree 已定义 | 仅删除有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 Offline Bandit | 未开始 | Tree 已定义 | decision/feedback/support/propensity 与 IPS/SNIPS/DR golden |

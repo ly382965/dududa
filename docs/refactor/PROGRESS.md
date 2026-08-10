@@ -73,7 +73,7 @@
 | 步骤 | 状态 | 当前证据 | 下一边界 |
 | --- | --- | --- | --- |
 | S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 一 Release 兼容链接留到 S22；Manifest v2 继续延期 |
-| S18 Evaluation/CI | **已完成（离线）、待集成** | `daf3111`/`5be566a`；十个固定 runner、十四维 catalog、低敏 receipt、真实 phase path Trace、双锁 CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚候选审计留给 S19 |
+| S18 Evaluation/CI | **已完成（离线）、待集成** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt、内部生成 run ID、真实 phase path Trace、双锁 CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚候选审计留给 S19 |
 | S19 Local Integration Audit | 未开始 | Tree 分支为 pending/unverified | 集中执行双 Python 全仓、镜像/配置/回滚包与 SLO 审计 |
 | S22 Legacy Cleanup | 未开始 | Tree 分支为 pending/unverified | 只删除已有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 Offline Bandit | 未开始 | Tree 分支为 pending/unverified | 仅完成 decision/feedback/support/propensity 与合成 IPS/SNIPS/DR golden |
@@ -104,6 +104,7 @@
 | Bundle/Contract | Python 3.12 四套提交 bundle 共 350 个合成 case，加五套 focused Contract 共 146 项通过；所有质量报告保持 `release_ready=false` |
 | Python 3.10 | 四套 bundle、30 项受影响 receipt/Trace/Runtime/Delivery/仓库契约通过；独立 MCP worker 2 项禁网测试和根 Contract 11 项通过 |
 | Trace/receipt | Runtime 记录 append-only、canonical digest、无正文的 phase event；失败也写 0600 receipt，Schema 禁止命令、绝对路径、环境、凭据和真实标识字段 |
+| Catalog/身份绑定 | 完整 catalog canonical digest 固定在代码中，revision/claim/gate/profile 篡改均在执行前拒绝；run ID 仅由 runner 随机生成 |
 | 构建/CI | 双 root/worker lock、wheel 干净安装/import/pip check、Node 22 typecheck/build、真实 Compose JSON contract、YAML、Ruff、compile、secret 与 whitespace 通过 |
 | 证据边界 | 完整双 Python 642 项、Web/E2E、镜像/容器、完整故障注入、SLO 与回滚包仍由 S19 统一执行 |
 
