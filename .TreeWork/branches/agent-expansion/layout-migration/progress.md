@@ -5,8 +5,8 @@
 Branch: layout-migration
 Parent: agent-expansion
 Status: in_progress
-Verification: unverified
-Last sync: unix:1786356682
+Verification: verified
+Last sync: unix:1786365897
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
