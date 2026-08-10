@@ -52,10 +52,10 @@ Scheduler 从 injected aware UTC clock 取得 `now`，按订阅 IANA zone 计算
 
 - 每个 `(subscription_id, local_date)` 最多一个 canonical occurrence，跨 revision 也不重复；
 - 普通和 ambiguous/fold 时间选择最早 UTC instant，避免重复小时产生两次；
-- nonexistent/gap 时间按时区 round-trip 向前平移到第一个对应有效 instant；
+- nonexistent/gap 时间固定 `SKIP_NONEXISTENT` 并持久保留 slot tombstone，不擅自顺延；
 - 只扫描 `misfire_grace` 覆盖的有界 local-date 窗口，未来 occurrence 不物化；
 - `scheduled_for <= now <= eligible_until` 写入 READY；超过 grace 写入
-  `SKIPPED_EXPIRED`，永不在重启时集中补发；
+  `SKIPPED_EXPIRED`；gap slot 写入 `SKIPPED_NONEXISTENT`，两者都不在重启时补发；
 - 系统时钟回拨只能再次看到已有唯一键，不能新增或倒退 terminal state。
 
 Occurrence ID 和 Trigger ID 从 subscription ID、local date、revision 和 schedule revision 的

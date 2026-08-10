@@ -12,18 +12,19 @@ Last sync: unix:1786272840
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
 - S15A is verified and integrated. S15B is the sole active WIP branch.
-- Existing Schedule/Subscription/Trigger DTOs are provisional inputs; no durable Scheduler,
-  occurrence claim store or production Scheduler composition exists.
+- Scheduler lifecycle DTO/Ports, typed JSON, SQLite subscription/slot authority and deterministic
+  materializer are implemented. Production Scheduler composition remains intentionally absent.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Reconciled the approved root/design S15B behavior into a branch Spec and executable plan without
-  adding APScheduler, sources, models or Output ownership.
+- Implemented and focused-tested subscription CAS, revision invalidation, DST gap/fold resolution,
+  bounded misfire, dual-instance lease/reclaim, exact ack, restart, tamper rejection and a 30-day
+  fake-clock lifecycle without adding APScheduler, sources, models or Output ownership.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Contracts, SQLite lifecycle store, materializer, fake-clock tests and verification remain open.
+- Full dual-Python repository, build/static, lock, secret, whitespace and Web gates remain open.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Work only in the S15B worktree and keep WIP=1; first code slice owns lifecycle DTO/Port contracts.
+- Work only in the S15B worktree and keep WIP=1; implementation is ready for full verification.

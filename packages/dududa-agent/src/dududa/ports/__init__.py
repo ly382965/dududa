@@ -79,6 +79,9 @@ if TYPE_CHECKING:
         ProactivePreviewPort,
         ProactivePreviewProducer,
         ProactiveQuotaLedger,
+        ProactiveScheduler,
+        ProactiveScheduleStore,
+        ProactiveSubscriptionStore,
         ProactiveTargetRegistry,
     )
     from .responses import (
@@ -156,6 +159,9 @@ __all__ = [
     "ProactivePreviewPort",
     "ProactivePreviewProducer",
     "ProactiveQuotaLedger",
+    "ProactiveScheduleStore",
+    "ProactiveScheduler",
+    "ProactiveSubscriptionStore",
     "ProactiveTargetRegistry",
     "ResponseProfilePolicy",
     "ResponseProfileValidator",
@@ -311,6 +317,9 @@ def __getattr__(name: str) -> object:
         "ProactivePreviewPort",
         "ProactivePreviewProducer",
         "ProactiveQuotaLedger",
+        "ProactiveScheduleStore",
+        "ProactiveScheduler",
+        "ProactiveSubscriptionStore",
         "ProactiveTargetRegistry",
     }:
         from .proactive import (
@@ -321,6 +330,9 @@ def __getattr__(name: str) -> object:
             ProactivePreviewPort,
             ProactivePreviewProducer,
             ProactiveQuotaLedger,
+            ProactiveScheduler,
+            ProactiveScheduleStore,
+            ProactiveSubscriptionStore,
             ProactiveTargetRegistry,
         )
 
@@ -332,6 +344,9 @@ def __getattr__(name: str) -> object:
             "ProactivePreviewPort": ProactivePreviewPort,
             "ProactivePreviewProducer": ProactivePreviewProducer,
             "ProactiveQuotaLedger": ProactiveQuotaLedger,
+            "ProactiveScheduleStore": ProactiveScheduleStore,
+            "ProactiveScheduler": ProactiveScheduler,
+            "ProactiveSubscriptionStore": ProactiveSubscriptionStore,
             "ProactiveTargetRegistry": ProactiveTargetRegistry,
         }[name]
     if name in {

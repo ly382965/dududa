@@ -73,6 +73,9 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.proactive.contracts",
     "dududa.proactive.digests",
     "dududa.proactive.registry",
+    "dududa.proactive.scheduler",
+    "dududa.proactive.scheduler_codec",
+    "dududa.proactive.sqlite_scheduler",
     "dududa.rollout.admission",
     "dududa.rollout.canary",
     "dududa.rollout.contracts",
@@ -126,11 +129,13 @@ class ImportBoundaryTests(unittest.TestCase):
         proactive = importlib.import_module("dududa.proactive")
         expected_owners = {
             "InMemoryProactiveTargetRegistry": "dududa.proactive.registry",
+            "DeterministicProactiveScheduler": "dududa.proactive.scheduler",
             "InitiatedRunRequest": "dududa.proactive.contracts",
             "PreparedDispatch": "dududa.proactive.contracts",
             "ProactiveControlConfig": "dududa.proactive.config",
             "ProactiveTargetPolicy": "dududa.proactive.contracts",
             "ProactiveTrigger": "dududa.proactive.contracts",
+            "SQLiteProactiveSchedulerStore": "dududa.proactive.sqlite_scheduler",
         }
         expected_ports = {
             "ProactiveActorResolver",
@@ -138,6 +143,9 @@ class ImportBoundaryTests(unittest.TestCase):
             "ProactiveDispatchStore",
             "ProactivePreviewPort",
             "ProactiveQuotaLedger",
+            "ProactiveScheduleStore",
+            "ProactiveScheduler",
+            "ProactiveSubscriptionStore",
             "ProactiveTargetRegistry",
         }
         self.assertLessEqual(set(expected_owners), set(proactive.__all__))
