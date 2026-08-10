@@ -98,7 +98,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S16 | 已完成（离线） | 标准库 Release Manifest/State/Receipt、只读 Health、SQLite 一致性 Backup、确定性 Restore Plan、Upgrade/单次失败回滚、根命令转发和 Compose mount/network Contract 已通过临时数据抽样 | 真实 Compose/HTTP/MCP Health Driver、生产备份范围/加密、原地 Restore、真实升级演练和容器观测留待 S19/S23 授权环境 |
 | S17 | **已完成、已验证、已合并** | 三批路径迁移与旧 marker 兼容均已提交；canonical 路径、根 symlink、Compose 和双 Python聚焦 Contract 通过 | 兼容链接留到 S22；Manifest v2 因许可证/hash/lock 证据不足延期 |
 | S18 | **已完成、已验证、已合并（离线）** | `daf3111` 冻结 Spec；`5be566a` 实现十个固定 runner/十四维 catalog、原子低敏 receipt、append-only Runtime Trace、双锁 CI 与 Node 22；`7e7cbab`/`4cd9ddc` 绑定完整 catalog 并移除外部 run-ID 注入；四套 350-case bundle、146 项 focused Contract、Python 3.10 受影响样本和构建/Compose/secret 门禁通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障与 SLO/回滚候选证据统一留给 S19；不声明真实质量 |
-| S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | S19 集中完成发布候选总审计；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S19、S22 | S19 **已完成离线候选审计**；S22 未开始 | S19 双 Python、Eval/Web、镜像、故障/回滚、SLO 和 18 面消费者清单的 18/18 固定 gate 已通过 | S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面；不得把 S19 的候选分类直接当作删除授权 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
@@ -655,10 +655,10 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**先收口 S17，再完成 Eval/本地审计/兼容清理，真实群验证最后执行**
+标题：**基于 S19 证据完成兼容清理，真实群验证最后执行**
 
-S01–S17 的既定本地/离线范围已经完成并验证。接下来按 WIP=1 执行 S18、S19 本地总集成、S22 最终兼容
-审计和 S20 离线基础。既定 WebUI 只运行必要回归，回答档位和主动出站不得跳过本地门禁。
+S01–S19 的既定本地/离线范围已经完成并验证。接下来按 WIP=1 执行 S22 最终兼容审计和
+S20 离线基础。既定 WebUI 回归已经在 S19 通过，回答档位和主动出站不得跳过真实外部门禁。
 只有全部发布必需分支通过后，才准备 S23：
 
 1. 冻结授权群、测试用户、发送窗口、SLO 和 digest-pinned 回滚包；

@@ -32,3 +32,16 @@ Branch: local-integration-audit
 - A source archive proves code recoverability but not a historical production
   image observation. The final package must state exactly which evidence was
   rebuilt locally and which remains an S23/production gate.
+- The first read-only AstrBot smoke failed because upstream AstrBot derives its
+  data directory from the current root and attempted to write below the
+  read-only repository mount. `ASTRBOT_ROOT=/tmp/astrbot` preserves the
+  read-only source boundary while giving the disposable container a writable
+  data root; the rerun passed and cleanup left no S19 container running.
+- One initial Playwright run produced a fully blank page before Vue mounted.
+  The target case then passed eight consecutive diagnostic repetitions and the
+  exact final six-case suite passed. There was no stable compact-layout or
+  NapCat reconnect defect, so S19 did not modify Web behavior.
+- The inventory is deliberately a handoff, not a deletion oracle: ten canonical
+  path aliases are candidates, but the root wrappers, legacy Handler/Role/
+  Memory/protocol/audit surfaces remain live and the dedicated iCourse Client
+  remains blocked until S22 proves complete consumer migration.

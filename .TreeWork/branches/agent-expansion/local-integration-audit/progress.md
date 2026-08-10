@@ -19,6 +19,16 @@ Last sync: unix:1786272840
 - Commit `ae9eae3` now provides strict pilot SLO and code-bound legacy-surface
   catalogs, atomic gate/candidate receipts, tracked consumer inventory, previous
   source archive and disposable AstrBot/Web image-smoke tooling.
+- The complete S19 matrix now passes: both locked Python interpreters discover
+  651 tests with the same two host-only skips, both worker suites pass, four
+  committed Eval bundles cover 350 cases, and the fixed proactive/fault samples
+  pass without network or sends.
+- Web audit, 108 Unit/Server tests, typecheck/build and the final six-case
+  Playwright run pass. Disposable AstrBot/Web images pass no-network smoke after
+  explicitly moving AstrBot's writable data root under container `/tmp`.
+- All 18 fixed candidate gates pass. The S22 handoff inventories 18 surfaces as
+  10 remove candidates, seven live retains and one blocked unknown; no surface
+  was removed in S19.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
@@ -27,17 +37,20 @@ Last sync: unix:1786272840
 - Seven focused audit/fake-Docker tests plus S16 operations and repository
   contracts passed (22 total). Ruff/format/compile/Shell and a safety scan over
   823 files passed; no actual image or running container was touched yet.
+- The release boundary then ran the complete dual-Python, Eval, Web, package,
+  Compose, secret, disposable-image and rollback matrix. The previous S18 source
+  archive is private/digest-bound, and both normal restore/manual rollback and
+  failed-health single rollback returned to the S18 release.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Live latency/cost and human-quality thresholds remain external. S19 must label
-  committed defaults as pilot/unmeasured and leave `s23_ready=false`.
-- No actual previous-release source artifact or S19 aggregate receipt has been
-  generated yet.
+- Live latency/cost and human-quality thresholds remain external. The committed
+  policy labels defaults as pilot/unmeasured and leaves `s23_ready=false`.
 - Legacy AstrBot audit records sender/group fields and must be inventoried
   separately; S18 Runtime Trace privacy cannot be used as its evidence.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Finish documentation/CI maintenance, commit a clean candidate, then run the
-  dual-Python/Web/image/rollback matrix and aggregate its fixed gate receipts.
+- The branch is ready for the clean-HEAD aggregate candidate receipt and
+  protected TreeWork verification/return. S22 must use the generated inventory,
+  not infer removability from path names alone.

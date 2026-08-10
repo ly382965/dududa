@@ -14,31 +14,31 @@ Title: S19 Local Integration Audit
 
 ## Acceptance
 
-- [ ] S18 and all prior release-required leaves are complete/verified and the
+- [x] S18 and all prior release-required leaves are complete/verified and the
   S19 candidate revision is clean.
-- [ ] Strict SLO policy validation freezes zero safety floors, profile token
+- [x] Strict SLO policy validation freezes zero safety floors, profile token
   ceilings, labeled pilot defaults and explicit external-pending fields without
   claiming real measurements.
-- [ ] Python 3.10.20 and 3.12.13 complete repository receipts pass with matching
+- [x] Python 3.10.20 and 3.12.13 complete repository receipts pass with matching
   discovery counts and documented identical skips; both worker locks and
   worker-local suites pass.
-- [ ] Four committed Eval bundles, 30-day Scheduler, day 1/2/30 Digest/Probe and
+- [x] Four committed Eval bundles, 30-day Scheduler, day 1/2/30 Digest/Probe and
   the fixed cross-module failure sample pass without network or sends.
-- [ ] Web dependency audit, Unit/Server, typecheck/build and Playwright pass once
+- [x] Web dependency audit, Unit/Server, typecheck/build and Playwright pass once
   from the locked Node/npm environment.
-- [ ] AstrBot and Web images build under unique tags; `--network none`
+- [x] AstrBot and Web images build under unique tags; `--network none`
   disposable smoke verifies package/plugin/MCP and Web loopback health, always
   cleaning temporary containers and never touching the running stack.
-- [ ] Wheel/install/import/pip, Ruff/format/compile, Shell, rendered Compose,
+- [x] Wheel/install/import/pip, Ruff/format/compile, Shell, rendered Compose,
   secret, lock, import-boundary and whitespace gates pass.
-- [ ] Candidate and previous release manifests, source artifact, backup/restore
+- [x] Candidate and previous release manifests, source artifact, backup/restore
   plan and failed-health single rollback form a verified digest-bound package.
-- [ ] Every proposed S22 surface has a tracked consumer inventory and an honest
+- [x] Every proposed S22 surface has a tracked consumer inventory and an honest
   `remove_candidate`, `retain_live` or `blocked_unknown` classification; legacy
   audit privacy is assessed separately from Runtime Trace.
-- [ ] One atomic low-sensitivity S19 receipt binds every required evidence
+- [x] One atomic low-sensitivity S19 receipt binds every required evidence
   digest and leaves real Provider/source/QQ/human-quality gates pending.
-- [ ] Progress, Findings, Verification and Chinese project status documents
+- [x] Progress, Findings, Verification and Chinese project status documents
   match the actual evidence; changes are locally committed without push.
 
 ## Local Steps
@@ -49,11 +49,11 @@ Title: S19 Local Integration Audit
   focused tamper/privacy/extension tests.
 - [x] Implement disposable AstrBot/Web image smoke with guaranteed cleanup and
   a static no-running-stack contract.
-- [ ] Run dual-Python full discovery, worker and committed Eval gates.
-- [ ] Run proactive/failure samples, Web/E2E, package/static/Compose/secret gates
+- [x] Run dual-Python full discovery, worker and committed Eval gates.
+- [x] Run proactive/failure samples, Web/E2E, package/static/Compose/secret gates
   and disposable images.
-- [ ] Generate and verify previous/candidate/rollback and S22 inventory package.
-- [ ] Synchronize documentation, commit, record TreeWork verification and return.
+- [x] Generate and verify previous/candidate/rollback and S22 inventory package.
+- [x] Synchronize documentation, commit, record TreeWork verification and return.
 
 ## Out Of Scope
 

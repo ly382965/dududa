@@ -18,7 +18,7 @@
   Probe Shadow；真实来源/群 Projection、持久 Probe state、模型与发送继续作为外部门禁。
 - S17 三批 path-only 迁移与旧 lock marker 兼容已经 protected completion 并合入控制分支。
   S18 已实现统一 Eval/Trace/CI 并通过双 Python 风险样本；Manifest v2 仍因 hash、依赖锁和
-  许可证证据不足延期。S19/S22/S20/S23 尚未开始。
+  许可证证据不足延期。S19 本地候选审计已完成；S22/S20/S23 尚未开始。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -74,7 +74,7 @@
 | --- | --- | --- | --- |
 | S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 一 Release 兼容链接留到 S22；Manifest v2 继续延期 |
 | S18 Evaluation/CI | **已完成、已验证、已合并（离线）** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt、内部生成 run ID、真实 phase path Trace、双锁 CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚候选审计留给 S19 |
-| S19 Local Integration Audit | 未开始 | Tree 分支为 pending/unverified | 集中执行双 Python 全仓、镜像/配置/回滚包与 SLO 审计 |
+| S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651 tests/2 skips、worker 各 2、350-case committed Eval、30 日/故障抽样、Web 108+6、双镜像无网 smoke、39 项 package/static、5 项 Compose、824 文件 secret scan 和两类 rollback 均通过；18/18 固定 gate 由低敏 receipt 绑定 | `s23_ready=false`；真实 Provider/source/QQ/人工质量仍是外部门禁；18 项 S22 清单为 10 remove candidate、7 retain live、1 blocked unknown |
 | S22 Legacy Cleanup | 未开始 | Tree 分支为 pending/unverified | 只删除已有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 Offline Bandit | 未开始 | Tree 分支为 pending/unverified | 仅完成 decision/feedback/support/propensity 与合成 IPS/SNIPS/DR golden |
 | S23 Real Group Validation | 最终外部门禁、未开始 | 无真实发送或真实来源声明 | 前置门禁关闭后另行逐行为授权 |
@@ -91,10 +91,10 @@
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
-| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S16 已约束 Source 中途取消/超时，S18 已纳入统一离线证据 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S19/S22 发布闭环未完成 |
+| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19 已完成 30 日与故障抽样 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S22 发布闭环未完成 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | Mew/NapCat WebUI | 已完成（既定范围） | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests；不等同于 Agent Control Plane |
-| 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
+| 真实群聊放量 | 最终阶段（未开始） | S19 本地审计和既定 WebUI 回归已通过；仍须先完成 S22 并取得逐行为授权；可选 S20 不阻塞 |
 
 ## 2026-08-10 S18 阶段证据
 
@@ -106,7 +106,7 @@
 | Trace/receipt | Runtime 记录 append-only、canonical digest、无正文的 phase event；失败也写 0600 receipt，Schema 禁止命令、绝对路径、环境、凭据和真实标识字段 |
 | Catalog/身份绑定 | 完整 catalog canonical digest 固定在代码中，revision/claim/gate/profile 篡改均在执行前拒绝；run ID 仅由 runner 随机生成 |
 | 构建/CI | 双 root/worker lock、wheel 干净安装/import/pip check、Node 22 typecheck/build、真实 Compose JSON contract、YAML、Ruff、compile、secret 与 whitespace 通过 |
-| 证据边界 | 完整双 Python 642 项、Web/E2E、镜像/容器、完整故障注入、SLO 与回滚包仍由 S19 统一执行 |
+| 证据边界 | S19 已完成双 Python 各 651 项、Web/E2E、镜像/容器、故障抽样、SLO 与回滚包；真实质量和 S23 行为未据此升级 |
 
 ## 2026-08-10 S16 阶段证据
 
@@ -242,10 +242,8 @@
 
 ## 下一步
 
-S17 已完成并合并，S18 已完成离线实现和验证。接下来按 Tree 执行 S19 和 S22，再完成 S20 离线基础。S19 集中
-执行本地回归、30 日
-fake-clock/no-send 仿真和故障注入。发布前置
-全部关闭后，才冻结群 ID、
+S17、S18 和 S19 已完成离线实现与验证。接下来按 Tree 使用 S19 的消费者/回滚证据执行
+S22，再完成 S20 离线基础。发布前置全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
 前置，也不得对主动行为开启探索。
