@@ -11,8 +11,27 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S14 is verified and integrated. S15 is the sole active WIP branch and its worktree is clean
+  before the design commit.
+- S10 already provides a fact-preserving Composer, pass-through deterministic Persona Renderer,
+  Render Validator and final Content Safety binding. It does not yet have AnswerProfile,
+  dynamic output budgets, typed Persona Registry/assets or profile evidence in Runtime State.
+- Approved research supplies pilot ceilings and selection principles, but no real Provider,
+  user preference data, human style examples or final QQ delivery constraints are available.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Reconciled the Goal, root/parent Specs, implementation plan, response research, Persona design
+  and current Runtime implementation. Froze the S15 implementation and evidence boundary before
+  coding; no S08-S14 core module was redesigned.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- All implementation, synthetic Eval and verification steps in `task_plan.md` remain open.
+- Real profile/persona quality and final pilot budgets remain an explicit external gate.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Continue only in `/home/mmdustc/Code/.treework-worktrees/dududa/response-persona`.
+- First code slice is the framework-neutral `dududa.responses` contracts/policy/budget projection;
+  commit it before Persona/Runtime integration.
