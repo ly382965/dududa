@@ -490,7 +490,7 @@
       "purpose": "Detect bounded group-level opportunities and prove the no-send proactive policy against synthetic conversations.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "in_progress",
-      "verification_status": "unverified",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -501,7 +501,7 @@
         "last_entered_at": "unix:1786351959",
         "last_status": "created managed worktree"
       },
-      "last_sync": "unix:1786351959"
+      "last_sync": "unix:1786354185"
     },
     {
       "path": "operations-hardening",
