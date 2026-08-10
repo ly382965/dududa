@@ -27,7 +27,7 @@ AstrBot、MCP、Provider SDK、插件目录或运行时配置文件路径。
 ```text
 validated Perception + current-message detail evidence
   -> SocialDecision
-  -> ResponseProfilePolicy -> immutable ResponsePlan
+  -> ResponseProfilePolicy -> immutable ResponsePlan + PersonaResolution
   -> projected direct-chat reservation
   -> existing TierPolicy -> existing StaticModelRouter
   -> Composer(plan) -> PersonaRenderer(plan, catalog snapshot)
@@ -109,6 +109,12 @@ Memory 或 Tool 指令。`PersonaCatalogSnapshot` 是不可变 generation；Publ
 metadata 记录 fallback，不能猜测其他 ID。当前 `config/personas/dududa.json`/`.md` seed 路径
 保持不动；S15 新 typed assets 与 legacy seed 并存，删除留给 S22 证据门禁。
 
+Runtime 在发布 `ResponsePlan` 的同一次状态转换中获取一个 Catalog snapshot 并解析唯一的
+`PersonaResolution`，两者作为不可分割的 checkpoint 证据持久化。Renderer 不读取可变的
+“当前 Catalog”，只消费 state 中该 Resolution；Final Validator 使用同一 Resolution 独立
+核对 definition/source/catalog/snapshot/fallback/render mode。Catalog 在并发中发布新 generation
+不能改变已开始的 run，恢复也不得重新解析；显式回放旧 snapshot 仍可执行。
+
 Renderer 显式接收 Plan 与 snapshot 解析出的 definition，只生成 `FinalResponse`，并在 metadata
 绑定 Plan、Persona definition 和 Draft digest。首版允许 pass-through/确定性句式选择，但不得
 声称已完成模型化风格改写。Render Validator 继续逐字段保持 Fact/Citation/Refusal/Target/
@@ -121,10 +127,11 @@ Safety 都通过后才能获得发送授权。长度合规不能抵消内容漂�
 
 ### 7. Runtime 状态与兼容策略
 
-`RuntimeState.response_plan` 是不可变阶段证据。DIRECT_REPLY 和 ASK_CLARIFICATION 在 Social
-Decision 后的 DECIDED commit 首次发布；USE_TOOLS 必须等 Observation/Capability validation
-完成后，在 VALIDATED commit 首次发布。Tool Retrieval、Planning 和 Execution 不接收 Plan。
-IGNORE/DEFER 不创建 Plan；每条可见路径必须且只能有一个 Plan，状态恢复不重新选择。
+`RuntimeState.response_plan` 与 `RuntimeState.persona_resolution` 是成对出现的不可变阶段证据。
+DIRECT_REPLY 和 ASK_CLARIFICATION 在 Social Decision 后的 DECIDED commit 首次发布；USE_TOOLS
+必须等 Observation/Capability validation 完成后，在 VALIDATED commit 首次发布。Tool Retrieval、
+Planning 和 Execution 不接收两者。IGNORE/DEFER 不创建它们；每条可见路径必须且只能有一对，
+状态恢复不重新选择 Plan 或 Persona generation。
 
 现有 Domain response 类型采用 additive optional binding 字段保持旧构造和 Output Adapter
 rollback 可读；一旦 RuntimeState 含 Plan，state validator 要求所有 S15 binding 和 profile

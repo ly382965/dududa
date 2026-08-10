@@ -157,12 +157,71 @@ class RenderMetadata:
     renderer_revision: ComponentRevision
     draft_digest: DigestString
     response_plan_digest: DigestString | None = None
+    persona_source_digest: DigestString | None = None
+    persona_catalog_digest: DigestString | None = None
+    persona_catalog_snapshot_id: str | None = None
+    persona_fallback_used: bool | None = None
+    persona_render_mode: str | None = None
+    requested_persona_id: str | None = None
+    requested_persona_version: str | None = None
+    persona_resolution_reason: str | None = None
 
     def __post_init__(self) -> None:
+        for field_name in (
+            "persona_id",
+            "persona_version",
+            "draft_digest",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise validation_error("invalid_render_metadata_field", field_name)
+            require_non_empty(value, field_name)
         if self.response_plan_digest is not None:
+            if not isinstance(self.response_plan_digest, str):
+                raise validation_error("invalid_response_plan_digest")
             require_non_empty(
-                str(self.response_plan_digest),
+                self.response_plan_digest,
                 "response_plan_digest",
+            )
+        typed_fields = (
+            self.persona_source_digest,
+            self.persona_catalog_digest,
+            self.persona_catalog_snapshot_id,
+            self.persona_fallback_used,
+            self.persona_render_mode,
+            self.requested_persona_id,
+            self.persona_resolution_reason,
+        )
+        if self.persona_source_digest is None:
+            if any(value is not None for value in typed_fields):
+                raise validation_error("partial_persona_render_metadata")
+            if self.requested_persona_version is not None:
+                raise validation_error("partial_persona_render_metadata")
+            return
+        if any(value is None for value in typed_fields):
+            raise validation_error("partial_persona_render_metadata")
+        for field_name in (
+            "persona_source_digest",
+            "persona_catalog_digest",
+            "persona_catalog_snapshot_id",
+            "persona_render_mode",
+            "requested_persona_id",
+            "persona_resolution_reason",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise validation_error("invalid_render_metadata_field", field_name)
+            require_non_empty(value, field_name)
+        if type(self.persona_fallback_used) is not bool:
+            raise validation_error("invalid_persona_fallback_flag")
+        if self.persona_render_mode not in {"deterministic", "model", "hybrid"}:
+            raise validation_error("invalid_persona_render_mode")
+        if self.requested_persona_version is not None:
+            if not isinstance(self.requested_persona_version, str):
+                raise validation_error("invalid_requested_persona_version")
+            require_non_empty(
+                self.requested_persona_version,
+                "requested_persona_version",
             )
 
 

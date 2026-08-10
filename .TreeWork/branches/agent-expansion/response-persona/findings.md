@@ -13,6 +13,10 @@ Branch: response-persona
 - The current deterministic Renderer copies text byte-for-byte and does not load the legacy
   Persona prompt. S15 may prove typed asset/digest/fallback and expression-safety contracts,
   but real OC style quality remains an external human-evaluation gate.
+- Resolving Persona only when rendering creates a generation race: a checkpoint restored after
+  Catalog publication could render under a different definition. PersonaResolution therefore
+  publishes atomically with ResponsePlan and becomes immutable Runtime State evidence; Renderer
+  and final validation consume it instead of resolving mutable current Catalog state.
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 

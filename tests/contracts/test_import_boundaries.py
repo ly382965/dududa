@@ -22,6 +22,7 @@ PUBLIC_PACKAGES = (
     "dududa.mcp",
     "dududa.models",
     "dududa.perception",
+    "dududa.persona",
     "dududa.ports",
     "dududa.rollout",
     "dududa.responses",
@@ -63,6 +64,7 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.ports.memory",
     "dududa.ports.models",
     "dududa.ports.perception",
+    "dududa.ports.persona",
     "dududa.ports.runtime",
     "dududa.ports.responses",
     "dududa.rollout.admission",
@@ -77,6 +79,9 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.responses.counting",
     "dududa.responses.policy",
     "dududa.responses.validation",
+    "dududa.persona.assets",
+    "dududa.persona.contracts",
+    "dududa.persona.registry",
     "dududa.runtime.composition",
     "dududa.runtime.context",
     "dududa.runtime.contracts",
@@ -98,10 +103,33 @@ FORBIDDEN_INTERNAL_IMPORTS = {
     "dududa.perception": ("dududa.models", "dududa.runtime"),
     "dududa.models": ("dududa.perception", "dududa.runtime"),
     "dududa.responses": ("dududa.models", "dududa.runtime"),
+    "dududa.persona": ("dududa.models", "dududa.runtime"),
 }
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s15_persona_exports_are_visible_and_framework_neutral(self) -> None:
+        import importlib
+
+        persona = importlib.import_module("dududa.persona")
+        ports = importlib.import_module("dududa.ports")
+        expected_owners = {
+            "InMemoryPersonaRegistry": "dududa.persona.registry",
+            "PersonaCatalogSnapshot": "dududa.persona.contracts",
+            "PersonaDefinition": "dududa.persona.contracts",
+            "load_persona_directory": "dududa.persona.assets",
+        }
+        self.assertLessEqual(set(expected_owners), set(persona.__all__))
+        self.assertLessEqual(
+            {"PersonaCatalogPublisher", "PersonaRegistry"},
+            set(ports.__all__),
+        )
+        self.assertEqual(len(persona.__all__), len(set(persona.__all__)))
+        for name, module_name in expected_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(persona, name), getattr(owner, name))
+
     def test_s15_response_exports_are_visible_and_framework_neutral(self) -> None:
         import importlib
 

@@ -12,6 +12,7 @@ from dududa.domain.delivery import DeliveryReceipt
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.message import MessageDedupKey
 from dududa.perception.contracts import PerceptionContext, SocialDecision
+from dududa.persona.contracts import PersonaResolution
 from dududa.responses.contracts import ResponsePlan
 from dududa.runtime.contracts import (
     CurrentMessageContext,
@@ -97,6 +98,8 @@ class OfflinePersonaRenderer(Protocol):
         self,
         draft: DraftResponse,
         response_plan: ResponsePlan | None = None,
+        *,
+        persona_resolution: PersonaResolution | None = None,
     ) -> FinalResponse: ...
 
 
@@ -106,6 +109,8 @@ class OfflineRenderValidator(Protocol):
         self,
         draft: DraftResponse,
         rendered: FinalResponse,
+        *,
+        persona_resolution: PersonaResolution | None = None,
     ) -> RenderValidationResult: ...
 
 
@@ -119,6 +124,7 @@ class OfflineFinalResponseValidator(Protocol):
         scope: ConversationScope,
         *,
         response_plan: ResponsePlan | None = None,
+        persona_resolution: PersonaResolution | None = None,
         call: PortCallContext,
     ) -> ValidatedFinalResponse: ...
 

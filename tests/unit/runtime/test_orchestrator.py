@@ -37,6 +37,7 @@ from dududa.perception.rules import (
 )
 from dududa.perception.social import DeterministicSocialDecisionPolicy
 from dududa.perception.validation import validate_perception_result
+from dududa.persona.registry import InMemoryPersonaRegistry
 from dududa.ports.context import (
     ManualCancellationToken,
     NeverCancelled,
@@ -87,6 +88,7 @@ from dududa.testing.models import ProviderSuccess
 
 from tests.unit.models.helpers import NOW
 from tests.unit.perception.helpers import limits as perception_limits
+from tests.unit.persona._fixtures import definition as persona_definition
 from tests.unit.runtime.test_composition import _composer, _renderer
 from tests.unit.runtime.test_direct_chat import _config as direct_config
 from tests.unit.runtime.test_direct_chat import _fixture as direct_fixture
@@ -338,6 +340,13 @@ class OrchestratorFixture:
             ),
             clock=self.clock,
         )
+        self.persona_registry = InMemoryPersonaRegistry(
+            (persona_definition(), persona_definition("neutral")),
+            fallback_persona_id="neutral",
+            fallback_version="1.0.0",
+            clock=self.clock,
+            id_factory=lambda: "runtime-v1",
+        )
         delivery_builder = DeliveryRequestBuilder(
             DeliveryRequestBuilderConfig(
                 schema_version=1,
@@ -403,6 +412,7 @@ class OrchestratorFixture:
                 )
             ),
             detail_detector_revision=revision("detail-detector"),
+            persona_registry=self.persona_registry,
             capability_runtime=capability_runtime,
             clock=self.clock,
         )
@@ -468,6 +478,7 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         assert checkpoint is not None
         self.assertIsNone(checkpoint.state.response_profile_request)
         self.assertIsNone(checkpoint.state.response_plan)
+        self.assertIsNone(checkpoint.state.persona_resolution)
         self.assertIsNone(fixture.router.requests[0].response_plan_digest)
 
     async def test_direct_reply_reaches_ready_through_real_static_router(self) -> None:
@@ -489,7 +500,9 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIsNotNone(checkpoint.state.response_profile_request)
         self.assertIsNotNone(checkpoint.state.response_plan)
+        self.assertIsNotNone(checkpoint.state.persona_resolution)
         assert checkpoint.state.response_plan is not None
+        assert checkpoint.state.persona_resolution is not None
         self.assertIs(
             checkpoint.state.response_plan.selected_profile,
             AnswerProfile.MEDIUM,
@@ -507,12 +520,18 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             checkpoint.state.final_response.response.render_metadata.response_plan_digest,
             plan_digest,
         )
+        self.assertEqual(
+            checkpoint.state.final_response.response.render_metadata.persona_source_digest,
+            checkpoint.state.persona_resolution.definition.source_digest,
+        )
         self.assertLessEqual(
             len(checkpoint.state.delivery_request.part_intents),
             checkpoint.state.response_plan.delivery_part_limit,
         )
         with self.assertRaises(DududaError):
             replace(checkpoint.state, response_profile_request=None)
+        with self.assertRaises(DududaError):
+            replace(checkpoint.state, persona_resolution=None)
         with self.assertRaises(DududaError):
             replace(
                 checkpoint.state,
@@ -722,6 +741,7 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(checkpoint.state.tier_decision)
         self.assertIsNone(checkpoint.state.direct_route_decision)
         self.assertIsNotNone(checkpoint.state.response_plan)
+        self.assertIsNotNone(checkpoint.state.persona_resolution)
         self.assertIs(
             checkpoint.state.response_plan.selected_profile,
             AnswerProfile.SHORT,

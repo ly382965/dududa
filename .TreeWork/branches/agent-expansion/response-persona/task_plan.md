@@ -22,8 +22,9 @@ Title: S15 Response Profile And Persona
   conversation caps, exact-Scope preference isolation and the full 3x3 matrix.
 - [ ] Dynamic reservation only narrows existing budget; Direct Chat and ModelRequest bind
   Plan digest, visible limit and generated-token limit without changing TierPolicy.
-- [ ] Composer, Persona Renderer and final Validator consume the same Plan; Runtime State
-  persists it once and rejects missing, forged or replay-mismatched evidence.
+- [ ] Composer, Persona Renderer and final Validator consume the same Plan and immutable
+  Persona Resolution; Runtime State persists both once and rejects missing, forged or
+  replay-mismatched evidence.
 - [ ] Typed Persona assets, atomic Catalog snapshot, last-known-good, explicit neutral
   fallback and rollback all pass Contract tests; legacy seed remains intact.
 - [ ] Fact, Citation, Refusal, Target, Attachment, Warning and Scope changes are zero in

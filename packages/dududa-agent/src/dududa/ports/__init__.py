@@ -70,6 +70,7 @@ if TYPE_CHECKING:
         SocialDecisionEngine,
         TaskComplexityAssessor,
     )
+    from .persona import PersonaCatalogPublisher, PersonaRegistry
     from .responses import (
         ResponseProfilePolicy,
         ResponseProfileValidator,
@@ -135,6 +136,8 @@ __all__ = [
     "PerceptionEngine",
     "PerceptionMerger",
     "PerceptionValidator",
+    "PersonaCatalogPublisher",
+    "PersonaRegistry",
     "PortCallContext",
     "ResponseProfilePolicy",
     "ResponseProfileValidator",
@@ -272,6 +275,16 @@ def __getattr__(name: str) -> object:
         from .output import OutputAdapter
 
         return OutputAdapter
+    if name in {
+        "PersonaCatalogPublisher",
+        "PersonaRegistry",
+    }:
+        from .persona import PersonaCatalogPublisher, PersonaRegistry
+
+        return {
+            "PersonaCatalogPublisher": PersonaCatalogPublisher,
+            "PersonaRegistry": PersonaRegistry,
+        }[name]
     if name in {
         "ResponseProfilePolicy",
         "ResponseProfileValidator",

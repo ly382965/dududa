@@ -68,6 +68,10 @@ from dududa.perception.digests import (
     social_decision_digest,
 )
 from dududa.perception.social import validate_social_decision
+from dududa.persona.contracts import (
+    PersonaRendererMode,
+    PersonaResolution,
+)
 from dududa.responses.budget import project_response_reservation
 from dududa.responses.contracts import (
     ResponsePlan,
@@ -273,6 +277,7 @@ class RuntimeState:
     social_decision: SocialDecision | None = None
     response_profile_request: ResponseProfileSelectionRequest | None = None
     response_plan: ResponsePlan | None = None
+    persona_resolution: PersonaResolution | None = None
     tier_selection_context: TierSelectionContext | None = None
     tier_decision: TierDecision | None = None
     direct_route_decision: RouteDecision | None = None
@@ -636,6 +641,7 @@ _IMMUTABLE_STAGE_FIELDS = frozenset(
         "social_decision",
         "response_profile_request",
         "response_plan",
+        "persona_resolution",
         "tier_selection_context",
         "tier_decision",
         "direct_route_decision",
@@ -696,6 +702,7 @@ _ARTIFACT_RANK: Mapping[str, int] = {
     "social_decision": 4,
     "response_profile_request": 4,
     "response_plan": 4,
+    "persona_resolution": 4,
     "tier_selection_context": 4,
     "tier_decision": 4,
     "capability_plan_authorization_request": 4,
@@ -823,7 +830,9 @@ def _validate_disabled_fields(state: RuntimeState) -> None:
         "response_profiles", False
     )
     if not response_profiles_enabled and (
-        state.response_profile_request is not None or state.response_plan is not None
+        state.response_profile_request is not None
+        or state.response_plan is not None
+        or state.persona_resolution is not None
     ):
         raise validation_error("response_profile_state_without_feature")
     tools_enabled = state.invocation_options.feature_flags.get("tools", False)
@@ -867,6 +876,7 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
     social = state.social_decision
     response_profile_request = state.response_profile_request
     response_plan = state.response_plan
+    persona_resolution = state.persona_resolution
     tier_context = state.tier_selection_context
     tier = state.tier_decision
     direct_route = state.direct_route_decision
@@ -907,6 +917,11 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
         "response_profile_request",
     )
     _optional_instance(response_plan, ResponsePlan, "response_plan")
+    _optional_instance(
+        persona_resolution,
+        PersonaResolution,
+        "persona_resolution",
+    )
     _optional_instance(tier_context, TierSelectionContext, "tier_selection_context")
     _optional_instance(tier, TierDecision, "tier_decision")
     _optional_instance(direct_route, RouteDecision, "direct_route_decision")
@@ -1253,12 +1268,16 @@ def _validate_response_profile_bindings(state: RuntimeState) -> None:
     enabled = state.invocation_options.feature_flags.get("response_profiles", False)
     request = state.response_profile_request
     plan = state.response_plan
+    persona_resolution = state.persona_resolution
     social = state.social_decision
     assessment = state.complexity_assessment
     context = state.current_context
     if not enabled:
         return
-    if (request is None) != (plan is None):
+    evidence = (request, plan, persona_resolution)
+    if any(item is None for item in evidence) and any(
+        item is not None for item in evidence
+    ):
         raise validation_error("incomplete_runtime_response_profile_evidence")
     if social is None:
         if request is not None:
@@ -1291,8 +1310,15 @@ def _validate_response_profile_bindings(state: RuntimeState) -> None:
         if request is not None:
             raise validation_error("tool_response_profile_before_validation")
         return
-    if request is None or plan is None or assessment is None or context is None:
+    if (
+        request is None
+        or plan is None
+        or persona_resolution is None
+        or assessment is None
+        or context is None
+    ):
         raise validation_error("runtime_response_profile_evidence_missing")
+    _validate_runtime_persona_resolution(state, persona_resolution)
     if (
         request.actor_digest != actor_digest(state.actor)
         or request.scope_digest != scope_digest(state.conversation_scope)
@@ -1337,6 +1363,33 @@ def _validate_response_profile_bindings(state: RuntimeState) -> None:
         and plan.visible_character_limit > social.response_constraints.max_characters
     ):
         raise validation_error("runtime_response_plan_exceeds_social_limit")
+
+
+def _validate_runtime_persona_resolution(
+    state: RuntimeState,
+    resolution: PersonaResolution,
+) -> None:
+    expected_id = state.conversation_scope.persona_id
+    if resolution.requested_persona_id != expected_id:
+        raise validation_error("runtime_persona_resolution_scope_mismatch")
+    if resolution.fallback_used:
+        valid = (
+            resolution.definition.persona_id == "neutral"
+            and resolution.reason_code == "neutral_persona_fallback"
+        )
+    else:
+        valid = (
+            resolution.definition.persona_id == expected_id
+            and (
+                resolution.requested_version is None
+                or resolution.definition.version == resolution.requested_version
+            )
+            and resolution.reason_code == "requested_persona_resolved"
+        )
+    if not valid:
+        raise validation_error("runtime_persona_resolution_semantics_mismatch")
+    if resolution.definition.renderer_mode is not PersonaRendererMode.DETERMINISTIC:
+        raise validation_error("runtime_persona_renderer_mode_unsupported")
 
 
 def _validate_capability_artifact_bindings(state: RuntimeState) -> None:
@@ -1525,6 +1578,7 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
     request = state.delivery_request
     receipt = state.delivery_receipt
     response_plan = state.response_plan
+    persona_resolution = state.persona_resolution
     expected_plan_digest = (
         response_plan_digest(response_plan) if response_plan is not None else None
     )
@@ -1582,6 +1636,10 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
             raise validation_error("runtime_final_draft_digest_mismatch")
         if final.response.render_metadata.response_plan_digest != expected_plan_digest:
             raise validation_error("runtime_final_response_plan_mismatch")
+        if _rendered_persona_binding(final) != _persona_resolution_binding(
+            persona_resolution
+        ):
+            raise validation_error("runtime_final_persona_resolution_mismatch")
         profile_validation = final.profile_validation
         if response_plan is None:
             if profile_validation is not None:
@@ -1959,6 +2017,45 @@ def _validate_tool_terminal_path(state: RuntimeState) -> None:
         raise validation_error("failed_tool_runtime_has_visible_response")
 
 
+def _persona_resolution_binding(
+    resolution: PersonaResolution | None,
+) -> tuple[object, ...] | None:
+    if resolution is None:
+        return None
+    return (
+        resolution.definition.persona_id,
+        resolution.definition.version,
+        resolution.definition.source_digest,
+        resolution.catalog_digest,
+        resolution.snapshot_id,
+        resolution.fallback_used,
+        resolution.definition.renderer_mode.value,
+        resolution.requested_persona_id,
+        resolution.requested_version,
+        resolution.reason_code,
+    )
+
+
+def _rendered_persona_binding(
+    final: ValidatedFinalResponse,
+) -> tuple[object, ...] | None:
+    metadata = final.response.render_metadata
+    if metadata.persona_source_digest is None:
+        return None
+    return (
+        metadata.persona_id,
+        metadata.persona_version,
+        metadata.persona_source_digest,
+        metadata.persona_catalog_digest,
+        metadata.persona_catalog_snapshot_id,
+        metadata.persona_fallback_used,
+        metadata.persona_render_mode,
+        metadata.requested_persona_id,
+        metadata.requested_persona_version,
+        metadata.persona_resolution_reason,
+    )
+
+
 def _forbid_after_preprocess(state: RuntimeState) -> None:
     for field_name in (
         "current_context",
@@ -1971,6 +2068,7 @@ def _forbid_after_preprocess(state: RuntimeState) -> None:
         "social_decision",
         "response_profile_request",
         "response_plan",
+        "persona_resolution",
         "tier_selection_context",
         "tier_decision",
         "direct_route_decision",
@@ -1990,6 +2088,7 @@ def _forbid_visible_output(state: RuntimeState) -> None:
     for field_name in (
         "response_profile_request",
         "response_plan",
+        "persona_resolution",
         "direct_route_decision",
         "direct_chat_execution",
         "direct_chat_failure",

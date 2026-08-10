@@ -269,9 +269,11 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 RuntimePhase.TOOLS_EXECUTED,
             }:
                 self.assertIsNone(state.response_plan)
+                self.assertIsNone(state.persona_resolution)
         validated = [state for state in states if state.phase is RuntimePhase.VALIDATED]
         self.assertEqual(len(validated), 1)
         self.assertIsNotNone(validated[0].response_plan)
+        self.assertIsNotNone(validated[0].persona_resolution)
 
     async def test_flag_missing_and_plan_denial_make_zero_tool_calls(self) -> None:
         disabled = self._fixture(self.runtime)

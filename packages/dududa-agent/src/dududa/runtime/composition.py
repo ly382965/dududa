@@ -24,6 +24,7 @@ from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.primitives import ComponentRevision, JsonValue, freeze_json
 from dududa.errors import validation_error
 from dududa.perception.contracts import ClarificationKey, SocialAction, SocialDecision
+from dududa.persona.contracts import PersonaRendererMode, PersonaResolution
 from dududa.ports.context import PortCallContext
 from dududa.ports.responses import ResponseProfileValidator
 from dududa.ports.runtime import OfflineRenderValidator
@@ -181,11 +182,20 @@ class DeterministicPersonaRenderer:
         self,
         draft: DraftResponse,
         response_plan: ResponsePlan | None = None,
+        *,
+        persona_resolution: PersonaResolution | None = None,
     ) -> FinalResponse:
         if not isinstance(draft, DraftResponse):
             raise validation_error("invalid_persona_render_draft")
         if response_plan is not None and not isinstance(response_plan, ResponsePlan):
             raise validation_error("invalid_persona_response_plan")
+        if (response_plan is None) != (persona_resolution is None):
+            raise validation_error("incomplete_persona_render_evidence")
+        if persona_resolution is not None:
+            _validate_runtime_persona_resolution(
+                persona_resolution,
+                self._config.persona_id,
+            )
         expected_plan_digest = (
             response_plan_digest(response_plan) if response_plan is not None else None
         )
@@ -201,6 +211,7 @@ class DeterministicPersonaRenderer:
                     content=RenderedContent(kind=block.kind, text=block.content),
                 )
             )
+        resolution = persona_resolution
         return FinalResponse(
             schema_version=1,
             response_id=draft.response_id,
@@ -215,11 +226,47 @@ class DeterministicPersonaRenderer:
             target_users=draft.target_users,
             attachments=draft.attachments,
             render_metadata=RenderMetadata(
-                persona_id=self._config.persona_id,
-                persona_version=self._config.persona_version,
+                persona_id=(
+                    resolution.definition.persona_id
+                    if resolution is not None
+                    else self._config.persona_id
+                ),
+                persona_version=(
+                    resolution.definition.version
+                    if resolution is not None
+                    else self._config.persona_version
+                ),
                 renderer_revision=self._config.component_revision,
                 draft_digest=canonical_digest(draft, domain="response:draft:v1"),
                 response_plan_digest=expected_plan_digest,
+                persona_source_digest=(
+                    resolution.definition.source_digest
+                    if resolution is not None
+                    else None
+                ),
+                persona_catalog_digest=(
+                    resolution.catalog_digest if resolution is not None else None
+                ),
+                persona_catalog_snapshot_id=(
+                    resolution.snapshot_id if resolution is not None else None
+                ),
+                persona_fallback_used=(
+                    resolution.fallback_used if resolution is not None else None
+                ),
+                persona_render_mode=(
+                    resolution.definition.renderer_mode.value
+                    if resolution is not None
+                    else None
+                ),
+                requested_persona_id=(
+                    resolution.requested_persona_id if resolution is not None else None
+                ),
+                requested_persona_version=(
+                    resolution.requested_version if resolution is not None else None
+                ),
+                persona_resolution_reason=(
+                    resolution.reason_code if resolution is not None else None
+                ),
             ),
         )
 
@@ -238,6 +285,8 @@ class DeterministicRenderValidator:
         self,
         draft: DraftResponse,
         rendered: FinalResponse,
+        *,
+        persona_resolution: PersonaResolution | None = None,
     ) -> RenderValidationResult:
         if not isinstance(draft, DraftResponse) or not isinstance(
             rendered, FinalResponse
@@ -273,6 +322,19 @@ class DeterministicRenderValidator:
             reasons.add("render_metadata_draft_digest_changed")
         if draft.response_plan_digest != rendered.render_metadata.response_plan_digest:
             reasons.add("response_plan_digest_changed")
+        if persona_resolution is not None and not isinstance(
+            persona_resolution, PersonaResolution
+        ):
+            raise validation_error("invalid_persona_resolution")
+        expected_persona = _persona_metadata_projection(persona_resolution)
+        actual_persona = _persona_metadata_projection_from_rendered(rendered)
+        if expected_persona is None:
+            if draft.response_plan_digest is not None:
+                reasons.add("persona_resolution_missing")
+            elif actual_persona is not None:
+                reasons.add("unexpected_persona_resolution")
+        elif actual_persona != expected_persona:
+            reasons.add("persona_resolution_changed")
         changed_anchor_ids = _changed_anchor_ids(draft, rendered)
         return RenderValidationResult(
             schema_version=1,
@@ -319,12 +381,15 @@ class FinalResponseSafetyValidator:
         scope: ConversationScope,
         *,
         response_plan: ResponsePlan | None = None,
+        persona_resolution: PersonaResolution | None = None,
         call: PortCallContext,
     ) -> ValidatedFinalResponse:
         if not isinstance(actor, Actor) or not isinstance(scope, ConversationScope):
             raise validation_error("invalid_final_response_security_identity")
         if response_plan is not None and not isinstance(response_plan, ResponsePlan):
             raise validation_error("invalid_final_response_plan")
+        if (response_plan is None) != (persona_resolution is None):
+            raise validation_error("incomplete_final_persona_evidence")
         expected_plan_digest = (
             response_plan_digest(response_plan) if response_plan is not None else None
         )
@@ -333,7 +398,11 @@ class FinalResponseSafetyValidator:
             or rendered.render_metadata.response_plan_digest != expected_plan_digest
         ):
             raise validation_error("final_response_plan_mismatch")
-        render_validation = self._render_validator.validate(draft, rendered)
+        render_validation = self._render_validator.validate(
+            draft,
+            rendered,
+            persona_resolution=persona_resolution,
+        )
         if not render_validation.valid or render_validation.changed_anchor_ids:
             raise validation_error("render_validation_failed")
         profile_validation = None
@@ -409,6 +478,72 @@ def _changed_anchor_ids(
             for anchor_id in set(draft_by_id) | set(rendered_by_id)
             if draft_by_id.get(anchor_id) != rendered_by_id.get(anchor_id)
         )
+    )
+
+
+def _validate_runtime_persona_resolution(
+    resolution: PersonaResolution,
+    requested_persona_id: str,
+) -> None:
+    if not isinstance(resolution, PersonaResolution):
+        raise validation_error("invalid_persona_resolution")
+    if resolution.requested_persona_id != requested_persona_id:
+        raise validation_error("persona_resolution_scope_mismatch")
+    if resolution.fallback_used:
+        if (
+            resolution.definition.persona_id != "neutral"
+            or resolution.reason_code != "neutral_persona_fallback"
+        ):
+            raise validation_error("persona_resolution_semantics_mismatch")
+    elif (
+        resolution.definition.persona_id != requested_persona_id
+        or (
+            resolution.requested_version is not None
+            and resolution.definition.version != resolution.requested_version
+        )
+        or resolution.reason_code != "requested_persona_resolved"
+    ):
+        raise validation_error("persona_resolution_semantics_mismatch")
+    if resolution.definition.renderer_mode is not PersonaRendererMode.DETERMINISTIC:
+        raise validation_error("unsupported_persona_renderer_mode")
+
+
+def _persona_metadata_projection(
+    resolution: PersonaResolution | None,
+) -> tuple[object, ...] | None:
+    if resolution is None:
+        return None
+    return (
+        resolution.definition.persona_id,
+        resolution.definition.version,
+        resolution.definition.source_digest,
+        resolution.catalog_digest,
+        resolution.snapshot_id,
+        resolution.fallback_used,
+        resolution.definition.renderer_mode.value,
+        resolution.requested_persona_id,
+        resolution.requested_version,
+        resolution.reason_code,
+    )
+
+
+def _persona_metadata_projection_from_rendered(
+    rendered: FinalResponse,
+) -> tuple[object, ...] | None:
+    metadata = rendered.render_metadata
+    if metadata.persona_source_digest is None:
+        return None
+    return (
+        metadata.persona_id,
+        metadata.persona_version,
+        metadata.persona_source_digest,
+        metadata.persona_catalog_digest,
+        metadata.persona_catalog_snapshot_id,
+        metadata.persona_fallback_used,
+        metadata.persona_render_mode,
+        metadata.requested_persona_id,
+        metadata.requested_persona_version,
+        metadata.persona_resolution_reason,
     )
 
 

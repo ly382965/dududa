@@ -35,10 +35,16 @@ from dududa.models.digests import (
 )
 from dududa.perception.contracts import SocialAction, SocialDecision
 from dududa.perception.digests import social_decision_digest
+from dududa.persona.contracts import (
+    PersonaCatalogSnapshot,
+    PersonaResolution,
+    validate_persona_resolution,
+)
 from dududa.ports.capabilities import BoundedCapabilityRuntime
 from dududa.ports.context import NeverCancelled, PortCallContext
 from dududa.ports.models import ModelTierPolicy
 from dududa.ports.perception import SocialDecisionEngine, TaskComplexityAssessor
+from dududa.ports.persona import PersonaRegistry
 from dududa.ports.responses import ResponseProfilePolicy
 from dududa.ports.runtime import (
     OfflineFinalResponseValidator,
@@ -172,6 +178,7 @@ class OfflineRuntimeOrchestrator:
         delivery_builder: DeliveryRequestBuilder,
         response_profile_policy: ResponseProfilePolicy | None = None,
         detail_detector_revision: ComponentRevision | None = None,
+        persona_registry: PersonaRegistry | None = None,
         capability_runtime: BoundedCapabilityRuntime | None = None,
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
@@ -209,7 +216,14 @@ class OfflineRuntimeOrchestrator:
                 raise TypeError(f"invalid {name}")
         if delivery_builder.config.adapter_binding not in config.negotiated_bindings:
             raise ValueError("delivery binding is not negotiated by Runtime")
-        if (response_profile_policy is None) != (detail_detector_revision is None):
+        profile_components = (
+            response_profile_policy,
+            detail_detector_revision,
+            persona_registry,
+        )
+        if any(value is None for value in profile_components) and any(
+            value is not None for value in profile_components
+        ):
             raise TypeError("incomplete Response Profile Runtime configuration")
         if response_profile_policy is not None and not isinstance(
             response_profile_policy, ResponseProfilePolicy
@@ -219,6 +233,10 @@ class OfflineRuntimeOrchestrator:
             detail_detector_revision, ComponentRevision
         ):
             raise TypeError("invalid detail detector revision")
+        if persona_registry is not None and not isinstance(
+            persona_registry, PersonaRegistry
+        ):
+            raise TypeError("persona registry does not implement its port")
         if capability_runtime is not None and not isinstance(
             capability_runtime, BoundedCapabilityRuntime
         ):
@@ -239,6 +257,7 @@ class OfflineRuntimeOrchestrator:
         self._delivery_builder = delivery_builder
         self._response_profile_policy = response_profile_policy
         self._detail_detector_revision = detail_detector_revision
+        self._persona_registry = persona_registry
         self._capability_runtime = capability_runtime
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
@@ -495,6 +514,7 @@ class OfflineRuntimeOrchestrator:
 
             response_profile_request = None
             response_plan = None
+            persona_resolution = None
             response_reservation = (
                 self._config.model_budget_plan.direct_chat_reservation
             )
@@ -511,6 +531,7 @@ class OfflineRuntimeOrchestrator:
                     assessment,
                     social,
                 )
+                persona_resolution = self._resolve_persona(state)
                 response_reservation = project_response_reservation(
                     response_reservation,
                     response_plan,
@@ -542,6 +563,7 @@ class OfflineRuntimeOrchestrator:
                 social_decision=social,
                 response_profile_request=response_profile_request,
                 response_plan=response_plan,
+                persona_resolution=persona_resolution,
                 tier_selection_context=tier_context,
                 tier_decision=tier,
                 capability_plan_authorization_request=(
@@ -715,6 +737,7 @@ class OfflineRuntimeOrchestrator:
                     )
                 response_profile_request = None
                 response_plan = None
+                persona_resolution = None
                 response_reservation = (
                     self._config.model_budget_plan.direct_chat_reservation
                 )
@@ -728,6 +751,7 @@ class OfflineRuntimeOrchestrator:
                         assessment,
                         social,
                     )
+                    persona_resolution = self._resolve_persona(checkpoint.state)
                     response_reservation = project_response_reservation(
                         response_reservation,
                         response_plan,
@@ -760,6 +784,7 @@ class OfflineRuntimeOrchestrator:
                     capability_run_receipt=capability_receipt,
                     response_profile_request=response_profile_request,
                     response_plan=response_plan,
+                    persona_resolution=persona_resolution,
                     tier_selection_context=tier_context,
                     tier_decision=tier,
                     charged_usage=tool_charge,
@@ -767,6 +792,7 @@ class OfflineRuntimeOrchestrator:
                 )
 
             response_plan = checkpoint.state.response_plan
+            persona_resolution = checkpoint.state.persona_resolution
             response_reservation = (
                 self._config.model_budget_plan.direct_chat_reservation
             )
@@ -777,6 +803,8 @@ class OfflineRuntimeOrchestrator:
                 )
             elif response_profiles_enabled:
                 raise validation_error("runtime_visible_response_plan_missing")
+            if (response_plan is None) != (persona_resolution is None):
+                raise validation_error("runtime_visible_persona_resolution_missing")
 
             direct = None
             direct_route = None
@@ -844,15 +872,31 @@ class OfflineRuntimeOrchestrator:
                 budget=budget,
             )
 
-            rendered = self._renderer.render(draft, response_plan)
-            final = await self._final_validator.validate(
-                draft,
-                rendered,
-                checkpoint.state.actor,
-                checkpoint.state.conversation_scope,
-                response_plan=response_plan,
-                call=self._call_with_budget(call, checkpoint.state.budget),
-            )
+            if response_plan is None:
+                rendered = self._renderer.render(draft, response_plan)
+                final = await self._final_validator.validate(
+                    draft,
+                    rendered,
+                    checkpoint.state.actor,
+                    checkpoint.state.conversation_scope,
+                    response_plan=response_plan,
+                    call=self._call_with_budget(call, checkpoint.state.budget),
+                )
+            else:
+                rendered = self._renderer.render(
+                    draft,
+                    response_plan,
+                    persona_resolution=persona_resolution,
+                )
+                final = await self._final_validator.validate(
+                    draft,
+                    rendered,
+                    checkpoint.state.actor,
+                    checkpoint.state.conversation_scope,
+                    response_plan=response_plan,
+                    persona_resolution=persona_resolution,
+                    call=self._call_with_budget(call, checkpoint.state.budget),
+                )
             checkpoint = await self._commit_transition(
                 checkpoint,
                 RuntimePhase.RENDERED,
@@ -1224,6 +1268,22 @@ class OfflineRuntimeOrchestrator:
         if not isinstance(plan, ResponsePlan):
             raise validation_error("invalid_response_profile_policy_result")
         return request, plan
+
+    def _resolve_persona(self, state: RuntimeState) -> PersonaResolution:
+        registry = self._persona_registry
+        if registry is None:
+            raise validation_error("persona_registry_unavailable")
+        snapshot = registry.acquire_snapshot()
+        if not isinstance(snapshot, PersonaCatalogSnapshot):
+            raise validation_error("invalid_persona_catalog_snapshot")
+        requested_id = state.conversation_scope.persona_id
+        resolution = registry.resolve(snapshot, requested_id, None)
+        return validate_persona_resolution(
+            snapshot,
+            resolution,
+            requested_persona_id=requested_id,
+            requested_version=None,
+        )
 
     def _validate_start(
         self,
