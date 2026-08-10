@@ -569,19 +569,19 @@
       "title": "S19 Local Integration Audit",
       "purpose": "Prove the complete release-required offline chain and freeze its rollback evidence without real traffic.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/local-integration-audit",
         "git_branch": "treework/local-integration-audit",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1786371279",
         "last_entered_at": "unix:1786371279",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1786374640"
+      "last_sync": "unix:1786374784"
     },
     {
       "path": "legacy-cleanup",

@@ -6,7 +6,7 @@ Stage: work_tree
 Lead cursor: local-integration-audit
 Accepted tree revision: 3
 Tree editing: closed
-Last sync: unix:1786374640
+Last sync: unix:1786374784
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)
