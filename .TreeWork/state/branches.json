@@ -570,7 +570,7 @@
       "purpose": "Prove the complete release-required offline chain and freeze its rollback evidence without real traffic.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "in_progress",
-      "verification_status": "unverified",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -581,7 +581,7 @@
         "last_entered_at": "unix:1786371279",
         "last_status": "created managed worktree"
       },
-      "last_sync": "unix:1786371279"
+      "last_sync": "unix:1786374640"
     },
     {
       "path": "legacy-cleanup",
