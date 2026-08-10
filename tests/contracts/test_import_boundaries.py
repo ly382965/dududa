@@ -66,6 +66,7 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.ports.models",
     "dududa.ports.perception",
     "dududa.ports.persona",
+    "dududa.ports.proactive",
     "dududa.ports.runtime",
     "dududa.ports.responses",
     "dududa.proactive.authorization",
@@ -76,6 +77,9 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.proactive.scheduler",
     "dududa.proactive.scheduler_codec",
     "dududa.proactive.sqlite_scheduler",
+    "dududa.proactive.source_contracts",
+    "dududa.proactive.source_store",
+    "dududa.proactive.sources",
     "dududa.rollout.admission",
     "dududa.rollout.canary",
     "dududa.rollout.contracts",
@@ -106,6 +110,7 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.runtime.state",
     "dududa.runtime.store",
     "dududa.security.models",
+    "dududa.testing.sources",
 )
 
 FORBIDDEN_INTERNAL_IMPORTS = {
@@ -129,6 +134,7 @@ class ImportBoundaryTests(unittest.TestCase):
         proactive = importlib.import_module("dududa.proactive")
         expected_owners = {
             "InMemoryProactiveTargetRegistry": "dududa.proactive.registry",
+            "InMemorySourceStateStore": "dududa.proactive.source_store",
             "DeterministicProactiveScheduler": "dududa.proactive.scheduler",
             "InitiatedRunRequest": "dududa.proactive.contracts",
             "PreparedDispatch": "dududa.proactive.contracts",
@@ -136,6 +142,8 @@ class ImportBoundaryTests(unittest.TestCase):
             "ProactiveTargetPolicy": "dududa.proactive.contracts",
             "ProactiveTrigger": "dududa.proactive.contracts",
             "SQLiteProactiveSchedulerStore": "dududa.proactive.sqlite_scheduler",
+            "SourceFetchReceipt": "dududa.proactive.source_contracts",
+            "GovernedSourceProvider": "dududa.proactive.sources",
         }
         expected_ports = {
             "ProactiveActorResolver",
@@ -147,6 +155,10 @@ class ImportBoundaryTests(unittest.TestCase):
             "ProactiveScheduler",
             "ProactiveSubscriptionStore",
             "ProactiveTargetRegistry",
+            "SourceCapabilityReader",
+            "SourcePolicyRegistry",
+            "SourceProvider",
+            "SourceStateStore",
         }
         self.assertLessEqual(set(expected_owners), set(proactive.__all__))
         self.assertLessEqual(expected_ports, set(ports.__all__))

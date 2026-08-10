@@ -60,7 +60,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
-| 主动消息与订阅推送 | 部分完成（S15B 已完成） | S15A 默认拒绝契约之上，S15B 已实现 IANA/DST、持久 Subscription/occurrence、CAS/lease、misfire、暂停/撤销失效、重启与 30 日 fake-clock 证据 | S15C-S15E 的 Source contract、fixture-backed Digest/Probe Shadow 与回滚闭环仍未完成；真实校园/arXiv/行业 Source Adapter 是外部门禁 |
+| 主动消息与订阅推送 | 部分完成（S15C 已完成） | S15A 默认拒绝契约、S15B 持久调度之上，S15C 已实现 source-neutral policy/provenance/cursor/identity/fetch 契约、原子 source state、严格规范化及 manifest-bound 校园/arXiv/行业合成 fixture | S15D-S15E 的 fixture-backed Digest/Probe Shadow 与回滚闭环仍未完成；真实校园/arXiv/行业 Source Adapter 是外部门禁 |
 | 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
@@ -89,7 +89,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S15 | 已完成（离线） | Profile/Persona 契约、Runtime/Delivery 绑定、17-case 3x3 Eval、双 Python/构建/Web 综合证据均通过 | 不声明真实中文体验、Persona 风格、Provider tokenizer 或最终预算已校准 |
 | S15A | 已完成（离线） | 主动 DTO/Port、Target/Grant Registry、Actor 解析、默认拒绝 Policy、quota、Preview metadata、Dispatch CAS/recovery、Fake 与 590 项双 Python 全仓证据 | 不含 Scheduler、来源、模型、真实 Output 或 QQ 发送；生产保持无入口且默认 off |
 | S15B | 已完成（离线） | 持久 Scheduler、typed JSON/SQLite authority、DST/misfire、双实例 claim/reclaim/ack、重启/篡改和 30 日仿真通过 | 不含生产组合、来源、模型、Output 或真实发送 |
-| S15C–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S15C 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S15C | 已完成（离线） | Source-neutral DTO/Port、Capability/Source digest 分权、可信 receive-time freshness、原子 cursor/dedup commit、revision hold/emit、三类合成 fixture 与第四 Fake Source 配置式扩展通过 | 不含真实 Adapter/网络、真实时效/许可/内容质量、生产 source database、Composer 或发送 |
+| S15D–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S15D 串行推进 | 逐分支实现、聚焦 Contract 与抽样回归、本地提交；双 Python 全仓集中在 S19/最终总集成，S22 只删除有迁移/恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |

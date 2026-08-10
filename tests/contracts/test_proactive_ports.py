@@ -11,6 +11,10 @@ from dududa.ports.proactive import (
     ProactivePreviewProducer,
     ProactiveQuotaLedger,
     ProactiveTargetRegistry,
+    SourceCapabilityReader,
+    SourcePolicyRegistry,
+    SourceProvider,
+    SourceStateStore,
 )
 from dududa.proactive.preview import IsolatedProactivePreviewService
 from dududa.proactive.quota import InMemoryProactiveQuotaLedger
@@ -24,6 +28,7 @@ from dududa.testing.proactive import (
 )
 
 from tests.unit.proactive._fixtures import ProactiveFixture
+from tests.unit.proactive._source_fixtures import GovernedSourceFixture
 from tests.unit.proactive.test_digests import _response
 
 
@@ -61,6 +66,14 @@ class ProactivePortContractTests(unittest.TestCase):
         self.assertIsInstance(metadata_store, ProactivePreviewMetadataStore)
         self.assertIsInstance(preview, ProactivePreviewPort)
         self.assertIsInstance(RecordingFakeProactiveOutput(), OutputAdapter)
+
+    def test_governed_source_references_implement_framework_neutral_ports(self) -> None:
+        fixture = GovernedSourceFixture()
+
+        self.assertIsInstance(fixture.registry, SourcePolicyRegistry)
+        self.assertIsInstance(fixture.reader, SourceCapabilityReader)
+        self.assertIsInstance(fixture.state_store, SourceStateStore)
+        self.assertIsInstance(fixture.provider, SourceProvider)
 
     def test_preview_graph_has_no_output_dispatch_or_scheduler(self) -> None:
         fixture = self.fixture

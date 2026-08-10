@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "synthetic_governed_sources",
+  "bundle_revision": "source-fixtures-v1",
+  "sources": [
+    {
+      "source_id": "arxiv-fixture",
+      "file": "arxiv.json",
+      "sha256": "0a9a064e4df70d8e8b956b08177faa5a94050b517caf7def77254ed1bf3d4b29"
+    },
+    {
+      "source_id": "campus-fixture",
+      "file": "campus.json",
+      "sha256": "a54a4b84872027191552db4b6bc0a5faba11069598923d5fc48b7c72cca06e08"
+    },
+    {
+      "source_id": "industry-fixture",
+      "file": "industry.json",
+      "sha256": "231dae31a33dcae5bd2fe567344b63c68e1b84234aafc8eb17c75fabd3187352"
+    }
+  ]
+}
