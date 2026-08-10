@@ -106,7 +106,12 @@ records from the archive, and unions archive tombstones with all tombstones
 already known by the destination. Tombstones win over records regardless of
 archive age. Thus clean import round-trips live records, while restoring a
 pre-delete archive into a repository that has seen the deletion cannot revive
-the record. Restore is itself idempotent and advances generation.
+the record. A fresh destination must also receive a tombstone checkpoint at or
+above the operator-provided recovery fence; a pre-delete archive alone cannot
+prove knowledge of later deletion and fails closed. The tested sequence is
+archive T0, delete T1, export checkpoint T1, then restore T0 plus checkpoint T1.
+Restore is itself idempotent and advances generation. This proves the official
+restore path, not safety after arbitrary out-of-band file replacement.
 
 ### Retrieval Contracts
 
@@ -136,12 +141,23 @@ algorithm. The offline strategies are independent and versioned:
   quotes and emoji are separators; a one-character CJK query is too short and
   explicitly degrades to M1 rather than introducing a noisy unigram or fuzzy
   match. The frozen Okapi BM25 parameters are `k1=1.2` and `b=0.75`; scores are
-  bounded decimals and ties use only ascending Memory ID, never recency.
+  the sum over the de-duplicated query-term set using positive IDF
+  `ln(1 + (N-df+0.5)/(df+0.5))`. Document length and average length count all
+  emitted terms including repeats. Only the final sum is quantized to 12
+  decimal places with half-even rounding. Ties use only ascending Memory ID,
+  never recency.
 
 The existing Repository normalized-substring query remains a compatibility
-surface but is not labeled M1 or M2. The M2 implementation is an in-process
-deterministic bounded-projection baseline, not a persistent production search
-service. It imports no tokenizer package, model SDK or network client. Ranker
+surface but is not labeled M1 or M2. M2 is accurately named a bounded CJK BM25
+reranker because the Repository candidate ceiling is applied first and is
+recorded in its manifest. The M2 implementation is an in-process deterministic
+bounded-projection baseline, not a persistent production search service. This
+is an intentional S14 narrowing from the research report's SQLite FTS5 option:
+it preserves the same Okapi/CJK experiment while avoiding a second persistent
+derived store and SQLite tokenizer/runtime variance before measured need. It
+imports no tokenizer package, model SDK or network client. Its revision binds
+the explicit Han code-point table, normalization, formula and quantization.
+Ranker
 cancellation, deadline or structural failure produces no widened query; an
 explicitly configured recency degradation may use only the same already-
 authorized candidate set and is marked in the result.
@@ -162,9 +178,13 @@ tokenizer/ranker revisions, reference time, `k`, candidate ceilings and the
 fact that neither human review nor real-Chinese quality has been established.
 
 M0, M1 and M2 run over the same cases and frozen judgments. Reports keep fixed
-denominators for relevant records, selected records, reciprocal rank and every
-forbidden population. Cross-Scope, expired and tombstoned exposure counts have
-a hard target of zero and are never traded against Recall, Precision or MRR.
+denominators for Precision@K, Recall@K, recall-any, recall-all, MRR, binary
+nDCG@K, per-case ranking fingerprints and every forbidden population. Safety
+opportunity denominators come from actual non-empty fixture strata, never the
+selected count; zero observations include a one-sided 95% upper bound and are
+described only as synthetic coverage. Cross-Scope, future-created, expired and
+tombstoned exposure counts have a hard target of zero and are never traded
+against retrieval quality.
 The golden may demonstrate that M2 retrieves lexical synthetic targets that
 recency misses, but it cannot authorize production Memory or claim real QQ
 quality. External LoCoMo/LongMemEval data and local embeddings remain outside
