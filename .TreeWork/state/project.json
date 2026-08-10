@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "legacy-cleanup",
+  "current_branch": "bandit-offline",
   "artifact_layout_version": 2,
-  "last_event_seq": 100,
+  "last_event_seq": 103,
   "tree_revision": 3,
   "tree_editing": null,
   "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786378539"
+  "last_sync": "unix:1786381598"
 }

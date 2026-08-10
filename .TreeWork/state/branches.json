@@ -609,10 +609,19 @@
       "title": "S20 Offline Bandit Foundation",
       "purpose": "Add replayable same-role and same-tier decision, support and estimator contracts without training or exploration.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bandit-offline",
+        "git_branch": "treework/bandit-offline",
+        "managed_by_treework": false,
+        "created_at": "unix:1786378663",
+        "last_entered_at": "unix:1786378663",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1786381598"
     },
     {
       "path": "real-group-validation",
