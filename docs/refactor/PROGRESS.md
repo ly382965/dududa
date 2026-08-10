@@ -1,14 +1,14 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-09
+更新时间：2026-08-10
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S14 的既定离线工程已推进到 S14 实现；S12/S13 已闭合统一 MCP 与受治理
-  Capability，S14 已闭合 Memory 生命周期、M0-M2 词法基线和固定合成 Eval。S14 的综合
-  Verification 仍由当前 TreeWork 分支收口。
+- S01–S14 的既定离线工程已完成到 S14；S12/S13 已闭合统一 MCP 与受治理 Capability，
+  S14 已闭合 Memory 生命周期、M0-M2 词法基线和固定合成 Eval，并通过双 Python、构建、
+  Web 与安全综合 Verification。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
   取得持久单一所有权。真实 QQ 群运行统一延期到所有当前发布必需模块、既定 WebUI 测试和本地
   总审计完成之后；独立可选 S20 不属于该发布前置。
@@ -49,7 +49,7 @@
 | --- | --- | --- | --- |
 | S12 Unified MCP | 已完成（离线） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker、iCourse facade/Legacy 回滚和 Fake/iCourse 同 Contract | 新真实 Server、实时来源、凭据和生产 Tool enablement |
 | S13 Capability Runtime | 已完成（离线） | 分离的 Capability Catalog、Retrieval、有限 Planner、逐步授权 Executor、Observation Validator、iCourse 只读映射和配置式 Fake 扩展 | 真实 Planning Endpoint、高风险/写能力、人工语言质量和生产 Tools Rollout |
-| S14 Memory Lifecycle/Retrieval | 已完成（离线实现，待综合 Verification） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
+| S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 
 ## 产品模块完成度
 
@@ -76,7 +76,9 @@
 | 固定合成 Eval | 8 cases、56 live records、8 tombstones、同一 state revision 9；normal/reverse/fixed-shuffle ranking fingerprint 一致 |
 | 安全机会 | 每个策略的 cross-Scope、future-created、expired、tombstoned、Restricted 分母均为 8，暴露事件均为 0，并记录合成机会的一侧 95% 上界 |
 | 词法回归 | 预注册 7-case lexical subset 上 M2 binary nDCG@K `1.0`，M1 `0.0`；只作 synthetic regression，不作真实中文质量声明 |
-| focused test | Eval/retrieval/BM25 共 12 tests Pass；综合双 Python、构建、Web、secret、Compose/Shell 等结果待本分支最终 Verification 回写 |
+| 双 Python | 3.10.20 与 3.12.13 各 `521 tests OK`、2 个 AstrBot-host-only skip；各自 50 项 Memory/Eval/Iris/import `-W error` 聚焦套件全过、零 skip |
+| 构建与边界 | changed-file Ruff/format、compileall、uv lock、sdist/wheel 安装/import/pip check、729 文件 secret scan、Shell/CLI/Compose 和 whitespace 全过 |
+| unchanged Web | 66 frontend + 42 server tests、typecheck 和 production build 通过；未扩建 Control Plane，未运行或修改 NapCat/AstrBot 容器 |
 
 ## 2026-08-04 S08–S11 验证证据
 

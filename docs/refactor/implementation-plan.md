@@ -1,7 +1,6 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S14 的既定离线工程步骤已完成到 S14 实现，S14 综合门禁待本分支 Verification
-收口。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S14 的既定离线工程步骤及 S14 综合 Verification 已完成。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
 不属于该发布前置。
@@ -86,7 +85,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S12A | 已完成 | MCP v2 native/legacy、生命周期和版本隔离 Spike 已形成 ADOPT ADR | 保持主环境 MCP 1.29、worker MCP 2.0 的隔离结论 |
 | S12 | 已完成 | Unified MCP、严格 Registry、独立 worker、iCourse facade/rollback、扩展 fixture、双 Python、故障注入、派生镜像、secret、Web、Ruff 和 TreeWork Verification 均已通过 | 真实新 Server、真实 HTTP Endpoint 和在线来源保持外部门禁 |
 | S13 | 已完成（离线） | Capability Catalog/Retrieval/Planner/Executor/Validator、iCourse/Fake Provider Contract、合成 Eval、Tool State/预算/授权/模型不可信证据投影和 no-send 集成测试通过 | 生产 Rollout 保持 Tools 关闭；真实 Planner Endpoint、人工质量和真实新 Server 不在本阶段 |
-| S14 | 已完成（离线实现，待综合 Verification） | 生命周期、删除/tombstone、scoped export、archive/restore、M0 no-memory、M1 recency、M2 CJK BM25 与固定合成 Eval 均有实现和 focused 证据 | 不启用 Runtime Memory；真实 Iris、授权数据、人工质量和 Embedding/Hybrid 继续作为外部门禁 |
+| S14 | 已完成（离线） | 生命周期、删除/tombstone、scoped export、archive/restore、M0 no-memory、M1 recency、M2 CJK BM25、固定合成 Eval与双 Python/构建/Web/安全综合证据均通过 | 不启用 Runtime Memory；真实 Iris、授权数据、人工质量和 Embedding/Hybrid 继续作为外部门禁 |
 | S15–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |

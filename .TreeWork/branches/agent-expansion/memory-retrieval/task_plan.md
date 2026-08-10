@@ -17,30 +17,30 @@ Title: S14 Memory Lifecycle And Retrieval
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Existing Scope, Selector and WriteGate remain authoritative; new public
+- [x] Existing Scope, Selector and WriteGate remain authoritative; new public
   DTOs are immutable, versioned, bounded and digest-bound without framework,
   model, SQLite-extension or Iris imports.
-- [ ] Query/reference time and state generation bind every read; mutation makes
+- [x] Query/reference time and state generation bind every read; mutation makes
   old snapshots/cursors fail closed and no expired/deleted/out-of-Scope record
   reaches a ranker or result.
-- [ ] Delete verifies exact Scope, authorization, confirmation, expected
+- [x] Delete verifies exact Scope, authorization, confirmation, expected
   version and idempotency; concurrent/replayed/conflicting mutations have
   deterministic receipts or typed conflicts.
-- [ ] JSON v1 scoped data upgrades atomically to v2, and v2 persists records,
+- [x] JSON v1 scoped data upgrades atomically to v2, and v2 persists records,
   tombstones and replay evidence across restart without changing legacy
   pre-scope quarantine behavior.
-- [ ] Scoped export leaks no selector/index/other-Scope state; archive restore
+- [x] Scoped export leaks no selector/index/other-Scope state; archive restore
   is CAS/idempotent, preserves destination tombstones and proves clean
   round-trip plus pre-delete-backup no-resurrection.
-- [ ] Iris unsupported delete/archive/restore paths fail closed and never claim
+- [x] Iris unsupported delete/archive/restore paths fail closed and never claim
   that deleting a local projection deleted its backend source.
-- [ ] M0 no-memory performs zero repository/ranker calls; M1 recency and M2
+- [x] M0 no-memory performs zero repository/ranker calls; M1 recency and M2
   CJK BM25 rank the same exact authorized candidate set with stable limits,
   revisions, tie-breaking and structural rank-output validation.
-- [ ] Fixed synthetic M0-M2 reports bind their manifest and retain exact
+- [x] Fixed synthetic M0-M2 reports bind their manifest and retain exact
   denominators; cross-Scope, expired and tombstoned exposures are all zero,
   without claiming real Chinese/QQ relevance quality.
-- [ ] Dual-Python, focused lifecycle/retrieval/fault tests, repository
+- [x] Dual-Python, focused lifecycle/retrieval/fault tests, repository
   regression, build/import, Web, secret, lock, Ruff, Compose/Shell and
   whitespace gates pass.
 
@@ -54,9 +54,9 @@ Title: S14 Memory Lifecycle And Retrieval
   crash-stable v2 JSON persistence with rollback and adapter Contract tests.
 - [x] Implement retrieval policy, scoped retriever, exact/recency strategies,
   CJK tokenizer and BM25 ranker with security/failure tests.
-- [ ] Add and validate the fixed synthetic M0-M2 bundle, evaluator and golden
+- [x] Add and validate the fixed synthetic M0-M2 bundle, evaluator and golden
   reports; update current design/status documentation.
-- [ ] Run full verification, synchronize Progress/Findings/Verification,
+- [x] Run full verification, synchronize Progress/Findings/Verification,
   commit locally, complete the TreeWork branch and merge it to the lead branch.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
