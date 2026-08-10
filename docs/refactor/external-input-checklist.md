@@ -142,6 +142,8 @@ Provider 故障后的 fallback 不能冒充同一次 Bandit 抽样，也不能�
 ## 6. S23 前的单独授权
 
 S23 只能在 S17、S18、S19、S22 和既定 Web 回归完成后进入。每类行为分别授权：
+离线 readiness 已完成，实际填写和执行顺序见
+[S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md)。
 
 | 行为 | 最小授权内容 |
 | --- | --- |
@@ -163,6 +165,8 @@ target_group_ref:
 behavior: shadow
 valid_from:
 valid_until:
+readable_from:
+readable_until:
 max_runs:
 timezone: Asia/Shanghai
 quiet_hours:
@@ -180,6 +184,6 @@ data_retention_until:
 - 真实群号、QQ 号和成员映射；
 - 原始 100 群聊天库、生产数据库、Memory 文件或备份；
 - 运行中容器的 Secret、完整 `.env` 或可写生产挂载；
-- 尚未到 S23 时的真实发送授权。
+- 尚未签发对应阶段 Grant 时的真实发送授权。
 
 凭据仅在执行真实 conformance/S23 时写入本机私有 Secret Store，仓库只保存 `SecretRef`。

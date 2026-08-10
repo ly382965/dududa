@@ -13,6 +13,13 @@ Branch: real-group-validation
 
 - The planned readiness artifact contains references/digests only. Real account,
   group and test-user mappings remain in a private local binding store.
+- The offline checker intentionally distinguishes structural completeness from
+  executable authority. It never upgrades a self-declared digest, `live` flag
+  or `status=authorized` into real evidence; live Preflight must resolve those
+  artifacts and bind them to the exact candidate and target.
+- Deployment authorization and group-data readability are separate windows.
+  Both must be valid IANA-timezone intervals, and the initial S23 data window
+  is capped at seven days.
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 

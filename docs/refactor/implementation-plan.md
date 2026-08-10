@@ -655,12 +655,14 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**完成 S20 离线基础，等待 S23 逐行为授权**
+标题：**完成 S23 离线 readiness，等待逐行为授权与真实 Preflight**
 
 S01–S20 与 S22 的既定本地/离线范围已经完成。S20 仅建立可重放离线基础，未增加生产执行
 hook；具体证据见 [S20 离线 Bandit 完成报告](s20-offline-bandit-report.md)。
 既定 WebUI 回归已经在 S19 通过，回答档位和主动出站不得跳过真实外部门禁。
-只有全部发布必需分支通过后，才准备 S23：
+S23 已新增严格模板、manifest-only checker 和
+[单群验证 Runbook](../operations/s23-real-group-validation.md)。离线报告即使结构完整也固定
+`live_execution_authorized=false`，不能把任意 digest 或 fixture 当作真实证据。取得外部输入后：
 
 1. 冻结授权群、测试用户、发送窗口、SLO 和 digest-pinned 回滚包；
 2. 单群执行 no-send/no-write Shadow，先检查脱敏指标；

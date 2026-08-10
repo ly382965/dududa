@@ -41,8 +41,16 @@ manifest binds:
 
 The readiness checker is pure and fail closed. It resolves no Secret, reads no
 chat, calls no Provider or source, changes no container and sends no message.
-Placeholder, expired, cross-target, missing-digest or `s23_ready=false`
-manifests are not executable.
+Placeholder, expired, missing-digest or `s23_ready=false` manifests are not
+structurally ready. Cross-target, stale or unresolved referenced evidence must
+fail the later live Preflight.
+
+The checker proves manifest completeness only. Its report uses
+`validation_scope=manifest_only`, may set `manifest_ready=true`, and always
+sets `live_execution_authorized=false`. Preflight must resolve and verify the
+referenced authorization, release, Endpoint, health, source, projection and
+preceding-stage evidence against the exact target before execution. A
+well-formed digest or `live=true` declaration is never evidence by itself.
 
 ### Ordered Validation Ladder
 

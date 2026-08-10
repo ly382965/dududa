@@ -19,8 +19,8 @@
 - S17 三批 path-only 迁移与旧 lock marker 兼容已经 protected completion 并合入控制分支。
   S18 已实现统一 Eval/Trace/CI，S19 已完成 18/18 本地候选审计；S22 已删除十个路径别名和
   插件专用 iCourse Client，并保留七个仍有消费者的兼容面。Manifest v2 继续因 hash、依赖锁
-  和许可证证据不足延期。S20 离线 Bandit 基础已经实现；真实学习/探索未开始，S23 仍是
-  唯一下一阶段。
+  和许可证证据不足延期。S20 离线 Bandit 基础已经实现；真实学习/探索未开始。S23 已完成
+  manifest-only readiness、模板和中文 Runbook，真实单群阶梯仍等待外部输入。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -79,7 +79,7 @@
 | S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651 tests/2 skips、worker 各 2、350-case committed Eval、30 日/故障抽样、Web 108+6、双镜像无网 smoke、39 项 package/static、5 项 Compose、824 文件 secret scan 和两类 rollback 均通过；18/18 固定 gate 由低敏 receipt 绑定 | `s23_ready=false`；真实 Provider/source/QQ/人工质量仍是外部门禁；18 项 S22 清单为 10 remove candidate、7 retain live、1 blocked unknown |
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
-| S23 Real Group Validation | 最终外部门禁、未开始 | 无真实发送或真实来源声明 | 前置门禁关闭后另行逐行为授权 |
+| S23 Real Group Validation | **离线准备完成，真实验证未开始** | 严格 manifest 模板、manifest-only checker、中文 Runbook；8 项双 Python 聚焦测试通过；报告固定 `live_execution_authorized=false` | 真实授权/SecretRef/Endpoint/SLO/部署窗口后执行 Preflight，再逐行为验证 |
 
 ## 产品模块完成度
 
@@ -96,7 +96,18 @@
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | Mew/NapCat WebUI | 已完成（既定范围） | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests；不等同于 Agent Control Plane |
-| 真实群聊放量 | 最终阶段（未开始） | S19/S22 本地发布门禁和既定 WebUI 回归已通过；仍须取得逐行为授权与真实外部输入；可选 S20 不阻塞 |
+| 真实群聊放量 | 最终阶段（离线准备完成） | S19/S22 本地发布门禁、既定 WebUI 回归和 S23 readiness/Runbook 已通过；仍须取得逐行为授权与真实外部输入；可选 S20 不阻塞 |
+
+## 2026-08-11 S23 离线准备证据
+
+| 门禁 | 当前结果 |
+| --- | --- |
+| Manifest | 严格 JSON、重复键/未知字段拒绝；release/SLO/Target/SecretRef/Endpoint/Source/Projection/Schedule/Grant 以引用和 digest 绑定 |
+| 时间与阶段 | IANA timezone、授权/读取/Grant 时间顺序、七日读取上限、前序 Receipt、Shadow/Inbound/Digest/Probe/Closeout 独立约束 |
+| 证据边界 | 输出区分 `manifest_ready` 与真实授权，固定 `validation_scope=manifest_only`、`live_execution_authorized=false`；不解析 Secret 或回显私有引用 |
+| 运维文档 | [S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md) 固定 Preflight、逐级人工晋级、停止/回滚和 Closeout 顺序 |
+| 聚焦验证 | Python 3.10.20/3.12.13 各 8 项通过；Ruff/format、compile、模板 exit `2` 和低敏报告通过 |
+| 未声明范围 | 未读群聊、未调用真实 Provider/来源、未修改容器、未发送 QQ；真实 evidence resolver 与环境 Adapter 等待外部事实 |
 
 ## 2026-08-10 S22 阶段证据
 
@@ -260,10 +271,10 @@
 
 ## 下一步
 
-S17、S18、S19、S22 和 S20 离线范围均已完成。下一步只在取得外部输入与逐行为授权后冻结群 ID、
-凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
-Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
-前置，也不得对主动行为开启探索。
+S17、S18、S19、S22、S20 和 S23 离线 readiness 范围均已完成。下一步只在取得外部输入与逐行为
+授权后解析群/凭据私有引用、冻结分行为 SLO、部署窗口和 digest-pinned 回滚清单，先执行
+Preflight，再按“入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频 Probe ->
+Closeout”完成 S23。Bandit 不是主动链路前置，也不得对主动行为开启探索。
 
 后续分支采用风险分层验证：优先运行受影响 Contract、聚焦 warning-as-error 与抽样仓库回归；
 只有跨模块高风险变更或 S19/最终总集成才重复双 Python 全仓，避免每个 Sxx 重复执行同一套

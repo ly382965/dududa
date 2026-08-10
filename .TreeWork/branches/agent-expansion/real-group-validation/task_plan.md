@@ -16,7 +16,7 @@ Title: S23 Authorized Real-Group Validation
 
 ## Acceptance
 
-- [ ] A canonical readiness manifest binds exact release/rollback/SLO,
+- [x] A canonical readiness manifest binds exact release/rollback/SLO,
   Endpoint/source evidence, private SecretRefs, data policy and separate
   behavior grants; placeholder or incomplete manifests fail closed offline.
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
@@ -39,7 +39,7 @@ Title: S23 Authorized Real-Group Validation
 
 ## Local Steps
 
-- [ ] Implement the offline readiness manifest/checker, template and runbook;
+- [x] Implement the offline readiness manifest/checker, template and runbook;
   record the current fail-closed external blockers.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.

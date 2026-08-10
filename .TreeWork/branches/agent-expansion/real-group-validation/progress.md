@@ -20,19 +20,27 @@ Last sync: unix:1786272840
 - No authorization packet, private SecretRef binding or deployment window has
   been supplied. No real group data has been read and no container or QQ state
   has been changed.
+- The canonical S23 template, manifest-only checker and Chinese operator
+  Runbook are implemented. A complete synthetic manifest can only produce
+  `manifest_ready=true`; the report always keeps
+  `live_execution_authorized=false` until real Preflight evidence is resolved.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Froze the ordered, separately authorized S23 ladder and its stop/promotion,
-  evidence, retention and completion boundaries before implementation.
+- Completed the offline S23 preparation surface: strict JSON/reference/digest,
+  IANA timezone, bounded authorization/data/grant windows, per-stage blockers,
+  low-sensitivity reports, distinct invalid/blocked exit codes and Runbook.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Implement and pass the offline readiness checker/template/runbook.
 - Await the external packet enumerated in the S23 Spec/Plan before any live
   preflight or environment-specific Adapter work.
+- After the packet arrives, implement a real evidence resolver and only the
+  Provider/source/projection/Output Adapters required by the authorized stage.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Continue only in this worktree. The next local step is the pure readiness
-  manifest/checker; it must not resolve Secrets or inspect running containers.
+- Offline preparation is ready to commit and pause. Resume in this worktree
+  only after the authorization, Endpoint, SLO, SecretRef and deployment packet
+  arrives; the first resumed action is evidence-resolving Preflight, not QQ
+  send or a later ladder stage.

@@ -1,0 +1,81 @@
+{
+  "authorization_window": {
+    "timezone": "Asia/Shanghai",
+    "valid_from": null,
+    "valid_until": null
+  },
+  "candidate_release_digest": null,
+  "data_policy": {
+    "audit_sink_ref": null,
+    "deletion_owner_ref": null,
+    "purpose_revision": null,
+    "read_window": {
+      "timezone": "Asia/Shanghai",
+      "valid_from": null,
+      "valid_until": null
+    },
+    "retention_until": null
+  },
+  "endpoint_evidence": {
+    "conformance_digest": null,
+    "enabled_bindings": [],
+    "health_evidence_digest": null,
+    "routing_catalog_digest": null
+  },
+  "grant": {
+    "allowed_capabilities": [],
+    "authorization_id": null,
+    "authorization_revision": null,
+    "behavior": "shadow",
+    "cooldown_seconds": 0,
+    "kill_switch_owner_ref": null,
+    "max_messages": 0,
+    "max_runs": 0,
+    "memory_allowed": false,
+    "no_personal_target": true,
+    "no_response_followup": false,
+    "output_enabled": false,
+    "previous_stage_receipt_digest": null,
+    "quiet_hours": {
+      "end": "07:00",
+      "start": "23:00"
+    },
+    "stop_policy_digest": null,
+    "timezone": "Asia/Shanghai",
+    "valid_from": null,
+    "valid_until": null
+  },
+  "manifest_id": "s23-readiness-template",
+  "manifest_revision": "draft-v1",
+  "projection_evidence": null,
+  "requested_stage": "shadow",
+  "rollback_archive_digest": null,
+  "rollback_release_digest": null,
+  "schedule_policy_digest": null,
+  "schema_version": 1,
+  "secret_refs": [],
+  "slo": {
+    "policy_digest": null,
+    "policy_id": null,
+    "s23_ready": false,
+    "safety_maximums": {
+      "cross_scope_memory": 0,
+      "duplicate_delivery": 0,
+      "personal_probe_target": 0,
+      "quiet_hour_delivery": 0,
+      "revoked_delivery": 0,
+      "sensitive_trace": 0,
+      "stale_or_uncited_digest": 0,
+      "unauthorized_capability": 0,
+      "unknown_delivery_outcome": 0,
+      "wrong_target": 0
+    }
+  },
+  "source_evidence": [],
+  "status": "draft",
+  "target": {
+    "bot_account_ref": null,
+    "target_group_ref": null,
+    "test_user_refs": []
+  }
+}
