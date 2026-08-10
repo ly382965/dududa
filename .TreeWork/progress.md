@@ -6,7 +6,7 @@ Stage: work_tree
 Lead cursor: layout-migration
 Accepted tree revision: 3
 Tree editing: closed
-Last sync: unix:1786365897
+Last sync: unix:1786366031
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)
