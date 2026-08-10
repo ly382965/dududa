@@ -31,3 +31,6 @@ Branch: response-persona
 
 - Dududa's Unicode/CJK visible Token unit is deterministic but is not a Provider tokenizer.
   Real Endpoint conformance must separately prove provider limits and usage semantics.
+- ProfileValidation intentionally proves typed requirement IDs and mechanical bounds only.
+  RenderValidator remains responsible for exact values/text, and human review remains responsible
+  for semantic completeness, naturalness and whether LONG is genuinely useful rather than padded.

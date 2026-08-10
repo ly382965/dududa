@@ -76,6 +76,7 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.responses.contracts",
     "dududa.responses.counting",
     "dududa.responses.policy",
+    "dududa.responses.validation",
     "dududa.runtime.composition",
     "dududa.runtime.context",
     "dududa.runtime.contracts",
@@ -108,13 +109,19 @@ class ImportBoundaryTests(unittest.TestCase):
         responses = importlib.import_module("dududa.responses")
         expected_owners = {
             "AnswerProfile": "dududa.responses.contracts",
+            "DeterministicResponseProfileValidator": "dududa.responses.validation",
             "ResponsePlan": "dududa.responses.contracts",
+            "ResponseProfileValidationResult": "dududa.domain.content",
             "DeterministicResponseProfilePolicy": "dududa.responses.policy",
             "UnicodeVisibleTokenCounter": "dududa.responses.counting",
         }
         self.assertLessEqual(set(expected_owners), set(responses.__all__))
         self.assertLessEqual(
-            {"ResponseProfilePolicy", "VisibleTokenCounter"},
+            {
+                "ResponseProfilePolicy",
+                "ResponseProfileValidator",
+                "VisibleTokenCounter",
+            },
             set(ports.__all__),
         )
         self.assertEqual(len(responses.__all__), len(set(responses.__all__)))

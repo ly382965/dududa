@@ -219,6 +219,56 @@ class RenderValidationResult:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ResponseProfileValidationResult:
+    schema_version: int
+    valid: bool
+    response_plan_digest: DigestString
+    rendered_digest: DigestString
+    selected_profile: str
+    visible_token_units: int
+    visible_characters: int
+    required_content_ids: tuple[str, ...]
+    missing_content_ids: tuple[str, ...]
+    unexpected_content_ids: tuple[str, ...]
+    reason_codes: tuple[str, ...]
+    counter_revision: ComponentRevision
+    validator_revision: ComponentRevision
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        if type(self.valid) is not bool:
+            raise validation_error("invalid_response_profile_validation_flag")
+        for name in ("response_plan_digest", "rendered_digest"):
+            require_non_empty(str(getattr(self, name)), name)
+        if self.selected_profile not in {"short", "medium", "long"}:
+            raise validation_error("invalid_validated_response_profile")
+        for name in ("visible_token_units", "visible_characters"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise validation_error("invalid_visible_response_count", name)
+        for name in (
+            "required_content_ids",
+            "missing_content_ids",
+            "unexpected_content_ids",
+            "reason_codes",
+        ):
+            values = tuple(getattr(self, name))
+            if any(not isinstance(value, str) or not value for value in values):
+                raise validation_error("invalid_profile_validation_collection", name)
+            if len(values) != len(set(values)):
+                raise validation_error("duplicate_identifier", name)
+            object.__setattr__(self, name, values)
+        if not self.reason_codes:
+            raise validation_error("missing_profile_validation_reason")
+        if self.valid and (self.missing_content_ids or self.unexpected_content_ids):
+            raise validation_error("valid_profile_validation_has_content_drift")
+        if not isinstance(self.counter_revision, ComponentRevision):
+            raise validation_error("invalid_visible_counter_revision")
+        if not isinstance(self.validator_revision, ComponentRevision):
+            raise validation_error("invalid_profile_validator_revision")
+
+
 class SafetyStage(StrEnum):
     MODEL_INPUT = "model_input"
     TOOL_OUTPUT = "tool_output"
@@ -265,6 +315,7 @@ class ValidatedFinalResponse:
     response: FinalResponse
     render_validation: RenderValidationResult
     content_safety: ContentSafetyDecision
+    profile_validation: ResponseProfileValidationResult | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -292,6 +343,17 @@ class ValidatedFinalResponse:
             or self.content_safety.content_digest != actual_rendered_digest
         ):
             raise validation_error("rendered_digest_mismatch")
+        if self.profile_validation is not None and (
+            not isinstance(
+                self.profile_validation,
+                ResponseProfileValidationResult,
+            )
+            or not self.profile_validation.valid
+            or self.profile_validation.rendered_digest != actual_rendered_digest
+            or self.profile_validation.response_plan_digest
+            != self.response.render_metadata.response_plan_digest
+        ):
+            raise validation_error("profile_validation_mismatch")
         if not _constraints_satisfy(
             self.response.immutable_constraints,
             self.content_safety.required_constraints,

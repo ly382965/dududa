@@ -4,6 +4,8 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from dududa.domain.content import ResponseProfileValidationResult
+
     from .budget import project_response_reservation
     from .contracts import (
         AnswerProfile,
@@ -30,16 +32,19 @@ if TYPE_CHECKING:
         ResponseProfilePolicyConfig,
         pilot_response_profile_policy_config,
     )
+    from .validation import DeterministicResponseProfileValidator
 
 __all__ = [
     "AnswerProfile",
     "DetailPreferenceEvidence",
     "DeterministicResponseProfilePolicy",
+    "DeterministicResponseProfileValidator",
     "ResponsePlan",
     "ResponseProfileLimits",
     "ResponseProfilePolicyConfig",
     "ResponseProfilePreference",
     "ResponseProfileSelectionRequest",
+    "ResponseProfileValidationResult",
     "UnicodeVisibleTokenCounter",
     "detail_preference_evidence_digest",
     "detect_detail_preference",
@@ -71,6 +76,8 @@ _EXPORT_MODULES = {
     "response_profile_selection_request_digest": ".digests",
     "detect_detail_preference": ".evidence",
     "project_response_reservation": ".budget",
+    "DeterministicResponseProfileValidator": ".validation",
+    "ResponseProfileValidationResult": "dududa.domain.content",
 }
 
 

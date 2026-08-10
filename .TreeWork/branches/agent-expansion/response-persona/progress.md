@@ -36,6 +36,10 @@ Last sync: unix:1786272840
   charges replace static direct output charges, and Plan digest reaches Draft/Render/Delivery.
   Actual `part_intents` are checked before send authorization. Sixty-five focused Runtime,
   tool, profile and Output Contract tests pass, including legacy flag-off rollback.
+- Added mechanical final ProfileValidation evidence to `ValidatedFinalResponse`: Plan/render
+  digests, visible policy-unit/character counts and typed requirement IDs are bound and persisted;
+  invalid length or missing/added content fails before Content Safety can form a deliverable
+  wrapper. Thirty-eight focused validation/runtime/output tests pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 

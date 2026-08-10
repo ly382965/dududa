@@ -70,7 +70,11 @@ if TYPE_CHECKING:
         SocialDecisionEngine,
         TaskComplexityAssessor,
     )
-    from .responses import ResponseProfilePolicy, VisibleTokenCounter
+    from .responses import (
+        ResponseProfilePolicy,
+        ResponseProfileValidator,
+        VisibleTokenCounter,
+    )
     from .runtime import (
         AgentRuntime,
         InputConnector,
@@ -133,6 +137,7 @@ __all__ = [
     "PerceptionValidator",
     "PortCallContext",
     "ResponseProfilePolicy",
+    "ResponseProfileValidator",
     "RulePerception",
     "RuntimePerceptionEngine",
     "RuntimeStateStore",
@@ -267,11 +272,20 @@ def __getattr__(name: str) -> object:
         from .output import OutputAdapter
 
         return OutputAdapter
-    if name in {"ResponseProfilePolicy", "VisibleTokenCounter"}:
-        from .responses import ResponseProfilePolicy, VisibleTokenCounter
+    if name in {
+        "ResponseProfilePolicy",
+        "ResponseProfileValidator",
+        "VisibleTokenCounter",
+    }:
+        from .responses import (
+            ResponseProfilePolicy,
+            ResponseProfileValidator,
+            VisibleTokenCounter,
+        )
 
         return {
             "ResponseProfilePolicy": ResponseProfilePolicy,
+            "ResponseProfileValidator": ResponseProfileValidator,
             "VisibleTokenCounter": VisibleTokenCounter,
         }[name]
     if name in {

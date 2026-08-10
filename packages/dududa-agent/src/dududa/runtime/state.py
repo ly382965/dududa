@@ -1582,6 +1582,18 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
             raise validation_error("runtime_final_draft_digest_mismatch")
         if final.response.render_metadata.response_plan_digest != expected_plan_digest:
             raise validation_error("runtime_final_response_plan_mismatch")
+        profile_validation = final.profile_validation
+        if response_plan is None:
+            if profile_validation is not None:
+                raise validation_error("legacy_final_has_profile_validation")
+        elif (
+            profile_validation is None
+            or not profile_validation.valid
+            or profile_validation.response_plan_digest != expected_plan_digest
+            or profile_validation.selected_profile
+            != response_plan.selected_profile.value
+        ):
+            raise validation_error("runtime_profile_validation_mismatch")
         protected_fields = (
             "fact_anchors",
             "citations",

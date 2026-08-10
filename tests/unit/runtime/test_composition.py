@@ -28,7 +28,11 @@ from dududa.perception.contracts import (
     SocialDecision,
 )
 from dududa.ports.context import NeverCancelled, PortCallContext
-from dududa.responses import response_plan_digest
+from dududa.responses import (
+    DeterministicResponseProfileValidator,
+    UnicodeVisibleTokenCounter,
+    response_plan_digest,
+)
 from dududa.runtime.composition import (
     DeterministicPersonaRenderer,
     DeterministicPersonaRendererConfig,
@@ -167,6 +171,10 @@ class CompositionTests(unittest.IsolatedAsyncioTestCase):
         validator = FinalResponseSafetyValidator(
             DeterministicRenderValidator(_revision("render-validator")),
             DefaultContentSafetyPolicy(clock=lambda: NOW),
+            profile_validator=DeterministicResponseProfileValidator(
+                UnicodeVisibleTokenCounter(_revision("visible-token-counter")),
+                _revision("profile-validator"),
+            ),
             clock=lambda: NOW,
         )
 
@@ -185,6 +193,8 @@ class CompositionTests(unittest.IsolatedAsyncioTestCase):
             validated.response.render_metadata.response_plan_digest,
             digest,
         )
+        self.assertIsNotNone(validated.profile_validation)
+        self.assertTrue(validated.profile_validation.valid)
         with self.assertRaises(DududaError):
             _renderer().render(draft, replace(plan, plan_id="plan:forged"))
 

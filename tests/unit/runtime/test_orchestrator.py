@@ -45,6 +45,7 @@ from dududa.ports.context import (
 from dududa.responses import (
     AnswerProfile,
     DeterministicResponseProfilePolicy,
+    DeterministicResponseProfileValidator,
     UnicodeVisibleTokenCounter,
     pilot_response_profile_policy_config,
     response_plan_digest,
@@ -389,6 +390,10 @@ class OrchestratorFixture:
             final_validator=FinalResponseSafetyValidator(
                 DeterministicRenderValidator(revision("render-validator")),
                 DefaultContentSafetyPolicy(clock=self.clock),
+                profile_validator=DeterministicResponseProfileValidator(
+                    UnicodeVisibleTokenCounter(revision("visible-token-counter")),
+                    revision("response-profile-validator"),
+                ),
                 clock=self.clock,
             ),
             delivery_builder=delivery_builder,
@@ -514,6 +519,14 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 response_plan=replace(
                     checkpoint.state.response_plan,
                     assessment_digest=DigestString("assessment:forged"),
+                ),
+            )
+        with self.assertRaises(DududaError):
+            replace(
+                checkpoint.state,
+                final_response=replace(
+                    checkpoint.state.final_response,
+                    profile_validation=None,
                 ),
             )
         self.assertEqual(fixture.perception.calls, 1)

@@ -25,6 +25,7 @@ from dududa.domain.primitives import ComponentRevision, JsonValue, freeze_json
 from dududa.errors import validation_error
 from dududa.perception.contracts import ClarificationKey, SocialAction, SocialDecision
 from dududa.ports.context import PortCallContext
+from dududa.ports.responses import ResponseProfileValidator
 from dududa.ports.runtime import OfflineRenderValidator
 from dududa.responses.contracts import ResponsePlan
 from dududa.responses.digests import response_plan_digest
@@ -290,6 +291,7 @@ class FinalResponseSafetyValidator:
         render_validator: OfflineRenderValidator,
         content_safety: ContentSafetyPolicy,
         *,
+        profile_validator: ResponseProfileValidator | None = None,
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
     ) -> None:
@@ -299,8 +301,13 @@ class FinalResponseSafetyValidator:
             )
         if not isinstance(content_safety, ContentSafetyPolicy):
             raise TypeError("content safety does not implement ContentSafetyPolicy")
+        if profile_validator is not None and not isinstance(
+            profile_validator, ResponseProfileValidator
+        ):
+            raise TypeError("profile validator does not implement its port")
         self._render_validator = render_validator
         self._content_safety = content_safety
+        self._profile_validator = profile_validator
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
 
@@ -329,6 +336,17 @@ class FinalResponseSafetyValidator:
         render_validation = self._render_validator.validate(draft, rendered)
         if not render_validation.valid or render_validation.changed_anchor_ids:
             raise validation_error("render_validation_failed")
+        profile_validation = None
+        if response_plan is not None:
+            if self._profile_validator is None:
+                raise validation_error("response_profile_validator_missing")
+            profile_validation = self._profile_validator.validate(
+                draft,
+                rendered,
+                response_plan,
+            )
+            if not profile_validation.valid:
+                raise validation_error("response_profile_validation_failed")
         projection = _json_projection(rendered)
         content_digest = content_safety_content_digest(
             projection,
@@ -358,6 +376,7 @@ class FinalResponseSafetyValidator:
             response=rendered,
             render_validation=render_validation,
             content_safety=decision,
+            profile_validation=profile_validation,
         )
 
 

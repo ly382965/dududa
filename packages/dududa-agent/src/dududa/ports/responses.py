@@ -3,6 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from dududa.domain.content import (
+    DraftResponse,
+    FinalResponse,
+    ResponseProfileValidationResult,
+)
 from dududa.domain.primitives import ComponentRevision
 from dududa.responses.contracts import (
     ResponsePlan,
@@ -28,4 +33,18 @@ class VisibleTokenCounter(Protocol):
     def count(self, text: str) -> int: ...
 
 
-__all__ = ["ResponseProfilePolicy", "VisibleTokenCounter"]
+@runtime_checkable
+class ResponseProfileValidator(Protocol):
+    def validate(
+        self,
+        draft: DraftResponse,
+        rendered: FinalResponse,
+        plan: ResponsePlan,
+    ) -> ResponseProfileValidationResult: ...
+
+
+__all__ = [
+    "ResponseProfilePolicy",
+    "ResponseProfileValidator",
+    "VisibleTokenCounter",
+]
