@@ -489,19 +489,19 @@
       "title": "S15E Probe Shadow",
       "purpose": "Detect bounded group-level opportunities and prove the no-send proactive policy against synthetic conversations.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/probe-shadow",
         "git_branch": "treework/probe-shadow",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1786351959",
         "last_entered_at": "unix:1786351959",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1786354185"
+      "last_sync": "unix:1786354259"
     },
     {
       "path": "operations-hardening",
