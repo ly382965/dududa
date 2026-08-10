@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: evaluation-ci
 Parent: agent-expansion
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1786272840
+Last sync: unix:1786366288
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
