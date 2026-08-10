@@ -133,7 +133,7 @@ behavior without exposing credentials.
 | --- | --- | --- | --- |
 | `permissions.py` | Event-to-role and policy | `domain/identities.py`, `security/permissions.py`, AstrBot identity adapter | Extract pure policy; old module delegates |
 | `audit.py` | Event-based JSONL audit and key scrubbing | `security/audit.py`, `security/redaction.py`, JSONL sink adapter | Add domain event and sink Protocol; preserve current file path |
-| `course.py` | Concrete stdio MCP process and formatting | MCP Client/Registry, iCourse provider, presentation | Old `ICourseClient` wraps new client until handlers move |
+| `course.py` | Unified MCP facade and formatting | MCP Client/Registry, iCourse provider, presentation | S22 removed the dedicated stdio Client; unavailable composition fails closed |
 | `help_menu.py` | Static menus | App help commands; later generated capability summaries | Move only after command inventory contract exists |
 | `config.py` | Paths, broad-error JSON, AstrBot config writes | typed config, repository ports, AstrBot runtime config adapter | Keep constants/paths in compatibility adapter |
 | `_conf_schema.json` | AstrBot WebUI config | App-owned schema plus typed translation | Keep keys and defaults until a config migration exists |

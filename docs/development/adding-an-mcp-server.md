@@ -386,8 +386,8 @@ Server README 至少包含：
 
 iCourse 是当前唯一真实 Server，也是统一传输的兼容样板。S12 已保留其 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
 
-- `ICourseClient` 是 Unified MCP facade；S22 路径切换完成后正在删除专用直连 Client，并将
-  Unified 基础设施缺失收敛为 fail-closed unavailable facade；
+- `ICourseClient` 是 Unified MCP facade；S22 已删除专用直连 Client，并将 Unified 基础设施
+  缺失收敛为 fail-closed unavailable facade；
 - 六项 transport allowlist 与四项 management deny 分离；模型能力仅为四项公开缓存只读映射；
 - `get_course` 只有在 `refresh=false` 时属于只读语义；
 - 将 refresh 设为 trusted/admin、限流且有明确 timeout；
@@ -409,7 +409,8 @@ iCourse 是当前唯一真实 Server，也是统一传输的兼容样板。S12 �
 3. 注册 Capability，但仅在测试策略中可见；
 4. canary 验证权限、延迟、错误和审计；
 5. 再逐步开放上下文和用户；
-6. 回滚优先禁用 Capability 和 Server 配置；iCourse 可在启动期显式选择 `legacy`，不得在单次调用失败后 fallback；
+6. 回滚优先禁用 Capability 和 Server 配置；iCourse 不再有运行时 legacy 选择，需恢复精确
+   上一 Release，且不得在单次调用失败后跨 transport fallback；
 7. 数据 schema 变更必须有向后兼容窗口和恢复验证。
 
 不得用删除数据库、清空缓存或复制生产凭据完成回滚。

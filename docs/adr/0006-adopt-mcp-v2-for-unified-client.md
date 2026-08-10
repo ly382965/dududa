@@ -6,6 +6,10 @@
 - 证据：`spikes/mcp-v2/report.json`
 - 证据摘要：`sha-256:ddebd93ef0b32cb00618c2df29caef7d61b3d3f523683736353357c5fad32590`
 
+实施状态（2026-08-10）：S12 已实现隔离 v2 worker、统一 Client/Registry 和 iCourse
+compatibility facade。S22 在消费者迁移与精确 S19 Release 恢复证据齐全后删除插件专用直连
+Client；worker 继续以 `protocol_mode=legacy` 连接 iCourse v1 Server。
+
 ## 背景
 
 ADR 0004 已决定由一个 Core Port 和一个受治理的基础设施实现统一 MCP
@@ -58,8 +62,7 @@ legacy iCourse fixture：
    操作才可能按预算重试。
 6. Schema cache 不成为权限来源。配置变化、断线、过期或不兼容变更必须使旧
    generation 失效并 fail closed。
-7. iCourse legacy 直连作为回滚保留到 S22，删除前需要全部消费者迁移证据和可恢复
-   的上一 Release。
+7. iCourse legacy 直连保留到 S22；S22 已在全部消费者迁移和上一 Release 可恢复后删除。
 
 ## 未被本 ADR 证明的事项
 
@@ -91,7 +94,8 @@ Server API 和 Client lifecycle，失去可回滚的迁移顺序。
 
 ## 回滚与复审
 
-S12 实施期间如 v2 Adapter 无法满足 ADR 0004 的全部 Port、资源关闭或兼容要求，保留
-根 v1 lock 和旧 iCourse 路径并回退到本 ADR 前一 Release。若 MCP v2 的协议、SDK API
+S12 实施期间如 v2 Adapter 无法满足 ADR 0004 的全部 Port、资源关闭或兼容要求，原计划保留
+根 v1 lock 和旧 iCourse 路径并回退到本 ADR 前一 Release。S22 后直接恢复精确 S19 Release，
+不在当前 Release 重建旁路。若 MCP v2 的协议、SDK API
 或 legacy mode 发生不兼容变化，必须重新运行锁定 Spike、更新证据摘要并提出新 ADR，
 不能在业务 Provider 内增加旁路 Client。

@@ -7,20 +7,12 @@ from typing import Any
 
 from dududa.rollout import RolloutControlConfig, parse_rollout_control_config
 
-
 PLUGIN_NAME = "astrbot_plugin_dududa_core"
 DATA_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = DATA_ROOT / "config"
 PLUGIN_DATA_DIR = DATA_ROOT / "plugin_data" / PLUGIN_NAME
 PLUGIN_CONFIG_PATH = CONFIG_DIR / f"{PLUGIN_NAME}_config.json"
 ASTRBOT_CONFIG_PATH = DATA_ROOT / "cmd_config.json"
-ICOURSE_ROOT = DATA_ROOT / "icourse-mcp"
-ICOURSE_DB_PATH = Path(
-    os.environ.get(
-        "ICOURSE_MCP_DB_PATH",
-        str(DATA_ROOT / "icourse-cache" / "icourse.sqlite3"),
-    )
-)
 MCP_REGISTRY_DIR = Path(
     os.environ.get("DUDUDA_MCP_REGISTRY_DIR", "/opt/dududa/config/mcp/servers")
 )

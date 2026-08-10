@@ -9,7 +9,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -136,7 +135,30 @@ class RepositoryContractTests(unittest.TestCase):
                 / "_conf_schema.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(plugin_schema["icourse_mcp_mode"]["default"], "unified")
+        self.assertNotIn("icourse_mcp_mode", plugin_schema)
+
+        plugin_root = (
+            ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core"
+        )
+        active_client_source = "\n".join(
+            (plugin_root / relative).read_text(encoding="utf-8")
+            for relative in ("course.py", "adapters/mcp_runtime.py")
+        )
+        for removed in (
+            "LegacyICourseClient",
+            "ClientSession",
+            "StdioServerParameters",
+            "stdio_client",
+            "icourse_mcp_mode",
+        ):
+            self.assertNotIn(removed, active_client_source)
+
+        registry = json.loads(
+            (ROOT / "configs" / "mcp" / "servers" / "icourse.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(registry["protocol_mode"], "legacy")
 
     def test_compose_keeps_owned_code_read_only(self) -> None:
         compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(

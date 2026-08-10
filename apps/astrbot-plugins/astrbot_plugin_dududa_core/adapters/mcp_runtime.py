@@ -11,7 +11,7 @@ from dududa.mcp import (
     SubprocessMcpV2SessionFactory,
 )
 
-from ..course import ICourseClient, LegacyICourseClient
+from ..course import ICourseClient, UnavailableICourseClient
 from .mcp_schema import JsonSchemaMcpValidator
 
 
@@ -38,24 +38,19 @@ def build_icourse_client(
     worker_python: Path,
     environment_provider: AllowlistedEnvironmentProvider | None = None,
     secret_resolver: RejectingMcpSecretResolver | None = None,
-) -> tuple[ICourseClient | LegacyICourseClient, str, str]:
-    requested = str(config.get("icourse_mcp_mode", "unified")).strip().lower()
-    if requested not in {"unified", "legacy"}:
-        raise ValueError("icourse_mcp_mode must be unified or legacy")
-    if requested == "legacy":
-        return LegacyICourseClient(), "legacy", "operator_selected_legacy"
-    directory = Path(config.get("mcp_registry_dir", registry_directory))
-    python = Path(config.get("mcp_worker_python", worker_python))
-    if not directory.is_absolute() or not python.is_absolute():
-        return LegacyICourseClient(), "legacy", "unified_path_not_absolute"
-    if not directory.is_dir() or not python.is_file():
-        return LegacyICourseClient(), "legacy", "unified_infrastructure_missing"
+) -> tuple[ICourseClient | UnavailableICourseClient, str, str]:
     try:
+        directory = Path(config.get("mcp_registry_dir", registry_directory))
+        python = Path(config.get("mcp_worker_python", worker_python))
+        if not directory.is_absolute() or not python.is_absolute():
+            return _unavailable("unified_path_not_absolute")
+        if not directory.is_dir() or not python.is_file():
+            return _unavailable("unified_infrastructure_missing")
         registry = ConfigMcpServerRegistry(directory)
         snapshot = registry.acquire_snapshot()
         definition = registry.resolve_server(snapshot, "icourse")
         if not definition.enabled:
-            return LegacyICourseClient(), "legacy", "icourse_definition_disabled"
+            return _unavailable("icourse_definition_disabled")
         factory = SubprocessMcpV2SessionFactory(
             python,
             secret_resolver or RejectingMcpSecretResolver(),
@@ -66,6 +61,12 @@ def build_icourse_client(
             factory,
             JsonSchemaMcpValidator(),
         )
-    except BaseException:
-        return LegacyICourseClient(), "legacy", "unified_composition_invalid"
+    except Exception:  # noqa: BLE001 - composition must not break unrelated commands
+        return _unavailable("unified_composition_invalid")
     return ICourseClient(unified), "unified", "unified_ready"
+
+
+def _unavailable(
+    reason: str,
+) -> tuple[UnavailableICourseClient, str, str]:
+    return UnavailableICourseClient(reason), "unavailable", reason

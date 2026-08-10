@@ -48,6 +48,7 @@ docker run --rm \
   --read-only \
   --tmpfs /tmp:rw,nosuid,size=128m \
   --volume "$ROOT_DIR:/workspace:ro" \
+  --volume "$ROOT_DIR/configs:/opt/dududa/config:ro" \
   --workdir /tmp \
   --env PYTHONDONTWRITEBYTECODE=1 \
   --env PYTHONPATH=/workspace/apps/astrbot-plugins:/workspace \
@@ -58,6 +59,7 @@ docker run --rm \
     python -m pip check
     python -c '\''import importlib.metadata as m; assert m.version("dududa-agent") == "0.1.0a1"; assert m.version("mcp") == "1.29.0"'\''
     /opt/dududa/unified-mcp-worker/.venv/bin/python -c '\''import importlib.metadata as m; assert m.version("mcp") == "2.0.0"'\''
+    python -c '\''import asyncio; from pathlib import Path; from astrbot_plugin_dududa_core.adapters.mcp_runtime import build_icourse_client; client, mode, reason = build_icourse_client({}, registry_directory=Path("/opt/dududa/config/mcp/servers"), worker_python=Path("/opt/dududa/unified-mcp-worker/.venv/bin/python")); assert (mode, reason) == ("unified", "unified_ready"); asyncio.run(client.close())'\''
     ICOURSE_MCP_DB_PATH=/tmp/icourse.sqlite3 python /opt/dududa/icourse-mcp/scripts/check_mcp.py
     cd /workspace
     python -m unittest -v tests.test_dududa_core_plugin_split tests.contracts.test_production_composition tests.unit.mcp.test_icourse_facade

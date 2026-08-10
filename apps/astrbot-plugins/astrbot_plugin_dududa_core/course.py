@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import uuid
 from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta, timezone
@@ -8,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from dududa.domain.primitives import RuntimeBudget, TraceContext
+from dududa.errors import DududaError, ErrorCategory, error
 from dududa.mcp import (
     McpCallContext,
     McpOperationSemantics,
@@ -15,10 +15,6 @@ from dududa.mcp import (
 )
 from dududa.ports.context import NeverCancelled, ServiceCallContext, ServicePrincipal
 from dududa.ports.mcp import UnifiedMcpClient
-from mcp import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
-
-from .config import ICOURSE_DB_PATH, ICOURSE_ROOT
 
 ICOURSE_COMPAT_TOOL_ALLOWLIST = frozenset(
     {
@@ -116,7 +112,7 @@ class ICourseClient:
                 retries_remaining=1,
                 input_tokens_remaining=0,
                 output_tokens_remaining=0,
-                cost_units_remaining=Decimal("0"),
+                cost_units_remaining=Decimal(0),
             ),
             policy_snapshot_id="icourse-compat-v1",
         )
@@ -131,60 +127,40 @@ class ICourseClient:
             return {"raw": text}
 
 
-class LegacyICourseClient:
-    """Explicit rollback path retaining the per-call MCP v1 implementation."""
+ICOURSE_UNAVAILABLE_REASONS = frozenset(
+    {
+        "unified_path_not_absolute",
+        "unified_infrastructure_missing",
+        "icourse_definition_disabled",
+        "unified_composition_invalid",
+    }
+)
 
-    def __init__(self, timeout_hint: float = 30.0):
-        self.timeout_hint = timeout_hint
-        self.command = "/usr/local/bin/python"
-        self.args = [
-            str(ICOURSE_ROOT / "run_icourse_mcp.py"),
-            "--db-path",
-            str(ICOURSE_DB_PATH),
-            "--request-delay",
-            "1.0",
-        ]
+
+class UnavailableICourseClient:
+    """Fail-closed facade used when Unified MCP cannot be composed at startup."""
+
+    def __init__(self, reason: str) -> None:
+        if reason not in ICOURSE_UNAVAILABLE_REASONS:
+            raise ValueError("invalid iCourse unavailable reason")
+        self.reason = reason
 
     async def call(self, tool: str, args: dict[str, Any] | None = None) -> Any:
-        params = StdioServerParameters(
-            command=self.command,
-            args=self.args,
-            env=_legacy_environment(),
-        )
-        async with stdio_client(params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                result = await session.call_tool(tool, args or {})
-        text = "\n".join(getattr(item, "text", "") for item in result.content)
-        return self._loads(text)
+        raise self._error()
 
     async def list_tools(self) -> list[str]:
-        params = StdioServerParameters(
-            command=self.command,
-            args=self.args,
-            env=_legacy_environment(),
-        )
-        async with stdio_client(params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                tools = await session.list_tools()
-                return sorted(
-                    tool.name
-                    for tool in tools.tools
-                    if tool.name in ICOURSE_COMPAT_TOOL_ALLOWLIST
-                )
+        raise self._error()
 
     async def close(self) -> None:
         return None
 
-    @staticmethod
-    def _loads(text: str) -> Any:
-        import json
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            return {"raw": text}
+    def _error(self) -> DududaError:
+        return error(
+            "icourse_client_unavailable",
+            ErrorCategory.EXTERNAL,
+            "mcp.unavailable",
+            self.reason,
+        )
 
 
 def _icourse_semantics(
@@ -203,11 +179,6 @@ def _plain_json(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_plain_json(item) for item in value]
     return value
-
-
-def _legacy_environment() -> dict[str, str]:
-    allowlist = {"LANG", "LC_ALL", "PATH", "PYTHONPATH"}
-    return {key: value for key, value in os.environ.items() if key in allowlist}
 
 
 def format_stats(stats: dict[str, Any]) -> str:

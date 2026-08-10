@@ -4,14 +4,16 @@
 - 日期：2026-07-18
 - 决策范围：Agent Runtime 到 MCP Server 的发现、连接、调用和治理
 
-实施状态（2026-08-10）：S12 已完成严格 JSON `config/mcp/servers/*.json`、Core-owned
+实施状态（2026-08-10）：S12 已完成严格 JSON `configs/mcp/servers/*.json`、Core-owned
 `UnifiedMcpClient`、独立 MCP 2.0 worker、iCourse compatibility facade 和 TreeWork
-Verification。根/AstrBot/iCourse 仍固定 MCP 1.29；`LegacyICourseClient` 仅作启动期
-显式回滚并保留到 S22。Capability Registry/Provider 仍属于 S13，discovery 不授予能力。
+Verification。S22 已删除插件内每次调用新建进程/Session 的专用 Client 和运行时 legacy
+选择；Unified 缺失时 fail closed，回滚使用精确 S19 Release。iCourse Server 仍通过隔离 worker
+使用 MCP v1，这不形成第二套 Client。Capability Registry/Provider 仍属于 S13，discovery
+不授予能力。
 
 ## 背景
 
-当前 iCourse 有两条调用路径：
+作出本 ADR 时，iCourse 有两条调用路径：
 
 1. `config/astrbot/mcp_server.json` 将 `icourse` 注册给 AstrBot 的 MCP 运行时；
 2. `astrbot_plugin_dududa_core/course.py` 自行构造 `StdioServerParameters`，每次 `call` 或 `list_tools` 都启动新的 MCP 子进程和 session。
@@ -44,7 +46,7 @@ Client 实现由 AstrBot composition root 注入 Agent Runtime。离线测试注
 
 ### 2. Server Registry 是唯一连接来源
 
-MCP command、args、cwd、transport、SecretRef、Tool allowlist、timeout、retry、circuit breaker 和并发上限由 `config/mcp/servers/*.json` 的严格 Registry 定义。消息、模型和 Capability 参数不能生成或覆盖连接配置。
+MCP command、args、cwd、transport、SecretRef、Tool allowlist、timeout、retry、circuit breaker 和并发上限由 `configs/mcp/servers/*.json` 的严格 Registry 定义。消息、模型和 Capability 参数不能生成或覆盖连接配置。
 
 ```python
 class McpServerRegistry(Protocol):
@@ -123,7 +125,9 @@ Client 将 MCP SDK 的 text、image、resource 和 structured content 转为受�
 6. AstrBot MCP 配置只作为宿主集成，不再形成独立业务调用实现；
 7. 所有消费者迁移且生产验证后删除旧的每调用一进程代码。
 
-迁移期间不移动 `services/icourse-mcp`，不改变 `icourse` Server ID，也不迁移 SQLite schema。回滚只需切回旧 Adapter 和前一提交。
+该迁移阶段没有移动 `services/icourse-mcp`，没有改变 `icourse` Server ID，也没有迁移
+SQLite schema。S17 后源码位于 `services/mcp/icourse`；S22 删除运行时旧 Adapter，回滚改为
+恢复精确 S19 Release，而不是在同一 Release 内切换 transport。
 
 ### 8. 定时推送只把 MCP 作为公开数据 Provider
 
