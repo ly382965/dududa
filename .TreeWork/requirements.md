@@ -158,7 +158,7 @@ not block this offline development scope and must not be fabricated.
   wrong-target, duplicate, quiet-hour, revoked-subscription, uncited,
   prompt-injected, sensitive-trace, or unauthorized-send incidents before any
   proactive real-group canary is considered.
-- [ ] S16-S19 and S22 provide offline operations, migration, Eval/CI, full local
+- [x] S16-S19 and S22 provide offline operations, migration, Eval/CI, full local
   integration and evidence-based compatibility cleanup with a recoverable
   previous release; S20 provides only replayable offline Bandit contracts and
   synthetic estimator goldens.

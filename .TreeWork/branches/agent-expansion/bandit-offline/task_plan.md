@@ -13,34 +13,36 @@ Title: S20 Offline Bandit Foundation
 
 ## Acceptance
 
-- [ ] Versioned immutable DTOs and canonical digests bind sanitized context,
+- [x] Versioned immutable DTOs and canonical digests bind sanitized context,
   exact eligible actions, policy artifact, propensity, Router evidence,
   execution and delayed feedback without raw chat or identifiers.
-- [ ] Decisions require at least two unique same-role/tier actions; distributions
+- [x] Decisions require at least two unique same-role/tier actions; distributions
   cover the complete action set, sum exactly to one and chosen propensity
   matches the chosen action.
-- [ ] Static baseline is deterministic and replayable; synthetic mode requires
-  positive support for every action and neither mode can widen Router eligibility.
-- [ ] Execution and feedback validators reject substituted/fallback actions,
+- [x] Static baseline replays the exact Router-planned Endpoint; synthetic mode
+  requires positive support for every action and neither mode can widen Router
+  eligibility.
+- [x] Execution and feedback validators reject substituted/fallback actions,
   post-window/duplicate/censored-as-zero feedback and unexecuted decisions.
-- [ ] Propensity/support validation fails closed for zero/low propensity,
+- [x] Complete behavior/evaluation distributions cover the same dynamic action
+  set; propensity/support validation fails closed for zero/low propensity,
   unsupported evaluation action, excessive weight, missing reward and invalid
   outcome predictions.
-- [ ] Fixed synthetic golden reproduces exact IPS/SNIPS/DR/ESS in normal,
+- [x] Fixed synthetic golden reproduces exact IPS/SNIPS/DR/ESS in normal,
   reverse and shuffled order; tampered artifacts are rejected.
-- [ ] `dududa.bandit` is standard-library/internal only and has no import from
+- [x] `dududa.bandit` is standard-library/internal only and has no import from
   Router/Runtime/AstrBot/proactive production paths.
-- [ ] Focused dual-Python, package/import, static, secret and whitespace checks
+- [x] Focused dual-Python, package/import, static, secret and whitespace checks
   pass; Progress, Findings and Verification are committed without push.
 
 ## Local Steps
 
 - [x] Read the approved Bandit research, S08 Router contracts and S20 boundary;
   freeze this Spec/Plan before implementation.
-- [ ] Implement contracts, digests, validators and deterministic baseline.
-- [ ] Implement OPE evaluator and negative support/feedback tests.
-- [ ] Generate and check the committed synthetic golden bundle.
-- [ ] Run scoped verification, synchronize docs, verify and return.
+- [x] Implement contracts, digests, validators and deterministic baseline.
+- [x] Implement OPE evaluator and negative support/feedback tests.
+- [x] Generate and check the committed synthetic golden bundle.
+- [x] Run scoped verification, synchronize docs, verify and return.
 
 ## Out Of Scope
 

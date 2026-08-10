@@ -1,6 +1,6 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-10
+更新时间：2026-08-11
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
@@ -19,7 +19,8 @@
 - S17 三批 path-only 迁移与旧 lock marker 兼容已经 protected completion 并合入控制分支。
   S18 已实现统一 Eval/Trace/CI，S19 已完成 18/18 本地候选审计；S22 已删除十个路径别名和
   插件专用 iCourse Client，并保留七个仍有消费者的兼容面。Manifest v2 继续因 hash、依赖锁
-  和许可证证据不足延期；S20/S23 尚未开始。
+  和许可证证据不足延期。S20 离线 Bandit 基础已经实现；真实学习/探索未开始，S23 仍是
+  唯一下一阶段。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -76,8 +77,8 @@
 | S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 路径别名已由 S22 删除；Manifest v2 继续延期 |
 | S18 Evaluation/CI | **已完成、已验证、已合并（离线）** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt、内部生成 run ID、真实 phase path Trace、双锁 CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚候选审计留给 S19 |
 | S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651 tests/2 skips、worker 各 2、350-case committed Eval、30 日/故障抽样、Web 108+6、双镜像无网 smoke、39 项 package/static、5 项 Compose、824 文件 secret scan 和两类 rollback 均通过；18/18 固定 gate 由低敏 receipt 绑定 | `s23_ready=false`；真实 Provider/source/QQ/人工质量仍是外部门禁；18 项 S22 清单为 10 remove candidate、7 retain live、1 blocked unknown |
-| S22 Legacy Cleanup | **已完成、已验证（分支）** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | 等待 protected completion 合入；Manifest v2 和明确 retain surface 不在本阶段 |
-| S20 Offline Bandit | 未开始 | Tree 分支为 pending/unverified | 仅完成 decision/feedback/support/propensity 与合成 IPS/SNIPS/DR golden |
+| S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
+| S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S23 Real Group Validation | 最终外部门禁、未开始 | 无真实发送或真实来源声明 | 前置门禁关闭后另行逐行为授权 |
 
 ## 产品模块完成度
@@ -93,7 +94,7 @@
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker和 iCourse facade；S22 已删除专用直连 Client，缺失时 fail closed；S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据 | 生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
-| Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
+| Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | Mew/NapCat WebUI | 已完成（既定范围） | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests；不等同于 Agent Control Plane |
 | 真实群聊放量 | 最终阶段（未开始） | S19/S22 本地发布门禁和既定 WebUI 回归已通过；仍须取得逐行为授权与真实外部输入；可选 S20 不阻塞 |
 
@@ -253,11 +254,13 @@
 9. **主动出站离线链完成到 S15E。** 定时器和 Probe Detector 只产生结构化 Trigger，不伪造
    用户消息；MCP 不拥有订阅、调度或发送。S15D/S15E 只构造 no-send 候选，不能证明真实来源、
    群话题相关性、生产持久化、生产组合或真实群发送已存在。
+10. **Bandit 只完成离线数学与证据契约。** S20 没有 Router/Runtime/AstrBot hook，也没有
+    真实 Endpoint、propensity 日志、训练、Shadow 或探索；固定四样本只能证明 estimator 和
+    support validator 可重放。
 
 ## 下一步
 
-S17、S18 和 S19 已完成离线实现与验证。接下来按 Tree 使用 S19 的消费者/回滚证据执行
-S22，再完成 S20 离线基础。发布前置全部关闭后，才冻结群 ID、
+S17、S18、S19、S22 和 S20 离线范围均已完成。下一步只在取得外部输入与逐行为授权后冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
 前置，也不得对主动行为开启探索。

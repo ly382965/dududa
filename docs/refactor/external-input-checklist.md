@@ -2,7 +2,7 @@
 
 ## 1. 先说结论
 
-S17–S19 与 S22 已完成；S20 离线基础仍不依赖外部输入。现在最有价值的是准备
+S17–S20 与 S22 已完成既定离线范围。现在最有价值的是准备
 产品策略与公开证据，而不是提供 API Key、QQ 登录态或整库群聊原文。
 
 建议立即准备的顺序：
@@ -20,7 +20,7 @@ S17–S19 与 S22 已完成；S20 离线基础仍不依赖外部输入。现在�
 | --- | --- | --- | --- |
 | S17–S19 | 已完成 | Iris 对当前固定 commit 的明确许可，或“保持阻断/升级/替换”的决定 | 只影响 Manifest v2，不影响已完成的 v1 路径 |
 | S22 Cleanup | 已完成 | 无 | 已使用消费者扫描、迁移 receipt 和上一 Release 恢复证据 |
-| S20 离线 Bandit | 不需要 | 奖励维度和安全 floor 的产品定义 | 合成 propensity/OPE golden；不训练、不在线探索 |
+| S20 离线 Bandit | 已完成、不需要 | 奖励维度和安全 floor 的产品定义 | 只影响以后 Shadow/在线阶段；当前未训练、未在线探索 |
 
 源码 tree hash、patch hash、依赖 lock 和 SBOM 应由工程工具生成，不需要人工填写。
 
@@ -129,7 +129,7 @@ Tool Schema/allowlist、SecretRef、timeout、rate limit、health 和许可证�
 
 ## 5. S20 真实 Bandit 阶段以后需要的输入
 
-S20 当前只做离线契约。以后要进入 Shadow/OPE 或在线学习，还必须有：
+S20 已完成离线契约。以后要进入真实 Shadow/OPE 或在线学习，还必须有：
 
 - 至少两个同 Role+Tier 且安全等价的真实 Endpoint；
 - before-action action set、chosen action 和 propensity；

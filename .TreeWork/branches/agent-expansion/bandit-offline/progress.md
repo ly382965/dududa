@@ -11,8 +11,33 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- `dududa.bandit` now provides immutable offline Decision, Execution, Feedback,
+  support and OPE contracts without a Router/Runtime/AstrBot production hook.
+- Static baseline evidence replays the exact Endpoint already planned by the
+  Static Router. This avoids a second interpretation of route hints and
+  Endpoint tie-break order.
+- Complete behavior/evaluation distributions prove dynamic action support;
+  four synthetic samples reproduce the frozen Decimal IPS/SNIPS/DR/ESS values.
+- S20 makes no real Endpoint, user-quality, policy-training, Shadow, online
+  exploration or release-readiness claim.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added the framework-neutral Package, canonical digests, Router-planned static
+  baseline, binding validators, Decimal estimator and strict fixed bundle.
+- Python 3.10 and 3.12 each pass 16 focused S20 tests. The existing 13-test
+  import-boundary suite, clean wheel import, Ruff/format/compile, 841-file secret
+  scan and whitespace checks also pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- None inside the accepted S20 offline scope. Real Shadow/OPE and learning need
+  external Endpoint, propensity, feedback, SLO and authorization evidence.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- The committed bundle is `evals/bandit-offline-v1/`; do not add it to the S18
+  release-required catalog or treat it as S19 release evidence.
+- A future integration must call the cross-object validators before persisting
+  or evaluating samples and must create a new Decision after admission failure
+  or Provider failover.

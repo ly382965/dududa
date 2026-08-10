@@ -40,13 +40,16 @@ the hard-filtered action set, not authority to widen it.
 `BanditDecision` is written conceptually before admission and contains the
 complete action set, behavior policy identity/artifact digest, per-action
 probability distribution, chosen action/propensity, static baseline action and
-decision time. Cross-object validation binds any later execution receipt to the
-decision digest and chosen action.
+decision time. The static baseline is the exact `planned_endpoint` already
+selected by the Static Router and bound into Router evidence; S20 does not
+repeat or reinterpret route-hint and tie-break ordering. Cross-object
+validation binds any later execution receipt to the decision digest and chosen
+action.
 
 Only two offline modes exist:
 
-- `STATIC_BASELINE`: deterministic priority/provider/endpoint ordering; chosen
-  action and baseline have probability 1 and every other action has 0;
+- `STATIC_BASELINE`: deterministic replay of the Router-planned Endpoint;
+  chosen action and baseline have probability 1 and every other action has 0;
 - `SYNTHETIC_EVALUATION`: all actions have finite positive support and the
   probabilities sum exactly to 1.
 
@@ -71,10 +74,13 @@ policy/digest mismatches.
 
 ### Propensity, Support And OPE
 
-An offline sample binds decision/action IDs, behavior propensity, evaluation
-probability, optional observed reward, logged-action outcome prediction and the
-evaluation-policy expected prediction. A versioned OPE policy freezes minimum
-behavior propensity, maximum importance weight and decimal precision.
+An offline sample binds decision/action IDs and digest, the complete behavior
+and evaluation distributions over the same dynamic action set, their exact
+logged-action propensities, optional observed reward, logged-action outcome
+prediction and the evaluation-policy expected prediction. Full-distribution
+validation rejects every evaluation action with positive probability but zero
+behavior support. A versioned OPE policy freezes minimum behavior propensity,
+maximum importance weight and decimal precision.
 
 Validation reports support/reward coverage and offending sample IDs, then the
 estimator refuses any support violation, missing/censored reward, duplicate

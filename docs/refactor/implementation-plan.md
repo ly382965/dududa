@@ -1,7 +1,7 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S19 的既定离线工程步骤已完成；S22 已完成基于消费者和回滚证据的兼容清理，
-S20 离线 Bandit 基础是下一工程步骤。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S20 的既定本地/离线工程步骤已完成；S22 已完成基于消费者和回滚证据的兼容清理，
+当前只剩 S23 真实群外部门禁。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
 不属于该发布前置。
@@ -45,7 +45,7 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 
 ### 当前模块完成度
 
-下表按 2026-08-10 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S13 已补齐静态
+下表按 2026-08-11 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S13 已补齐静态
 路由、语义/难度判断、离线 Runtime、Shadow、受控 Canary 与回滚边界；真实 Provider 效果、
 Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权群放量不再穿插在模块开发中，
 只在最终阶段执行。
@@ -64,7 +64,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
 | 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录；S16-S22 本地发布闭环已完成 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送和人工相关性/打扰度仍是 S23 外部门禁 |
-| 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
+| 在线学习 / Bandit | 离线基础已完成（S20） | Framework-neutral decision/execution/feedback DTO、Router-planned baseline、完整 action support、propensity validator、Decimal IPS/SNIPS/DR/ESS 和固定合成 bundle 已通过；生产路径无 Bandit import/hook | 真实同档 Endpoint、before-action 日志、可归因反馈、Shadow/在线训练和探索仍未开始；禁止学习主动发送和 Answer Profile |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
 | 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有当前发布必需模块、既定 WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
@@ -99,7 +99,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S17 | **已完成、已验证、已合并** | 三批路径迁移与旧 marker 兼容均已提交；canonical 路径、根 symlink、Compose 和双 Python聚焦 Contract 通过 | 路径别名已由 S22 删除；Manifest v2 因许可证/hash/lock 证据不足延期 |
 | S18 | **已完成、已验证、已合并（离线）** | `daf3111` 冻结 Spec；`5be566a` 实现十个固定 runner/十四维 catalog、原子低敏 receipt、append-only Runtime Trace、双锁 CI 与 Node 22；`7e7cbab`/`4cd9ddc` 绑定完整 catalog 并移除外部 run-ID 注入；四套 350-case bundle、146 项 focused Contract、Python 3.10 受影响样本和构建/Compose/secret 门禁通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障与 SLO/回滚候选证据统一留给 S19；不声明真实质量 |
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
-| S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
+| S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
 
@@ -655,9 +655,10 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**基于 S19 证据完成兼容清理，真实群验证最后执行**
+标题：**完成 S20 离线基础，等待 S23 逐行为授权**
 
-S01–S19 与 S22 的既定本地/离线范围已经完成并验证。接下来按 WIP=1 执行 S20 离线基础。
+S01–S20 与 S22 的既定本地/离线范围已经完成。S20 仅建立可重放离线基础，未增加生产执行
+hook；具体证据见 [S20 离线 Bandit 完成报告](s20-offline-bandit-report.md)。
 既定 WebUI 回归已经在 S19 通过，回答档位和主动出站不得跳过真实外部门禁。
 只有全部发布必需分支通过后，才准备 S23：
 
