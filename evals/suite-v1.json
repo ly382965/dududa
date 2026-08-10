@@ -1,0 +1,223 @@
+{
+  "catalog_id": "dududa-offline-suite-v1",
+  "data_policy": {
+    "fixture_kinds": [
+      "public",
+      "synthetic"
+    ],
+    "network_allowed": false,
+    "real_user_data_allowed": false
+  },
+  "profiles": {
+    "ci-python": [
+      "repository-tests-v1"
+    ],
+    "committed-bundles": [
+      "perception-tiering-v1",
+      "semantic-schema-v2",
+      "memory-retrieval-v1",
+      "response-profile-v1"
+    ],
+    "s18-focused": [
+      "perception-tiering-v1",
+      "semantic-schema-v2",
+      "memory-retrieval-v1",
+      "response-profile-v1",
+      "routing-contracts-v1",
+      "capability-mcp-contracts-v1",
+      "response-persona-contracts-v1",
+      "proactive-contracts-v1",
+      "trace-boundary-contracts-v1"
+    ]
+  },
+  "required_dimensions": [
+    "reply_target_semantics",
+    "static_model_routing",
+    "semantic_intent_entity_reference",
+    "mcp_capability_execution",
+    "tool_selection_arguments_validation",
+    "memory_scope_retrieval",
+    "answer_profile",
+    "persona_mechanics",
+    "scheduler_subscription",
+    "source_freshness_provenance_dedup",
+    "digest_shadow",
+    "probe_shadow",
+    "runtime_trace_privacy",
+    "import_boundaries"
+  ],
+  "schema_version": 1,
+  "suites": [
+    {
+      "dimensions": [
+        "reply_target_semantics",
+        "static_model_routing"
+      ],
+      "evidence_kind": "committed_bundle",
+      "external_gates": [
+        "human_quality_review",
+        "real_provider_conformance",
+        "empirical_minimum_tier"
+      ],
+      "quality_claim": "synthetic_policy_regression",
+      "runner_id": "perception-tiering-bundle-v1",
+      "suite_id": "perception-tiering-v1",
+      "suite_revision": "s09-perception-tiering-eval-v1"
+    },
+    {
+      "dimensions": [
+        "semantic_intent_entity_reference"
+      ],
+      "evidence_kind": "committed_bundle",
+      "external_gates": [
+        "authorized_conversation_cluster_data",
+        "independent_annotation_and_adjudication",
+        "held_out_chinese_quality_evaluation",
+        "calibrated_product_thresholds"
+      ],
+      "quality_claim": "schema_only",
+      "runner_id": "semantic-schema-bundle-v2",
+      "suite_id": "semantic-schema-v2",
+      "suite_revision": "s09-semantic-schema-pilot-v2"
+    },
+    {
+      "dimensions": [
+        "memory_scope_retrieval"
+      ],
+      "evidence_kind": "committed_bundle",
+      "external_gates": [
+        "authorized_memory_or_conversation_data",
+        "independent_human_relevance_judgments",
+        "held_out_real_chinese_quality_evaluation",
+        "production_iris_evidence",
+        "runtime_enablement_and_s23"
+      ],
+      "quality_claim": "synthetic_lexical_regression_only",
+      "runner_id": "memory-retrieval-bundle-v1",
+      "suite_id": "memory-retrieval-v1",
+      "suite_revision": "memory-retrieval-synthetic-v1"
+    },
+    {
+      "dimensions": [
+        "answer_profile"
+      ],
+      "evidence_kind": "committed_bundle",
+      "external_gates": [
+        "human_profile_fit",
+        "persona_style_quality",
+        "real_provider_tokenizer",
+        "pilot_budget_calibration",
+        "real_qq_delivery"
+      ],
+      "quality_claim": "mechanical_contract_only",
+      "runner_id": "response-profile-bundle-v1",
+      "suite_id": "response-profile-v1",
+      "suite_revision": "response-profile-synthetic-v1"
+    },
+    {
+      "dimensions": [
+        "reply_target_semantics",
+        "static_model_routing"
+      ],
+      "evidence_kind": "contract_suite",
+      "external_gates": [
+        "real_provider_endpoint",
+        "human_routing_quality"
+      ],
+      "quality_claim": "deterministic_contract_regression",
+      "runner_id": "routing-contracts-v1",
+      "suite_id": "routing-contracts-v1",
+      "suite_revision": "s18-routing-contract-map-v1"
+    },
+    {
+      "dimensions": [
+        "mcp_capability_execution",
+        "tool_selection_arguments_validation"
+      ],
+      "evidence_kind": "contract_suite",
+      "external_gates": [
+        "real_mcp_beyond_icourse",
+        "production_capability_enablement"
+      ],
+      "quality_claim": "fake_and_icourse_contract_regression",
+      "runner_id": "capability-mcp-contracts-v1",
+      "suite_id": "capability-mcp-contracts-v1",
+      "suite_revision": "s18-capability-mcp-contract-map-v1"
+    },
+    {
+      "dimensions": [
+        "answer_profile",
+        "persona_mechanics"
+      ],
+      "evidence_kind": "contract_suite",
+      "external_gates": [
+        "human_persona_style_review",
+        "qq_delivery_calibration"
+      ],
+      "quality_claim": "mechanical_persona_contract_regression",
+      "runner_id": "response-persona-contracts-v1",
+      "suite_id": "response-persona-contracts-v1",
+      "suite_revision": "s18-response-persona-contract-map-v1"
+    },
+    {
+      "dimensions": [
+        "scheduler_subscription",
+        "source_freshness_provenance_dedup",
+        "digest_shadow",
+        "probe_shadow"
+      ],
+      "evidence_kind": "contract_suite",
+      "external_gates": [
+        "live_source_adapters",
+        "authorized_real_proactive_shadow",
+        "human_interruption_quality"
+      ],
+      "quality_claim": "synthetic_no_send_contract_regression",
+      "runner_id": "proactive-contracts-v1",
+      "suite_id": "proactive-contracts-v1",
+      "suite_revision": "s18-proactive-contract-map-v1"
+    },
+    {
+      "dimensions": [
+        "runtime_trace_privacy",
+        "import_boundaries"
+      ],
+      "evidence_kind": "contract_suite",
+      "external_gates": [
+        "production_trace_sink",
+        "production_retention_policy"
+      ],
+      "quality_claim": "sanitized_runtime_contract_regression",
+      "runner_id": "trace-boundary-contracts-v1",
+      "suite_id": "trace-boundary-contracts-v1",
+      "suite_revision": "s18-trace-boundary-contract-map-v1"
+    },
+    {
+      "dimensions": [
+        "reply_target_semantics",
+        "static_model_routing",
+        "semantic_intent_entity_reference",
+        "mcp_capability_execution",
+        "tool_selection_arguments_validation",
+        "memory_scope_retrieval",
+        "answer_profile",
+        "persona_mechanics",
+        "scheduler_subscription",
+        "source_freshness_provenance_dedup",
+        "digest_shadow",
+        "probe_shadow",
+        "runtime_trace_privacy",
+        "import_boundaries"
+      ],
+      "evidence_kind": "repository_suite",
+      "external_gates": [
+        "s19_release_candidate_audit",
+        "s23_authorized_real_group"
+      ],
+      "quality_claim": "repository_contract_regression",
+      "runner_id": "repository-tests-v1",
+      "suite_id": "repository-tests-v1",
+      "suite_revision": "s18-repository-discovery-v1"
+    }
+  ]
+}

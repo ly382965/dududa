@@ -16,9 +16,13 @@ AstrBot Event/Result Adapter 位于插件目录，生产 Runtime 尚未切流。
 | S06 Memory 边界 | 已完成 | Memory Scope/Selector/Repository、显式 Write Gate、内存/JSON Adapter |
 | S07 Iris/迁移边界 | 已完成 | fail-closed Iris Protocol Adapter、隔离区和可逆离线迁移工具 |
 | S14 Memory 生命周期/检索 | 已完成（离线） | 删除/tombstone、scoped export、archive/restore、M0/M1/M2、CJK BM25 与固定合成 Eval |
+| S12-S13 MCP/Capability | 已完成（离线） | Unified MCP、iCourse compatibility、Fake extension 与有限 Capability Runtime |
+| S15-S15E 回答/主动基础 | 已完成（离线） | Answer Profile、Persona、Scheduler、Source fixture、Digest/Probe no-send Shadow |
+| S18 Eval/Trace | 已完成（离线） | 版本化 suite catalog、低敏 receipt 与 append-only Runtime phase Trace |
 
-这里的“已完成”指实施步骤与退出测试完成。Agent Orchestrator、RuntimeStateStore、真实 Iris
-Backend、真实 Attachment Source、生产切流和 canary 均未完成，因此产品模块仍是部分完成。
+这里的“已完成”指相应离线实施步骤与退出测试完成。Offline Orchestrator 和
+RuntimeStateStore 已存在，但真实 Provider、真实 Source Adapter、生产 Iris、生产 Trace sink、
+生产切流和 S23 canary 均未完成，因此产品仍未达到生产就绪。
 
 ## 包结构
 
@@ -27,7 +31,7 @@ dududa/
 ├── domain/          # 不可变领域 DTO 与值约束
 ├── contracts/       # canonical codec、版本与 binding receipt
 ├── ports/           # Core 拥有的 Protocol 和调用上下文
-├── runtime/         # 显式 Runtime State；不包含 Orchestrator
+├── runtime/         # 离线 Orchestrator、显式 State 与低敏阶段 Trace
 ├── security/        # 确定性安全策略与服务
 ├── memory/          # Scope、Repository、Write Gate、参考 Adapter 和迁移逻辑
 ├── evaluation/      # 版本化合成 Eval runner；不包含真实用户数据或模型调用
@@ -98,10 +102,16 @@ quarantine digest。不要对生产数据原地试跑。
 ## 验证
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
+python -m dududa.evaluation.suite check evals/suite-v1.json \
+  --profile s18-focused --receipt .TreeWork/out/eval-focused.json
 python -m compileall -q packages apps services ops tests
 python ops/cli/check_secrets.py
-docker compose --env-file .env.example config --quiet
+mkdir -p .TreeWork/out
+docker compose --project-directory . --env-file .env.example \
+  -f deploy/compose/compose.yml config --format json \
+  > .TreeWork/out/compose.json
+python ops/cli/dududa_ops.py compose-contract \
+  --input .TreeWork/out/compose.json
 ```
 
 宿主机没有 AstrBot 时，只有两项真实 registry/命令测试允许 skip；它们必须在重建后的派生

@@ -52,8 +52,9 @@ Phase 0–1 的审计与目标设计见
 [Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)。S01–S16 的既定本地/离线范围已沿
 既有 Tree 完成并验证，覆盖核心契约、安全边界、静态路由、离线 Runtime、统一 MCP、
 Capability Runtime、Memory 生命周期/检索、三档回答、默认关闭的主动出站链和离线运维事务。
-S17 路径迁移已完成、验证并合并，canonical 目录现在是主仓权威；一 Release 兼容链接保留到
-S22。旧 AstrBot
+S17 路径迁移已完成、验证并合并，canonical 目录现在是主仓权威；S18 已建立统一离线
+Eval catalog、低敏 receipt、Runtime phase Trace 和双锁 CI，一 Release 兼容链接保留到
+S22。完整发布候选审计由 S19 统一执行。旧 AstrBot
 Handler 仍是生产权威入口，Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
 残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 和
 [阶段报告](docs/refactor/checkpoint-report-2026-08-10.md) 为准；真实质量和生产阶段需要的资料

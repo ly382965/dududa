@@ -11,8 +11,51 @@ Last sync: unix:1786371061
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S18 implementation is committed at `5be566a`, with catalog/receipt hardening
+  at `7e7cbab` and `4cd9ddc`. `evals/suite-v1.json` indexes
+  ten fixed runners across fourteen required dimensions and exposes
+  `committed-bundles`, `s18-focused` and `ci-python` profiles.
+- Runtime now records digest-bound, append-only, content-free phase events. The
+  result summary projects the recorded path; no production Trace sink was added.
+- CI provisions the root MCP v1 environment and isolated MCP v2 worker from
+  separate locks, runs worker-local tests, emits Eval/repository receipts and
+  validates rendered Compose. Web build inputs now use Node 22.
+- S18 remains an offline technical claim. All four committed bundle receipts
+  retain `release_ready=false`; human quality, real Endpoint/source/QQ and
+  production telemetry remain external or later-stage gates.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Python 3.12 `s18-focused` passed four committed bundles plus 146 focused
+  Contract cases. A clean `5be566a` committed-bundle receipt passed with digest
+  `dududa-c14n-v1:eval:suite-receipt:v1:sha-256:0524346026425e1d3bf94dbfdb8232169fb8075e4cbcc143fa96de001d950115`.
+- Python 3.10 replayed all four committed bundles and passed 30 affected
+  repository/Trace/receipt tests. Root worker Contracts passed 11 cases and the
+  isolated worker passed its two no-network HTTP cases.
+- One Node 22 typecheck/build, clean wheel install/import/pip check, rendered
+  Compose contract, YAML parse, changed-code Ruff and a secret scan over 817
+  files passed. No container or running service was changed.
+- The complete catalog digest is now code-bound: revision, claim, external-gate
+  and profile-membership tampering all fail before execution. A clean `4cd9ddc`
+  committed-bundle replay passed with four results, a generated opaque run ID,
+  `0600` receipt, `source_dirty=false` and receipt digest
+  `dududa-c14n-v1:eval:suite-receipt:v1:sha-256:e7d892f95d74ca649d76d07540a131d8fe8cb94b47737c55439d3699d18f7c68`.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- S19 still owns the complete dual-Python 642-test execution, full Web/E2E,
+  image/container smoke, broad failure injection, SLO preregistration and
+  rollback bundle audit.
+- The legacy AstrBot admin audit remains a separate compatibility log that can
+  contain sender/group references. S18 receipts and Runtime Trace do not copy
+  it, but S19/S22 must not misclassify it as sanitized Runtime telemetry.
+- No production Trace sink, retention policy, real Provider/source evidence,
+  human evaluation or real QQ behavior was created.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- S18 is complete, verified and integrated. Enter S19 next; use the `ci-python`
+  profile as the Python test receipt and run expensive Web/image gates once,
+  not once per feature branch.
+- `services/mcp/unified-worker/.venv` must be provisioned from its own lock in
+  every clean worktree before root worker Contracts execute.

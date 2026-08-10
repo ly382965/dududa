@@ -16,9 +16,9 @@
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
   S15B 持久调度、S15C 来源框架/合成 fixture、S15D fixture 日报和 S15E synthetic group
   Probe Shadow；真实来源/群 Projection、持久 Probe state、模型与发送继续作为外部门禁。
-- S17 三批 path-only 迁移与旧 lock marker 兼容均已提交并通过代表性 Verification，已经
-  protected completion 并合入控制分支；
-  Manifest v2 仍因 hash、依赖锁和许可证证据不足延期。S18/S19/S22/S20/S23 均未开始。
+- S17 三批 path-only 迁移与旧 lock marker 兼容已经 protected completion 并合入控制分支。
+  S18 已实现统一 Eval/Trace/CI 并通过双 Python 风险样本；Manifest v2 仍因 hash、依赖锁和
+  许可证证据不足延期。S19/S22/S20/S23 尚未开始。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -73,7 +73,7 @@
 | 步骤 | 状态 | 当前证据 | 下一边界 |
 | --- | --- | --- | --- |
 | S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 一 Release 兼容链接留到 S22；Manifest v2 继续延期 |
-| S18 Evaluation/CI | 未开始 | Tree 分支为 pending/unverified | 汇总版本化 Trace/Eval、故障注入与 CI |
+| S18 Evaluation/CI | **已完成、已验证、已合并（离线）** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt、内部生成 run ID、真实 phase path Trace、双锁 CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚候选审计留给 S19 |
 | S19 Local Integration Audit | 未开始 | Tree 分支为 pending/unverified | 集中执行双 Python 全仓、镜像/配置/回滚包与 SLO 审计 |
 | S22 Legacy Cleanup | 未开始 | Tree 分支为 pending/unverified | 只删除已有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 Offline Bandit | 未开始 | Tree 分支为 pending/unverified | 仅完成 decision/feedback/support/propensity 与合成 IPS/SNIPS/DR golden |
@@ -91,10 +91,22 @@
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
-| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S16 已约束 Source 中途取消/超时 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S17-S19/S22 发布闭环未完成 |
+| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S16 已约束 Source 中途取消/超时，S18 已纳入统一离线证据 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S19/S22 发布闭环未完成 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | Mew/NapCat WebUI | 已完成（既定范围） | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests；不等同于 Agent Control Plane |
 | 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
+
+## 2026-08-10 S18 阶段证据
+
+| 门禁 | 当前结果 |
+| --- | --- |
+| Eval catalog | 严格 JSON 只允许十个固定 runner，覆盖十四个维度；任意 callable、Shell、路径和环境值均不可配置 |
+| Bundle/Contract | Python 3.12 四套提交 bundle 共 350 个合成 case，加五套 focused Contract 共 146 项通过；所有质量报告保持 `release_ready=false` |
+| Python 3.10 | 四套 bundle、30 项受影响 receipt/Trace/Runtime/Delivery/仓库契约通过；独立 MCP worker 2 项禁网测试和根 Contract 11 项通过 |
+| Trace/receipt | Runtime 记录 append-only、canonical digest、无正文的 phase event；失败也写 0600 receipt，Schema 禁止命令、绝对路径、环境、凭据和真实标识字段 |
+| Catalog/身份绑定 | 完整 catalog canonical digest 固定在代码中，revision/claim/gate/profile 篡改均在执行前拒绝；run ID 仅由 runner 随机生成 |
+| 构建/CI | 双 root/worker lock、wheel 干净安装/import/pip check、Node 22 typecheck/build、真实 Compose JSON contract、YAML、Ruff、compile、secret 与 whitespace 通过 |
+| 证据边界 | 完整双 Python 642 项、Web/E2E、镜像/容器、完整故障注入、SLO 与回滚包仍由 S19 统一执行 |
 
 ## 2026-08-10 S16 阶段证据
 
@@ -230,7 +242,7 @@
 
 ## 下一步
 
-S17 已完成并合并。接下来按 Tree 执行 S18、S19 和 S22，再完成 S20 离线基础。S19 集中
+S17 已完成并合并，S18 已完成离线实现和验证。接下来按 Tree 执行 S19 和 S22，再完成 S20 离线基础。S19 集中
 执行本地回归、30 日
 fake-clock/no-send 仿真和故障注入。发布前置
 全部关闭后，才冻结群 ID、

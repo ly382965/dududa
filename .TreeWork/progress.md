@@ -14,7 +14,8 @@ Last sync: unix:1786371061
 - S01-S11 foundations/runtime are integrated on `codex/s08-s11`; the Work Tree
   has also integrated and verified Production Shape, additive semantics, S12
   Unified MCP, S13 Capability, S14 Memory, S15 response/persona, S15A-S15E
-  proactive no-send stages and S16 offline operations.
+  proactive no-send stages, S16 offline operations, S17 canonical layout and
+  S18 reproducible offline evaluation/CI.
 - The last complete clean dual-Python repository baseline reached 616 tests at
   S15C with two AstrBot-host-only skips. S15D-S16 then used approved focused
   representative samples; a complete current-HEAD dual-Python run is deferred
@@ -81,6 +82,12 @@ Last sync: unix:1786371061
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 
+- S18 returned a strict ten-runner/fourteen-dimension Eval catalog, atomic
+  low-sensitivity receipts, populated append-only Runtime phase Trace and clean
+  dual-Python CI provisioning for both the root and isolated MCP worker locks.
+  Four committed bundles (350 synthetic cases), 146 focused Contract cases,
+  Python 3.10 affected tests, package/import, Node 22 build, rendered Compose and
+  secret checks passed; complete release-candidate execution remains S19 work.
 - S17 returned complete and verified. Canonical repository ownership now lives
   under `apps`, `configs`, `services/mcp`, `deploy`, `ops` and `third_party`;
   one-Release compatibility links remain for S22, while Manifest v2 stays
