@@ -90,16 +90,18 @@ class MinimalResponseComposer:
             raise validation_error("invalid_composer_context")
         if not isinstance(decision, SocialDecision):
             raise validation_error("invalid_composer_social_decision")
-        if decision.action is SocialAction.DIRECT_REPLY:
+        if decision.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
             if not isinstance(direct_content, DirectChatContent):
                 raise validation_error("direct_reply_missing_direct_content")
-            if set(direct_content.source_refs) != {
-                context.perception.current_message_ref
-            }:
+            if context.perception.current_message_ref not in direct_content.source_refs:
                 raise validation_error("direct_content_source_outside_context")
             text = direct_content.text
             source_refs = direct_content.source_refs
-            intent = "direct_chat"
+            intent = (
+                "tool_assisted_chat"
+                if decision.action is SocialAction.USE_TOOLS
+                else "direct_chat"
+            )
         elif decision.action is SocialAction.ASK_CLARIFICATION:
             if direct_content is not None or decision.clarification_key is None:
                 raise validation_error("invalid_clarification_composition")

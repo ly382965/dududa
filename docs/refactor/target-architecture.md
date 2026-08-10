@@ -1,7 +1,7 @@
 # Dududa 2.0 Target Architecture
 
-Status: S01-S11 local scope implemented; S12+ and the 2026-08-09
-ResponseProfile/proactive-outbound alignment are not implemented
+Status: S01-S13 offline local scope implemented; S14+ and the 2026-08-09
+ResponseProfile/proactive-outbound implementation remain pending
 Baseline: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## Objectives
@@ -556,9 +556,9 @@ layer.
 | Message Envelope, Runtime State and delivery | S04/S10/S11 inbound explicit-mention local scope complete; production full composition remains |
 | Context Builder, Perception and SocialAction | S09/S10 bounded local scope complete; real data, multi-turn and attachment evidence remain |
 | Scoped MemoryRepository and Write Gate | S06/S07 safety boundary complete; real Iris/runtime retrieval not implemented |
-| Capability Registry and Retrieval | Not implemented |
-| Unified MCP Client and Registry | Not implemented; two iCourse paths exist |
-| Tool Planner/Executor/Validator loop | Not implemented |
+| Capability Registry and Retrieval | S13 offline implementation complete; production Tools remain disabled |
+| Unified MCP Client and Registry | S12 complete; iCourse defaults to Unified facade with explicit Legacy rollback |
+| Tool Planner/Executor/Validator loop | S13 bounded deterministic loop complete; no real Planner Endpoint or production rollout |
 | Role-based Model Router | S08 static local core complete; real multi-Provider production composition remains |
 | Response Composer / OC Renderer split | S10 minimal deterministic path complete; S15 productization remains |
 | AnswerProfile / ResponsePlan | Not implemented; only static length/token primitives exist |

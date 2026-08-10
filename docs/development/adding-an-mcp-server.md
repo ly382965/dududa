@@ -70,7 +70,7 @@ search_site_courses
 crawl_course
 ```
 
-其中未来 S13 首版模型 Capability 只允许 `icourse_stats`、`search_courses`、`get_course(refresh=false)` 和 `get_reviews`。`search_site_courses`、`crawl_course` 有外部/缓存副作用，只供确定性兼容命令使用。`check_robots`、`crawl_courses`、`crawl_latest_reviews`、`export_dataset` 明确位于 transport deny 集合。
+其中 S13 模型 Capability 只映射 `icourse_stats`、`search_courses`、`get_course(refresh=false)` 和 `get_reviews`。`search_site_courses`、`crawl_course` 有外部/缓存副作用，只供确定性兼容命令使用。`check_robots`、`crawl_courses`、`crawl_latest_reviews`、`export_dataset` 明确位于 transport deny 集合。
 
 而不是：
 
@@ -209,7 +209,24 @@ export_anywhere
 
 ## 7. Capability 映射
 
-发现一个 MCP Tool 不代表 Planner 能看到它。S12 的 discovery 只记录事实，零授权；正式 CapabilityDefinition、mapping loader 和 Registry 由 S13 冻结。S12 只保留标记为 `provisional_for_s13` 的测试 fixture，证明连接配置与业务授权相互独立：
+发现一个 MCP Tool 不代表 Planner 能看到它。S12 的 discovery 只记录事实，零授权；S13 的
+`CapabilityDefinition`、mapping loader 和 Registry 才决定业务可见性。正式配置分别位于：
+
+- `config/capabilities/definitions/*.json`；
+- `config/capabilities/mappings/*.json`；
+- 测试扩展位于 `tests/fixtures/capabilities/`。
+
+当前四个正式 iCourse ID 为：
+
+```text
+icourse.stats.read.v1
+icourse.courses.search.v1
+icourse.course.get.v1
+icourse.reviews.get.v1
+```
+
+新增 Fake Server 只能增加 Server 配置、Definition、Mapping 和授权 fixture，不得修改 Domain、
+Runtime 或通用 Client。概念映射如下：
 
 ```yaml
 capability_id: example.search_items.v1
@@ -223,7 +240,7 @@ required_permissions: [capability.example.read]
 idempotency: read_only
 ```
 
-iCourse 的 provisional fixture 将 `get_course` 固定为 `refresh=false`。任何动态发现、transport allowlist 或管理命令都不能自行生成 Capability。
+iCourse 的正式 Mapping 将 `get_course` 固定为 `refresh=false`。任何动态发现、transport allowlist 或管理命令都不能自行生成 Capability。
 
 Capability Provider 负责：
 
@@ -355,7 +372,7 @@ Server README 至少包含：
 
 - `docs/design/capability-and-mcp.md` 的 Server/Capability 清单；
 - `config/mcp/servers/` 严格 JSON Registry 配置；
-- S13 后的 Capability 显式映射；S12 只能增加 test-only provisional fixture；
+- Capability Definition 与显式 Mapping；只有测试目录可增加 Fake fixture；
 - 部署镜像与健康检查；
 - contract、integration、smoke 和 Eval；
 - 第三方 manifest 和 notices。
@@ -365,7 +382,7 @@ Server README 至少包含：
 iCourse 是当前唯一真实 Server，也是统一传输的兼容样板。S12 已保留其 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
 
 - `ICourseClient` 成为 Unified MCP facade；`LegacyICourseClient` 保留为显式回滚实现；
-- 六项 transport allowlist 与四项 management deny 分离；未来模型能力仅为四项公开只读映射；
+- 六项 transport allowlist 与四项 management deny 分离；模型能力仅为四项公开缓存只读映射；
 - `get_course` 只有在 `refresh=false` 时属于只读语义；
 - 将 refresh 设为 trusted/admin、限流且有明确 timeout；
 - 将 bulk crawl、robots 和 export 放入运维面；

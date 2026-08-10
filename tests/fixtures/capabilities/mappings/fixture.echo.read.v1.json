@@ -1,0 +1,17 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:64ff38f5252bb164b9ddcf32908256d01e9bdf8e3364fae70b520d16530821ec",
+  "capability_id": "fixture.echo.read.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.fake-b.echo.input:v1:sha-256:aa9ba8adc67a8531aca6def22f0ee6cd6902dda7eeea1d6fc172e053168fefba",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.fake-b.echo.output:v1:sha-256:8518c5f99bb7230d5c519160e59b7daaccfed813233c221a81d267ada1f193d1",
+  "fixed_arguments": {
+    "operation": "read"
+  },
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:1ce627beb7f00eac6d683d19fd25db768949972fc64b7b34683783c992d384c9",
+  "result_mapping_revision": "structured-content-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "fake-b",
+  "tool_name": "echo"
+}

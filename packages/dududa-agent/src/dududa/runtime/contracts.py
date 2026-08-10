@@ -14,6 +14,7 @@ from dududa.domain.primitives import (
     Outcome,
     PrivacyLevel,
     ResourceUsage,
+    SchemaRef,
     require_aware,
     require_non_empty,
 )
@@ -47,6 +48,8 @@ class OfflineRuntimePolicySnapshot:
     complexity_assessor: ComplexityAssessorConfig
     social_decision: SocialDecisionConfig
     direct_chat_tier: TierPolicyDefinition
+    capability_input_schemas: tuple[SchemaRef, ...] = ()
+    capability_maximum_attempts: int = 4
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -65,6 +68,22 @@ class OfflineRuntimePolicySnapshot:
             raise validation_error("invalid_runtime_tier_policy")
         if self.direct_chat_tier.role is not ModelRole.DIRECT_CHAT:
             raise validation_error("runtime_tier_policy_role_mismatch")
+        schemas = tuple(self.capability_input_schemas)
+        if len(schemas) > 64 or any(
+            not isinstance(item, SchemaRef) for item in schemas
+        ):
+            raise validation_error("invalid_runtime_capability_input_schemas")
+        schema_keys = tuple(
+            (item.schema_id, item.schema_version, item.digest) for item in schemas
+        )
+        if len(schema_keys) != len(set(schema_keys)):
+            raise validation_error("duplicate_runtime_capability_input_schema")
+        if (
+            type(self.capability_maximum_attempts) is not int
+            or not 1 <= self.capability_maximum_attempts <= 8
+        ):
+            raise validation_error("invalid_runtime_capability_attempt_limit")
+        object.__setattr__(self, "capability_input_schemas", schemas)
         generated_high_codes = {
             code.value for code in self.complexity_assessor.high_signal_codes
         }

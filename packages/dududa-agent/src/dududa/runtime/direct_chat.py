@@ -6,9 +6,12 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from types import MappingProxyType
 
+from dududa.capabilities.contracts import CapabilityRunReceipt
 from dududa.contracts.canonical import canonical_digest, canonical_json_bytes
 from dududa.domain.primitives import (
     ComponentRevision,
+    JsonValue,
+    PrivacyLevel,
     ResourceUsage,
     require_aware,
 )
@@ -35,6 +38,14 @@ from dududa.ports.context import PortCallContext
 from dududa.ports.models import ModelRouter
 
 from .budget import reservation_budget, usage_within_reservation
+from .capabilities import (
+    TOOL_CONTEXT_MODEL_INSTRUCTION,
+    tool_context_privacy_level,
+    validated_tool_model_projection,
+)
+from .capabilities import (
+    tool_context_tokens_upper_bound as projected_tool_tokens_upper_bound,
+)
 from .contracts import (
     CurrentMessageContext,
     DirectChatContent,
@@ -73,6 +84,7 @@ class DirectChatModelCallConfig:
     allowed_residencies: frozenset[str]
     allow_provider_retention: bool
     component_revision: ComponentRevision
+    maximum_tool_context_bytes: int = 16_384
 
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
@@ -96,6 +108,11 @@ class DirectChatModelCallConfig:
                 raise validation_error("invalid_direct_chat_limit", name)
         if self.maximum_response_characters > 64_000:
             raise validation_error("direct_chat_response_limit_too_large")
+        if (
+            type(self.maximum_tool_context_bytes) is not int
+            or not 1 <= self.maximum_tool_context_bytes <= 1_048_576
+        ):
+            raise validation_error("invalid_direct_chat_tool_context_limit")
         for name in ("allow_external_provider", "allow_provider_retention"):
             if type(getattr(self, name)) is not bool:
                 raise validation_error("invalid_direct_chat_privacy_flag", name)
@@ -140,6 +157,7 @@ class DirectChatModelCall:
         *,
         route_hint: RouteHint | None,
         call: PortCallContext,
+        capability_receipt: CapabilityRunReceipt | None = None,
     ) -> DirectChatExecutionReceipt:
         if not isinstance(context, CurrentMessageContext):
             raise validation_error("invalid_direct_chat_context")
@@ -151,6 +169,26 @@ class DirectChatModelCall:
             raise validation_error("invalid_direct_chat_reservation")
         if route_hint is not None and not isinstance(route_hint, RouteHint):
             raise validation_error("invalid_direct_chat_route_hint")
+        tool_projection = None
+        tool_source_refs: tuple[str, ...] = ()
+        tool_context_tokens_upper_bound = 0
+        data_classification = context.perception.data_classification
+        if capability_receipt is not None:
+            (
+                tool_projection,
+                tool_source_refs,
+                _,
+            ) = validated_tool_model_projection(
+                capability_receipt,
+                maximum_bytes=self._config.maximum_tool_context_bytes,
+            )
+            tool_context_tokens_upper_bound = projected_tool_tokens_upper_bound(
+                capability_receipt
+            )
+            data_classification = tool_context_privacy_level(
+                capability_receipt,
+                data_classification,
+            )
         if tier_decision.role is not ModelRole.DIRECT_CHAT:
             raise validation_error("direct_chat_tier_role_mismatch")
         if tier_decision.assessment_digest != task_complexity_assessment_digest(
@@ -163,6 +201,7 @@ class DirectChatModelCall:
             self._config.max_output_tokens > reservation.output_tokens
             or context.perception.content_input_tokens_upper_bound
             + self._config.prompt_tokens_upper_bound
+            + tool_context_tokens_upper_bound
             > reservation.input_tokens
         ):
             raise error(
@@ -177,6 +216,10 @@ class DirectChatModelCall:
             context,
             assessment,
             route_hint=route_hint,
+            tool_projection=tool_projection,
+            tool_source_refs=tool_source_refs,
+            tool_context_tokens_upper_bound=tool_context_tokens_upper_bound,
+            data_classification=data_classification,
         )
         request = replace(
             request,
@@ -253,11 +296,19 @@ class DirectChatModelCall:
             ) from None
 
         response_digest = canonical_digest(response, domain="model:response:v1")
+        source_refs = tuple(
+            sorted(
+                {
+                    context.perception.current_message_ref,
+                    *tool_source_refs,
+                }
+            )
+        )
         content = DirectChatContent(
             schema_version=1,
             content_id=self._id_factory(),
             text=response.output,
-            source_refs=(context.perception.current_message_ref,),
+            source_refs=source_refs,
             model_request_fingerprint=request_fingerprint,
             model_response_digest=response_digest,
         )
@@ -275,54 +326,79 @@ class DirectChatModelCall:
         assessment: TaskComplexityAssessment,
         *,
         route_hint: RouteHint | None,
+        tool_projection: Mapping[str, JsonValue] | None,
+        tool_source_refs: tuple[str, ...],
+        tool_context_tokens_upper_bound: int,
+        data_classification: PrivacyLevel,
     ) -> ModelRequest:
         current = next(
             message
             for message in context.perception.messages
             if message.message_ref == context.perception.current_message_ref
         )
-        payload = canonical_json_bytes(
-            {
-                "schema_version": 1,
-                "conversation_type": context.perception.conversation_type,
-                "current_message_ref": context.perception.current_message_ref,
-                "current_author_identity_ref": context.current_author_identity_ref,
-                "message_text": current.text,
-                "task_kind": assessment.task_kind,
-                "reasoning_depth": assessment.reasoning_depth,
-                "verification_required": assessment.verification_required,
-                "component_revision": self._config.component_revision,
-            }
-        ).decode("utf-8")
+        payload_values: dict[str, JsonValue] = {
+            "schema_version": 1,
+            "conversation_type": context.perception.conversation_type,
+            "current_message_ref": context.perception.current_message_ref,
+            "current_author_identity_ref": context.current_author_identity_ref,
+            "message_text": current.text,
+            "task_kind": assessment.task_kind,
+            "reasoning_depth": assessment.reasoning_depth,
+            "verification_required": assessment.verification_required,
+            "component_revision": self._config.component_revision,
+        }
+        parts = [
+            ModelInputPart(
+                schema_version=1,
+                part_id="direct-chat-context",
+                modality=ModelInputModality.TEXT,
+                text=(
+                    _DIRECT_CHAT_INSTRUCTION
+                    + canonical_json_bytes(payload_values).decode("utf-8")
+                ),
+                content_ref=None,
+                content_digest=None,
+                media_type=None,
+            )
+        ]
+        if tool_projection is not None:
+            parts.append(
+                ModelInputPart(
+                    schema_version=1,
+                    part_id="validated-tool-context",
+                    modality=ModelInputModality.TEXT,
+                    text=(
+                        TOOL_CONTEXT_MODEL_INSTRUCTION
+                        + canonical_json_bytes(tool_projection).decode("utf-8")
+                    ),
+                    content_ref=None,
+                    content_digest=None,
+                    media_type=None,
+                )
+            )
+        source_refs = tuple(
+            sorted({context.perception.current_message_ref, *tool_source_refs})
+        )
         return ModelRequest(
             schema_version=1,
             request_id=self._id_factory(),
             role=ModelRole.DIRECT_CHAT,
             input=ModelInput(
                 schema_version=1,
-                parts=(
-                    ModelInputPart(
-                        schema_version=1,
-                        part_id="direct-chat-context",
-                        modality=ModelInputModality.TEXT,
-                        text=_DIRECT_CHAT_INSTRUCTION + payload,
-                        content_ref=None,
-                        content_digest=None,
-                        media_type=None,
-                    ),
-                ),
-                source_refs=(context.perception.current_message_ref,),
+                parts=tuple(parts),
+                source_refs=source_refs,
             ),
             output_schema=None,
             max_output_tokens=self._config.max_output_tokens,
             content_input_tokens_upper_bound=(
                 context.perception.content_input_tokens_upper_bound
                 + self._config.prompt_tokens_upper_bound
+                + tool_context_tokens_upper_bound
             ),
             temperature=None,
             privacy=ModelPrivacyPolicy(
                 schema_version=1,
-                data_classification=context.perception.data_classification,
+                data_classification=data_classification,
                 allow_external_provider=self._config.allow_external_provider,
                 allowed_residencies=self._config.allowed_residencies,
                 allow_provider_retention=self._config.allow_provider_retention,

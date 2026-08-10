@@ -1,0 +1,438 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "icourse.course.get.v1",
+  "category": "campus.course-review",
+  "cost_hint_units": 2,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:c42bf5b290b2c219d3659dc460021ba7b51ff1225b6fa9ecfe6a38c2fbeb1dce",
+  "description": "Read one public cached course with refresh permanently disabled.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.icourse.course.get.v1.input:v1:sha-256:febc8fb41e0e03ec39370e06d4b3effd5ef3b6995f15f99c7a7b9adbf46b7442",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "include_reviews": {
+          "type": "boolean"
+        },
+        "refresh": {
+          "const": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "course_id",
+        "refresh"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.icourse.course.get.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 20,
+    "maximum_ms": 2000
+  },
+  "name": "Read one cached iCourse course",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.icourse.course.get.v1.output:v1:sha-256:842e8d8cec9f10a1487e4ba45972d23da9fc6321b45f2787e4b416c3119a01c9",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "course": {
+          "additionalProperties": false,
+          "properties": {
+            "course_level": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "course_type": {
+              "maxLength": 200,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "courseries": {
+              "maxLength": 300,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "credit": {
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "dept": {
+              "maxLength": 300,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "difficulty": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "gain": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "grading": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "homepage": {
+              "maxLength": 2048,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "homework": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "introduction_text": {
+              "maxLength": 20000,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "join_type": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "missing_review_count_estimate": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "name": {
+              "maxLength": 300,
+              "type": "string"
+            },
+            "rating_average": {
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "review_count_site": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "reviews": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "author_display": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "comment_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "content_text": {
+                    "maxLength": 20000,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "is_anonymous": {
+                    "type": "boolean"
+                  },
+                  "publish_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating_10": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "term": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "update_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "upvote_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "course_id",
+                  "url",
+                  "author_display",
+                  "is_anonymous",
+                  "term",
+                  "rating_10",
+                  "difficulty",
+                  "homework",
+                  "grading",
+                  "gain",
+                  "content_text",
+                  "publish_time",
+                  "update_time",
+                  "upvote_count",
+                  "comment_count"
+                ],
+                "type": "object"
+              },
+              "maxItems": 200,
+              "type": "array"
+            },
+            "summary_text": {
+              "maxLength": 20000,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "teachers": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "dept": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 200,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "dept"
+                ],
+                "type": "object"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            "teaching_type": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "term_ids": {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 64,
+              "type": "array"
+            },
+            "term_text": {
+              "maxLength": 300,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "url": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "visible_review_count": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "url",
+            "teachers",
+            "term_text",
+            "courseries",
+            "dept",
+            "course_type",
+            "join_type",
+            "teaching_type",
+            "course_level",
+            "credit",
+            "rating_average",
+            "review_count_site",
+            "visible_review_count",
+            "missing_review_count_estimate",
+            "difficulty",
+            "homework",
+            "grading",
+            "gain",
+            "term_ids",
+            "homepage",
+            "introduction_text",
+            "summary_text"
+          ],
+          "type": "object"
+        },
+        "ok": {
+          "const": true,
+          "type": "boolean"
+        },
+        "public_only": {
+          "const": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok",
+        "course",
+        "public_only"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.icourse.course.get.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.icourse",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:9cfe5a3297f08eee13cfe4403150448260b394bcc8ebfb61d93742f181cf303a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "icourse-public-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.icourse.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "course",
+    "course-review",
+    "detail",
+    "icourse"
+  ]
+}

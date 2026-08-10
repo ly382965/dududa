@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from dududa.domain.primitives import ResponseConstraints
 from dududa.errors import ErrorCategory, error, validation_error
@@ -23,7 +23,9 @@ from .digests import perception_result_digest
 class SocialDecisionConfig:
     policy_revision: str
     clarification_confidence_threshold: float
-    response_constraints: ResponseConstraints = ResponseConstraints()
+    response_constraints: ResponseConstraints = field(
+        default_factory=ResponseConstraints
+    )
 
     def __post_init__(self) -> None:
         if not self.policy_revision.strip():
@@ -36,7 +38,7 @@ class SocialDecisionConfig:
         ):
             raise ValueError("invalid clarification confidence threshold")
         if not isinstance(self.response_constraints, ResponseConstraints):
-            raise ValueError("invalid Social Decision response constraints")
+            raise TypeError("invalid Social Decision response constraints")
 
 
 class DeterministicSocialDecisionPolicy:
@@ -48,7 +50,7 @@ class DeterministicSocialDecisionPolicy:
         id_factory: Callable[[], str] | None = None,
     ) -> None:
         if not isinstance(config, SocialDecisionConfig):
-            raise ValueError("invalid Social Decision config")
+            raise TypeError("invalid Social Decision config")
         self._config = config
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
@@ -167,13 +169,15 @@ def _social_decision_values(
         action = SocialAction.IGNORE
         reasons = ("no_explicit_interaction",)
     elif perception.need_tools:
-        action = SocialAction.DEFER
         if not signals.authorization.can_use_tools:
+            action = SocialAction.DEFER
             reasons = ("tool_use_not_authorized",)
         elif not signals.tools_enabled:
+            action = SocialAction.DEFER
             reasons = ("tools_disabled",)
         else:
-            reasons = ("tool_execution_out_of_scope",)
+            action = SocialAction.USE_TOOLS
+            reasons = ("bounded_tool_execution",)
     else:
         clarification = next(
             (

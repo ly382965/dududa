@@ -1,0 +1,85 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "fixture.echo.read.v1",
+  "category": "fixture",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:64ff38f5252bb164b9ddcf32908256d01e9bdf8e3364fae70b520d16530821ec",
+  "description": "Return one local deterministic fixture value for contract tests only.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.fixture.echo.read.v1.input:v1:sha-256:ff81b1d1e6a6c7f5cc735309cce98d45b3d48cbe8039beb31659b06751e34138",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "delay_ms": {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "operation": {
+          "const": "read",
+          "maxLength": 4,
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "operation"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.fixture.echo.read.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 1,
+    "maximum_ms": 1000
+  },
+  "name": "Echo one bounded fixture value",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.fixture.echo.read.v1.output:v1:sha-256:3478694bcd40e15bfdea1f403834995d31ae945dd2ad3156d19a3188252fb8dd",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {}
+      },
+      "required": [
+        "value"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.fixture.echo.read.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.fake-b",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:520dc1cd960c11322d48688f0ec2c430163eebee644182c579c8328af5408222",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "fake-b-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.fixture.echo"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "echo",
+    "fixture"
+  ]
+}

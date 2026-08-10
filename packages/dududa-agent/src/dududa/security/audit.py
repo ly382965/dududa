@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 import os
-from pathlib import Path
 import stat
+from collections.abc import Callable
+from datetime import datetime, timezone
+from pathlib import Path
 
 from dududa.contracts.canonical import canonical_json_bytes
+from dududa.domain.primitives import require_aware
 from dududa.errors import ErrorCategory, error
 from dududa.ports.context import PortCallContext, ServiceCallContext
 
@@ -21,9 +23,11 @@ class InMemoryAuditSink:
         *,
         redactor: DefaultRedactor | None = None,
         revision: str = "audit-memory-v1",
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.revision = revision
         self._redactor = redactor or DefaultRedactor()
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
         self.events: list[AuditEvent] = []
         self._lock = asyncio.Lock()
 
@@ -33,7 +37,7 @@ class InMemoryAuditSink:
         *,
         call: PortCallContext | ServiceCallContext,
     ) -> AuditReceipt:
-        _validate_write(event, call, self._redactor)
+        _validate_write(event, call, self._redactor, now=self._clock())
         async with self._lock:
             self.events.append(event)
         return AuditReceipt(1, event.event_id, event.event_digest, True, self.revision)
@@ -46,10 +50,12 @@ class JsonlAuditSink:
         *,
         redactor: DefaultRedactor | None = None,
         revision: str = "audit-jsonl-v1",
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.path = path
         self.revision = revision
         self._redactor = redactor or DefaultRedactor()
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._lock = asyncio.Lock()
 
     async def write(
@@ -58,7 +64,7 @@ class JsonlAuditSink:
         *,
         call: PortCallContext | ServiceCallContext,
     ) -> AuditReceipt:
-        _validate_write(event, call, self._redactor)
+        _validate_write(event, call, self._redactor, now=self._clock())
         payload = canonical_json_bytes(event) + b"\n"
         async with self._lock:
             _reject_symlink_components(self.path.parent)
@@ -114,9 +120,11 @@ def _validate_write(
     event: AuditEvent,
     call: PortCallContext | ServiceCallContext,
     redactor: DefaultRedactor,
+    *,
+    now: datetime,
 ) -> None:
     _validate_event(event)
-    now = datetime.now(timezone.utc)
+    require_aware(now, "audit_clock")
     if call.cancellation.is_cancelled or call.deadline <= now:
         raise error(
             "audit_call_cancelled_or_expired",

@@ -6,15 +6,26 @@ from datetime import datetime
 from typing import Protocol, TypeAlias
 
 from dududa._compat import StrEnum
+from dududa.capabilities.contracts import (
+    CapabilityRetrievalResult,
+    CapabilityRunReceipt,
+    CapabilityRunRequest,
+    CapabilityRunStatus,
+    ToolObservation,
+    ToolPlan,
+    ToolValidationResult,
+    UnobservedToolAttempt,
+    ValidationAction,
+)
 from dududa.contracts.binding import NegotiatedBindingReceipt
 from dududa.contracts.canonical import canonical_digest
 from dududa.contracts.delivery import delivery_payload_digest, delivery_request_digest
 from dududa.domain.content import DraftResponse, Reaction, ValidatedFinalResponse
 from dududa.domain.delivery import (
-    canonicalize_delivery_receipt,
     DeliveryReceipt,
     DeliveryRequest,
     DeliveryStatus,
+    canonicalize_delivery_receipt,
     validate_delivery_receipt_against_request,
 )
 from dududa.domain.identity import Actor, ConversationScope
@@ -49,26 +60,37 @@ from dududa.perception.complexity import validate_task_complexity_assessment
 from dududa.perception.contracts import DecisionSignals, SocialAction, SocialDecision
 from dududa.perception.digests import perception_context_digest
 from dududa.perception.social import validate_social_decision
+from dududa.runtime.authorization import (
+    build_delivery_authorization_request,
+    capability_plan_authorization_metadata,
+    capability_plan_authorization_resource,
+    response_authorization_metadata,
+    response_authorization_resource,
+)
 from dududa.runtime.budget import (
     RuntimeModelBudgetPlan,
+    RuntimeToolBudgetPlan,
     add_usage,
     charge_budget,
     ensure_budget_covers_plan,
+    ensure_budget_covers_tool_plan,
     reservation_budget,
     usage_within_reservation,
+    usage_within_tool_reservation,
     zero_usage_for_budget,
 )
-from dududa.runtime.authorization import (
-    build_delivery_authorization_request,
-    response_authorization_metadata,
-    response_authorization_resource,
+from dududa.runtime.capabilities import (
+    project_capability_run_request,
+    tool_context_privacy_level,
+    tool_context_tokens_upper_bound,
+    validated_tool_model_projection,
 )
 from dududa.runtime.contracts import (
     CurrentMessageContext,
     DirectChatExecutionReceipt,
     DirectChatFailureReceipt,
-    OfflineRuntimePolicySnapshot,
     OfflinePreprocessReceipt,
+    OfflineRuntimePolicySnapshot,
     PerceptionExecutionReceipt,
     RuntimeAdmissionAction,
 )
@@ -115,10 +137,6 @@ class ProvisionalRuntimePayload(Protocol):
 PreprocessResult: TypeAlias = OfflinePreprocessReceipt
 MemoryRetrievalResult: TypeAlias = ProvisionalRuntimePayload
 ContextBuildResult: TypeAlias = CurrentMessageContext
-CapabilityRetrievalResult: TypeAlias = ProvisionalRuntimePayload
-ToolPlan: TypeAlias = ProvisionalRuntimePayload
-ToolObservation: TypeAlias = ProvisionalRuntimePayload
-ToolValidationResult: TypeAlias = ProvisionalRuntimePayload
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +249,7 @@ class RuntimeState:
     policy_snapshot_id: str
     runtime_policy: OfflineRuntimePolicySnapshot
     negotiated_bindings: tuple[NegotiatedBindingReceipt, ...] = ()
+    tool_budget_plan: RuntimeToolBudgetPlan | None = None
     preprocess_result: PreprocessResult | None = None
     memory_retrieval: MemoryRetrievalResult | None = None
     current_context: ContextBuildResult | None = None
@@ -246,10 +265,16 @@ class RuntimeState:
     direct_route_decision: RouteDecision | None = None
     direct_chat_execution: DirectChatExecutionReceipt | None = None
     direct_chat_failure: DirectChatFailureReceipt | None = None
+    capability_plan_authorization_request: AuthorizationRequest | None = None
+    capability_plan_authorization: AuthorizationDecision | None = None
+    capability_run_request: CapabilityRunRequest | None = None
     capability_retrieval: CapabilityRetrievalResult | None = None
     tool_plan: ToolPlan | None = None
     tool_observations: tuple[ToolObservation, ...] = ()
+    tool_unobserved_attempts: tuple[UnobservedToolAttempt, ...] = ()
     tool_validation: ToolValidationResult | None = None
+    capability_run_receipt: CapabilityRunReceipt | None = None
+    capability_unverified_usage: ResourceUsage | None = None
     draft_response: DraftResponse | None = None
     final_response: ValidatedFinalResponse | None = None
     pending_result: RuntimeResult | None = None
@@ -298,6 +323,10 @@ class RuntimeState:
             raise validation_error("invalid_runtime_budget")
         if not isinstance(self.charged_usage, ResourceUsage):
             raise validation_error("invalid_runtime_charged_usage")
+        if self.tool_budget_plan is not None and not isinstance(
+            self.tool_budget_plan, RuntimeToolBudgetPlan
+        ):
+            raise validation_error("invalid_runtime_tool_budget_plan")
         connector_result = ConnectorResult(
             schema_version=1,
             message=self.message,
@@ -320,6 +349,7 @@ class RuntimeState:
         for field_name in (
             "negotiated_bindings",
             "tool_observations",
+            "tool_unobserved_attempts",
             "pending_delivery_candidates",
             "memory_candidates",
             "memory_submissions",
@@ -576,6 +606,7 @@ _IMMUTABLE_ROOT_FIELDS = frozenset(
         "policy_snapshot_id",
         "runtime_policy",
         "negotiated_bindings",
+        "tool_budget_plan",
     }
 )
 
@@ -595,6 +626,14 @@ _IMMUTABLE_STAGE_FIELDS = frozenset(
         "direct_route_decision",
         "direct_chat_execution",
         "direct_chat_failure",
+        "capability_plan_authorization_request",
+        "capability_plan_authorization",
+        "capability_run_request",
+        "capability_retrieval",
+        "tool_plan",
+        "tool_validation",
+        "capability_run_receipt",
+        "capability_unverified_usage",
         "draft_response",
         "final_response",
         "pending_result",
@@ -620,11 +659,14 @@ _PHASE_MAX_ARTIFACT_RANK: Mapping[RuntimePhase, int] = {
     RuntimePhase.CONTEXT_READY: 2,
     RuntimePhase.PERCEIVED: 3,
     RuntimePhase.DECIDED: 4,
-    RuntimePhase.COMPOSED: 5,
-    RuntimePhase.RENDERED: 6,
-    RuntimePhase.READY_TO_EMIT: 7,
-    RuntimePhase.DELIVERY_ACKNOWLEDGED: 8,
-    RuntimePhase.MEMORY_EVALUATED: 9,
+    RuntimePhase.TOOLS_PLANNED: 5,
+    RuntimePhase.TOOLS_EXECUTED: 6,
+    RuntimePhase.VALIDATED: 7,
+    RuntimePhase.COMPOSED: 8,
+    RuntimePhase.RENDERED: 9,
+    RuntimePhase.READY_TO_EMIT: 10,
+    RuntimePhase.DELIVERY_ACKNOWLEDGED: 11,
+    RuntimePhase.MEMORY_EVALUATED: 12,
 }
 
 _ARTIFACT_RANK: Mapping[str, int] = {
@@ -639,16 +681,24 @@ _ARTIFACT_RANK: Mapping[str, int] = {
     "social_decision": 4,
     "tier_selection_context": 4,
     "tier_decision": 4,
-    "direct_route_decision": 5,
-    "direct_chat_execution": 5,
-    "direct_chat_failure": 5,
-    "draft_response": 5,
-    "final_response": 6,
-    "pending_result": 7,
-    "delivery_request": 7,
-    "delivery_receipt": 8,
-    "reconciliation_expires_at": 8,
-    "completion": 10,
+    "capability_plan_authorization_request": 4,
+    "capability_plan_authorization": 4,
+    "capability_run_request": 4,
+    "capability_retrieval": 5,
+    "tool_plan": 5,
+    "tool_validation": 7,
+    "capability_run_receipt": 7,
+    "capability_unverified_usage": 4,
+    "direct_route_decision": 8,
+    "direct_chat_execution": 8,
+    "direct_chat_failure": 8,
+    "draft_response": 8,
+    "final_response": 9,
+    "pending_result": 10,
+    "delivery_request": 10,
+    "delivery_receipt": 11,
+    "reconciliation_expires_at": 11,
+    "completion": 13,
 }
 
 
@@ -660,8 +710,19 @@ def validate_runtime_state(
     if not isinstance(state, RuntimeState):
         raise validation_error("invalid_runtime_state")
     ensure_budget_covers_plan(state.initial_budget, state.model_budget_plan)
+    if state.tool_budget_plan is not None:
+        ensure_budget_covers_tool_plan(
+            state.initial_budget,
+            state.model_budget_plan,
+            state.tool_budget_plan,
+        )
+        if (
+            state.runtime_policy.capability_maximum_attempts
+            > state.tool_budget_plan.reservation.tool_steps
+        ):
+            raise validation_error("runtime_tool_attempt_budget_mismatch")
     _validate_budget_accounting(state)
-    _validate_s10_disabled_fields(state)
+    _validate_disabled_fields(state)
     _validate_artifact_types_and_bindings(state)
     _validate_phase_payloads(state)
     if previous is not None:
@@ -674,11 +735,33 @@ def _validate_budget_accounting(state: RuntimeState) -> None:
         state.model_budget_plan.perception_reservation,
         state.model_budget_plan.direct_chat_reservation,
     )
-    if not _usage_covers(total_plan, state.charged_usage):
+    tool_usage = _runtime_tool_usage(state)
+    if (
+        tool_usage.model_calls != 0
+        or tool_usage.input_tokens != 0
+        or tool_usage.output_tokens != 0
+    ):
+        raise validation_error("runtime_tool_usage_has_model_charge")
+    if state.tool_budget_plan is None:
+        if tool_usage.tool_steps or tool_usage.retries:
+            raise validation_error("runtime_tool_usage_without_budget_plan")
+    elif not usage_within_tool_reservation(
+        tool_usage,
+        state.tool_budget_plan.reservation,
+    ):
+        raise validation_error("runtime_tool_usage_exceeds_reservation")
+    model_usage = _expected_model_usage(state)
+    if not _usage_covers(total_plan, model_usage):
         raise validation_error("runtime_charge_exceeds_model_budget_plan")
     if charge_budget(state.initial_budget, state.charged_usage) != state.budget:
         raise validation_error("runtime_budget_charge_mismatch")
 
+    expected = add_usage(model_usage, tool_usage)
+    if state.charged_usage != expected:
+        raise validation_error("runtime_charge_evidence_mismatch")
+
+
+def _expected_model_usage(state: RuntimeState) -> ResourceUsage:
     expected = zero_usage_for_budget(state.initial_budget)
     if (
         state.perception_execution is not None
@@ -695,19 +778,46 @@ def _validate_budget_accounting(state: RuntimeState) -> None:
             expected,
             state.model_budget_plan.direct_chat_reservation,
         )
-    if state.charged_usage != expected:
-        raise validation_error("runtime_model_charge_evidence_mismatch")
+    return expected
 
 
-def _validate_s10_disabled_fields(state: RuntimeState) -> None:
-    if state.phase in _TOOL_PHASES:
-        raise validation_error("s10_tool_phase_forbidden")
+def _runtime_tool_usage(state: RuntimeState) -> ResourceUsage:
+    if state.capability_unverified_usage is not None:
+        return state.capability_unverified_usage
+    if state.capability_run_receipt is not None:
+        return state.capability_run_receipt.usage
+    usage = zero_usage_for_budget(state.initial_budget)
+    for observation in state.tool_observations:
+        usage = add_usage(usage, observation.usage)
+    for attempt in state.tool_unobserved_attempts:
+        usage = add_usage(usage, attempt.usage)
+    return usage
+
+
+def _validate_disabled_fields(state: RuntimeState) -> None:
+    tools_enabled = state.invocation_options.feature_flags.get("tools", False)
+    tool_artifacts = (
+        state.capability_plan_authorization_request,
+        state.capability_plan_authorization,
+        state.capability_run_request,
+        state.capability_retrieval,
+        state.tool_plan,
+        state.tool_validation,
+        state.capability_run_receipt,
+        state.capability_unverified_usage,
+    )
+    if not tools_enabled:
+        if state.phase in _TOOL_PHASES:
+            raise validation_error("s10_tool_phase_forbidden")
+        if (
+            state.tool_budget_plan is not None
+            or any(item is not None for item in tool_artifacts)
+            or state.tool_observations
+            or state.tool_unobserved_attempts
+        ):
+            raise validation_error("s10_memory_or_tool_state_forbidden")
     if (
         state.memory_retrieval is not None
-        or state.capability_retrieval is not None
-        or state.tool_plan is not None
-        or state.tool_observations
-        or state.tool_validation is not None
         or state.pending_delivery_candidates
         or state.memory_candidates
         or state.memory_submissions
@@ -729,6 +839,14 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
     direct_route = state.direct_route_decision
     direct = state.direct_chat_execution
     direct_failure = state.direct_chat_failure
+    capability_plan_authorization_request = state.capability_plan_authorization_request
+    capability_plan_authorization = state.capability_plan_authorization
+    capability_run_request = state.capability_run_request
+    capability_retrieval = state.capability_retrieval
+    tool_plan = state.tool_plan
+    tool_validation = state.tool_validation
+    capability_run_receipt = state.capability_run_receipt
+    capability_unverified_usage = state.capability_unverified_usage
 
     _optional_instance(preprocess, OfflinePreprocessReceipt, "preprocess_result")
     _optional_instance(context, CurrentMessageContext, "current_context")
@@ -758,6 +876,45 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
         direct_failure,
         DirectChatFailureReceipt,
         "direct_chat_failure",
+    )
+    _optional_instance(
+        capability_plan_authorization_request,
+        AuthorizationRequest,
+        "capability_plan_authorization_request",
+    )
+    _optional_instance(
+        capability_plan_authorization,
+        AuthorizationDecision,
+        "capability_plan_authorization",
+    )
+    _optional_instance(
+        capability_run_request,
+        CapabilityRunRequest,
+        "capability_run_request",
+    )
+    _optional_instance(
+        capability_retrieval,
+        CapabilityRetrievalResult,
+        "capability_retrieval",
+    )
+    _optional_instance(tool_plan, ToolPlan, "tool_plan")
+    if any(not isinstance(item, ToolObservation) for item in state.tool_observations):
+        raise validation_error("invalid_runtime_artifact", "tool_observations")
+    if any(
+        not isinstance(item, UnobservedToolAttempt)
+        for item in state.tool_unobserved_attempts
+    ):
+        raise validation_error("invalid_runtime_artifact", "tool_unobserved_attempts")
+    _optional_instance(tool_validation, ToolValidationResult, "tool_validation")
+    _optional_instance(
+        capability_run_receipt,
+        CapabilityRunReceipt,
+        "capability_run_receipt",
+    )
+    _optional_instance(
+        capability_unverified_usage,
+        ResourceUsage,
+        "capability_unverified_usage",
     )
     _optional_instance(state.draft_response, DraftResponse, "draft_response")
     _optional_instance(
@@ -849,6 +1006,8 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
             require_allow=False,
         )
 
+    _validate_capability_artifact_bindings(state)
+
     if perception_execution is not None:
         if context is None:
             raise validation_error("perception_execution_without_context")
@@ -910,6 +1069,8 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
             data_classification=preprocess.data_classification,
             group_mode=state.runtime_policy.group_mode,
             known_target=known_target,
+            tool_authorization=capability_plan_authorization,
+            tools_enabled=state.invocation_options.feature_flags.get("tools", False),
         )
         if decision_signals != expected_signals:
             raise validation_error("runtime_decision_signals_mismatch")
@@ -923,7 +1084,7 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
             raise validation_error("social_perception_digest_mismatch")
         for identity_ref in social.target_identity_refs:
             context.resolve(identity_ref)
-        if social.action in {SocialAction.REACT, SocialAction.USE_TOOLS}:
+        if social.action is SocialAction.REACT:
             raise validation_error("s10_social_action_out_of_scope")
         validate_social_decision(
             social,
@@ -941,26 +1102,54 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
         if social.action in {
             SocialAction.DIRECT_REPLY,
             SocialAction.ASK_CLARIFICATION,
+            SocialAction.USE_TOOLS,
         } and (
             response_authorization is None
             or response_authorization.effect is not AuthorizationEffect.ALLOW
         ):
             raise validation_error("visible_social_action_not_authorized")
+        if social.action is SocialAction.USE_TOOLS and (
+            capability_plan_authorization is None
+            or capability_plan_authorization.effect is not AuthorizationEffect.ALLOW
+            or not capability_plan_authorization.decided_at
+            <= social.decided_at
+            < capability_plan_authorization.expires_at
+        ):
+            raise validation_error("tool_social_action_not_currently_authorized")
 
     if (tier_context is None) != (tier is None):
         raise validation_error("incomplete_runtime_tier_selection")
     if tier_context is not None and tier is not None:
-        if social is None or social.action is not SocialAction.DIRECT_REPLY:
+        if social is None or social.action not in {
+            SocialAction.DIRECT_REPLY,
+            SocialAction.USE_TOOLS,
+        }:
             raise validation_error("tier_selection_without_direct_reply")
         if assessment is None or context is None:
             raise validation_error("tier_selection_without_assessment")
+        expected_content_tokens = context.perception.content_input_tokens_upper_bound
+        if social.action is SocialAction.USE_TOOLS:
+            if (
+                capability_run_receipt is None
+                or capability_run_receipt.status is not CapabilityRunStatus.COMPLETED
+            ):
+                raise validation_error("tool_tier_without_completed_capability_run")
+            expected_content_tokens += tool_context_tokens_upper_bound(
+                capability_run_receipt
+            )
         if (
             tier_context.role is not ModelRole.DIRECT_CHAT
             or tier_context.assessment != assessment
-            or tier_context.content_input_tokens_upper_bound
-            != context.perception.content_input_tokens_upper_bound
+            or tier_context.content_input_tokens_upper_bound != expected_content_tokens
             or tier_context.data_classification
-            is not context.perception.data_classification
+            is not (
+                tool_context_privacy_level(
+                    capability_run_receipt,
+                    context.perception.data_classification,
+                )
+                if social.action is SocialAction.USE_TOOLS
+                else context.perception.data_classification
+            )
             or tier_context.budget
             != reservation_budget(state.model_budget_plan.direct_chat_reservation)
         ):
@@ -996,9 +1185,9 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
             state.model_budget_plan.direct_chat_reservation,
         ):
             raise validation_error("direct_chat_usage_exceeds_runtime_reservation")
-        if context is None or set(direct.content.source_refs) != {
-            context.perception.current_message_ref
-        }:
+        if context is None or set(direct.content.source_refs) != set(
+            _expected_direct_source_refs(state)
+        ):
             raise validation_error("direct_chat_source_outside_context")
 
     if direct_failure is not None:
@@ -1020,6 +1209,182 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
     _validate_response_and_delivery_bindings(state)
 
 
+def _validate_capability_artifact_bindings(state: RuntimeState) -> None:
+    request = state.capability_run_request
+    authorization_request = state.capability_plan_authorization_request
+    authorization = state.capability_plan_authorization
+    evidence = (request, authorization_request, authorization)
+    if any(item is not None for item in evidence) and not all(
+        item is not None for item in evidence
+    ):
+        raise validation_error("incomplete_capability_plan_authorization_evidence")
+
+    if request is None:
+        if (
+            state.capability_retrieval is not None
+            or state.tool_plan is not None
+            or state.tool_observations
+            or state.tool_unobserved_attempts
+            or state.tool_validation is not None
+            or state.capability_run_receipt is not None
+            or state.capability_unverified_usage is not None
+        ):
+            raise validation_error("runtime_tool_artifact_without_run_request")
+        return
+
+    assert authorization_request is not None
+    assert authorization is not None
+    if state.current_context is None or state.perception_execution is None:
+        raise validation_error("runtime_capability_request_without_perception")
+    expected_request = project_capability_run_request(
+        state.current_context,
+        state.perception_execution.result,
+        state.actor,
+        state.conversation_scope,
+        available_input_schemas=state.runtime_policy.capability_input_schemas,
+        maximum_attempts=state.runtime_policy.capability_maximum_attempts,
+    )
+    if request != expected_request:
+        raise validation_error("runtime_capability_request_projection_mismatch")
+    if (
+        authorization_request.resource
+        != capability_plan_authorization_resource(
+            state.conversation_scope,
+            run_id=state.run_id,
+        )
+        or authorization_request.metadata
+        != capability_plan_authorization_metadata(
+            policy_snapshot_id=state.policy_snapshot_id,
+            query_digest=str(request.query.query_digest),
+        )
+        or authorization_request.capability_id is not None
+        or authorization_request.risk_level is not RiskLevel.LOW
+    ):
+        raise validation_error("runtime_capability_plan_authorization_scope_mismatch")
+    _validate_authorization_evidence(
+        authorization_request,
+        authorization,
+        state,
+        action="capability.plan",
+        require_allow=False,
+    )
+
+    retrieval = state.capability_retrieval
+    plan = state.tool_plan
+    observations = state.tool_observations
+    unobserved_attempts = state.tool_unobserved_attempts
+    validation = state.tool_validation
+    receipt = state.capability_run_receipt
+    unverified_usage = state.capability_unverified_usage
+    if any(
+        (
+            retrieval is not None,
+            plan is not None,
+            bool(observations),
+            bool(unobserved_attempts),
+            validation is not None,
+            receipt is not None,
+            unverified_usage is not None,
+        )
+    ) and (
+        state.social_decision is None
+        or state.social_decision.action is not SocialAction.USE_TOOLS
+        or authorization.effect is not AuthorizationEffect.ALLOW
+    ):
+        raise validation_error("runtime_tool_execution_without_plan_authorization")
+    if unverified_usage is not None and (
+        state.phase is not RuntimePhase.FAILED
+        or state.tool_budget_plan is None
+        or unverified_usage != state.tool_budget_plan.reservation
+        or retrieval is not None
+        or plan is not None
+        or observations
+        or unobserved_attempts
+        or validation is not None
+        or receipt is not None
+    ):
+        raise validation_error("invalid_runtime_capability_unverified_usage")
+    if retrieval is not None and (
+        retrieval.query_digest != request.query.query_digest
+        or retrieval.policy_revision != state.policy_snapshot_id
+    ):
+        raise validation_error("runtime_capability_retrieval_binding_mismatch")
+    if plan is not None and (
+        retrieval is None or plan.retrieval_result_digest != retrieval.result_digest
+    ):
+        raise validation_error("runtime_tool_plan_retrieval_mismatch")
+    if observations or unobserved_attempts:
+        if plan is None or retrieval is None:
+            raise validation_error("runtime_tool_observation_without_plan")
+        step_by_id = {item.step_id: item for item in plan.steps}
+        invocation_ids: set[str] = set()
+        attempts = (*observations, *unobserved_attempts)
+        if len(attempts) > request.maximum_attempts:
+            raise validation_error("runtime_tool_attempt_limit_exceeded")
+        for attempt in attempts:
+            step = step_by_id.get(attempt.step_id)
+            if (
+                step is None
+                or attempt.invocation_id in invocation_ids
+                or attempt.plan_id != plan.plan_id
+                or attempt.plan_digest != plan.plan_digest
+                or attempt.logical_operation_id != step.logical_operation_id
+                or attempt.capability_id != step.capability_id
+                or attempt.definition_digest != step.definition_digest
+                or attempt.catalog_snapshot_id != retrieval.catalog_snapshot_id
+                or attempt.catalog_digest != retrieval.catalog_digest
+                or attempt.policy_revision != retrieval.policy_revision
+            ):
+                raise validation_error("runtime_tool_observation_binding_mismatch")
+            invocation_ids.add(attempt.invocation_id)
+        attempts_by_step: dict[str, list[int]] = {}
+        for attempt in attempts:
+            attempts_by_step.setdefault(attempt.step_id, []).append(attempt.attempt)
+        if any(
+            sorted(values) != list(range(1, max(values) + 1))
+            for values in attempts_by_step.values()
+        ):
+            raise validation_error("runtime_tool_attempt_sequence_invalid")
+    if validation is not None and receipt is None:
+        raise validation_error("runtime_tool_validation_without_receipt")
+    if receipt is not None:
+        if (
+            receipt.run_id != state.run_id
+            or receipt.request != request
+            or receipt.request_digest != request.request_digest
+            or receipt.retrieval != retrieval
+            or receipt.plan != plan
+            or receipt.observations != observations
+            or receipt.unobserved_attempts != unobserved_attempts
+            or receipt.validation != validation
+        ):
+            raise validation_error("runtime_capability_receipt_binding_mismatch")
+        if receipt.status is CapabilityRunStatus.COMPLETED and (
+            validation is None
+            or validation.action is not ValidationAction.FINISH
+            or not validation.accepted_observations
+        ):
+            raise validation_error("runtime_completed_capability_not_validated")
+
+
+def _expected_direct_source_refs(state: RuntimeState) -> tuple[str, ...]:
+    context = state.current_context
+    social = state.social_decision
+    if context is None or social is None:
+        raise validation_error("runtime_direct_source_without_context")
+    source_refs = {context.perception.current_message_ref}
+    if social.action is SocialAction.USE_TOOLS:
+        receipt = state.capability_run_receipt
+        if receipt is None:
+            raise validation_error("runtime_direct_source_without_capability_receipt")
+        _, tool_sources, _ = validated_tool_model_projection(
+            receipt,
+            maximum_bytes=1_048_576,
+        )
+        source_refs.update(tool_sources)
+    return tuple(sorted(source_refs))
+
+
 def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
     social = state.social_decision
     context = state.current_context
@@ -1038,6 +1403,7 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
             not in {
                 SocialAction.DIRECT_REPLY,
                 SocialAction.ASK_CLARIFICATION,
+                SocialAction.USE_TOOLS,
             }
         ):
             raise validation_error("draft_without_visible_social_decision")
@@ -1050,7 +1416,7 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
             or draft.immutable_constraints != social.response_constraints
         ):
             raise validation_error("draft_social_binding_mismatch")
-        if social.action is SocialAction.DIRECT_REPLY:
+        if social.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
             direct = state.direct_chat_execution
             if direct is None or len(draft.content_blocks) != 1:
                 raise validation_error("direct_draft_content_missing")
@@ -1058,6 +1424,8 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
             if (
                 block.content != direct.content.text
                 or block.source_refs != direct.content.source_refs
+                or tuple(sorted(block.source_refs))
+                != _expected_direct_source_refs(state)
             ):
                 raise validation_error("direct_draft_content_mismatch")
 
@@ -1176,6 +1544,8 @@ def _validate_phase_payloads(state: RuntimeState) -> None:
             present = value is not None
             if present and rank > maximum:
                 raise validation_error("runtime_artifact_before_phase", field_name)
+        if (state.tool_observations or state.tool_unobserved_attempts) and maximum < 6:
+            raise validation_error("runtime_artifact_before_phase", "tool_observations")
 
     if state.phase is RuntimePhase.RECEIVED:
         return
@@ -1198,6 +1568,15 @@ def _validate_phase_payloads(state: RuntimeState) -> None:
         return
     _require_decided_prefix(state)
     if state.phase is RuntimePhase.DECIDED:
+        return
+    if state.phase is RuntimePhase.TOOLS_PLANNED:
+        _require_tool_planned_prefix(state)
+        return
+    if state.phase is RuntimePhase.TOOLS_EXECUTED:
+        _require_tool_executed_prefix(state)
+        return
+    if state.phase is RuntimePhase.VALIDATED:
+        _require_validated_tool_prefix(state)
         return
     _require_composed_prefix(state)
     if state.phase is RuntimePhase.COMPOSED:
@@ -1241,15 +1620,65 @@ def _require_decided_prefix(state: RuntimeState) -> None:
     if social.action is SocialAction.DIRECT_REPLY:
         if state.tier_selection_context is None or state.tier_decision is None:
             raise validation_error("runtime_phase_missing_tier_decision")
+    elif social.action is SocialAction.USE_TOOLS:
+        if (state.tier_selection_context is None) is not (state.tier_decision is None):
+            raise validation_error("incomplete_tool_tier_selection")
     elif state.tier_selection_context is not None or state.tier_decision is not None:
         raise validation_error("non_direct_decision_has_tier_selection")
+
+
+def _require_tool_planned_prefix(state: RuntimeState) -> None:
+    social = state.social_decision
+    authorization = state.capability_plan_authorization
+    if (
+        social is None
+        or social.action is not SocialAction.USE_TOOLS
+        or authorization is None
+        or authorization.effect is not AuthorizationEffect.ALLOW
+        or state.capability_run_request is None
+        or state.capability_retrieval is None
+        or state.tool_plan is None
+    ):
+        raise validation_error("runtime_phase_missing_tool_plan")
+    if state.tier_decision is not None or state.tier_selection_context is not None:
+        raise validation_error("runtime_tool_tier_selected_before_validation")
+
+
+def _require_tool_executed_prefix(state: RuntimeState) -> None:
+    _require_tool_planned_prefix(state)
+    if not state.tool_observations and not state.tool_unobserved_attempts:
+        raise validation_error("runtime_phase_missing_tool_observation")
+    if state.tool_validation is not None or state.capability_run_receipt is not None:
+        raise validation_error("runtime_tool_validation_before_phase")
+
+
+def _require_validated_tool_prefix(state: RuntimeState) -> None:
+    social = state.social_decision
+    receipt = state.capability_run_receipt
+    if (
+        social is None
+        or social.action is not SocialAction.USE_TOOLS
+        or state.capability_run_request is None
+        or state.capability_retrieval is None
+        or state.tool_plan is None
+        or not state.tool_observations
+        or state.tool_unobserved_attempts
+        or state.tool_validation is None
+        or receipt is None
+        or receipt.status is not CapabilityRunStatus.COMPLETED
+        or state.tier_selection_context is None
+        or state.tier_decision is None
+    ):
+        raise validation_error("runtime_phase_missing_validated_tool_result")
 
 
 def _require_composed_prefix(state: RuntimeState) -> None:
     social = state.social_decision
     if social is None or state.draft_response is None:
         raise validation_error("runtime_phase_missing_draft")
-    if social.action is SocialAction.DIRECT_REPLY:
+    if social.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
+        if social.action is SocialAction.USE_TOOLS:
+            _require_validated_tool_prefix(state)
         if state.direct_route_decision is None or state.direct_chat_execution is None:
             raise validation_error("runtime_phase_missing_direct_chat")
     elif social.action is SocialAction.ASK_CLARIFICATION:
@@ -1337,6 +1766,11 @@ def _validate_terminal_phase(state: RuntimeState) -> None:
 
     if state.delivery_request is not None or state.delivery_receipt is not None:
         raise validation_error("early_terminal_state_has_delivery")
+    if (
+        state.social_decision is not None
+        and state.social_decision.action is SocialAction.USE_TOOLS
+    ):
+        _validate_tool_terminal_path(state)
     expected_outcome = (
         Outcome.DEFERRED if state.phase is RuntimePhase.DEFERRED else Outcome.FAILED
     )
@@ -1344,6 +1778,22 @@ def _validate_terminal_phase(state: RuntimeState) -> None:
         raise validation_error("terminal_runtime_result_mismatch")
     if completion.delivery_status is not DeliveryStatus.NOT_REQUIRED:
         raise validation_error("early_terminal_delivery_status_mismatch")
+
+
+def _validate_tool_terminal_path(state: RuntimeState) -> None:
+    _require_context_prefix(state)
+    _require_perceived_prefix(state)
+    _require_decided_prefix(state)
+    receipt = state.capability_run_receipt
+    if receipt is None:
+        _forbid_visible_output(state)
+        return
+    if receipt.status is not CapabilityRunStatus.COMPLETED:
+        _forbid_visible_output(state)
+        return
+    _require_validated_tool_prefix(state)
+    if state.direct_chat_execution is not None or state.draft_response is not None:
+        raise validation_error("failed_tool_runtime_has_visible_response")
 
 
 def _forbid_after_preprocess(state: RuntimeState) -> None:
@@ -1407,6 +1857,14 @@ def _validate_state_revision(previous: RuntimeState, current: RuntimeState) -> N
         old = getattr(previous, field_name)
         if old is not None and getattr(current, field_name) != old:
             raise validation_error("runtime_artifact_changed", field_name)
+    if previous.tool_observations and (
+        current.tool_observations != previous.tool_observations
+    ):
+        raise validation_error("runtime_artifact_changed", "tool_observations")
+    if previous.tool_unobserved_attempts and (
+        current.tool_unobserved_attempts != previous.tool_unobserved_attempts
+    ):
+        raise validation_error("runtime_artifact_changed", "tool_unobserved_attempts")
     if current.trace[: len(previous.trace)] != previous.trace:
         raise validation_error("runtime_trace_not_append_only")
     _validate_budget_monotonic(previous, current)

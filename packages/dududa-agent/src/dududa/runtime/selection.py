@@ -32,6 +32,8 @@ def project_s10_decision_signals(
     data_classification: PrivacyLevel,
     group_mode: GroupInteractionMode,
     known_target: bool,
+    tool_authorization: AuthorizationDecision | None = None,
+    tools_enabled: bool = False,
 ) -> DecisionSignals:
     if not isinstance(authorization, AuthorizationDecision):
         raise validation_error("invalid_response_authorization")
@@ -47,9 +49,20 @@ def project_s10_decision_signals(
         raise validation_error("invalid_decision_group_mode")
     if type(known_target) is not bool:
         raise validation_error("invalid_known_target_signal")
-    authorization_reasons = authorization.reason_codes or (
-        "authorization_reason_unspecified",
+    if tool_authorization is not None and not isinstance(
+        tool_authorization, AuthorizationDecision
+    ):
+        raise validation_error("invalid_tool_authorization")
+    if type(tools_enabled) is not bool:
+        raise validation_error("invalid_tools_enabled_signal")
+    authorization_reasons = set(
+        authorization.reason_codes or ("authorization_reason_unspecified",)
     )
+    if tool_authorization is not None:
+        authorization_reasons.update(
+            tool_authorization.reason_codes
+            or ("tool_authorization_reason_unspecified",)
+        )
     private_data_boundary = (
         conversation_type is not ConversationType.PRIVATE
         and data_classification
@@ -60,8 +73,11 @@ def project_s10_decision_signals(
         authorization=AuthorizationView(
             schema_version=1,
             can_respond=authorization.effect is AuthorizationEffect.ALLOW,
-            can_use_tools=False,
-            reason_codes=authorization_reasons,
+            can_use_tools=(
+                tool_authorization is not None
+                and tool_authorization.effect is AuthorizationEffect.ALLOW
+            ),
+            reason_codes=tuple(sorted(authorization_reasons)),
         ),
         duplicate_or_self_message=duplicate_or_self_message,
         explicit_interaction=explicit_interaction,
@@ -69,7 +85,7 @@ def project_s10_decision_signals(
         group_mode=group_mode,
         rate_limited=False,
         private_data_boundary=private_data_boundary,
-        tools_enabled=False,
+        tools_enabled=tools_enabled,
         known_target=known_target,
     )
 

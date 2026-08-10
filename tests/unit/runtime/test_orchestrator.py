@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import unittest
 from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
-import unittest
 
 from dududa.contracts.binding import NegotiatedBindingReceipt
 from dududa.domain.delivery import DeliveryConstraints
@@ -15,6 +15,7 @@ from dududa.domain.primitives import (
     PrivacyLevel,
     ResourceUsage,
     RiskLevel,
+    RoleId,
     RuntimeBudget,
     TraceContext,
 )
@@ -41,16 +42,16 @@ from dududa.ports.context import (
     NeverCancelled,
     PortCallContext,
 )
-from dududa.runtime.budget import RuntimeModelBudgetPlan
+from dududa.runtime.budget import RuntimeModelBudgetPlan, RuntimeToolBudgetPlan
 from dududa.runtime.composition import (
     DeterministicRenderValidator,
     FinalResponseSafetyValidator,
 )
-from dududa.runtime.contracts import PerceptionExecutionReceipt
 from dududa.runtime.context import (
     CurrentMessageContextBuilder,
     CurrentMessageContextBuilderConfig,
 )
+from dududa.runtime.contracts import PerceptionExecutionReceipt
 from dududa.runtime.delivery import DeliveryRequestBuilder, DeliveryRequestBuilderConfig
 from dududa.runtime.direct_chat import DirectChatModelCall
 from dududa.runtime.orchestrator import (
@@ -81,8 +82,8 @@ from tests.unit.perception.helpers import limits as perception_limits
 from tests.unit.runtime.test_composition import _composer, _renderer
 from tests.unit.runtime.test_direct_chat import _config as direct_config
 from tests.unit.runtime.test_direct_chat import _fixture as direct_fixture
-from tests.unit.runtime.test_s10_context_budget import actor, builder, message
 from tests.unit.runtime.test_perception import _RuntimePerceptionFixture
+from tests.unit.runtime.test_s10_context_budget import actor, builder, message
 
 from .helpers import revision, runtime_policy
 
@@ -156,9 +157,11 @@ class _CountingRouter:
     def __init__(self, inner) -> None:
         self._inner = inner
         self.calls = 0
+        self.requests = []
 
     async def invoke(self, request, tier_authority, *, call):
         self.calls += 1
+        self.requests.append(request)
         await asyncio.sleep(0)
         return await self._inner.invoke(request, tier_authority, call=call)
 
@@ -174,6 +177,17 @@ class _MutableClock:
 
     def __call__(self):
         return self.now
+
+
+class _RecordingRuntimeStateStore(InMemoryRuntimeStateStore):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.committed_phases: list[RuntimePhase] = []
+
+    async def commit(self, request, *, call):
+        result = await super().commit(request, call=call)
+        self.committed_phases.append(request.next_state.phase)
+        return result
 
 
 def _binding() -> NegotiatedBindingReceipt:
@@ -202,17 +216,30 @@ class OrchestratorFixture:
         runtime_perception=None,
         context_builder=None,
         budget_plan: RuntimeModelBudgetPlan | None = None,
+        tool_budget_plan: RuntimeToolBudgetPlan | None = None,
         initial_budget: RuntimeBudget | None = None,
+        capability_runtime=None,
+        capability_input_schemas=(),
+        capability_plan_authorized: bool = True,
+        authorization_verifier=None,
+        maximum_tool_context_bytes: int = 16_384,
+        record_phases: bool = False,
     ) -> None:
         self.clock = _MutableClock()
-        self.policy_snapshot = runtime_policy()
+        self.policy_snapshot = replace(
+            runtime_policy(),
+            capability_input_schemas=tuple(capability_input_schemas),
+        )
         self.binding = _binding()
         self.perception = runtime_perception or _RuleOnlyRuntimePerception(
             model_call_started=perception_model_call_started,
             transform=perception_transform,
             cancel_on_call=cancel_during_perception,
         )
-        self.store = InMemoryRuntimeStateStore(
+        store_type = (
+            _RecordingRuntimeStateStore if record_phases else InMemoryRuntimeStateStore
+        )
+        self.store = store_type(
             InMemoryRuntimeStateStoreConfig(
                 schema_version=1,
                 checkpoint_ttl=timedelta(minutes=30),
@@ -232,7 +259,7 @@ class OrchestratorFixture:
                 1,
                 1_000,
                 200,
-                Decimal("1"),
+                Decimal(1),
             ),
             direct_chat_reservation=ResourceUsage(
                 1,
@@ -241,7 +268,7 @@ class OrchestratorFixture:
                 1,
                 3_000,
                 500,
-                Decimal("3"),
+                Decimal(3),
             ),
             revision=revision("runtime-budget"),
         )
@@ -251,7 +278,7 @@ class OrchestratorFixture:
             2,
             4_000,
             700,
-            Decimal("4"),
+            Decimal(4),
         )
         constraints = {
             "message.respond": AuthorizationConstraint(
@@ -265,12 +292,19 @@ class OrchestratorFixture:
                 maximum_risk=RiskLevel.LOW,
             ),
         }
+        permissions = {"message.respond", "message.send"}
+        if capability_runtime is not None or tool_budget_plan is not None:
+            constraints["capability.plan"] = AuthorizationConstraint(
+                resource_types=frozenset({"capability-plan"}),
+                resource_ids=frozenset({"*"}),
+                maximum_risk=RiskLevel.LOW,
+            )
+            if capability_plan_authorized:
+                permissions.add("capability.plan")
         self.authorization = RoleAuthorizationPolicy(
             AuthorizationPolicyConfig(
                 policy_revision=self.policy_snapshot.authorization_policy_revision,
-                role_permissions={
-                    "user": frozenset({"message.respond", "message.send"})
-                },
+                role_permissions={"user": frozenset(permissions)},
                 role_constraints={"user": constraints},
                 decision_ttl=timedelta(minutes=5),
             ),
@@ -281,7 +315,11 @@ class OrchestratorFixture:
         profiles = {depth: "balanced" for depth in TaskReasoningDepth}
         self.direct_chat = DirectChatModelCall(
             self.router,
-            replace(direct_config(), reasoning_profiles=profiles),
+            replace(
+                direct_config(),
+                reasoning_profiles=profiles,
+                maximum_tool_context_bytes=maximum_tool_context_bytes,
+            ),
             clock=self.clock,
         )
         delivery_builder = DeliveryRequestBuilder(
@@ -308,14 +346,18 @@ class OrchestratorFixture:
                 runtime_policy=self.policy_snapshot,
                 negotiated_bindings=(self.binding,),
                 component_revision=revision("runtime-orchestrator"),
+                tool_budget_plan=tool_budget_plan,
             ),
             store=self.store,
             context_builder=context_builder or builder(),
             authorization_policy=self.authorization,
             authorization_verifier=(
-                self.authorization
-                if verify_response_authorization
-                else _RejectingAuthorizationVerifier()
+                authorization_verifier
+                or (
+                    self.authorization
+                    if verify_response_authorization
+                    else _RejectingAuthorizationVerifier()
+                )
             ),
             perception=self.perception,
             complexity=DeterministicComplexityAssessor(
@@ -335,19 +377,39 @@ class OrchestratorFixture:
                 clock=self.clock,
             ),
             delivery_builder=delivery_builder,
+            capability_runtime=capability_runtime,
             clock=self.clock,
         )
 
-    def start(self, *, mentioned: bool = True, run_id: str = "run-1"):
+    def start(
+        self,
+        *,
+        mentioned: bool = True,
+        run_id: str = "run-1",
+        feature_flags=None,
+        capability_member: bool = False,
+    ):
         envelope = message(mentioned=mentioned)
+        connector_actor = actor(envelope)
+        if capability_member:
+            connector_actor = replace(
+                connector_actor,
+                roles=frozenset({*connector_actor.roles, RoleId("member")}),
+            )
         connector = ConnectorResult(
             1,
             envelope,
-            actor(envelope),
-            NOW,
+            connector_actor,
+            self.clock.now,
             revision("connector"),
         )
-        options = RuntimeInvocationOptions(1, None, "astrbot", {}, "flags-v1")
+        options = RuntimeInvocationOptions(
+            1,
+            None,
+            "astrbot",
+            feature_flags or {},
+            "flags-v1",
+        )
         request = RuntimeStartRequest(
             1,
             connector,
@@ -357,7 +419,7 @@ class OrchestratorFixture:
         call = PortCallContext(
             run_id=run_id,
             trace=TraceContext(f"trace:{run_id}"),
-            deadline=NOW + timedelta(hours=1),
+            deadline=self.clock.now + timedelta(hours=1),
             cancellation=NeverCancelled(),
             budget=self.initial_budget,
             policy_snapshot_id=self.policy_snapshot.snapshot_id,
@@ -423,7 +485,7 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 retries=2,
                 input_tokens=4_000,
                 output_tokens=700,
-                cost_units=Decimal("4"),
+                cost_units=Decimal(4),
             ),
         )
         self.assertEqual(
@@ -487,7 +549,7 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 1,
                 100_000,
                 2_048,
-                Decimal("100"),
+                Decimal(100),
             ),
             direct_chat_reservation=ResourceUsage(
                 1,
@@ -496,7 +558,7 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 1,
                 3_000,
                 500,
-                Decimal("3"),
+                Decimal(3),
             ),
             revision=revision("real-perception-budget"),
         )
@@ -510,7 +572,7 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 2,
                 103_000,
                 2_548,
-                Decimal("103"),
+                Decimal(103),
             ),
         )
         request, call = fixture.start()

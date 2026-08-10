@@ -13,7 +13,22 @@ from .context import (
 
 if TYPE_CHECKING:
     from .attachments import AttachmentRepository, BoundedAttachmentStream
-    from .memory import MemoryRepository, ScopeSelectorVerifier
+    from .capabilities import (
+        ArgumentBinder,
+        BoundedCapabilityRuntime,
+        CapabilityCatalogPublisher,
+        CapabilityHealthRegistry,
+        CapabilityProvider,
+        CapabilityProviderRegistry,
+        CapabilityRegistry,
+        CapabilityRetriever,
+        CapabilitySchemaValidator,
+        ToolExecutor,
+        ToolInvocationLedger,
+        ToolPlanner,
+        ToolPlanValidator,
+        ToolResultValidator,
+    )
     from .mcp import (
         McpEnvironmentProvider,
         McpSchemaValidator,
@@ -23,20 +38,22 @@ if TYPE_CHECKING:
         McpTransportSessionFactory,
         UnifiedMcpClient,
     )
+    from .memory import MemoryRepository, ScopeSelectorVerifier
     from .models import (
         BootstrapModelTierPolicy,
         ModelAdmissionController,
         ModelCatalogPublisher,
         ModelInvocationEstimator,
-        ModelOperationalStateRegistry,
         ModelOperationalSnapshotPublisher,
         ModelOperationalSnapshotResolver,
+        ModelOperationalStateRegistry,
         ModelOutputCodec,
         ModelProvider,
         ModelRouter,
         ModelRoutingRegistry,
         ModelTierPolicy,
     )
+    from .output import OutputAdapter
     from .perception import (
         ModelPerception,
         PerceptionEngine,
@@ -46,14 +63,13 @@ if TYPE_CHECKING:
         SocialDecisionEngine,
         TaskComplexityAssessor,
     )
-    from .output import OutputAdapter
     from .runtime import (
         AgentRuntime,
+        InputConnector,
         OfflineFinalResponseValidator,
         OfflinePersonaRenderer,
         OfflineRenderValidator,
         OfflineResponseComposer,
-        InputConnector,
         RuntimePerceptionEngine,
         RuntimeStateStore,
         ShadowReceiptSink,
@@ -61,10 +77,19 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AgentRuntime",
+    "ArgumentBinder",
     "AttachmentRepository",
     "BoundedAttachmentStream",
+    "BoundedCapabilityRuntime",
     "BootstrapModelTierPolicy",
     "CancellationToken",
+    "CapabilityCatalogPublisher",
+    "CapabilityHealthRegistry",
+    "CapabilityProvider",
+    "CapabilityProviderRegistry",
+    "CapabilityRegistry",
+    "CapabilityRetriever",
+    "CapabilitySchemaValidator",
     "OfflineFinalResponseValidator",
     "OfflinePersonaRenderer",
     "OfflineRenderValidator",
@@ -105,11 +130,65 @@ __all__ = [
     "ServicePrincipal",
     "SocialDecisionEngine",
     "TaskComplexityAssessor",
+    "ToolExecutor",
+    "ToolInvocationLedger",
+    "ToolPlanner",
+    "ToolPlanValidator",
+    "ToolResultValidator",
     "UnifiedMcpClient",
 ]
 
 
 def __getattr__(name: str) -> object:
+    if name in {
+        "ArgumentBinder",
+        "BoundedCapabilityRuntime",
+        "CapabilityCatalogPublisher",
+        "CapabilityHealthRegistry",
+        "CapabilityProvider",
+        "CapabilityProviderRegistry",
+        "CapabilityRegistry",
+        "CapabilityRetriever",
+        "CapabilitySchemaValidator",
+        "ToolExecutor",
+        "ToolInvocationLedger",
+        "ToolPlanner",
+        "ToolPlanValidator",
+        "ToolResultValidator",
+    }:
+        from .capabilities import (
+            ArgumentBinder,
+            BoundedCapabilityRuntime,
+            CapabilityCatalogPublisher,
+            CapabilityHealthRegistry,
+            CapabilityProvider,
+            CapabilityProviderRegistry,
+            CapabilityRegistry,
+            CapabilityRetriever,
+            CapabilitySchemaValidator,
+            ToolExecutor,
+            ToolInvocationLedger,
+            ToolPlanner,
+            ToolPlanValidator,
+            ToolResultValidator,
+        )
+
+        return {
+            "ArgumentBinder": ArgumentBinder,
+            "BoundedCapabilityRuntime": BoundedCapabilityRuntime,
+            "CapabilityCatalogPublisher": CapabilityCatalogPublisher,
+            "CapabilityHealthRegistry": CapabilityHealthRegistry,
+            "CapabilityProvider": CapabilityProvider,
+            "CapabilityProviderRegistry": CapabilityProviderRegistry,
+            "CapabilityRegistry": CapabilityRegistry,
+            "CapabilityRetriever": CapabilityRetriever,
+            "CapabilitySchemaValidator": CapabilitySchemaValidator,
+            "ToolExecutor": ToolExecutor,
+            "ToolInvocationLedger": ToolInvocationLedger,
+            "ToolPlanner": ToolPlanner,
+            "ToolPlanValidator": ToolPlanValidator,
+            "ToolResultValidator": ToolResultValidator,
+        }[name]
     if name in {
         "McpEnvironmentProvider",
         "McpSchemaValidator",
@@ -175,9 +254,9 @@ def __getattr__(name: str) -> object:
             ModelAdmissionController,
             ModelCatalogPublisher,
             ModelInvocationEstimator,
-            ModelOperationalStateRegistry,
             ModelOperationalSnapshotPublisher,
             ModelOperationalSnapshotResolver,
+            ModelOperationalStateRegistry,
             ModelOutputCodec,
             ModelProvider,
             ModelRouter,
@@ -240,11 +319,11 @@ def __getattr__(name: str) -> object:
     }:
         from .runtime import (
             AgentRuntime,
+            InputConnector,
             OfflineFinalResponseValidator,
             OfflinePersonaRenderer,
             OfflineRenderValidator,
             OfflineResponseComposer,
-            InputConnector,
             RuntimePerceptionEngine,
             RuntimeStateStore,
             ShadowReceiptSink,

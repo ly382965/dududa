@@ -12,6 +12,7 @@ SOURCE = ROOT / "packages" / "dududa-agent" / "src" / "dududa"
 PUBLIC_PACKAGES = (
     "dududa",
     "dududa.adapters",
+    "dududa.capabilities",
     "dududa.compatibility",
     "dududa.config",
     "dududa.contracts",
@@ -28,6 +29,19 @@ PUBLIC_PACKAGES = (
     "dududa.testing",
 )
 ORDER_SENSITIVE_MODULES = (
+    "dududa.capabilities.authorization",
+    "dududa.capabilities.config",
+    "dududa.capabilities.contracts",
+    "dududa.capabilities.executor",
+    "dududa.capabilities.health",
+    "dududa.capabilities.ledger",
+    "dududa.capabilities.mapping_policy",
+    "dududa.capabilities.mcp_provider",
+    "dududa.capabilities.planning",
+    "dududa.capabilities.registry",
+    "dududa.capabilities.retrieval",
+    "dududa.capabilities.runtime",
+    "dududa.capabilities.validation",
     "dududa.domain.attachments",
     "dududa.domain.delivery",
     "dududa.domain.task",
@@ -98,7 +112,7 @@ class ImportBoundaryTests(unittest.TestCase):
                 owner = importlib.import_module(module_name)
                 self.assertIs(getattr(rollout, name), getattr(owner, name))
 
-    def test_s10_expected_exports_are_visible_and_owned_by_their_modules(self) -> None:
+    def test_runtime_exports_are_visible_and_owned_by_their_modules(self) -> None:
         import importlib
 
         ports = importlib.import_module("dududa.ports")
@@ -121,6 +135,7 @@ class ImportBoundaryTests(unittest.TestCase):
             "OfflineDeliveryDriver": "dududa.runtime.offline",
             "OfflineRuntimeOrchestrator": "dududa.runtime.orchestrator",
             "RuntimeModelBudgetPlan": "dududa.runtime.budget",
+            "RuntimeToolBudgetPlan": "dududa.runtime.budget",
             "ShadowRunner": "dududa.runtime.shadow",
         }
         expected_runtime = {
@@ -174,6 +189,7 @@ class ImportBoundaryTests(unittest.TestCase):
             "RuntimeSelectionSummary",
             "RuntimeStartRequest",
             "RuntimeState",
+            "RuntimeToolBudgetPlan",
             "ShadowRunReceipt",
             "ShadowRunner",
             "TraceEvent",

@@ -1,0 +1,333 @@
+"""Governed business-capability contracts and canonical evidence."""
+
+from typing import TYPE_CHECKING
+
+from dududa.domain.capability import (
+    CapabilityDefinition,
+    CostHint,
+    Idempotency,
+    LatencyHint,
+    ProviderRef,
+)
+
+if TYPE_CHECKING:
+    from .authorization import CapabilityAuthorizationPurpose
+    from .config import ConfigCapabilityRegistry, load_capability_catalog_snapshot
+    from .executor import GovernedToolExecutor
+    from .health import PollingCapabilityHealthRegistry
+    from .ledger import InMemoryToolInvocationLedger
+    from .mcp_provider import McpCapabilityProvider
+    from .planning import (
+        DeterministicArgumentBinder,
+        DeterministicToolPlanner,
+        DeterministicToolPlanValidator,
+    )
+    from .registry import (
+        InMemoryCapabilityProviderRegistry,
+        InMemoryCapabilityRegistry,
+    )
+    from .retrieval import DeterministicCapabilityRetriever
+    from .runtime import DeterministicBoundedCapabilityRuntime
+    from .validation import DeterministicToolResultValidator
+from .contracts import (
+    DEFAULT_TOOL_ATTEMPTS,
+    MAX_ARGUMENT_BYTES,
+    MAX_CAPABILITY_CANDIDATES,
+    MAX_CAPABILITY_DEFINITIONS,
+    MAX_OBSERVATION_BYTES,
+    MAX_PLAN_STEPS,
+    MAX_SCHEMA_BYTES,
+    MAX_SOURCE_REFS,
+    MAX_TOOL_ATTEMPTS,
+    TOOL_COMPLETION_ALL_STEPS,
+    ArgumentBindingRequest,
+    ArgumentBindingResult,
+    ArgumentTemplate,
+    CapabilityCandidate,
+    CapabilityCatalogPublishReceipt,
+    CapabilityCatalogSnapshot,
+    CapabilityCatalogUpdate,
+    CapabilityEndpointHealth,
+    CapabilityExecutionContext,
+    CapabilityHealthSnapshot,
+    CapabilityHealthStatus,
+    CapabilityProviderDescriptor,
+    CapabilityProviderHealth,
+    CapabilityProviderKind,
+    CapabilityQuery,
+    CapabilityResult,
+    CapabilityRetrievalRequest,
+    CapabilityRetrievalResult,
+    CapabilityRunReceipt,
+    CapabilityRunRequest,
+    CapabilityRunStatus,
+    CapabilitySchemaDocument,
+    McpCapabilityMapping,
+    ObservationBinding,
+    ProviderInvocation,
+    ToolError,
+    ToolExecutionRequest,
+    ToolExecutionStatus,
+    ToolInvocationClaim,
+    ToolInvocationClaimRequest,
+    ToolInvocationDisposition,
+    ToolInvocationReceipt,
+    ToolObservation,
+    ToolPlan,
+    ToolPlanningRequest,
+    ToolPlanValidationRequest,
+    ToolPlanValidationResult,
+    ToolStep,
+    ToolValidationRequest,
+    ToolValidationResult,
+    UnobservedToolAttempt,
+    ValidationAction,
+)
+from .digests import (
+    argument_binding_request_digest,
+    argument_binding_result_digest,
+    capability_candidate_digest,
+    capability_catalog_digest,
+    capability_catalog_publish_receipt_digest,
+    capability_catalog_update_digest,
+    capability_definition_digest,
+    capability_health_snapshot_digest,
+    capability_provider_descriptor_digest,
+    capability_provider_health_digest,
+    capability_query_digest,
+    capability_result_digest,
+    capability_retrieval_request_digest,
+    capability_retrieval_result_digest,
+    capability_run_receipt_digest,
+    capability_run_request_digest,
+    capability_schema_document_digest,
+    mcp_capability_mapping_digest,
+    provider_invocation_digest,
+    tool_execution_request_digest,
+    tool_idempotency_key,
+    tool_invocation_claim_digest,
+    tool_invocation_claim_request_digest,
+    tool_invocation_receipt_digest,
+    tool_observation_digest,
+    tool_plan_digest,
+    tool_plan_validation_request_digest,
+    tool_plan_validation_result_digest,
+    tool_planning_request_digest,
+    tool_validation_request_digest,
+    tool_validation_result_digest,
+    unobserved_tool_attempt_digest,
+)
+from .revisions import (
+    capability_catalog_revision,
+    capability_mapping_revision,
+    capability_provider_registry_revision,
+)
+
+__all__ = [
+    "DEFAULT_TOOL_ATTEMPTS",
+    "MAX_ARGUMENT_BYTES",
+    "MAX_CAPABILITY_CANDIDATES",
+    "MAX_CAPABILITY_DEFINITIONS",
+    "MAX_OBSERVATION_BYTES",
+    "MAX_PLAN_STEPS",
+    "MAX_SCHEMA_BYTES",
+    "MAX_SOURCE_REFS",
+    "MAX_TOOL_ATTEMPTS",
+    "TOOL_COMPLETION_ALL_STEPS",
+    "ArgumentBindingRequest",
+    "ArgumentBindingResult",
+    "ArgumentTemplate",
+    "CapabilityAuthorizationPurpose",
+    "CapabilityCandidate",
+    "CapabilityCatalogPublishReceipt",
+    "CapabilityCatalogSnapshot",
+    "CapabilityCatalogUpdate",
+    "CapabilityDefinition",
+    "CapabilityEndpointHealth",
+    "CapabilityExecutionContext",
+    "CapabilityHealthSnapshot",
+    "CapabilityHealthStatus",
+    "CapabilityProviderDescriptor",
+    "CapabilityProviderHealth",
+    "CapabilityProviderKind",
+    "CapabilityQuery",
+    "CapabilityResult",
+    "CapabilityRetrievalRequest",
+    "CapabilityRetrievalResult",
+    "CapabilityRunReceipt",
+    "CapabilityRunRequest",
+    "CapabilityRunStatus",
+    "CapabilitySchemaDocument",
+    "ConfigCapabilityRegistry",
+    "CostHint",
+    "DeterministicArgumentBinder",
+    "DeterministicBoundedCapabilityRuntime",
+    "DeterministicCapabilityRetriever",
+    "DeterministicToolPlanValidator",
+    "DeterministicToolPlanner",
+    "DeterministicToolResultValidator",
+    "GovernedToolExecutor",
+    "Idempotency",
+    "InMemoryCapabilityProviderRegistry",
+    "InMemoryCapabilityRegistry",
+    "InMemoryToolInvocationLedger",
+    "LatencyHint",
+    "McpCapabilityMapping",
+    "McpCapabilityProvider",
+    "ObservationBinding",
+    "PollingCapabilityHealthRegistry",
+    "ProviderInvocation",
+    "ProviderRef",
+    "ToolError",
+    "ToolExecutionRequest",
+    "ToolExecutionStatus",
+    "ToolInvocationClaim",
+    "ToolInvocationClaimRequest",
+    "ToolInvocationDisposition",
+    "ToolInvocationReceipt",
+    "ToolObservation",
+    "ToolPlan",
+    "ToolPlanValidationRequest",
+    "ToolPlanValidationResult",
+    "ToolPlanningRequest",
+    "ToolStep",
+    "ToolValidationRequest",
+    "ToolValidationResult",
+    "UnobservedToolAttempt",
+    "ValidationAction",
+    "argument_binding_request_digest",
+    "argument_binding_result_digest",
+    "build_capability_authorization_request",
+    "capability_authorization_allows",
+    "capability_authorization_resource",
+    "capability_candidate_digest",
+    "capability_catalog_digest",
+    "capability_catalog_publish_receipt_digest",
+    "capability_catalog_revision",
+    "capability_catalog_update_digest",
+    "capability_definition_digest",
+    "capability_health_snapshot_digest",
+    "capability_mapping_revision",
+    "capability_provider_descriptor_digest",
+    "capability_provider_health_digest",
+    "capability_provider_registry_revision",
+    "capability_query_digest",
+    "capability_result_digest",
+    "capability_retrieval_request_digest",
+    "capability_retrieval_result_digest",
+    "capability_run_receipt_digest",
+    "capability_run_request_digest",
+    "capability_schema_document_digest",
+    "load_capability_catalog_snapshot",
+    "mcp_capability_mapping_digest",
+    "provider_invocation_digest",
+    "tool_execution_request_digest",
+    "tool_idempotency_key",
+    "tool_invocation_claim_digest",
+    "tool_invocation_claim_request_digest",
+    "tool_invocation_receipt_digest",
+    "tool_observation_digest",
+    "tool_plan_digest",
+    "tool_plan_validation_request_digest",
+    "tool_plan_validation_result_digest",
+    "tool_planning_request_digest",
+    "tool_validation_request_digest",
+    "tool_validation_result_digest",
+    "unobserved_tool_attempt_digest",
+]
+
+
+def __getattr__(name: str) -> object:
+    if name in {
+        "CapabilityAuthorizationPurpose",
+        "build_capability_authorization_request",
+        "capability_authorization_allows",
+        "capability_authorization_resource",
+    }:
+        from .authorization import (
+            CapabilityAuthorizationPurpose,
+            build_capability_authorization_request,
+            capability_authorization_allows,
+            capability_authorization_resource,
+        )
+
+        return {
+            "CapabilityAuthorizationPurpose": CapabilityAuthorizationPurpose,
+            "build_capability_authorization_request": (
+                build_capability_authorization_request
+            ),
+            "capability_authorization_allows": capability_authorization_allows,
+            "capability_authorization_resource": capability_authorization_resource,
+        }[name]
+    if name in {"ConfigCapabilityRegistry", "load_capability_catalog_snapshot"}:
+        from .config import (
+            ConfigCapabilityRegistry,
+            load_capability_catalog_snapshot,
+        )
+
+        return {
+            "ConfigCapabilityRegistry": ConfigCapabilityRegistry,
+            "load_capability_catalog_snapshot": load_capability_catalog_snapshot,
+        }[name]
+    if name == "GovernedToolExecutor":
+        from .executor import GovernedToolExecutor
+
+        return GovernedToolExecutor
+    if name == "PollingCapabilityHealthRegistry":
+        from .health import PollingCapabilityHealthRegistry
+
+        return PollingCapabilityHealthRegistry
+    if name == "McpCapabilityProvider":
+        from .mcp_provider import McpCapabilityProvider
+
+        return McpCapabilityProvider
+    if name == "DeterministicCapabilityRetriever":
+        from .retrieval import DeterministicCapabilityRetriever
+
+        return DeterministicCapabilityRetriever
+    if name == "DeterministicBoundedCapabilityRuntime":
+        from .runtime import DeterministicBoundedCapabilityRuntime
+
+        return DeterministicBoundedCapabilityRuntime
+    if name == "DeterministicToolResultValidator":
+        from .validation import DeterministicToolResultValidator
+
+        return DeterministicToolResultValidator
+    if name in {
+        "DeterministicArgumentBinder",
+        "DeterministicToolPlanner",
+        "DeterministicToolPlanValidator",
+    }:
+        from .planning import (
+            DeterministicArgumentBinder,
+            DeterministicToolPlanner,
+            DeterministicToolPlanValidator,
+        )
+
+        return {
+            "DeterministicArgumentBinder": DeterministicArgumentBinder,
+            "DeterministicToolPlanner": DeterministicToolPlanner,
+            "DeterministicToolPlanValidator": DeterministicToolPlanValidator,
+        }[name]
+    if name in {
+        "InMemoryCapabilityProviderRegistry",
+        "InMemoryCapabilityRegistry",
+    }:
+        from .registry import (
+            InMemoryCapabilityProviderRegistry,
+            InMemoryCapabilityRegistry,
+        )
+
+        return {
+            "InMemoryCapabilityProviderRegistry": (InMemoryCapabilityProviderRegistry),
+            "InMemoryCapabilityRegistry": InMemoryCapabilityRegistry,
+        }[name]
+    if name == "InMemoryToolInvocationLedger":
+        from .ledger import InMemoryToolInvocationLedger
+
+        return InMemoryToolInvocationLedger
+    raise AttributeError(name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))
