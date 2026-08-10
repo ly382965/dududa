@@ -378,10 +378,19 @@
       "title": "S15 Response Profile And Persona",
       "purpose": "Add deterministic short, medium and long Response Plans with fact-preserving composition and rendering.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/response-persona",
+        "git_branch": "treework/response-persona",
+        "managed_by_treework": false,
+        "created_at": "unix:1786329200",
+        "last_entered_at": "unix:1786329200",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786336377"
     },
     {
       "path": "proactive-outbound",
