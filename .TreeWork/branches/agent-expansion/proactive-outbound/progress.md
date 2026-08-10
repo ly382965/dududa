@@ -11,18 +11,21 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- S15A-S15D are complete in their offline scopes; the proactive epic remains pending on S15E.
+- S15A-S15E are complete in their offline scopes; the proactive epic is ready to return.
 - All production proactive entry points remain absent and default-off.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
 - S15B returned durable scheduling, S15C returned governed fixture sources, and S15D returned a
   deterministic no-send Digest Shadow plus state-isolated Preview composition.
+- S15E returned deterministic group-level Opportunity detection, atomic Shadow cooldown state and a
+  fixed SHORT no-send candidate chain without raw chat, Memory, model, Tool or Output access.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- S15E group-level Probe Shadow remains; no live source, model, production Output or real send exists.
+- No child implementation remains. Production Projection/source/state/model/Output and real send do
+  not exist and remain later/external gates.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Enter S15E `probe-shadow` next; keep it synthetic, group-scoped and no-send.
+- Return S15E, then enter S16 Operations Hardening; do not infer production readiness from Shadow.

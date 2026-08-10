@@ -23,7 +23,7 @@ Memory、ResponsePlan、主动出站和本地总审计；真实群聊始终位�
 | Scheduler | 只有局部原语 | adopt Dududa SQLite occurrence/CAS；APScheduler 3 只作 Trigger oracle | occurrence、IANA timezone、misfire、lease、revoke 和 fake clock | SQLite 3.51.3+ 或 rollback journal ADR；双 Worker/fault injection | 真实定时发送 S23 |
 | 校园/行业/arXiv 来源 | 官方 Feed/API 可用，全文权利未开放 | adopt allowlist metadata、有限摘要、规范链接 | USTC 教务 RSS、arXiv category Feed、官方 publisher RSS Adapter fixture | 用户冻结栏目、publisher、category/关键词、修订与条目上限 | HTML/OAI-PMH/full text |
 | Memory | S14 离线生命周期与 M0-M2 合成回归已实现；生产仍关闭 | adopt 既有 Scope + generation-bound lifecycle + bounded CJK BM25；不在无授权数据时做 embedding | 保持删除/恢复/词法/Eval Contract，后续只迁移明确消费者 | 授权数据、人工判断、Embedding/Hybrid 对照、真实 Iris/外部 Backend 隔离实验 | Graph/temporal 自动化 |
-| Conversation Probe | 只有设计 | adopt 默认 off 的确定性群级 no-send detector | Opportunity Snapshot、TTL、hard gates、cooldown、Shadow Eval | 授权脱敏群聊窗口、标注指南、管理员流程和打扰预算 | 单群 canary S23 |
+| Conversation Probe | S15E synthetic no-send 范围完成 | adopt 默认 off 的确定性群级 no-send detector | 已实现 sanitized window、Opportunity/TTL、hard gates、原子 cooldown、attribution-bound no-response 和 SHORT Shadow | 授权脱敏群聊窗口、持久 state、标注指南、管理员流程和打扰预算 | 单群 canary S23 |
 | Contextual Bandit | 只有可行性研究 | spike VW Worker + OBP research；当前禁止训练/live exploration | before-action DTO、support validator、合成 IPS/SNIPS/DR golden | 两个同 Role+Tier 合法 Endpoint、有效 propensity、显式反馈、足够 ESS | S20；不阻塞 S23 |
 | WebUI | 已完成既定 NapCat 测试客户端范围 | 保持测试入口，不扩大验证 | 只在相应后端契约变化时补测试 | 无产品级 Control Plane 需求时不扩建 | 写控制面 |
 | 真实群聊 | 未开始且不应开始 | defer | 只准备 SLO、kill switch、授权和回滚包 | 所有发布必需模块及 S19/S22 本地审计通过 | S23 唯一入口 |

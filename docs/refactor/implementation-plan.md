@@ -60,7 +60,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
-| 主动消息与订阅推送 | 部分完成（已到 S15D） | S15A 默认拒绝契约、S15B 持久调度、S15C 受治理来源契约之上，S15D 已实现 fixture-backed COLLECT/no-send SHADOW/授权 PREVIEW、确定性 MEDIUM 日报组合、引用/Persona/长度验证和 metadata-only 记录 | S15E Probe Shadow 与生产组合/回滚闭环仍未完成；真实校园/arXiv/行业 Source Adapter、模型和发送是外部门禁 |
+| 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送、人工相关性/打扰度和 S16-S19/S22 发布闭环仍未完成 |
 | 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
@@ -91,7 +91,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S15B | 已完成（离线） | 持久 Scheduler、typed JSON/SQLite authority、DST/misfire、双实例 claim/reclaim/ack、重启/篡改和 30 日仿真通过 | 不含生产组合、来源、模型、Output 或真实发送 |
 | S15C | 已完成（离线） | Source-neutral DTO/Port、Capability/Source digest 分权、可信 receive-time freshness、原子 cursor/dedup commit、revision hold/emit、三类合成 fixture 与第四 Fake Source 配置式扩展通过 | 不含真实 Adapter/网络、真实时效/许可/内容质量、生产 source database、Composer 或发送 |
 | S15D | 已完成（离线） | Digest policy/metadata、确定性 Composer/Builder、no-send Shadow Runtime、隔离 Preview、Trigger 过期重验和第 1/2/30 天代表样本通过；普通记录不含正文 | 不含生产 Scheduler 组合、真实 Source/模型/持久 metadata、Output/Dispatch/QQ 发送；共享 Source Reader 中途取消留待 S16 硬化 |
-| S15E–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S15E 串行推进 | 逐分支实现、聚焦 Contract 与抽样回归、本地提交；双 Python 全仓集中在 S19/最终总集成，S22 只删除有迁移/恢复证据的兼容面 |
+| S15E | 已完成（离线） | Sanitized group window、Probe policy/detection/state/feedback/metadata、原子并发 claim、TTL/hard gates、普通/无人回应长冷却、SHORT Persona/Validator、no-send Runtime 和第 1/2/30 天抽样通过 | 不含原始/真实聊天 Projection Adapter、持久 ledger、人工质量、Output/Dispatch、自动追问、模型或 QQ 发送 |
+| S16–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S16 串行推进 | 逐分支实现、聚焦 Contract 与抽样回归、本地提交；双 Python 全仓集中在 S19/最终总集成，S22 只删除有迁移/恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
@@ -199,7 +200,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S21 | 后续规划 | 在 ADR 批准后实现只读 WebUI：Trace/Eval/Model/MCP Health；稳定后才讨论带审计和回滚的写操作 | API 复用 Runtime 权限/Scope/脱敏；RBAC、审计、CSRF/越权和回滚测试通过 | 既定 WebUI 测试已在发布主线内；不得在 UI 重写第二套业务逻辑或抢先做完整 Control Plane |
 
 达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S15E 算“主动出站
-本地 Shadow 完整”，发布主线固定为 `S15E -> S16 -> S17 -> S18 -> S19 -> S22 -> S23`。
+本地 Shadow 完整”；当前剩余发布主线为 `S16 -> S17 -> S18 -> S19 -> S22 -> S23`。
 达到 S22 且通过 S19 本地总审计后，才允许进入 S23 真实群验证。S20 Bandit 是独立可选阶段，
 不是主动出站或 S23 的前置；既定 WebUI 测试仍是前置，但不追加可写控制面。
 
