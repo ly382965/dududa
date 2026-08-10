@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "probe-shadow",
+  "current_branch": "operations-hardening",
   "artifact_layout_version": 2,
-  "last_event_seq": 85,
+  "last_event_seq": 86,
   "tree_revision": 3,
   "tree_editing": null,
   "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786354259"
+  "last_sync": "unix:1786354409"
 }
