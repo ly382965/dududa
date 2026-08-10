@@ -11,8 +11,19 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15C is verified and integrated. S15D is the sole WIP branch.
+- Existing inbound Composer/Profile selection cannot be reused directly because it requires current
+  message and SocialDecision evidence; the accepted design uses a truthful scheduled projection.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Froze the minimal fixture-only COLLECT/SHADOW/PREVIEW chain and six-class sampling strategy.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Digest contracts, composition/runtime implementation, Fakes and sampled verification remain.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Do not use `DeterministicProactivePolicy.authorize_delivery()` for SHADOW; it correctly denies all
+  non-CANARY delivery. S15D performs observation admission only and never grants send authority.
