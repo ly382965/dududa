@@ -2,7 +2,7 @@
 
 ## 1. 状态与安全原则
 
-- 状态：Phase 1 设计稿，目标流程尚未实现
+- 状态：S16 离线事务核心已实现；真实 Driver、原地恢复和生产演练未完成
 - 当前命令：`./manage.sh upgrade`
 - 目标：升级失败后可以回到已知可运行的代码、镜像、插件、配置和数据组合
 
@@ -257,6 +257,11 @@ Activate 只切换 release 引用、完整插件目录和明确的新 image ID�
 
 ## 14. 当前兼容策略
 
-在新 CLI 完成前保留 `./manage.sh upgrade` 的命令名，但文档和输出应明确其当前限制。新实现落地时，根入口转发到目标 upgrade orchestration；参数语义变化必须提供迁移说明。
+S16 已保留 `./manage.sh upgrade` 命令名：无参数调用继续兼容旧开发链路，显式参数调用转发
+至 `scripts/dududa_ops.py upgrade`。受保护流程要求版本化 Manifest、升级前已校验 Backup、
+逐阶段 Receipt 和显式 Driver Plan；目标 Health 不是 `healthy` 时只回滚一次，且不提升
+current release pointer。
 
-在 backup、restore、health 和故障注入测试均完成前，不把新 upgrade 标记为无人值守可用，也不删除旧手工回滚说明和上一个可运行 release。
+离线 fixture 已覆盖 Backup、Restore Plan、Health 和故障回滚，但尚无真实 Compose/HTTP/MCP
+Driver、生产备份范围/加密、原地 Restore 或容器升级观察证据。因此不得把新 upgrade 标记为
+无人值守生产可用，也不删除旧手工回滚说明和上一个可运行 Release。

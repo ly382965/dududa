@@ -2,11 +2,14 @@
 
 ## 1. 状态与目标
 
-- 状态：Phase 1 设计稿，目标命令尚未全部实现
+- 状态：S16 离线运维核心已实现；真实部署 Driver 与生产演练未完成
 - 当前兼容入口：根目录 `./manage.sh`
 - 目标：把部署拆成可观察、幂等、可单独失败和可验证的阶段
 
-本文定义嘟嘟哒 Bot Runtime 的部署边界和目标编排。它不授权操作生产环境，也不代表当前 `manage.sh` 已实现全部命令。实施阶段必须保持当前 `up`、`upgrade`、`logs` 等入口兼容。
+本文定义嘟嘟哒 Bot Runtime 的部署边界和目标编排。S16 已在
+`scripts/dududa_ops.py` 实现版本化 Release/State/Receipt、只读 Health、SQLite Backup、
+Restore Plan 和 Upgrade/Rollback 状态机；根 `manage.sh` 已增加转发并保持旧入口兼容。
+这些离线证据不授权操作生产环境，也不表示真实 Compose/HTTP/MCP 探针已经配置。
 
 ## 2. 部署边界
 
@@ -56,7 +59,20 @@ restart astrbot
 - 插件安装直接面向活动运行目录，没有发布级事务。
 - 没有内建 backup、restore 和版本化部署记录。
 
-这些限制是后续实现目标，不应在 Phase 1 通过改文档掩盖。
+无参数 `./manage.sh upgrade` 为兼容仍保留上述旧链路；传入 Manifest、Driver Plan 和明确
+参数时才进入 S16 受保护流程。真实 Driver 接入前，旧链路仍只能作为开发辅助命令。
+
+### 3.1 S16 已实现边界
+
+- `bootstrap` 幂等创建私有运行/发布目录，不创建或覆盖 `.env`；旧 `init` 继续负责兼容初始化。
+- Release Manifest 固定源码、digest-pinned image、组件/Compose Contract 与前一 Release；
+  mutable state 和逐阶段 Receipt 独立原子写入。
+- Backup 拒绝路径逃逸与符号链接，SQLite 使用 Backup API；Restore 默认只输出确定性 Plan，
+  Apply 只接受显式空目标。
+- Upgrade 在健康成功后才提升 current pointer；切换后失败只回滚一次并保留失败 Release、
+  Backup 和 Receipt。
+- 实际 Compose 渲染已抽样验证 loopback 端口、只读源码挂载、可写数据挂载和
+  `bot_net`/`edge`。NapCat 共享挂载未在无证据时收窄。
 
 ## 4. 目标阶段模型
 
@@ -64,7 +80,7 @@ restart astrbot
 
 | 阶段 | 职责 | 主要输出 | 幂等要求 |
 | --- | --- | --- | --- |
-| `bootstrap` | 创建私有目录、初始 `.env`、权限和本机先决条件 | 可用的运行根和部署元数据目录 | 不覆盖已有 `.env` 和运行数据 |
+| `bootstrap` | 创建私有目录、权限和部署元数据；兼容 `init` 单独处理初始 `.env` | 可用的运行根和部署元数据目录 | 不创建或覆盖 `.env` 和运行数据 |
 | `prepare` | 校验配置、解析第三方 manifest、合并受管模板、准备插件 staging | 可审计的 release plan 和 staging 内容 | 同一输入产生相同计划 |
 | `build` | 构建并标记 AstrBot 派生镜像 | 含 Agent package 与 MCP 依赖的镜像 | 源码和 lock 不变时可复现 |
 | `start` | 创建或验证网络，启动或重建容器 | 运行中的 AstrBot、NapCat | 不执行 seed，不修改业务数据 |

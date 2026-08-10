@@ -13,24 +13,24 @@ Title: S16 Operations Hardening
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Release manifests, mutable state and stage receipts are versioned,
+- [x] Release manifests, mutable state and stage receipts are versioned,
   digest-bound, atomic and contain no secret values.
-- [ ] Health is read-only; backup verifies ordinary files and SQLite snapshots;
+- [x] Health is read-only; backup verifies ordinary files and SQLite snapshots;
   restore requires a verified plan and an explicit empty destination.
-- [ ] Upgrade promotes only after health and failed health rolls back to a
+- [x] Upgrade promotes only after health and failed health rolls back to a
   verified previous release while preserving evidence.
-- [ ] Root operations expose the new commands without changing existing
+- [x] Root operations expose the new commands without changing existing
   `up`, `down`, `logs`, `ps`, `restart`, `seed` or data-root semantics.
-- [ ] One disposable lifecycle and representative failure samples pass without
+- [x] One disposable lifecycle and representative failure samples pass without
   Docker, real `.env`, credentials or runtime data.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Freeze the minimal release/state/receipt and stage-driver contracts.
-- [ ] Implement operations core, CLI and root compatibility forwarding.
-- [ ] Add the disposable lifecycle fixture and at most four focused test
+- [x] Freeze the minimal release/state/receipt and stage-driver contracts.
+- [x] Implement operations core, CLI and root compatibility forwarding.
+- [x] Add the disposable lifecycle fixture and at most four focused test
   groups, including Compose mount/network sampling.
-- [ ] Synchronize Chinese status documentation and TreeWork evidence, commit,
+- [x] Synchronize Chinese status documentation and TreeWork evidence, commit,
   complete and integrate S16.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)

@@ -115,8 +115,31 @@ class GovernedSourceProvider:
             raise
         if request.requested_at > now:
             raise validation_error("source_request_from_future")
-        async with self._lock:
-            return await self._fetch(request, call=call, now=now)
+        acquired = False
+        try:
+            await _bounded_await(
+                self._lock.acquire(),
+                call=call,
+                now=now,
+                code="source_provider_lock",
+            )
+            acquired = True
+            return await self._fetch(
+                request,
+                call=call,
+                now=_utc(self._clock(), "source_provider_now"),
+            )
+        except DududaError as exc:
+            if exc.info.category is ErrorCategory.CANCELLED:
+                return _cancelled(
+                    request,
+                    _utc(self._clock(), "source_provider_now"),
+                    exc.info.code,
+                )
+            raise
+        finally:
+            if acquired:
+                self._lock.release()
 
     async def _fetch(
         self,
@@ -137,16 +160,26 @@ class GovernedSourceProvider:
         for definition in definitions:
             try:
                 _validate_call(call, _utc(self._clock(), "source_provider_now"))
-                current_cursor = await self._state_store.load_cursor(
-                    request.subscription_id,
-                    definition.source_id,
+                current_cursor = await _bounded_await(
+                    self._state_store.load_cursor(
+                        request.subscription_id,
+                        definition.source_id,
+                        call=call,
+                    ),
                     call=call,
+                    now=_utc(self._clock(), "source_provider_now"),
+                    code="source_cursor_load",
                 )
-                observation = await self._reader.read(
-                    definition,
-                    current_cursor,
-                    request,
+                observation = await _bounded_await(
+                    self._reader.read(
+                        definition,
+                        current_cursor,
+                        request,
+                        call=call,
+                    ),
                     call=call,
+                    now=_utc(self._clock(), "source_provider_now"),
+                    code="source_reader",
                 )
                 received_at = _utc(self._clock(), "source_provider_now")
                 source_items, source_identities, source_provenance = _normalize(
@@ -251,7 +284,12 @@ class GovernedSourceProvider:
         )
         state_receipt = None
         try:
-            state_receipt = await self._state_store.commit_fetch(plan, call=call)
+            state_receipt = await _bounded_await(
+                self._state_store.commit_fetch(plan, call=call),
+                call=call,
+                now=_utc(self._clock(), "source_provider_now"),
+                code="source_state_commit",
+            )
             if not isinstance(state_receipt, SourceStateCommitReceipt):
                 raise validation_error("invalid_source_state_commit_receipt")
         except DududaError as exc:
@@ -664,6 +702,52 @@ def _validate_call(call: PortCallContext, now: datetime) -> None:
             ErrorCategory.TIMEOUT,
             "request.timeout",
         )
+
+
+async def _bounded_await(
+    awaitable,
+    *,
+    call: PortCallContext,
+    now: datetime,
+    code: str,
+):
+    remaining = (call.deadline - now).total_seconds()
+    if remaining <= 0:
+        if hasattr(awaitable, "close"):
+            awaitable.close()
+        raise error(
+            f"{code}_timeout",
+            ErrorCategory.TIMEOUT,
+            "request.timeout",
+        )
+    operation = asyncio.create_task(awaitable)
+    cancellation = asyncio.create_task(call.cancellation.wait())
+    try:
+        done, _ = await asyncio.wait(
+            (operation, cancellation),
+            timeout=remaining,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if cancellation in done:
+            operation.cancel()
+            raise error(
+                f"{code}_cancelled",
+                ErrorCategory.CANCELLED,
+                "request.cancelled",
+            )
+        if operation not in done:
+            operation.cancel()
+            raise error(
+                f"{code}_timeout",
+                ErrorCategory.TIMEOUT,
+                "request.timeout",
+            )
+        return operation.result()
+    finally:
+        for task in (operation, cancellation):
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(operation, cancellation, return_exceptions=True)
 
 
 def _utc(value: object, field_name: str) -> datetime:
