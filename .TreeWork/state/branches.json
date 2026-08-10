@@ -629,10 +629,20 @@
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "paused",
+      "verification_status": "partial",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/real-group-validation",
+        "git_branch": "treework/real-group-validation",
+        "managed_by_treework": true,
+        "created_at": "unix:1786381821",
+        "last_entered_at": "unix:1786381821",
+        "last_status": "created managed worktree"
+      },
+      "status_reason": "Offline S23 readiness is committed; live Preflight and the single-group ladder await the authorization, SecretRef, Endpoint, source and deployment packet.",
+      "last_sync": "unix:1786383737"
     }
   ]
 }
