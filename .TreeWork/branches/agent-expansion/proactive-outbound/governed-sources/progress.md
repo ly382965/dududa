@@ -11,8 +11,19 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15B is verified and integrated. S15C is the sole active WIP branch.
+- Existing SourceItem/Batch/Failure v1 is retained; governed policy, provenance, cursor, identity,
+  dedup and SourceProvider interfaces do not yet exist.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Reconciled the approved offline-only S15C boundary into a branch Spec and executable plan without
+  inventing real campus/arXiv/industry MCP Servers.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Source governance contracts, reference services, fixture bundle, tests and verification remain.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Work only in the S15C worktree and keep WIP=1; first slice owns additive contracts and Ports.
