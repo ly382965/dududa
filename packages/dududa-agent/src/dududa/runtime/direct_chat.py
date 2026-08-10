@@ -36,6 +36,10 @@ from dududa.models.digests import (
 from dududa.models.policy import TierDecision
 from dududa.ports.context import PortCallContext
 from dududa.ports.models import ModelRouter
+from dududa.ports.responses import VisibleTokenCounter
+from dududa.responses.contracts import ResponsePlan
+from dududa.responses.counting import visible_character_count
+from dududa.responses.digests import response_plan_digest
 
 from .budget import reservation_budget, usage_within_reservation
 from .capabilities import (
@@ -132,6 +136,7 @@ class DirectChatModelCall:
         router: ModelRouter,
         config: DirectChatModelCallConfig,
         *,
+        visible_token_counter: VisibleTokenCounter | None = None,
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
     ) -> None:
@@ -139,8 +144,13 @@ class DirectChatModelCall:
             raise TypeError("router does not implement ModelRouter")
         if not isinstance(config, DirectChatModelCallConfig):
             raise TypeError("invalid Direct Chat model call config")
+        if visible_token_counter is not None and not isinstance(
+            visible_token_counter, VisibleTokenCounter
+        ):
+            raise TypeError("visible token counter does not implement its port")
         self._router = router
         self._config = config
+        self._visible_token_counter = visible_token_counter
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
 
@@ -155,6 +165,7 @@ class DirectChatModelCall:
         tier_decision: TierDecision,
         reservation: ResourceUsage,
         *,
+        response_plan: ResponsePlan | None = None,
         route_hint: RouteHint | None,
         call: PortCallContext,
         capability_receipt: CapabilityRunReceipt | None = None,
@@ -167,6 +178,8 @@ class DirectChatModelCall:
             raise validation_error("invalid_direct_chat_tier_decision")
         if not isinstance(reservation, ResourceUsage):
             raise validation_error("invalid_direct_chat_reservation")
+        if response_plan is not None and not isinstance(response_plan, ResponsePlan):
+            raise validation_error("invalid_direct_chat_response_plan")
         if route_hint is not None and not isinstance(route_hint, RouteHint):
             raise validation_error("invalid_direct_chat_route_hint")
         tool_projection = None
@@ -197,8 +210,25 @@ class DirectChatModelCall:
             raise validation_error("direct_chat_tier_assessment_mismatch")
         if reservation.model_calls != 1 or reservation.tool_steps != 0:
             raise validation_error("invalid_direct_chat_reservation")
+        output_tokens = self._config.max_output_tokens
+        if response_plan is not None:
+            if response_plan.assessment_digest != task_complexity_assessment_digest(
+                assessment
+            ):
+                raise validation_error("direct_chat_response_plan_assessment_mismatch")
+            if (
+                response_plan.generated_token_limit > self._config.max_output_tokens
+                or response_plan.visible_character_limit
+                > self._config.maximum_response_characters
+            ):
+                raise validation_error("direct_chat_response_plan_exceeds_config")
+            if reservation.output_tokens != response_plan.generated_token_limit:
+                raise validation_error("direct_chat_response_plan_budget_mismatch")
+            if self._visible_token_counter is None:
+                raise validation_error("direct_chat_visible_token_counter_missing")
+            output_tokens = response_plan.generated_token_limit
         if (
-            self._config.max_output_tokens > reservation.output_tokens
+            output_tokens > reservation.output_tokens
             or context.perception.content_input_tokens_upper_bound
             + self._config.prompt_tokens_upper_bound
             + tool_context_tokens_upper_bound
@@ -220,6 +250,7 @@ class DirectChatModelCall:
             tool_source_refs=tool_source_refs,
             tool_context_tokens_upper_bound=tool_context_tokens_upper_bound,
             data_classification=data_classification,
+            response_plan=response_plan,
         )
         request = replace(
             request,
@@ -249,6 +280,7 @@ class DirectChatModelCall:
                     reported_usage=None,
                     reservation=reservation,
                     failure_code=cause.info.code,
+                    response_plan_digest=request.response_plan_digest,
                 ),
             ) from None
         if not isinstance(response, ModelResponse):
@@ -261,6 +293,7 @@ class DirectChatModelCall:
                     reported_usage=None,
                     reservation=reservation,
                     failure_code=cause.info.code,
+                    response_plan_digest=request.response_plan_digest,
                 ),
             ) from None
         route = response.route_decision
@@ -281,8 +314,20 @@ class DirectChatModelCall:
                 raise validation_error("direct_chat_usage_exceeds_reservation")
             if not isinstance(response.output, str) or not response.output.strip():
                 raise validation_error("invalid_direct_chat_text_output")
-            if len(response.output) > self._config.maximum_response_characters:
+            character_limit = (
+                response_plan.visible_character_limit
+                if response_plan is not None
+                else self._config.maximum_response_characters
+            )
+            if visible_character_count(response.output) > character_limit:
                 raise validation_error("direct_chat_text_output_too_long")
+            if (
+                response_plan is not None
+                and self._visible_token_counter is not None
+                and self._visible_token_counter.count(response.output)
+                > response_plan.visible_token_limit
+            ):
+                raise validation_error("direct_chat_visible_token_limit_exceeded")
         except DududaError as cause:
             raise RuntimeDirectChatFailure(
                 cause,
@@ -292,6 +337,7 @@ class DirectChatModelCall:
                     reported_usage=response.usage,
                     reservation=reservation,
                     failure_code=cause.info.code,
+                    response_plan_digest=request.response_plan_digest,
                 ),
             ) from None
 
@@ -311,6 +357,7 @@ class DirectChatModelCall:
             source_refs=source_refs,
             model_request_fingerprint=request_fingerprint,
             model_response_digest=response_digest,
+            response_plan_digest=request.response_plan_digest,
         )
         return DirectChatExecutionReceipt(
             schema_version=1,
@@ -330,6 +377,7 @@ class DirectChatModelCall:
         tool_source_refs: tuple[str, ...],
         tool_context_tokens_upper_bound: int,
         data_classification: PrivacyLevel,
+        response_plan: ResponsePlan | None,
     ) -> ModelRequest:
         current = next(
             message
@@ -347,6 +395,25 @@ class DirectChatModelCall:
             "verification_required": assessment.verification_required,
             "component_revision": self._config.component_revision,
         }
+        plan_digest = None
+        visible_output_tokens_upper_bound = None
+        max_output_tokens = self._config.max_output_tokens
+        if response_plan is not None:
+            plan_digest = response_plan_digest(response_plan)
+            visible_output_tokens_upper_bound = response_plan.visible_token_limit
+            max_output_tokens = response_plan.generated_token_limit
+            payload_values["response_plan"] = {
+                "response_plan_digest": plan_digest,
+                "selected_profile": response_plan.selected_profile,
+                "visible_token_limit": response_plan.visible_token_limit,
+                "visible_character_limit": response_plan.visible_character_limit,
+                "delivery_part_limit": response_plan.delivery_part_limit,
+                "instruction": (
+                    "Follow the requested visible detail level without exposing "
+                    "hidden reasoning. Preserve required facts, citations, warnings, "
+                    "and refusal reasons."
+                ),
+            }
         parts = [
             ModelInputPart(
                 schema_version=1,
@@ -389,7 +456,7 @@ class DirectChatModelCall:
                 source_refs=source_refs,
             ),
             output_schema=None,
-            max_output_tokens=self._config.max_output_tokens,
+            max_output_tokens=max_output_tokens,
             content_input_tokens_upper_bound=(
                 context.perception.content_input_tokens_upper_bound
                 + self._config.prompt_tokens_upper_bound
@@ -409,6 +476,8 @@ class DirectChatModelCall:
             random_seed=None,
             idempotency_key=None,
             route_hint=route_hint,
+            response_plan_digest=plan_digest,
+            visible_output_tokens_upper_bound=(visible_output_tokens_upper_bound),
         )
 
     def _now(self) -> datetime:
@@ -441,6 +510,7 @@ def _failure_receipt(
     reported_usage,
     reservation,
     failure_code: str,
+    response_plan_digest,
 ) -> DirectChatFailureReceipt:
     return DirectChatFailureReceipt(
         schema_version=1,
@@ -450,4 +520,5 @@ def _failure_receipt(
         reported_usage=reported_usage,
         charged_usage=reservation,
         failure_code=failure_code,
+        response_plan_digest=response_plan_digest,
     )

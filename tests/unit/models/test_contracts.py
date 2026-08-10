@@ -17,10 +17,10 @@ from dududa.models.contracts import (
     EndpointCapacityReceipt,
     EndpointHealthStatus,
     EndpointLoadSnapshot,
-    LoadCounterScope,
     EndpointRejection,
     EndpointRouteCandidatePlan,
     EndpointTrafficPolicy,
+    LoadCounterScope,
     ModelCapabilities,
     ModelEndpointHealth,
     ModelEndpointRef,
@@ -285,6 +285,8 @@ class ModelContractTests(unittest.TestCase):
             random_seed=None,
             idempotency_key="idem-1",
             route_hint=None,
+            response_plan_digest=DigestString("response-plan:1"),
+            visible_output_tokens_upper_bound=128,
         )
 
         self.assertEqual(request.input.parts, (text,))
@@ -337,6 +339,10 @@ class ModelContractTests(unittest.TestCase):
                 replace(request, **{field_name: invalid})
         with self.assertRaises(DududaError):
             replace(request, role=ModelRole.PERCEPTION)
+        with self.assertRaises(DududaError):
+            replace(request, response_plan_digest=None)
+        with self.assertRaises(DududaError):
+            replace(request, visible_output_tokens_upper_bound=257)
 
     def test_load_snapshot_and_capacity_receipt_validate_observations(self) -> None:
         descriptor = endpoint("load-endpoint", ModelTier.SONNET)

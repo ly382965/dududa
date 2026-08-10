@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import unittest
 from copy import copy
 from dataclasses import replace
 from datetime import timedelta
-import unittest
 
 from dududa.domain.delivery import (
     DeliveryPartReceipt,
@@ -151,7 +151,7 @@ def _receipt(
 
 class RuntimeDeliveryTests(unittest.IsolatedAsyncioTestCase):
     async def _ready(self):
-        fixture = OrchestratorFixture()
+        fixture = OrchestratorFixture(direct_output="x" * 600)
         request, call = fixture.start()
         result = await fixture.runtime.run(request, call=call)
         assert result.delivery_request is not None

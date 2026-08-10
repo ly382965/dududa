@@ -27,7 +27,13 @@ from dududa.perception.contracts import (
     SocialAction,
     SocialDecision,
 )
+from dududa.persona.registry import InMemoryPersonaRegistry
 from dududa.ports.context import NeverCancelled, PortCallContext
+from dududa.responses import (
+    DeterministicResponseProfileValidator,
+    UnicodeVisibleTokenCounter,
+    response_plan_digest,
+)
 from dududa.runtime.composition import (
     DeterministicPersonaRenderer,
     DeterministicPersonaRendererConfig,
@@ -40,6 +46,7 @@ from dududa.runtime.contracts import DirectChatContent
 from dududa.security.content_safety import DefaultContentSafetyPolicy
 
 from tests.unit.models.helpers import NOW
+from tests.unit.persona._fixtures import definition as persona_definition
 from tests.unit.runtime.test_s10_context_budget import actor, builder, message, scope
 
 
@@ -89,7 +96,12 @@ def _decision(context, *, clarification: bool = False) -> SocialDecision:
     )
 
 
-def _direct(context, *, text: str = "A bounded answer.") -> DirectChatContent:
+def _direct(
+    context,
+    *,
+    text: str = "A bounded answer.",
+    response_plan=None,
+) -> DirectChatContent:
     return DirectChatContent(
         1,
         "direct-content-1",
@@ -97,6 +109,7 @@ def _direct(context, *, text: str = "A bounded answer.") -> DirectChatContent:
         (context.perception.current_message_ref,),
         DigestString("request-fingerprint"),
         DigestString("response-digest"),
+        response_plan_digest(response_plan) if response_plan is not None else None,
     )
 
 
@@ -128,6 +141,18 @@ def _renderer() -> DeterministicPersonaRenderer:
     )
 
 
+def _persona_resolution():
+    registry = InMemoryPersonaRegistry(
+        (persona_definition(), persona_definition("neutral")),
+        fallback_persona_id="neutral",
+        fallback_version="1.0.0",
+        clock=lambda: NOW,
+        id_factory=lambda: "composition-v1",
+    )
+    snapshot = registry.acquire_snapshot()
+    return registry.resolve(snapshot, "dududa", None)
+
+
 def _call() -> PortCallContext:
     return PortCallContext(
         "run-1",
@@ -149,6 +174,54 @@ class _ForgingSafetyPolicy:
 
 
 class CompositionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_all_composition_stages_bind_the_same_response_plan(self) -> None:
+        from tests.unit.runtime.test_direct_chat import _assessment, _response_plan
+
+        context, envelope = _context()
+        plan = _response_plan(_assessment(context))
+        persona_resolution = _persona_resolution()
+        direct = _direct(context, response_plan=plan)
+        draft = _composer().compose(context, _decision(context), direct, plan)
+        rendered = _renderer().render(
+            draft,
+            plan,
+            persona_resolution=persona_resolution,
+        )
+        validator = FinalResponseSafetyValidator(
+            DeterministicRenderValidator(_revision("render-validator")),
+            DefaultContentSafetyPolicy(clock=lambda: NOW),
+            profile_validator=DeterministicResponseProfileValidator(
+                UnicodeVisibleTokenCounter(_revision("visible-token-counter")),
+                _revision("profile-validator"),
+            ),
+            clock=lambda: NOW,
+        )
+
+        validated = await validator.validate(
+            draft,
+            rendered,
+            actor(envelope),
+            scope(envelope),
+            response_plan=plan,
+            persona_resolution=persona_resolution,
+            call=_call(),
+        )
+
+        digest = response_plan_digest(plan)
+        self.assertEqual(draft.response_plan_digest, digest)
+        self.assertEqual(
+            validated.response.render_metadata.response_plan_digest,
+            digest,
+        )
+        self.assertIsNotNone(validated.profile_validation)
+        self.assertTrue(validated.profile_validation.valid)
+        with self.assertRaises(DududaError):
+            _renderer().render(
+                draft,
+                replace(plan, plan_id="plan:forged"),
+                persona_resolution=persona_resolution,
+            )
+
     async def test_direct_content_reaches_validated_final_without_fact_drift(
         self,
     ) -> None:

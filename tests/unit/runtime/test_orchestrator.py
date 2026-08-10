@@ -37,10 +37,19 @@ from dududa.perception.rules import (
 )
 from dududa.perception.social import DeterministicSocialDecisionPolicy
 from dududa.perception.validation import validate_perception_result
+from dududa.persona.registry import InMemoryPersonaRegistry
 from dududa.ports.context import (
     ManualCancellationToken,
     NeverCancelled,
     PortCallContext,
+)
+from dududa.responses import (
+    AnswerProfile,
+    DeterministicResponseProfilePolicy,
+    DeterministicResponseProfileValidator,
+    UnicodeVisibleTokenCounter,
+    pilot_response_profile_policy_config,
+    response_plan_digest,
 )
 from dududa.runtime.budget import RuntimeModelBudgetPlan, RuntimeToolBudgetPlan
 from dududa.runtime.composition import (
@@ -79,6 +88,7 @@ from dududa.testing.models import ProviderSuccess
 
 from tests.unit.models.helpers import NOW
 from tests.unit.perception.helpers import limits as perception_limits
+from tests.unit.persona._fixtures import definition as persona_definition
 from tests.unit.runtime.test_composition import _composer, _renderer
 from tests.unit.runtime.test_direct_chat import _config as direct_config
 from tests.unit.runtime.test_direct_chat import _fixture as direct_fixture
@@ -183,10 +193,12 @@ class _RecordingRuntimeStateStore(InMemoryRuntimeStateStore):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.committed_phases: list[RuntimePhase] = []
+        self.committed_states = []
 
     async def commit(self, request, *, call):
         result = await super().commit(request, call=call)
         self.committed_phases.append(request.next_state.phase)
+        self.committed_states.append(request.next_state)
         return result
 
 
@@ -318,9 +330,22 @@ class OrchestratorFixture:
             replace(
                 direct_config(),
                 reasoning_profiles=profiles,
+                max_output_tokens=(
+                    self.budget_plan.direct_chat_reservation.output_tokens
+                ),
                 maximum_tool_context_bytes=maximum_tool_context_bytes,
             ),
+            visible_token_counter=UnicodeVisibleTokenCounter(
+                revision("visible-token-counter")
+            ),
             clock=self.clock,
+        )
+        self.persona_registry = InMemoryPersonaRegistry(
+            (persona_definition(), persona_definition("neutral")),
+            fallback_persona_id="neutral",
+            fallback_version="1.0.0",
+            clock=self.clock,
+            id_factory=lambda: "runtime-v1",
         )
         delivery_builder = DeliveryRequestBuilder(
             DeliveryRequestBuilderConfig(
@@ -328,7 +353,7 @@ class OrchestratorFixture:
                 constraints=DeliveryConstraints(
                     1,
                     64,
-                    5,
+                    512,
                     False,
                     frozenset(),
                     timedelta(minutes=10),
@@ -374,9 +399,20 @@ class OrchestratorFixture:
             final_validator=FinalResponseSafetyValidator(
                 DeterministicRenderValidator(revision("render-validator")),
                 DefaultContentSafetyPolicy(clock=self.clock),
+                profile_validator=DeterministicResponseProfileValidator(
+                    UnicodeVisibleTokenCounter(revision("visible-token-counter")),
+                    revision("response-profile-validator"),
+                ),
                 clock=self.clock,
             ),
             delivery_builder=delivery_builder,
+            response_profile_policy=DeterministicResponseProfilePolicy(
+                pilot_response_profile_policy_config(
+                    revision("response-profile-policy")
+                )
+            ),
+            detail_detector_revision=revision("detail-detector"),
+            persona_registry=self.persona_registry,
             capability_runtime=capability_runtime,
             clock=self.clock,
         )
@@ -403,11 +439,12 @@ class OrchestratorFixture:
             self.clock.now,
             revision("connector"),
         )
+        flags = {"response_profiles": True, **(feature_flags or {})}
         options = RuntimeInvocationOptions(
             1,
             None,
             "astrbot",
-            feature_flags or {},
+            flags,
             "flags-v1",
         )
         request = RuntimeStartRequest(
@@ -428,6 +465,22 @@ class OrchestratorFixture:
 
 
 class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_response_profile_flag_off_preserves_legacy_runtime_shape(
+        self,
+    ) -> None:
+        fixture = OrchestratorFixture()
+        request, call = fixture.start(feature_flags={"response_profiles": False})
+
+        result = await fixture.runtime.run(request, call=call)
+        checkpoint = await fixture.store.load(call.run_id, call=call)
+
+        self.assertIs(result.outcome, Outcome.RESPONSE)
+        assert checkpoint is not None
+        self.assertIsNone(checkpoint.state.response_profile_request)
+        self.assertIsNone(checkpoint.state.response_plan)
+        self.assertIsNone(checkpoint.state.persona_resolution)
+        self.assertIsNone(fixture.router.requests[0].response_plan_digest)
+
     async def test_direct_reply_reaches_ready_through_real_static_router(self) -> None:
         fixture = OrchestratorFixture()
         request, call = fixture.start()
@@ -445,6 +498,56 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             checkpoint.state.direct_route_decision.selected_tier,
             ModelTier.SONNET,
         )
+        self.assertIsNotNone(checkpoint.state.response_profile_request)
+        self.assertIsNotNone(checkpoint.state.response_plan)
+        self.assertIsNotNone(checkpoint.state.persona_resolution)
+        assert checkpoint.state.response_plan is not None
+        assert checkpoint.state.persona_resolution is not None
+        self.assertIs(
+            checkpoint.state.response_plan.selected_profile,
+            AnswerProfile.MEDIUM,
+        )
+        plan_digest = response_plan_digest(checkpoint.state.response_plan)
+        self.assertEqual(
+            checkpoint.state.direct_chat_execution.content.response_plan_digest,
+            plan_digest,
+        )
+        self.assertEqual(
+            checkpoint.state.draft_response.response_plan_digest,
+            plan_digest,
+        )
+        self.assertEqual(
+            checkpoint.state.final_response.response.render_metadata.response_plan_digest,
+            plan_digest,
+        )
+        self.assertEqual(
+            checkpoint.state.final_response.response.render_metadata.persona_source_digest,
+            checkpoint.state.persona_resolution.definition.source_digest,
+        )
+        self.assertLessEqual(
+            len(checkpoint.state.delivery_request.part_intents),
+            checkpoint.state.response_plan.delivery_part_limit,
+        )
+        with self.assertRaises(DududaError):
+            replace(checkpoint.state, response_profile_request=None)
+        with self.assertRaises(DududaError):
+            replace(checkpoint.state, persona_resolution=None)
+        with self.assertRaises(DududaError):
+            replace(
+                checkpoint.state,
+                response_plan=replace(
+                    checkpoint.state.response_plan,
+                    assessment_digest=DigestString("assessment:forged"),
+                ),
+            )
+        with self.assertRaises(DududaError):
+            replace(
+                checkpoint.state,
+                final_response=replace(
+                    checkpoint.state.final_response,
+                    profile_validation=None,
+                ),
+            )
         self.assertEqual(fixture.perception.calls, 1)
         self.assertEqual(fixture.router.calls, 1)
 
@@ -637,6 +740,12 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(checkpoint.state.phase, RuntimePhase.READY_TO_EMIT)
         self.assertIsNone(checkpoint.state.tier_decision)
         self.assertIsNone(checkpoint.state.direct_route_decision)
+        self.assertIsNotNone(checkpoint.state.response_plan)
+        self.assertIsNotNone(checkpoint.state.persona_resolution)
+        self.assertIs(
+            checkpoint.state.response_plan.selected_profile,
+            AnswerProfile.SHORT,
+        )
         self.assertEqual(fixture.router.calls, 0)
 
     async def test_tool_requirement_defers_without_tool_or_direct_model(self) -> None:

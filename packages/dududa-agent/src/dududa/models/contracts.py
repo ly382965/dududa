@@ -462,6 +462,8 @@ class ModelRequest:
     random_seed: int | None
     idempotency_key: str | None
     route_hint: RouteHint | None
+    response_plan_digest: DigestString | None = None
+    visible_output_tokens_upper_bound: int | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -475,6 +477,27 @@ class ModelRequest:
         if self.role is ModelRole.PERCEPTION and self.output_schema is None:
             raise validation_error("perception_schema_required")
         _positive_int(self.max_output_tokens, "max_output_tokens")
+        if (self.response_plan_digest is None) != (
+            self.visible_output_tokens_upper_bound is None
+        ):
+            raise validation_error("incomplete_model_response_plan_binding")
+        if self.response_plan_digest is not None:
+            require_non_empty(
+                str(self.response_plan_digest),
+                "response_plan_digest",
+            )
+            _positive_int(
+                self.visible_output_tokens_upper_bound,
+                "visible_output_tokens_upper_bound",
+            )
+            if self.visible_output_tokens_upper_bound > self.max_output_tokens:
+                raise validation_error("visible_output_exceeds_generated_output")
+            if self.role not in {
+                ModelRole.DIRECT_CHAT,
+                ModelRole.RESPONSE_COMPOSITION,
+                ModelRole.PERSONA_RENDERING,
+            }:
+                raise validation_error("response_plan_for_non_visible_model_role")
         _positive_int(
             self.content_input_tokens_upper_bound,
             "content_input_tokens_upper_bound",

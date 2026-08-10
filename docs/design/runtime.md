@@ -1564,7 +1564,7 @@ Registry snapshot 和评测代码引用；无法解析任一 revision 的运行�
 | Context Builder | S09/S10 有界当前消息 Context 已实现 | 可信多轮、附件与生产 Memory 接入未完成 |
 | Perception/Social Decision | S09 Rule/Model/Merger/Validator、Complexity、TierPolicy 和硬 Gate 已实现 | 真实数据校准、多轮/附件与生产装配仍缺 |
 | Tool Runtime | iCourse 是固定手工流程 | 抽为首个 Capability Provider |
-| Response Composer/Persona | S10 最小事实保持 Composer 和确定性 Renderer 已实现 | S15 ResponsePlan、完整资产、模型 Renderer 和人工 Eval |
+| Response Composer/Persona | S15 已实现 ResponsePlan、typed 资产、generation-bound Persona、确定性 Renderer 和机械 Eval | 模型 Renderer、多 Persona 产品资产和人工 Eval |
 | Trace/Rollout | S10 receipt 与 S11 脱敏指标/持久 claim 已实现 | 后续模块、真实 SLO 和最终授权证据 |
 | Proactive Orchestrator | 未实现 | 按 S15A-S15E 建立独立 initiated-run，不修改入站历史语义 |
 

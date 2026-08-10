@@ -2,8 +2,9 @@
 
 ## 1. 文档状态与原则
 
-- 阶段：S10 最小确定性单 Persona Renderer/Validator 已完成本地范围；S15 的完整资产、
-  ResponsePlan 执行、模型 Renderer、用户偏好和人工风格 Eval 尚未实现。
+- 阶段：S15 已完成 typed `dududa`/`neutral` 资产、Catalog generation/LKG/回放、
+  ResponsePlan 绑定和确定性 Renderer/Validator；模型 Renderer、持久用户偏好、多 Persona
+  产品资产和人工风格 Eval 尚未实现。
 - 目标代码：`packages/dududa-agent/src/dududa/persona/`。
 - 当前资产：`config/personas/dududa.json`、`dududa.md` 及幂等 Persona seed 流程。
 

@@ -22,8 +22,10 @@ PUBLIC_PACKAGES = (
     "dududa.mcp",
     "dududa.models",
     "dududa.perception",
+    "dududa.persona",
     "dududa.ports",
     "dududa.rollout",
+    "dududa.responses",
     "dududa.runtime",
     "dududa.security",
     "dududa.testing",
@@ -62,7 +64,9 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.ports.memory",
     "dududa.ports.models",
     "dududa.ports.perception",
+    "dududa.ports.persona",
     "dududa.ports.runtime",
+    "dududa.ports.responses",
     "dududa.rollout.admission",
     "dududa.rollout.canary",
     "dududa.rollout.contracts",
@@ -71,6 +75,13 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.rollout.ports",
     "dududa.rollout.rollback",
     "dududa.rollout.shadow",
+    "dududa.responses.contracts",
+    "dududa.responses.counting",
+    "dududa.responses.policy",
+    "dududa.responses.validation",
+    "dududa.persona.assets",
+    "dududa.persona.contracts",
+    "dududa.persona.registry",
     "dududa.runtime.composition",
     "dududa.runtime.context",
     "dududa.runtime.contracts",
@@ -91,10 +102,62 @@ ORDER_SENSITIVE_MODULES = (
 FORBIDDEN_INTERNAL_IMPORTS = {
     "dududa.perception": ("dududa.models", "dududa.runtime"),
     "dududa.models": ("dududa.perception", "dududa.runtime"),
+    "dududa.responses": ("dududa.models", "dududa.runtime"),
+    "dududa.persona": ("dududa.models", "dududa.runtime"),
 }
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s15_persona_exports_are_visible_and_framework_neutral(self) -> None:
+        import importlib
+
+        persona = importlib.import_module("dududa.persona")
+        ports = importlib.import_module("dududa.ports")
+        expected_owners = {
+            "InMemoryPersonaRegistry": "dududa.persona.registry",
+            "PersonaCatalogSnapshot": "dududa.persona.contracts",
+            "PersonaDefinition": "dududa.persona.contracts",
+            "load_persona_directory": "dududa.persona.assets",
+        }
+        self.assertLessEqual(set(expected_owners), set(persona.__all__))
+        self.assertLessEqual(
+            {"PersonaCatalogPublisher", "PersonaRegistry"},
+            set(ports.__all__),
+        )
+        self.assertEqual(len(persona.__all__), len(set(persona.__all__)))
+        for name, module_name in expected_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(persona, name), getattr(owner, name))
+
+    def test_s15_response_exports_are_visible_and_framework_neutral(self) -> None:
+        import importlib
+
+        ports = importlib.import_module("dududa.ports")
+        responses = importlib.import_module("dududa.responses")
+        expected_owners = {
+            "AnswerProfile": "dududa.responses.contracts",
+            "DeterministicResponseProfileValidator": "dududa.responses.validation",
+            "ResponsePlan": "dududa.responses.contracts",
+            "ResponseProfileValidationResult": "dududa.domain.content",
+            "DeterministicResponseProfilePolicy": "dududa.responses.policy",
+            "UnicodeVisibleTokenCounter": "dududa.responses.counting",
+        }
+        self.assertLessEqual(set(expected_owners), set(responses.__all__))
+        self.assertLessEqual(
+            {
+                "ResponseProfilePolicy",
+                "ResponseProfileValidator",
+                "VisibleTokenCounter",
+            },
+            set(ports.__all__),
+        )
+        self.assertEqual(len(responses.__all__), len(set(responses.__all__)))
+        for name, module_name in expected_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(responses, name), getattr(owner, name))
+
     def test_s14_memory_exports_are_visible_and_owned_by_their_modules(self) -> None:
         import importlib
 

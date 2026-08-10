@@ -31,8 +31,9 @@ Last sync: unix:1786336377
 - On 2026-08-09 the user added three future requirements: deterministic
   short/medium/long answers, controlled proactive conversation probes, and
   opt-in daily campus/industry/arXiv digests through governed MCP-backed public
-  capabilities. The offline Alignment/Tree is accepted; S15/S15A-S15E remain
-  unimplemented and no send is complete.
+  capabilities. The offline Alignment/Tree is accepted; S15 is now complete in
+  its offline mechanical scope, while S15A-S15E and all proactive sends remain
+  unimplemented.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -61,10 +62,10 @@ Last sync: unix:1786336377
   accepted module, Web testing and local audit work is complete.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
-- Response Profile selection, initiated-run orchestration, subscriptions,
-  durable scheduling, proactive authorization, public-source providers and
-  proactive rollout evidence are all unimplemented. The existing S10/S11
-  completion claims remain limited to inbound explicit-mention behavior.
+- Initiated-run orchestration, subscriptions, durable scheduling, proactive
+  authorization, public-source providers and proactive rollout evidence remain
+  unimplemented. S15 now provides the inbound ResponsePlan/Persona foundation;
+  the existing S10/S11 send claims remain limited to explicit-mention behavior.
 - No real Provider Endpoint is currently enableable: composition, sampling,
   health and conformance evidence must close first. No second legal same-role/
   tier Endpoint, propensity log or attributable reward exists for Bandit.
@@ -99,3 +100,7 @@ Last sync: unix:1786336377
 - S14 now returns generation-bound Memory lifecycle and restore, M0/M1/M2
   bounded retrieval and a manifest-bound synthetic Eval. It did not migrate
   legacy commands, enable Runtime Memory, use real data or integrate Iris.
+- S15 now returns deterministic SHORT/MEDIUM/LONG Response Plans, generation-bound
+  Persona resolution, final mechanical validation and a fixed 17-case 3x3 Eval.
+  Real language/style quality, Provider tokenizer behavior and budget calibration
+  remain external gates.

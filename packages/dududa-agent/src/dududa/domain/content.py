@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from dududa._compat import StrEnum
@@ -96,7 +96,10 @@ class DraftResponse:
     refusal: Refusal | None = None
     target_users: tuple[ResolvedIdentityRef, ...] = ()
     attachments: tuple[GeneratedAssetRef, ...] = ()
-    immutable_constraints: ResponseConstraints = ResponseConstraints()
+    immutable_constraints: ResponseConstraints = field(
+        default_factory=ResponseConstraints
+    )
+    response_plan_digest: DigestString | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -120,6 +123,11 @@ class DraftResponse:
         object.__setattr__(self, "warnings", warnings)
         object.__setattr__(self, "target_users", target_users)
         object.__setattr__(self, "attachments", attachments)
+        if self.response_plan_digest is not None:
+            require_non_empty(
+                str(self.response_plan_digest),
+                "response_plan_digest",
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +156,73 @@ class RenderMetadata:
     persona_version: str
     renderer_revision: ComponentRevision
     draft_digest: DigestString
+    response_plan_digest: DigestString | None = None
+    persona_source_digest: DigestString | None = None
+    persona_catalog_digest: DigestString | None = None
+    persona_catalog_snapshot_id: str | None = None
+    persona_fallback_used: bool | None = None
+    persona_render_mode: str | None = None
+    requested_persona_id: str | None = None
+    requested_persona_version: str | None = None
+    persona_resolution_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "persona_id",
+            "persona_version",
+            "draft_digest",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise validation_error("invalid_render_metadata_field", field_name)
+            require_non_empty(value, field_name)
+        if self.response_plan_digest is not None:
+            if not isinstance(self.response_plan_digest, str):
+                raise validation_error("invalid_response_plan_digest")
+            require_non_empty(
+                self.response_plan_digest,
+                "response_plan_digest",
+            )
+        typed_fields = (
+            self.persona_source_digest,
+            self.persona_catalog_digest,
+            self.persona_catalog_snapshot_id,
+            self.persona_fallback_used,
+            self.persona_render_mode,
+            self.requested_persona_id,
+            self.persona_resolution_reason,
+        )
+        if self.persona_source_digest is None:
+            if any(value is not None for value in typed_fields):
+                raise validation_error("partial_persona_render_metadata")
+            if self.requested_persona_version is not None:
+                raise validation_error("partial_persona_render_metadata")
+            return
+        if any(value is None for value in typed_fields):
+            raise validation_error("partial_persona_render_metadata")
+        for field_name in (
+            "persona_source_digest",
+            "persona_catalog_digest",
+            "persona_catalog_snapshot_id",
+            "persona_render_mode",
+            "requested_persona_id",
+            "persona_resolution_reason",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, str):
+                raise validation_error("invalid_render_metadata_field", field_name)
+            require_non_empty(value, field_name)
+        if type(self.persona_fallback_used) is not bool:
+            raise validation_error("invalid_persona_fallback_flag")
+        if self.persona_render_mode not in {"deterministic", "model", "hybrid"}:
+            raise validation_error("invalid_persona_render_mode")
+        if self.requested_persona_version is not None:
+            if not isinstance(self.requested_persona_version, str):
+                raise validation_error("invalid_requested_persona_version")
+            require_non_empty(
+                self.requested_persona_version,
+                "requested_persona_version",
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +278,56 @@ class RenderValidationResult:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ResponseProfileValidationResult:
+    schema_version: int
+    valid: bool
+    response_plan_digest: DigestString
+    rendered_digest: DigestString
+    selected_profile: str
+    visible_token_units: int
+    visible_characters: int
+    required_content_ids: tuple[str, ...]
+    missing_content_ids: tuple[str, ...]
+    unexpected_content_ids: tuple[str, ...]
+    reason_codes: tuple[str, ...]
+    counter_revision: ComponentRevision
+    validator_revision: ComponentRevision
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        if type(self.valid) is not bool:
+            raise validation_error("invalid_response_profile_validation_flag")
+        for name in ("response_plan_digest", "rendered_digest"):
+            require_non_empty(str(getattr(self, name)), name)
+        if self.selected_profile not in {"short", "medium", "long"}:
+            raise validation_error("invalid_validated_response_profile")
+        for name in ("visible_token_units", "visible_characters"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise validation_error("invalid_visible_response_count", name)
+        for name in (
+            "required_content_ids",
+            "missing_content_ids",
+            "unexpected_content_ids",
+            "reason_codes",
+        ):
+            values = tuple(getattr(self, name))
+            if any(not isinstance(value, str) or not value for value in values):
+                raise validation_error("invalid_profile_validation_collection", name)
+            if len(values) != len(set(values)):
+                raise validation_error("duplicate_identifier", name)
+            object.__setattr__(self, name, values)
+        if not self.reason_codes:
+            raise validation_error("missing_profile_validation_reason")
+        if self.valid and (self.missing_content_ids or self.unexpected_content_ids):
+            raise validation_error("valid_profile_validation_has_content_drift")
+        if not isinstance(self.counter_revision, ComponentRevision):
+            raise validation_error("invalid_visible_counter_revision")
+        if not isinstance(self.validator_revision, ComponentRevision):
+            raise validation_error("invalid_profile_validator_revision")
+
+
 class SafetyStage(StrEnum):
     MODEL_INPUT = "model_input"
     TOOL_OUTPUT = "tool_output"
@@ -249,6 +374,7 @@ class ValidatedFinalResponse:
     response: FinalResponse
     render_validation: RenderValidationResult
     content_safety: ContentSafetyDecision
+    profile_validation: ResponseProfileValidationResult | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -276,6 +402,17 @@ class ValidatedFinalResponse:
             or self.content_safety.content_digest != actual_rendered_digest
         ):
             raise validation_error("rendered_digest_mismatch")
+        if self.profile_validation is not None and (
+            not isinstance(
+                self.profile_validation,
+                ResponseProfileValidationResult,
+            )
+            or not self.profile_validation.valid
+            or self.profile_validation.rendered_digest != actual_rendered_digest
+            or self.profile_validation.response_plan_digest
+            != self.response.render_metadata.response_plan_digest
+        ):
+            raise validation_error("profile_validation_mismatch")
         if not _constraints_satisfy(
             self.response.immutable_constraints,
             self.content_safety.required_constraints,

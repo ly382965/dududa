@@ -11,8 +11,39 @@ Last sync: unix:1786336377
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15's accepted offline scope is implemented. The additive `response_profiles` feature remains
+  default-off outside the migrated Offline Runtime composition, and no real Provider or send was
+  enabled.
+- `ResponsePlan` and `PersonaResolution` publish together exactly once: at DECIDED for direct and
+  clarification paths, and at VALIDATED for tool-backed paths. Composer, Renderer, validators,
+  Runtime State and Delivery authorization consume the same immutable evidence.
+- Typed `dududa` and `neutral` assets, strict loading, Catalog CAS publication, last-known-good,
+  bounded snapshot history, neutral fallback and old-generation replay are implemented.
+- The fixed 17-case Eval covers the full Complexity/Profile 3x3 matrix. All 12 eligible explicit
+  requests are honored, cross-two-profile errors are zero, replay order is reproducible and the
+  report remains `release_ready=false`.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added framework-neutral Profile contracts and policy, current-message evidence, exact-Scope
+  preference validation, dynamic reservations and additive ModelRequest bindings without changing
+  Static Router, TierPolicy or ReasoningDepth.
+- Bound Plan and Persona generation evidence through direct, clarification and tool Runtime paths;
+  final mechanical validation checks visible units, characters, parts and protected typed content
+  before Delivery can be authorized. Flag-off preserves the legacy Runtime shape.
+- Added strict typed Persona assets and immutable Catalog generations, then froze a digest-bound,
+  tamper-rejecting 17-case synthetic Eval with mechanical-only quality claims.
+- Python 3.10.20 and 3.12.13 each pass 557 repository tests with two existing AstrBot-host-only
+  skips. MCP contracts, Web 66+42 tests/typecheck/build, package build/import, lock, compile, secret,
+  Shell, Ruff/format and whitespace gates also pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- None inside the accepted S15 offline scope.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- The next branch is S15A `proactive-contracts`; proactive outbound remains default-off and must
+  not be hidden in the inbound Runtime.
+- Real Provider behavior, human Persona/Profile review, real Chinese/QQ experience and final pilot
+  budget calibration remain external gates; the synthetic Eval does not establish them.
