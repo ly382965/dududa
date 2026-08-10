@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: proactive-contracts
 Parent: proactive-outbound
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: in_progress
+Verification: verified
+Last sync: unix:1786341087
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
