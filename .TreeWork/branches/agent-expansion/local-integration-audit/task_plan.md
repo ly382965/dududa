@@ -45,9 +45,9 @@ Title: S19 Local Integration Audit
 
 - [x] Inspect S16/S18 operations/evaluation assets, current CI, Dockerfiles,
   migration map and legacy consumers; freeze this Spec and Plan.
-- [ ] Implement strict SLO/candidate receipt and consumer-inventory tooling with
+- [x] Implement strict SLO/candidate receipt and consumer-inventory tooling with
   focused tamper/privacy/extension tests.
-- [ ] Implement disposable AstrBot/Web image smoke with guaranteed cleanup and
+- [x] Implement disposable AstrBot/Web image smoke with guaranteed cleanup and
   a static no-running-stack contract.
 - [ ] Run dual-Python full discovery, worker and committed Eval gates.
 - [ ] Run proactive/failure samples, Web/E2E, package/static/Compose/secret gates

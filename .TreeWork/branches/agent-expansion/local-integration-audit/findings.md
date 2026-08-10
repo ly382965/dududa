@@ -16,9 +16,13 @@ Branch: local-integration-audit
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 
-- Planned additions are operator-only CLI/config artifacts under `ops/cli` and
-  `configs/release`; no Domain, Runtime, Router, MCP or Web API changes are
-  required.
+- Operator-only artifacts now live under `ops/cli` and `configs/release`; no
+  Domain, Runtime, Router, MCP or Web API changed. The candidate CLI exposes
+  `policy-check`, `inventory`, `gate`, `archive` and `candidate` only.
+- The complete legacy-surface catalog is code-digest-bound. Inventory stores
+  relative tracked consumer paths, while the candidate receipt stores only its
+  digest. Reclassifying a live surface therefore requires reviewed code and
+  catalog changes.
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 

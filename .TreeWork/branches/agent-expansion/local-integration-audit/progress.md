@@ -16,13 +16,17 @@ Last sync: unix:1786272840
   no external data or running-stack change is needed.
 - The previously empty S19 Spec/Plan now freeze a release-candidate audit rather
   than another Runtime or CI control plane. Complete expensive gates run once.
-- Current checked-in SLO values, candidate aggregate receipt, consumer inventory
-  and disposable image-smoke harness do not yet exist.
+- Commit `ae9eae3` now provides strict pilot SLO and code-bound legacy-surface
+  catalogs, atomic gate/candidate receipts, tracked consumer inventory, previous
+  source archive and disposable AstrBot/Web image-smoke tooling.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
 - Read-only intake mapped the complete Python/Web/worker commands, S16 release
   contracts, image boundaries and S22 legacy candidates before implementation.
+- Seven focused audit/fake-Docker tests plus S16 operations and repository
+  contracts passed (22 total). Ruff/format/compile/Shell and a safety scan over
+  823 files passed; no actual image or running container was touched yet.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
@@ -35,6 +39,5 @@ Last sync: unix:1786272840
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Implement the strict standard-library audit/inventory layer first, then the
-  disposable image harness. Commit tooling before launching the long matrix so
-  all receipts bind a clean source revision.
+- Finish documentation/CI maintenance, commit a clean candidate, then run the
+  dual-Python/Web/image/rollback matrix and aggregate its fixed gate receipts.

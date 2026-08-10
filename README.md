@@ -58,7 +58,8 @@ S22。完整发布候选审计由 S19 统一执行。旧 AstrBot
 Handler 仍是生产权威入口，Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
 残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 和
 [阶段报告](docs/refactor/checkpoint-report-2026-08-10.md) 为准；真实质量和生产阶段需要的资料
-见 [外部输入准备清单](docs/refactor/external-input-checklist.md)。
+见 [外部输入准备清单](docs/refactor/external-input-checklist.md)。S19 候选发布审计的本地命令、
+pilot SLO 与无网镜像边界见 [候选发布审计](docs/operations/release-candidate-audit.md)。
 
 ## Requirements
 

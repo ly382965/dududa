@@ -95,7 +95,9 @@ PYTHONDONTWRITEBYTECODE=1 \
 ```
 
 两个命令都必须发现相同数量的测试并全部通过。最近一次完整双 Python 基线是在 S15C 的
-`616 tests, 2 skipped`；S15D-S17 使用聚焦样本，S19 会刷新完整基线。数量不应硬编码进 CI。
+`616 tests, 2 skipped`；S15D-S18 使用聚焦样本，S19 会通过 `ci-python` receipt 刷新完整
+基线。数量不应硬编码进 CI。S19 的 policy、inventory、gate 和候选 receipt 命令见
+[候选发布审计](../operations/release-candidate-audit.md)。
 
 ## 5. Node.js 与 Web
 
