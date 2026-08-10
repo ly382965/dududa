@@ -10,6 +10,7 @@
 - S17 实现提交：`8597d70`、`92fd28c`、`6b4ee09`，旧 marker 兼容修复为 `43fe543`。
 - S18 设计/实现提交：`daf3111`、`5be566a`、`7e7cbab`、`4cd9ddc`。
 - S19 设计/工具提交：`88efa4c`、`ae9eae3`、`d1bce85`；镜像 smoke 修复为 `0813aca`。
+- S22 实现提交：`88ec307`（canonical 路径切换）、`9f0ae9a`（Unified-only iCourse）。
 
 状态依据依次为 TreeWork lifecycle/verification、Git 提交、分支 Verification 和测试记录。
 “完成”只表示相应 Spec 批准的本地或离线范围已完成，不等于产品已经生产就绪。
@@ -22,7 +23,7 @@
 3. S17 三批路径迁移和旧 lock marker 兼容均已提交并通过代表性验证，已经 protected
    completion 并合入控制分支。
 4. S18 已完成统一 Eval/Trace/CI；S19 已完成完整本地发布候选审计，18/18 固定 gate
-   通过；S22、S20 尚未开始。
+   通过；S22 已完成有证据的兼容清理，S20 尚未开始。
    S23 是最终真实群外部门禁，当前不得进入。
 5. 当前仍不是生产就绪状态。真实 Provider、生产 Memory/Tools、真实 Source Adapter、主动发送、
    在线 Bandit 和真实群质量均没有完成证据。
@@ -48,10 +49,10 @@
 | S15D Digest Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；fixture 日报、独立 Preview、零 Output | 真实来源、模型、持久 metadata 与投递 |
 | S15E Probe Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；群级 hard gates、TTL、cooldown、no-response | 真实群 Projection、人工打扰度、投递 |
 | S16 Operations Hardening | 已完成、已验证、已合并（离线） | Release/State/Receipt、只读 Health、SQLite Backup、Restore Plan、失败单次回滚及 Compose contract | 真实容器升级/恢复、备份加密和生产 Driver |
-| S17 Layout Migration | **已完成、已验证、已合并** | `e2cc296` 冻结设计；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/worker/Compose/build 代表证据通过 | 一 Release 兼容链接留到 S22；Manifest v2 延期 |
+| S17 Layout Migration | **已完成、已验证、已合并** | `e2cc296` 冻结设计；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/worker/Compose/build 代表证据通过 | 路径别名已由 S22 删除；Manifest v2 延期 |
 | S18 Evaluation/CI | **已完成、已验证、已合并（离线）** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt/内部生成 run ID、append-only Runtime Trace、双 root/worker lock CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 当时移交给 S19 的完整双 Python、Web/E2E、镜像/容器、故障和 SLO/回滚审计现已关闭；真实质量仍是外部门禁 |
 | S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651/2 skips、350-case Eval、Web 108+6、无网镜像 smoke、静态/Compose/secret、18 面消费者清单和正常/失败回滚证据；18/18 gate 通过 | Pilot SLO 保持 `s23_ready=false`；真实 Provider/source/QQ/人工质量未测 |
-| S22 Legacy Cleanup | 未开始 | Tree 已定义 | 仅删除有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S22 Legacy Cleanup | **已完成、已验证（分支）** | 十个 symlink 与专用 iCourse Client 已删除；七个 live surface 保留；Python 3.12 651/2 skips、3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 与精确 S19 归档通过 | protected completion 后合入；Manifest v2 继续延期 |
 | S20 Offline Bandit | 未开始 | Tree 已定义 | decision/feedback/support/propensity 与 IPS/SNIPS/DR golden |
 | S23 Real Group Validation | 最终外部门禁、未开始 | 无真实发送声明 | 单群 Shadow/Canary/日报/Probe 和分层放量 |
 | Mew/NapCat Web | 已完成、已验证 | `4c6686b`；66 frontend、42 server、6 Playwright、352 repository tests | 两真账号人工 destructive mutation 仍属外部证据 |
@@ -78,7 +79,8 @@ S17 是 path-only 迁移，不重新设计 Runtime、MCP、插件或运维行为
 - 已提交批次 2：`docker/`、`scripts/`、Compose、环境模板和管理入口迁至 `deploy/`、`ops/`；
 - 已提交批次 3：v1 `plugins.lock.json`、`patches/`、`vendor/` 迁至 `third_party/`；
 - 已补兼容：已安装插件的两个已知旧 marker 路径在比较时确定性归一化，未知差异仍拒绝；
-- 根入口和旧目录暂以一 Release 兼容链接保留，S22 才能基于证据删除；
+- 根 `manage.sh`/`compose.yml` 继续作为稳定 operator 入口；S22 已基于消费者和恢复证据删除
+  其余十个路径别名；
 - Manifest v2 因源码 hash、依赖锁和许可证证据不足而延期，当前不得写成已启用；
 - S17 已收口；S18 在不改写各领域指标的前提下增加统一 catalog/runner/receipt，补全原有
   Runtime Trace 路径，并修复 isolated MCP worker CI 和 Node 22 构建输入。
@@ -86,8 +88,8 @@ S17 是 path-only 迁移，不重新设计 Runtime、MCP、插件或运维行为
 
 ## 6. 当前无需外部输入的工作
 
-S22 和 S20 离线基础可以继续使用仓库、Fake、固定 fixture、
-fake clock 和派生镜像完成。它们不需要真实聊天、API Key、QQ 登录态或生产容器修改。
+S22 已完成。S20 离线基础可以继续使用仓库、Fake、固定 fixture 和合成 OPE 完成；它不需要
+真实聊天、API Key、QQ 登录态或生产容器修改。
 
 用户可以并行准备但不应直接提交敏感数据的输入包括：Endpoint 公开目录、Intent/风险分类、
 SHORT/MEDIUM/LONG 样例、来源与调度策略、Memory 产品策略、数据治理规则和标注人员。
@@ -99,7 +101,7 @@ SHORT/MEDIUM/LONG 样例、来源与调度策略、Memory 产品策略、数据�
 恢复开发后沿既有 Tree 串行执行：
 
 ```text
-S17（完成） -> S18（完成） -> S19（完成） -> S22 -> S20 离线基础
+S17（完成） -> S18（完成） -> S19（完成） -> S22（完成） -> S20 离线基础
 ```
 
 S20 不阻塞 S23。只有 S17、S18、S19、S22、既定 Web 回归和发布包均通过后，才另行授权
@@ -108,10 +110,10 @@ S23。真实群测试顺序保持：no-send Shadow -> 明确 @ Canary -> 手动�
 
 ## 8. 当前主要风险
 
-1. S17 canonical 布局已成为控制分支权威，但兼容链接必须在 S22 以消费者/恢复证据清理，
-   不能提前或无限期保留。
+1. S22 已删除路径 symlink 和插件专用 iCourse 旁路；回滚必须恢复精确 S19 Release，不能在
+   当前代码上临时重建混合兼容面。
 2. Iris 固定版本缺少明确许可证证据，Manifest v2 不得据此声称供应链已验证。
-3. S19 已补齐双 Python、Web、镜像和回滚总审计；后续 S22 只需对实际删除面做聚焦回归，
-   不应重复整套 S19 矩阵。
+3. S22 对实际删除面完成了聚焦回归，并只按 Spec 补跑完整 Python 3.12；Web、完整 Eval 和
+   30 日矩阵未重复，继续由 S19 候选证据覆盖。
 4. 真实 Endpoint、Source、Memory 和 QQ 行为都缺少外部证据；合成测试不能替代生产质量声明。
 5. TreeWork 的部分父 epic lifecycle 尚未聚合完成叶节点状态，判断进度时应以叶节点和本报告为准。

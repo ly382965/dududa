@@ -13,34 +13,34 @@ Title: S22 Evidence-Based Legacy Cleanup
 
 ## Acceptance
 
-- [ ] All ten declared aliases are absent and no active code, CI, test,
+- [x] All ten declared aliases are absent and no active code, CI, test,
   Compose, operation or current documentation command consumes them.
-- [ ] Test imports resolve canonical `apps/astrbot-plugins` packages without a
+- [x] Test imports resolve canonical `apps/astrbot-plugins` packages without a
   root compatibility package or symlink.
-- [ ] `LegacyICourseClient`, `icourse_mcp_mode` and per-call plugin MCP v1
+- [x] `LegacyICourseClient`, `icourse_mcp_mode` and per-call plugin MCP v1
   Session/process code are absent; Unified is the only callable client.
-- [ ] Missing/disabled/invalid Unified iCourse composition is stable,
+- [x] Missing/disabled/invalid Unified iCourse composition is stable,
   fail-closed and makes zero direct MCP calls while unrelated plugin lifecycle
   can still initialize and terminate.
-- [ ] Root `manage.sh`/`compose.yml`, legacy Handler/Role/Memory/Audit and worker
+- [x] Root `manage.sh`/`compose.yml`, legacy Handler/Role/Memory/Audit and worker
   `protocol_mode=legacy` are retained with direct consumer evidence.
-- [ ] Repository, iCourse/composition, import, Compose, package, image, secret
+- [x] Repository, iCourse/composition, import, Compose, package, image, secret
   and whitespace gates pass at the scoped S22 level.
-- [ ] Exact S19 candidate source is independently archived and the removal
+- [x] Exact S19 candidate source is independently archived and the removal
   matrix/documentation accurately records removed and retained surfaces.
-- [ ] Progress, Findings and Verification are synchronized; all changes are
+- [x] Progress, Findings and Verification are synchronized; all changes are
   locally committed without push.
 
 ## Local Steps
 
 - [x] Read S19 inventory/rollback evidence and freeze S22 Spec/Plan.
-- [ ] Migrate canonical path/import/config/document consumers and remove the ten
+- [x] Migrate canonical path/import/config/document consumers and remove the ten
   aliases as one focused path-cutover commit.
-- [ ] Remove the dedicated iCourse Client and add fail-closed composition tests
+- [x] Remove the dedicated iCourse Client and add fail-closed composition tests
   as a separate focused commit.
-- [ ] Run scoped cross-version/package/image/Compose verification and create the
+- [x] Run scoped cross-version/package/image/Compose verification and create the
   S19 rollback archive.
-- [ ] Update removal evidence and project status, commit, verify and return.
+- [x] Update removal evidence and project status, commit, verify and return.
 
 ## Out Of Scope
 

@@ -17,8 +17,9 @@
   S15B 持久调度、S15C 来源框架/合成 fixture、S15D fixture 日报和 S15E synthetic group
   Probe Shadow；真实来源/群 Projection、持久 Probe state、模型与发送继续作为外部门禁。
 - S17 三批 path-only 迁移与旧 lock marker 兼容已经 protected completion 并合入控制分支。
-  S18 已实现统一 Eval/Trace/CI 并通过双 Python 风险样本；Manifest v2 仍因 hash、依赖锁和
-  许可证证据不足延期。S19 本地候选审计已完成；S22/S20/S23 尚未开始。
+  S18 已实现统一 Eval/Trace/CI，S19 已完成 18/18 本地候选审计；S22 已删除十个路径别名和
+  插件专用 iCourse Client，并保留七个仍有消费者的兼容面。Manifest v2 继续因 hash、依赖锁
+  和许可证证据不足延期；S20/S23 尚未开始。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -52,7 +53,7 @@
 
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
-| S12 Unified MCP | 已完成（离线） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker、iCourse facade/Legacy 回滚和 Fake/iCourse 同 Contract | 新真实 Server、实时来源、凭据和生产 Tool enablement |
+| S12 Unified MCP | 已完成（离线） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker、iCourse facade 和 Fake/iCourse 同 Contract；S22 已删除专用直连回滚 | 新真实 Server、实时来源、凭据和生产 Tool enablement |
 | S13 Capability Runtime | 已完成（离线） | 分离的 Capability Catalog、Retrieval、有限 Planner、逐步授权 Executor、Observation Validator、iCourse 只读映射和配置式 Fake 扩展 | 真实 Planning Endpoint、高风险/写能力、人工语言质量和生产 Tools Rollout |
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 | S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
@@ -72,10 +73,10 @@
 
 | 步骤 | 状态 | 当前证据 | 下一边界 |
 | --- | --- | --- | --- |
-| S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 一 Release 兼容链接留到 S22；Manifest v2 继续延期 |
+| S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 路径别名已由 S22 删除；Manifest v2 继续延期 |
 | S18 Evaluation/CI | **已完成、已验证、已合并（离线）** | `daf3111`/`5be566a`/`7e7cbab`/`4cd9ddc`；十个固定 runner、十四维且完整摘要绑定的 catalog、低敏 receipt、内部生成 run ID、真实 phase path Trace、双锁 CI；350 个 bundle case、146 项 focused Contract 与 Python 3.10 风险样本通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障注入和 SLO/回滚候选审计留给 S19 |
 | S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651 tests/2 skips、worker 各 2、350-case committed Eval、30 日/故障抽样、Web 108+6、双镜像无网 smoke、39 项 package/static、5 项 Compose、824 文件 secret scan 和两类 rollback 均通过；18/18 固定 gate 由低敏 receipt 绑定 | `s23_ready=false`；真实 Provider/source/QQ/人工质量仍是外部门禁；18 项 S22 清单为 10 remove candidate、7 retain live、1 blocked unknown |
-| S22 Legacy Cleanup | 未开始 | Tree 分支为 pending/unverified | 只删除已有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S22 Legacy Cleanup | **已完成、已验证（分支）** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | 等待 protected completion 合入；Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | 未开始 | Tree 分支为 pending/unverified | 仅完成 decision/feedback/support/propensity 与合成 IPS/SNIPS/DR golden |
 | S23 Real Group Validation | 最终外部门禁、未开始 | 无真实发送或真实来源声明 | 前置门禁关闭后另行逐行为授权 |
 
@@ -90,11 +91,24 @@
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
-| Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
-| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19 已完成 30 日与故障抽样 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S22 发布闭环未完成 |
+| Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker和 iCourse facade；S22 已删除专用直连 Client，缺失时 fail closed；S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据 | 生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
+| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | Mew/NapCat WebUI | 已完成（既定范围） | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests；不等同于 Agent Control Plane |
-| 真实群聊放量 | 最终阶段（未开始） | S19 本地审计和既定 WebUI 回归已通过；仍须先完成 S22 并取得逐行为授权；可选 S20 不阻塞 |
+| 真实群聊放量 | 最终阶段（未开始） | S19/S22 本地发布门禁和既定 WebUI 回归已通过；仍须取得逐行为授权与真实外部输入；可选 S20 不阻塞 |
+
+## 2026-08-10 S22 阶段证据
+
+| 门禁 | 当前结果 |
+| --- | --- |
+| 路径切换 | 十个 symlink 全部删除；CI、测试、Spike、管理脚本和当前文档只消费 canonical 路径；根 `manage.sh`/`compose.yml` 保留 |
+| iCourse Client | 插件内 MCP SDK stdio/逐调用进程、`LegacyICourseClient` 和 `icourse_mcp_mode` 已删除；仅剩 Unified 或稳定 unavailable facade |
+| 明确保留 | Rollout `LEGACY` owner、`LegacyRolePolicy`、`JsonMemoryRepository`、worker `protocol_mode=legacy` 和 AstrBot `AuditLog` 均有消费者证据 |
+| Python | 3.12 完整仓库 651 tests OK/2 skips；3.10 S22 风险样本 32 tests OK/2 skips；worker 2 tests、根 worker/Capability 11 tests 通过 |
+| 镜像与构建 | AstrBot 镜像 `sha256:ca19ef...c5c0a` 在无网/只读模式证明实际 Unified 组合、MCP 1.29/2.0 隔离和 19 项插件测试；wheel/import/pip check 通过 |
+| 运维与安全 | 根/canonical Compose 逐字节等价，contract digest `sha256:305745...f0da`；824 文件 secret、双锁、Shell、compile、JSON、import boundary 和 whitespace 通过 |
+| 回滚 | 精确 S19 `e303dc8` archive SHA-256 `80500b51...dc77`，mode 0600；完整矩阵见 `s22-removal-matrix.md` |
+| 未重复范围 | Web、完整 Eval 和 30 日矩阵沿用 S19 证据；S22 未修改这些表面 |
 
 ## 2026-08-10 S18 阶段证据
 
