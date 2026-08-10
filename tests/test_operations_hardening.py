@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from scripts.dududa_ops import (
+from ops.cli.dududa_ops import (
     BackupManager,
     HealthCheck,
     HealthReport,
@@ -409,13 +409,15 @@ class OperationsHardeningTests(unittest.TestCase):
             validate_compose_contract(public)
         self.assertEqual(unsafe_port.exception.code, "compose_port_not_loopback")
 
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         for value in (
             "${DUDUDA_WEB_HOST:-127.0.0.1}",
             "${ASTRBOT_WEBUI_HOST:-127.0.0.1}",
             "${NAPCAT_WEBUI_HOST:-127.0.0.1}",
-            "./config:/opt/dududa/config:ro",
-            "./scripts:/opt/dududa/scripts:ro",
+            "./configs:/opt/dududa/config:ro",
+            "./ops/cli:/opt/dududa/scripts:ro",
             "./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro",
         ):
             self.assertIn(value, compose)
@@ -454,7 +456,7 @@ class OperationsHardeningTests(unittest.TestCase):
         self.assertEqual(
             arguments.read_text(encoding="utf-8").splitlines(),
             [
-                "scripts/dududa_ops.py",
+                "ops/cli/dududa_ops.py",
                 "health",
                 "--data-root",
                 str(managed_root),
@@ -464,7 +466,9 @@ class OperationsHardeningTests(unittest.TestCase):
         )
         self.assertFalse(managed_root.exists())
 
-        manage = (ROOT / "manage.sh").read_text(encoding="utf-8")
+        root_manage = (ROOT / "manage.sh").read_text(encoding="utf-8")
+        self.assertIn('exec "$ROOT_DIR/ops/manage.sh" "$@"', root_manage)
+        manage = (ROOT / "ops" / "manage.sh").read_text(encoding="utf-8")
         for command in (
             "bootstrap",
             "health",

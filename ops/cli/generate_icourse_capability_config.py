@@ -31,7 +31,7 @@ from dududa.domain.primitives import (
 )
 from dududa.mcp import McpOperationSemantics
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = Path("configs/capabilities")
 
 MCP_SCHEMA_DIGESTS = {

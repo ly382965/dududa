@@ -10,7 +10,7 @@ from dududa.capabilities import load_capability_catalog_snapshot
 from dududa.errors import DududaError
 from dududa.mcp import ConfigMcpServerRegistry
 
-from scripts.generate_icourse_capability_config import rendered_documents
+from ops.cli.generate_icourse_capability_config import rendered_documents
 from tests.unit.capabilities.test_contracts import NOW
 
 ROOT = Path(__file__).resolve().parents[2]

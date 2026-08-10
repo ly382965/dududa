@@ -24,7 +24,7 @@ class RuntimeSyncTests(unittest.TestCase):
             subprocess.run(
                 [
                     sys.executable,
-                    str(ROOT / "scripts" / "sync_runtime.py"),
+                    str(ROOT / "ops" / "cli" / "sync_runtime.py"),
                     "--data-root",
                     str(data_root),
                 ],

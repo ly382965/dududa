@@ -15,14 +15,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class RepositoryContractTests(unittest.TestCase):
     def test_derived_image_installs_framework_neutral_core(self) -> None:
-        dockerfile = (ROOT / "docker" / "astrbot" / "Dockerfile").read_text(
-            encoding="utf-8"
-        )
+        dockerfile = (
+            ROOT / "deploy" / "docker" / "astrbot" / "Dockerfile"
+        ).read_text(encoding="utf-8")
         self.assertIn("COPY packages/dududa-agent", dockerfile)
         self.assertIn("/opt/dududa/dududa-agent", dockerfile)
 
     def test_compose_contains_only_bot_services(self) -> None:
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         services: set[str] = set()
         in_services = False
         for line in compose.splitlines():
@@ -96,7 +98,9 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(plugin_schema["icourse_mcp_mode"]["default"], "unified")
 
     def test_compose_keeps_owned_code_read_only(self) -> None:
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("PYTHONDONTWRITEBYTECODE", compose)
         for name in (
             "astrbot_plugin_dududa_core",
@@ -107,14 +111,16 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
 
     def test_astrbot_image_keeps_mcp_v1_and_v2_isolated(self) -> None:
-        dockerfile = (ROOT / "docker" / "astrbot" / "Dockerfile").read_text(
-            encoding="utf-8"
-        )
+        dockerfile = (
+            ROOT / "deploy" / "docker" / "astrbot" / "Dockerfile"
+        ).read_text(encoding="utf-8")
         self.assertIn('"mcp==1.29.0"', dockerfile)
         self.assertIn("services/mcp/unified-worker", dockerfile)
         self.assertIn("--locked --no-dev", dockerfile)
         self.assertIn('version("mcp") == "2.0.0"', dockerfile)
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("  astrbot:\n    init: true\n", compose)
 
     def test_persona_seed_is_idempotent(self) -> None:
@@ -143,7 +149,7 @@ class RepositoryContractTests(unittest.TestCase):
             config.write_text('{"provider_settings": {}}\n', encoding="utf-8")
             command = [
                 sys.executable,
-                str(ROOT / "scripts" / "seed_astrbot.py"),
+                str(ROOT / "ops" / "cli" / "seed_astrbot.py"),
                 "--database",
                 str(database),
                 "--astrbot-config",

@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "configure_napcat_web.py"
+SCRIPT = ROOT / "ops" / "cli" / "configure_napcat_web.py"
 SPEC = importlib.util.spec_from_file_location("configure_napcat_web", SCRIPT)
 assert SPEC and SPEC.loader
 MODULE = importlib.util.module_from_spec(SPEC)

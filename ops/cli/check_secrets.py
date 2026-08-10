@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SKIP_DIRS = {".git", ".venv", "__pycache__", "data", "runtime", "node_modules"}
 FORBIDDEN_NAMES = {".env", "id_rsa", "id_ed25519", "auth.json"}
 FORBIDDEN_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".dump", ".pem", ".p12", ".pfx"}
