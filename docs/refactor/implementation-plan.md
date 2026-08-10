@@ -60,7 +60,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
-| 主动消息与订阅推送 | 部分完成（S15A 已完成） | v1 initiated-run/Target/Grant/Trigger/Subscription/Preview/Dispatch/Receipt 契约、当前 Actor 解析、默认拒绝策略、全局/Scope 配额、metadata-only Preview、稳定幂等与 crash recovery 已通过双 Python 和负向 Contract | S15B-S15E 的持久 Scheduler、Source contract、fixture-backed Digest/Probe Shadow 与回滚闭环仍未完成；真实校园/arXiv/行业 Source Adapter 是外部门禁 |
+| 主动消息与订阅推送 | 部分完成（S15B 已完成） | S15A 默认拒绝契约之上，S15B 已实现 IANA/DST、持久 Subscription/occurrence、CAS/lease、misfire、暂停/撤销失效、重启与 30 日 fake-clock 证据 | S15C-S15E 的 Source contract、fixture-backed Digest/Probe Shadow 与回滚闭环仍未完成；真实校园/arXiv/行业 Source Adapter 是外部门禁 |
 | 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
@@ -88,7 +88,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S14 | 已完成（离线） | 生命周期、删除/tombstone、scoped export、archive/restore、M0 no-memory、M1 recency、M2 CJK BM25、固定合成 Eval 与双 Python/构建/Web/安全综合证据均通过 | 不启用 Runtime Memory；真实 Iris、授权数据、人工质量和 Embedding/Hybrid 继续作为外部门禁 |
 | S15 | 已完成（离线） | Profile/Persona 契约、Runtime/Delivery 绑定、17-case 3x3 Eval、双 Python/构建/Web 综合证据均通过 | 不声明真实中文体验、Persona 风格、Provider tokenizer 或最终预算已校准 |
 | S15A | 已完成（离线） | 主动 DTO/Port、Target/Grant Registry、Actor 解析、默认拒绝 Policy、quota、Preview metadata、Dispatch CAS/recovery、Fake 与 590 项双 Python 全仓证据 | 不含 Scheduler、来源、模型、真实 Output 或 QQ 发送；生产保持无入口且默认 off |
-| S15B–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S15B 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S15B | 已完成（离线） | 持久 Scheduler、typed JSON/SQLite authority、DST/misfire、双实例 claim/reclaim/ack、重启/篡改和 30 日仿真通过 | 不含生产组合、来源、模型、Output 或真实发送 |
+| S15C–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S15C 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
@@ -177,7 +178,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S14 | 6E | 沿用既有 Scope/Repository/Write Gate，闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore，再实现 M0 no-memory、M1 recency 与 M2 CJK BM25 | 生命周期/重启/故障回滚 Contract、Iris unsupported fail-closed、M0 零调用、M1/M2 同 generation、固定合成 Precision/Recall/MRR/nDCG 和五类零暴露门禁通过 | Runtime/旧命令切流、生产 Iris、真实 Memory 数据与人工质量；Embedding/Hybrid、Graph/Temporal 和自动写入均不在 S14 |
 | S15 | 6F | 先实现确定性 `ResponsePlan(SHORT/MEDIUM/LONG)` 和动态输出预算，再完成 OC/Persona 产品化：版本化资产、Composer/Renderer 分层、Render/Profile Validator、用户偏好隔离和 Golden/盲评 | 3x3 Complexity/Profile 正交矩阵、明确详略要求、实际长度/分片通过；Fact/Citation/Refusal/Target/Attachment 变化为 0；版本回滚与 fallback 可执行 | 把长度绑定 Tier、多 Persona 市场、在线风格/Profile 探索 |
 | S15A | 主动出站 A | 冻结 initiated-run、TargetPolicy/Grant Ref、Trigger、Subscription、Schedule、Preview、Source、Policy、Dispatch、Receipt、`message.send.proactive` 和 `proactive.subscription.preview` 契约；实现 Fake Clock/Store/Output，默认 off | operator/group-policy grant、canonical digest、Scope/授权/revision/quiet-hour/限流/空 allowlist/kill switch、Preview 零投递、恢复复用 PreparedDispatch 和跨 Adapter 版本稳定幂等键的负向 Contract Test 通过 | 网络、模型、真实来源、真实发送 |
-| S15B | 主动出站 B | 实现持久 Scheduler、IANA 时区、occurrence、CAS claim、misfire、pause/unsubscribe 和 Dispatch Store；只产生结构化 trigger | 双 Worker、重复 tick、重启、时钟回拨、DST 和 30 日 fake-clock 仿真无重复/过期补发/撤销后任务 | MCP、内容生成、OutputAdapter |
+| S15B | 主动出站 B | 实现持久 Scheduler、IANA 时区、occurrence、CAS claim、misfire、pause/unsubscribe 和 Schedule Store；只产生结构化 trigger claim | 双 Worker、重复 tick、重启、时钟回拨、DST 和 30 日 fake-clock 仿真无重复/过期补发/撤销后任务 | MCP、内容生成、OutputAdapter |
 | S15C | 主动出站 C | 只定义通用 `SourceProvider`、`SourceItem/SourceBatch`、provenance、freshness、revision、citation、allowlist 和去重；用 Fake Capability Provider 与本地固定校园/arXiv/行业 fixture 验证 | Schema/URL/大小/来源游标/条目去重，以及超时/取消/熔断/注入 Contract 通过；准确标记“来源框架完成、真实 Adapter 未完成” | 真实校园/arXiv/行业 MCP/Adapter、实时网络、任意 URL、私人校园信息、外部写、MCP 发送 |
 | S15D | 主动出站 D | 接入日报 ResponsePlan、Composer、Persona、来源/引用/长度 Validator；只运行 fixture-backed collect/no-send Shadow 和独立 `PREVIEW` Port | Shadow/Preview 构造无 OutputAdapter；Preview 不创建 occurrence/dispatch/receipt 且正文不进普通 Trace；30 日 fixture 来源/摘要/去重/故障仿真和回滚通过 | 真实来源 Shadow、自动真实发送、LONG 默认日报 |
 | S15E | 主动出站 E | 实现群级 Conversation Opportunity、确定性 Proactive Policy、SHORT Probe 与 no-response 长冷却；独立 Shadow/kill switch | 错误目标、重复、quiet-hour、频控、个人/敏感内容和自动追问违规均为 0 | 主动私聊、@个人、个人 Memory、Bandit send/skip |

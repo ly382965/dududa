@@ -6,7 +6,7 @@
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S15A 的既定离线工程已完成到 S15A；S12/S13 已闭合统一 MCP 与受治理 Capability，
+- S01–S15B 的既定离线工程已完成到 S15B；S12/S13 已闭合统一 MCP 与受治理 Capability，
   S14 已闭合 Memory 生命周期、M0-M2 词法基线和固定合成 Eval，并通过双 Python、构建、
   Web 与安全综合 Verification；S15/S15A 已闭合回答档位/Persona 和主动出站默认拒绝契约。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
@@ -14,7 +14,7 @@
   总审计完成之后；独立可选 S20 不属于该发布前置。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约与
-  默认拒绝控制；Conversation Probe、校园/行业/arXiv 来源和日报仍等待 S15B-S15E，真实来源
+  S15B 持久调度；Conversation Probe、校园/行业/arXiv 来源和日报仍等待 S15C-S15E，真实来源
   与发送继续作为外部门禁。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。
@@ -44,7 +44,7 @@
 | S10 Offline Runtime | 已完成 | Connector 到 Delivery receipt 的显式 @ 直聊闭环、两次模型预算、CAS/single-flight、Composition、reconciliation 与 Shadow | Tool、Memory、Attachment、生产 Provider 和主动群聊 |
 | S11 Controlled Rollout | 已完成（本地） | typed mode、白名单、SQLite claim/tombstone、priority-100 AstrBot Bridge、发送前熔断、脱敏指标和回滚 CLI | 未经授权的真实 QQ 群发送、广泛生产切流 |
 
-## S12–S15A 实施状态
+## S12–S15B 实施状态
 
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
@@ -53,6 +53,7 @@
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 | S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
 | S15A Proactive Contracts | 已完成（离线） | initiated-run/Target/Grant/Trigger/Subscription/Preview/Dispatch/Receipt v1 契约、当前 Actor 解析、默认拒绝策略、global/Scope quota、metadata-only Preview、稳定幂等、crash recovery、双 Python 590 项全仓测试 | 持久 Scheduler、真实来源、模型合成、生产 Registry/Output、QQ 发送和真实群证据 |
+| S15B Durable Scheduler | 已完成（离线） | framework-neutral Scheduler Ports、typed JSON、SQLite Subscription/slot authority、IANA/DST、misfire、CAS/lease/reclaim/ack、暂停/撤销失效、重启/篡改与 30 日 fake-clock 仿真 | 生产 Scheduler 组合、Source、模型、Output、真实订阅与 QQ 发送 |
 
 ## 产品模块完成度
 
@@ -66,10 +67,22 @@
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
-| 主动消息/订阅推送 | 部分完成（S15A） | initiated-run、Target/Grant、主动授权重验、quiet hours/quota/kill switch、独立 Preview、稳定投递幂等和恢复契约已实现且生产默认 off；Scheduler/Source、Digest/Probe Shadow 均未实现 |
+| 主动消息/订阅推送 | 部分完成（S15B） | S15A initiated-run/Target/Grant/默认拒绝控制，以及 S15B 持久 Scheduler、DST/misfire、Subscription CAS、claim/reclaim/ack 和 30 日仿真已实现；生产仍默认 off | Source、Digest/Probe Shadow、生产组合与真实发送均未实现 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |
 | 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
+
+## 2026-08-10 S15B 阶段证据
+
+| 门禁 | 当前结果 |
+| --- | --- |
+| 调度与持久状态机 | Subscription create/update/pause/resume/revoke CAS、跨 revision local-date 唯一 slot、READY/CLAIMED/EMITTED/SKIPPED/INVALIDATED、稳定 materialization/claim/ack receipt 均已实现 |
+| 时间语义 | New York、Berlin、Lord Howe 的 normal/fold/gap round-trip 测试通过；gap 固定 tombstone，fold 取最早 UTC，未来任务不物化，过期 misfire 不补发 |
+| 并发与恢复 | 双 SQLite 实例只有一个 live claim；同 worker 幂等、lease 过期递增 reclaim、旧 claim ack 拒绝、重启 exact ack 与持久行篡改拒绝通过 |
+| 30 日 fake-clock | 30 个 occurrence、30 个 emitted、零重复 slot、零过期补发；重复 tick 和时钟回拨不恢复终态 |
+| 双 Python | 3.10.20 与 3.12.13 各 `601 tests OK`、2 个既有 AstrBot-only skip；各自 29 项 Proactive/Scheduler `-W error` 聚焦套件全过 |
+| 构建与边界 | changed-file Ruff/format、compileall、uv lock、sdist/wheel 安装/import/pip check、782 文件 secret scan、Shell/CLI/Compose/whitespace 全过 |
+| unchanged Web | 66 frontend + 42 server tests、typecheck、production build 和 production dependency audit 通过；未扩建 Control Plane，未修改运行中的 NapCat/AstrBot 容器 |
 
 ## 2026-08-10 S14 阶段证据
 
@@ -155,13 +168,13 @@
    不能把宿主测试与镜像 smoke 合并成同一结果。
 8. **三档回答已完成机械契约。** 不得把长回答映射 Opus 或短回答映射 Haiku；当前
    `ResponsePlan` 和 Validator 证据不等于真实中文质量、Persona 风格或最终预算已校准。
-9. **主动出站仅完成 S15A。** 定时器不得伪造用户消息，MCP 不得拥有订阅/调度/发送；
-   S15A 只有默认拒绝契约与内存 Fake，在 S15B-S15E 的 fake-clock、来源、Shadow 和回滚门禁
-   完成前不进真实群。
+9. **主动出站完成到 S15B。** 定时器只产生结构化 Trigger claim，不伪造用户消息；MCP
+   不拥有订阅、调度或发送。S15B 是离线 SQLite 参考 authority，在 S15C-S15E 的来源、Shadow
+   和回滚门禁完成前不做生产组合或真实群发送。
 
 ## 下一步
 
-S15A 综合 Verification 完成后，按 Tree 继续 S15B-S15E 和既定 WebUI 回归，
+S15B 综合 Verification 完成后，按 Tree 继续 S15C-S15E 和既定 WebUI 回归，
 再执行 S16-S19 本地回归、
 30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @

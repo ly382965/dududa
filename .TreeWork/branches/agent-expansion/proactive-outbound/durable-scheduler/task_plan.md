@@ -25,7 +25,7 @@ Title: S15B Durable Scheduler
   claimable Trigger; 30-day fake-clock simulation has zero duplicate/late occurrence.
 - [x] Scheduler objects contain no MCP, source, model, Memory, Output or Connector dependency and
   only return structured `ProactiveTrigger` ownership facts.
-- [ ] Python 3.10/3.12 focused/full, build/static/lock/secret/whitespace and necessary Web gates
+- [x] Python 3.10/3.12 focused/full, build/static/lock/secret/whitespace and necessary Web gates
   pass; Progress/Findings/Verification and public status are synchronized.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
@@ -35,7 +35,7 @@ Title: S15B Durable Scheduler
 - [x] Implement explicit subscription JSON codec and SQLite durable store/schema.
 - [x] Implement IANA/DST/misfire materializer plus claim/reclaim/ack/invalidation state machine.
 - [x] Add CAS, restart, dual-worker, DST and 30-day fake-clock tests and import contracts.
-- [ ] Run focused/full verification, synchronize docs, record TreeWork Verification, complete,
+- [x] Run focused/full verification, synchronize docs, record TreeWork Verification, complete,
   locally merge and enter S15C.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
