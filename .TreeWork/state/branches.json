@@ -358,10 +358,19 @@
       "title": "S14 Memory Lifecycle And Retrieval",
       "purpose": "Complete Memory administration, deletion and lexical retrieval without weakening Scope authority.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/memory-retrieval",
+        "git_branch": "treework/memory-retrieval",
+        "managed_by_treework": false,
+        "created_at": "unix:1786321574",
+        "last_entered_at": "unix:1786321574",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786329018"
     },
     {
       "path": "response-persona",

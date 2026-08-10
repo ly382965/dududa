@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "bounded-capability",
+  "current_branch": "memory-retrieval",
   "artifact_layout_version": 2,
-  "last_event_seq": 64,
+  "last_event_seq": 67,
   "tree_revision": 3,
   "tree_editing": null,
   "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786321449"
+  "last_sync": "unix:1786329018"
 }
