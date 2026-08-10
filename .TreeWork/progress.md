@@ -28,12 +28,11 @@ Last sync: unix:1786336377
   environment and are not evidence for this Alignment.
 - Tree revision 2 adds the Mew/NapCat epic after explicit user approval of real
   NapCat data caching and the Mew source baseline.
-- On 2026-08-09 the user added three future requirements: deterministic
-  short/medium/long answers, controlled proactive conversation probes, and
-  opt-in daily campus/industry/arXiv digests through governed MCP-backed public
-  capabilities. The offline Alignment/Tree is accepted; S15 is now complete in
-  its offline mechanical scope, while S15A-S15E and all proactive sends remain
-  unimplemented.
+- On 2026-08-09 the user added deterministic short/medium/long answers,
+  controlled proactive conversation probes, and opt-in campus/industry/arXiv
+  digests. S15 and S15A are now complete in their offline scopes: answer plans,
+  proactive contracts and the default-deny control layer exist, while S15B-S15E
+  scheduling/source/Shadow work and every real proactive send remain absent.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -62,10 +61,10 @@ Last sync: unix:1786336377
   accepted module, Web testing and local audit work is complete.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
-- Initiated-run orchestration, subscriptions, durable scheduling, proactive
-  authorization, public-source providers and proactive rollout evidence remain
-  unimplemented. S15 now provides the inbound ResponsePlan/Persona foundation;
-  the existing S10/S11 send claims remain limited to explicit-mention behavior.
+- Durable scheduling, public-source providers, Digest/Probe Shadow and proactive
+  rollout evidence remain unimplemented. S15A now provides initiated-run,
+  Target/Grant, authorization, quota, Preview and Dispatch recovery contracts,
+  but the existing S10/S11 send claims remain limited to explicit mentions.
 - No real Provider Endpoint is currently enableable: composition, sampling,
   health and conformance evidence must close first. No second legal same-role/
   tier Endpoint, propensity log or attributable reward exists for Bandit.
@@ -104,3 +103,6 @@ Last sync: unix:1786336377
   Persona resolution, final mechanical validation and a fixed 17-case 3x3 Eval.
   Real language/style quality, Provider tokenizer behavior and budget calibration
   remain external gates.
+- S15A now returns default-off initiated-run contracts, exact Target/Grant/current
+  Actor revalidation, paired global/Scope quota, metadata-only Preview and stable
+  PreparedDispatch recovery. It adds no Scheduler, source, model or real send.

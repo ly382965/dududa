@@ -11,23 +11,32 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- S15 is verified and integrated. S15A is the sole active WIP branch.
-- Root requirements, project Spec, proactive design and implementation plan already define the
-  initiated-run, Target/Grant, Preview, stable idempotency and default-off boundaries; the leaf
-  originally contained only generated templates.
-- No real proactive Runtime, Scheduler, source, model or Output path exists or is enabled.
+- S15A is complete in its offline contract/control scope. The new initiated-run domain remains
+  absent from the production composition root and every proactive behavior defaults to OFF with
+  an empty allowlist and active kill switch.
+- Framework-neutral Ports now cover current-Actor resolution, Target/Grant resolution, atomic
+  global/Scope quota, Preview metadata, Dispatch CAS/recovery and future orchestration. Services
+  depend on those Ports rather than the in-memory implementations.
+- No Scheduler, source collection, model composition, real Output integration or QQ send exists
+  or is enabled; those boundaries remain owned by S15B-S15E and S23.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Reconciled approved design into a branch-local Spec and executable Task Plan without changing
-  S01-S15 architecture or adding a second development route.
+- Added strict v1 proactive DTO/digests, Registry/config, current-Actor initiation guard,
+  deterministic delivery policy, paired quota leases, isolated Preview with metadata-only store,
+  PreparedDispatch recovery ledger and local Fakes.
+- Negative tests cover default/non-delivery modes, empty allowlist, quiet hours, kill switch,
+  authorization revision, audit rollback, Actor resolution, revoked/expired/replaced/cross-kind
+  grants, stable business idempotency, crash-to-UNKNOWN recovery and Preview zero delivery.
+- Python 3.10.20 and 3.12.13 each pass 590 repository tests with two existing AstrBot-only skips;
+  focused proactive suites, Web 66+42 tests/build and repository build/static gates pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- All implementation and verification steps after the design commit remain open.
+- No S15A offline acceptance item remains open.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Continue only in `/home/mmdustc/Code/.treework-worktrees/dududa/proactive-contracts`.
-- First code slice owns immutable proactive contracts/digests; do not implement Scheduler or
-  source collection in S15A.
+- Return to the control workspace after completion and enter S15B `durable-scheduler`.
+- Real source adapters, real models, production authorization and QQ delivery remain external or
+  later-branch gates; S15A completion must not be read as an active proactive product.

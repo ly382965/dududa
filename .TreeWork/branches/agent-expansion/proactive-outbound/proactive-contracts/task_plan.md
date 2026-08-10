@@ -14,34 +14,34 @@ Title: S15A Proactive Contracts
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] TargetPolicy/Grant Ref, Trigger, Subscription/Schedule, Run/Preview, Source, Policy,
+- [x] TargetPolicy/Grant Ref, Trigger, Subscription/Schedule, Run/Preview, Source, Policy,
   Dispatch/Claim and Receipt contracts are strict, immutable, versioned and digest-bound.
-- [ ] Exact Target/Grant/Scope/action/revision/expiry resolution fails closed for missing,
+- [x] Exact Target/Grant/Scope/action/revision/expiry resolution fails closed for missing,
   revoked, replaced, stale or cross-kind evidence.
-- [ ] Default config is OFF with empty allowlists and active kill switches; OFF/COLLECT/SHADOW
+- [x] Default config is OFF with empty allowlists and active kill switches; OFF/COLLECT/SHADOW
   and every failed quiet-hour/limit/audit/authorization gate produce zero delivery.
-- [ ] Preview uses its own action and Port, returns only to an authorized Actor and cannot create
+- [x] Preview uses its own action and Port, returns only to an authorized Actor and cannot create
   occurrences, PreparedDispatch, DeliveryRequest/Receipt or Output calls.
-- [ ] PreparedDispatch business idempotency is stable across worker/attempt/Adapter revisions;
+- [x] PreparedDispatch business idempotency is stable across worker/attempt/Adapter revisions;
   exact replay reuses the stored object and changed content/target/ref conflicts.
-- [ ] Fake Clock/Registry/Store/Output and Contract tests use only synthetic local fixtures and
+- [x] Fake Clock/Registry/Store/Output and Contract tests use only synthetic local fixtures and
   prove there is no network, model, MCP, real source or real send dependency.
-- [ ] Existing inbound Runtime/Router/ResponsePlan/Output behavior and import boundaries remain
+- [x] Existing inbound Runtime/Router/ResponsePlan/Output behavior and import boundaries remain
   compatible; no second control plane or forged Connector path is introduced.
-- [ ] Python 3.10/3.12 focused/full, build/lock/compile/secret/whitespace and necessary Web gates
+- [x] Python 3.10/3.12 focused/full, build/lock/compile/secret/whitespace and necessary Web gates
   pass; Progress/Findings/Verification and public implementation status are synchronized.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
 - [x] Reconcile the approved root Spec, proactive design and S15A plan; freeze this branch Spec
   and Task Plan before code.
-- [ ] Implement proactive enums, immutable DTOs, canonical projections/digests and public exports.
-- [ ] Implement strict config plus Target/Grant Registry resolution and preflight validation.
-- [ ] Implement deterministic initiation/pre-dispatch gates, quiet-hour/limit/kill-switch inputs
+- [x] Implement proactive enums, immutable DTOs, canonical projections/digests and public exports.
+- [x] Implement strict config plus Target/Grant Registry resolution and preflight validation.
+- [x] Implement deterministic initiation/pre-dispatch gates, quiet-hour/limit/kill-switch inputs
   and stable reason codes using existing security Ports where applicable.
-- [ ] Implement Preview isolation, PreparedDispatch idempotency/recovery and local Fakes.
-- [ ] Add Unit/Contract/import tests for negative matrices and focused warning-as-error gates.
-- [ ] Synchronize status/developer docs, run full dual-Python/repository/Web verification, record
+- [x] Implement Preview isolation, PreparedDispatch idempotency/recovery and local Fakes.
+- [x] Add Unit/Contract/import tests for negative matrices and focused warning-as-error gates.
+- [x] Synchronize status/developer docs, run full dual-Python/repository/Web verification, record
   TreeWork Verification, complete, locally merge and return to the control workspace.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
