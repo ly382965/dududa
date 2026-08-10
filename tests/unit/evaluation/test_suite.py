@@ -116,11 +116,11 @@ class EvaluationSuiteTests(unittest.TestCase):
                 CATALOG,
                 profile_id="committed-bundles",
                 receipt_path=receipt_path,
-                run_id="eval-receipt-test",
             )
             committed = json.loads(receipt_path.read_text(encoding="utf-8"))
 
             self.assertEqual(receipt["status"], "passed")
+            self.assertRegex(receipt["run_id"], r"^eval-[0-9a-f]{32}$")
             self.assertEqual(
                 canonical_json_bytes(committed),
                 canonical_json_bytes(receipt),
@@ -171,7 +171,6 @@ class EvaluationSuiteTests(unittest.TestCase):
                 CATALOG,
                 profile_id="committed-bundles",
                 receipt_path=receipt_path,
-                run_id="eval-failure-test",
             )
 
             self.assertEqual(receipt["status"], "failed")

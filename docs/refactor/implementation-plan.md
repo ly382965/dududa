@@ -193,7 +193,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S15E | 主动出站 E | 实现群级 Conversation Opportunity、确定性 Proactive Policy、SHORT Probe 与 no-response 长冷却；独立 Shadow/kill switch | 错误目标、重复、quiet-hour、频控、个人/敏感内容和自动追问违规均为 0 | 主动私聊、@个人、个人 Memory、Bandit send/skip |
 | S16 | 8A | 先做运维硬化：health、backup、restore、upgrade receipt、rollback、最小 mount/network 和 Release manifest | 一次性数据完成 bootstrap -> start -> health -> backup -> upgrade -> restore -> rollback | 大规模目录移动或删除兼容入口 |
 | S17 | 8B | 用 `git mv` 分批迁移 `apps/`、`packages/`、`services/`、`configs/`、`deploy/ops`、`third_party/`；根入口保持兼容 | 每次路径切换的消费者契约、容器 smoke、根包装层和上一 Release 回滚通过 | 同一 PR 同时移动全部路径或运行数据 |
-| S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、run 关联、模型/ResponsePlan/MCP/Memory/OC/Proactive 指标、fake-clock、故障注入、镜像与容器 smoke | 完整 unit/contract/integration/eval/smoke 矩阵通过；Trace 不含原文/凭据/真实标识；回答档位与主动安全阈值冻结 | 通过删除安全测试恢复绿色状态 |
+| S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、固定 runner/catalog、低敏 receipt、模型/ResponsePlan/MCP/Memory/OC/Proactive 维度和可复现 CI 命令 | 双 Python 风险样本、bundle/Contract、Trace 隐私、锁/构建/Compose/secret 门禁通过；完整全仓、Web、镜像/容器和故障矩阵明确交给 S19 | 通过删除安全测试恢复绿色状态，或把合成证据写成真实质量 |
 | S19 | 本地总集成 | 汇总所有当前发布必需模块，执行全仓回归、离线回放、30 日调度/Probe no-send 仿真、故障注入、SLO 预注册和发布候选审计 | 发布必需模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
 | S22 | 10 | 按 `migration-map.md` 逐项删除旧 Client、Handler、Import、Mount 和路径；每次只清一个兼容面 | 生产入口和测试只消费新实现；移除清单为 0；迁移/回滚完成并保留可独立恢复 Release | 顺手重构或没有消费者证据的批量删除 |
 | S23 | 最终真实场景 | 所有当前发布必需模块、既定 WebUI 测试和本地审计完成后，在同一授权单群依次执行 no-send shadow、明确 @ canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，再考虑 3–5 群分层放量 | 重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
@@ -616,9 +616,10 @@ PreparedDispatch 全部失效，再停 Scheduler/Worker；保留最小 dedup/rec
 ### 目标
 
 汇总并强化从 Phase 0 起已经存在的版本化 Eval 数据集、Runtime Trace、MCP/模型指标、
-ResponsePlan、Memory 隔离回归、Proactive fake-clock/来源/投递指标、导入/分层检查和完整
-smoke Job；本阶段不是首次增加 Eval 或 Trace。Bandit estimator 与 OPE 只属于独立可选的 S20，
-不在本 Phase 汇总或实现。
+ResponsePlan、Memory 隔离回归、Proactive fake-clock/来源/投递指标和导入/分层检查，并把
+完整 release-candidate 命令固化进 CI。S18 运行风险分层样本；完整全仓、Web、镜像/容器和
+故障矩阵统一在 S19 执行。本阶段不是首次增加领域 Eval。Bandit estimator 与 OPE 只属于
+独立可选的 S20，不在本 Phase 汇总或实现。
 
 ### 必需的 Eval 维度
 
@@ -628,9 +629,11 @@ OC 一致性、调度/订阅/来源新鲜度/去重和主动打扰度。Fixture 
 
 ### 验证
 
-CI 执行单元、契约、集成和 Eval 测试，以及镜像构建、插件安装/导入、Persona seed、
-MCP 握手、Compose、仓库扫描和选定的一次性容器 smoke 测试。不稳定的模型测试使用
-确定性 Gateway，或采用明确的非阻塞 Eval 策略。
+CI 定义双 Python 单元/契约/集成/Eval、独立 MCP worker、镜像构建、插件安装/导入、
+Persona seed、MCP 握手、Compose、仓库扫描和一次性容器 smoke 命令。S18 本地验证
+catalog/receipt/Trace、双锁、聚焦 Contract、package、Node 22 build 和真实 Compose JSON；
+S19 才执行完整矩阵与实际镜像/容器 smoke。不稳定的模型测试使用确定性 Gateway，或采用
+明确的非阻塞 Eval 策略。
 
 ### 回滚
 

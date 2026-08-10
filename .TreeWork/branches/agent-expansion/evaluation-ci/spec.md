@@ -44,17 +44,26 @@ suites return only test counts and a digest of bounded result metadata. The
 runner has focused and CI profiles, but both resolve only cataloged fixed
 runners. Bandit/OPE is absent and remains owned by S20.
 
+The canonical digest of the complete catalog is fixed in code. Suite identity,
+revision, evidence kind, dimensions, quality claim, external gates and profile
+membership therefore change only through a reviewed code-and-catalog update;
+otherwise loading fails before any runner executes.
+
 ### Low-Sensitivity Execution Receipt
 
 `python -m dududa.evaluation.suite check evals/suite-v1.json` validates the
 whole catalog before execution, runs one selected profile and atomically writes
-a versioned receipt. The receipt contains only:
+a versioned receipt. Its complete field classes are:
 
-- synthetic run ID, UTC timestamps, source revision/dirty bit, Python version,
-  catalog/profile digests;
-- suite ID/revision, evidence kind, status, case count, bounded reason code,
+- receipt kind, generated synthetic run ID, UTC timestamps, source revision/
+  dirty bit, Python version, catalog/profile IDs and digests, overall status;
+- suite ID/revision, evidence kind, status, technical/release/human-review
+  booleans, case and zero-user-data counts, bounded duration/reason code,
   input/report digest, quality claim and declared external gates;
 - a final receipt digest.
+
+The CLI cannot accept a caller-provided run ID; every run receives a fresh
+`eval-<uuid>` correlation value.
 
 It never stores fixture text, prompts, model output, QQ/user/group identifiers,
 credentials, environment variables, command lines, absolute paths, hostnames
@@ -97,7 +106,8 @@ samples rather than duplicating that audit locally.
 ### Failure And Rollback
 
 - Unknown catalog fields, runner IDs, profiles, dimensions, duplicate IDs,
-  unsafe data policy or missing coverage fail before running a suite.
+  unsafe data policy, missing coverage or any code-bound catalog metadata/
+  profile drift fail before running a suite.
 - Bundle drift, non-technical pass, Contract failure, worker bootstrap failure,
   Trace mutation or receipt write failure fails closed.
 - CI and the runner never delete a safety test to restore green status.

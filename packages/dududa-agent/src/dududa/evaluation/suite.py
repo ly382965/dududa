@@ -461,7 +461,6 @@ def run_suite_profile(
     *,
     profile_id: str,
     receipt_path: Path | str,
-    run_id: str | None = None,
     stream: TextIO | None = None,
 ) -> Mapping[str, object]:
     catalog_file = Path(catalog_path).resolve()
@@ -471,7 +470,7 @@ def run_suite_profile(
     catalog = load_suite_catalog(catalog_file)
     selected_ids = catalog.profile(profile_id)
     selected = {item.suite_id: item for item in catalog.suites}
-    bounded_run_id = _identifier(run_id or f"eval-{uuid.uuid4().hex}", "run_id")
+    bounded_run_id = f"eval-{uuid.uuid4().hex}"
     output = stream or sys.stderr
     started_at = _utc_now()
     source_revision, source_dirty = _git_evidence(root)
@@ -748,7 +747,6 @@ def _parser() -> argparse.ArgumentParser:
     check.add_argument("catalog", type=Path)
     check.add_argument("--profile", default="s18-focused")
     check.add_argument("--receipt", type=Path, required=True)
-    check.add_argument("--run-id")
     return parser
 
 
@@ -759,7 +757,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.catalog,
             profile_id=args.profile,
             receipt_path=args.receipt,
-            run_id=args.run_id,
         )
     except EvaluationSuiteError as exc:
         print(exc.code, file=sys.stderr)
