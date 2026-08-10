@@ -6,7 +6,7 @@
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S15E 的既定离线工程已完成到 S15E；S12/S13 已闭合统一 MCP 与受治理 Capability，
+- S01–S16 的既定离线工程已完成到 S16；S12/S13 已闭合统一 MCP 与受治理 Capability，
   S14 已闭合 Memory 生命周期、M0-M2 词法基线和固定合成 Eval，并通过双 Python、构建、
   Web 与安全综合 Verification；S15/S15A 已闭合回答档位/Persona 和主动出站默认拒绝契约。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
@@ -58,6 +58,12 @@
 | S15D Digest Shadow | 已完成（离线） | digest policy/metadata、确定性 Composer/Builder、LONG -> MEDIUM Plan、no-send COLLECT/SHADOW、隔离 PREVIEW、来源/引用/Persona/长度验证和第 1/2/30 天抽样 | 生产 Scheduler 组合、真实 Source/模型、生产 metadata persistence、Output/Dispatch/QQ 发送和真实内容质量 |
 | S15E Probe Shadow | 已完成（离线） | sanitized group projection、deterministic hard gates、短 TTL Opportunity/Trigger/Run、原子 namespaced claim/cooldown、attribution window、no-response 长冷却、固定 SHORT Persona/Validator 和 metadata-only no-send Runtime | 真实 Projection Adapter/聊天、持久 Probe state、人工相关性/打扰度、模型/Tool/Memory/Output、自动追问和 QQ 发送 |
 
+## S16 实施状态
+
+| 步骤 | 状态 | 已交付 | 明确未做 |
+| --- | --- | --- | --- |
+| S16 Operations Hardening | 已完成（离线） | 标准库 Release Manifest/State/Stage Receipt、只读 Health、SQLite Backup API、校验与确定性 Restore Plan、Upgrade/单次失败回滚、根命令转发、实际 Compose mount/network Contract；共享 Source await 已受 cancellation/deadline 约束 | 真实 Compose/HTTP/MCP Driver、生产备份范围和加密、原地 Restore、真实容器升级/回滚观察、无人值守生产声明 |
+
 ## 产品模块完成度
 
 | 模块 | 状态 | 判断依据 |
@@ -70,10 +76,20 @@
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
-| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S16-S19/S22 发布闭环未完成 |
+| 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S16 已约束 Source 中途取消/超时 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S17-S19/S22 发布闭环未完成 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |
 | 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
+
+## 2026-08-10 S16 阶段证据
+
+| 门禁 | 当前结果 |
+| --- | --- |
+| 发布事务 | Manifest、current/previous State、逐阶段 Receipt 分离且 digest-bound；Health 成功前不提升 target |
+| 数据恢复 | 普通文件与 WAL SQLite 一致性 Backup、篡改拒绝、两次一致 Restore Plan、显式空目标恢复通过 |
+| 故障回滚 | target Health 失败后只回滚一次；previous pointer 不变，失败 Release、Backup 和 Receipt 保留 |
+| 部署边界 | 根 Shell 按需探测 Docker并原样转发退出码；实际 Compose JSON 的 loopback、mount、network Contract 通过 |
+| 抽样测试 | Python 3.10/3.12 各 4 个 S16 场景和 1 个阻塞 Reader 样本通过；Python 3.12 受影响 Source 模块 9 项通过；Web/全仓按加速策略留到 S19 |
 
 ## 2026-08-10 S15E 阶段证据
 
@@ -199,8 +215,8 @@
 
 ## 下一步
 
-S15E Verification 完成后，按 Tree 继续 S16；Web 未受影响时不重复回归，再执行
-S16-S19 本地回归、
+S16 Verification 完成后按用户要求暂停，不自动进入 S17。恢复开发时按 Tree 执行
+S17-S19 本地回归、
 30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路

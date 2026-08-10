@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import unittest
 from dataclasses import replace
 from datetime import timedelta
@@ -253,6 +254,37 @@ class GovernedSourceProviderTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(receipt.status, SourceFetchStatus.CANCELLED)
         self.assertEqual(receipt.reason_codes, ("source_call_cancelled",))
+        self.assertEqual(receipt.next_cursors, ())
+
+    async def test_running_reader_is_bounded_by_call_cancellation(self) -> None:
+        fixture = GovernedSourceFixture()
+        cancellation = ManualCancellationToken()
+        started = asyncio.Event()
+        blocked = asyncio.Event()
+
+        class BlockingReader:
+            async def read(self, definition, cursor, request, *, call):
+                started.set()
+                await blocked.wait()
+
+        provider = GovernedSourceProvider(
+            fixture.registry,
+            BlockingReader(),
+            fixture.state_store,
+            clock=fixture.clock,
+        )
+        task = asyncio.create_task(
+            provider.fetch(
+                fixture.request,
+                call=fixture.call(cancellation=cancellation),
+            )
+        )
+        await asyncio.wait_for(started.wait(), timeout=1)
+        cancellation.cancel()
+        receipt = await asyncio.wait_for(task, timeout=1)
+
+        self.assertEqual(receipt.status, SourceFetchStatus.CANCELLED)
+        self.assertEqual(receipt.reason_codes, ("source_reader_cancelled",))
         self.assertEqual(receipt.next_cursors, ())
 
     async def test_atomic_commit_rejects_stale_cursor_before_item_mutation(

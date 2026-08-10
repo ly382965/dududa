@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
+PYTHON="${PYTHON:-python3}"
 
 ENV_FILE=".env"
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -59,15 +60,29 @@ project_name() {
   printf '%s\n' "${name:-dududa}"
 }
 
-if docker info >/dev/null 2>&1; then
-  DOCKER=(docker)
-else
-  DOCKER=(sudo docker)
-fi
-COMPOSE=("${DOCKER[@]}" compose --env-file "$ENV_FILE" -f compose.yml -p "$(project_name)")
+DOCKER_READY=0
+declare -a DOCKER COMPOSE
+
+setup_docker() {
+  if [[ "$DOCKER_READY" == "1" ]]; then
+    return
+  fi
+  if docker info >/dev/null 2>&1; then
+    DOCKER=(docker)
+  else
+    DOCKER=(sudo docker)
+  fi
+  COMPOSE=("${DOCKER[@]}" compose --env-file "$ENV_FILE" -f compose.yml -p "$(project_name)")
+  DOCKER_READY=1
+}
+
+ops_cli() {
+  "$PYTHON" scripts/dududa_ops.py "$@"
+}
 
 ensure_edge_network() {
   local network
+  setup_docker
   network="${EDGE_NETWORK:-$(env_value EDGE_NETWORK "$ENV_FILE")}"
   network="${network:-mmdustc-edge}"
   if ! "${DOCKER[@]}" network inspect "$network" >/dev/null 2>&1; then
@@ -80,6 +95,12 @@ usage() {
     'Usage: ./manage.sh <command> [service]' \
     '' \
     'Commands:' \
+    '  bootstrap   Create private runtime and versioned operations directories' \
+    '  start       Start containers without build, seed, or migration' \
+    '  health      Run read-only release health checks' \
+    '  backup      Create and verify a release-bound backup' \
+    '  restore     Verify and plan restore; use --apply only for an empty target' \
+    '  rollback    Roll back through an explicit operations driver plan' \
     '  init        Create private runtime directories and merge safe templates' \
     '  plugins     Install locked third-party plugins into runtime data' \
     '  sync        Merge the icourse MCP template into runtime config' \
@@ -98,6 +119,9 @@ usage() {
 
 cmd="${1:-}"
 case "$cmd" in
+  bootstrap)
+    ops_cli bootstrap --data-root "$(data_root)"
+    ;;
   init)
     if [[ ! -f .env ]]; then
       umask 077
@@ -105,20 +129,20 @@ case "$cmd" in
     fi
     chmod 600 .env
     runtime_root="$(data_root)"
-    mkdir -p "$runtime_root/astrbot/plugins" "$runtime_root/napcat/config" "$runtime_root/napcat/ntqq"
-    chmod 700 "$runtime_root" "$runtime_root/astrbot" "$runtime_root/napcat" 2>/dev/null || true
+    ops_cli bootstrap --data-root "$runtime_root" >/dev/null
     ensure_web_secrets
-    python3 scripts/sync_runtime.py --data-root "$runtime_root"
+    "$PYTHON" scripts/sync_runtime.py --data-root "$runtime_root"
     ;;
   plugins)
     runtime_root="$(data_root)"
     mkdir -p "$runtime_root/astrbot/plugins"
-    python3 scripts/install_plugins.py --data-root "$runtime_root"
+    "$PYTHON" scripts/install_plugins.py --data-root "$runtime_root"
     ;;
   sync)
-    python3 scripts/sync_runtime.py --data-root "$(data_root)" --force-config
+    "$PYTHON" scripts/sync_runtime.py --data-root "$(data_root)" --force-config
     ;;
   seed)
+    setup_docker
     "${COMPOSE[@]}" exec -T astrbot python /opt/dududa/scripts/seed_astrbot.py \
       --database /AstrBot/data/data_v4.db \
       --astrbot-config /AstrBot/data/cmd_config.json \
@@ -133,6 +157,26 @@ case "$cmd" in
     "$0" seed
     "${COMPOSE[@]}" restart astrbot
     ;;
+  start)
+    ensure_edge_network
+    "${COMPOSE[@]}" up -d
+    ;;
+  health)
+    shift
+    ops_cli health --data-root "$(data_root)" "$@"
+    ;;
+  backup)
+    shift
+    ops_cli backup --data-root "$(data_root)" "$@"
+    ;;
+  restore)
+    shift
+    ops_cli restore --data-root "$(data_root)" "$@"
+    ;;
+  rollback)
+    shift
+    ops_cli rollback --data-root "$(data_root)" "$@"
+    ;;
   web-up)
     ensure_web_secrets
     ensure_edge_network
@@ -141,38 +185,49 @@ case "$cmd" in
   web-connect)
     "$0" init
     runtime_root="$(data_root)"
-    python3 scripts/configure_napcat_web.py \
+    "$PYTHON" scripts/configure_napcat_web.py \
       --config-dir "$runtime_root/napcat/config" \
       --token-file "$(web_data_root)/secrets/onebot_access_token" \
       --apply
     "${COMPOSE[@]}" restart napcat
     ;;
   down)
+    setup_docker
     "${COMPOSE[@]}" down
     ;;
   restart)
     shift
+    setup_docker
     "${COMPOSE[@]}" restart "$@"
     ;;
   logs)
     shift
+    setup_docker
     "${COMPOSE[@]}" logs -f --tail=200 "$@"
     ;;
   ps)
+    setup_docker
     "${COMPOSE[@]}" ps
     ;;
   pull)
+    setup_docker
     "${COMPOSE[@]}" pull --ignore-buildable
     ;;
   upgrade)
-    "$0" plugins
-    "$0" sync
-    ensure_edge_network
-    "${COMPOSE[@]}" pull --ignore-buildable
-    "${COMPOSE[@]}" up -d --build
-    "$0" seed
+    shift
+    if [[ "$#" -gt 0 ]]; then
+      ops_cli upgrade --data-root "$(data_root)" "$@"
+    else
+      "$0" plugins
+      "$0" sync
+      ensure_edge_network
+      "${COMPOSE[@]}" pull --ignore-buildable
+      "${COMPOSE[@]}" up -d --build
+      "$0" seed
+    fi
     ;;
   config)
+    setup_docker
     "${COMPOSE[@]}" config
     ;;
   *)

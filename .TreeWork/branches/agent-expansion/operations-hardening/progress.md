@@ -11,8 +11,30 @@ Last sync: unix:1786356508
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+S16 is complete for its offline boundary. `scripts/dududa_ops.py` owns versioned
+release manifests, atomic state/stage receipts, read-only health, verified
+file/SQLite backup, deterministic restore planning and injected-driver
+start/upgrade/rollback orchestration. Root commands remain compatible and do
+not probe Docker for file-only operations. The known S15D shared Source await
+gap is also bounded by call cancellation and deadline.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Proved one disposable release lifecycle and manifest/backup/restore tamper,
+  failed-health single rollback, wrapper/Compose and blocking Reader samples.
+- Python 3.10.20 and 3.12.13 each passed the same five representative tests;
+  Python 3.12 also passed all nine affected Source tests. Targeted Ruff/format,
+  compile, Shell syntax, actual Compose rendering and whitespace checks passed.
+- S16 status and production limitations are synchronized in the Chinese
+  implementation and operations documents.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+None inside the accepted S16 offline boundary. Real deployment probes,
+production backup inventory/encryption, in-place restore and container
+upgrade/rollback observation remain explicit S19/S23 environment gates.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+Complete and integrate S16, then stop as requested. Do not enter S17 in this
+turn. When development resumes, S17 is the next dependency-ready branch.
