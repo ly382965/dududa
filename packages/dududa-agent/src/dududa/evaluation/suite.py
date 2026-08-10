@@ -38,6 +38,10 @@ _DATA_POLICY = {
     "network_allowed": False,
     "real_user_data_allowed": False,
 }
+_CATALOG_CONTRACT_DIGEST = (
+    "dududa-c14n-v1:eval:suite-catalog:v1:sha-256:"
+    "0a3a5efbfc19c429258448fc9d26d66153a191a57a9f189c687f9a5a4e35677f"
+)
 _SUITE_FIELDS = {
     "suite_id",
     "runner_id",
@@ -439,6 +443,9 @@ def load_suite_catalog(path: Path | str) -> SuiteCatalog:
         )
         if selected_dimensions != _ALL_DIMENSIONS:
             raise EvaluationSuiteError("incomplete_profile_dimension_coverage")
+    catalog_digest = str(canonical_digest(document, domain="eval:suite-catalog:v1"))
+    if catalog_digest != _CATALOG_CONTRACT_DIGEST:
+        raise EvaluationSuiteError("evaluation_catalog_contract_mismatch")
 
     return SuiteCatalog(
         catalog_id=catalog_id,

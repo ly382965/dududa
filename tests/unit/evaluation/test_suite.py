@@ -64,6 +64,44 @@ class EvaluationSuiteTests(unittest.TestCase):
             ):
                 load_suite_catalog(changed)
 
+    def test_catalog_binds_evidence_metadata_and_profile_membership(self) -> None:
+        mutations = (
+            (
+                "revision",
+                lambda value: value["suites"][0].__setitem__(
+                    "suite_revision", "forged-revision"
+                ),
+            ),
+            (
+                "claim",
+                lambda value: value["suites"][0].__setitem__(
+                    "quality_claim", "production_ready"
+                ),
+            ),
+            (
+                "gates",
+                lambda value: value["suites"][0].__setitem__("external_gates", []),
+            ),
+            (
+                "profile",
+                lambda value: value["profiles"].__setitem__(
+                    "committed-bundles", ["perception-tiering-v1"]
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory(prefix="dududa-suite-binding-") as temporary:
+            for label, mutate in mutations:
+                with self.subTest(label=label):
+                    document = json.loads(CATALOG.read_text(encoding="utf-8"))
+                    mutate(document)
+                    changed = Path(temporary) / f"{label}.json"
+                    changed.write_text(json.dumps(document), encoding="utf-8")
+                    with self.assertRaisesRegex(
+                        EvaluationSuiteError,
+                        "evaluation_catalog_contract_mismatch",
+                    ):
+                        load_suite_catalog(changed)
+
     def test_success_receipt_is_atomic_digest_bound_and_low_sensitivity(self) -> None:
         replacements = {
             runner_id: replace(definition, execute=_fake_evidence)
