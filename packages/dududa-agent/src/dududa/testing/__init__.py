@@ -17,7 +17,9 @@ from .models import (
 )
 from .proactive import (
     MappingProactiveActorResolver,
+    MappingProactiveSubscriptionStore,
     MutableClock,
+    RecordingDigestShadowMetadataSink,
     RecordingFakeProactiveOutput,
     RecordingProactivePreviewMetadataStore,
     StaticProactivePreviewProducer,
@@ -32,9 +34,11 @@ __all__ = [
     "MappingMcpEnvironmentProvider",
     "MappingMcpSecretResolver",
     "MappingProactiveActorResolver",
+    "MappingProactiveSubscriptionStore",
     "MutableClock",
     "ProviderOutcome",
     "ProviderSuccess",
+    "RecordingDigestShadowMetadataSink",
     "RecordingFakeMcpSession",
     "RecordingFakeMcpSessionFactory",
     "RecordingFakeModelProvider",

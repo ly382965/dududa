@@ -41,6 +41,10 @@ if TYPE_CHECKING:
         SourceItem,
         SubscriptionMutationReceipt,
     )
+    from .digest_contracts import (
+        DigestCompositionPolicySnapshot,
+        DigestShadowMetadata,
+    )
     from .source_contracts import (
         SourceCapabilityObservation,
         SourceCursor,
@@ -161,6 +165,14 @@ _CONTRACT_DIGESTS = {
     "SourceStateCommitReceipt": (
         "receipt_digest",
         "proactive:source-state-commit-receipt:v1",
+    ),
+    "DigestCompositionPolicySnapshot": (
+        "policy_digest",
+        "proactive:digest-composition-policy:v1",
+    ),
+    "DigestShadowMetadata": (
+        "metadata_digest",
+        "proactive:digest-shadow-metadata:v1",
     ),
     "ProactivePolicyDecision": (
         "decision_digest",
@@ -573,6 +585,26 @@ def source_state_commit_receipt_digest(
     )
 
 
+def digest_composition_policy_digest(
+    policy: DigestCompositionPolicySnapshot | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        policy,
+        "policy_digest",
+        domain="proactive:digest-composition-policy:v1",
+    )
+
+
+def digest_shadow_metadata_digest(
+    metadata: DigestShadowMetadata | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        metadata,
+        "metadata_digest",
+        domain="proactive:digest-shadow-metadata:v1",
+    )
+
+
 def proactive_policy_decision_digest(
     decision: ProactivePolicyDecision | Mapping[str, object],
 ) -> DigestString:
@@ -712,6 +744,8 @@ def _normalize_local_values(value: object) -> object:
 
 __all__: Iterable[str] = (
     "conversation_opportunity_snapshot_digest",
+    "digest_composition_policy_digest",
+    "digest_shadow_metadata_digest",
     "dispatch_claim_digest",
     "initiated_run_request_digest",
     "local_time_window_digest",

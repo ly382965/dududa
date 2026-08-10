@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import Protocol, runtime_checkable
 
-from dududa.domain.content import ValidatedFinalResponse
+from dududa.domain.content import DraftResponse, ValidatedFinalResponse
 from dududa.domain.identity import Actor, ActorRef, ConversationScope
 from dududa.domain.primitives import DigestString
 from dududa.ports.context import PortCallContext, ServiceCallContext
@@ -31,8 +31,13 @@ from dududa.proactive.contracts import (
     ScheduleMaterializationReceipt,
     ScheduleOccurrenceState,
     ScheduleTriggerClaim,
+    SourceBatch,
     SourceCategory,
     SubscriptionMutationReceipt,
+)
+from dududa.proactive.digest_contracts import (
+    DigestCompositionPolicySnapshot,
+    DigestShadowMetadata,
 )
 from dududa.proactive.source_contracts import (
     SourceCapabilityObservation,
@@ -44,6 +49,7 @@ from dududa.proactive.source_contracts import (
     SourceStateCommitPlan,
     SourceStateCommitReceipt,
 )
+from dududa.responses.contracts import ResponsePlan
 
 
 @runtime_checkable
@@ -94,6 +100,36 @@ class SourceProvider(Protocol):
         *,
         call: PortCallContext,
     ) -> SourceFetchReceipt: ...
+
+
+@runtime_checkable
+class DigestComposer(Protocol):
+    def compose(
+        self,
+        batch: SourceBatch,
+        plan: ResponsePlan,
+        policy: DigestCompositionPolicySnapshot,
+    ) -> DraftResponse: ...
+
+
+@runtime_checkable
+class DigestShadowMetadataSink(Protocol):
+    async def record(
+        self,
+        metadata: DigestShadowMetadata,
+        *,
+        call: ServiceCallContext,
+    ) -> None: ...
+
+
+@runtime_checkable
+class DigestShadowRunner(Protocol):
+    async def run(
+        self,
+        request: InitiatedRunRequest,
+        *,
+        call: ServiceCallContext,
+    ) -> ProactiveRunReceipt: ...
 
 
 @runtime_checkable
@@ -374,6 +410,9 @@ class ProactiveDeliveryOrchestrator(Protocol):
 
 
 __all__ = [
+    "DigestComposer",
+    "DigestShadowMetadataSink",
+    "DigestShadowRunner",
     "ProactiveActorResolver",
     "ProactiveDeliveryOrchestrator",
     "ProactiveDispatchStore",
