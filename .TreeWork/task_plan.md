@@ -46,12 +46,12 @@
   workflows pass adapted Unit and E2E contracts on desktop and mobile.
 - [x] Concurrent accounts remain isolated through gateway actions, events,
   browser caches, drafts and uploads, with the OneBot token server-only.
-- [ ] Production shape, additive semantic contracts, Unified MCP/iCourse
+- [x] Production shape, additive semantic contracts, Unified MCP/iCourse
   migration, bounded Capability and Memory lifecycle/retrieval pass their local
   negative and compatibility contracts.
-- [ ] Response Profile selection, dynamic output budgeting and final length/
+- [x] Response Profile selection, dynamic output budgeting and final length/
   completeness validation pass a task-complexity by answer-profile matrix.
-- [ ] Proactive probes and scheduled digests pass default-off, authorization,
+- [x] Proactive probes and scheduled digests pass default-off, authorization,
   target-policy/grant binding, preview-without-delivery, stable business
   idempotency across Adapter revisions, fake-clock, concurrency, MCP-source,
   citation, deduplication, quiet-hour, unsubscribe, delivery and rollback
@@ -61,9 +61,9 @@
 - [ ] After every earlier acceptance item and local audit passes, the authorized
   real-group shadow/canary records the frozen safety and SLO evidence.
 
-All local S08-S11 and Web criteria and their completion audits are satisfied.
-The newly accepted response-planning and proactive-outbound criteria are not
-implemented. The final real-group gate remains last and requires a separate
+All local S08-S16 and Web criteria in their accepted offline scopes are
+satisfied. S17 is in progress and unverified; S18, S19, S22 and S20 remain
+pending. The final real-group gate remains last and requires a separate
 authorized external run after these local criteria and their audit pass.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
@@ -101,10 +101,10 @@ authorized external run after these local criteria and their audit pass.
     inbound canary, separately authorized digest/probe canaries, and only
     afterward any layered group expansion/debugging.
 
-The next Tree revision must add the response/proactive expansion and its local
-audit before the terminal real-group branch. The terminal branch must depend on
-every accepted local audit and cannot be entered merely because credentials
-arrive.
+Tree revision 3 already contains the response/proactive expansion, operations,
+layout, Eval/CI, local audit, cleanup, offline Bandit and terminal real-group
+branches. The terminal branch depends on every accepted local audit and cannot
+be entered merely because credentials arrive.
 
 ## Out Of Scope (project-wide exclusions; not branch ownership detail)
 

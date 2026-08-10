@@ -121,40 +121,40 @@ not block this offline development scope and must not be fabricated.
 - [x] The OneBot token, QQ credentials, raw local paths and unrestricted OneBot
   action access never reach the browser; destructive actions use a typed
   server allowlist and the unauthenticated Web service remains loopback-only.
-- [ ] The pre-S12 production shape installs one default-off Runtime composition,
+- [x] The pre-S12 production shape installs one default-off Runtime composition,
   projects only proven sampling parameters, publishes bounded health snapshots
   and uses a SQLite strategy outside the known WAL-reset hazard, with partial
   startup and shutdown verified offline.
-- [ ] The additive S09 semantic contract preserves v1 readers and Connector
+- [x] The additive S09 semantic contract preserves v1 readers and Connector
   authority while adding validated spans, entity/reference evidence and
   `ACCEPT | CLARIFY | ABSTAIN`; synthetic evidence is not called real Chinese
   quality.
-- [ ] S12 provides a framework-neutral Unified MCP Client, multi-Server
+- [x] S12 provides a framework-neutral Unified MCP Client, multi-Server
   Registry, per-Server lifecycle and Dududa-owned Schema snapshots. iCourse and
   a Fake Server pass the same Contract, and adding the Fake requires no Domain,
   Runtime or generic Client change.
-- [ ] S13 maps only explicitly approved business Capabilities to MCP tools and
+- [x] S13 maps only explicitly approved business Capabilities to MCP tools and
   fails closed for unauthorized, stale, unknown, injected or over-budget plans;
   dynamic discovery never grants permission.
-- [ ] S14 closes Memory write/read/delete/export/conflict/recovery behavior and
+- [x] S14 closes Memory write/read/delete/export/conflict/recovery behavior and
   a CJK lexical baseline without cross-Scope, expired or deleted records
   becoming visible.
-- [ ] A versioned Response Plan deterministically selects short/medium/long,
+- [x] A versioned Response Plan deterministically selects short/medium/long,
   binds visible character/token/part limits, respects explicit current-message
   detail requests, and is consumed by Router, Composer, Renderer, and final
   validation without equating answer length to model tier.
-- [ ] Proactive conversation probes are default-off and require a target-bound
+- [x] Proactive conversation probes are default-off and require a target-bound
   proactive-send authorization, allowlist, quiet hours, persistent occurrence
   claim, global/per-scope frequency budget, pre-send kill-switch recheck,
   delivery reconciliation, and a no-response cooldown.
-- [ ] Scheduled subscriptions use durable time-zone-aware occurrences,
+- [x] Scheduled subscriptions use durable time-zone-aware occurrences,
   bounded misfire handling, source and delivery deduplication, public read-only
   Capability/MCP results with freshness and citations, and effective
   pause/unsubscribe/revision invalidation before delivery.
-- [ ] S15C defines a source-neutral Provider and normalized source contract and
+- [x] S15C defines a source-neutral Provider and normalized source contract and
   proves it with local campus/arXiv/industry fixtures. It does not claim live
   Adapters or create fictitious MCP Servers.
-- [ ] Offline/fake-clock and recommendation-only shadow evidence records zero
+- [x] Offline/fake-clock and recommendation-only shadow evidence records zero
   wrong-target, duplicate, quiet-hour, revoked-subscription, uncited,
   prompt-injected, sensitive-trace, or unauthorized-send incidents before any
   proactive real-group canary is considered.

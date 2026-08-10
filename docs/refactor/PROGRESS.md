@@ -16,8 +16,11 @@
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
   S15B 持久调度、S15C 来源框架/合成 fixture、S15D fixture 日报和 S15E synthetic group
   Probe Shadow；真实来源/群 Projection、持久 Probe state、模型与发送继续作为外部门禁。
+- S17 已开始但尚未完成：两批 path-only 迁移已经提交，第三方 v1 资产迁移仍处于未提交、
+  未验证现场；S17 尚未合并，S18/S19/S22/S20/S23 均未开始。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
-  改写。
+  改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
+  待准备输入见 [外部输入清单](external-input-checklist.md)。
 
 “步骤完成”表示该步骤约定的代码、负向测试和退出门禁已通过，不表示产品模块满足统一完成
 定义。模块只有具备真实 Adapter、端到端故障/取消/超时证据、生产 feature flag、shadow、
@@ -64,6 +67,17 @@
 | --- | --- | --- | --- |
 | S16 Operations Hardening | 已完成（离线） | 标准库 Release Manifest/State/Stage Receipt、只读 Health、SQLite Backup API、校验与确定性 Restore Plan、Upgrade/单次失败回滚、根命令转发、实际 Compose mount/network Contract；共享 Source await 已受 cancellation/deadline 约束 | 真实 Compose/HTTP/MCP Driver、生产备份范围和加密、原地 Restore、真实容器升级/回滚观察、无人值守生产声明 |
 
+## S17–S23 实施状态
+
+| 步骤 | 状态 | 当前证据 | 下一边界 |
+| --- | --- | --- | --- |
+| S17 Layout Migration | **进行中、未验证、未合并** | Spec `e2cc296`；插件/config/MCP 迁移 `8597d70`；deploy/ops 迁移 `92fd28c`；第三方 v1 迁移仍为未提交现场 | 验证并提交第三批、同步文档、TreeWork verify/complete 和合并；Manifest v2 继续延期 |
+| S18 Evaluation/CI | 未开始 | Tree 分支为 pending/unverified | 汇总版本化 Trace/Eval、故障注入与 CI |
+| S19 Local Integration Audit | 未开始 | Tree 分支为 pending/unverified | 集中执行双 Python 全仓、镜像/配置/回滚包与 SLO 审计 |
+| S22 Legacy Cleanup | 未开始 | Tree 分支为 pending/unverified | 只删除已有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S20 Offline Bandit | 未开始 | Tree 分支为 pending/unverified | 仅完成 decision/feedback/support/propensity 与合成 IPS/SNIPS/DR golden |
+| S23 Real Group Validation | 最终外部门禁、未开始 | 无真实发送或真实来源声明 | 前置门禁关闭后另行逐行为授权 |
+
 ## 产品模块完成度
 
 | 模块 | 状态 | 判断依据 |
@@ -78,7 +92,7 @@
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S16 已约束 Source 中途取消/超时 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验、真实发送及 S17-S19/S22 发布闭环未完成 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
-| WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |
+| Mew/NapCat WebUI | 已完成（既定范围） | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests；不等同于 Agent Control Plane |
 | 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
 
 ## 2026-08-10 S16 阶段证据
@@ -215,9 +229,10 @@
 
 ## 下一步
 
-S16 Verification 完成后按用户要求暂停，不自动进入 S17。恢复开发时按 Tree 执行
-S17-S19 本地回归、
-30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
+当前按用户要求暂停在 S17 在途现场。恢复开发时先验证并提交第三方 v1 资产迁移，完成 S17
+文档、Verification、TreeWork complete 与合并；随后按 Tree 执行 S18、S19 和 S22，再完成
+S20 离线基础。S19 集中执行本地回归、30 日 fake-clock/no-send 仿真和故障注入。发布前置
+全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
 前置，也不得对主动行为开启探索。

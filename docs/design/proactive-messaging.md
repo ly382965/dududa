@@ -1,6 +1,7 @@
 # 主动消息、订阅推送与定时摘要设计
 
-状态：Alignment 设计草案；尚未实现，不授权真实 QQ 发送。
+状态：S15A-S15E 的离线契约、持久 Scheduler、固定来源 fixture、Digest Shadow 和 Probe
+Shadow 已完成并验证；真实 Source/Projection/Output 和 QQ 发送尚未实现，也未获授权。
 
 目标阶段：S15A-S15E；依赖 S11 Controlled Rollout、S12 Unified MCP、S13 Capability
 Runtime 和 S15 Response/Persona 产品化。首版不依赖 Memory；未来若使用个性化 Memory，必须

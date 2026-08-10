@@ -1,8 +1,9 @@
 # Dududa 2.0 Design Overview
 
-状态：S01–S11 本地范围已实现并审计；生产完整切流及 S12 以后模块尚未完成。2026-08-09
-新增 Answer Profile 与主动出站 Alignment 设计，均未实现。当前证据以
-`../refactor/PROGRESS.md` 为准。
+状态：S01–S16 的既定本地/离线范围已实现并验证；S17 路径迁移进行中、未验证且未合并。
+Answer Profile、主动出站契约/Scheduler/fixture Source/Digest/Probe Shadow 已完成离线范围，
+但生产完整切流、真实来源、真实发送、在线 Bandit 和 S23 尚未完成。当前证据以
+`../refactor/PROGRESS.md` 和 `../refactor/checkpoint-report-2026-08-10.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository

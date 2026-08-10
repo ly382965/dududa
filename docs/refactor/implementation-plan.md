@@ -1,6 +1,7 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S16 的既定离线工程步骤已完成。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S16 的既定离线工程步骤已完成；S17 已进入并完成两批 path-only 提交，但第三方
+迁移仍未提交、未验证，整个 S17 尚未合并。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
 不属于该发布前置。
@@ -11,6 +12,8 @@
 
 同日完成的开发环境预检、重点 Topic 调研、外部输入门禁和下一轮建议 Tree 汇总见
 `../research/recommendation-matrix.md`。这些结论用于开工排序，不构成 S12-S20 实现证据。
+截至 2026-08-10 的实现快照和可立即准备的产品输入分别见
+`checkpoint-report-2026-08-10.md` 与 `external-input-checklist.md`。
 
 ## 交付规则
 
@@ -93,7 +96,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S15D | 已完成（离线） | Digest policy/metadata、确定性 Composer/Builder、no-send Shadow Runtime、隔离 Preview、Trigger 过期重验和第 1/2/30 天代表样本通过；普通记录不含正文；S16 已为共享 Source Reader/Store/lock 增加中途取消与期限约束 | 不含生产 Scheduler 组合、真实 Source/模型/持久 metadata、Output/Dispatch/QQ 发送 |
 | S15E | 已完成（离线） | Sanitized group window、Probe policy/detection/state/feedback/metadata、原子并发 claim、TTL/hard gates、普通/无人回应长冷却、SHORT Persona/Validator、no-send Runtime 和第 1/2/30 天抽样通过 | 不含原始/真实聊天 Projection Adapter、持久 ledger、人工质量、Output/Dispatch、自动追问、模型或 QQ 发送 |
 | S16 | 已完成（离线） | 标准库 Release Manifest/State/Receipt、只读 Health、SQLite 一致性 Backup、确定性 Restore Plan、Upgrade/单次失败回滚、根命令转发和 Compose mount/network Contract 已通过临时数据抽样 | 真实 Compose/HTTP/MCP Health Driver、生产备份范围/加密、原地 Restore、真实升级演练和容器观测留待 S19/S23 授权环境 |
-| S17–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 从 S17 串行推进 | 逐分支实现、聚焦 Contract 与抽样回归、本地提交；双 Python 全仓集中在 S19/最终总集成，S22 只删除有迁移/恢复证据的兼容面 |
+| S17 | **进行中、未验证、未合并** | 已冻结 Spec，并提交插件/config/MCP 与 deploy/ops 两批迁移；第三方 v1 lock/patch/vendor 批次仍是未提交现场 | 完成第三批验证/提交、文档同步、TreeWork verify/complete 和合并；Manifest v2 因许可证/hash/lock 证据不足延期 |
+| S18、S19、S22 | 未开始 | 已有批准 Spec/Tree，待 S17 完成后按 WIP=1 串行推进 | 聚焦 Contract 与抽样回归；双 Python 全仓集中在 S19，S22 只删除有迁移/恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
@@ -197,7 +201,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 
 | 可选阶段 | 定位 | 本步只实现 | 完成门禁 | 明确不做 |
 | --- | --- | --- | --- | --- |
-| S20 | P2 在线优化 | 仅在 Model Route 的同 Role+Tier 合法 Endpoint 中实现 Bandit：先日志与合成 estimator，再 shadow、极小 canary、IPS/SNIPS/DR | 有足够 support/有效样本量；群级 bootstrap、baseline floor、零安全 Gate 违规和自动回滚通过 | 权限、Memory Scope、高风险 Tool、敏感 Provider、Reply/Ignore、主动发送/目标/日程/频率、Answer Profile 探索 |
+| S20 | P2 离线学习基础 | 定义 decision/feedback、同 Role+Tier action support、propensity validator、静态 baseline 和合成 IPS/SNIPS/DR golden | 固定输入的 estimator/validator 结果可重放，非法 support/propensity fail closed，并证明无生产执行 hook | 训练、生产 Worker、Shadow/live exploration；权限、Memory Scope、高风险 Tool、Reply/Ignore、主动发送/目标/日程/频率和 Answer Profile 探索 |
 | S21 | 后续规划 | 在 ADR 批准后实现只读 WebUI：Trace/Eval/Model/MCP Health；稳定后才讨论带审计和回滚的写操作 | API 复用 Runtime 权限/Scope/脱敏；RBAC、审计、CSRF/越权和回滚测试通过 | 既定 WebUI 测试已在发布主线内；不得在 UI 重写第二套业务逻辑或抢先做完整 Control Plane |
 
 达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S15E 算“主动出站
@@ -647,12 +651,12 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**先完成 S14 Memory，再完成回答档位、主动出站与本地审计，真实群验证最后执行**
+标题：**先收口 S17，再完成 Eval/本地审计/兼容清理，真实群验证最后执行**
 
-S01–S13 的本地实现和 Verification 已经完成。接下来按 WIP=1 从 S14 起完成
-S14-S15、S15A-S15E、S16-S18、S19 本地总集成与 S22 最终兼容
-审计，再完成 S20 离线基础。既定 WebUI 只运行必要回归，回答档位和主动出站不得跳过本地
-门禁。只有全部发布必需分支通过后，才准备 S23：
+S01–S16 的既定本地/离线范围已经完成并验证。S17 已提交前两批迁移，第三方 v1 资产批次
+仍未提交、未验证。恢复时按 WIP=1 先收口 S17，再执行 S18、S19 本地总集成、S22 最终兼容
+审计和 S20 离线基础。既定 WebUI 只运行必要回归，回答档位和主动出站不得跳过本地门禁。
+只有全部发布必需分支通过后，才准备 S23：
 
 1. 冻结授权群、测试用户、发送窗口、SLO 和 digest-pinned 回滚包；
 2. 单群执行 no-send/no-write Shadow，先检查脱敏指标；

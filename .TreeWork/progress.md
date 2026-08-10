@@ -12,12 +12,14 @@ Last sync: unix:1786356682
 ## Global Reality (current project reality and material corrections; not a branch table)
 
 - S01-S11 foundations/runtime are integrated on `codex/s08-s11`; the Work Tree
-  has also integrated verified S12 Unified MCP, S13 Capability and S14 Memory
-  branches.
-- Clean uv environments on Python 3.10.20 and 3.12.13 each pass 521 tests with
-  two AstrBot-host-only skips. S09/S13/S14 synthetic Evals remain policy,
-  contract or lexical-regression gates; human Chinese quality and calibration
-  are not established.
+  has also integrated and verified Production Shape, additive semantics, S12
+  Unified MCP, S13 Capability, S14 Memory, S15 response/persona, S15A-S15E
+  proactive no-send stages and S16 offline operations.
+- The last complete clean dual-Python repository baseline reached 616 tests at
+  S15C with two AstrBot-host-only skips. S15D-S16 then used approved focused
+  representative samples; a complete current-HEAD dual-Python run is deferred
+  to S19. Synthetic Evals remain policy, contract or lexical-regression gates;
+  human Chinese quality and calibration are not established.
 - S08-S11 local implementation and the cross-stage completion audit are
   complete and verified. Authorized real-group testing is a deferred final
   project stage, not an S08-S11 completion blocker.
@@ -44,9 +46,9 @@ Last sync: unix:1786356682
   outside the terminal real-group prerequisite chain. That design review is now
   approved for the offline Goal.
 - The user approved the offline expansion Alignment and clarified that iCourse
-  is the only real MCP Server. S12 must build the reusable multi-Server boundary
-  with a Fake extension proof; S15C supplies source contracts and fixtures only,
-  while live sources and S23 remain external.
+  is the only real MCP Server. S12 has returned the reusable multi-Server
+  boundary with a Fake extension proof; S15C supplies source contracts and
+  fixtures only, while live sources and S23 remain external.
 - The locked root uv workspace, Node 22/npm environment, Playwright Chromium,
   clean sdist-to-wheel path and warning-free MCP v1 fallback are reproducible.
   The Web unit/server/type/build/E2E gates pass; the existing containers were
@@ -61,6 +63,11 @@ Last sync: unix:1786356682
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
+- S17 is in progress but paused and unverified. Its Spec and first two path-only
+  migration batches are committed on `treework/layout-migration`; the third-party
+  v1 lock/patch/vendor batch remains uncommitted in the managed worktree. S17 is
+  not merged, and Manifest v2 remains deferred for missing hash, dependency-lock
+  and license evidence.
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials, but is intentionally not actionable until all
   accepted module, Web testing and local audit work is complete.

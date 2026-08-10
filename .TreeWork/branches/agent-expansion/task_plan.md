@@ -14,14 +14,14 @@ Title: Offline Agent Expansion
 
 - [ ] Every release-required child through S22 is complete and verified.
 - [ ] S20 offline foundations are complete without training or exploration.
-- [ ] S23 remains pending with explicit external prerequisites.
+- [x] S23 remains pending with explicit external prerequisites.
 - [ ] The final requirement audit distinguishes engineering, fixture and live evidence.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Close production-shape and semantic entry gates.
-- [ ] Complete S12A through S15.
-- [ ] Complete S15A through S15E.
+- [x] Close production-shape and semantic entry gates.
+- [x] Complete S12A through S15.
+- [x] Complete S15A through S15E.
 - [ ] Complete S16 through S19 and S22.
 - [ ] Complete the bounded S20 offline foundation.
 - [ ] Run the Goal-wide completion audit.
