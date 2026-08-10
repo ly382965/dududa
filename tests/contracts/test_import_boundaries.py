@@ -73,6 +73,8 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.proactive.config",
     "dududa.proactive.contracts",
     "dududa.proactive.digests",
+    "dududa.proactive.digest_contracts",
+    "dududa.proactive.digest_shadow",
     "dududa.proactive.registry",
     "dududa.proactive.scheduler",
     "dududa.proactive.scheduler_codec",
@@ -133,6 +135,8 @@ class ImportBoundaryTests(unittest.TestCase):
         ports = importlib.import_module("dududa.ports")
         proactive = importlib.import_module("dududa.proactive")
         expected_owners = {
+            "DigestCompositionPolicySnapshot": "dududa.proactive.digest_contracts",
+            "DigestShadowRuntime": "dududa.proactive.digest_shadow",
             "InMemoryProactiveTargetRegistry": "dududa.proactive.registry",
             "InMemorySourceStateStore": "dududa.proactive.source_store",
             "DeterministicProactiveScheduler": "dududa.proactive.scheduler",
@@ -146,6 +150,9 @@ class ImportBoundaryTests(unittest.TestCase):
             "GovernedSourceProvider": "dududa.proactive.sources",
         }
         expected_ports = {
+            "DigestComposer",
+            "DigestShadowMetadataSink",
+            "DigestShadowRunner",
             "ProactiveActorResolver",
             "ProactiveDeliveryOrchestrator",
             "ProactiveDispatchStore",

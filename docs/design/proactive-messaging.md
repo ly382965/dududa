@@ -769,11 +769,11 @@ S20 是可选且独立的在线优化阶段，不是主动出站或 S23 的前�
 | 能力 | 状态 |
 | --- | --- |
 | S08-S11 入站显式回复、Shadow/Canary 边界 | 已完成本地范围 |
-| Answer Profile / ResponsePlan | 未实现 |
-| Unified MCP/Capability 公共来源 | S12/S13 传输与能力框架已离线完成；S15C SourceProvider、固定来源 fixture 和真实来源 Adapter 均未实现 |
-| 主动 Trigger/Policy/Orchestrator | 未实现 |
-| Subscription/Scheduler/Source ledger | 未实现 |
-| Digest/Probe Shadow 与真实 Canary | 未实现 |
+| Answer Profile / ResponsePlan | S15 离线机械契约已完成；真实中文体验与模型预算校准未完成 |
+| Unified MCP/Capability 公共来源 | S12/S13 传输与能力框架、S15C SourceProvider/固定 fixture 已离线完成；真实来源 Adapter 未实现 |
+| 主动 Trigger/Policy/Orchestrator | S15A 默认拒绝契约和 S15D no-send 日报 Orchestrator 已完成；生产组合/发送未实现 |
+| Subscription/Scheduler/Source ledger | S15B 持久 Scheduler 和 S15C 原子参考 Source state 已完成；生产来源 persistence 未实现 |
+| Digest/Probe Shadow 与真实 Canary | S15D fixture Digest Shadow 已完成；S15E Probe Shadow 与真实 Canary 未实现 |
 
-TreeWork Alignment 评审通过后，应更新 Tree，增加主动出站实现与本地审计分支，并令最终真实群
-验证依赖该审计。设计文档出现不代表任何模块完成。
+TreeWork 已按该顺序进入实施；最终真实群验证仍依赖全部本地分支和审计。设计状态只按对应
+Verification 更新，不把 fixture/no-send 证据解释成生产能力。

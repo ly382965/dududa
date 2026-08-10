@@ -62,8 +62,21 @@ from .contracts import (
     validate_grant_ref,
     validate_target_policy_ref,
 )
+from .digest_contracts import (
+    DigestCompositionPolicySnapshot,
+    DigestShadowMetadata,
+)
+from .digest_shadow import (
+    DeterministicDigestComposer,
+    DigestCandidateBuilder,
+    DigestCandidateOutcome,
+    DigestPreviewProducer,
+    DigestShadowRuntime,
+)
 from .digests import (
     conversation_opportunity_snapshot_digest,
+    digest_composition_policy_digest,
+    digest_shadow_metadata_digest,
     dispatch_claim_digest,
     initiated_run_request_digest,
     local_time_window_digest,
@@ -153,9 +166,16 @@ __all__ = [
     "PROACTIVE_SEND_ACTION",
     "ConversationOpportunitySnapshot",
     "DeliveryRunMode",
+    "DeterministicDigestComposer",
     "DeterministicProactivePolicy",
     "DeterministicProactiveScheduler",
     "DeterministicSchedulerConfig",
+    "DigestCandidateBuilder",
+    "DigestCandidateOutcome",
+    "DigestCompositionPolicySnapshot",
+    "DigestPreviewProducer",
+    "DigestShadowMetadata",
+    "DigestShadowRuntime",
     "DispatchClaim",
     "DispatchLedgerRecord",
     "DispatchPrepareDisposition",
@@ -233,6 +253,8 @@ __all__ = [
     "build_proactive_send_authorization_request",
     "conversation_opportunity_snapshot_digest",
     "default_proactive_control_config",
+    "digest_composition_policy_digest",
+    "digest_shadow_metadata_digest",
     "dispatch_claim_digest",
     "initiated_run_request_digest",
     "local_time_window_digest",

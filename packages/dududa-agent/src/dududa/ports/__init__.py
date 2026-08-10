@@ -72,6 +72,9 @@ if TYPE_CHECKING:
     )
     from .persona import PersonaCatalogPublisher, PersonaRegistry
     from .proactive import (
+        DigestComposer,
+        DigestShadowMetadataSink,
+        DigestShadowRunner,
         ProactiveActorResolver,
         ProactiveDeliveryOrchestrator,
         ProactiveDispatchStore,
@@ -120,6 +123,9 @@ __all__ = [
     "CapabilityRegistry",
     "CapabilityRetriever",
     "CapabilitySchemaValidator",
+    "DigestComposer",
+    "DigestShadowMetadataSink",
+    "DigestShadowRunner",
     "InputConnector",
     "ManualCancellationToken",
     "McpEnvironmentProvider",
@@ -318,6 +324,9 @@ def __getattr__(name: str) -> object:
             "PersonaRegistry": PersonaRegistry,
         }[name]
     if name in {
+        "DigestComposer",
+        "DigestShadowMetadataSink",
+        "DigestShadowRunner",
         "ProactiveActorResolver",
         "ProactiveDeliveryOrchestrator",
         "ProactiveDispatchStore",
@@ -335,6 +344,9 @@ def __getattr__(name: str) -> object:
         "SourceStateStore",
     }:
         from .proactive import (
+            DigestComposer,
+            DigestShadowMetadataSink,
+            DigestShadowRunner,
             ProactiveActorResolver,
             ProactiveDeliveryOrchestrator,
             ProactiveDispatchStore,
@@ -353,6 +365,9 @@ def __getattr__(name: str) -> object:
         )
 
         return {
+            "DigestComposer": DigestComposer,
+            "DigestShadowMetadataSink": DigestShadowMetadataSink,
+            "DigestShadowRunner": DigestShadowRunner,
             "ProactiveActorResolver": ProactiveActorResolver,
             "ProactiveDeliveryOrchestrator": ProactiveDeliveryOrchestrator,
             "ProactiveDispatchStore": ProactiveDispatchStore,

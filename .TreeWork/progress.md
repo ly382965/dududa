@@ -30,10 +30,10 @@ Last sync: unix:1786351815
   NapCat data caching and the Mew source baseline.
 - On 2026-08-09 the user added deterministic short/medium/long answers,
   controlled proactive conversation probes, and opt-in campus/industry/arXiv
-  digests. S15-S15C are now complete in their offline scopes: answer plans,
-  proactive contracts/default-deny controls, durable scheduling and governed
-  fixture-backed source contracts exist, while S15D-S15E Shadow work and every
-  real proactive send remain absent.
+  digests. S15-S15D are now complete in their offline scopes: answer plans,
+  proactive controls, durable scheduling, governed fixture sources and a
+  deterministic no-send Digest Shadow exist; S15E Probe Shadow and every real
+  proactive send remain absent.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -62,10 +62,10 @@ Last sync: unix:1786351815
   accepted module, Web testing and local audit work is complete.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
-- Real public-source providers, Digest/Probe Shadow and proactive rollout evidence
-  remain unimplemented. S15C now provides a source-neutral Provider contract,
-  atomic reference state and synthetic fixtures only; it has no live Adapter,
-  production composition or send authority.
+- Real public-source providers, Probe Shadow and proactive rollout evidence remain
+  unimplemented. S15C provides source-neutral contracts and fixtures; S15D now
+  composes those fixtures into metadata-only no-send candidates, but adds no live
+  Adapter, production composition/persistence or send authority.
 - No real Provider Endpoint is currently enableable: composition, sampling,
   health and conformance evidence must close first. No second legal same-role/
   tier Endpoint, propensity log or attributable reward exists for Bandit.
@@ -114,3 +114,7 @@ Last sync: unix:1786351815
   contracts, strict public-source normalization, atomic cursor/dedup state and
   manifest-bound campus/arXiv/industry synthetic fixtures. It adds no live
   source Adapter, network access, production persistence, Composer or send.
+- S15D now returns digest-bound composition/metadata contracts, deterministic
+  MEDIUM digest candidates, a no-send COLLECT/SHADOW runner and state-isolated
+  Preview producer. Six representative scenarios pass on Python 3.10/3.12; no
+  live source, model, Output, dispatch or QQ send was added.

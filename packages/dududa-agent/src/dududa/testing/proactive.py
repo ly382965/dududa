@@ -16,7 +16,15 @@ from dududa.domain.message import MessageReference
 from dududa.domain.primitives import DigestString
 from dududa.errors import validation_error
 from dududa.ports.context import PortCallContext, ServiceCallContext
-from dududa.proactive.contracts import ProactivePreviewMetadata, ProactivePreviewRequest
+from dududa.proactive.contracts import (
+    ProactivePreviewMetadata,
+    ProactivePreviewRequest,
+    ProactiveSubscription,
+    SubscriptionMutationDisposition,
+    SubscriptionMutationReceipt,
+    SubscriptionStatus,
+)
+from dududa.proactive.digest_contracts import DigestShadowMetadata
 
 
 @dataclass
@@ -49,6 +57,94 @@ class MappingProactiveActorResolver:
         if actor.platform != scope.platform or actor.bot_id != scope.bot_id:
             raise validation_error("proactive_actor_scope_mismatch")
         return actor
+
+
+class MappingProactiveSubscriptionStore:
+    def __init__(self, values: tuple[ProactiveSubscription, ...]) -> None:
+        subscriptions = {value.subscription_id: value for value in values}
+        if len(subscriptions) != len(values) or any(
+            not isinstance(value, ProactiveSubscription) for value in values
+        ):
+            raise validation_error("invalid_fake_proactive_subscriptions")
+        self._values = subscriptions
+        self.loads: list[str] = []
+
+    async def publish(
+        self,
+        subscription: ProactiveSubscription,
+        *,
+        expected_revision: int | None,
+        mutation_id: str,
+        call: ServiceCallContext,
+    ) -> SubscriptionMutationReceipt:
+        if not isinstance(subscription, ProactiveSubscription):
+            raise validation_error("invalid_fake_proactive_subscription")
+        current = self._values.get(subscription.subscription_id)
+        if current is None:
+            if expected_revision is not None or subscription.revision != 1:
+                raise validation_error("fake_subscription_create_conflict")
+            previous = None
+            disposition = SubscriptionMutationDisposition.CREATED
+        else:
+            if (
+                expected_revision != current.revision
+                or subscription.revision != current.revision + 1
+            ):
+                raise validation_error("fake_subscription_update_conflict")
+            previous = current.revision
+            disposition = SubscriptionMutationDisposition.UPDATED
+        self._values[subscription.subscription_id] = subscription
+        return SubscriptionMutationReceipt(
+            1,
+            mutation_id,
+            subscription.subscription_id,
+            previous,
+            subscription.revision,
+            subscription.subscription_digest,
+            subscription.status,
+            disposition,
+            subscription.updated_at,
+        )
+
+    async def load(
+        self,
+        subscription_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> ProactiveSubscription | None:
+        self.loads.append(subscription_id)
+        return self._values.get(subscription_id)
+
+    async def list_active(
+        self,
+        *,
+        call: ServiceCallContext,
+    ) -> tuple[ProactiveSubscription, ...]:
+        return tuple(
+            sorted(
+                (
+                    value
+                    for value in self._values.values()
+                    if value.status is SubscriptionStatus.ACTIVE
+                ),
+                key=lambda value: value.subscription_id,
+            )
+        )
+
+
+class RecordingDigestShadowMetadataSink:
+    def __init__(self) -> None:
+        self.records: list[DigestShadowMetadata] = []
+
+    async def record(
+        self,
+        metadata: DigestShadowMetadata,
+        *,
+        call: ServiceCallContext,
+    ) -> None:
+        if not isinstance(metadata, DigestShadowMetadata):
+            raise validation_error("invalid_digest_shadow_metadata")
+        self.records.append(metadata)
 
 
 class StaticProactivePreviewProducer:
@@ -134,7 +230,9 @@ class RecordingFakeProactiveOutput:
 
 __all__ = [
     "MappingProactiveActorResolver",
+    "MappingProactiveSubscriptionStore",
     "MutableClock",
+    "RecordingDigestShadowMetadataSink",
     "RecordingFakeProactiveOutput",
     "RecordingProactivePreviewMetadataStore",
     "StaticProactivePreviewProducer",
