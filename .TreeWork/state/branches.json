@@ -509,19 +509,19 @@
       "title": "S16 Operations Hardening",
       "purpose": "Prove health, backup, restore, upgrade and rollback from a versioned release manifest.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/operations-hardening",
         "git_branch": "treework/operations-hardening",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1786354409",
         "last_entered_at": "unix:1786354409",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1786356355"
+      "last_sync": "unix:1786356508"
     },
     {
       "path": "layout-migration",

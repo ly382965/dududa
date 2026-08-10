@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: operations-hardening
 Parent: agent-expansion
-Status: in_progress
-Verification: unverified
-Last sync: unix:1786354409
+Status: complete
+Verification: verified
+Last sync: unix:1786356508
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
