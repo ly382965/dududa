@@ -18,6 +18,8 @@ Branch: response-persona
 
 - A new framework-neutral `dududa.responses` package and response-specific Ports own Profile
   selection, evidence, immutable Plan, policy-unit counting and reservation projection.
+- `ModelRequest` now has an additive pair of Plan digest/visible-output fields. Migrated visible
+  calls use both; legacy calls may omit both only until their owning Runtime path is migrated.
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 

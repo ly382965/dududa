@@ -27,10 +27,16 @@ Last sync: unix:1786272840
 - Implemented the first `dududa.responses` slice: typed Profile/evidence/preference/Plan contracts,
   deterministic 3x3-capable policy, pilot ceilings, Unicode/CJK policy-unit counter and output
   reservation projection. Nine focused tests and Ruff/format/diff checks pass.
+- Added additive ModelRequest Plan fields and a strict Direct Chat migration path. A migrated call
+  now binds Plan digest/visible cap, uses projected generated tokens, checks assessment authority
+  before Router dispatch and rejects character/Token-unit overflow; legacy empty fields remain
+  readable until Runtime State migration. Fifteen focused plus 52 Router/Provider tests pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
 - All implementation, synthetic Eval and verification steps in `task_plan.md` remain open.
+- Runtime State/Orchestrator, composition, Persona Catalog and final delivery-part binding remain
+  unimplemented, so production or full S15 completion is not claimed.
 - Real profile/persona quality and final pilot budgets remain an explicit external gate.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
