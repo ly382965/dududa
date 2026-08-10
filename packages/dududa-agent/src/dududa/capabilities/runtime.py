@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from dududa.domain.primitives import ResourceUsage
+from dududa.domain.primitives import ResourceUsage, RuntimeBudget
 from dududa.errors import DududaError, ErrorCategory, error, validation_error
 from dududa.ports.capabilities import (
     ArgumentBinder,
@@ -385,10 +385,14 @@ class DeterministicBoundedCapabilityRuntime:
                     request_digest=tool_execution_request_digest(execution_values),
                     **execution_values,
                 )
+                execution_call = _call_after_usage(
+                    call,
+                    _total_usage(tuple(observations), tuple(unobserved_attempts)),
+                )
                 try:
                     observation = await _bounded_execution(
-                        self._executor.execute(execution_request, call=call),
-                        call=call,
+                        self._executor.execute(execution_request, call=execution_call),
+                        call=execution_call,
                         now=self._now(),
                         terminal_grace=self._execution_terminal_grace,
                     )
@@ -405,7 +409,8 @@ class DeterministicBoundedCapabilityRuntime:
                             self._unobserved_attempt(
                                 execution_request,
                                 definition,
-                                tracked_cost=call.budget.cost_units_remaining is not None,
+                                tracked_cost=call.budget.cost_units_remaining
+                                is not None,
                                 reason="capability_runtime_execution_outcome_unknown",
                             )
                         )
@@ -801,6 +806,51 @@ def _validate_call(call: PortCallContext, now: datetime) -> None:
         )
 
 
+def _call_after_usage(
+    call: PortCallContext,
+    usage: ResourceUsage,
+) -> PortCallContext:
+    budget = _remaining_budget(call.budget, usage)
+    return PortCallContext(
+        run_id=call.run_id,
+        trace=call.trace,
+        deadline=call.deadline,
+        cancellation=call.cancellation,
+        budget=budget,
+        policy_snapshot_id=call.policy_snapshot_id,
+    )
+
+
+def _remaining_budget(
+    budget: RuntimeBudget,
+    usage: ResourceUsage,
+) -> RuntimeBudget:
+    values = {
+        "model_calls_remaining": budget.model_calls_remaining - usage.model_calls,
+        "tool_steps_remaining": budget.tool_steps_remaining - usage.tool_steps,
+        "retries_remaining": budget.retries_remaining - usage.retries,
+        "input_tokens_remaining": budget.input_tokens_remaining - usage.input_tokens,
+        "output_tokens_remaining": budget.output_tokens_remaining - usage.output_tokens,
+    }
+    if any(value < 0 for value in values.values()):
+        raise error(
+            "capability_runtime_budget_exhausted",
+            ErrorCategory.BUDGET,
+            "request.budget_exhausted",
+        )
+    if budget.cost_units_remaining is None:
+        cost = None
+    elif usage.cost_units is None or usage.cost_units > budget.cost_units_remaining:
+        raise error(
+            "capability_runtime_budget_exhausted",
+            ErrorCategory.BUDGET,
+            "request.budget_exhausted",
+        )
+    else:
+        cost = budget.cost_units_remaining - usage.cost_units
+    return RuntimeBudget(cost_units_remaining=cost, **values)
+
+
 async def _bounded_await(
     awaitable: Awaitable[object],
     *,
@@ -873,9 +923,7 @@ async def _bounded_execution(
             return task.result()
         await _cancel_task(task, drain_seconds=0.1)
         category = (
-            ErrorCategory.CANCELLED
-            if cancelled in done
-            else ErrorCategory.TIMEOUT
+            ErrorCategory.CANCELLED if cancelled in done else ErrorCategory.TIMEOUT
         )
         raise error(
             "capability_runtime_execution_not_terminal",

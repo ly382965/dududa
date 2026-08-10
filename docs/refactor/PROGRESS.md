@@ -53,7 +53,7 @@
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 未完成 | 现有只有静态 Token/字数上限；缺少 SHORT/MEDIUM/LONG 决策、动态预算、与 Tier 正交性和最终长度/完整性校验 |
-| Unified MCP / Capability Runtime | 部分完成 | 现有 iCourse Server 和 10 个工具可用；统一 Client/Registry/Planner 尚未实现 |
+| Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 未完成 | TargetPolicy/Grant Ref、独立 Preview、稳定投递幂等与 S15A-S15E 只有 Alignment 设计；initiated-run、主动授权、Scheduler/Subscription/Source ledger、Digest/Probe Shadow 均未实现 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |

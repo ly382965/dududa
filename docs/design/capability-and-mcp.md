@@ -2,16 +2,19 @@
 
 ## 1. 文档状态
 
-- 阶段：S12 Unified Client/Registry、隔离 worker 和 iCourse compatibility facade 已实现并
-  正在验证；S13 Capability Runtime 尚未实现；S15C 只批准 source-neutral Contract、Fake
+- 阶段：S12 Unified Client/Registry、隔离 worker 和 iCourse compatibility facade，以及
+  S13 Capability Runtime 均已完成本地实现与验证；S15C 只批准 source-neutral Contract、Fake
   Provider 和本地固定 fixture，不包含真实主动日报来源 Adapter。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
-- MCP Server 目标目录：`services/mcp/`。
-- 配置目标目录：`configs/capabilities/`、`configs/mcp/`。
-- S12 当前 Registry 路径：`config/mcp/servers/*.json`；目标目录命名等待 S17。
+- 当前唯一真实 MCP Server：`services/icourse-mcp/`。
+- 当前配置目录：`config/capabilities/`、`config/mcp/servers/`；`configs/` 重命名等待 S17。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 `services/icourse-mcp/`。
 
-本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12 已实现其中的传输和生命周期部分；本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
+本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现该离线闭环；生产 Rollout 仍拒绝 Tools，本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
+
+接口权威以 `dududa/capabilities/contracts.py`、`dududa/ports/capabilities.py` 和严格 JSON
+配置为准；本文代码块用于展示稳定公共形状和所有权，不替代构造校验、摘要函数或 Contract
+Test。公共字段变化必须先更新这些权威类型及测试，再同步本文，不能长期维护第二套接口。
 
 ## 2. 目标与非目标
 
@@ -99,8 +102,8 @@ class CapabilityDefinition:
     description: str
     category: str
     provider: ProviderRef
-    input_schema: JsonSchema
-    output_schema: JsonSchema
+    input_schema: SchemaRef
+    output_schema: SchemaRef
     risk_level: RiskLevel
     privacy_level: PrivacyLevel
     allowed_contexts: frozenset[ConversationType]
@@ -115,7 +118,7 @@ class CapabilityDefinition:
 
 最低字段与约束：
 
-- `capability_id` 使用稳定命名空间，例如 `icourse.search_courses.v1`；显示名变化不得改变 ID；
+- `capability_id` 使用稳定命名空间，例如 `icourse.courses.search.v1`；显示名变化不得改变 ID；
 - `definition_digest` 是除 digest 字段本身外对规范化完整定义计算的内容哈希；
 - `description` 只说明何时使用、输入和结果，不包含密钥、内部路径或 Prompt 注入文本；
 - `input_schema` 和 `output_schema` 必须是受支持的 JSON Schema 子集，拒绝开放式任意对象作为核心契约；
@@ -153,13 +156,14 @@ Social Decision 只产生业务意图，不指定工具名：
 @dataclass(frozen=True, slots=True)
 class CapabilityQuery:
     schema_version: int
+    query_digest: DigestString
     intent_ids: tuple[str, ...]
     natural_language_goal: str
-    entities: tuple[EntityRef, ...]
-    required_output: str | None
+    entity_terms: tuple[str, ...]
+    required_output_schema: SchemaRef | None
     preferred_categories: tuple[str, ...]
     excluded_side_effects: frozenset[SideEffect]
-    max_risk_level: RiskLevel
+    maximum_risk_level: RiskLevel
 ```
 
 `natural_language_goal` 是不可信输入，不能被拼接到 shell、SQL、文件路径或 Server 配置。权限和允许的风险级别来自 Runtime Policy，不接受模型自行上调。
@@ -173,21 +177,22 @@ Planner 只能看到经过过滤的摘要：
 class CapabilityCandidate:
     schema_version: int
     capability_id: str
+    definition_digest: DigestString
     name: str
     description: str
-    input_schema: JsonSchema
-    output_schema: JsonSchema
-    definition_digest: DigestString
-    provider_id: str
-    provider_revision: ComponentRevision
+    category: str
+    provider: ProviderRef
+    input_schema: SchemaRef
+    output_schema: SchemaRef
     risk_level: RiskLevel
     privacy_level: PrivacyLevel
-    idempotency: Idempotency
-    side_effects: frozenset[SideEffect]
     cost_hint: CostHint
     latency_hint: LatencyHint
-    score: float
+    idempotency: Idempotency
+    side_effects: frozenset[SideEffect]
+    rank_score: int
     reason_codes: tuple[str, ...]
+    candidate_digest: DigestString
 ```
 
 摘要不得包含 MCP 启动命令、环境变量、Server 凭据、内部 hostname 或用户无权访问的字段。
@@ -350,21 +355,27 @@ score = semantic_similarity
 @dataclass(frozen=True, slots=True)
 class CapabilityRetrievalRequest:
     schema_version: int
+    request_digest: DigestString
     query: CapabilityQuery
     actor: Actor
     conversation_scope: ConversationScope
+    data_classification: PrivacyLevel
+    available_input_schemas: tuple[SchemaRef, ...]
+    maximum_latency_ms: int
     limit: int
 
 @dataclass(frozen=True, slots=True)
 class CapabilityRetrievalResult:
     schema_version: int
+    result_digest: DigestString
+    request_digest: DigestString
+    query_digest: DigestString
     candidates: tuple[CapabilityCandidate, ...]
     catalog_snapshot_id: str
-    registry_revision: str
-    mapping_revision: str
-    provider_registry_revision: str
+    catalog_digest: DigestString
     policy_revision: str
-    health_snapshot_revision: str
+    health_snapshot_id: str
+    health_snapshot_digest: DigestString
     retriever_revision: ComponentRevision
     reason_codes: tuple[str, ...]
 
@@ -390,17 +401,20 @@ revision 和健康快照必须产生稳定顺序。Candidate 的 definition dige
 ```python
 @dataclass(frozen=True, slots=True)
 class ObservationBinding:
+    schema_version: int
     source_step_id: str
     source_json_pointer: str
     target_json_pointer: str
 
 @dataclass(frozen=True, slots=True)
 class ArgumentTemplate:
-    literal_template: JsonValue
+    schema_version: int
+    literal_template: Mapping[str, JsonValue]
     bindings: tuple[ObservationBinding, ...]
 
 @dataclass(frozen=True, slots=True)
 class ToolStep:
+    schema_version: int
     step_id: str
     logical_operation_id: str
     capability_id: str
@@ -408,13 +422,15 @@ class ToolStep:
     arguments: ArgumentTemplate
     purpose: str
     depends_on: tuple[str, ...]
-    expected_output: str
+    expected_output_schema: SchemaRef
 
 @dataclass(frozen=True, slots=True)
 class ToolPlan:
     schema_version: int
     plan_id: str
-    goal: str
+    plan_digest: DigestString
+    query_digest: DigestString
+    retrieval_result_digest: DigestString
     steps: tuple[ToolStep, ...]
     completion_criteria: tuple[str, ...]
     planner_revision: ComponentRevision
@@ -912,22 +928,23 @@ outcome_unknown, public_message_key, reason_codes)`；Adapter 私有错误码只
 
 ### 11.1 当前事实
 
-当前 iCourse 同时被 AstrBot MCP 配置和 `ICourseClient` 直连。直连客户端每次调用启动一个新的 stdio Server，`timeout_hint` 未生效。Server 暴露缓存查询、联网抓取、robots 诊断和任意路径 JSONL 导出共十个工具；输出 envelope 不一致，批量抓取与导出不适合作为普通模型能力。
+当前 iCourse 同时保留 AstrBot MCP 配置和 `ICourseClient` 兼容入口。默认兼容入口经
+`UnifiedICourseClient` facade 复用统一 Client 的长生命周期 Session；显式 Legacy 启动路径仍可
+回滚到旧的逐调用 stdio Client。Server 仍包含缓存查询、联网抓取、robots 诊断和 JSONL 导出
+等管理工具，但 S13 Catalog 只映射批准的公开缓存只读查询。
 
-### 11.2 目标 Capability 映射
+### 11.2 正式 Capability 映射
 
 | Capability | MCP Tool/实现 | 风险 | Planner 可见性 |
 | --- | --- | --- | --- |
-| `icourse.search_courses.v1` | `search_courses` | low/public/read-only | 默认可见 |
-| `icourse.get_course.v1` | `get_course(refresh=false)` | low/public/read-only | 默认可见 |
-| `icourse.get_reviews.v1` | `get_reviews` | low，但正文不可信 | 默认可见，结果需净化 |
-| `icourse.compare_courses.v1` | 新增受控组合能力 | low | 默认可见 |
-| `icourse.refresh_course.v1` | `crawl_course` 或新原子工具 | medium/network/write-cache | trusted/admin，带冷却 |
-| `icourse.bulk_refresh.v1` | `crawl_courses`、`crawl_latest_reviews` | high/批量网络 | 仅运维入口 |
-| `icourse.export_dataset.v1` | `export_dataset` | high/file-write | 不进入 Planner |
-| `icourse.check_robots.v1` | `check_robots` | admin/diagnostic | 不进入 Planner |
+| `icourse.stats.read.v1` | `icourse_stats` | low/public/read-only | 授权后可见 |
+| `icourse.courses.search.v1` | `search_courses` | low/public/read-only | 授权后可见 |
+| `icourse.course.get.v1` | `get_course(refresh=false)` | low/public/read-only | 授权后可见 |
+| `icourse.reviews.get.v1` | `get_reviews` | low，但正文不可信 | 授权后可见，结果需净化 |
 
-`export_dataset` 必须限制到配置好的私有 export root，拒绝绝对路径、`..`、符号链接逃逸和覆盖关键运行文件。迁移完成前，能力层不得映射该工具。
+`search_site_courses`、crawl/refresh、robots、bulk 和 export 等管理工具不在模型 Capability
+Catalog 中。未来即使实现运维入口，`export_dataset` 也必须限制到配置好的私有 export root，
+拒绝绝对路径、`..`、符号链接逃逸和覆盖关键运行文件。
 
 ### 11.3 标准结果
 
@@ -937,32 +954,35 @@ iCourse Provider 将现有不一致结果转换为统一 envelope：
 @dataclass(frozen=True, slots=True)
 class CapabilityResult:
     schema_version: int
+    result_digest: DigestString
+    provider_invocation_digest: DigestString
     invocation_id: str
+    capability_id: str
+    definition_digest: DigestString
+    provider: ProviderRef
     status: ToolExecutionStatus
     data: JsonValue | None
     error: ToolError | None
-    definition_digest: DigestString
-    provider_revision: ComponentRevision
-    idempotency_key: str
-    attempt: int
-    source_refs: tuple[SourceRef, ...]
+    source_refs: tuple[str, ...]
+    sensitivity: PrivacyLevel
+    usage: ResourceUsage
     observed_at: datetime
-    cache_status: Literal["hit", "miss", "refreshed", "unknown"]
-    warnings: tuple[str, ...]
+    truncated: bool
+    untrusted: bool = True
 ```
 
 评课评论是第三方不可信文本，必须限制长度、标记来源、隔离 HTML，并防止其中内容被解释为指令。`public_only` 不等于无隐私风险或事实正确。
 
 ### 11.4 渐进步骤
 
-1. 为当前 10 个工具建立 contract fixture 和错误基线，不改变 Server；
-2. 创建 Unified MCP Client、Registry 和 iCourse Capability 映射；
-3. 让旧 `ICourseClient` 成为标记为 compatibility 的包装层，内部转发统一 Client；
-4. 将 `/course` 命令切到 Capability Provider，保持命令文本、权限和输出兼容；
-5. 将模型可见工具收窄为查询能力，刷新走 trusted/admin Policy；
-6. 在 Server 内引入统一错误和结果 schema，再新增 `compare_courses`、`refresh_course` 原子工具；
-7. 验证 AstrBot 入口只使用统一 Client 后，删除重复 stdio 启动逻辑；
-8. Phase 8 再用 `git mv` 将 `services/icourse-mcp` 移到 `services/mcp/icourse`，同步 Docker、Compose、CI 和配置路径。
+1. 已为现有工具建立 transport contract fixture 和错误基线，不改变 Server；
+2. 已创建 Unified MCP Client、Registry 和 iCourse compatibility facade；
+3. 已将旧 `ICourseClient` 的默认组合转发统一 Client，并保留显式 Legacy 回滚；
+4. 已通过通用 MCP Provider 映射四个公开缓存只读 Capability；
+5. `/course` 兼容命令继续使用 facade，crawl/refresh 管理路径不冒充模型 Capability；
+6. 新原子能力或统一 Server envelope 需要独立 Spec，不能由 discovery 自动发布；
+7. S22 只有在消费者迁移和上一 Release 恢复证据齐全后才能删除 Legacy；
+8. S17 再用 `git mv` 将 `services/icourse-mcp` 移到 `services/mcp/icourse`，同步 Docker、Compose、CI 和配置路径。
 
 任何一步失败都可以将调用入口切回旧 `ICourseClient`，SQLite 路径和 schema 在独立迁移前保持不变。
 
@@ -1033,7 +1053,9 @@ class CapabilityResult:
 ## 14. 当前状态与扩展点
 
 当前已有 iCourse stdio Server、SQLite、严格 JSON Registry、Unified MCP Client、隔离 v2 worker
-和经统一 Client 转发的 compatibility facade；Legacy 仍作为启动期显式回滚保留。通用 Capability
-Registry、Tool Runtime 与真实后台来源 Provider 尚未实现，S12 discovery 不授予模型能力。
+和经统一 Client 转发的 compatibility facade；Legacy 仍作为启动期显式回滚保留。S13 通用
+Capability Catalog/Registry、Retrieval、有限 Planner、Executor、Observation Validator 和默认关闭
+的离线 Tool Runtime 已实现；S12 discovery 仍不授予模型能力。真实 Planner Endpoint、真实后台
+来源 Provider 和生产 Tools Rollout 尚未实现。
 
 后续新增教务、第二课堂、校园通知、开课查询和培养方案 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。

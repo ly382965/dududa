@@ -770,7 +770,7 @@ S20 是可选且独立的在线优化阶段，不是主动出站或 S23 的前�
 | --- | --- |
 | S08-S11 入站显式回复、Shadow/Canary 边界 | 已完成本地范围 |
 | Answer Profile / ResponsePlan | 未实现 |
-| Unified MCP/Capability 公共来源 | 未实现；只有现有 iCourse 基础 |
+| Unified MCP/Capability 公共来源 | S12/S13 传输与能力框架已离线完成；S15C SourceProvider、固定来源 fixture 和真实来源 Adapter 均未实现 |
 | 主动 Trigger/Policy/Orchestrator | 未实现 |
 | Subscription/Scheduler/Source ledger | 未实现 |
 | Digest/Probe Shadow 与真实 Canary | 未实现 |

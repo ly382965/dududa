@@ -32,6 +32,29 @@ class RuntimeModelBudgetPlan:
                 raise validation_error("invalid_model_budget_reservation", name)
 
 
+@dataclass(frozen=True, slots=True)
+class RuntimeToolBudgetPlan:
+    schema_version: int
+    reservation: ResourceUsage
+    revision: ComponentRevision
+
+    def __post_init__(self) -> None:
+        if type(self.schema_version) is not int or self.schema_version != 1:
+            raise validation_error("unsupported_schema_version")
+        if not isinstance(self.reservation, ResourceUsage):
+            raise validation_error("invalid_tool_budget_reservation")
+        if (
+            self.reservation.model_calls != 0
+            or not 1 <= self.reservation.tool_steps <= 8
+            or not 0 <= self.reservation.retries <= 8
+            or self.reservation.input_tokens != 0
+            or self.reservation.output_tokens != 0
+        ):
+            raise validation_error("invalid_tool_budget_reservation")
+        if not isinstance(self.revision, ComponentRevision):
+            raise validation_error("invalid_runtime_tool_budget_plan_revision")
+
+
 def ensure_budget_covers_plan(
     budget: RuntimeBudget,
     plan: RuntimeModelBudgetPlan,
@@ -48,6 +71,38 @@ def ensure_budget_covers_plan(
             "request.budget_exhausted",
             "two_model_call_budget_not_available",
         )
+
+
+def ensure_budget_covers_tool_plan(
+    budget: RuntimeBudget,
+    model_plan: RuntimeModelBudgetPlan,
+    tool_plan: RuntimeToolBudgetPlan,
+) -> None:
+    if not isinstance(tool_plan, RuntimeToolBudgetPlan):
+        raise validation_error("invalid_runtime_tool_budget_plan")
+    model_total = add_usage(
+        model_plan.perception_reservation,
+        model_plan.direct_chat_reservation,
+    )
+    total = add_usage(model_total, tool_plan.reservation)
+    if not _covers(budget, total):
+        raise error(
+            "runtime_tool_budget_plan_exhausted",
+            ErrorCategory.BUDGET,
+            "request.budget_exhausted",
+            "model_and_tool_budget_not_available",
+        )
+
+
+def usage_within_tool_reservation(
+    usage: ResourceUsage,
+    reservation: ResourceUsage,
+) -> bool:
+    if not isinstance(usage, ResourceUsage) or not isinstance(
+        reservation, ResourceUsage
+    ):
+        return False
+    return _covers(reservation_budget(reservation), usage)
 
 
 def reservation_budget(reservation: ResourceUsage) -> RuntimeBudget:

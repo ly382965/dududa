@@ -2,7 +2,7 @@
 
 ## 1. 适用范围
 
-本文说明在目标架构中新增一个可被 Runtime 检索和执行的能力。Phase 1 尚未实现这些目录和接口；本文是实现阶段的开发契约，不是当前可直接运行的命令。
+本文说明在已实现的 S13 框架中新增一个可被 Runtime 检索和执行的能力。生产 Tools Rollout 仍默认关闭；本文是开发与测试契约，不是绕过配置、权限或发布门禁的运行命令。
 
 Capability 是稳定的业务能力，不等于 Python 函数、AstrBot 命令或 MCP Tool。新增能力前先确定它是否真的需要进入 Planner：
 
@@ -34,11 +34,15 @@ PR 开始前写清：
 
 ## 3. 定义 Capability
 
-目标配置位于 `configs/capabilities/`。示例：
+严格 JSON 配置位于 `config/capabilities/definitions/`，MCP 映射位于
+`config/capabilities/mappings/`。下面是便于阅读的概念示例；提交时应使用内容寻址生成器生成
+Schema/Definition/Mapping digest，不要手工填写摘要。iCourse 当前使用
+`scripts/generate_icourse_capability_config.py`；新 Provider 在通用生成入口完成前应提供等价的
+确定性生成脚本和 Contract Test：
 
 ```yaml
 schema_version: 1
-capability_id: icourse.search_courses.v1
+capability_id: icourse.courses.search.v1
 name: 搜索公开评课缓存
 description: 按课程、教师或院系搜索评课社区公开缓存；不用于教务成绩或个人课表。
 category: campus.course_review
@@ -146,12 +150,12 @@ Capability Retrieval 在确定性过滤后执行 Top-K 排序。为提高可检�
 
 ```yaml
 - input: "张老师的数据结构评价怎么样"
-  expected_in_top_k: [icourse.search_courses.v1]
+  expected_in_top_k: [icourse.courses.search.v1]
   forbidden: [academic.get_grades.v1]
 
 - input: "查一下我这学期的成绩"
   expected_in_top_k: [academic.get_grades.v1]
-  forbidden: [icourse.search_courses.v1]
+  forbidden: [icourse.courses.search.v1]
   context: private
 
 - input: "在群里把我的成绩发出来"

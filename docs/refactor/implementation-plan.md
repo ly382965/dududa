@@ -42,26 +42,27 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 
 ### 当前模块完成度
 
-下表按 2026-08-09 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S11 已补齐静态
+下表按 2026-08-10 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S13 已补齐静态
 路由、语义/难度判断、离线 Runtime、Shadow、受控 Canary 与回滚边界；真实 Provider 效果、
-Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再穿插在模块开发中，只在最终阶段执行。
+Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权群放量不再穿插在模块开发中，
+只在最终阶段执行。
 
 | 模块或工作流 | 状态 | 已有证据 | 达到完成仍缺少 |
 | --- | --- | --- | --- |
 | 开发环境与研究基线 | 已完成（本地） | TreeWork 0.1.7、根 uv lock、Python 3.10/3.12、Node 22、Playwright、干净构建及九个 Topic 研究报告已验证 | Production shape 仍有四个 P0；外部 Provider/数据/标注输入按各模块门禁补充 |
 | Phase 0 审计、`v1alpha` 接口与迁移计划 | 已完成 | 当前状态、依赖、设计、ADR、迁移和实施文档已形成，并通过文档门禁 | 不包含 Runtime 代码；进入 S01 后按实现证据重新判断 |
-| 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Tool/Attachment Runtime 与授权生产证据 |
+| 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、默认关闭的有界 Tool 链、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Attachment Runtime 与授权生产证据 |
 | 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现 | 真实 Attachment Source、第二平台与授权真实群 delivery 证据 |
 | 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
 | Memory | 部分完成 | Memory v2 Scope/Selector/Repository/Write Gate、内存/JSON 参考 Adapter、fail-closed Iris Protocol Adapter、隔离矩阵和可逆迁移工具已实现 | 真实 Iris SDK Backend、Context Builder 接入、删除/导出闭环、效果 Eval、shadow 和生产切流 |
-| MCP 集成 | 已完成（S12 统一传输范围） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker、Fake/iCourse 共享 Contract、iCourse facade 和显式 Legacy 回滚均已通过 TreeWork Verification | Capability Provider/Planner 属 S13；真实新 Server、凭据和在线来源仍是外部门禁 |
-| Capability 与 Tool Runtime | 部分完成 | 课程命令已有固定手工调用流程 | Registry、Retrieval、有限 Planner、逐步授权 Executor、Validator 和副作用/预算门禁 |
+| MCP 集成 | 已完成（S12 统一传输范围） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker、Fake/iCourse 共享 Contract、iCourse facade 和显式 Legacy 回滚均已通过 TreeWork Verification | 真实新 Server、凭据和在线来源仍是外部门禁 |
+| Capability 与 Tool Runtime | 已完成（S13 离线范围） | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator、通用 MCP Provider、四个 iCourse 公开缓存映射、配置式 Fake 扩展及默认关闭的 Offline Runtime 工具链均有测试 | 无真实 Tool Planning Endpoint、真实语言质量、生产 Tools Rollout、高风险/写能力或新真实 Server 证据 |
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
 | 回答档位与动态输出预算 | 未完成 | 现有 `max_output_tokens`、`MAX_LENGTH` 和静态字数上限可作为原语 | 缺少独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router 正交性和最终长度/完整性 Validator |
 | OC 与 Persona | 部分完成 | 最小 Composer、确定性单 Persona Renderer、Fact/target/constraint 保持与 Render Validator 已进入 S10 | 完整 OC 资产、多 Persona、版本发布和人工风格 Eval |
 | 主动消息与订阅推送 | 未完成（S15A-S15E） | Legacy TargetTalk、Delivery/rollout 和 iCourse MCP 可提供局部原语 | 缺少 initiated-run、主动授权、Subscription/Scheduler/Source contract、fixture-backed Digest/Probe Shadow 和回滚闭环；真实校园/arXiv/行业 Source Adapter 是外部门禁 |
 | 在线学习 / Bandit | 未完成（S20） | S08-S11 决策 receipt、脱敏聚合和受控 rollout 可供未来独立设计 | 当前无实现、配置或执行 hook；仍需 propensity/support、OPE 与单独安全评审；禁止学习主动发送和 Answer Profile |
-| Trace、Eval 与 CI | 部分完成 | 375 项双版本测试、S09 版本化 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
+| Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
 | 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有当前发布必需模块、既定 WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
 
@@ -82,8 +83,9 @@ Memory/Tool 和附件仍按各模块独立门禁判断。授权群放量不再�
 | S10 | 已完成 | 显式 @ 直聊离线闭环、两次模型预算、CAS/single-flight、Composition、Delivery/reconciliation 与 Shadow | 生产 Provider 与 Memory/Tool/Attachment 不在 S10 范围 |
 | S11 | 已完成（本地） | typed rollout、SQLite claim/tombstone、AstrBot Bridge、发送前熔断、指标和可执行回滚 | 授权真实 QQ 群证据延期到最终 S23 |
 | S12A | 已完成 | MCP v2 native/legacy、生命周期和版本隔离 Spike 已形成 ADOPT ADR | 保持主环境 MCP 1.29、worker MCP 2.0 的隔离结论 |
-| S12 | 已完成 | Unified MCP、严格 Registry、独立 worker、iCourse facade/rollback、扩展 fixture、双 Python、故障注入、派生镜像、secret、Web、Ruff 和 TreeWork Verification 均已通过 | 进入 S13；真实新 Server、真实 HTTP Endpoint 和在线来源保持外部门禁 |
-| S13–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S12 | 已完成 | Unified MCP、严格 Registry、独立 worker、iCourse facade/rollback、扩展 fixture、双 Python、故障注入、派生镜像、secret、Web、Ruff 和 TreeWork Verification 均已通过 | 真实新 Server、真实 HTTP Endpoint 和在线来源保持外部门禁 |
+| S13 | 已完成（离线） | Capability Catalog/Retrieval/Planner/Executor/Validator、iCourse/Fake Provider Contract、合成 Eval、Tool State/预算/授权/模型不可信证据投影和 no-send 集成测试通过 | 生产 Rollout 保持 Tools 关闭；真实 Planner Endpoint、人工质量和真实新 Server 不在本阶段 |
+| S14–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
@@ -486,9 +488,9 @@ Repository 和 fail-closed Iris Adapter。
 
 ### 目标
 
-S12 先实现统一 MCP Client/Server Registry、隔离 v2 worker 与 iCourse compatibility
-facade；S13 再实现 Capability Registry/Retrieval、Planner、Executor、Validator 和首个
-iCourse 公开只读 Provider。Legacy iCourse 路径保留到 S22。主动日报在 S15C 只定义
+S12 已实现统一 MCP Client/Server Registry、隔离 v2 worker 与 iCourse compatibility
+facade；S13 已实现 Capability Registry/Retrieval、确定性参考 Planner、Executor、Validator 和
+iCourse 公开缓存只读 Provider。Legacy iCourse 路径保留到 S22。主动日报在 S15C 只定义
 source-neutral Contract，并使用 Fake Provider 与本地固定 fixture；真实校园、arXiv 和行业
 来源 Adapter 不在本轮离线实现中。
 
@@ -636,10 +638,10 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 下一可审阅实施步骤
 
-标题：**先完成回答档位、主动出站与其本地审计，真实群验证最后执行**
+标题：**先完成 S14 Memory，再完成回答档位、主动出站与本地审计，真实群验证最后执行**
 
-S01–S12 的本地实现和 Verification 已经完成。接下来按 WIP=1 从 S13 起完成
-S13-S15、S15A-S15E、S16-S18、S19 本地总集成与 S22 最终兼容
+S01–S13 的本地实现和 Verification 已经完成。接下来按 WIP=1 从 S14 起完成
+S14-S15、S15A-S15E、S16-S18、S19 本地总集成与 S22 最终兼容
 审计，再完成 S20 离线基础。既定 WebUI 只运行必要回归，回答档位和主动出站不得跳过本地
 门禁。只有全部发布必需分支通过后，才准备 S23：
 

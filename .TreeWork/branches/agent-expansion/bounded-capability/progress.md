@@ -4,15 +4,53 @@
 <!-- treework:status:start -->
 Branch: bounded-capability
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: in_progress
+Verification: verified
+Last sync: unix:1786321354
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S13 now provides immutable digest-bound Capability contracts, atomic Catalog/
+  Health snapshots, deterministic eligibility/Top-K, bounded planning and
+  binding, per-attempt governed execution, single-flight idempotency, sanitized
+  Observations and a fail-closed Validator loop.
+- The generic MCP Provider maps exactly four public cache-read iCourse
+  Capabilities. A second Fake proves that extension needs only Server config,
+  Definition, Mapping and authorization fixture changes.
+- The existing Offline Runtime has a default-off `USE_TOOLS` path with a
+  separate `capability.plan` authorization and tool reservation. Only accepted
+  Observations enter Direct Chat as bounded untrusted JSON; S11 production
+  admission still rejects Tools.
+- Capability Eval now reports fixed Retrieval and Runtime denominators for
+  Recall@K, forbidden exposure, plan/argument evidence, completion and average
+  attempts. These are synthetic contract metrics, not real Chinese or service
+  quality evidence.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Python 3.10.20 and 3.12.13 each passed the 496-test repository suite with the
+  same two AstrBot-host-only skips. Focused Capability, Runtime, MCP Contract,
+  cancellation/UNKNOWN, authorization, budget and import checks also passed.
+- The Dududa sdist/wheel, compileall, secret scan over 715 files, root lock,
+  Compose/Shell, changed-file Ruff/format and whitespace gates passed. The
+  unchanged Web surface retained its 66 frontend + 42 server test and build
+  evidence from the final S13 verification run.
+- Audit sinks gained an optional injected clock after the fixed-clock S13
+  fixtures exposed a wall-clock-dependent terminalization failure; the default
+  production UTC clock remains unchanged.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Real Tool Planner Endpoint conformance, real-language routing quality, live
+  iCourse data, production Tools rollout and any new real MCP Server require
+  later external evidence and remain disabled.
+- The fresh GitHub CI job does not yet provision the isolated Unified MCP worker
+  environment before root tests. Local locked worker evidence passes; workflow
+  bootstrap ownership remains with S18 Evaluation And CI.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- S14 may reuse the completed Runtime phase/budget/state machinery but must not
+  weaken Scope, WriteGate or tombstone authority. No S14 implementation was
+  started in this worktree.

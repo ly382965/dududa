@@ -78,6 +78,7 @@ class RecordingProvider:
         self.mode = "success"
         self.sequence = []
         self.requests = []
+        self.data = {"query": "untrusted provider value"}
         self.started = asyncio.Event()
         self.release = asyncio.Event()
 
@@ -100,7 +101,7 @@ class RecordingProvider:
             "failed": ToolExecutionStatus.FAILED,
             "unknown": ToolExecutionStatus.UNKNOWN,
         }.get(mode, ToolExecutionStatus.SUCCEEDED)
-        data = {"query": "untrusted provider value"}
+        data = self.data
         if mode == "empty":
             data = {}
         failure = None
@@ -336,7 +337,7 @@ class GovernedToolExecutorTests(unittest.IsolatedAsyncioTestCase):
             policy_revision="budget-v1",
             clock=lambda: NOW,
         )
-        self.audit = InMemoryAuditSink()
+        self.audit = InMemoryAuditSink(clock=lambda: NOW)
         self.ledger = InMemoryToolInvocationLedger(clock=lambda: NOW)
         self.executor = self._executor()
         self.assertIsInstance(self.executor, ToolExecutor)

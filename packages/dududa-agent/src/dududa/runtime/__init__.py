@@ -40,7 +40,7 @@ from .state import (
 )
 
 if TYPE_CHECKING:
-    from .budget import RuntimeModelBudgetPlan
+    from .budget import RuntimeModelBudgetPlan, RuntimeToolBudgetPlan
     from .composition import (
         DeterministicPersonaRenderer,
         DeterministicPersonaRendererConfig,
@@ -123,21 +123,22 @@ __all__ = [
     "RouterBackedModelPerception",
     "RouterBackedModelPerceptionConfig",
     "RuntimeAdmissionAction",
-    "RuntimeIdentityBinding",
-    "RuntimeInvocationOptions",
-    "RuntimeModelBudgetPlan",
     "RuntimeCheckpoint",
     "RuntimeCommitDisposition",
     "RuntimeCommitRequest",
     "RuntimeCommitResult",
     "RuntimeDedupRecord",
+    "RuntimeDirectChatFailure",
+    "RuntimeIdentityBinding",
+    "RuntimeInvocationOptions",
+    "RuntimeModelBudgetPlan",
+    "RuntimeModelPerceptionFailure",
     "RuntimePhase",
     "RuntimeResult",
-    "RuntimeDirectChatFailure",
-    "RuntimeModelPerceptionFailure",
     "RuntimeSelectionSummary",
     "RuntimeStartRequest",
     "RuntimeState",
+    "RuntimeToolBudgetPlan",
     "ShadowRunReceipt",
     "ShadowRunner",
     "TraceEvent",
@@ -159,6 +160,7 @@ __all__ = [
 
 _LAZY_EXPORTS = {
     "RuntimeModelBudgetPlan": ".budget",
+    "RuntimeToolBudgetPlan": ".budget",
     "DeterministicPersonaRenderer": ".composition",
     "DeterministicPersonaRendererConfig": ".composition",
     "DeterministicRenderValidator": ".composition",

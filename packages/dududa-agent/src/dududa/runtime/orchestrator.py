@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-import uuid
 
+from dududa.capabilities.contracts import (
+    CapabilityRunReceipt,
+    CapabilityRunRequest,
+    CapabilityRunStatus,
+    ToolObservation,
+)
+from dududa.capabilities.digests import (
+    capability_run_receipt_digest,
+    capability_run_request_digest,
+)
 from dududa.contracts.binding import NegotiatedBindingReceipt
 from dududa.domain.delivery import DeliveryReceipt, DeliveryStatus
 from dududa.domain.identity import ConversationScope
@@ -18,6 +29,7 @@ from dududa.errors import DududaError, ErrorCategory, error, validation_error
 from dududa.models.contracts import ModelRole
 from dududa.models.digests import route_decision_digest, tier_decision_digest
 from dududa.perception.contracts import SocialAction
+from dududa.ports.capabilities import BoundedCapabilityRuntime
 from dududa.ports.context import NeverCancelled, PortCallContext
 from dududa.ports.models import ModelTierPolicy
 from dududa.ports.perception import SocialDecisionEngine, TaskComplexityAssessor
@@ -28,15 +40,26 @@ from dududa.ports.runtime import (
     RuntimePerceptionEngine,
     RuntimeStateStore,
 )
+from dududa.security.models import AuthorizationEffect
 from dududa.security.ports import AuthorizationDecisionVerifier, AuthorizationPolicy
 
-from .authorization import build_response_authorization_request
+from .authorization import (
+    build_capability_plan_authorization_request,
+    build_response_authorization_request,
+)
 from .budget import (
     RuntimeModelBudgetPlan,
+    RuntimeToolBudgetPlan,
     add_usage,
     charge_budget,
     reservation_budget,
+    usage_within_tool_reservation,
     zero_usage_for_budget,
+)
+from .capabilities import (
+    project_capability_run_request,
+    tool_context_privacy_level,
+    tool_context_tokens_upper_bound,
 )
 from .context import CurrentMessageContextBuilder
 from .contracts import (
@@ -79,6 +102,7 @@ class OfflineRuntimeOrchestratorConfig:
     runtime_policy: OfflineRuntimePolicySnapshot
     negotiated_bindings: tuple[NegotiatedBindingReceipt, ...]
     component_revision: ComponentRevision
+    tool_budget_plan: RuntimeToolBudgetPlan | None = None
     terminal_commit_grace: timedelta = timedelta(seconds=5)
 
     def __post_init__(self) -> None:
@@ -96,6 +120,16 @@ class OfflineRuntimeOrchestratorConfig:
             raise validation_error("duplicate_runtime_negotiated_binding")
         if not isinstance(self.component_revision, ComponentRevision):
             raise validation_error("invalid_runtime_orchestrator_revision")
+        if self.tool_budget_plan is not None and not isinstance(
+            self.tool_budget_plan, RuntimeToolBudgetPlan
+        ):
+            raise validation_error("invalid_runtime_tool_budget_plan")
+        if (
+            self.tool_budget_plan is not None
+            and self.tool_budget_plan.reservation.tool_steps
+            < self.runtime_policy.capability_maximum_attempts
+        ):
+            raise validation_error("runtime_tool_attempt_budget_mismatch")
         if not isinstance(
             self.terminal_commit_grace, timedelta
         ) or self.terminal_commit_grace <= timedelta(0):
@@ -121,6 +155,7 @@ class OfflineRuntimeOrchestrator:
         renderer: OfflinePersonaRenderer,
         final_validator: OfflineFinalResponseValidator,
         delivery_builder: DeliveryRequestBuilder,
+        capability_runtime: BoundedCapabilityRuntime | None = None,
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
     ) -> None:
@@ -157,6 +192,10 @@ class OfflineRuntimeOrchestrator:
                 raise TypeError(f"invalid {name}")
         if delivery_builder.config.adapter_binding not in config.negotiated_bindings:
             raise ValueError("delivery binding is not negotiated by Runtime")
+        if capability_runtime is not None and not isinstance(
+            capability_runtime, BoundedCapabilityRuntime
+        ):
+            raise TypeError("capability runtime does not implement its port")
         self._config = config
         self._store = store
         self._context_builder = context_builder
@@ -171,6 +210,7 @@ class OfflineRuntimeOrchestrator:
         self._renderer = renderer
         self._final_validator = final_validator
         self._delivery_builder = delivery_builder
+        self._capability_runtime = capability_runtime
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
 
@@ -363,6 +403,50 @@ class OfflineRuntimeOrchestrator:
             if known_target:
                 for identity_ref in perception.result.target_identity_refs:
                     context.resolve(identity_ref)
+            tools_enabled = state.invocation_options.feature_flags.get("tools", False)
+            capability_request = None
+            capability_authorization_request = None
+            capability_authorization = None
+            if (
+                perception.result.need_tools
+                and tools_enabled
+                and self._capability_runtime is not None
+                and self._config.tool_budget_plan is not None
+            ):
+                capability_request = project_capability_run_request(
+                    context,
+                    perception.result,
+                    state.actor,
+                    state.conversation_scope,
+                    available_input_schemas=(
+                        self._config.runtime_policy.capability_input_schemas
+                    ),
+                    maximum_attempts=(
+                        self._config.runtime_policy.capability_maximum_attempts
+                    ),
+                )
+                capability_authorization_request = (
+                    build_capability_plan_authorization_request(
+                        state.actor,
+                        state.conversation_scope,
+                        run_id=state.run_id,
+                        policy_snapshot_id=state.policy_snapshot_id,
+                        query_digest=str(capability_request.query.query_digest),
+                    )
+                )
+                capability_authorization = await self._authorization_policy.decide(
+                    capability_authorization_request,
+                    call=self._call_with_budget(call, state.budget),
+                )
+                if not self._authorization_verifier.verify(
+                    capability_authorization,
+                    at=self._now(),
+                ):
+                    raise error(
+                        "runtime_capability_plan_authorization_unissued",
+                        ErrorCategory.AUTHORIZATION,
+                        "security.denied",
+                    )
             signals = project_s10_decision_signals(
                 authorization=response_authorization,
                 duplicate_or_self_message=False,
@@ -371,6 +455,8 @@ class OfflineRuntimeOrchestrator:
                 data_classification=preprocess.data_classification,
                 group_mode=self._config.runtime_policy.group_mode,
                 known_target=known_target,
+                tool_authorization=capability_authorization,
+                tools_enabled=tools_enabled,
             )
             social = await self._social.decide(
                 perception.result,
@@ -407,6 +493,11 @@ class OfflineRuntimeOrchestrator:
                 social_decision=social,
                 tier_selection_context=tier_context,
                 tier_decision=tier,
+                capability_plan_authorization_request=(
+                    capability_authorization_request
+                ),
+                capability_plan_authorization=capability_authorization,
+                capability_run_request=capability_request,
             )
 
             if social.action is SocialAction.IGNORE:
@@ -426,14 +517,190 @@ class OfflineRuntimeOrchestrator:
             if social.action not in {
                 SocialAction.DIRECT_REPLY,
                 SocialAction.ASK_CLARIFICATION,
+                SocialAction.USE_TOOLS,
             }:
                 raise validation_error("s10_social_action_out_of_scope")
+
+            capability_receipt = None
+            if social.action is SocialAction.USE_TOOLS:
+                if (
+                    self._capability_runtime is None
+                    or capability_request is None
+                    or capability_authorization is None
+                    or capability_authorization.effect is not AuthorizationEffect.ALLOW
+                ):
+                    raise validation_error(
+                        "runtime_capability_execution_not_authorized"
+                    )
+                if not self._authorization_verifier.verify(
+                    capability_authorization,
+                    at=self._now(),
+                ):
+                    raise error(
+                        "runtime_capability_plan_authorization_expired",
+                        ErrorCategory.AUTHORIZATION,
+                        "security.denied",
+                    )
+                if checkpoint.state.tool_budget_plan is None:
+                    raise validation_error("runtime_tool_budget_plan_missing")
+                tool_budget = reservation_budget(
+                    checkpoint.state.tool_budget_plan.reservation
+                )
+                try:
+                    capability_receipt = await self._run_capability(
+                        capability_request,
+                        call=self._call_with_budget(call, tool_budget),
+                    )
+                    self._validate_capability_receipt(
+                        capability_receipt,
+                        capability_request,
+                        run_id=checkpoint.state.run_id,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except DududaError as failure:
+                    conservative_charge = add_usage(
+                        checkpoint.state.charged_usage,
+                        checkpoint.state.tool_budget_plan.reservation,
+                    )
+                    conservative_budget = charge_budget(
+                        checkpoint.state.initial_budget,
+                        conservative_charge,
+                    )
+                    return await self._complete_terminal(
+                        checkpoint,
+                        RuntimePhase.FAILED,
+                        Outcome.FAILED,
+                        (failure.info.code,),
+                        self._commit_call(call, conservative_budget),
+                        capability_unverified_usage=(
+                            checkpoint.state.tool_budget_plan.reservation
+                        ),
+                        charged_usage=conservative_charge,
+                        budget=conservative_budget,
+                    )
+                pre_tool_charge = checkpoint.state.charged_usage
+                if (
+                    capability_receipt.retrieval is not None
+                    and capability_receipt.plan is not None
+                ):
+                    checkpoint = await self._commit_transition(
+                        checkpoint,
+                        RuntimePhase.TOOLS_PLANNED,
+                        self._commit_call(call, checkpoint.state.budget),
+                        capability_retrieval=capability_receipt.retrieval,
+                        tool_plan=capability_receipt.plan,
+                    )
+                if (
+                    capability_receipt.observations
+                    or capability_receipt.unobserved_attempts
+                ):
+                    if checkpoint.state.phase is not RuntimePhase.TOOLS_PLANNED:
+                        raise validation_error(
+                            "runtime_capability_observation_without_plan"
+                        )
+                    observation_usage = _attempt_usage(
+                        checkpoint.state.initial_budget,
+                        capability_receipt.observations,
+                        capability_receipt.unobserved_attempts,
+                    )
+                    observed_charge = add_usage(pre_tool_charge, observation_usage)
+                    observed_budget = charge_budget(
+                        checkpoint.state.initial_budget,
+                        observed_charge,
+                    )
+                    checkpoint = await self._commit_transition(
+                        checkpoint,
+                        RuntimePhase.TOOLS_EXECUTED,
+                        self._commit_call(call, observed_budget),
+                        tool_observations=capability_receipt.observations,
+                        tool_unobserved_attempts=(
+                            capability_receipt.unobserved_attempts
+                        ),
+                        charged_usage=observed_charge,
+                        budget=observed_budget,
+                    )
+
+                tool_charge = add_usage(pre_tool_charge, capability_receipt.usage)
+                budget_after_tools = charge_budget(
+                    checkpoint.state.initial_budget,
+                    tool_charge,
+                )
+                if capability_receipt.status is not CapabilityRunStatus.COMPLETED:
+                    terminal_phase = (
+                        RuntimePhase.DEFERRED
+                        if capability_receipt.status is CapabilityRunStatus.DEFERRED
+                        else RuntimePhase.FAILED
+                    )
+                    terminal_outcome = (
+                        Outcome.DEFERRED
+                        if terminal_phase is RuntimePhase.DEFERRED
+                        else Outcome.FAILED
+                    )
+                    return await self._complete_terminal(
+                        checkpoint,
+                        terminal_phase,
+                        terminal_outcome,
+                        capability_receipt.reason_codes,
+                        self._commit_call(call, budget_after_tools),
+                        capability_retrieval=capability_receipt.retrieval,
+                        tool_plan=capability_receipt.plan,
+                        tool_observations=capability_receipt.observations,
+                        tool_unobserved_attempts=(
+                            capability_receipt.unobserved_attempts
+                        ),
+                        tool_validation=capability_receipt.validation,
+                        capability_run_receipt=capability_receipt,
+                        charged_usage=tool_charge,
+                        budget=budget_after_tools,
+                    )
+                if checkpoint.state.phase is not RuntimePhase.TOOLS_EXECUTED:
+                    raise validation_error(
+                        "runtime_completed_capability_has_no_execution"
+                    )
+                if capability_receipt.validation is None:
+                    raise validation_error(
+                        "runtime_completed_capability_has_no_validation"
+                    )
+                tier_context = project_tier_selection_context(
+                    selection_id=self._id("tier-selection"),
+                    role=ModelRole.DIRECT_CHAT,
+                    assessment=assessment,
+                    content_input_tokens_upper_bound=(
+                        context.perception.content_input_tokens_upper_bound
+                        + tool_context_tokens_upper_bound(capability_receipt)
+                    ),
+                    data_classification=tool_context_privacy_level(
+                        capability_receipt,
+                        context.perception.data_classification,
+                    ),
+                    budget=reservation_budget(
+                        self._config.model_budget_plan.direct_chat_reservation
+                    ),
+                )
+                tier = select_model_tier(
+                    context=tier_context,
+                    definition=self._config.runtime_policy.direct_chat_tier,
+                    policy=self._tier_policy,
+                    now=self._now(),
+                )
+                checkpoint = await self._commit_transition(
+                    checkpoint,
+                    RuntimePhase.VALIDATED,
+                    self._commit_call(call, budget_after_tools),
+                    tool_validation=capability_receipt.validation,
+                    capability_run_receipt=capability_receipt,
+                    tier_selection_context=tier_context,
+                    tier_decision=tier,
+                    charged_usage=tool_charge,
+                    budget=budget_after_tools,
+                )
 
             direct = None
             direct_route = None
             charged_usage = checkpoint.state.charged_usage
             budget = checkpoint.state.budget
-            if social.action is SocialAction.DIRECT_REPLY:
+            if social.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
                 if tier is None:
                     raise validation_error("direct_reply_missing_tier_decision")
                 try:
@@ -443,6 +710,7 @@ class OfflineRuntimeOrchestrator:
                         tier,
                         self._config.model_budget_plan.direct_chat_reservation,
                         route_hint=checkpoint.state.invocation_options.route_hint,
+                        capability_receipt=capability_receipt,
                         call=self._call_with_budget(
                             call,
                             reservation_budget(
@@ -721,6 +989,53 @@ class OfflineRuntimeOrchestrator:
             raise _not_found("runtime_checkpoint_not_found")
         return checkpoint
 
+    async def _run_capability(
+        self,
+        request: CapabilityRunRequest,
+        *,
+        call: PortCallContext,
+    ) -> CapabilityRunReceipt:
+        runtime = self._capability_runtime
+        if runtime is None:
+            raise validation_error("runtime_capability_runtime_missing")
+        try:
+            receipt = await runtime.run(request, call=call)
+        except asyncio.CancelledError:
+            raise
+        except DududaError:
+            raise
+        except Exception:  # noqa: BLE001 - capability internals remain private.
+            raise error(
+                "runtime_capability_runtime_unavailable",
+                ErrorCategory.INTERNAL,
+                "service.unavailable",
+            ) from None
+        if not isinstance(receipt, CapabilityRunReceipt):
+            raise validation_error("invalid_runtime_capability_receipt")
+        return receipt
+
+    def _validate_capability_receipt(
+        self,
+        receipt: CapabilityRunReceipt,
+        request: CapabilityRunRequest,
+        *,
+        run_id: str,
+    ) -> None:
+        if (
+            receipt.run_id != run_id
+            or receipt.request != request
+            or receipt.request_digest != request.request_digest
+            or request.request_digest != capability_run_request_digest(request)
+            or receipt.receipt_digest != capability_run_receipt_digest(receipt)
+        ):
+            raise validation_error("runtime_capability_receipt_binding_mismatch")
+        tool_budget_plan = self._config.tool_budget_plan
+        if tool_budget_plan is None or not usage_within_tool_reservation(
+            receipt.usage,
+            tool_budget_plan.reservation,
+        ):
+            raise validation_error("runtime_capability_usage_exceeds_reservation")
+
     def _initial_state(
         self,
         request: RuntimeStartRequest,
@@ -754,6 +1069,12 @@ class OfflineRuntimeOrchestrator:
             policy_snapshot_id=call.policy_snapshot_id,
             runtime_policy=self._config.runtime_policy,
             negotiated_bindings=self._config.negotiated_bindings,
+            tool_budget_plan=(
+                self._config.tool_budget_plan
+                if request.options.feature_flags.get("tools", False)
+                and self._capability_runtime is not None
+                else None
+            ),
         )
 
     def _validate_start(
@@ -826,6 +1147,7 @@ class OfflineRuntimeOrchestrator:
             "policy_snapshot_id",
             "runtime_policy",
             "negotiated_bindings",
+            "tool_budget_plan",
         )
         if any(getattr(expected, name) != getattr(actual, name) for name in fields):
             raise _conflict("runtime_duplicate_root_mismatch")
@@ -890,3 +1212,14 @@ def _conflict(code: str) -> DududaError:
 
 def _not_found(code: str) -> DududaError:
     return error(code, ErrorCategory.NOT_FOUND, "request.not_found")
+
+
+def _attempt_usage(
+    budget,
+    observations: tuple[ToolObservation, ...],
+    unobserved_attempts,
+):
+    usage = zero_usage_for_budget(budget)
+    for attempt in (*observations, *unobserved_attempts):
+        usage = add_usage(usage, attempt.usage)
+    return usage

@@ -7,7 +7,10 @@ if TYPE_CHECKING:
     from .capabilities import (
         CapabilityRetrievalEvalCase,
         CapabilityRetrievalEvalReport,
+        CapabilityRuntimeEvalCase,
+        CapabilityRuntimeEvalReport,
         evaluate_capability_retrieval,
+        evaluate_capability_runtime,
     )
     from .s09 import generate_s09_bundle, run_s09_eval
     from .semantic_v2 import (
@@ -18,8 +21,11 @@ if TYPE_CHECKING:
 __all__ = [
     "CapabilityRetrievalEvalCase",
     "CapabilityRetrievalEvalReport",
+    "CapabilityRuntimeEvalCase",
+    "CapabilityRuntimeEvalReport",
     "check_semantic_schema_pilot",
     "evaluate_capability_retrieval",
+    "evaluate_capability_runtime",
     "generate_s09_bundle",
     "run_s09_eval",
     "run_semantic_schema_pilot",
@@ -30,7 +36,10 @@ def __getattr__(name: str) -> object:
     if name in {
         "CapabilityRetrievalEvalCase",
         "CapabilityRetrievalEvalReport",
+        "CapabilityRuntimeEvalCase",
+        "CapabilityRuntimeEvalReport",
         "evaluate_capability_retrieval",
+        "evaluate_capability_runtime",
     }:
         return getattr(import_module(".capabilities", __name__), name)
     if name in {"generate_s09_bundle", "run_s09_eval"}:

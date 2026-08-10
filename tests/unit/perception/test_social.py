@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import unittest
 from datetime import timedelta
 from decimal import Decimal
-import unittest
 
 from dududa.domain.primitives import RuntimeBudget, TraceContext
 from dududa.errors import DududaError, ErrorCategory
@@ -49,7 +49,7 @@ def _call(*, cancellation=None, deadline=None) -> PortCallContext:
         trace=TraceContext("trace-1"),
         deadline=deadline or NOW + timedelta(seconds=30),
         cancellation=cancellation or NeverCancelled(),
-        budget=RuntimeBudget(2, 0, 1, 8_000, 2_000, Decimal("8")),
+        budget=RuntimeBudget(2, 0, 1, 8_000, 2_000, Decimal(8)),
         policy_snapshot_id="policy-snapshot-1",
     )
 
@@ -114,6 +114,33 @@ class DeterministicSocialDecisionPolicyTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(privacy.action, SocialAction.DEFER)
         self.assertIs(tool.action, SocialAction.DEFER)
         self.assertNotEqual(tool.action, SocialAction.USE_TOOLS)
+
+    async def test_tools_require_both_authorization_and_feature_gate(self) -> None:
+        perception = _perception(
+            context(),
+            model_payload(
+                need_tools=True,
+                capability_categories=["search"],
+                expected_tool_steps=1,
+            ),
+        )
+        authorized = AuthorizationView(1, True, True, ("bounded_tools",))
+
+        disabled = await _policy().decide(
+            perception,
+            _signals(authorization=authorized, tools_enabled=False),
+            call=_call(),
+        )
+        enabled = await _policy().decide(
+            perception,
+            _signals(authorization=authorized, tools_enabled=True),
+            call=_call(),
+        )
+
+        self.assertIs(disabled.action, SocialAction.DEFER)
+        self.assertEqual(disabled.reason_codes, ("tools_disabled",))
+        self.assertIs(enabled.action, SocialAction.USE_TOOLS)
+        self.assertEqual(enabled.reason_codes, ("bounded_tool_execution",))
 
     async def test_bounded_ambiguity_asks_one_clarification(self) -> None:
         payload = model_payload(

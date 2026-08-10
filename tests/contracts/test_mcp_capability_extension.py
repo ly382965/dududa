@@ -309,7 +309,7 @@ class McpCapabilityExtensionContractTests(unittest.IsolatedAsyncioTestCase):
                     policy_revision="budget-v1",
                     clock=lambda: NOW,
                 ),
-                InMemoryAuditSink(),
+                InMemoryAuditSink(clock=lambda: NOW),
                 InMemoryToolInvocationLedger(clock=lambda: NOW),
                 clock=lambda: NOW,
             )

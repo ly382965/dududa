@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from decimal import Decimal
 
+from dududa.capabilities import (
+    CapabilityRunRequest,
+    CapabilityRunStatus,
+    capability_run_request_digest,
+)
 from dududa.capabilities.retrieval import DeterministicCapabilityRetriever
 from dududa.evaluation.capabilities import (
     CapabilityRetrievalEvalCase,
+    CapabilityRuntimeEvalCase,
     evaluate_capability_retrieval,
+    evaluate_capability_runtime,
 )
 
+from tests.unit.capabilities.test_executor import execution_call
 from tests.unit.capabilities.test_registry import catalog_fixture
 from tests.unit.capabilities.test_retrieval import (
     StaticHealthRegistry,
@@ -18,6 +27,7 @@ from tests.unit.capabilities.test_retrieval import (
     request_for,
     retrieval_call,
 )
+from tests.unit.runtime.test_capabilities import _capability_harness
 
 
 class CapabilityRetrievalEvaluationTests(unittest.IsolatedAsyncioTestCase):
@@ -66,6 +76,75 @@ class CapabilityRetrievalEvaluationTests(unittest.IsolatedAsyncioTestCase):
             report.report_digest,
             "dududa-c14n-v1:evaluation.capability-retrieval:v1:sha-256:"
             "91b7582c3b1538c8ff1fd23bc2af247942ef5ce9453c8cad4463aa51a0da3985",
+        )
+
+
+class CapabilityRuntimeEvaluationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_report_uses_receipt_evidence_and_fixed_denominators(self) -> None:
+        fixture, runtime = await _capability_harness()
+        source = fixture.retrieval_request
+        request_values = {
+            "schema_version": 1,
+            "query": source.query,
+            "actor": source.actor,
+            "conversation_scope": source.conversation_scope,
+            "data_classification": source.data_classification,
+            "available_input_schemas": source.available_input_schemas,
+            "maximum_attempts": 4,
+        }
+        request = CapabilityRunRequest(
+            request_digest=capability_run_request_digest(request_values),
+            **request_values,
+        )
+        cases = (
+            CapabilityRuntimeEvalCase(
+                case_id="synthetic-course-cache-hit",
+                request=request,
+                expected_status=CapabilityRunStatus.COMPLETED,
+                assess_plan=True,
+                assess_arguments=True,
+            ),
+            CapabilityRuntimeEvalCase(
+                case_id="synthetic-course-budget-denied",
+                request=request,
+                expected_status=CapabilityRunStatus.DEFERRED,
+                assess_plan=False,
+                assess_arguments=False,
+            ),
+        )
+
+        report = await evaluate_capability_runtime(
+            runtime,
+            cases,
+            call_factory=lambda case: replace(
+                execution_call(
+                    cost_units=(
+                        Decimal(0)
+                        if case.case_id.endswith("budget-denied")
+                        else Decimal(100)
+                    )
+                ),
+                run_id=f"eval-{case.case_id}",
+            ),
+        )
+
+        self.assertEqual(report.case_count, 2)
+        self.assertEqual(report.plan_assessed_cases, 1)
+        self.assertEqual(report.valid_plan_evidence_cases, 1)
+        self.assertEqual(report.plan_validity_rate, Decimal(1))
+        self.assertEqual(report.argument_assessed_cases, 1)
+        self.assertEqual(report.valid_argument_evidence_cases, 1)
+        self.assertEqual(report.argument_validity_rate, Decimal(1))
+        self.assertEqual(report.completed_cases, 1)
+        self.assertEqual(report.completion_rate, Decimal("0.5"))
+        self.assertEqual(report.expected_status_matches, 2)
+        self.assertEqual(report.expected_status_rate, Decimal(1))
+        self.assertEqual(report.attempts_total, 1)
+        self.assertEqual(report.average_attempts, Decimal("0.5"))
+        self.assertEqual(
+            report.report_digest,
+            "dududa-c14n-v1:evaluation.capability-runtime:v1:sha-256:"
+            "8aad9bc1374d3d388e674d7a96460a343aec6268f1fe48f10c91322857927ca3",
         )
 
 

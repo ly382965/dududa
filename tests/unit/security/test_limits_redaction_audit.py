@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.primitives import (
@@ -57,7 +57,7 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
             TraceContext("trace-1"),
             self.now + timedelta(minutes=1),
             NeverCancelled(),
-            RuntimeBudget(1, 1, 1, 100, 100, Decimal("1")),
+            RuntimeBudget(1, 1, 1, 100, 100, Decimal(1)),
             "policy-v1",
         )
 
@@ -92,9 +92,9 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(second.disposition.value, "already_committed")
 
     async def test_budget_reserve_settle_and_duplicate_are_bound(self) -> None:
-        capacity = ResourceUsage(1, 3, 2, 1, 1000, 500, Decimal("10"))
+        capacity = ResourceUsage(1, 3, 2, 1, 1000, 500, Decimal(10))
         ledger = InMemoryBudgetLedger(capacity, policy_revision="budget-v1")
-        maximum = ResourceUsage(1, 2, 1, 0, 200, 100, Decimal("4"))
+        maximum = ResourceUsage(1, 2, 1, 0, 200, 100, Decimal(4))
         resource = ResourceRef("runtime", "run-1", scope_digest(self.scope))
         request = BudgetReservationRequest(
             1, DigestString("pending"), resource, maximum, "budget-1"
@@ -103,16 +103,16 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
             request, request_digest=budget_reservation_request_digest(request)
         )
         lease = await ledger.reserve(request, call=self.call)
-        usage = ResourceUsage(1, 1, 1, 0, 100, 50, Decimal("2"))
+        usage = ResourceUsage(1, 1, 1, 0, 100, 50, Decimal(2))
         receipt = await ledger.settle(lease, usage, call=self.call)
         duplicate = await ledger.settle(lease, usage, call=self.call)
         self.assertEqual(receipt.charged, usage)
         self.assertEqual(duplicate.disposition, BudgetDisposition.DUPLICATE)
 
     async def test_unknown_cost_is_charged_at_reservation_ceiling(self) -> None:
-        capacity = ResourceUsage(1, 3, 2, 1, 1000, 500, Decimal("10"))
+        capacity = ResourceUsage(1, 3, 2, 1, 1000, 500, Decimal(10))
         ledger = InMemoryBudgetLedger(capacity, policy_revision="budget-v1")
-        maximum = ResourceUsage(1, 2, 1, 0, 200, 100, Decimal("4"))
+        maximum = ResourceUsage(1, 2, 1, 0, 200, 100, Decimal(4))
         resource = ResourceRef("runtime", "run-1", scope_digest(self.scope))
         request = BudgetReservationRequest(
             1, DigestString("pending"), resource, maximum, "budget-unknown"
@@ -123,8 +123,8 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
         lease = await ledger.reserve(request, call=self.call)
         unknown = ResourceUsage(1, 1, 1, 0, 100, 50, None)
         receipt = await ledger.settle(lease, unknown, call=self.call)
-        self.assertEqual(receipt.charged.cost_units, Decimal("4"))
-        self.assertEqual(receipt.remaining.cost_units, Decimal("6"))
+        self.assertEqual(receipt.charged.cost_units, Decimal(4))
+        self.assertEqual(receipt.remaining.cost_units, Decimal(6))
 
     async def test_idempotency_rejects_already_expired_acquisition(self) -> None:
         ledger = InMemoryIdempotencyLedger(clock=lambda: self.now)
@@ -201,12 +201,12 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
             "succeeded",
         )
         event = replace(event, event_digest=audit_event_digest(event))
-        memory = InMemoryAuditSink()
+        memory = InMemoryAuditSink(clock=lambda: self.now)
         receipt = await memory.write(event, call=self.call)
         self.assertTrue(receipt.persisted)
         with TemporaryDirectory() as directory:
             path = Path(directory) / "audit.jsonl"
-            sink = JsonlAuditSink(path)
+            sink = JsonlAuditSink(path, clock=lambda: self.now)
             await sink.write(event, call=self.call)
             self.assertEqual(len(path.read_text(encoding="utf-8").splitlines()), 1)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
