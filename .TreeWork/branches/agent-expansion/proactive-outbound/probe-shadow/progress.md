@@ -11,8 +11,20 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15D is verified and integrated. S15E is the sole WIP branch.
+- Existing Opportunity/Trigger contracts and probe controls are reusable; Detector input, cooldown
+  state, SHORT composition and metadata-only Shadow runtime are not yet implemented.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Froze a synthetic group-projection -> hard gates -> namespaced state -> SHORT no-send candidate
+  chain and a six-class sampling strategy without reopening S15A-S15D design.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Probe contracts/runtime, reference state, tests and verification remain.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Do not feed raw MessageEnvelope history into the Detector. Topic relevance and disturbance quality
+  remain external evaluation gates; this branch proves deterministic eligibility and no-send only.
