@@ -589,10 +589,19 @@
       "title": "S22 Evidence-Based Legacy Cleanup",
       "purpose": "Remove only compatibility surfaces whose consumers have migrated and whose previous release remains independently recoverable.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/legacy-cleanup",
+        "git_branch": "treework/legacy-cleanup",
+        "managed_by_treework": false,
+        "created_at": "unix:1786374916",
+        "last_entered_at": "unix:1786374916",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1786378539"
     },
     {
       "path": "bandit-offline",
