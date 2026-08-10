@@ -4,6 +4,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dududa.domain.primitives import DigestString
 from dududa.errors import validation_error
@@ -20,6 +21,7 @@ _BEHAVIOR_FIELDS = frozenset(
         "schema_version",
         "mode",
         "revision",
+        "timezone",
         "delivery_enabled",
         "allowlisted_scope_digests",
         "kill_switch",
@@ -45,6 +47,7 @@ class ProactiveBehaviorControl:
     schema_version: int
     mode: ProactiveRunMode
     revision: str
+    timezone: str
     delivery_enabled: bool
     allowlisted_scope_digests: frozenset[DigestString]
     kill_switch: bool
@@ -60,6 +63,12 @@ class ProactiveBehaviorControl:
         if self.mode is ProactiveRunMode.PREVIEW:
             raise validation_error("preview_mode_forbidden_in_delivery_control")
         _revision(self.revision, "proactive_behavior_revision")
+        if not isinstance(self.timezone, str) or not self.timezone.strip():
+            raise validation_error("invalid_proactive_timezone")
+        try:
+            ZoneInfo(self.timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise validation_error("invalid_proactive_timezone") from None
         if (
             type(self.delivery_enabled) is not bool
             or type(self.kill_switch) is not bool
@@ -125,6 +134,7 @@ def default_proactive_control_config() -> ProactiveControlConfig:
     common = {
         "schema_version": 1,
         "mode": ProactiveRunMode.OFF,
+        "timezone": "Asia/Shanghai",
         "delivery_enabled": False,
         "allowlisted_scope_digests": frozenset(),
         "kill_switch": True,
@@ -184,6 +194,7 @@ def _parse_behavior(value: object, field_name: str) -> ProactiveBehaviorControl:
         schema_version=_int(value["schema_version"], "schema_version"),
         mode=mode,
         revision=_string(value["revision"], "revision"),
+        timezone=_string(value["timezone"], "timezone"),
         delivery_enabled=_bool(value["delivery_enabled"], "delivery_enabled"),
         allowlisted_scope_digests=frozenset(raw_scopes),
         kill_switch=_bool(value["kill_switch"], "kill_switch"),

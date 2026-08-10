@@ -17,6 +17,7 @@ from .contracts import (
     ConversationOpportunitySnapshot,
     DeliveryRunMode,
     DispatchClaim,
+    DispatchLedgerRecord,
     DispatchPrepareDisposition,
     DispatchState,
     InitiatedRunRequest,
@@ -28,6 +29,7 @@ from .contracts import (
     ProactiveDisposition,
     ProactiveGrantKind,
     ProactivePolicyDecision,
+    ProactivePreviewMetadata,
     ProactivePreviewRequest,
     ProactivePreviewResult,
     ProactiveQuotaLease,
@@ -62,6 +64,7 @@ from .digests import (
     proactive_business_idempotency_key,
     proactive_delivery_idempotency_key,
     proactive_policy_decision_digest,
+    proactive_preview_metadata_digest,
     proactive_preview_request_digest,
     proactive_preview_result_digest,
     proactive_quota_lease_digest,
@@ -76,18 +79,31 @@ from .digests import (
     source_failure_digest,
     source_item_digest,
 )
+from .policy import (
+    DeterministicProactivePolicy,
+    ProactiveInitiationGuard,
+    ProactivePolicyEvaluation,
+)
+from .preview import IsolatedProactivePreviewService
+from .quota import InMemoryProactiveQuotaLedger
 from .registry import InMemoryProactiveTargetRegistry
+from .store import InMemoryProactiveDispatchStore
 
 __all__ = [
     "PROACTIVE_PREVIEW_ACTION",
     "PROACTIVE_SEND_ACTION",
     "ConversationOpportunitySnapshot",
     "DeliveryRunMode",
+    "DeterministicProactivePolicy",
     "DispatchClaim",
+    "DispatchLedgerRecord",
     "DispatchPrepareDisposition",
     "DispatchState",
+    "InMemoryProactiveDispatchStore",
+    "InMemoryProactiveQuotaLedger",
     "InMemoryProactiveTargetRegistry",
     "InitiatedRunRequest",
+    "IsolatedProactivePreviewService",
     "LocalTimeWindow",
     "PreparedDispatch",
     "PreviewRunMode",
@@ -97,7 +113,10 @@ __all__ = [
     "ProactiveControlConfig",
     "ProactiveDisposition",
     "ProactiveGrantKind",
+    "ProactiveInitiationGuard",
     "ProactivePolicyDecision",
+    "ProactivePolicyEvaluation",
+    "ProactivePreviewMetadata",
     "ProactivePreviewRequest",
     "ProactivePreviewResult",
     "ProactiveQuotaLease",
@@ -133,6 +152,7 @@ __all__ = [
     "proactive_business_idempotency_key",
     "proactive_delivery_idempotency_key",
     "proactive_policy_decision_digest",
+    "proactive_preview_metadata_digest",
     "proactive_preview_request_digest",
     "proactive_preview_result_digest",
     "proactive_quota_lease_digest",

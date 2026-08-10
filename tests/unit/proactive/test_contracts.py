@@ -22,6 +22,7 @@ from dududa.proactive.config import (
 from dududa.proactive.contracts import (
     InitiatedRunRequest,
     LocalTimeWindow,
+    ProactiveGrantKind,
     ProactiveRunMode,
     ProactiveTargetPolicyRef,
     ProactiveTrigger,
@@ -184,6 +185,7 @@ class ProactiveContractTests(unittest.TestCase):
             "schema_version": 1,
             "mode": "off",
             "revision": revision,
+            "timezone": "Asia/Shanghai",
             "delivery_enabled": False,
             "allowlisted_scope_digests": [],
             "kill_switch": True,
@@ -230,6 +232,78 @@ class ProactiveRegistryAndAuthorizationTests(unittest.IsolatedAsyncioTestCase):
                 at=fixture.now,
                 call=fixture.service_call(),
             )
+
+    async def test_registry_rejects_revoked_expired_replaced_and_cross_kind_grants(
+        self,
+    ) -> None:
+        revoked_fixture = ProactiveFixture()
+        revoked = replace(
+            revoked_fixture.operator_grant,
+            revoked_at=revoked_fixture.now + timedelta(seconds=30),
+            grant_digest="",
+        )
+        revoked_registry = self._registry_with_operator(revoked_fixture, revoked)
+        revoked_fixture.clock.advance(timedelta(minutes=1))
+        with self.assertRaisesRegex(DududaError, "request.invalid"):
+            await revoked_registry.resolve_grant(
+                revoked.as_ref(),
+                at=revoked_fixture.clock.value,
+                call=revoked_fixture.service_call(),
+            )
+
+        expired_fixture = ProactiveFixture()
+        expired = replace(
+            expired_fixture.operator_grant,
+            expires_at=expired_fixture.now + timedelta(seconds=30),
+            grant_digest="",
+        )
+        expired_registry = self._registry_with_operator(expired_fixture, expired)
+        expired_fixture.clock.advance(timedelta(minutes=1))
+        with self.assertRaisesRegex(DududaError, "request.invalid"):
+            await expired_registry.resolve_grant(
+                expired.as_ref(),
+                at=expired_fixture.clock.value,
+                call=expired_fixture.service_call(),
+            )
+
+        replaced_fixture = ProactiveFixture()
+        replacement = replace(
+            replaced_fixture.operator_grant,
+            revision=2,
+            grant_digest="",
+        )
+        replaced_registry = self._registry_with_operator(
+            replaced_fixture,
+            replacement,
+        )
+        with self.assertRaisesRegex(DududaError, "request.invalid"):
+            await replaced_registry.resolve_grant(
+                replaced_fixture.operator_grant.as_ref(),
+                at=replaced_fixture.now,
+                call=replaced_fixture.service_call(),
+            )
+
+        cross_kind_fixture = ProactiveFixture()
+        cross_kind = replace(
+            cross_kind_fixture.operator_grant,
+            grant_kind=ProactiveGrantKind.GROUP_POLICY_ENABLE,
+            grant_digest="",
+        )
+        with self.assertRaisesRegex(DududaError, "request.invalid"):
+            self._registry_with_operator(cross_kind_fixture, cross_kind)
+
+    @staticmethod
+    def _registry_with_operator(fixture, operator):
+        policy = replace(
+            fixture.policy,
+            operator_authorization_grant_ref=operator.as_ref(),
+            target_policy_digest="",
+        )
+        return InMemoryProactiveTargetRegistry(
+            (operator, fixture.group_grant, fixture.owner_grant),
+            (policy,),
+            clock=fixture.clock,
+        )
 
     async def test_send_and_preview_authorization_are_not_interchangeable(self) -> None:
         fixture = self.fixture

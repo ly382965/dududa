@@ -1,12 +1,6 @@
 """Reusable fakes for contract and application tests."""
 
 from .fakes import FakeAgentRuntime, FakeInputConnector
-from .models import (
-    ProviderOutcome,
-    ProviderSuccess,
-    RecordingFakeModelProvider,
-    provider_failure,
-)
 from .mcp import (
     FakeMcpSessionPlan,
     MappingMcpEnvironmentProvider,
@@ -15,18 +9,36 @@ from .mcp import (
     RecordingFakeMcpSessionFactory,
     RecordingMcpSchemaValidator,
 )
+from .models import (
+    ProviderOutcome,
+    ProviderSuccess,
+    RecordingFakeModelProvider,
+    provider_failure,
+)
+from .proactive import (
+    MappingProactiveActorResolver,
+    MutableClock,
+    RecordingFakeProactiveOutput,
+    RecordingProactivePreviewMetadataStore,
+    StaticProactivePreviewProducer,
+)
 
 __all__ = [
     "FakeAgentRuntime",
+    "FakeInputConnector",
     "FakeMcpSessionPlan",
     "MappingMcpEnvironmentProvider",
     "MappingMcpSecretResolver",
-    "FakeInputConnector",
+    "MappingProactiveActorResolver",
+    "MutableClock",
     "ProviderOutcome",
     "ProviderSuccess",
-    "RecordingFakeModelProvider",
     "RecordingFakeMcpSession",
     "RecordingFakeMcpSessionFactory",
+    "RecordingFakeModelProvider",
+    "RecordingFakeProactiveOutput",
     "RecordingMcpSchemaValidator",
+    "RecordingProactivePreviewMetadataStore",
+    "StaticProactivePreviewProducer",
     "provider_failure",
 ]

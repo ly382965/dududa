@@ -109,6 +109,55 @@ class QuotaKind(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class DispatchLedgerRecord:
+    schema_version: int
+    prepared: PreparedDispatch
+    state: DispatchState
+    revision: int
+    attempt: int
+    delivery_request_digest: DigestString | None
+    delivery_receipt_digest: DigestString | None
+    updated_at: datetime
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        if not isinstance(self.prepared, PreparedDispatch) or not isinstance(
+            self.state, DispatchState
+        ):
+            raise validation_error("invalid_dispatch_ledger_record")
+        _positive(self.revision, "dispatch_ledger_revision")
+        if type(self.attempt) is not int or self.attempt < 0:
+            raise validation_error("invalid_dispatch_attempt")
+        for field_name in (
+            "delivery_request_digest",
+            "delivery_receipt_digest",
+        ):
+            _optional_digest(getattr(self, field_name), field_name)
+        if self.state is DispatchState.PREPARED and (
+            self.attempt != 0
+            or self.delivery_request_digest is not None
+            or self.delivery_receipt_digest is not None
+        ):
+            raise validation_error("prepared_dispatch_has_attempt_evidence")
+        if self.state is not DispatchState.PREPARED and (
+            self.attempt < 1 or self.delivery_request_digest is None
+        ):
+            raise validation_error("dispatch_state_missing_attempt_evidence")
+        if (
+            self.state
+            in {
+                DispatchState.PARTIAL,
+                DispatchState.UNKNOWN,
+                DispatchState.SUCCEEDED,
+                DispatchState.FAILED,
+            }
+            and self.delivery_receipt_digest is None
+        ):
+            raise validation_error("dispatch_outcome_missing_receipt")
+        _aware(self.updated_at, "dispatch_ledger_updated_at")
+
+
+@dataclass(frozen=True, slots=True)
 class LocalTimeWindow:
     start: time
     end: time
@@ -679,6 +728,49 @@ class ProactivePreviewResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ProactivePreviewMetadata:
+    schema_version: int
+    preview_id: str
+    request_digest: DigestString
+    result_digest: DigestString
+    target_scope_digest: DigestString
+    authorization_decision_digest: DigestString
+    disposition: ProactiveDisposition
+    validated_response_digest: DigestString | None
+    response_plan_digest: DigestString | None
+    source_batch_digest: DigestString | None
+    reason_codes: tuple[str, ...]
+    completed_at: datetime
+    metadata_digest: DigestString = ""
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _identifier(self.preview_id, "preview_id")
+        for field_name in (
+            "request_digest",
+            "result_digest",
+            "target_scope_digest",
+            "authorization_decision_digest",
+        ):
+            _digest(getattr(self, field_name), field_name)
+        if self.disposition not in {
+            ProactiveDisposition.PREVIEWED,
+            ProactiveDisposition.DENIED,
+            ProactiveDisposition.FAILED,
+        }:
+            raise validation_error("invalid_preview_disposition")
+        _optional_digest(
+            self.validated_response_digest,
+            "validated_response_digest",
+        )
+        _optional_digest(self.response_plan_digest, "response_plan_digest")
+        _optional_digest(self.source_batch_digest, "source_batch_digest")
+        object.__setattr__(self, "reason_codes", _reason_codes(self.reason_codes))
+        _aware(self.completed_at, "preview_completed_at")
+        seal_proactive_contract(self, "metadata_digest")
+
+
+@dataclass(frozen=True, slots=True)
 class SourceFailure:
     source_id: str
     error_code: str
@@ -1181,6 +1273,7 @@ __all__ = [
     "ConversationOpportunitySnapshot",
     "DeliveryRunMode",
     "DispatchClaim",
+    "DispatchLedgerRecord",
     "DispatchPrepareDisposition",
     "DispatchState",
     "InitiatedRunRequest",
@@ -1192,6 +1285,7 @@ __all__ = [
     "ProactiveDisposition",
     "ProactiveGrantKind",
     "ProactivePolicyDecision",
+    "ProactivePreviewMetadata",
     "ProactivePreviewRequest",
     "ProactivePreviewResult",
     "ProactiveQuotaLease",

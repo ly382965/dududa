@@ -20,6 +20,7 @@ if TYPE_CHECKING:
         ProactiveAuthorizationGrant,
         ProactiveAuthorizationGrantRef,
         ProactivePolicyDecision,
+        ProactivePreviewMetadata,
         ProactivePreviewRequest,
         ProactivePreviewResult,
         ProactiveQuotaLease,
@@ -70,6 +71,10 @@ _CONTRACT_DIGESTS = {
     "ProactivePreviewResult": (
         "result_digest",
         "proactive:preview-result:v1",
+    ),
+    "ProactivePreviewMetadata": (
+        "metadata_digest",
+        "proactive:preview-metadata:v1",
     ),
     "SourceItem": ("content_digest", "proactive:source-item:v1"),
     "SourceBatch": ("batch_digest", "proactive:source-batch:v1"),
@@ -227,6 +232,16 @@ def proactive_preview_result_digest(
         result,
         "result_digest",
         domain="proactive:preview-result:v1",
+    )
+
+
+def proactive_preview_metadata_digest(
+    metadata: ProactivePreviewMetadata | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        metadata,
+        "metadata_digest",
+        domain="proactive:preview-metadata:v1",
     )
 
 
@@ -404,6 +419,7 @@ __all__: Iterable[str] = (
     "proactive_business_idempotency_key",
     "proactive_delivery_idempotency_key",
     "proactive_policy_decision_digest",
+    "proactive_preview_metadata_digest",
     "proactive_preview_request_digest",
     "proactive_preview_result_digest",
     "proactive_quota_lease_digest",
