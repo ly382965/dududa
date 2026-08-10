@@ -1,8 +1,9 @@
 # Dududa Old-To-New Migration Map
 
-状态：S01–S16 的既定本地/离线范围已完成。S17 物理路径迁移正在独立工作树进行：插件、
-配置、MCP service 与 deploy/ops 两批已经提交，第三方 v1 资产批次仍未提交、未验证，整个
-S17 尚未合并。现有插件 ID、容器目标路径、包名、MCP Server ID 和根兼容入口保持不变。
+状态：S01–S16 的既定本地/离线范围已完成。S17 三批物理路径迁移均已提交：插件/config/MCP
+service 为 `8597d70`，deploy/ops 为 `92fd28c`，第三方 v1 资产为 `6b4ee09`；`43fe543`
+保持旧 lock marker 可兼容读取。S17 已完成、验证并合入控制分支。现有插件 ID、容器目标路径、
+包名、MCP Server ID 和根兼容入口保持不变。
 
 ## Mapping Rules
 
@@ -21,21 +22,21 @@ S17 尚未合并。现有插件 ID、容器目标路径、包名、MCP Server ID
 
 | Current path | Target path | Migration mode | Compatibility requirement |
 | --- | --- | --- | --- |
-| `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | S17 batch 1 已在分支提交，尚未合并 | Container target and plugin ID remain unchanged |
-| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 batch 1 已在分支提交，尚未合并 | Keep global result hook until output contracts cut over |
-| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 batch 1 已在分支提交，尚未合并 | Keep plugin ID, config path, and event behavior |
+| `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | S17 batch 1 已完成并验证 | Container target and plugin ID remain unchanged |
+| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 batch 1 已完成并验证 | Keep global result hook until output contracts cut over |
+| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 batch 1 已完成并验证 | Keep plugin ID, config path, and event behavior |
 | New core | `packages/dududa-agent/` | Additive | Install in CI and image before any adapter import |
-| `services/icourse-mcp/` | `services/mcp/icourse/` | S17 batch 1 已在分支提交，尚未合并 | Keep package and CLI names; update every path consumer together |
-| `services/unified-mcp-worker/` | `services/mcp/unified-worker/` | S17 batch 1 已在分支提交，尚未合并 | Keep distribution/import name and isolated worker contract |
+| `services/icourse-mcp/` | `services/mcp/icourse/` | S17 batch 1 已完成并验证 | Keep package and CLI names; update every path consumer together |
+| `services/unified-mcp-worker/` | `services/mcp/unified-worker/` | S17 batch 1 已完成并验证 | Keep distribution/import name and isolated worker contract |
 | `config/` | `configs/` | S17 batch 1 已在分支提交，旧路径保留兼容链接 | One canonical source; runtime semantics unchanged |
 | `compose.yml` | `deploy/compose/compose.yml` | S17 batch 2 已在分支提交，根文件为兼容入口 | Root/canonical Compose must render equivalent contracts |
 | `.env.example` | `deploy/env/.env.example` | S17 batch 2 已在分支提交，根路径保留兼容链接 | Root example remains readable for one Release |
 | `docker/astrbot/` | `deploy/docker/astrbot/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Compose and CI update in the same batch |
 | `manage.sh` | `ops/manage.sh` plus root wrapper | S17 batch 2 已在分支提交 | Existing commands keep documented semantics |
 | `scripts/` | `ops/cli/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Root wrapper and repository-root resolution remain stable |
-| `plugins.lock.json` | `third_party/plugins.lock.json` | S17 batch 3 在途：移动当前 v1 authority，不切换格式 | 根 v1 lock 保留一 Release 兼容链接，installer 只读 canonical v1 lock |
-| `patches/` | `third_party/patches/` | S17 batch 3 在途、未提交/未验证 | v1 lock 使用 canonical patch path |
-| `vendor/` | `third_party/vendor/` | S17 batch 3 在途、未提交/未验证 | Better Reminder tree and AGPL license remain byte-identifiable |
+| `plugins.lock.json` | `third_party/plugins.lock.json` | S17 batch 3 已提交：移动当前 v1 authority，不切换格式 | 根 v1 lock 保留一 Release 兼容链接，installer 只读 canonical v1 lock；旧 marker 别名可确定性读取 |
+| `patches/` | `third_party/patches/` | S17 batch 3 已提交并通过代表性验证 | v1 lock 使用 canonical patch path |
+| `vendor/` | `third_party/vendor/` | S17 batch 3 已提交并通过代表性验证 | Better Reminder tree and AGPL license remain byte-identifiable |
 | 无 | `third_party/manifest.json`（Manifest v2） | 延期，尚未成为 authority | 需完整源码 hash、依赖 lock/SBOM 与许可证证据；不得伪造或静默切换 |
 | Flat `tests/` | layered `tests/` directories | `git mv` by concern | Test discovery and CI stay green in each move |
 | Existing docs | concern-specific docs plus archive | Fact-by-fact merge | No deletion until links and facts are mapped |

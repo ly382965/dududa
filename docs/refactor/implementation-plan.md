@@ -1,7 +1,7 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S16 的既定离线工程步骤已完成；S17 已进入并完成两批 path-only 提交，但第三方
-迁移仍未提交、未验证，整个 S17 尚未合并。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S16 的既定离线工程步骤已完成；S17 三批 path-only 迁移均已提交，并补齐旧插件
+marker 兼容并通过代表性验证，已完成并合入控制分支。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
 不属于该发布前置。
@@ -96,7 +96,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S15D | 已完成（离线） | Digest policy/metadata、确定性 Composer/Builder、no-send Shadow Runtime、隔离 Preview、Trigger 过期重验和第 1/2/30 天代表样本通过；普通记录不含正文；S16 已为共享 Source Reader/Store/lock 增加中途取消与期限约束 | 不含生产 Scheduler 组合、真实 Source/模型/持久 metadata、Output/Dispatch/QQ 发送 |
 | S15E | 已完成（离线） | Sanitized group window、Probe policy/detection/state/feedback/metadata、原子并发 claim、TTL/hard gates、普通/无人回应长冷却、SHORT Persona/Validator、no-send Runtime 和第 1/2/30 天抽样通过 | 不含原始/真实聊天 Projection Adapter、持久 ledger、人工质量、Output/Dispatch、自动追问、模型或 QQ 发送 |
 | S16 | 已完成（离线） | 标准库 Release Manifest/State/Receipt、只读 Health、SQLite 一致性 Backup、确定性 Restore Plan、Upgrade/单次失败回滚、根命令转发和 Compose mount/network Contract 已通过临时数据抽样 | 真实 Compose/HTTP/MCP Health Driver、生产备份范围/加密、原地 Restore、真实升级演练和容器观测留待 S19/S23 授权环境 |
-| S17 | **进行中、未验证、未合并** | 已冻结 Spec，并提交插件/config/MCP 与 deploy/ops 两批迁移；第三方 v1 lock/patch/vendor 批次仍是未提交现场 | 完成第三批验证/提交、文档同步、TreeWork verify/complete 和合并；Manifest v2 因许可证/hash/lock 证据不足延期 |
+| S17 | **已完成、已验证、已合并** | 三批路径迁移与旧 marker 兼容均已提交；canonical 路径、根 symlink、Compose 和双 Python聚焦 Contract 通过 | 兼容链接留到 S22；Manifest v2 因许可证/hash/lock 证据不足延期 |
 | S18、S19、S22 | 未开始 | 已有批准 Spec/Tree，待 S17 完成后按 WIP=1 串行推进 | 聚焦 Contract 与抽样回归；双 Python 全仓集中在 S19，S22 只删除有迁移/恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
@@ -653,8 +653,7 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 标题：**先收口 S17，再完成 Eval/本地审计/兼容清理，真实群验证最后执行**
 
-S01–S16 的既定本地/离线范围已经完成并验证。S17 已提交前两批迁移，第三方 v1 资产批次
-仍未提交、未验证。恢复时按 WIP=1 先收口 S17，再执行 S18、S19 本地总集成、S22 最终兼容
+S01–S17 的既定本地/离线范围已经完成并验证。接下来按 WIP=1 执行 S18、S19 本地总集成、S22 最终兼容
 审计和 S20 离线基础。既定 WebUI 只运行必要回归，回答档位和主动出站不得跳过本地门禁。
 只有全部发布必需分支通过后，才准备 S23：
 

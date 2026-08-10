@@ -46,8 +46,8 @@ from tests.unit.capabilities.test_retrieval import authorization_for, request_fo
 from tests.unit.mcp.helpers import replace_server_definition
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCTION_DEFINITIONS = ROOT / "config" / "capabilities" / "definitions"
-PRODUCTION_MAPPINGS = ROOT / "config" / "capabilities" / "mappings"
+PRODUCTION_DEFINITIONS = ROOT / "configs" / "capabilities" / "definitions"
+PRODUCTION_MAPPINGS = ROOT / "configs" / "capabilities" / "mappings"
 FAKE_DEFINITIONS = ROOT / "tests" / "fixtures" / "capabilities" / "definitions"
 FAKE_MAPPINGS = ROOT / "tests" / "fixtures" / "capabilities" / "mappings"
 

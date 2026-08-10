@@ -164,9 +164,9 @@ dududa/
 │   ├── migrations/
 │   └── manage.sh
 ├── third_party/
-│   ├── manifest.json
+│   ├── plugins.lock.json       # schema v1 current authority
 │   ├── patches/
-│   └── vendor/
+│   └── vendor/                 # Manifest v2 remains a future gated cutover
 ├── tests/
 │   ├── unit/
 │   ├── contracts/

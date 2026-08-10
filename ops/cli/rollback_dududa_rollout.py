@@ -12,7 +12,7 @@ import sys
 from uuid import uuid4
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 AGENT_SRC = ROOT / "packages" / "dududa-agent" / "src"
 if str(AGENT_SRC) not in sys.path:
     sys.path.insert(0, str(AGENT_SRC))

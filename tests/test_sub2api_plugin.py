@@ -487,7 +487,13 @@ class Sub2APIUtilityTests(unittest.TestCase):
         )
 
     def test_client_source_has_no_business_mutation_methods(self) -> None:
-        source_path = ROOT / "plugins" / "astrbot_plugin_sub2api_readonly" / "client.py"
+        source_path = (
+            ROOT
+            / "apps"
+            / "astrbot-plugins"
+            / "astrbot_plugin_sub2api_readonly"
+            / "client.py"
+        )
         tree = ast.parse(source_path.read_text(encoding="utf-8"))
         methods = {
             node.func.attr

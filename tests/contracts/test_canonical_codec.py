@@ -16,7 +16,7 @@ from dududa.errors import DududaError
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VECTORS = ROOT / "scripts" / "contract-vectors" / "c14n-v1.json"
+VECTORS = ROOT / "ops" / "cli" / "contract-vectors" / "c14n-v1.json"
 
 
 def decode_tagged(value: object) -> object:

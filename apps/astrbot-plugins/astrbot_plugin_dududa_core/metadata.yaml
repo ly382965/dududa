@@ -7,6 +7,6 @@ help: |
   /admin status 查看管理状态。
 version: v0.1.0
 author: mmdustc
-repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_dududa_core
+repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_dududa_core
 support_platforms:
   - aiocqhttp

@@ -1,7 +1,8 @@
 # Adding A Persona
 
-Status: design for the future Persona Registry. The current runtime seeds only
-`dududa` from repository templates.
+Status: S15 offline Persona Catalog/Resolver/Renderer is implemented. The
+runtime seed remains limited to `dududa`; additional product Personas and
+human style evaluation remain pending.
 
 ## Boundary
 
@@ -51,7 +52,6 @@ QQ ID, private relationship data, or runtime path.
 
 ## Current Compatibility
 
-Until the Persona Registry exists, use the current
-`config/personas/dududa.json` and `dududa.md` seed path. Do not move those files
-without updating the seed script, Compose mount, tests, docs, and rollback in
-the same review.
+The compatibility seed uses `configs/personas/dududa.json` and `dududa.md`.
+Future Persona assets must preserve the current Catalog generation, seed
+script, Compose mount, tests and rollback contracts in the same review.

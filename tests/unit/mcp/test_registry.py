@@ -63,7 +63,7 @@ def service_call() -> ServiceCallContext:
 class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
     def test_repository_production_config_contains_only_icourse(self) -> None:
         registry = ConfigMcpServerRegistry(
-            ROOT / "config" / "mcp" / "servers",
+            ROOT / "configs" / "mcp" / "servers",
             clock=lambda: NOW,
             id_factory=lambda: "production",
         )

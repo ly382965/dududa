@@ -205,7 +205,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "dududa-agent", editable = "packages/dududa-agent" },
-    { name = "icourse-mcp", editable = "services/icourse-mcp" },
+    { name = "icourse-mcp", editable = "services/mcp/icourse" },
 ]
 
 [package.metadata.requires-dev]
@@ -277,7 +277,7 @@ wheels = [
 [[package]]
 name = "icourse-mcp"
 version = "0.1.0"
-source = { editable = "services/icourse-mcp" }
+source = { editable = "services/mcp/icourse" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "httpx" },

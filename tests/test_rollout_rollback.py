@@ -8,7 +8,7 @@ import unittest
 
 from dududa.errors import DududaError
 from dududa.rollout import RolloutMode, parse_rollback_manifest
-from scripts.rollback_dududa_rollout import load_manifest, tree_digest, verify
+from ops.cli.rollback_dududa_rollout import load_manifest, tree_digest, verify
 
 
 ZERO_DIGEST = "sha256:" + "0" * 64

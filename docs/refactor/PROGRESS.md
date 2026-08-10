@@ -16,8 +16,9 @@
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
   S15B 持久调度、S15C 来源框架/合成 fixture、S15D fixture 日报和 S15E synthetic group
   Probe Shadow；真实来源/群 Projection、持久 Probe state、模型与发送继续作为外部门禁。
-- S17 已开始但尚未完成：两批 path-only 迁移已经提交，第三方 v1 资产迁移仍处于未提交、
-  未验证现场；S17 尚未合并，S18/S19/S22/S20/S23 均未开始。
+- S17 三批 path-only 迁移与旧 lock marker 兼容均已提交并通过代表性 Verification，已经
+  protected completion 并合入控制分支；
+  Manifest v2 仍因 hash、依赖锁和许可证证据不足延期。S18/S19/S22/S20/S23 均未开始。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -71,7 +72,7 @@
 
 | 步骤 | 状态 | 当前证据 | 下一边界 |
 | --- | --- | --- | --- |
-| S17 Layout Migration | **进行中、未验证、未合并** | Spec `e2cc296`；插件/config/MCP 迁移 `8597d70`；deploy/ops 迁移 `92fd28c`；第三方 v1 迁移仍为未提交现场 | 验证并提交第三批、同步文档、TreeWork verify/complete 和合并；Manifest v2 继续延期 |
+| S17 Layout Migration | **已完成、已验证、已合并** | Spec `e2cc296`；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/canonical/compatibility/Compose/聚焦 Contract 已通过 | 一 Release 兼容链接留到 S22；Manifest v2 继续延期 |
 | S18 Evaluation/CI | 未开始 | Tree 分支为 pending/unverified | 汇总版本化 Trace/Eval、故障注入与 CI |
 | S19 Local Integration Audit | 未开始 | Tree 分支为 pending/unverified | 集中执行双 Python 全仓、镜像/配置/回滚包与 SLO 审计 |
 | S22 Legacy Cleanup | 未开始 | Tree 分支为 pending/unverified | 只删除已有消费者迁移和上一 Release 恢复证据的兼容面 |
@@ -229,9 +230,9 @@
 
 ## 下一步
 
-当前按用户要求暂停在 S17 在途现场。恢复开发时先验证并提交第三方 v1 资产迁移，完成 S17
-文档、Verification、TreeWork complete 与合并；随后按 Tree 执行 S18、S19 和 S22，再完成
-S20 离线基础。S19 集中执行本地回归、30 日 fake-clock/no-send 仿真和故障注入。发布前置
+S17 已完成并合并。接下来按 Tree 执行 S18、S19 和 S22，再完成 S20 离线基础。S19 集中
+执行本地回归、30 日
+fake-clock/no-send 仿真和故障注入。发布前置
 全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路

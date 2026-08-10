@@ -159,7 +159,7 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
             root = Path(temporary)
             registry = root / "servers"
             registry.mkdir()
-            source = ROOT / "config" / "mcp" / "servers" / "icourse.json"
+            source = ROOT / "configs" / "mcp" / "servers" / "icourse.json"
             (registry / "icourse.json").write_text(
                 source.read_text(encoding="utf-8"),
                 encoding="utf-8",

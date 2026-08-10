@@ -44,7 +44,7 @@ from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
 from tests.unit.mcp.helpers import NOW, replace_server_definition, server_definition
 
 ROOT = Path(__file__).resolve().parents[2]
-WORKER_ROOT = ROOT / "services" / "unified-mcp-worker"
+WORKER_ROOT = ROOT / "services" / "mcp" / "unified-worker"
 WORKER_PYTHON = WORKER_ROOT / ".venv" / "bin" / "python"
 ROOT_PYTHON = Path(sys.executable)
 FAKE_SERVER = ROOT / "tests" / "fixtures" / "mcp" / "v2_fake_server.py"
@@ -163,13 +163,13 @@ def icourse_definition(database: Path):
     endpoint = McpStdioEndpoint(
         command=str(ROOT_PYTHON),
         args=(
-            str(ROOT / "services" / "icourse-mcp" / "run_icourse_mcp.py"),
+            str(ROOT / "services" / "mcp" / "icourse" / "run_icourse_mcp.py"),
             "--db-path",
             str(database),
             "--request-delay",
             "0",
         ),
-        cwd=str(ROOT / "services" / "icourse-mcp"),
+        cwd=str(ROOT / "services" / "mcp" / "icourse"),
         env_allowlist=frozenset({"PYTHONDONTWRITEBYTECODE", "PYTHONPATH"}),
     )
     return replace_server_definition(

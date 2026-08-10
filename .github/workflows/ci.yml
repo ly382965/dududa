@@ -36,21 +36,21 @@ jobs:
           uv pip check --python .venv/bin/python
           .venv/bin/python -c 'import importlib.metadata, pathlib, dududa; assert importlib.metadata.version("dududa-agent") == dududa.__version__; assert (pathlib.Path(dududa.__file__).parent / "py.typed").is_file()'
       - name: Compile Python sources
-        run: .venv/bin/python -m compileall -q packages plugins services scripts tests
+        run: .venv/bin/python -m compileall -q packages apps/astrbot-plugins services/mcp ops/cli tests
       - name: Run unit tests
         run: .venv/bin/python -m unittest discover -s tests -v
       - name: Validate shell
         run: |
-          bash -n manage.sh scripts/setup_dev.sh
-          sh -n services/icourse-mcp/scripts/setup.sh services/icourse-mcp/scripts/start_mcp.sh
+          bash -n manage.sh ops/manage.sh ops/cli/setup_dev.sh
+          sh -n services/mcp/icourse/scripts/setup.sh services/mcp/icourse/scripts/start_mcp.sh
       - name: Validate memory migration entrypoint
         run: |
-          test -x scripts/migrate_memory_v2.py
-          .venv/bin/python scripts/migrate_memory_v2.py --help
+          test -x ops/cli/migrate_memory_v2.py
+          .venv/bin/python ops/cli/migrate_memory_v2.py --help
       - name: Validate Compose
         run: docker compose --env-file .env.example config --quiet
       - name: Check repository for secrets and runtime data
-        run: .venv/bin/python scripts/check_secrets.py
+        run: .venv/bin/python ops/cli/check_secrets.py
 
   web:
     runs-on: ubuntu-latest

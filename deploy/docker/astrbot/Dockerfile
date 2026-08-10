@@ -2,9 +2,9 @@ ARG ASTRBOT_BASE_IMAGE=m.daocloud.io/docker.io/soulter/astrbot@sha256:369164f8c2
 FROM ${ASTRBOT_BASE_IMAGE}
 
 COPY packages/dududa-agent /opt/dududa/dududa-agent
-COPY services/icourse-mcp /opt/dududa/icourse-mcp
-COPY services/unified-mcp-worker /opt/dududa/unified-mcp-worker
-COPY plugins/astrbot_plugin_dududa_core/requirements.txt /opt/dududa/dududa-core-requirements.txt
+COPY services/mcp/icourse /opt/dududa/icourse-mcp
+COPY services/mcp/unified-worker /opt/dududa/unified-mcp-worker
+COPY apps/astrbot-plugins/astrbot_plugin_dududa_core/requirements.txt /opt/dududa/dududa-core-requirements.txt
 RUN python -m pip install --no-cache-dir \
     "mcp==1.29.0" \
     "uv==0.12.1" \

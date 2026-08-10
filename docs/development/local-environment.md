@@ -40,7 +40,7 @@ Rollout Ledger 或未来 Scheduler 的并发 WAL 测试；该解释器携带 SQL
 在仓库根目录运行：
 
 ```bash
-./scripts/setup_dev.sh
+./ops/cli/setup_dev.sh
 source .venv/bin/activate
 ```
 
@@ -80,8 +80,8 @@ PYTHONDONTWRITEBYTECODE=1 \
   /tmp/dududa-py312/bin/python -m unittest discover -s tests
 ```
 
-两个命令都必须发现相同数量的测试并全部通过。2026-08-09 的基线是两个版本各
-`375 tests, 2 skipped`；数量只用于历史记录，不应硬编码进 CI。
+两个命令都必须发现相同数量的测试并全部通过。最近一次完整双 Python 基线是在 S15C 的
+`616 tests, 2 skipped`；S15D-S17 使用聚焦样本，S19 会刷新完整基线。数量不应硬编码进 CI。
 
 ## 5. Node.js 与 Web
 
@@ -126,8 +126,8 @@ tw graph render
 ```
 
 预期输出 `tw 0.1.7`。不要继续运行 0.1.6 的 Project Map，也不要手工编辑
-`.TreeWork/state/`、`events.jsonl` 或生成块。本阶段保持 `Stage: alignment`，不得执行
-`tw align end`。
+`.TreeWork/state/`、`events.jsonl` 或生成块。当前处于 `Stage: work_tree`；按现有 Tree 和
+WIP=1 完成一个分支的 verify/complete/merge 后才能进入下一分支。
 
 ## 7. MCP 离线握手
 
@@ -136,7 +136,7 @@ tw graph render
 ```bash
 MCP_TEST_DB="$(mktemp --suffix=.sqlite3)"
 ICOURSE_MCP_DB_PATH="$MCP_TEST_DB" \
-  uv run --locked python services/icourse-mcp/scripts/check_mcp.py
+  uv run --locked python services/mcp/icourse/scripts/check_mcp.py
 rm -f "$MCP_TEST_DB"
 ```
 
@@ -163,13 +163,13 @@ docker compose ps
 uv lock --check
 uv sync --locked --check
 PYTHONDONTWRITEBYTECODE=1 \
-  uv run --locked python -m compileall -q packages plugins services scripts tests
+  uv run --locked python -m compileall -q packages apps services ops tests
 PYTHONDONTWRITEBYTECODE=1 \
   uv run --locked python -m unittest discover -s tests
-uv run --locked python scripts/check_secrets.py
-bash -n manage.sh scripts/setup_dev.sh
-sh -n services/icourse-mcp/scripts/setup.sh \
-  services/icourse-mcp/scripts/start_mcp.sh
+uv run --locked python ops/cli/check_secrets.py
+bash -n manage.sh ops/manage.sh ops/cli/setup_dev.sh
+sh -n services/mcp/icourse/scripts/setup.sh \
+  services/mcp/icourse/scripts/start_mcp.sh
 docker compose --env-file .env.example config --quiet
 git diff --check
 ```
@@ -181,7 +181,7 @@ Web 门禁使用第 5 节命令。任何依赖变更必须同时更新声明和�
 
 ### `No module named httpx` 或 `No module named jsonschema`
 
-命令使用了裸系统 Python。重新运行 `./scripts/setup_dev.sh`，随后使用 `uv run --locked`
+命令使用了裸系统 Python。重新运行 `./ops/cli/setup_dev.sh`，随后使用 `uv run --locked`
 或激活 `.venv`，不要向系统 Python 执行 `sudo pip install`。
 
 ### `npm ci` 出现 `EBADENGINE`

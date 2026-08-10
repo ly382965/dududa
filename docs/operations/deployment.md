@@ -7,7 +7,7 @@
 - 目标：把部署拆成可观察、幂等、可单独失败和可验证的阶段
 
 本文定义嘟嘟哒 Bot Runtime 的部署边界和目标编排。S16 已在
-`scripts/dududa_ops.py` 实现版本化 Release/State/Receipt、只读 Health、SQLite Backup、
+`ops/cli/dududa_ops.py` 实现版本化 Release/State/Receipt、只读 Health、SQLite Backup、
 Restore Plan 和 Upgrade/Rollback 状态机；根 `manage.sh` 已增加转发并保持旧入口兼容。
 这些离线证据不授权操作生产环境，也不表示真实 Compose/HTTP/MCP 探针已经配置。
 

@@ -63,11 +63,6 @@ Last sync: unix:1786366031
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
-- S17 is in progress but paused and unverified. Its Spec and first two path-only
-  migration batches are committed on `treework/layout-migration`; the third-party
-  v1 lock/patch/vendor batch remains uncommitted in the managed worktree. S17 is
-  not merged, and Manifest v2 remains deferred for missing hash, dependency-lock
-  and license evidence.
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials, but is intentionally not actionable until all
   accepted module, Web testing and local audit work is complete.
@@ -86,6 +81,10 @@ Last sync: unix:1786366031
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 
+- S17 returned complete and verified. Canonical repository ownership now lives
+  under `apps`, `configs`, `services/mcp`, `deploy`, `ops` and `third_party`;
+  one-Release compatibility links remain for S22, while Manifest v2 stays
+  deferred for missing hash, dependency-lock and license evidence.
 - S10 completed with 325 tests on Python 3.10/3.12 and protected delivery,
   reconciliation and side-effect-free Shadow evidence.
 - S11 locally passes 350 tests on Python 3.10/3.12 with persistent single-owner

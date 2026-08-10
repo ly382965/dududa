@@ -51,7 +51,7 @@ class McpV2SpikeArtifactTests(unittest.TestCase):
         spike_lock = (SPIKE / "run_spike.py.lock").read_text(encoding="utf-8")
         root_lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
         service_project = (
-            ROOT / "services" / "icourse-mcp" / "pyproject.toml"
+            ROOT / "services" / "mcp" / "icourse" / "pyproject.toml"
         ).read_text(encoding="utf-8")
 
         self.assertIn('"mcp==2.0.0"', script)

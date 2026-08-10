@@ -9,10 +9,17 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-LOCK_PATH = REPO_ROOT / "plugins.lock.json"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+LOCK_PATH = REPO_ROOT / "third_party" / "plugins.lock.json"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+MARKER_PATH_ALIASES = {
+    "vendor/astrbot_plugin_better_reminder": (
+        "third_party/vendor/astrbot_plugin_better_reminder"
+    ),
+    "patches/iris-memory-user-group-isolation.patch": (
+        "third_party/patches/iris-memory-user-group-isolation.patch"
+    ),
+}
 
 
 def run(*args: str, cwd: Path | None = None) -> None:
@@ -43,12 +50,24 @@ def marker_for(plugin: dict) -> dict:
     }
 
 
+def canonical_marker(marker: dict) -> dict:
+    normalized = dict(marker)
+    for key in ("path", "patch"):
+        value = normalized.get(key)
+        if isinstance(value, str):
+            normalized[key] = MARKER_PATH_ALIASES.get(value, value)
+    return normalized
+
+
 def marker_matches(target: Path, plugin: dict) -> bool:
     marker_path = target / ".dududa-lock.json"
     if not marker_path.is_file():
         return False
     try:
-        return json.loads(marker_path.read_text(encoding="utf-8")) == marker_for(plugin)
+        stored = json.loads(marker_path.read_text(encoding="utf-8"))
+        return isinstance(stored, dict) and canonical_marker(
+            stored
+        ) == canonical_marker(marker_for(plugin))
     except json.JSONDecodeError:
         return False
 
@@ -148,7 +167,9 @@ def install_plugin(plugin: dict, plugins_root: Path, force: bool) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Install exact third-party plugins for Dududa.")
+    parser = argparse.ArgumentParser(
+        description="Install exact third-party plugins for Dududa."
+    )
     parser.add_argument("--data-root", required=True, type=Path)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()

@@ -93,13 +93,13 @@ PYTHONPATH=packages/dududa-agent/src:. python3 -m unittest \
 只验证清单和两个快照：
 
 ```bash
-python3 scripts/rollback_dududa_rollout.py /secure/release/rollback.json
+python3 ops/cli/rollback_dududa_rollout.py /secure/release/rollback.json
 ```
 
 显式执行回滚并保存当前插件与配置备份：
 
 ```bash
-python3 scripts/rollback_dududa_rollout.py \
+python3 ops/cli/rollback_dududa_rollout.py \
   /secure/release/rollback.json \
   --apply \
   --backup-dir /secure/backups/dududa-before-rollback

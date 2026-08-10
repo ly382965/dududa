@@ -6,7 +6,7 @@
   ResponsePlan 绑定和确定性 Renderer/Validator；模型 Renderer、持久用户偏好、多 Persona
   产品资产和人工风格 Eval 尚未实现。
 - 目标代码：`packages/dududa-agent/src/dududa/persona/`。
-- 当前资产：`config/personas/dududa.json`、`dududa.md` 及幂等 Persona seed 流程。
+- 当前资产：`configs/personas/dududa.json`、`dududa.md` 及幂等 Persona seed 流程。
 
 Persona 定义“嘟嘟哒如何表达”，不定义“事实是什么、用户能做什么、是否调用工具、记忆能否读取”。确定性代码负责流程、权限、隐私和事实约束；模型负责受限的语言表达；Persona 不能成为绕过安全策略的第二套控制面。
 
@@ -119,7 +119,7 @@ configs/personas/
     └── examples.yaml
 ```
 
-当前 `config/personas/dududa.json` 和 `dududa.md` 在兼容期继续作为 seed 输入。迁移工具从旧格式生成 `PersonaDefinition`，不能无备份覆盖已运行的 AstrBot Persona。
+当前 `configs/personas/dududa.json` 和 `dududa.md` 继续作为 seed 输入。迁移工具从旧格式生成 `PersonaDefinition`，不能无备份覆盖已运行的 AstrBot Persona。
 
 任何 Persona 文件都不得包含真实 QQ 号、Provider key、私聊记录、用户画像或运行时管理员名单。关系设定使用角色别名，不自动绑定外部账号身份。
 

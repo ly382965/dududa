@@ -7,7 +7,7 @@
 ## 运行环境
 
 在 Dududa 生产栈中，本项目不单独维护 Linux `.venv`。Compose 已将
-`services/icourse-mcp/` 挂载到 AstrBot 容器内：
+`services/mcp/icourse/` 挂载到 AstrBot 容器内：
 
 ```text
 /AstrBot/data/icourse-mcp

@@ -14,15 +14,56 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_derived_image_installs_framework_neutral_core(self) -> None:
-        dockerfile = (ROOT / "docker" / "astrbot" / "Dockerfile").read_text(
-            encoding="utf-8"
+    def test_canonical_layout_and_compatibility_entries_are_unambiguous(self) -> None:
+        canonical_directories = (
+            "apps/astrbot-plugins",
+            "configs",
+            "deploy/compose",
+            "deploy/docker",
+            "deploy/env",
+            "ops/cli",
+            "services/mcp/icourse",
+            "services/mcp/unified-worker",
+            "third_party/patches",
+            "third_party/vendor",
         )
+        for relative in canonical_directories:
+            self.assertTrue((ROOT / relative).is_dir(), relative)
+
+        compatibility_links = {
+            "config": "configs",
+            "docker": "deploy/docker",
+            "plugins": "apps/astrbot-plugins",
+            "scripts": "ops/cli",
+            "services/icourse-mcp": "services/mcp/icourse",
+            "services/unified-mcp-worker": "services/mcp/unified-worker",
+            "patches": "third_party/patches",
+            "vendor": "third_party/vendor",
+            "plugins.lock.json": "third_party/plugins.lock.json",
+            ".env.example": "deploy/env/.env.example",
+        }
+        for compatibility, canonical in compatibility_links.items():
+            link = ROOT / compatibility
+            target = ROOT / canonical
+            self.assertTrue(link.is_symlink(), compatibility)
+            self.assertEqual(link.resolve(), target.resolve())
+
+        root_manage = (ROOT / "manage.sh").read_text(encoding="utf-8")
+        root_compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        self.assertIn('exec "$ROOT_DIR/ops/manage.sh" "$@"', root_manage)
+        self.assertIn("./deploy/compose/compose.yml", root_compose)
+
+    def test_derived_image_installs_framework_neutral_core(self) -> None:
+        dockerfile = (
+            ROOT / "deploy" / "docker" / "astrbot" / "Dockerfile"
+        ).read_text(encoding="utf-8")
         self.assertIn("COPY packages/dududa-agent", dockerfile)
         self.assertIn("/opt/dududa/dududa-agent", dockerfile)
 
     def test_compose_contains_only_bot_services(self) -> None:
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         services: set[str] = set()
         in_services = False
         for line in compose.splitlines():
@@ -42,7 +83,11 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertFalse((ROOT / component).exists(), component)
 
     def test_plugin_lock_is_exact_and_complete(self) -> None:
-        lock = json.loads((ROOT / "plugins.lock.json").read_text(encoding="utf-8"))
+        canonical = ROOT / "third_party" / "plugins.lock.json"
+        compatibility = ROOT / "plugins.lock.json"
+        self.assertTrue(compatibility.is_symlink())
+        self.assertEqual(compatibility.resolve(), canonical)
+        lock = json.loads(canonical.read_text(encoding="utf-8"))
         self.assertEqual(lock["schema_version"], 1)
         plugins = {plugin["name"]: plugin for plugin in lock["plugins"]}
         self.assertEqual(
@@ -62,16 +107,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("memes", plugins["meme_manager"]["sparse_paths"])
 
     def test_iris_patch_keeps_both_privacy_guards(self) -> None:
-        patch = (ROOT / "patches" / "iris-memory-user-group-isolation.patch").read_text(
-            encoding="utf-8"
-        )
+        patch = (
+            ROOT
+            / "third_party"
+            / "patches"
+            / "iris-memory-user-group-isolation.patch"
+        ).read_text(encoding="utf-8")
         self.assertIn('metadata.get("user_id")', patch)
         self.assertIn("search_nodes_detailed", patch)
         self.assertIn("group_id=group_id", patch)
 
     def test_mcp_template_has_only_icourse(self) -> None:
         config = json.loads(
-            (ROOT / "config" / "astrbot" / "mcp_server.json").read_text(
+            (ROOT / "configs" / "astrbot" / "mcp_server.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -86,13 +134,19 @@ class RepositoryContractTests(unittest.TestCase):
         )
         plugin_schema = json.loads(
             (
-                ROOT / "plugins" / "astrbot_plugin_dududa_core" / "_conf_schema.json"
+                ROOT
+                / "apps"
+                / "astrbot-plugins"
+                / "astrbot_plugin_dududa_core"
+                / "_conf_schema.json"
             ).read_text(encoding="utf-8")
         )
         self.assertEqual(plugin_schema["icourse_mcp_mode"]["default"], "unified")
 
     def test_compose_keeps_owned_code_read_only(self) -> None:
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("PYTHONDONTWRITEBYTECODE", compose)
         for name in (
             "astrbot_plugin_dududa_core",
@@ -103,14 +157,16 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
 
     def test_astrbot_image_keeps_mcp_v1_and_v2_isolated(self) -> None:
-        dockerfile = (ROOT / "docker" / "astrbot" / "Dockerfile").read_text(
-            encoding="utf-8"
-        )
+        dockerfile = (
+            ROOT / "deploy" / "docker" / "astrbot" / "Dockerfile"
+        ).read_text(encoding="utf-8")
         self.assertIn('"mcp==1.29.0"', dockerfile)
-        self.assertIn("services/unified-mcp-worker", dockerfile)
+        self.assertIn("services/mcp/unified-worker", dockerfile)
         self.assertIn("--locked --no-dev", dockerfile)
         self.assertIn('version("mcp") == "2.0.0"', dockerfile)
-        compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("  astrbot:\n    init: true\n", compose)
 
     def test_persona_seed_is_idempotent(self) -> None:
@@ -139,13 +195,13 @@ class RepositoryContractTests(unittest.TestCase):
             config.write_text('{"provider_settings": {}}\n', encoding="utf-8")
             command = [
                 sys.executable,
-                str(ROOT / "scripts" / "seed_astrbot.py"),
+                str(ROOT / "ops" / "cli" / "seed_astrbot.py"),
                 "--database",
                 str(database),
                 "--astrbot-config",
                 str(config),
                 "--persona",
-                str(ROOT / "config" / "personas" / "dududa.json"),
+                str(ROOT / "configs" / "personas" / "dududa.json"),
             ]
             subprocess.run(command, check=True, capture_output=True, text=True)
             subprocess.run(command, check=True, capture_output=True, text=True)
