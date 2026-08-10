@@ -53,12 +53,16 @@ jobs:
             -s services/mcp/unified-worker/tests -v
       - name: Validate shell
         run: |
-          bash -n manage.sh ops/manage.sh ops/cli/setup_dev.sh
+          bash -n manage.sh ops/manage.sh ops/cli/setup_dev.sh ops/cli/smoke_release_images.sh
           sh -n services/mcp/icourse/scripts/setup.sh services/mcp/icourse/scripts/start_mcp.sh
-      - name: Validate memory migration entrypoint
+      - name: Validate operations entrypoints
         run: |
           test -x ops/cli/migrate_memory_v2.py
+          test -x ops/cli/audit_release_candidate.py
           .venv/bin/python ops/cli/migrate_memory_v2.py --help
+          .venv/bin/python ops/cli/audit_release_candidate.py --help
+          .venv/bin/python ops/cli/audit_release_candidate.py policy-check \
+            --input configs/release/s19-pilot-slo-v1.json
       - name: Validate Compose
         run: |
           docker compose \

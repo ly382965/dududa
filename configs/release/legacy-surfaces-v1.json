@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "catalog_id": "s19-legacy-surfaces-v1",
+  "surfaces": [
+    {
+      "surface_id": "root-env-link",
+      "classification": "remove_candidate",
+      "tracked_paths": [".env.example"],
+      "patterns": [".env.example"]
+    },
+    {
+      "surface_id": "root-config-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["config"],
+      "patterns": ["./config", "config/"]
+    },
+    {
+      "surface_id": "root-docker-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["docker"],
+      "patterns": ["./docker", "docker/"]
+    },
+    {
+      "surface_id": "root-plugins-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["plugins"],
+      "patterns": ["./plugins", "plugins/"]
+    },
+    {
+      "surface_id": "root-scripts-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["scripts"],
+      "patterns": ["./scripts", "scripts/"]
+    },
+    {
+      "surface_id": "root-patches-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["patches"],
+      "patterns": ["./patches", "patches/"]
+    },
+    {
+      "surface_id": "root-vendor-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["vendor"],
+      "patterns": ["./vendor", "vendor/"]
+    },
+    {
+      "surface_id": "root-plugin-lock-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["plugins.lock.json"],
+      "patterns": ["plugins.lock.json"]
+    },
+    {
+      "surface_id": "legacy-icourse-service-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["services/icourse-mcp"],
+      "patterns": ["services/icourse-mcp"]
+    },
+    {
+      "surface_id": "legacy-unified-worker-link",
+      "classification": "remove_candidate",
+      "tracked_paths": ["services/unified-mcp-worker"],
+      "patterns": ["services/unified-mcp-worker"]
+    },
+    {
+      "surface_id": "root-manage-wrapper",
+      "classification": "retain_live",
+      "tracked_paths": ["manage.sh"],
+      "patterns": ["./manage.sh", "manage.sh"]
+    },
+    {
+      "surface_id": "root-compose-wrapper",
+      "classification": "retain_live",
+      "tracked_paths": ["compose.yml"],
+      "patterns": ["compose.yml"]
+    },
+    {
+      "surface_id": "legacy-icourse-client",
+      "classification": "blocked_unknown",
+      "tracked_paths": [],
+      "patterns": ["LegacyICourseClient", "icourse_mcp_mode"]
+    },
+    {
+      "surface_id": "legacy-astrbot-handler",
+      "classification": "retain_live",
+      "tracked_paths": [],
+      "patterns": ["RolloutAdmissionAction.LEGACY"]
+    },
+    {
+      "surface_id": "legacy-role-policy",
+      "classification": "retain_live",
+      "tracked_paths": [],
+      "patterns": ["LegacyRolePolicy"]
+    },
+    {
+      "surface_id": "legacy-memory-json",
+      "classification": "retain_live",
+      "tracked_paths": ["packages/dududa-agent/src/dududa/memory/json_repository.py"],
+      "patterns": ["JsonMemoryRepository", "memory.json_repository"]
+    },
+    {
+      "surface_id": "legacy-mcp-protocol-mode",
+      "classification": "retain_live",
+      "tracked_paths": ["configs/mcp/servers/icourse.json"],
+      "patterns": ["\"protocol_mode\": \"legacy\""]
+    },
+    {
+      "surface_id": "legacy-audit-identities",
+      "classification": "retain_live",
+      "tracked_paths": ["apps/astrbot-plugins/astrbot_plugin_dududa_core/audit.py"],
+      "patterns": ["AuditLog"]
+    }
+  ]
+}

@@ -11,8 +11,47 @@ Last sync: unix:1786374784
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S19 is based on integrated S18 commit `9d1d82e`. The S18 fixed suite runner,
+  S16 operations core, canonical Dockerfiles and locked Web scripts are present;
+  no external data or running-stack change is needed.
+- The previously empty S19 Spec/Plan now freeze a release-candidate audit rather
+  than another Runtime or CI control plane. Complete expensive gates run once.
+- Commit `ae9eae3` now provides strict pilot SLO and code-bound legacy-surface
+  catalogs, atomic gate/candidate receipts, tracked consumer inventory, previous
+  source archive and disposable AstrBot/Web image-smoke tooling.
+- The complete S19 matrix now passes: both locked Python interpreters discover
+  651 tests with the same two host-only skips, both worker suites pass, four
+  committed Eval bundles cover 350 cases, and the fixed proactive/fault samples
+  pass without network or sends.
+- Web audit, 108 Unit/Server tests, typecheck/build and the final six-case
+  Playwright run pass. Disposable AstrBot/Web images pass no-network smoke after
+  explicitly moving AstrBot's writable data root under container `/tmp`.
+- All 18 fixed candidate gates pass. The S22 handoff inventories 18 surfaces as
+  10 remove candidates, seven live retains and one blocked unknown; no surface
+  was removed in S19.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Read-only intake mapped the complete Python/Web/worker commands, S16 release
+  contracts, image boundaries and S22 legacy candidates before implementation.
+- Seven focused audit/fake-Docker tests plus S16 operations and repository
+  contracts passed (22 total). Ruff/format/compile/Shell and a safety scan over
+  823 files passed; no actual image or running container was touched yet.
+- The release boundary then ran the complete dual-Python, Eval, Web, package,
+  Compose, secret, disposable-image and rollback matrix. The previous S18 source
+  archive is private/digest-bound, and both normal restore/manual rollback and
+  failed-health single rollback returned to the S18 release.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Live latency/cost and human-quality thresholds remain external. The committed
+  policy labels defaults as pilot/unmeasured and leaves `s23_ready=false`.
+- Legacy AstrBot audit records sender/group fields and must be inventoried
+  separately; S18 Runtime Trace privacy cannot be used as its evidence.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Candidate `e303dc8` passed the 18-gate aggregate audit with receipt digest
+  `sha256:ec2ecdfafeb765474b999efc3708ac29aeab5c52470e15f4d72e0116ce6c8790`.
+  S22 must use the generated inventory, not infer removability from path names
+  alone.

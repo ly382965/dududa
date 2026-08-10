@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "policy_id": "s19-pilot-default-v1",
+  "evidence_class": "pilot_default",
+  "s23_ready": false,
+  "safety_maximums": {
+    "cross_scope_memory": 0,
+    "duplicate_delivery": 0,
+    "quiet_hour_delivery": 0,
+    "revoked_delivery": 0,
+    "sensitive_trace": 0,
+    "unauthorized_capability": 0,
+    "wrong_target": 0
+  },
+  "response_profiles": {
+    "short": {
+      "max_visible_tokens": 128,
+      "p95_latency_ms": 15000,
+      "measurement": "pilot_default"
+    },
+    "medium": {
+      "max_visible_tokens": 512,
+      "p95_latency_ms": 30000,
+      "measurement": "pilot_default"
+    },
+    "long": {
+      "max_visible_tokens": 1536,
+      "p95_latency_ms": 60000,
+      "measurement": "pilot_default"
+    }
+  },
+  "recovery": {
+    "rollback_rto_seconds": 300,
+    "data_rpo_seconds": 0,
+    "measurement": "pilot_default"
+  },
+  "external_pending": [
+    "human_chinese_quality",
+    "interruption_acceptability",
+    "provider_cost",
+    "real_qq_latency",
+    "real_source_freshness"
+  ]
+}
