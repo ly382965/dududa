@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "evaluation-ci",
+  "current_branch": "local-integration-audit",
   "artifact_layout_version": 2,
-  "last_event_seq": 94,
+  "last_event_seq": 95,
   "tree_revision": 3,
   "tree_editing": null,
   "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786371061"
+  "last_sync": "unix:1786371279"
 }
