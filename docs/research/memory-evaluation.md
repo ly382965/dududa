@@ -1,6 +1,6 @@
 # Memory 架构与评测调研
 
-状态：S14 开工前研究记录；不代表生产 Memory 已启用
+状态：研究结论已用于 S14 离线实现；不代表生产 Memory 已启用，也不代表真实中文质量成立
 
 访问与核验日期：2026-08-09
 
@@ -8,17 +8,31 @@
 
 外部源码与临时实验：`/tmp/dududa-research`，不进入主仓依赖或发布物
 
+## 0. S14 实现回写
+
+S14 沿用本报告的 Core ownership 和“先资格过滤、后质量优化”结论，但按批准 Goal 收窄了
+首轮实验：本阶段只实现 `M0 no-memory -> M1 recency -> M2 CJK BM25`，不做
+Embedding/Hybrid shadow。删除/tombstone、scoped export、archive/checkpoint restore、正式
+Retrieval Port、generation/time-bound read 和 JSON v2 crash replay 已落地；生产 Iris、旧命令、
+Context Builder 和自动写入均未接入。
+
+M2 采用同一有界授权候选集上的纯 Python CJK bigram Okapi BM25，而没有采用本文候选的
+SQLite FTS5 持久索引。原因不是否定 FTS5，而是当前候选规模没有证据支持第二个派生存储，
+同时会引入 tokenizer/SQLite runtime 漂移和额外删除一致性面。固定合成 bundle 记录
+Precision/Recall/recall-any/all/MRR/binary nDCG、ranking fingerprint 和五类安全机会分母；
+`human_review_complete=false`、`real_chinese_quality_claimed=false`、`network_allowed=false`。
+
 ## 1. 结论
 
 1. **保留 Dududa 自有 Memory Core。** 现有 `MemoryScope`、带完整性保护的
    `ScopeSelector`、Repository Snapshot、显式 Write Gate 和 fail-closed Iris Protocol
    是正确的安全边界。Mem0、Letta、Zep/Graphiti、Iris 均不能替换这些边界。
-2. **S14 不重新设计核心模块。** 先把设计文档已经定义、但代码尚未落地的
-   `SemanticMemoryIndex`、`ScopedMemoryRetriever`、`MemoryAdministration`、
-   `commit_delete()` 和正式 `MemoryRetrievalResult` 补齐，再接生产命令和 Context Builder。
-3. **检索按简单到复杂递进：** `no-memory -> recency -> BM25 -> embedding -> hybrid`。
-   所有方案先做相同的精确 Scope、TTL、visibility 过滤；复杂方案只有在 held-out 数据上
-   稳定优于简单基线，才可进入 shadow。
+2. **S14 不重新设计核心模块。** 沿用现有 Scope/Repository/Write Gate，补齐
+   `ScopedMemoryRetriever`、`MemoryAdministration`、`MemoryRanker`、`commit_delete()` 和正式
+   `MemoryRetrievalResult`；生产命令和 Context Builder 作为独立消费者迁移后置。
+3. **检索按简单到复杂递进：** S14 只冻结 `no-memory -> recency -> CJK BM25`。
+   所有方案先做相同的精确 Scope、TTL、visibility 过滤；Embedding/Hybrid 只有在未来授权
+   held-out 数据上稳定优于简单基线，才可进入 shadow。
 4. **首版只允许显式写入。** `/remember` 经过确定性 Write Gate；自动抽取、自动遗忘、
    自动合并冲突和 Graph Memory 均后置。模型只能产生候选，不能获得写权限。
 5. **框架判定：** Mem0 OSS 和 Graphiti 只做隔离 Spike；Letta 直接集成 `reject`；
@@ -57,7 +71,9 @@
   当前只有 `IrisBackend` Protocol/Fake，不把 Iris SDK 引入 Core。
 - JSON/In-memory Repository、迁移 dry-run、backup、receipt、rollback 和跨 Scope 契约测试已存在。
 
-### 2.2 尚未完成
+### 2.2 开工时尚未完成（历史快照）
+
+以下是本报告形成时的缺口，不是 2026-08-10 的当前状态；S14 已关闭项见 2.3。
 
 1. **当前不是 BM25。** `repository.py:142-174` 的 `retrieve()` 只做字符串包含过滤，随后按
    `(updated_at, memory_id)` 逆序排列。
@@ -78,6 +94,16 @@
 
 结论：S06-S07 是“Memory 安全骨架完成”，不是“Memory 产品能力完成”。S14 应实现已有文档
 契约并接通生产消费者，不扩大 Core 的职责。
+
+### 2.3 S14 后当前边界
+
+- 已关闭：正式生命周期/检索 DTO 与 Port、delete/tombstone、scoped export、service
+  archive/checkpoint restore、JSON v1-to-v2 与跨重启幂等证据、generation/time-bound read、
+  M0/M1/M2 和固定合成 Eval。
+- 保持 fail closed：Iris 无法证明的 delete/archive/restore 明确 unsupported，不继承本地假删除。
+- 仍未完成：旧 `/remember`/`/forget`/export 消费者迁移、Context Builder、生产 Iris、真实数据
+  与人工标注、Embedding/Hybrid 对照、Runtime enablement 和 S23。
+- S14 只证明 reference Adapter 和 synthetic lexical regression；产品 Memory 仍是“部分完成”。
 
 ## 3. 外部框架调研
 
@@ -503,40 +529,37 @@ Runtime after trusted Actor/ConversationScope
   -> Context Builder
 ```
 
-建议代码落点与顺序：
+S14 实现结果与后续消费者边界：
 
-1. 在 `memory/models.py` 落地设计文档已有的 rank/retrieval/conflict/delete/admin DTO；
-2. 在 `ports/memory.py` 增加 `commit_delete()`、`SemanticMemoryIndex`、
-   `MemoryRetrievalPolicy`、`ScopedMemoryRetriever`、`MemoryAdministration`；
-3. 让 InMemory/JSON/未来 SQLite/Iris Adapter 通过同一 delete/export/rebuild contract；
-4. 新建 application-level scoped retriever，Repository 永远先于 ranker；
-5. 将 plugin `/remember` 接 `ExplicitMemoryWriteGate`，`/forget`/export 接 Administration，
-   保留 feature flag 和 legacy rollback；
-6. 把 `runtime/state.py` 的 provisional `MemoryRetrievalResult` 替换为正式 DTO，在 Context Builder
-   前接入，默认 no-memory/shadow；
-7. 先实现 exact/recency/BM25 和删除闭环，再增加本地 embedding；
-8. Mem0/Graphiti 只实现外层可选 Adapter/worker，不进入 Core import graph；Iris 解除许可证阻断前
+1. 已在 `memory/models.py`、digests/serialization 与 `ports/memory.py` 落地正式
+   rank/retrieval/conflict/delete/admin DTO 和 Port；正式 `MemoryRetrievalResult` 已替换 Runtime
+   provisional alias，但 S10 默认 no-memory 行为不变。
+2. InMemory/JSON 已通过 delete/export/archive/restore Contract；Iris 无证明能力的 lifecycle
+   操作显式 unsupported。S14 没有增加 SQLite/向量/Graph Backend。
+3. `DeterministicScopedMemoryRetriever` 永远先由 Repository 产生精确、有界、授权候选，再交给
+   ranker；Restricted 在去重前排除，ranker 未知/重复/digest-mismatch ID 整批拒绝。
+4. plugin `/remember`、`/forget`/export 与 Context Builder 均未在 S14 迁移；它们属于后续明确
+   consumer migration，必须保留 feature flag、legacy rollback 和 Runtime 默认关闭。
+5. Mem0/Graphiti/Embedding 仍只保留研究候选，不进入 Core import graph；Iris 解除许可证阻断前
    不实现真实 Backend。
 
 ## 10. S14 单人执行顺序
 
 | 顺序 | 工作 | 退出门禁 |
 | --- | --- | --- |
-| S14.0 | 冻结数据/模型/许可/配置 manifest 与合成 Scope 数据 | SHA、revision、license、下载/清理策略可复现 |
-| S14.1 | 补正式 Retrieval/Delete/Admin/Index Port 和 Fake | Schema/Port binding、N/N-1、deadline/cancel/错误契约通过 |
-| S14.2 | Repository delete/tombstone/export + InMemory/JSON contract | 幂等、版本冲突、round-trip、重启/重建不复活 |
-| S14.3 | 生产 `/remember`/`/forget`/export 接新事务边界 | legacy 回滚可用；命令不再直写 JSON |
-| S14.4 | exact + recency + SQLite FTS5 BM25/CJK tokenizer | 全 Scope 负向矩阵、TTL、candidate cap、删除级联通过 |
-| S14.5 | 跑 M0-M2 retrieval 与回答 Eval | manifest 完整；BM25 相对简单基线结果可解释 |
-| S14.6 | 本地 BGE small embedding 与 RRF hybrid shadow | 无真实数据外传；稳定增益和资源预算达标 |
-| S14.7 | 正式 Retrieval 接 Context Builder，默认 off/shadow | Shadow 不发送、不写 Memory；degraded 时回 recency/no-memory |
-| S14.8 | 可选 Mem0/Graphiti 隔离 Spike | telemetry=off、network-none、合成数据；不满足增益即删除 Spike |
+| S14.0 | 冻结 snapshot/lifecycle/restore/ranking/Eval Spec | Scope/authority、公式、分母和外部边界明确 |
+| S14.1 | 正式 Retrieval/Delete/Admin/Rank DTO、digest、serializer 与 Port | Schema/导入顺序、deadline/cancel/错误契约通过 |
+| S14.2 | generation、delete/tombstone/export/archive/restore | CAS/幂等/冲突、round-trip、重启/恢复不复活、故障回滚通过 |
+| S14.3 | JSON v1/v2 replay 与 Iris unsupported 边界 | 写/删/恢复证据跨重启；Iris 不产生本地假删除 |
+| S14.4 | exact eligibility + M1 recency + 纯 Python CJK BM25 | 全 Scope/TTL/candidate cap、tokenizer/formula/tie-break 和 rank-output 验证通过 |
+| S14.5 | 固定 M0-M2 synthetic Eval 与文档回写 | manifest/golden/order 可重放；安全暴露为 0；不声明真实质量 |
 
-Graph/Temporal Memory、自动写入、自动 reflection/reranker 和生产 Iris 均不属于 S14 首轮。
+Context Builder、旧命令迁移、Embedding/Hybrid、Graph/Temporal Memory、自动写入、自动
+reflection/reranker 和生产 Iris 均不属于本次 S14。
 
 ## 11. 外部数据与负责人输入
 
-### 11.1 当前可自行准备
+### 11.1 未来可选研究材料（S14 未下载或 vendor）
 
 - LoCoMo 外部 research cache：约 2.8 MB，固定 SHA，附 CC BY-NC attribution；
 - LongMemEval oracle：15.4 MB；S：277.4 MB；M：2.74 GB，仅按阶段下载；
@@ -556,4 +579,5 @@ Graph/Temporal Memory、自动写入、自动 reflection/reranker 和生产 Iris
 8. LoCoMo 非商业限制是否符合项目未来用途；不符合则只保留方法，不运行/分发该数据。
 
 当前阶段不需要 QQ 凭据、真实群号、生产 Memory 文件或外部模型 API Key。没有这些输入不阻塞
-Port、Fake、合成 Scope 数据、M0-M2 和本地 BGE Spike；它们只阻塞真实数据 Eval、Iris 和生产切流。
+Port、Fake、合成 Scope 数据和 M0-M2；它们只阻塞真实数据 Eval、Embedding/Hybrid、Iris 和
+生产切流。

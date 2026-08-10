@@ -1,6 +1,7 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S11 的本地增量实施步骤已完成。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S14 的既定离线工程步骤已完成到 S14 实现，S14 综合门禁待本分支 Verification
+收口。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
 不属于该发布前置。
@@ -54,7 +55,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、默认关闭的有界 Tool 链、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Attachment Runtime 与授权生产证据 |
 | 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现 | 真实 Attachment Source、第二平台与授权真实群 delivery 证据 |
 | 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
-| Memory | 部分完成 | Memory v2 Scope/Selector/Repository/Write Gate、内存/JSON 参考 Adapter、fail-closed Iris Protocol Adapter、隔离矩阵和可逆迁移工具已实现 | 真实 Iris SDK Backend、Context Builder 接入、删除/导出闭环、效果 Eval、shadow 和生产切流 |
+| Memory | 部分完成 | S14 已闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 重启证据、M0/M1/M2、纯 Python CJK BM25 和固定合成 Eval；Scope/Write Gate 与 fail-closed Iris 边界保持不变 | 旧命令与 Context Builder 消费者迁移、真实 Iris SDK Backend、授权数据/人工质量评测、Embedding/Hybrid 证据、shadow 和生产切流 |
 | MCP 集成 | 已完成（S12 统一传输范围） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker、Fake/iCourse 共享 Contract、iCourse facade 和显式 Legacy 回滚均已通过 TreeWork Verification | 真实新 Server、凭据和在线来源仍是外部门禁 |
 | Capability 与 Tool Runtime | 已完成（S13 离线范围） | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator、通用 MCP Provider、四个 iCourse 公开缓存映射、配置式 Fake 扩展及默认关闭的 Offline Runtime 工具链均有测试 | 无真实 Tool Planning Endpoint、真实语言质量、生产 Tools Rollout、高风险/写能力或新真实 Server 证据 |
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
@@ -85,7 +86,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S12A | 已完成 | MCP v2 native/legacy、生命周期和版本隔离 Spike 已形成 ADOPT ADR | 保持主环境 MCP 1.29、worker MCP 2.0 的隔离结论 |
 | S12 | 已完成 | Unified MCP、严格 Registry、独立 worker、iCourse facade/rollback、扩展 fixture、双 Python、故障注入、派生镜像、secret、Web、Ruff 和 TreeWork Verification 均已通过 | 真实新 Server、真实 HTTP Endpoint 和在线来源保持外部门禁 |
 | S13 | 已完成（离线） | Capability Catalog/Retrieval/Planner/Executor/Validator、iCourse/Fake Provider Contract、合成 Eval、Tool State/预算/授权/模型不可信证据投影和 no-send 集成测试通过 | 生产 Rollout 保持 Tools 关闭；真实 Planner Endpoint、人工质量和真实新 Server 不在本阶段 |
-| S14–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
+| S14 | 已完成（离线实现，待综合 Verification） | 生命周期、删除/tombstone、scoped export、archive/restore、M0 no-memory、M1 recency、M2 CJK BM25 与固定合成 Eval 均有实现和 focused 证据 | 不启用 Runtime Memory；真实 Iris、授权数据、人工质量和 Embedding/Hybrid 继续作为外部门禁 |
+| S15–S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | 逐分支实现、验证、本地提交；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
@@ -111,7 +113,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | --- | --- | --- | --- | --- | --- |
 | 模型路由器 | ⭐⭐⭐ | 先做单 Provider 静态 Router，只启用 `PERCEPTION`/`DIRECT_CHAT`；Bandit 后置 | 定义 `ModelRole`、逐 Endpoint Descriptor、`ModelRequest/Response`、隐私处理 receipt、错误、静态 Route Policy 和 Fake Provider；先证明 `PERCEPTION` 一个角色 | 接入 AstrBot/OpenAI-compatible Adapter；为 Perception、Direct Chat、Tool Planning、Response Composition 分别配置 Structured Output、deadline、预算和 fallback | 多 Provider 健康检查、熔断、数据等级/驻留/retention 过滤、成本/延迟路由、热更新；可在硬过滤后接保守 Contextual Bandit，完成回滚后清理旧模型路径 |
 | 在线学习 / Bandit | ⭐⭐⭐⭐ | 最后实现；先把可评估日志做好，不与 Router 首版并行 | 定义 eligible action、最小 Feature、behavior/candidate propensity、before-action Log、延迟 Feedback、Reward Policy 和静态 baseline；用合成已知策略验证 OPE estimator，不做 live exploration | 先对 Model Route 做 shadow，只验证候选、日志、fallback、策略一致率和延迟；确定性 baseline 对未执行动作没有 support，不能声称效果提升 | 对安全 Endpoint 做极小 conservative canary；只用具有 propensity/support 的日志报告 IPS/SNIPS/DR、有效样本量和群级 bootstrap，通过后才扩展到等价 Capability、预审 Prompt、低风险 Search 和 style；高风险/敏感探索恒为 0，任一安全 Gate 违规立即回滚 |
-| Memory | ⭐⭐⭐⭐⭐ | 拆成“安全边界、兼容 Adapter、效果优化”三次完成；禁止一次做完 | 完成问题定义、论文/开源调研、`MemoryScope`、Selector、Record、Candidate、Repository、Write Gate、内存/JSON Adapter 和完整隔离矩阵；禁止自动写入 | 在授权集合内 shadow 比较 recency、BM25、embedding 和 hybrid；接 Context Builder、fail-closed Iris Adapter、TTL、冲突和显式 Memory 选择性切换 | 只有 Eval 证明必要时才引入 Reranker、Episodic/Temporal Graph；完成更新、删除、导出、Delivery Receipt 依赖和在线质量回归 |
+| Memory | ⭐⭐⭐⭐⭐ | 按“安全边界 -> 生命周期/词法基线 -> 授权数据效果门禁”串行；自动写入始终另行授权 | 已完成 `MemoryScope`、Selector、Repository、Write Gate、内存/JSON 与 fail-closed Iris 边界；S14 又闭合删除/tombstone、导出、恢复和冲突 | 已完成同一授权候选集上的 M0 no-memory、M1 recency、M2 CJK BM25 与固定合成 Eval；Runtime/旧命令仍关闭，不把 fixture 指标外推为真实质量 | 取得授权数据和人工判断后才比较 Embedding/Hybrid，并仅在稳定增益时进入 shadow；Graph/Temporal、生产 Iris 和自动写入继续后置 |
 | MCP 集成 | ⭐⭐⭐⭐ | S12 只完成传输与生命周期，S13 才授予业务 Capability | Core 定义 MCP DTO/Port；严格 JSON `McpServerRegistry`、长生命周期 `UnifiedMcpClient`、Schema/timeout/retry/circuit、Fake 和独立 v2 worker | iCourse 作为唯一真实兼容 Adapter 经 facade 转发；原生 v2 Fake 与 iCourse v1 通过同一 Contract，Streamable HTTP 只做禁网 Fake Contract | 新 Server 只增加配置、Adapter 和 Capability mapping；Legacy iCourse 仅在 S22 有完整迁移与上一 Release 恢复证据后删除 |
 | 输入 Connector | ⭐⭐⭐ | 首批实现；只支持 AstrBot，接口稳定后才考虑第二平台 | 实现 AstrBot Event 到 `MessageEnvelope` 与 `Actor` 的转换、真实 conversation ID、引用/@/附件引用、幂等键和 conformance fixture；不做意图判断 | 接入附件 Preprocessor、Context 来源、Output Adapter 和 `DeliveryReceipt`；在 shadow Runtime 中验证不重复发送 | 提炼 Connector SDK，支持新平台能力协商、背压、顺序和版本兼容；新增平台不修改 Core Runtime |
 | 语义理解（意图/实体） | ⭐⭐⭐⭐ | 规则 baseline 先行，模型只补规则无法覆盖的结构化结果 | 定义 `PerceptionResult`、Intent/Entity/Reference/Evidence Schema、标注规范和 200–500 条脱敏/合成基线集；实现 RulePerception、Validator 和确定性 Social Policy | 经 Model Router 接入 ModelPerception，固定 Rule -> Model -> Merger -> Validator；实现实体、指代、歧义和工具需求，shadow 对比 TargetTalk | 扩展多轮、多意图、QQ 口语、附件摘要和置信度校准；基于真实错误做 Active Learning，只有 Eval 支持时才微调模型 |
@@ -171,7 +173,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S11 | 6D | 本地完成 typed off/shadow/canary、持久 claim/tombstone、发送前熔断、指标与回滚演练；旧链路保持权威 | 并发、重启、TargetTalk、kill switch、UNKNOWN 和零副作用仿真通过 | 任何真实群发送；真实场景统一留到 S23 |
 | S12 | 7A | 实现 framework-neutral Unified MCP Client/Server Registry、隔离 v2 worker 和 iCourse facade；discovery 只记录事实、零授权 | 严格配置、Schema cache、持久 Session、timeout/retry/取消/崩溃恢复/熔断、进程树清理、Fake/iCourse 同 Contract 和禁网 HTTP Contract 通过 | Capability Provider/Planner、写操作、真实新 Server；Legacy Client 保留到 S22 |
 | S13 | 7B | 实现 Capability Registry/Retrieval、有限 Planner、逐步授权 Executor、Observation 和 Validator；先覆盖课程只读路径 | 候选资格/Top-K、参数 Schema、最多步数、重复调用、未知结果、Prompt Injection 和预算测试通过；可按 Capability 回滚 | 高风险/不可逆 Tool 和任意动态 Tool 暴露 |
-| S14 | 6E | 接入 Memory Retrieval 与 Write Gate：先 exact/recency/BM25 baseline，再 shadow 对比 embedding | Scope 泄漏为 0；显式写入、TTL、冲突、删除/导出、Delivery 依赖和迁移核对通过；复杂检索确有增益 | Graph/Temporal Memory、未确认自动写入 |
+| S14 | 6E | 沿用既有 Scope/Repository/Write Gate，闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore，再实现 M0 no-memory、M1 recency 与 M2 CJK BM25 | 生命周期/重启/故障回滚 Contract、Iris unsupported fail-closed、M0 零调用、M1/M2 同 generation、固定合成 Precision/Recall/MRR/nDCG 和五类零暴露门禁通过 | Runtime/旧命令切流、生产 Iris、真实 Memory 数据与人工质量；Embedding/Hybrid、Graph/Temporal 和自动写入均不在 S14 |
 | S15 | 6F | 先实现确定性 `ResponsePlan(SHORT/MEDIUM/LONG)` 和动态输出预算，再完成 OC/Persona 产品化：版本化资产、Composer/Renderer 分层、Render/Profile Validator、用户偏好隔离和 Golden/盲评 | 3x3 Complexity/Profile 正交矩阵、明确详略要求、实际长度/分片通过；Fact/Citation/Refusal/Target/Attachment 变化为 0；版本回滚与 fallback 可执行 | 把长度绑定 Tier、多 Persona 市场、在线风格/Profile 探索 |
 | S15A | 主动出站 A | 冻结 initiated-run、TargetPolicy/Grant Ref、Trigger、Subscription、Schedule、Preview、Source、Policy、Dispatch、Receipt、`message.send.proactive` 和 `proactive.subscription.preview` 契约；实现 Fake Clock/Store/Output，默认 off | operator/group-policy grant、canonical digest、Scope/授权/revision/quiet-hour/限流/空 allowlist/kill switch、Preview 零投递、恢复复用 PreparedDispatch 和跨 Adapter 版本稳定幂等键的负向 Contract Test 通过 | 网络、模型、真实来源、真实发送 |
 | S15B | 主动出站 B | 实现持久 Scheduler、IANA 时区、occurrence、CAS claim、misfire、pause/unsubscribe 和 Dispatch Store；只产生结构化 trigger | 双 Worker、重复 tick、重启、时钟回拨、DST 和 30 日 fake-clock 仿真无重复/过期补发/撤销后任务 | MCP、内容生成、OutputAdapter |
@@ -255,7 +257,7 @@ P0 Research Spike 需要限时：Memory 初次调研 5–7 个工作日，语义
 
 | 研究方向 | 必须比较的基线 | 数据与切分 | 指标 | 选型规则 |
 | --- | --- | --- | --- | --- |
-| Memory 检索 | no-memory、recency、BM25、embedding、hybrid | 脱敏/合成的多群、多用户、私聊、时间和冲突样本；按 conversation 切分 | Scope 泄漏率、Precision@K、Recall@K、MRR/nDCG、错误归属率、P95、Token/成本 | Scope 泄漏必须为 0；复杂方案必须在 held-out 集上稳定优于简单基线，才允许进入 shadow |
+| Memory 检索 | S14 先冻结 no-memory、recency、CJK BM25；Embedding/Hybrid 是后续候选 | 当前只用固定合成多平台/Bot/群/私聊/用户/Persona/TTL/tombstone fixture；未来授权集按 conversation/time 切分 | Precision@K、Recall@K、recall-any/all、MRR、binary nDCG、ranking fingerprint 与固定安全机会分母；后续再加 P95/Token/成本 | 合成集五类暴露必须为 0，M2 只在预注册 lexical subset 上证明回归增益；Embedding/Hybrid 必须在授权 held-out 集稳定优于简单基线才允许 shadow |
 | Memory 写入 | 全拒绝、仅显式 `/remember`、规则 Write Gate、模型 Candidate + Gate | 敏感、重复、冲突、过期、未送达和确认样本 | 保存准确率、敏感拒绝率、重复率、冲突发现率、删除完整性 | 自动写入保持关闭，直到负向集全过且人工抽检达到发布阈值 |
 | 语义理解 | Rules、LLM Structured Output、Rules + LLM Merger | 首版 200–500 条；按完整会话划分 train/dev/test，部分样本双人标注并仲裁 | 标注一致率/κ、Intent macro-F1、Entity span/type F1、Reference exact match、tool-need recall、误插话率、校准误差 | 硬规则违规必须为 0；模型方案需报告置信区间和分层错误，不以单一总体准确率决定上线 |
 | 回答档位 | 固定 MEDIUM、规则 Response Policy、规则+模型 hint | TaskComplexity x AnswerProfile 3x3；按完整会话/任务族切分，包含 HIGH+SHORT、LOW+LONG 和明确用户要求 | Profile macro-F1/混淆矩阵、明确要求满足率、可见字符/Token/分片、完整性、事实/引用保持、冗余度 | 长度与 Tier 正交；跨两档错误、硬上限、引用/警告丢失为发布阻断；质量不能仅按字数判断 |
