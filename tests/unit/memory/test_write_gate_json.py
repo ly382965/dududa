@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import json
+import os
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import json
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 from dududa.domain.delivery import DeliveryStatus
 from dududa.domain.identity import Actor, ConversationScope
@@ -66,7 +66,7 @@ class MemoryWriteGateTests(unittest.IsolatedAsyncioTestCase):
             TraceContext("trace-1"),
             self.now + timedelta(minutes=5),
             NeverCancelled(),
-            RuntimeBudget(0, 0, 0, 0, 0, Decimal("0")),
+            RuntimeBudget(0, 0, 0, 0, 0, Decimal(0)),
             "policy-v1",
         )
         self.ids = SequentialIds()
@@ -159,6 +159,20 @@ class MemoryWriteGateTests(unittest.IsolatedAsyncioTestCase):
                 write_decision_verifier=self.gate,
                 clock=lambda: self.now,
             )
+            read_digest = DigestString("memory-read-before-write")
+            selector = self.authority.issue_current_conversation(
+                request_digest=read_digest,
+                actor=self.actor,
+                scope=self.scope,
+                memory_types=frozenset({MemoryType.EXPLICIT_USER_MEMORY}),
+                purpose="write-generation-contract",
+            )
+            snapshot = await repository.open_snapshot(
+                (selector,),
+                request_digest=read_digest,
+                as_of=self.now,
+                call=self.call,
+            )
             request = self.request(self.candidate())
             decision = await self.gate.evaluate(request, call=self.call)
             self.assertEqual(decision.action, MemoryWriteAction.ALLOW)
@@ -167,12 +181,27 @@ class MemoryWriteGateTests(unittest.IsolatedAsyncioTestCase):
             duplicate = await repository.commit_write(command, call=self.call)
             self.assertEqual(first, duplicate)
             self.assertEqual(first.status, MemorySubmissionStatus.PERSISTED)
+            with self.assertRaises(DududaError):
+                await repository.get(
+                    snapshot,
+                    str(first.memory_id),
+                    selector,
+                    request_digest=read_digest,
+                    call=self.call,
+                )
             reloaded = JsonMemoryRepository(
                 path,
                 self.authority,
                 clock=lambda: self.now,
             )
             self.assertIn(first.memory_id, reloaded._records)
+            self.assertEqual(
+                await reloaded.commit_write(command, call=self.call), first
+            )
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema_version"], 2)
+            self.assertEqual(len(payload["write_idempotency"]), 1)
+            self.assertEqual(len(payload["consumed_write_decisions"]), 1)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     async def test_automatic_cross_user_secret_and_delivery_writes_are_rejected(
@@ -232,6 +261,31 @@ class MemoryWriteGateTests(unittest.IsolatedAsyncioTestCase):
             command = self.gate.command(request, forged, command_id="forged-command")
             with self.assertRaises(DududaError):
                 await repository.commit_write(command, call=self.call)
+
+    async def test_repository_rejects_create_with_skipped_version(self) -> None:
+        with TemporaryDirectory() as directory:
+            repository = JsonMemoryRepository(
+                Path(directory) / "memory-v2.json",
+                self.authority,
+                write_decision_verifier=self.gate,
+                clock=lambda: self.now,
+            )
+            request = self.request(self.candidate())
+            decision = await self.gate.evaluate(request, call=self.call)
+            forged = replace(
+                decision,
+                normalized_record=replace(decision.normalized_record, version=2),
+            )
+            self.gate._issued_decisions[forged.decision_id] = forged
+            command = self.gate.command(
+                request,
+                forged,
+                command_id="skipped-version-command",
+            )
+            with self.assertRaises(DududaError) as caught:
+                await repository.commit_write(command, call=self.call)
+            self.assertEqual(caught.exception.info.category.value, "conflict")
+            self.assertEqual(repository._records, {})
 
     async def test_json_temporary_symlink_is_rejected_without_touching_target(
         self,

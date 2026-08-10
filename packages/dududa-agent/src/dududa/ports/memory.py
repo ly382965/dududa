@@ -110,7 +110,7 @@ class MemoryAdministration(Protocol):
 
 
 @runtime_checkable
-class MemoryRepository(Protocol):
+class MemoryRepository(MemoryAdministration, Protocol):
     async def open_snapshot(
         self,
         selectors: tuple[ScopeSelector, ...],

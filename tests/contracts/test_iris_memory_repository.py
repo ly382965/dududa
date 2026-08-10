@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import unittest
 
 from dududa.domain.delivery import DeliveryStatus
 from dududa.domain.identity import Actor, ConversationScope
@@ -172,7 +172,7 @@ class IrisMemoryRepositoryContractTests(unittest.IsolatedAsyncioTestCase):
             TraceContext("trace-1"),
             self.now + timedelta(minutes=5),
             NeverCancelled(),
-            RuntimeBudget(0, 0, 0, 0, 0, Decimal("0")),
+            RuntimeBudget(0, 0, 0, 0, 0, Decimal(0)),
             "policy-v1",
         )
 
@@ -215,6 +215,20 @@ class IrisMemoryRepositoryContractTests(unittest.IsolatedAsyncioTestCase):
             memory_types=frozenset({MemoryType.EXPLICIT_USER_MEMORY}),
             purpose="context",
         )
+
+    async def test_unsupported_lifecycle_never_mutates_local_or_backend_state(
+        self,
+    ) -> None:
+        backend = FakeIrisBackend([record_to_dict(self.record("target"))])
+        repository = IrisMemoryRepository(
+            backend, self.authority, clock=lambda: self.now
+        )
+        with self.assertRaises(DududaError):
+            await repository.commit_delete(object(), call=self.call)  # type: ignore[arg-type]
+        self.assertEqual(backend.search_calls, [])
+        self.assertEqual(backend.upsert_calls, [])
+        self.assertEqual(repository._records, {})
+        self.assertEqual(repository._tombstones, {})
 
     async def write_command(self, backend):
         authorization = AuthorizationDecision(

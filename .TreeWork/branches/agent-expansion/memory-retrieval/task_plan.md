@@ -50,7 +50,7 @@ Title: S14 Memory Lifecycle And Retrieval
   in this Spec and record the branch-local executable Plan.
 - [x] Implement lifecycle/retrieval DTOs, canonical digests, serializers and
   Port surface plus focused validation/import tests.
-- [ ] Implement state generation, delete/tombstone/export/archive/restore and
+- [x] Implement state generation, delete/tombstone/export/archive/restore and
   crash-stable v2 JSON persistence with rollback and adapter Contract tests.
 - [ ] Implement retrieval policy, scoped retriever, exact/recency strategies,
   CJK tokenizer and BM25 ranker with security/failure tests.
