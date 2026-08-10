@@ -11,8 +11,28 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- All local predecessors, S20 offline Bandit and the existing WebUI regression
+  are complete. S23 is now the only active project leaf.
+- Real execution is not ready: `configs/release/s19-pilot-slo-v1.json` has
+  `s23_ready=false`; no real model Endpoint has conformance/enablement evidence;
+  no live campus/arXiv/industry Source Adapter or proactive production
+  Projection/Output composition exists.
+- No authorization packet, private SecretRef binding or deployment window has
+  been supplied. No real group data has been read and no container or QQ state
+  has been changed.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Froze the ordered, separately authorized S23 ladder and its stop/promotion,
+  evidence, retention and completion boundaries before implementation.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Implement and pass the offline readiness checker/template/runbook.
+- Await the external packet enumerated in the S23 Spec/Plan before any live
+  preflight or environment-specific Adapter work.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Continue only in this worktree. The next local step is the pure readiness
+  manifest/checker; it must not resolve Secrets or inspect running containers.
