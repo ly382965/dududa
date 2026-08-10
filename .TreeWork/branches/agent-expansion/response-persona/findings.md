@@ -17,6 +17,12 @@ Branch: response-persona
   Catalog publication could render under a different definition. PersonaResolution therefore
   publishes atomically with ResponsePlan and becomes immutable Runtime State evidence; Renderer
   and final validation consume it instead of resolving mutable current Catalog state.
+- A Catalog digest alone is insufficient for replay because a run also needs an immutable
+  generation lookup. The Registry therefore keeps bounded published snapshots and rejects foreign
+  or tampered snapshots while retaining an explicit fixed-version neutral fallback.
+- The 3x3 Eval is a mechanical contract gate, not a response-quality benchmark. Its committed
+  report intentionally remains `release_ready=false` until human examples and real platform
+  constraints exist.
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 

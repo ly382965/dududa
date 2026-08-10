@@ -11,45 +11,39 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- S14 is verified and integrated. S15 is the sole active WIP branch and its worktree is clean
-  before the design commit.
-- S10 already provides a fact-preserving Composer, pass-through deterministic Persona Renderer,
-  Render Validator and final Content Safety binding. It does not yet have AnswerProfile,
-  dynamic output budgets, typed Persona Registry/assets or profile evidence in Runtime State.
-- Approved research supplies pilot ceilings and selection principles, but no real Provider,
-  user preference data, human style examples or final QQ delivery constraints are available.
+- S15's accepted offline scope is implemented. The additive `response_profiles` feature remains
+  default-off outside the migrated Offline Runtime composition, and no real Provider or send was
+  enabled.
+- `ResponsePlan` and `PersonaResolution` publish together exactly once: at DECIDED for direct and
+  clarification paths, and at VALIDATED for tool-backed paths. Composer, Renderer, validators,
+  Runtime State and Delivery authorization consume the same immutable evidence.
+- Typed `dududa` and `neutral` assets, strict loading, Catalog CAS publication, last-known-good,
+  bounded snapshot history, neutral fallback and old-generation replay are implemented.
+- The fixed 17-case Eval covers the full Complexity/Profile 3x3 matrix. All 12 eligible explicit
+  requests are honored, cross-two-profile errors are zero, replay order is reproducible and the
+  report remains `release_ready=false`.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Reconciled the Goal, root/parent Specs, implementation plan, response research, Persona design
-  and current Runtime implementation. Froze the S15 implementation and evidence boundary before
-  coding; no S08-S14 core module was redesigned.
-- Implemented the first `dududa.responses` slice: typed Profile/evidence/preference/Plan contracts,
-  deterministic 3x3-capable policy, pilot ceilings, Unicode/CJK policy-unit counter and output
-  reservation projection. Nine focused tests and Ruff/format/diff checks pass.
-- Added additive ModelRequest Plan fields and a strict Direct Chat migration path. A migrated call
-  now binds Plan digest/visible cap, uses projected generated tokens, checks assessment authority
-  before Router dispatch and rejects character/Token-unit overflow; legacy empty fields remain
-  readable until Runtime State migration. Fifteen focused plus 52 Router/Provider tests pass.
-- Migrated the feature-gated offline Runtime: selection request and Plan are immutable checkpoint
-  artifacts; direct/clarification publish at DECIDED, tools publish only at VALIDATED, projected
-  charges replace static direct output charges, and Plan digest reaches Draft/Render/Delivery.
-  Actual `part_intents` are checked before send authorization. Sixty-five focused Runtime,
-  tool, profile and Output Contract tests pass, including legacy flag-off rollback.
-- Added mechanical final ProfileValidation evidence to `ValidatedFinalResponse`: Plan/render
-  digests, visible policy-unit/character counts and typed requirement IDs are bound and persisted;
-  invalid length or missing/added content fails before Content Safety can form a deliverable
-  wrapper. Thirty-eight focused validation/runtime/output tests pass.
+- Added framework-neutral Profile contracts and policy, current-message evidence, exact-Scope
+  preference validation, dynamic reservations and additive ModelRequest bindings without changing
+  Static Router, TierPolicy or ReasoningDepth.
+- Bound Plan and Persona generation evidence through direct, clarification and tool Runtime paths;
+  final mechanical validation checks visible units, characters, parts and protected typed content
+  before Delivery can be authorized. Flag-off preserves the legacy Runtime shape.
+- Added strict typed Persona assets and immutable Catalog generations, then froze a digest-bound,
+  tamper-rejecting 17-case synthetic Eval with mechanical-only quality claims.
+- Python 3.10.20 and 3.12.13 each pass 557 repository tests with two existing AstrBot-host-only
+  skips. MCP contracts, Web 66+42 tests/typecheck/build, package build/import, lock, compile, secret,
+  Shell, Ruff/format and whitespace gates also pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- All implementation, synthetic Eval and verification steps in `task_plan.md` remain open.
-- Persona Catalog/assets, mechanical final ProfileValidation and synthetic Eval remain
-  unimplemented, so production or full S15 completion is not claimed.
-- Real profile/persona quality and final pilot budgets remain an explicit external gate.
+- None inside the accepted S15 offline scope.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Continue only in `/home/mmdustc/Code/.treework-worktrees/dududa/response-persona`.
-- First code slice is the framework-neutral `dududa.responses` contracts/policy/budget projection;
-  commit it before Persona/Runtime integration.
+- The next branch is S15A `proactive-contracts`; proactive outbound remains default-off and must
+  not be hidden in the inbound Runtime.
+- Real Provider behavior, human Persona/Profile review, real Chinese/QQ experience and final pilot
+  budget calibration remain external gates; the synthetic Eval does not establish them.

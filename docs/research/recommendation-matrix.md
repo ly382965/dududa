@@ -17,7 +17,7 @@ Memory、ResponsePlan、主动出站和本地总审计；真实群聊始终位�
 | 本地开发环境 | 完成 | adopt 根 uv workspace、双 Python、Node 22、锁文件和 CI 同构命令 | 使用 `uv sync --locked`、`npm ci` 和固定验证入口 | 依赖升级仍需双版本及 warning-as-error 复核 | 无 |
 | Production shape | 未就绪 | 保留 Router fail-closed，补 Adapter/装配证据 | `temperature=None` 契约、health state machine、唯一 composition root、镜像版本 smoke | 每个真实 Endpoint 的合法配置、文档和低配额 conformance 凭据 | 任一真实 QQ canary |
 | Static Model Router | S08 静态范围完成；真实 Endpoint 未完成 | adopt 现有三 Tier hard filter/priority/fallback | 真实 Endpoint conformance harness 和 digest-bound evidence | 至少一个真实 Endpoint 闭合 health、limits、reasoning、usage、cancel、retention/residency | 学习排序 S20 |
-| AnswerProfile | 只有设计 | adopt 确定性 SHORT/MEDIUM/LONG，和 Tier/Reasoning 正交 | DTO、policy、动态预算、final validator、3x3 matrix | 每档 5–10 个理想回答/反例和 QQ 分片体验；人工盲评 | 不交给 Bandit |
+| AnswerProfile | S15 离线机械契约完成 | adopt 确定性 SHORT/MEDIUM/LONG，和 Tier/Reasoning 正交 | 保持 DTO、policy、动态预算、final validator 和 3x3 Eval 回归 | 每档 5–10 个理想回答/反例和 QQ 分片体验；人工盲评 | 不交给 Bandit |
 | 语义理解 | 合成 policy-gold 技术门禁通过，真实质量未证明 | additive v2 span/decision contract；不重写现有模块 | `TextSpan`、Entity/Reference mention、`ACCEPT/CLARIFY/ABSTAIN` 与 schema pilot | 授权中文 3–12 turn windows、第二标注者、仲裁和校准数据 | 广泛质量声明/真实泛化 |
 | Unified MCP | 当前 v1 Server 可被 v2 Client legacy 模式调用 | spike v2 Client+Server 迁移，预期 adopt | Registry、generation、长 Session、Dududa Schema snapshot、取消/unknown outcome contract | 固定 v1/v2 fixture 完成并发、崩溃、Schema drift 和泄漏实验 | 任意写 Tool |
 | Scheduler | 只有局部原语 | adopt Dududa SQLite occurrence/CAS；APScheduler 3 只作 Trigger oracle | occurrence、IANA timezone、misfire、lease、revoke 和 fake clock | SQLite 3.51.3+ 或 rollback journal ADR；双 Worker/fault injection | 真实定时发送 S23 |

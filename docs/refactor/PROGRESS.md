@@ -43,13 +43,14 @@
 | S10 Offline Runtime | 已完成 | Connector 到 Delivery receipt 的显式 @ 直聊闭环、两次模型预算、CAS/single-flight、Composition、reconciliation 与 Shadow | Tool、Memory、Attachment、生产 Provider 和主动群聊 |
 | S11 Controlled Rollout | 已完成（本地） | typed mode、白名单、SQLite claim/tombstone、priority-100 AstrBot Bridge、发送前熔断、脱敏指标和回滚 CLI | 未经授权的真实 QQ 群发送、广泛生产切流 |
 
-## S12–S14 实施状态
+## S12–S15 实施状态
 
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
 | S12 Unified MCP | 已完成（离线） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker、iCourse facade/Legacy 回滚和 Fake/iCourse 同 Contract | 新真实 Server、实时来源、凭据和生产 Tool enablement |
 | S13 Capability Runtime | 已完成（离线） | 分离的 Capability Catalog、Retrieval、有限 Planner、逐步授权 Executor、Observation Validator、iCourse 只读映射和配置式 Fake 扩展 | 真实 Planning Endpoint、高风险/写能力、人工语言质量和生产 Tools Rollout |
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
+| S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
 
 ## 产品模块完成度
 
@@ -61,7 +62,7 @@
 | Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
-| 回答档位 / ResponsePlan | 未完成 | 现有只有静态 Token/字数上限；缺少 SHORT/MEDIUM/LONG 决策、动态预算、与 Tier 正交性和最终长度/完整性校验 |
+| 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker、iCourse facade/Legacy 回滚，以及 S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据；生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 未完成 | TargetPolicy/Grant Ref、独立 Preview、稳定投递幂等与 S15A-S15E 只有 Alignment 设计；initiated-run、主动授权、Scheduler/Subscription/Source ledger、Digest/Probe Shadow 均未实现 |
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
@@ -150,14 +151,14 @@
    不证明真实中文质量或生产可启用性。
 7. **Hook 证据分层。** 宿主机两个 AstrBot 测试会 skip；真实 Hook 证据来自本次重建镜像，
    不能把宿主测试与镜像 smoke 合并成同一结果。
-8. **新回答档位只有设计。** 不得把长回答映射 Opus 或短回答映射 Haiku；在实现
-   `ResponsePlan` 和最终 Validator 前，不声称已支持三档回答。
+8. **三档回答已完成机械契约。** 不得把长回答映射 Opus 或短回答映射 Haiku；当前
+   `ResponsePlan` 和 Validator 证据不等于真实中文质量、Persona 风格或最终预算已校准。
 9. **主动出站全部未实现。** 定时器不得伪造用户消息，MCP 不得拥有订阅/调度/发送；
    在 S15A-S15E 的默认拒绝、fake-clock、来源、Shadow 和回滚门禁完成前不进真实群。
 
 ## 下一步
 
-完成当前 S14 综合 Verification 后，按 Tree 继续 S15、S15A-S15E 和既定 WebUI 回归，
+S15 综合 Verification 完成后，按 Tree 继续 S15A-S15E 和既定 WebUI 回归，
 再执行 S16-S19 本地回归、
 30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @

@@ -3,7 +3,8 @@
 ## 1. 文档状态与目标
 
 - 阶段：S08 静态路由本地实现与审计已完成；真实多 Provider 生产装配仍未闭合。
-  2026-08-09 新增的 Answer Profile/ResponsePlan 是 S15 目标契约，尚未实现。
+  S15 Answer Profile/ResponsePlan 已完成离线机械契约、Runtime 绑定与 3x3 Eval，真实体验
+  和 Provider tokenizer 校准仍未闭合。
 - 目标代码：`packages/dududa-agent/src/dududa/models/`。
 - 配置目标：`configs/models/` 下可提交的无凭据路由策略；真实 Provider 凭据继续只存在于 AstrBot 私有运行配置。
 
