@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "operations-hardening",
+  "current_branch": "layout-migration",
   "artifact_layout_version": 2,
-  "last_event_seq": 88,
+  "last_event_seq": 89,
   "tree_revision": 3,
   "tree_editing": null,
   "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786356508"
+  "last_sync": "unix:1786356682"
 }
