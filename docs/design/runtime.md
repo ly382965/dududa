@@ -161,7 +161,7 @@ class MessageEnvelope:
 字节排序，再用 UTF-8 编码；禁止 NaN、Infinity、隐式本地时区、二进制值和重复规范键。
 JSON Schema digest 对完整离线 bundle 计算，禁止在摘要阶段解析远程 `$ref`。domain 至少包含
 DTO/Schema ID 与版本，防止同一字节在 candidate、authorization、delivery 等不同用途间复用。
-`scripts/contract-vectors/` 必须提供 Python/TypeScript 共享正反测试向量；修改 codec 或算法要发布
+`ops/cli/contract-vectors/` 必须提供 Python/TypeScript 共享正反测试向量；修改 codec 或算法要发布
 新版本并保留旧版本 verifier/upcaster，不能静默重新计算已有授权证明。
 
 ### 4.2 Actor And ConversationScope

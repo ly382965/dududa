@@ -26,10 +26,10 @@ Title: S17 Layout Migration
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Freeze the exact canonical/compatibility path map and consumer inventory.
-- [ ] Move plugins/config/services and update their consumers; verify the batch.
-- [ ] Move deploy/ops assets and add root wrappers; verify the batch.
-- [ ] Move third-party v1 assets, update installer/ownership and verify the batch.
+- [x] Freeze the exact canonical/compatibility path map and consumer inventory.
+- [x] Move plugins/config/services and update their consumers; verify the batch.
+- [x] Move deploy/ops assets and add root wrappers; verify the batch.
+- [x] Move third-party v1 assets, update installer/ownership and verify the batch.
 - [ ] Synchronize TreeWork/status evidence, commit, complete and integrate S17.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)

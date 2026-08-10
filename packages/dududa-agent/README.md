@@ -44,7 +44,7 @@ dududa/
 从仓库根目录执行：
 
 ```bash
-./scripts/setup_dev.sh
+./ops/cli/setup_dev.sh
 source .venv/bin/activate
 python -c 'import dududa; print(dududa.__version__)'
 ```
@@ -88,7 +88,7 @@ Schema。生产切流前必须提供显式配置迁移和权限矩阵回归。
 
 ```bash
 source .venv/bin/activate
-./scripts/migrate_memory_v2.py --help
+./ops/cli/migrate_memory_v2.py --help
 ```
 
 正式迁移要求 source、destination、classification、backup directory 和 receipt；先执行
@@ -99,8 +99,8 @@ quarantine digest。不要对生产数据原地试跑。
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests -v
-python -m compileall -q packages plugins services scripts tests
-python scripts/check_secrets.py
+python -m compileall -q packages apps services ops tests
+python ops/cli/check_secrets.py
 docker compose --env-file .env.example config --quiet
 ```
 

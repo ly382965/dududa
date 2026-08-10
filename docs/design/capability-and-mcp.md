@@ -6,10 +6,9 @@
   S13 Capability Runtime 均已完成本地实现与验证；S15C 只批准 source-neutral Contract、Fake
   Provider 和本地固定 fixture，不包含真实主动日报来源 Adapter。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
-- 当前唯一真实 MCP Server：控制分支为 `services/icourse-mcp/`；S17 分支已提交目标路径
-  `services/mcp/icourse/`，尚未合并。
-- 当前配置目录：控制分支为 `config/capabilities/`、`config/mcp/servers/`；S17 分支已提交
-  `configs/` 迁移并保留旧路径兼容链接。
+- 当前唯一真实 MCP Server：`services/mcp/icourse/`。
+- 当前配置目录：`configs/capabilities/`、`configs/mcp/servers/`；旧路径只保留一 Release
+  兼容链接。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 iCourse service。
 
 本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现该离线闭环；生产 Rollout 仍拒绝 Tools，本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
@@ -984,7 +983,7 @@ class CapabilityResult:
 5. `/course` 兼容命令继续使用 facade，crawl/refresh 管理路径不冒充模型 Capability；
 6. 新原子能力或统一 Server envelope 需要独立 Spec，不能由 discovery 自动发布；
 7. S22 只有在消费者迁移和上一 Release 恢复证据齐全后才能删除 Legacy；
-8. S17 再用 `git mv` 将 `services/icourse-mcp` 移到 `services/mcp/icourse`，同步 Docker、Compose、CI 和配置路径。
+8. S17 已用 `git mv` 将 iCourse 移到 `services/mcp/icourse`，并同步 Docker、Compose、CI 和配置路径；旧路径只作兼容。
 
 任何一步失败都可以将调用入口切回旧 `ICourseClient`，SQLite 路径和 schema 在独立迁移前保持不变。
 

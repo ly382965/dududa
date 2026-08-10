@@ -258,7 +258,7 @@ Activate 只切换 release 引用、完整插件目录和明确的新 image ID�
 ## 14. 当前兼容策略
 
 S16 已保留 `./manage.sh upgrade` 命令名：无参数调用继续兼容旧开发链路，显式参数调用转发
-至 `scripts/dududa_ops.py upgrade`。受保护流程要求版本化 Manifest、升级前已校验 Backup、
+至 `ops/cli/dududa_ops.py upgrade`。受保护流程要求版本化 Manifest、升级前已校验 Backup、
 逐阶段 Receipt 和显式 Driver Plan；目标 Health 不是 `healthy` 时只回滚一次，且不提升
 current release pointer。
 

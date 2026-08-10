@@ -11,8 +11,36 @@ Last sync: unix:1786356682
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Canonical ownership now lives under `apps/astrbot-plugins`, `configs`,
+  `services/mcp`, `deploy`, `ops` and `third_party`; `apps/web` and
+  `packages/dududa-agent` were already canonical and were not moved.
+- Root and legacy directory entries are one-Release symlinks or thin wrappers.
+  Container paths, plugin IDs, package/import names, MCP Server ID and runtime
+  data roots are unchanged.
+- The current third-party authority remains schema-v1
+  `third_party/plugins.lock.json`. Manifest v2 is deferred because complete
+  source hashes, dependency locks and Iris license evidence are unavailable.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- `8597d70` moved plugins, configs and MCP services; `92fd28c` moved deploy and
+  operations entrypoints; `6b4ee09` moved third-party v1 assets.
+- `43fe543` preserves existing Better Reminder/Iris installations by
+  canonicalizing only the two known legacy marker paths during comparison;
+  unknown marker differences remain fail closed.
+- Focused repository/operations/runtime/rollback tests, root/canonical Compose
+  equivalence, uv lock, Shell syntax, secret scan and marker compatibility have
+  passed. Final branch documentation and representative dual-Python evidence
+  remain to be recorded before protected completion.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Complete the final focused verification matrix, synchronize Acceptance and
+  Verification, and run TreeWork verify/complete before Lead integration.
+- Manifest v2, dependency SBOM/locks and the Iris license decision remain a
+  later supply-chain gate; they do not block this path-only v1 migration.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Resume from final verification and documentation only; do not redesign
+  Runtime or switch third-party authority formats inside S17.

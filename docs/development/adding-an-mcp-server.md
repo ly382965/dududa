@@ -2,7 +2,9 @@
 
 ## 1. 适用范围
 
-本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。S12 当前的权威 Registry 路径是 `config/mcp/servers/*.json`；iCourse 是唯一真实 Server，位于 `services/icourse-mcp/`。`services/mcp/<server-id>/` 和 `configs/` 是 S17 目录迁移后的目标命名，迁移完成前不得把它们写成当前路径。
+本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。权威 Registry 路径是
+`configs/mcp/servers/*.json`；iCourse 是唯一真实 Server，位于 `services/mcp/icourse/`。
+旧 `config/` 与 `services/icourse-mcp/` 只是一个 Release 的兼容链接，不得成为第二权威。
 
 MCP Server 和 worker 是传输/集成边界，不是完整 Agent。它们负责清晰、原子、结构化的操作和协议生命周期；它们不负责理解整段群聊、决定是否回复、选择 Persona、授予 Capability、判断 Schema freshness、调度或发送。模型可见性由独立的 Capability Registry 决定。
 
@@ -26,7 +28,7 @@ MCP Server 和 worker 是传输/集成边界，不是完整 Agent。它们负责
 
 ## 3. 服务目录
 
-新服务在 S17 前可以沿用现有 `services/<server-id>-mcp/` 形态；S17 完成后目标目录如下。目录迁移不能与业务接入隐式绑定。
+新服务直接使用以下 canonical 目录。新增 Server 仍必须与业务 Capability 接入分开审阅。
 
 ```text
 services/mcp/example/
@@ -155,7 +157,7 @@ export_anywhere
 
 ## 6. 配置 Server Registry
 
-当前配置文件位于 `config/mcp/servers/<server-id>.json`，并由标准库严格 JSON parser 读取：
+当前配置文件位于 `configs/mcp/servers/<server-id>.json`，并由标准库严格 JSON parser 读取：
 
 ```json
 {
@@ -212,8 +214,8 @@ export_anywhere
 发现一个 MCP Tool 不代表 Planner 能看到它。S12 的 discovery 只记录事实，零授权；S13 的
 `CapabilityDefinition`、mapping loader 和 Registry 才决定业务可见性。正式配置分别位于：
 
-- `config/capabilities/definitions/*.json`；
-- `config/capabilities/mappings/*.json`；
+- `configs/capabilities/definitions/*.json`；
+- `configs/capabilities/mappings/*.json`；
 - 测试扩展位于 `tests/fixtures/capabilities/`。
 
 当前四个正式 iCourse ID 为：
@@ -315,7 +317,9 @@ Server 不得跨 Scope 缓存私人结果。公共数据缓存也需要来源、
 
 ### 10.1 MCP SDK 隔离
 
-AstrBot 主解释器、iCourse Server 和仓库根环境固定使用 `mcp==1.29.0`。统一 Client 通过 `services/unified-mcp-worker/` 的独立 lock/virtualenv 使用 `mcp==2.0.0`；iCourse 由 worker 的 legacy mode 连接，原生 v2 Fake 使用 auto mode。两套 SDK 不得安装进同一解释器。
+AstrBot 主解释器、iCourse Server 和仓库根环境固定使用 `mcp==1.29.0`。统一 Client 通过
+`services/mcp/unified-worker/` 的独立 lock/virtualenv 使用 `mcp==2.0.0`；iCourse 由 worker
+的 legacy mode 连接，原生 v2 Fake 使用 auto mode。两套 SDK 不得安装进同一解释器。
 
 worker 只实现 initialize/discover/call/cancel/close 的 SDK Session Adapter。它不拥有 Registry、Capability、Schema freshness、重试、熔断、调度、目标或发送。父进程为 worker 和 stdio Server 分别持有 kill scope，取消、崩溃和 close 后必须证明两棵进程树均已回收。AstrBot Compose 使用 `init: true` 回收 worker 崩溃后被 PID 1 收养的进程；派生镜像故障测试必须带 `--init --network none`。
 
@@ -371,7 +375,7 @@ Server README 至少包含：
 同时更新：
 
 - `docs/design/capability-and-mcp.md` 的 Server/Capability 清单；
-- `config/mcp/servers/` 严格 JSON Registry 配置；
+- `configs/mcp/servers/` 严格 JSON Registry 配置；
 - Capability Definition 与显式 Mapping；只有测试目录可增加 Fake fixture；
 - 部署镜像与健康检查；
 - contract、integration、smoke 和 Eval；

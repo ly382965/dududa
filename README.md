@@ -29,17 +29,22 @@ Bot 和 NapCat 默认加入外部 Docker 网络 `mmdustc-edge`，并保留原主
 ## Repository Layout
 
 ```text
-plugins/                 # 嘟嘟哒自研 AstrBot 插件
-packages/dududa-agent/   # 框架无关的 Dududa 2.0 核心契约包
-services/icourse-mcp/    # 评课社区 MCP 服务
-vendor/                  # 无法从公开上游复现的第三方源码
-patches/                 # 上游隐私修补
-config/                  # 可提交的人格和 MCP 初始化模板
-scripts/                 # 安装、同步、初始化和安全检查
-docs/                    # 项目设计与路线图
-compose.yml              # AstrBot + NapCat + Dududa Web
-plugins.lock.json        # 第三方插件精确版本
+apps/astrbot-plugins/          # 嘟嘟哒自研 AstrBot 插件
+apps/web/                      # Mew/NapCat 多账号 Web 工作台
+packages/dududa-agent/         # 框架无关的 Dududa 2.0 核心契约包
+services/mcp/                  # iCourse 与隔离 Unified MCP worker
+configs/                       # 可提交、无凭据的配置模板
+deploy/                        # Compose、Dockerfile 与环境模板
+ops/                           # 管理入口、CLI 和运维工具
+third_party/                   # v1 lock、patch 与必要 vendor 源码
+docs/                          # 项目设计、开发与运维文档
+manage.sh / compose.yml        # 一 Release 根兼容入口
+third_party/plugins.lock.json  # 第三方插件唯一 v1 安装权威
 ```
+
+旧 `plugins/`、`config/`、`docker/`、`scripts/`、`vendor/`、`patches/` 和根
+`plugins.lock.json` 在一个 Release 内仅作为 symlink 兼容入口；新代码和文档不得把它们当作
+第二权威。Manifest v2 尚未启用。
 
 ## Dududa 2.0 Refactor
 
@@ -47,7 +52,7 @@ Phase 0–1 的审计与目标设计见
 [Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)。S01–S16 的既定本地/离线范围已沿
 既有 Tree 完成并验证，覆盖核心契约、安全边界、静态路由、离线 Runtime、统一 MCP、
 Capability Runtime、Memory 生命周期/检索、三档回答、默认关闭的主动出站链和离线运维事务。
-S17 路径迁移已开始但尚未验证或合并，因此本控制分支的目录树仍是当前稳定入口。旧 AstrBot
+S17 路径迁移的三批实现已完成，正在执行最终 Verification；旧 AstrBot
 Handler 仍是生产权威入口，Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
 残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 和
 [阶段报告](docs/refactor/checkpoint-report-2026-08-10.md) 为准；真实质量和生产阶段需要的资料
@@ -86,7 +91,7 @@ chmod 600 .env
 
 1. Creates private runtime directories under `data/`.
 2. Mounts the four owned plugins read-only from the repository.
-3. Installs third-party plugins at the commits in `plugins.lock.json`.
+3. Installs third-party plugins at the commits in `third_party/plugins.lock.json`.
 4. Builds AstrBot with the `icourse-mcp` Python dependencies.
 5. Starts AstrBot and NapCat.
 6. Seeds the `dududa` persona and the `icourse` MCP definition.
@@ -118,7 +123,7 @@ runtime data.
 ./manage.sh down
 ```
 
-`upgrade` never deletes runtime data. Review changes to `plugins.lock.json` and
+`upgrade` never deletes runtime data. Review changes to `third_party/plugins.lock.json` and
 the Iris privacy patch before forcing any plugin replacement.
 
 ## Existing Deployment
@@ -150,11 +155,11 @@ For the reproducible Ubuntu setup and troubleshooting steps, see
 [本地开发环境](docs/development/local-environment.md).
 
 ```bash
-./scripts/setup_dev.sh
+./ops/cli/setup_dev.sh
 uv lock --check
-uv run --locked python -m compileall -q packages plugins services scripts tests
+uv run --locked python -m compileall -q packages apps services ops tests
 uv run --locked python -m unittest discover -s tests
-uv run --locked python scripts/check_secrets.py
+uv run --locked python ops/cli/check_secrets.py
 docker compose --env-file .env.example config --quiet
 ```
 

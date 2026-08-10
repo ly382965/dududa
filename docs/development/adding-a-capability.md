@@ -34,10 +34,10 @@ PR 开始前写清：
 
 ## 3. 定义 Capability
 
-严格 JSON 配置位于 `config/capabilities/definitions/`，MCP 映射位于
-`config/capabilities/mappings/`。下面是便于阅读的概念示例；提交时应使用内容寻址生成器生成
+严格 JSON 配置位于 `configs/capabilities/definitions/`，MCP 映射位于
+`configs/capabilities/mappings/`。下面是便于阅读的概念示例；提交时应使用内容寻址生成器生成
 Schema/Definition/Mapping digest，不要手工填写摘要。iCourse 当前使用
-`scripts/generate_icourse_capability_config.py`；新 Provider 在通用生成入口完成前应提供等价的
+`ops/cli/generate_icourse_capability_config.py`；新 Provider 在通用生成入口完成前应提供等价的
 确定性生成脚本和 Contract Test：
 
 ```yaml

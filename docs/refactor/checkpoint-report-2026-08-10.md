@@ -6,8 +6,8 @@
 
 - 控制分支：`codex/s08-s11@f16c2fe`，工作区干净；
 - S16：由 `22dd4e0` 合并，TreeWork 由 `e04fd1d` 完成返回；
-- S17 工作树：`treework/layout-migration@92fd28c`；
-- S17 未提交现场：第三方 v1 lock、patch、vendor 向 `third_party/` 迁移，以及相应兼容链接和消费者更新。
+- S17 工作树：`treework/layout-migration`；
+- S17 实现提交：`8597d70`、`92fd28c`、`6b4ee09`，旧 marker 兼容修复为 `43fe543`。
 
 状态依据依次为 TreeWork lifecycle/verification、Git 提交、分支 Verification 和测试记录。
 “完成”只表示相应 Spec 批准的本地或离线范围已完成，不等于产品已经生产就绪。
@@ -17,8 +17,7 @@
 1. S01-S16 的既定本地/离线工程范围已经完成，其中 S08-S16 的 TreeWork 叶分支均为
    `complete / verified`。
 2. Mew/NapCat Web epic 已完成并验证；它是 QQ 操作工作台，不是 Agent Control Plane。
-3. S17 已经开始但没有完成：前两批路径迁移已提交，第三方目录批次仍未提交、未验证，整个
-   S17 尚未合并。
+3. S17 三批路径迁移和旧 lock marker 兼容均已提交，正在最终验证，整个分支尚未合并。
 4. S18、S19、S22、S20 均未开始；S23 是最终真实群外部门禁，当前不得进入。
 5. 当前仍不是生产就绪状态。真实 Provider、生产 Memory/Tools、真实 Source Adapter、主动发送、
    在线 Bandit 和真实群质量均没有完成证据。
@@ -44,7 +43,7 @@
 | S15D Digest Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；fixture 日报、独立 Preview、零 Output | 真实来源、模型、持久 metadata 与投递 |
 | S15E Probe Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；群级 hard gates、TTL、cooldown、no-response | 真实群 Projection、人工打扰度、投递 |
 | S16 Operations Hardening | 已完成、已验证、已合并（离线） | Release/State/Receipt、只读 Health、SQLite Backup、Restore Plan、失败单次回滚及 Compose contract | 真实容器升级/恢复、备份加密和生产 Driver |
-| S17 Layout Migration | **进行中、未验证、未合并** | `e2cc296` 冻结设计；`8597d70` 和 `92fd28c` 完成前两批迁移 | 第三方批次提交、文档同步、最终 Verification/Complete |
+| S17 Layout Migration | **进行中、最终验证中、未合并** | `e2cc296` 冻结设计；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543` | 文档同步、最终 Verification/Complete 和合并 |
 | S18 Evaluation/CI | 未开始 | Tree 已定义 | 版本化 Trace/Eval/故障注入和 CI 汇总 |
 | S19 Local Integration Audit | 未开始 | Tree 已定义 | 双 Python全仓、镜像/配置/回滚包、SLO 冻结 |
 | S22 Legacy Cleanup | 未开始 | Tree 已定义 | 仅删除有消费者迁移和上一 Release 恢复证据的兼容面 |
@@ -66,16 +65,17 @@
 | Bandit | 未完成 | S20 离线基础尚未开始；更后的在线学习还缺合法同档 Endpoint、propensity 和可归因反馈 |
 | WebUI | 既定 Mew 范围完成 | 多账号 QQ 工作台已验证；不扩建第二套 Agent 控制面 |
 
-## 5. S17 暂停现场
+## 5. S17 收口现场
 
 S17 是 path-only 迁移，不重新设计 Runtime、MCP、插件或运维行为。
 
 - 已提交批次 1：`plugins/`、`config/`、两个 MCP service 迁至目标目录；
 - 已提交批次 2：`docker/`、`scripts/`、Compose、环境模板和管理入口迁至 `deploy/`、`ops/`；
-- 在途批次 3：v1 `plugins.lock.json`、`patches/`、`vendor/` 迁至 `third_party/`；
+- 已提交批次 3：v1 `plugins.lock.json`、`patches/`、`vendor/` 迁至 `third_party/`；
+- 已补兼容：已安装插件的两个已知旧 marker 路径在比较时确定性归一化，未知差异仍拒绝；
 - 根入口和旧目录暂以一 Release 兼容链接保留，S22 才能基于证据删除；
 - Manifest v2 因源码 hash、依赖锁和许可证证据不足而延期，当前不得写成已启用；
-- S17 恢复点是验证并提交第三批、同步文档、抽样验证、TreeWork verify/complete 和合并。
+- S17 剩余工作是同步分支文档、完成抽样验证、TreeWork verify/complete 和合并。
 
 ## 6. 当前无需外部输入的工作
 
@@ -101,7 +101,7 @@ S23。真实群测试顺序保持：no-send Shadow -> 明确 @ Canary -> 手动�
 
 ## 8. 当前主要风险
 
-1. S17 第三方迁移仍是未提交现场，不能当作稳定布局或完成证据。
+1. S17 尚未通过 protected completion 并合并，canonical 布局当前仍不能当作控制分支完成证据。
 2. Iris 固定版本缺少明确许可证证据，Manifest v2 不得据此声称供应链已验证。
 3. 最新完整全仓基线停留在较早阶段；S15D-S16 采用了批准的抽样测试，完整回归应在 S19 集中执行。
 4. 真实 Endpoint、Source、Memory 和 QQ 行为都缺少外部证据；合成测试不能替代生产质量声明。

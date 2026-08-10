@@ -2,8 +2,8 @@
 
 ## 1. 状态与范围
 
-- 状态：目标设计已批准；S17 正在独立工作树执行路径迁移，前两批已提交，第三方批次在途，
-  整个分支尚未验证或合并
+- 状态：目标设计已批准；S17 三批路径迁移与旧 marker 兼容均已提交，正在最终验证，
+  整个分支尚未合并
 - 基线提交：`2767cc9768d4bce63d4b4ee811add951ebce6870`
 - 适用范围：嘟嘟哒 Bot Runtime Monorepo
 - S17 不执行：业务行为重写、运行数据迁移、Manifest v2 无证据切换和兼容面删除
@@ -122,7 +122,7 @@ dududa/
 │   ├── migrations/
 │   └── README.md
 ├── third_party/
-│   ├── manifest.json
+│   ├── plugins.lock.json
 │   ├── patches/
 │   ├── vendor/
 │   └── README.md
@@ -160,7 +160,7 @@ dududa/
 | `configs` | 可提交、无密钥、带 schema 的模板 | 运行时覆盖、真实 ID、Token、Cookie |
 | `deploy` | 镜像与 Compose 声明 | 复杂迁移逻辑、运行数据 |
 | `ops` | 幂等编排 CLI、迁移、备份和恢复工具 | Agent 业务规则 |
-| `third_party` | 唯一第三方 manifest、patch、必要 vendor | 自研插件、运行时安装结果 |
+| `third_party` | 唯一 v1 lock、patch、必要 vendor；未来 v2 需另过供应链门禁 | 自研插件、运行时安装结果、无证据的许可证/hash |
 | `tests` | 分层测试、fixture、eval 和 smoke | 真实聊天、真实账号、生产数据库 |
 
 ## 6. 当前路径到目标路径
@@ -175,7 +175,7 @@ dududa/
 | `docker` | `deploy/docker` | 构建上下文保持仓库根，避免 COPY 失效 |
 | `compose.yml` | `deploy/compose/compose.yml` | 根文件先做兼容转发或继续作为权威入口 |
 | `scripts` | `ops/cli` | 根 `manage.sh` 转发；Python CLI 承担复杂逻辑 |
-| `plugins.lock.json`、`patches`、`vendor` | `third_party` | 先升级统一 manifest schema，再移动路径 |
+| `plugins.lock.json`、`patches`、`vendor` | `third_party` | 已移动现有 v1 authority；Manifest v2 因 hash/lock/license 证据不足延期 |
 | `docs/DUDUDA.md`、`docs/ROADMAP.md` | 分主题文档 | 先建立内容映射，后合并，禁止直接删除 |
 
 ## 7. 兼容入口
