@@ -22,6 +22,7 @@ from .proactive import (
     RecordingDigestShadowMetadataSink,
     RecordingFakeProactiveOutput,
     RecordingProactivePreviewMetadataStore,
+    RecordingProbeShadowMetadataSink,
     StaticProactivePreviewProducer,
 )
 from .sources import FixtureSourceCapabilityReader, load_source_fixture_bundle
@@ -45,6 +46,7 @@ __all__ = [
     "RecordingFakeProactiveOutput",
     "RecordingMcpSchemaValidator",
     "RecordingProactivePreviewMetadataStore",
+    "RecordingProbeShadowMetadataSink",
     "StaticProactivePreviewProducer",
     "load_source_fixture_bundle",
     "provider_failure",

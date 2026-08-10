@@ -75,6 +75,8 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.proactive.digests",
     "dududa.proactive.digest_contracts",
     "dududa.proactive.digest_shadow",
+    "dududa.proactive.probe_contracts",
+    "dududa.proactive.probe_shadow",
     "dududa.proactive.registry",
     "dududa.proactive.scheduler",
     "dududa.proactive.scheduler_codec",
@@ -138,11 +140,14 @@ class ImportBoundaryTests(unittest.TestCase):
             "DigestCompositionPolicySnapshot": "dududa.proactive.digest_contracts",
             "DigestShadowRuntime": "dududa.proactive.digest_shadow",
             "InMemoryProactiveTargetRegistry": "dududa.proactive.registry",
+            "InMemoryProbeStateStore": "dududa.proactive.probe_shadow",
             "InMemorySourceStateStore": "dududa.proactive.source_store",
             "DeterministicProactiveScheduler": "dududa.proactive.scheduler",
             "InitiatedRunRequest": "dududa.proactive.contracts",
             "PreparedDispatch": "dududa.proactive.contracts",
             "ProactiveControlConfig": "dududa.proactive.config",
+            "ProbePolicySnapshot": "dududa.proactive.probe_contracts",
+            "ProbeShadowRuntime": "dududa.proactive.probe_shadow",
             "ProactiveTargetPolicy": "dududa.proactive.contracts",
             "ProactiveTrigger": "dududa.proactive.contracts",
             "SQLiteProactiveSchedulerStore": "dududa.proactive.sqlite_scheduler",
@@ -153,6 +158,11 @@ class ImportBoundaryTests(unittest.TestCase):
             "DigestComposer",
             "DigestShadowMetadataSink",
             "DigestShadowRunner",
+            "ProbeComposer",
+            "ProbeOpportunityDetector",
+            "ProbeShadowMetadataSink",
+            "ProbeShadowRunner",
+            "ProbeStateStore",
             "ProactiveActorResolver",
             "ProactiveDeliveryOrchestrator",
             "ProactiveDispatchStore",
@@ -464,6 +474,39 @@ class ImportBoundaryTests(unittest.TestCase):
             "dududa.capabilities",
             "astrbot",
             "plugins",
+            "mcp",
+        )
+        violations = sorted(
+            name
+            for name in imported
+            if any(
+                name == prefix or name.startswith(f"{prefix}.") for prefix in forbidden
+            )
+        )
+        self.assertEqual(violations, [])
+
+    def test_probe_shadow_has_no_delivery_memory_tool_or_model_imports(self) -> None:
+        path = SOURCE / "proactive" / "probe_shadow.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.level:
+                    imported.add(f"dududa.proactive.{node.module}")
+                else:
+                    imported.add(node.module)
+        forbidden = (
+            "dududa.ports.output",
+            "dududa.ports.memory",
+            "dududa.memory",
+            "dududa.capabilities",
+            "dududa.models",
+            "dududa.runtime.delivery",
+            "dududa.proactive.store",
+            "dududa.proactive.scheduler",
+            "astrbot",
             "mcp",
         )
         violations = sorted(

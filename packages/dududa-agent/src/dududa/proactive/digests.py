@@ -45,6 +45,16 @@ if TYPE_CHECKING:
         DigestCompositionPolicySnapshot,
         DigestShadowMetadata,
     )
+    from .probe_contracts import (
+        ProbeConversationWindow,
+        ProbeDetectionResult,
+        ProbeOutcomeObservation,
+        ProbePolicySnapshot,
+        ProbeShadowMetadata,
+        ProbeShadowRequest,
+        ProbeStateClaimReceipt,
+        ProbeStateSnapshot,
+    )
     from .source_contracts import (
         SourceCapabilityObservation,
         SourceCursor,
@@ -173,6 +183,38 @@ _CONTRACT_DIGESTS = {
     "DigestShadowMetadata": (
         "metadata_digest",
         "proactive:digest-shadow-metadata:v1",
+    ),
+    "ProbeConversationWindow": (
+        "window_digest",
+        "proactive:probe-conversation-window:v1",
+    ),
+    "ProbePolicySnapshot": (
+        "policy_digest",
+        "proactive:probe-policy-snapshot:v1",
+    ),
+    "ProbeDetectionResult": (
+        "result_digest",
+        "proactive:probe-detection-result:v1",
+    ),
+    "ProbeStateSnapshot": (
+        "state_digest",
+        "proactive:probe-state-snapshot:v1",
+    ),
+    "ProbeStateClaimReceipt": (
+        "receipt_digest",
+        "proactive:probe-state-claim-receipt:v1",
+    ),
+    "ProbeOutcomeObservation": (
+        "observation_digest",
+        "proactive:probe-outcome-observation:v1",
+    ),
+    "ProbeShadowRequest": (
+        "request_digest",
+        "proactive:probe-shadow-request:v1",
+    ),
+    "ProbeShadowMetadata": (
+        "metadata_digest",
+        "proactive:probe-shadow-metadata:v1",
     ),
     "ProactivePolicyDecision": (
         "decision_digest",
@@ -605,6 +647,86 @@ def digest_shadow_metadata_digest(
     )
 
 
+def probe_conversation_window_digest(
+    window: ProbeConversationWindow | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        window,
+        "window_digest",
+        domain="proactive:probe-conversation-window:v1",
+    )
+
+
+def probe_policy_snapshot_digest(
+    policy: ProbePolicySnapshot | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        policy,
+        "policy_digest",
+        domain="proactive:probe-policy-snapshot:v1",
+    )
+
+
+def probe_detection_result_digest(
+    result: ProbeDetectionResult | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        result,
+        "result_digest",
+        domain="proactive:probe-detection-result:v1",
+    )
+
+
+def probe_state_snapshot_digest(
+    state: ProbeStateSnapshot | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        state,
+        "state_digest",
+        domain="proactive:probe-state-snapshot:v1",
+    )
+
+
+def probe_state_claim_receipt_digest(
+    receipt: ProbeStateClaimReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:probe-state-claim-receipt:v1",
+    )
+
+
+def probe_outcome_observation_digest(
+    observation: ProbeOutcomeObservation | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        observation,
+        "observation_digest",
+        domain="proactive:probe-outcome-observation:v1",
+    )
+
+
+def probe_shadow_request_digest(
+    request: ProbeShadowRequest | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        request,
+        "request_digest",
+        domain="proactive:probe-shadow-request:v1",
+    )
+
+
+def probe_shadow_metadata_digest(
+    metadata: ProbeShadowMetadata | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        metadata,
+        "metadata_digest",
+        domain="proactive:probe-shadow-metadata:v1",
+    )
+
+
 def proactive_policy_decision_digest(
     decision: ProactivePolicyDecision | Mapping[str, object],
 ) -> DigestString:
@@ -764,6 +886,14 @@ __all__: Iterable[str] = (
     "proactive_target_policy_digest",
     "proactive_target_policy_ref_digest",
     "proactive_trigger_digest",
+    "probe_conversation_window_digest",
+    "probe_detection_result_digest",
+    "probe_outcome_observation_digest",
+    "probe_policy_snapshot_digest",
+    "probe_shadow_metadata_digest",
+    "probe_shadow_request_digest",
+    "probe_state_claim_receipt_digest",
+    "probe_state_snapshot_digest",
     "schedule_claim_receipt_digest",
     "schedule_ledger_record_digest",
     "schedule_materialization_receipt_digest",

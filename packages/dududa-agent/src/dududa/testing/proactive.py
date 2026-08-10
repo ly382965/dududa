@@ -25,6 +25,7 @@ from dududa.proactive.contracts import (
     SubscriptionStatus,
 )
 from dududa.proactive.digest_contracts import DigestShadowMetadata
+from dududa.proactive.probe_contracts import ProbeShadowMetadata
 
 
 @dataclass
@@ -147,6 +148,21 @@ class RecordingDigestShadowMetadataSink:
         self.records.append(metadata)
 
 
+class RecordingProbeShadowMetadataSink:
+    def __init__(self) -> None:
+        self.records: list[ProbeShadowMetadata] = []
+
+    async def record(
+        self,
+        metadata: ProbeShadowMetadata,
+        *,
+        call: ServiceCallContext,
+    ) -> None:
+        if not isinstance(metadata, ProbeShadowMetadata):
+            raise validation_error("invalid_probe_shadow_metadata")
+        self.records.append(metadata)
+
+
 class StaticProactivePreviewProducer:
     def __init__(
         self,
@@ -235,5 +251,6 @@ __all__ = [
     "RecordingDigestShadowMetadataSink",
     "RecordingFakeProactiveOutput",
     "RecordingProactivePreviewMetadataStore",
+    "RecordingProbeShadowMetadataSink",
     "StaticProactivePreviewProducer",
 ]
