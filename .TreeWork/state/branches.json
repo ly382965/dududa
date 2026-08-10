@@ -469,19 +469,19 @@
       "title": "S15D Digest Shadow",
       "purpose": "Compose fixture-backed scheduled digests in a recommendation-only runtime with no delivery capability.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/digest-shadow",
         "git_branch": "treework/digest-shadow",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1786349495",
         "last_entered_at": "unix:1786349495",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1786351690"
+      "last_sync": "unix:1786351815"
     },
     {
       "path": "probe-shadow",

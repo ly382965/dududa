@@ -3,9 +3,9 @@
   "stage": "work_tree",
   "current_branch": "digest-shadow",
   "artifact_layout_version": 2,
-  "last_event_seq": 81,
+  "last_event_seq": 82,
   "tree_revision": 3,
   "tree_editing": null,
   "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786351690"
+  "last_sync": "unix:1786351815"
 }
