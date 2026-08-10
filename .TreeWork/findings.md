@@ -25,15 +25,17 @@
   scheduling nor delivery. Scheduler occurrence/CAS remains Dududa-owned.
 - iCourse remains the only real MCP Server. S12 now owns the Unified MCP Port,
   Registry, shared lifecycle and compatibility facade; S13 maps only four
-  approved public cache-read Capabilities through the generic Provider. The
-  per-call stdio path remains an explicit Legacy rollback until S22 evidence.
+  approved public cache-read Capabilities through the generic Provider. S22
+  removed the plugin-dedicated per-call Client; the isolated worker still
+  retains its evidenced legacy server-protocol compatibility mode.
 - The current S09 Eval and Memory retrieval are narrower than their interface
   names imply: the former is synthetic policy gold, and the latter is exact
   Scope/TTL plus substring/recency rather than semantic retrieval.
-- Root tests exercise the isolated Unified MCP worker through its local locked
-  environment, but the fresh GitHub CI workflow does not yet provision that
-  worker before running the root suite. S18 owns making this bootstrap explicit;
-  local pre-existing worker state must not be reported as fresh-CI evidence.
+- S18 makes root and isolated Unified MCP worker lock provisioning explicit in
+  CI; fresh runs no longer rely on a pre-existing local worker environment.
+- S23 offline readiness proves manifest structure only. A self-declared digest,
+  `live` flag or authorized status never becomes executable evidence until live
+  Preflight resolves it against the exact candidate, target and prior Receipt.
 
 ## Interface Or Contract Effects (effects crossing branch or product boundaries)
 
@@ -53,8 +55,8 @@
 
 ## Risks And Unknowns (project-wide residual hazards; not unfinished branch work)
 
-- S01-S11 and environment hardening are locally committed but not pushed; the
-  current control branch remains the only authority for this Alignment work.
+- S01-S20/S22 and S23 offline readiness are locally committed but not pushed;
+  the control branch plus the paused managed S23 worktree remain the authority.
 - Native DeepSeek and Anthropic model IDs/capabilities must remain Adapter
   configuration until verified; endpoint aliases cannot be treated as facts.
 - The workspace does not establish authorization or credentials for a real QQ

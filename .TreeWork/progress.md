@@ -15,12 +15,14 @@ Last sync: unix:1786383737
   has also integrated and verified Production Shape, additive semantics, S12
   Unified MCP, S13 Capability, S14 Memory, S15 response/persona, S15A-S15E
   proactive no-send stages, S16 offline operations, S17 canonical layout and
-  S18 reproducible offline evaluation/CI.
-- The last complete clean dual-Python repository baseline reached 616 tests at
-  S15C with two AstrBot-host-only skips. S15D-S16 then used approved focused
-  representative samples; a complete current-HEAD dual-Python run is deferred
-  to S19. Synthetic Evals remain policy, contract or lexical-regression gates;
-  human Chinese quality and calibration are not established.
+  S18 reproducible offline evaluation/CI, S19 local candidate audit, S22 legacy
+  cleanup and S20 offline Bandit.
+- S19 completed the full release-candidate audit with Python 3.10/3.12 each at
+  651 tests and two AstrBot-host-only skips. S20 then passed 16 focused tests on
+  each Python, and S23 readiness passed eight on each; those additive stages did
+  not rerun a full current-HEAD repository suite. Synthetic Evals remain policy,
+  contract or lexical-regression gates; human Chinese quality and calibration
+  are not established.
 - S08-S11 local implementation and the cross-stage completion audit are
   complete and verified. Authorized real-group testing is a deferred final
   project stage, not an S08-S11 completion blocker.
@@ -39,8 +41,9 @@ Last sync: unix:1786383737
   send remains absent.
 - S16 is complete and verified for the offline operations boundary: immutable
   releases, atomic state/receipts, read-only health, consistent SQLite backup,
-  restore planning and failed-health rollback now exist. Real deployment
-  Drivers and production recovery evidence remain S19/S23 gates.
+  restore planning and failed-health rollback now exist. S19 closed the local
+  candidate audit; real deployment Drivers and production recovery remain S23
+  gates.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -65,8 +68,8 @@ Last sync: unix:1786383737
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
 - Final real-group evidence requires environment-specific integration, explicit
-  authorization and credentials, but is intentionally not actionable until all
-  accepted module, Web testing and local audit work is complete.
+  authorization and credentials. All accepted local predecessors are complete;
+  S23 is paused specifically for that external packet and live Preflight.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
 - Real public-source/group-projection providers and proactive rollout evidence
@@ -87,11 +90,25 @@ Last sync: unix:1786383737
   dual-Python CI provisioning for both the root and isolated MCP worker locks.
   Four committed bundles (350 synthetic cases), 146 focused Contract cases,
   Python 3.10 affected tests, package/import, Node 22 build, rendered Compose and
-  secret checks passed; complete release-candidate execution remains S19 work.
+  secret checks passed; S19 subsequently closed the complete candidate audit.
 - S17 returned complete and verified. Canonical repository ownership now lives
   under `apps`, `configs`, `services/mcp`, `deploy`, `ops` and `third_party`;
-  one-Release compatibility links remain for S22, while Manifest v2 stays
-  deferred for missing hash, dependency-lock and license evidence.
+  S22 subsequently removed ten proven-unused aliases and the plugin-dedicated
+  iCourse Client while retaining seven evidenced live surfaces. Manifest v2
+  stays deferred for missing hash, dependency-lock and license evidence.
+- S19 returned an 18/18 offline candidate receipt: dual Python, 350-case Eval,
+  Web 108+6, no-network images, Compose/static/secret and normal/failed rollback
+  gates passed while `s23_ready=false` remained explicit.
+- S22 returned complete/verified with canonical consumers, Unified-only iCourse
+  facade, exact S19 rollback archive and focused Python/image/Compose/package/
+  secret evidence.
+- S20 returned complete/verified offline Bandit contracts: full same-role/tier
+  action support, execution/feedback binding, propensity validation and fixed
+  Decimal IPS/SNIPS/DR/ESS. It adds no production hook, training or exploration.
+- S23 returned a committed low-sensitivity template, manifest-only readiness
+  checker and Chinese Runbook. Its report always keeps
+  `live_execution_authorized=false`; the branch is correctly paused/partial
+  before any real group read, Provider/source call, container change or send.
 - S10 completed with 325 tests on Python 3.10/3.12 and protected delivery,
   reconciliation and side-effect-free Shadow evidence.
 - S11 locally passes 350 tests on Python 3.10/3.12 with persistent single-owner

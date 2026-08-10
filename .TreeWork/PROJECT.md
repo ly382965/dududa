@@ -62,11 +62,12 @@ and directory slices and a joint audit.
 
 ## Current Direction
 
-The local S08-S11 implementation/audit and the independent Mew/NapCat Web
-parity epic are complete and verified. The user approved the next Agent
-expansion through every offline S12-S22 engineering gate plus the bounded S20
-foundation. Production-shape and additive semantic gates come first; iCourse is
-the only real MCP Server, while later MCPs and proactive sources receive
+The local S08-S20/S22 engineering sequence and the independent Mew/NapCat Web
+parity epic are complete and verified in their declared local/offline scopes.
+iCourse is the only real MCP Server; later MCPs and proactive sources have
 framework-neutral Ports, Registry entries, Fakes and fixtures rather than
-invented production integrations. Real Endpoint evidence, human quality data,
-live sources, online Bandit learning and S23 group sends remain external gates.
+invented production integrations. S23 now has a committed manifest-only
+readiness checker and operator Runbook, but its branch is paused: real Endpoint
+evidence, group authorization/SecretRefs, live sources, production Projection/
+Output composition, human quality data, online Bandit learning and every real
+group send remain external gates.
