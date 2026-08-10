@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Protocol, runtime_checkable
 
 from dududa.domain.content import ValidatedFinalResponse
@@ -20,10 +20,19 @@ from dududa.proactive.contracts import (
     ProactivePreviewResult,
     ProactiveQuotaLease,
     ProactiveRunReceipt,
+    ProactiveSubscription,
     ProactiveTargetPolicy,
     ProactiveTargetPolicyRef,
+    ProactiveTrigger,
     ProactiveTriggerKind,
+    ScheduleClaimDisposition,
+    ScheduleClaimReceipt,
+    ScheduleLedgerRecord,
+    ScheduleMaterializationReceipt,
+    ScheduleOccurrenceState,
+    ScheduleTriggerClaim,
     SourceCategory,
+    SubscriptionMutationReceipt,
 )
 
 
@@ -65,6 +74,114 @@ class ProactiveTargetRegistry(Protocol):
         at: datetime,
         call: ServiceCallContext,
     ) -> ProactiveTargetPolicy: ...
+
+
+@runtime_checkable
+class ProactiveSubscriptionStore(Protocol):
+    async def publish(
+        self,
+        subscription: ProactiveSubscription,
+        *,
+        expected_revision: int | None,
+        mutation_id: str,
+        call: ServiceCallContext,
+    ) -> SubscriptionMutationReceipt: ...
+
+    async def load(
+        self,
+        subscription_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> ProactiveSubscription | None: ...
+
+    async def list_active(
+        self,
+        *,
+        call: ServiceCallContext,
+    ) -> tuple[ProactiveSubscription, ...]: ...
+
+
+@runtime_checkable
+class ProactiveScheduleStore(Protocol):
+    async def record_trigger(
+        self,
+        trigger: ProactiveTrigger,
+        state: ScheduleOccurrenceState,
+        *,
+        at: datetime,
+        call: ServiceCallContext,
+    ) -> ScheduleMaterializationReceipt: ...
+
+    async def record_nonexistent(
+        self,
+        subscription: ProactiveSubscription,
+        local_date: date,
+        *,
+        at: datetime,
+        call: ServiceCallContext,
+    ) -> ScheduleMaterializationReceipt: ...
+
+    async def list_due(
+        self,
+        *,
+        at: datetime,
+        limit: int,
+        call: ServiceCallContext,
+    ) -> tuple[ScheduleLedgerRecord, ...]: ...
+
+    async def claim(
+        self,
+        occurrence_digest: DigestString,
+        *,
+        worker_id: str,
+        ttl: timedelta,
+        at: datetime,
+        call: ServiceCallContext,
+    ) -> tuple[ScheduleTriggerClaim, ScheduleClaimDisposition]: ...
+
+    async def acknowledge(
+        self,
+        claim: ScheduleTriggerClaim,
+        *,
+        at: datetime,
+        call: ServiceCallContext,
+    ) -> ScheduleClaimReceipt: ...
+
+    async def load_schedule_record(
+        self,
+        subscription_id: str,
+        local_date: date,
+        *,
+        call: ServiceCallContext,
+    ) -> ScheduleLedgerRecord | None: ...
+
+
+@runtime_checkable
+class ProactiveScheduler(Protocol):
+    async def materialize_due(
+        self,
+        *,
+        now: datetime,
+        call: ServiceCallContext,
+    ) -> tuple[ScheduleMaterializationReceipt, ...]: ...
+
+    async def claim_due(
+        self,
+        *,
+        worker_id: str,
+        limit: int,
+        ttl: timedelta,
+        now: datetime,
+        call: ServiceCallContext,
+    ) -> tuple[ScheduleTriggerClaim, ...]: ...
+
+    async def acknowledge(
+        self,
+        claim: ScheduleTriggerClaim,
+        *,
+        now: datetime,
+        call: ServiceCallContext,
+    ) -> ScheduleClaimReceipt: ...
 
 
 @runtime_checkable
@@ -204,5 +321,8 @@ __all__ = [
     "ProactivePreviewPort",
     "ProactivePreviewProducer",
     "ProactiveQuotaLedger",
+    "ProactiveScheduleStore",
+    "ProactiveScheduler",
+    "ProactiveSubscriptionStore",
     "ProactiveTargetRegistry",
 ]

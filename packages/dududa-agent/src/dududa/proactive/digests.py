@@ -30,11 +30,16 @@ if TYPE_CHECKING:
         ProactiveTargetPolicyRef,
         ProactiveTrigger,
         ProactiveTriggerKind,
+        ScheduleClaimReceipt,
+        ScheduleLedgerRecord,
+        ScheduleMaterializationReceipt,
         ScheduleOccurrence,
         ScheduleSpec,
+        ScheduleTriggerClaim,
         SourceBatch,
         SourceFailure,
         SourceItem,
+        SubscriptionMutationReceipt,
     )
 
 
@@ -54,6 +59,26 @@ _CONTRACT_DIGESTS = {
     "ScheduleOccurrence": (
         "occurrence_digest",
         "proactive:schedule-occurrence:v1",
+    ),
+    "ScheduleTriggerClaim": (
+        "claim_digest",
+        "proactive:schedule-trigger-claim:v1",
+    ),
+    "ScheduleLedgerRecord": (
+        "record_digest",
+        "proactive:schedule-ledger-record:v1",
+    ),
+    "ScheduleMaterializationReceipt": (
+        "receipt_digest",
+        "proactive:schedule-materialization-receipt:v1",
+    ),
+    "ScheduleClaimReceipt": (
+        "receipt_digest",
+        "proactive:schedule-claim-receipt:v1",
+    ),
+    "SubscriptionMutationReceipt": (
+        "receipt_digest",
+        "proactive:subscription-mutation-receipt:v1",
     ),
     "ConversationOpportunitySnapshot": (
         "snapshot_digest",
@@ -182,6 +207,56 @@ def schedule_occurrence_digest(
         occurrence,
         "occurrence_digest",
         domain="proactive:schedule-occurrence:v1",
+    )
+
+
+def schedule_trigger_claim_digest(
+    claim: ScheduleTriggerClaim | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        claim,
+        "claim_digest",
+        domain="proactive:schedule-trigger-claim:v1",
+    )
+
+
+def schedule_ledger_record_digest(
+    record: ScheduleLedgerRecord | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        record,
+        "record_digest",
+        domain="proactive:schedule-ledger-record:v1",
+    )
+
+
+def schedule_materialization_receipt_digest(
+    receipt: ScheduleMaterializationReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:schedule-materialization-receipt:v1",
+    )
+
+
+def schedule_claim_receipt_digest(
+    receipt: ScheduleClaimReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:schedule-claim-receipt:v1",
+    )
+
+
+def subscription_mutation_receipt_digest(
+    receipt: SubscriptionMutationReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:subscription-mutation-receipt:v1",
     )
 
 
@@ -428,10 +503,15 @@ __all__: Iterable[str] = (
     "proactive_target_policy_digest",
     "proactive_target_policy_ref_digest",
     "proactive_trigger_digest",
+    "schedule_claim_receipt_digest",
+    "schedule_ledger_record_digest",
+    "schedule_materialization_receipt_digest",
     "schedule_occurrence_digest",
     "schedule_spec_digest",
+    "schedule_trigger_claim_digest",
     "seal_proactive_contract",
     "source_batch_digest",
     "source_failure_digest",
     "source_item_digest",
+    "subscription_mutation_receipt_digest",
 )

@@ -77,6 +77,31 @@ class ScheduleOccurrenceOrigin(StrEnum):
     MANUAL_CANARY = "manual_canary"
 
 
+class ScheduleOccurrenceState(StrEnum):
+    READY = "ready"
+    CLAIMED = "claimed"
+    EMITTED = "emitted"
+    SKIPPED_EXPIRED = "skipped_expired"
+    SKIPPED_NONEXISTENT = "skipped_nonexistent"
+    INVALIDATED = "invalidated"
+
+
+class SubscriptionMutationDisposition(StrEnum):
+    CREATED = "created"
+    UPDATED = "updated"
+
+
+class ScheduleClaimDisposition(StrEnum):
+    ACQUIRED = "acquired"
+    EXISTING = "existing"
+    RECLAIMED = "reclaimed"
+
+
+class ScheduleAckDisposition(StrEnum):
+    EMITTED = "emitted"
+    EXISTING = "existing"
+
+
 class ProactiveDisposition(StrEnum):
     DENIED = "denied"
     COLLECTED = "collected"
@@ -453,6 +478,42 @@ class ProactiveSubscription:
 
 
 @dataclass(frozen=True, slots=True)
+class SubscriptionMutationReceipt:
+    schema_version: int
+    mutation_id: str
+    subscription_id: str
+    previous_revision: int | None
+    applied_revision: int
+    subscription_digest: DigestString
+    status: SubscriptionStatus
+    disposition: SubscriptionMutationDisposition
+    recorded_at: datetime
+    receipt_digest: DigestString = ""
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _identifier(self.mutation_id, "subscription_mutation_id")
+        _identifier(self.subscription_id, "subscription_id")
+        if self.previous_revision is not None:
+            _positive(self.previous_revision, "previous_subscription_revision")
+        _positive(self.applied_revision, "applied_subscription_revision")
+        _digest(self.subscription_digest, "subscription_digest")
+        if not isinstance(self.status, SubscriptionStatus) or not isinstance(
+            self.disposition, SubscriptionMutationDisposition
+        ):
+            raise validation_error("invalid_subscription_mutation_receipt")
+        if self.disposition is SubscriptionMutationDisposition.CREATED:
+            if self.previous_revision is not None or self.applied_revision != 1:
+                raise validation_error("invalid_subscription_create_receipt")
+        elif self.previous_revision is None or (
+            self.applied_revision != self.previous_revision + 1
+        ):
+            raise validation_error("invalid_subscription_update_receipt")
+        _aware(self.recorded_at, "subscription_mutation_recorded_at")
+        seal_proactive_contract(self, "receipt_digest")
+
+
+@dataclass(frozen=True, slots=True)
 class ScheduleOccurrence:
     schema_version: int
     occurrence_id: str
@@ -588,6 +649,152 @@ class ProactiveTrigger:
             return self.occurrence.occurrence_digest
         assert self.opportunity is not None
         return self.opportunity.snapshot_digest
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleTriggerClaim:
+    schema_version: int
+    claim_id: str
+    trigger: ProactiveTrigger
+    worker_id: str
+    lease_revision: int
+    claimed_at: datetime
+    expires_at: datetime
+    claim_digest: DigestString = ""
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _identifier(self.claim_id, "schedule_claim_id")
+        if (
+            not isinstance(self.trigger, ProactiveTrigger)
+            or self.trigger.kind is not ProactiveTriggerKind.SCHEDULED_DIGEST
+            or self.trigger.occurrence is None
+        ):
+            raise validation_error("invalid_schedule_claim_trigger")
+        _identifier(self.worker_id, "schedule_worker_id")
+        _positive(self.lease_revision, "schedule_lease_revision")
+        _aware(self.claimed_at, "schedule_claimed_at")
+        _aware(self.expires_at, "schedule_claim_expires_at")
+        if not self.claimed_at < self.expires_at <= self.trigger.expires_at:
+            raise validation_error("invalid_schedule_claim_expiry")
+        seal_proactive_contract(self, "claim_digest")
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleLedgerRecord:
+    schema_version: int
+    subscription_id: str
+    subscription_revision: int
+    local_date: date
+    state: ScheduleOccurrenceState
+    revision: int
+    trigger: ProactiveTrigger | None
+    claim: ScheduleTriggerClaim | None
+    updated_at: datetime
+    record_digest: DigestString = ""
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _identifier(self.subscription_id, "subscription_id")
+        _positive(self.subscription_revision, "subscription_revision")
+        if not isinstance(self.local_date, date) or isinstance(
+            self.local_date, datetime
+        ):
+            raise validation_error("invalid_schedule_record_local_date")
+        if not isinstance(self.state, ScheduleOccurrenceState):
+            raise validation_error("invalid_schedule_record_state")
+        _positive(self.revision, "schedule_record_revision")
+        if self.state is ScheduleOccurrenceState.SKIPPED_NONEXISTENT:
+            if self.trigger is not None or self.claim is not None:
+                raise validation_error("nonexistent_schedule_has_trigger")
+        else:
+            if (
+                not isinstance(self.trigger, ProactiveTrigger)
+                or self.trigger.occurrence is None
+                or self.trigger.occurrence.subscription_id != self.subscription_id
+                or self.trigger.occurrence.subscription_revision
+                != self.subscription_revision
+                or self.trigger.occurrence.local_date != self.local_date
+            ):
+                raise validation_error("schedule_record_trigger_mismatch")
+            if self.state in {
+                ScheduleOccurrenceState.CLAIMED,
+                ScheduleOccurrenceState.EMITTED,
+            }:
+                if (
+                    not isinstance(self.claim, ScheduleTriggerClaim)
+                    or self.claim.trigger != self.trigger
+                ):
+                    raise validation_error("schedule_record_claim_mismatch")
+            elif self.claim is not None:
+                raise validation_error("schedule_record_forbids_claim")
+        _aware(self.updated_at, "schedule_record_updated_at")
+        seal_proactive_contract(self, "record_digest")
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleMaterializationReceipt:
+    schema_version: int
+    subscription_id: str
+    subscription_revision: int
+    local_date: date
+    state: ScheduleOccurrenceState
+    occurrence_digest: DigestString | None
+    trigger_digest: DigestString | None
+    created: bool
+    record_revision: int
+    recorded_at: datetime
+    receipt_digest: DigestString = ""
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _identifier(self.subscription_id, "subscription_id")
+        _positive(self.subscription_revision, "subscription_revision")
+        if not isinstance(self.local_date, date) or isinstance(
+            self.local_date, datetime
+        ):
+            raise validation_error("invalid_materialization_local_date")
+        if self.state not in {
+            ScheduleOccurrenceState.READY,
+            ScheduleOccurrenceState.SKIPPED_EXPIRED,
+            ScheduleOccurrenceState.SKIPPED_NONEXISTENT,
+        }:
+            raise validation_error("invalid_materialization_state")
+        if self.state is ScheduleOccurrenceState.SKIPPED_NONEXISTENT:
+            if self.occurrence_digest is not None or self.trigger_digest is not None:
+                raise validation_error("nonexistent_materialization_has_trigger")
+        else:
+            _digest(self.occurrence_digest, "occurrence_digest")
+            _digest(self.trigger_digest, "trigger_digest")
+        if type(self.created) is not bool:
+            raise validation_error("invalid_materialization_created")
+        _positive(self.record_revision, "schedule_record_revision")
+        _aware(self.recorded_at, "materialization_recorded_at")
+        seal_proactive_contract(self, "receipt_digest")
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduleClaimReceipt:
+    schema_version: int
+    claim_digest: DigestString
+    occurrence_digest: DigestString
+    disposition: ScheduleAckDisposition
+    state: ScheduleOccurrenceState
+    record_revision: int
+    completed_at: datetime
+    receipt_digest: DigestString = ""
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        _digest(self.claim_digest, "schedule_claim_digest")
+        _digest(self.occurrence_digest, "occurrence_digest")
+        if not isinstance(self.disposition, ScheduleAckDisposition):
+            raise validation_error("invalid_schedule_ack_disposition")
+        if self.state is not ScheduleOccurrenceState.EMITTED:
+            raise validation_error("invalid_schedule_ack_state")
+        _positive(self.record_revision, "schedule_record_revision")
+        _aware(self.completed_at, "schedule_ack_completed_at")
+        seal_proactive_contract(self, "receipt_digest")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1298,13 +1505,22 @@ __all__ = [
     "ProactiveTrigger",
     "ProactiveTriggerKind",
     "QuotaKind",
+    "ScheduleAckDisposition",
+    "ScheduleClaimDisposition",
+    "ScheduleClaimReceipt",
+    "ScheduleLedgerRecord",
+    "ScheduleMaterializationReceipt",
     "ScheduleOccurrence",
     "ScheduleOccurrenceOrigin",
+    "ScheduleOccurrenceState",
     "ScheduleSpec",
+    "ScheduleTriggerClaim",
     "SourceBatch",
     "SourceCategory",
     "SourceFailure",
     "SourceItem",
+    "SubscriptionMutationDisposition",
+    "SubscriptionMutationReceipt",
     "SubscriptionStatus",
     "validate_grant_ref",
     "validate_target_policy_ref",

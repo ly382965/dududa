@@ -11,8 +11,24 @@ Last sync: unix:1786344725
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15A and S15B are verified and integrated on the local development branch.
+- S15B is complete in its offline scope: Scheduler lifecycle DTO/Ports, typed JSON, SQLite
+  subscription/slot authority and deterministic materializer are implemented and verified.
+  Production Scheduler composition remains intentionally absent.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Implemented and focused-tested subscription CAS, revision invalidation, DST gap/fold resolution,
+  bounded misfire, dual-instance lease/reclaim, exact ack, restart, tamper rejection and a 30-day
+  fake-clock lifecycle without adding APScheduler, sources, models or Output ownership.
+- Python 3.10.20 and 3.12.13 each pass 601 repository tests with two existing AstrBot-only skips;
+  focused warnings-as-errors, Web 66+42/typecheck/build, package and repository gates pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No S15B offline acceptance item remains open.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Return to the control workspace after completion, locally merge S15B, then enter S15C governed
+  source contracts. Do not treat this reference Store as production Scheduler enablement.
