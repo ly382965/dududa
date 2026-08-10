@@ -4,15 +4,39 @@
 <!-- treework:status:start -->
 Branch: proactive-contracts
 Parent: proactive-outbound
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: complete
+Verification: verified
+Last sync: unix:1786341311
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15A is complete in its offline contract/control scope. The new initiated-run domain remains
+  absent from the production composition root and every proactive behavior defaults to OFF with
+  an empty allowlist and active kill switch.
+- Framework-neutral Ports now cover current-Actor resolution, Target/Grant resolution, atomic
+  global/Scope quota, Preview metadata, Dispatch CAS/recovery and future orchestration. Services
+  depend on those Ports rather than the in-memory implementations.
+- No Scheduler, source collection, model composition, real Output integration or QQ send exists
+  or is enabled; those boundaries remain owned by S15B-S15E and S23.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added strict v1 proactive DTO/digests, Registry/config, current-Actor initiation guard,
+  deterministic delivery policy, paired quota leases, isolated Preview with metadata-only store,
+  PreparedDispatch recovery ledger and local Fakes.
+- Negative tests cover default/non-delivery modes, empty allowlist, quiet hours, kill switch,
+  authorization revision, audit rollback, Actor resolution, revoked/expired/replaced/cross-kind
+  grants, stable business idempotency, crash-to-UNKNOWN recovery and Preview zero delivery.
+- Python 3.10.20 and 3.12.13 each pass 590 repository tests with two existing AstrBot-only skips;
+  focused proactive suites, Web 66+42 tests/build and repository build/static gates pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No S15A offline acceptance item remains open.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Return to the control workspace after completion and enter S15B `durable-scheduler`.
+- Real source adapters, real models, production authorization and QQ delivery remain external or
+  later-branch gates; S15A completion must not be read as an active proactive product.
