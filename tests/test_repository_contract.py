@@ -14,6 +14,45 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
+    def test_canonical_layout_and_compatibility_entries_are_unambiguous(self) -> None:
+        canonical_directories = (
+            "apps/astrbot-plugins",
+            "configs",
+            "deploy/compose",
+            "deploy/docker",
+            "deploy/env",
+            "ops/cli",
+            "services/mcp/icourse",
+            "services/mcp/unified-worker",
+            "third_party/patches",
+            "third_party/vendor",
+        )
+        for relative in canonical_directories:
+            self.assertTrue((ROOT / relative).is_dir(), relative)
+
+        compatibility_links = {
+            "config": "configs",
+            "docker": "deploy/docker",
+            "plugins": "apps/astrbot-plugins",
+            "scripts": "ops/cli",
+            "services/icourse-mcp": "services/mcp/icourse",
+            "services/unified-mcp-worker": "services/mcp/unified-worker",
+            "patches": "third_party/patches",
+            "vendor": "third_party/vendor",
+            "plugins.lock.json": "third_party/plugins.lock.json",
+            ".env.example": "deploy/env/.env.example",
+        }
+        for compatibility, canonical in compatibility_links.items():
+            link = ROOT / compatibility
+            target = ROOT / canonical
+            self.assertTrue(link.is_symlink(), compatibility)
+            self.assertEqual(link.resolve(), target.resolve())
+
+        root_manage = (ROOT / "manage.sh").read_text(encoding="utf-8")
+        root_compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
+        self.assertIn('exec "$ROOT_DIR/ops/manage.sh" "$@"', root_manage)
+        self.assertIn("./deploy/compose/compose.yml", root_compose)
+
     def test_derived_image_installs_framework_neutral_core(self) -> None:
         dockerfile = (
             ROOT / "deploy" / "docker" / "astrbot" / "Dockerfile"
@@ -44,7 +83,11 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertFalse((ROOT / component).exists(), component)
 
     def test_plugin_lock_is_exact_and_complete(self) -> None:
-        lock = json.loads((ROOT / "plugins.lock.json").read_text(encoding="utf-8"))
+        canonical = ROOT / "third_party" / "plugins.lock.json"
+        compatibility = ROOT / "plugins.lock.json"
+        self.assertTrue(compatibility.is_symlink())
+        self.assertEqual(compatibility.resolve(), canonical)
+        lock = json.loads(canonical.read_text(encoding="utf-8"))
         self.assertEqual(lock["schema_version"], 1)
         plugins = {plugin["name"]: plugin for plugin in lock["plugins"]}
         self.assertEqual(
@@ -64,9 +107,12 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("memes", plugins["meme_manager"]["sparse_paths"])
 
     def test_iris_patch_keeps_both_privacy_guards(self) -> None:
-        patch = (ROOT / "patches" / "iris-memory-user-group-isolation.patch").read_text(
-            encoding="utf-8"
-        )
+        patch = (
+            ROOT
+            / "third_party"
+            / "patches"
+            / "iris-memory-user-group-isolation.patch"
+        ).read_text(encoding="utf-8")
         self.assertIn('metadata.get("user_id")', patch)
         self.assertIn("search_nodes_detailed", patch)
         self.assertIn("group_id=group_id", patch)

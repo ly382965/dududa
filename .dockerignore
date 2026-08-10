@@ -18,5 +18,5 @@ backups
 **/*.sqlite3
 docs
 tests
-vendor
-patches
+third_party/vendor
+third_party/patches

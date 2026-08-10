@@ -1,2 +1,2 @@
-patches/** -whitespace
-vendor/** -whitespace
+third_party/patches/** -whitespace
+third_party/vendor/** -whitespace

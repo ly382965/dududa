@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-LOCK_PATH = REPO_ROOT / "plugins.lock.json"
+LOCK_PATH = REPO_ROOT / "third_party" / "plugins.lock.json"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
 

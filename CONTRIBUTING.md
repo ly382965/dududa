@@ -11,7 +11,7 @@ Use short-lived branches and pull requests. `main` must remain deployable.
 5. Open a pull request describing behavior, migration impact and rollback.
 6. Obtain review from the owners in `.github/CODEOWNERS`.
 
-Changes to `plugins.lock.json`, `patches/`, persona safety boundaries, permission
+Changes to `third_party/plugins.lock.json`, `third_party/patches/`, persona safety boundaries, permission
 logic or persistent-data formats require explicit review. Do not update an
 upstream plugin to `HEAD`; lock a full 40-character commit.
 
