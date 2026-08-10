@@ -61,10 +61,11 @@
 - [ ] After every earlier acceptance item and local audit passes, the authorized
   real-group shadow/canary records the frozen safety and SLO evidence.
 
-All local S08-S16 and Web criteria in their accepted offline scopes are
-satisfied. S17 is in progress and unverified; S18, S19, S22 and S20 remain
-pending. The final real-group gate remains last and requires a separate
-authorized external run after these local criteria and their audit pass.
+All local S08-S18 and Web criteria in their accepted offline scopes are
+satisfied. S17 is integrated and S18 has reproducible focused evidence; S19,
+S22 and S20 remain pending. The final real-group gate remains last and requires
+a separate authorized external run after these local criteria and their audit
+pass.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 

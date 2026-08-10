@@ -1,7 +1,7 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S16 的既定离线工程步骤已完成；S17 三批 path-only 迁移均已提交，并补齐旧插件
-marker 兼容并通过代表性验证，已完成并合入控制分支。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S18 的既定离线工程步骤已完成；S17 canonical path-only 迁移已经合并，S18 已补齐
+统一 Eval catalog、低敏 receipt、Runtime phase Trace 和可复现 CI。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
 不属于该发布前置。
@@ -97,7 +97,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S15E | 已完成（离线） | Sanitized group window、Probe policy/detection/state/feedback/metadata、原子并发 claim、TTL/hard gates、普通/无人回应长冷却、SHORT Persona/Validator、no-send Runtime 和第 1/2/30 天抽样通过 | 不含原始/真实聊天 Projection Adapter、持久 ledger、人工质量、Output/Dispatch、自动追问、模型或 QQ 发送 |
 | S16 | 已完成（离线） | 标准库 Release Manifest/State/Receipt、只读 Health、SQLite 一致性 Backup、确定性 Restore Plan、Upgrade/单次失败回滚、根命令转发和 Compose mount/network Contract 已通过临时数据抽样 | 真实 Compose/HTTP/MCP Health Driver、生产备份范围/加密、原地 Restore、真实升级演练和容器观测留待 S19/S23 授权环境 |
 | S17 | **已完成、已验证、已合并** | 三批路径迁移与旧 marker 兼容均已提交；canonical 路径、根 symlink、Compose 和双 Python聚焦 Contract 通过 | 兼容链接留到 S22；Manifest v2 因许可证/hash/lock 证据不足延期 |
-| S18、S19、S22 | 未开始 | 已有批准 Spec/Tree，待 S17 完成后按 WIP=1 串行推进 | 聚焦 Contract 与抽样回归；双 Python 全仓集中在 S19，S22 只删除有迁移/恢复证据的兼容面 |
+| S18 | **已完成（离线）、待集成** | `daf3111` 冻结 Spec；`5be566a` 实现十个固定 runner/十四维 catalog、原子低敏 receipt、append-only Runtime Trace、双锁 CI 与 Node 22；四套 350-case bundle、146 项 focused Contract、Python 3.10 受影响样本和构建/Compose/secret 门禁通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障与 SLO/回滚候选证据统一留给 S19；不声明真实质量 |
+| S19、S22 | 未开始 | 已有批准 Spec/Tree，按 WIP=1 串行推进 | S19 集中完成发布候选总审计；S22 只删除有消费者迁移和上一 Release 恢复证据的兼容面 |
 | S20 | 已批准、未开始 | 仅批准离线 decision/feedback、support/propensity、静态 baseline 和合成 IPS/SNIPS/DR | S22 后实现；不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
 | S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |

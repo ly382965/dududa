@@ -19,33 +19,33 @@ Title: S18 Evaluation And CI
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] `evals/suite-v1.json` is strict, versioned, covers every required S18
+- [x] `evals/suite-v1.json` is strict, versioned, covers every required S18
   dimension and can invoke only fixed registered runners.
-- [ ] One CLI validates committed bundle drift and bounded Contract evidence,
+- [x] One CLI validates committed bundle drift and bounded Contract evidence,
   emits an atomic low-sensitivity receipt and returns non-zero on a failed gate.
-- [ ] The receipt preserves technical versus external-quality status and
+- [x] The receipt preserves technical versus external-quality status and
   contains no fixture text, command, absolute path, environment value,
   credential or real identifier field.
-- [ ] Runtime checkpoints record append-only sanitized phase Trace events and
+- [x] Runtime checkpoints record append-only sanitized phase Trace events and
   final summaries project the recorded path; synthetic privacy and failure
   tests pass.
-- [ ] Clean CI provisions root and worker locks for Python 3.10/3.12, executes
+- [x] Clean CI provisions root and worker locks for Python 3.10/3.12, executes
   worker-local tests, the suite profile, import/package checks, rendered Compose
   contract, repository secret scan and existing Web gates.
-- [ ] Focused S18 checks pass on Python 3.10/3.12; full image/container, Web and
+- [x] Focused S18 checks pass on Python 3.10/3.12; full image/container, Web and
   repository release-candidate evidence remains accurately assigned to S19.
-- [ ] Branch Progress, Findings and Verification describe actual evidence and
+- [x] Branch Progress, Findings and Verification describe actual evidence and
   external gaps without claiming real quality or production readiness.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Implement strict catalog/Registry, runner result adapters and receipt CLI.
-- [ ] Add sanitized Runtime phase events and path summary projection.
-- [ ] Add focused catalog, receipt, Trace and CI contract tests.
-- [ ] Repair worker bootstrap/testing, rendered Compose validation and Node
+- [x] Implement strict catalog/Registry, runner result adapters and receipt CLI.
+- [x] Add sanitized Runtime phase events and path summary projection.
+- [x] Add focused catalog, receipt, Trace and CI contract tests.
+- [x] Repair worker bootstrap/testing, rendered Compose validation and Node
   image version in CI/deployment inputs.
-- [ ] Run risk-based Python 3.10/3.12 samples and static workflow checks.
-- [ ] Synchronize S18 branch/project documents, commit, verify and return.
+- [x] Run risk-based Python 3.10/3.12 samples and static workflow checks.
+- [x] Synchronize S18 branch/project documents, commit, verify and return.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
