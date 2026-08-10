@@ -52,7 +52,7 @@ Title: S14 Memory Lifecycle And Retrieval
   Port surface plus focused validation/import tests.
 - [x] Implement state generation, delete/tombstone/export/archive/restore and
   crash-stable v2 JSON persistence with rollback and adapter Contract tests.
-- [ ] Implement retrieval policy, scoped retriever, exact/recency strategies,
+- [x] Implement retrieval policy, scoped retriever, exact/recency strategies,
   CJK tokenizer and BM25 ranker with security/failure tests.
 - [ ] Add and validate the fixed synthetic M0-M2 bundle, evaluator and golden
   reports; update current design/status documentation.

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from dududa.domain.primitives import DigestString
+from dududa.domain.primitives import ComponentRevision, DigestString
 from dududa.memory.models import (
     MemoryDeleteCommand,
     MemoryDeleteReceipt,
@@ -52,6 +52,9 @@ class MemoryRetrievalPolicy(Protocol):
 
 @runtime_checkable
 class MemoryRanker(Protocol):
+    @property
+    def ranker_revision(self) -> ComponentRevision: ...
+
     async def rank(
         self,
         request: MemoryRankRequest,

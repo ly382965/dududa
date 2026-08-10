@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .iris import IrisMemoryRepository
     from .json_repository import JsonMemoryRepository
+    from .lexical import CjkBm25MemoryRanker, cjk_bm25_terms
     from .models import (
         IndexableMemoryProjection,
         MemoryCandidate,
@@ -34,10 +35,17 @@ if TYPE_CHECKING:
         Visibility,
     )
     from .repository import InMemoryMemoryRepository
+    from .retrieval import (
+        DeterministicMemoryRetrievalPolicy,
+        DeterministicScopedMemoryRetriever,
+    )
     from .selectors import HmacScopeSelectorAuthority
     from .write_gate import ExplicitMemoryWriteGate
 
 __all__ = [
+    "CjkBm25MemoryRanker",
+    "DeterministicMemoryRetrievalPolicy",
+    "DeterministicScopedMemoryRetriever",
     "ExplicitMemoryWriteGate",
     "HmacScopeSelectorAuthority",
     "InMemoryMemoryRepository",
@@ -68,6 +76,7 @@ __all__ = [
     "ScopeSelector",
     "SelectorMode",
     "Visibility",
+    "cjk_bm25_terms",
 ]
 
 _EXPORT_MODULES = {
@@ -76,6 +85,9 @@ _EXPORT_MODULES = {
     "InMemoryMemoryRepository": ".repository",
     "IrisMemoryRepository": ".iris",
     "JsonMemoryRepository": ".json_repository",
+    "CjkBm25MemoryRanker": ".lexical",
+    "DeterministicMemoryRetrievalPolicy": ".retrieval",
+    "DeterministicScopedMemoryRetriever": ".retrieval",
     "IndexableMemoryProjection": ".models",
     "MemoryCandidate": ".models",
     "MemoryConflictGroup": ".models",
@@ -101,6 +113,7 @@ _EXPORT_MODULES = {
     "ScopeSelector": ".models",
     "SelectorMode": ".models",
     "Visibility": ".models",
+    "cjk_bm25_terms": ".lexical",
 }
 
 

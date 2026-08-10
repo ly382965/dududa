@@ -336,6 +336,8 @@ class IndexableMemoryProjection:
         _v1(self.schema_version)
         require_non_empty(self.memory_id, "memory_id")
         require_non_empty(self.text, "memory_projection_text")
+        if len(self.text.encode("utf-8")) > 32_768:
+            raise validation_error("memory_projection_text_too_large")
         require_non_empty(str(self.content_digest), "content_digest")
         require_non_empty(str(self.scope_digest), "scope_digest")
         if not isinstance(self.sensitivity, Sensitivity):
@@ -368,6 +370,8 @@ class MemoryRankRequest:
             or len({item.memory_id for item in projections}) != len(projections)
         ):
             raise validation_error("invalid_memory_rank_projections")
+        if sum(len(item.text.encode("utf-8")) for item in projections) > 1_048_576:
+            raise validation_error("memory_rank_projection_budget_exceeded")
         if type(self.limit) is not int or not 1 <= self.limit <= len(projections):
             raise validation_error("invalid_memory_rank_limit")
         if type(self.state_revision) is not int or self.state_revision < 0:
@@ -417,6 +421,8 @@ class MemoryRetrievalRequest:
         _v1(self.schema_version)
         require_non_empty(self.query_id, "query_id")
         require_non_empty(str(self.request_digest), "request_digest")
+        if len(self.query.text.encode("utf-8")) > 8_192:
+            raise validation_error("memory_retrieval_query_too_large")
         require_aware(self.as_of, "as_of")
         memory_types = frozenset(self.memory_types)
         if not memory_types or any(
