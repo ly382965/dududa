@@ -4,26 +4,35 @@
 <!-- treework:status:start -->
 Branch: digest-shadow
 Parent: proactive-outbound
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: in_progress
+Verification: verified
+Last sync: unix:1786351690
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- S15C is verified and integrated. S15D is the sole WIP branch.
-- Existing inbound Composer/Profile selection cannot be reused directly because it requires current
-  message and SocialDecision evidence; the accepted design uses a truthful scheduled projection.
+- S15C is verified and integrated. S15D now has a complete fixture-backed COLLECT/SHADOW/PREVIEW
+  implementation with no delivery capability.
+- The digest policy binds Source, Response and Persona snapshots. LONG subscriptions are explicitly
+  capped to MEDIUM without changing Model Tier or fabricating inbound perception evidence.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Froze the minimal fixture-only COLLECT/SHADOW/PREVIEW chain and six-class sampling strategy.
+- Added digest policy/metadata contracts, deterministic composition, the no-send Shadow runtime,
+  isolated Preview producer, Ports/Fakes and metadata-only recording.
+- Python 3.10.20 and 3.12.13 each pass the six representative S15D scenarios; Python 3.12 also passes
+  the affected import-boundary suite. Changed-file static checks, compile, lock and wheel build pass.
+- Revalidated Trigger expiry immediately before Source access so time spent awaiting dependencies
+  cannot consume source cursor/dedup state after the occurrence becomes ineligible.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Digest contracts, composition/runtime implementation, Fakes and sampled verification remain.
+- No branch-local implementation issue remains. Full-repository and Web regression are deliberately
+  deferred under the approved risk-based sampling policy.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - Do not use `DeterministicProactivePolicy.authorize_delivery()` for SHADOW; it correctly denies all
   non-CANARY delivery. S15D performs observation admission only and never grants send authority.
+- Preserve the fixture-only claim: no live Source Adapter, model, production persistence, Scheduler
+  acknowledgement, Output Adapter or real send was added. After integration, enter S15E Probe Shadow.
