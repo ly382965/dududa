@@ -71,6 +71,16 @@ if TYPE_CHECKING:
         TaskComplexityAssessor,
     )
     from .persona import PersonaCatalogPublisher, PersonaRegistry
+    from .proactive import (
+        ProactiveActorResolver,
+        ProactiveDeliveryOrchestrator,
+        ProactiveDispatchStore,
+        ProactivePreviewMetadataStore,
+        ProactivePreviewPort,
+        ProactivePreviewProducer,
+        ProactiveQuotaLedger,
+        ProactiveTargetRegistry,
+    )
     from .responses import (
         ResponseProfilePolicy,
         ResponseProfileValidator,
@@ -139,6 +149,14 @@ __all__ = [
     "PersonaCatalogPublisher",
     "PersonaRegistry",
     "PortCallContext",
+    "ProactiveActorResolver",
+    "ProactiveDeliveryOrchestrator",
+    "ProactiveDispatchStore",
+    "ProactivePreviewMetadataStore",
+    "ProactivePreviewPort",
+    "ProactivePreviewProducer",
+    "ProactiveQuotaLedger",
+    "ProactiveTargetRegistry",
     "ResponseProfilePolicy",
     "ResponseProfileValidator",
     "RulePerception",
@@ -284,6 +302,37 @@ def __getattr__(name: str) -> object:
         return {
             "PersonaCatalogPublisher": PersonaCatalogPublisher,
             "PersonaRegistry": PersonaRegistry,
+        }[name]
+    if name in {
+        "ProactiveActorResolver",
+        "ProactiveDeliveryOrchestrator",
+        "ProactiveDispatchStore",
+        "ProactivePreviewMetadataStore",
+        "ProactivePreviewPort",
+        "ProactivePreviewProducer",
+        "ProactiveQuotaLedger",
+        "ProactiveTargetRegistry",
+    }:
+        from .proactive import (
+            ProactiveActorResolver,
+            ProactiveDeliveryOrchestrator,
+            ProactiveDispatchStore,
+            ProactivePreviewMetadataStore,
+            ProactivePreviewPort,
+            ProactivePreviewProducer,
+            ProactiveQuotaLedger,
+            ProactiveTargetRegistry,
+        )
+
+        return {
+            "ProactiveActorResolver": ProactiveActorResolver,
+            "ProactiveDeliveryOrchestrator": ProactiveDeliveryOrchestrator,
+            "ProactiveDispatchStore": ProactiveDispatchStore,
+            "ProactivePreviewMetadataStore": ProactivePreviewMetadataStore,
+            "ProactivePreviewPort": ProactivePreviewPort,
+            "ProactivePreviewProducer": ProactivePreviewProducer,
+            "ProactiveQuotaLedger": ProactiveQuotaLedger,
+            "ProactiveTargetRegistry": ProactiveTargetRegistry,
         }[name]
     if name in {
         "ResponseProfilePolicy",

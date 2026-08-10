@@ -24,6 +24,7 @@ PUBLIC_PACKAGES = (
     "dududa.perception",
     "dududa.persona",
     "dududa.ports",
+    "dududa.proactive",
     "dududa.rollout",
     "dududa.responses",
     "dududa.runtime",
@@ -67,6 +68,11 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.ports.persona",
     "dududa.ports.runtime",
     "dududa.ports.responses",
+    "dududa.proactive.authorization",
+    "dududa.proactive.config",
+    "dududa.proactive.contracts",
+    "dududa.proactive.digests",
+    "dududa.proactive.registry",
     "dududa.rollout.admission",
     "dududa.rollout.canary",
     "dududa.rollout.contracts",
@@ -104,10 +110,44 @@ FORBIDDEN_INTERNAL_IMPORTS = {
     "dududa.models": ("dududa.perception", "dududa.runtime"),
     "dududa.responses": ("dududa.models", "dududa.runtime"),
     "dududa.persona": ("dududa.models", "dududa.runtime"),
+    "dududa.proactive": (
+        "dududa.mcp",
+        "dududa.models",
+        "dududa.runtime",
+    ),
 }
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s15a_proactive_exports_are_visible_and_framework_neutral(self) -> None:
+        import importlib
+
+        ports = importlib.import_module("dududa.ports")
+        proactive = importlib.import_module("dududa.proactive")
+        expected_owners = {
+            "InMemoryProactiveTargetRegistry": "dududa.proactive.registry",
+            "InitiatedRunRequest": "dududa.proactive.contracts",
+            "PreparedDispatch": "dududa.proactive.contracts",
+            "ProactiveControlConfig": "dududa.proactive.config",
+            "ProactiveTargetPolicy": "dududa.proactive.contracts",
+            "ProactiveTrigger": "dududa.proactive.contracts",
+        }
+        expected_ports = {
+            "ProactiveActorResolver",
+            "ProactiveDeliveryOrchestrator",
+            "ProactiveDispatchStore",
+            "ProactivePreviewPort",
+            "ProactiveQuotaLedger",
+            "ProactiveTargetRegistry",
+        }
+        self.assertLessEqual(set(expected_owners), set(proactive.__all__))
+        self.assertLessEqual(expected_ports, set(ports.__all__))
+        self.assertEqual(len(proactive.__all__), len(set(proactive.__all__)))
+        for name, module_name in expected_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(proactive, name), getattr(owner, name))
+
     def test_s15_persona_exports_are_visible_and_framework_neutral(self) -> None:
         import importlib
 

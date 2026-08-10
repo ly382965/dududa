@@ -11,8 +11,18 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15A is complete in its offline scope; the proactive epic remains pending on S15B-S15E.
+- All production proactive entry points remain absent and default-off.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- S15A returned initiated-run/Target/Grant/Preview/Dispatch contracts and deterministic offline
+  controls with dual-Python, build and Web verification.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Durable scheduling, governed sources and no-send Digest/Probe Shadow remain for S15B-S15E.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Enter S15B `durable-scheduler` next; do not introduce real sources or Output delivery there.
