@@ -1,0 +1,53 @@
+{
+  "case_count": 17,
+  "cross_two_profile_error_count": 0,
+  "dataset_kind": "synthetic",
+  "explicit_request_satisfied": 12,
+  "explicit_request_total": 12,
+  "external_gates": [
+    "human_profile_fit",
+    "persona_style_quality",
+    "real_provider_tokenizer",
+    "pilot_budget_calibration",
+    "real_qq_delivery"
+  ],
+  "hard_limit_mismatch_count": 0,
+  "human_review_complete": false,
+  "manifest_digest": "dududa-c14n-v1:eval:response-profile-manifest:v1:sha-256:fe45a117a63f784ee1af79ccd2512c8394ce14144aa385b4ffa4eab117a5f799",
+  "matrix_cell_count": 9,
+  "mismatch_case_ids": [],
+  "network_allowed": false,
+  "order_reproducible": true,
+  "persona_style_quality_claimed": false,
+  "pilot_budgets_calibrated": false,
+  "prediction_set_digest": "dududa-c14n-v1:eval:response-profile-prediction-set:v1:sha-256:fac27cba03bd0bff77f2bd176a8580013896b2e1d49a945638a07e591be9b7bc",
+  "profile_confusion": {
+    "long": {
+      "long": 5,
+      "medium": 0,
+      "short": 0
+    },
+    "medium": {
+      "long": 0,
+      "medium": 7,
+      "short": 0
+    },
+    "short": {
+      "long": 0,
+      "medium": 0,
+      "short": 5
+    }
+  },
+  "protected_content_drift_count": null,
+  "protected_content_eval_opportunity_count": 0,
+  "protected_content_invariant_gate": "unit_and_contract_tests",
+  "provider_tokenizer_equivalence_claimed": false,
+  "quality_claim": "mechanical_contract_only",
+  "real_chinese_quality_claimed": false,
+  "real_model_call_count": 0,
+  "release_ready": false,
+  "report_digest": "dududa-c14n-v1:eval:response-profile-report:v1:sha-256:527f1dd15658896bd3af659b05a094e52d2932104d3d2ac43ba13786c0b80af7",
+  "schema_version": 1,
+  "technical_pass": true,
+  "user_data_record_count": 0
+}

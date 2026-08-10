@@ -17,6 +17,11 @@ if TYPE_CHECKING:
         generate_memory_retrieval_bundle,
         run_memory_retrieval_eval,
     )
+    from .response_profile import (
+        check_response_profile_bundle,
+        generate_response_profile_bundle,
+        run_response_profile_eval,
+    )
     from .s09 import generate_s09_bundle, run_s09_eval
     from .semantic_v2 import (
         check_semantic_schema_pilot,
@@ -29,12 +34,15 @@ __all__ = [
     "CapabilityRuntimeEvalCase",
     "CapabilityRuntimeEvalReport",
     "check_memory_retrieval_bundle",
+    "check_response_profile_bundle",
     "check_semantic_schema_pilot",
     "evaluate_capability_retrieval",
     "evaluate_capability_runtime",
     "generate_memory_retrieval_bundle",
+    "generate_response_profile_bundle",
     "generate_s09_bundle",
     "run_memory_retrieval_eval",
+    "run_response_profile_eval",
     "run_s09_eval",
     "run_semantic_schema_pilot",
 ]
@@ -52,6 +60,12 @@ def __getattr__(name: str) -> object:
         return getattr(import_module(".capabilities", __name__), name)
     if name in {"generate_s09_bundle", "run_s09_eval"}:
         return getattr(import_module(".s09", __name__), name)
+    if name in {
+        "check_response_profile_bundle",
+        "generate_response_profile_bundle",
+        "run_response_profile_eval",
+    }:
+        return getattr(import_module(".response_profile", __name__), name)
     if name in {
         "check_memory_retrieval_bundle",
         "generate_memory_retrieval_bundle",

@@ -1,0 +1,265 @@
+{
+  "records": [
+    {
+      "case_id": "matrix-low-short",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 1,
+      "generated_token_limit": 128,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_short_requested"
+      ],
+      "requested_profile": "short",
+      "selected_profile": "short",
+      "uncapped_profile": "short",
+      "visible_character_limit": 180,
+      "visible_token_limit": 128
+    },
+    {
+      "case_id": "matrix-low-medium",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_medium_requested"
+      ],
+      "requested_profile": "medium",
+      "selected_profile": "medium",
+      "uncapped_profile": "medium",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    },
+    {
+      "case_id": "matrix-low-long",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 5,
+      "generated_token_limit": 1536,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_long_requested"
+      ],
+      "requested_profile": "long",
+      "selected_profile": "long",
+      "uncapped_profile": "long",
+      "visible_character_limit": 2400,
+      "visible_token_limit": 1536
+    },
+    {
+      "case_id": "matrix-medium-short",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 1,
+      "generated_token_limit": 128,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_short_requested"
+      ],
+      "requested_profile": "short",
+      "selected_profile": "short",
+      "uncapped_profile": "short",
+      "visible_character_limit": 180,
+      "visible_token_limit": 128
+    },
+    {
+      "case_id": "matrix-medium-medium",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_medium_requested"
+      ],
+      "requested_profile": "medium",
+      "selected_profile": "medium",
+      "uncapped_profile": "medium",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    },
+    {
+      "case_id": "matrix-medium-long",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 5,
+      "generated_token_limit": 1536,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_long_requested"
+      ],
+      "requested_profile": "long",
+      "selected_profile": "long",
+      "uncapped_profile": "long",
+      "visible_character_limit": 2400,
+      "visible_token_limit": 1536
+    },
+    {
+      "case_id": "matrix-high-short",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 1,
+      "generated_token_limit": 128,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_short_requested"
+      ],
+      "requested_profile": "short",
+      "selected_profile": "short",
+      "uncapped_profile": "short",
+      "visible_character_limit": 180,
+      "visible_token_limit": 128
+    },
+    {
+      "case_id": "matrix-high-medium",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_medium_requested"
+      ],
+      "requested_profile": "medium",
+      "selected_profile": "medium",
+      "uncapped_profile": "medium",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    },
+    {
+      "case_id": "matrix-high-long",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 5,
+      "generated_token_limit": 1536,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "explicit_long_requested"
+      ],
+      "requested_profile": "long",
+      "selected_profile": "long",
+      "uncapped_profile": "long",
+      "visible_character_limit": 2400,
+      "visible_token_limit": 1536
+    },
+    {
+      "case_id": "default-low",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 1,
+      "generated_token_limit": 128,
+      "reason_codes": [
+        "configured_complexity_default_selected",
+        "no_explicit_detail_preference"
+      ],
+      "requested_profile": null,
+      "selected_profile": "short",
+      "uncapped_profile": "short",
+      "visible_character_limit": 180,
+      "visible_token_limit": 128
+    },
+    {
+      "case_id": "default-medium",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "no_explicit_detail_preference",
+        "task_requires_medium_response"
+      ],
+      "requested_profile": null,
+      "selected_profile": "medium",
+      "uncapped_profile": "medium",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    },
+    {
+      "case_id": "default-high",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 5,
+      "generated_token_limit": 1536,
+      "reason_codes": [
+        "no_explicit_detail_preference",
+        "task_requires_long_response"
+      ],
+      "requested_profile": null,
+      "selected_profile": "long",
+      "uncapped_profile": "long",
+      "visible_character_limit": 2400,
+      "visible_token_limit": 1536
+    },
+    {
+      "case_id": "conflicting-medium",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "conflicting_detail_preferences",
+        "task_requires_medium_response"
+      ],
+      "requested_profile": null,
+      "selected_profile": "medium",
+      "uncapped_profile": "medium",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    },
+    {
+      "case_id": "group-cap",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "conversation_profile_cap_applied",
+        "current_message_preference_selected",
+        "explicit_long_requested"
+      ],
+      "requested_profile": "long",
+      "selected_profile": "medium",
+      "uncapped_profile": "long",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    },
+    {
+      "case_id": "runtime-cap",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 1,
+      "generated_token_limit": 300,
+      "reason_codes": [
+        "current_message_preference_selected",
+        "delivery_part_cap_applied",
+        "explicit_long_requested",
+        "response_character_cap_applied",
+        "runtime_generated_token_cap_applied"
+      ],
+      "requested_profile": "long",
+      "selected_profile": "long",
+      "uncapped_profile": "long",
+      "visible_character_limit": 400,
+      "visible_token_limit": 300
+    },
+    {
+      "case_id": "clarification",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 1,
+      "generated_token_limit": 128,
+      "reason_codes": [
+        "clarification_short_selected",
+        "detail_preference_not_applicable_to_clarification",
+        "explicit_long_requested"
+      ],
+      "requested_profile": "long",
+      "selected_profile": "short",
+      "uncapped_profile": "short",
+      "visible_character_limit": 180,
+      "visible_token_limit": 128
+    },
+    {
+      "case_id": "tool-medium",
+      "delivery_part_character_limit": 500,
+      "delivery_part_limit": 2,
+      "generated_token_limit": 512,
+      "reason_codes": [
+        "no_explicit_detail_preference",
+        "task_requires_medium_response"
+      ],
+      "requested_profile": null,
+      "selected_profile": "medium",
+      "uncapped_profile": "medium",
+      "visible_character_limit": 720,
+      "visible_token_limit": 512
+    }
+  ],
+  "schema_version": 1
+}
