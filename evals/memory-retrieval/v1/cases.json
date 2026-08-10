@@ -1,0 +1,291 @@
+{
+  "cases": [
+    {
+      "actor": {
+        "bot_id": "bot-alpha",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-alpha"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:5f4ecb5b3759a58bca7d00f613251da51c3ad5d4671ca904dffdb019e91004b8",
+      "case_id": "answer-preference",
+      "conversation_scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "persona_id": "dududa",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "user_profile"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "简洁回答"
+      },
+      "schema_version": 1,
+      "tags": [
+        "chinese",
+        "group",
+        "safe_user_profile"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-alpha",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-alpha"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:61ee71f19507954acea01a8d279743b79e24ff30add029507a4d8df9ab6de4a7",
+      "case_id": "campus-notice",
+      "conversation_scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "persona_id": "dududa",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "explicit_user_memory"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "校园通知"
+      },
+      "schema_version": 1,
+      "tags": [
+        "chinese",
+        "group"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-epsilon",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-epsilon"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:ed1ace6f7e4d972c8662a0b56c9d5a15b9933fda89b74aed12b31014996b8b7f",
+      "case_id": "emoji-separator",
+      "conversation_scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "persona_id": "dududa",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "explicit_user_memory"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "咖啡☕时间"
+      },
+      "schema_version": 1,
+      "tags": [
+        "chinese",
+        "emoji",
+        "private"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-alpha",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-gamma"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:c10b766a1e9063109d32226da8de71ba461027870845a49264f9d67e438046b8",
+      "case_id": "group-meeting",
+      "conversation_scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "persona_id": "dududa",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "group_memory"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "周会地点"
+      },
+      "schema_version": 1,
+      "tags": [
+        "chinese",
+        "group",
+        "group_memory"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-beta",
+        "platform": "matrix-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-beta"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:ab7ed69a8bbf4356e0ad67b9a96f964d45a507148362184c5bc8eb06c14dbd6d",
+      "case_id": "paper-number",
+      "conversation_scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "persona_id": "research-persona",
+        "platform": "matrix-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "explicit_user_memory"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "arXiv 2401"
+      },
+      "schema_version": 1,
+      "tags": [
+        "alternate_platform",
+        "group",
+        "mixed_latin"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-alpha",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-alpha"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:fe67a15497fc9f969188fc7d5c7c48ab3c9bdd518b3489e30cd47c7ab51723f9",
+      "case_id": "python-version",
+      "conversation_scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "persona_id": "dududa",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "episodic"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "Python 3.12"
+      },
+      "schema_version": 1,
+      "tags": [
+        "mixed_latin",
+        "private"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-alpha",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-alpha"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:49b9a8a84dc3c567d46447ccce1f306fdc22348a2a2a8c24147f7ad5b5ba5792",
+      "case_id": "single-han",
+      "conversation_scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "persona_id": "dududa",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "explicit_user_memory"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "校"
+      },
+      "schema_version": 1,
+      "tags": [
+        "chinese",
+        "group",
+        "short_cjk"
+      ]
+    },
+    {
+      "actor": {
+        "bot_id": "bot-delta",
+        "platform": "qq-test",
+        "roles": [
+          "normal"
+        ],
+        "user_id": "user-delta"
+      },
+      "candidate_limit_per_type": 32,
+      "candidate_limit_total": 64,
+      "case_digest": "dududa-c14n-v1:eval:memory-retrieval-case:v1:sha-256:c1b135c39afd5d6fed6a8fd93bdadb1620cf0cb4fa5ebaa1b0b5a253171418a8",
+      "case_id": "synthetic-typo",
+      "conversation_scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test"
+      },
+      "k": 2,
+      "memory_types": [
+        "episodic"
+      ],
+      "query": {
+        "locale": "zh-CN",
+        "text": "校圆通知"
+      },
+      "schema_version": 1,
+      "tags": [
+        "chinese",
+        "group",
+        "typo"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

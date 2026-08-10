@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.primitives import (
@@ -71,7 +71,7 @@ class MemoryRepositoryContractTests(unittest.IsolatedAsyncioTestCase):
             TraceContext("trace-1"),
             self.now + timedelta(hours=1),
             NeverCancelled(),
-            RuntimeBudget(0, 0, 0, 0, 0, Decimal("0")),
+            RuntimeBudget(0, 0, 0, 0, 0, Decimal(0)),
             "policy-v1",
         )
 
@@ -131,6 +131,11 @@ class MemoryRepositoryContractTests(unittest.IsolatedAsyncioTestCase):
                 group=None,
             ),
             self.record("expired", expires_at=self.now - timedelta(seconds=1)),
+            replace(
+                self.record("future-created"),
+                created_at=self.now + timedelta(minutes=1),
+                updated_at=self.now + timedelta(minutes=1),
+            ),
         ]
 
     def selector(self) -> ScopeSelector:

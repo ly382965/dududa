@@ -1,0 +1,70 @@
+{
+  "artifact_digests": {
+    "cases": "dududa-c14n-v1:eval:memory-retrieval-case-set:v1:sha-256:3694ac1bd703f5bfff238ef261eb729c2c76874401f42d9aaf0495de21d6d205",
+    "gold": "dududa-c14n-v1:eval:memory-retrieval-gold-set:v1:sha-256:b541522e412960b94e6ee8fb07d5ecd120e9ce14854cd6ff6262a7dbd3ce7f29",
+    "record_set": "dududa-c14n-v1:eval:memory-retrieval-record-set:v1:sha-256:545b7cc457d753c4d2dbc64523804a79d3651ccd4af0e943d1f9298bb9995bb3",
+    "repository_state": "dududa-c14n-v1:eval:memory-retrieval-record-state:v1:sha-256:7476efd2a288829cb8e85edd117377cb64a272b2d5c6c7b40b9bde493486a331",
+    "tombstone_set": "dududa-c14n-v1:eval:memory-retrieval-tombstone-set:v1:sha-256:06b3b3fd5c8f807dc529b8da040c8fdd02c2700a091e7ebff03b70a62595e1f1"
+  },
+  "bundle_version": "memory-retrieval-synthetic-v1",
+  "candidate_limit_per_type": 32,
+  "candidate_limit_total": 64,
+  "case_count": 8,
+  "coverage_tags": [
+    "alternate_platform",
+    "chinese",
+    "emoji",
+    "group",
+    "group_memory",
+    "mixed_latin",
+    "private",
+    "safe_user_profile",
+    "short_cjk",
+    "typo"
+  ],
+  "dataset_kind": "synthetic",
+  "fixed_shuffle_seed": 20260101,
+  "fixture_digest": "dududa-c14n-v1:eval:memory-retrieval-fixture:v1:sha-256:eda7533605395ffaafc73a75ee465433f7cdf436b4ee424f54985eba6643a160",
+  "generated_data_only": true,
+  "generation_revision": "memory-retrieval-fixture-v1",
+  "human_review_complete": false,
+  "k": 2,
+  "label_basis": "generated_policy_gold",
+  "lexical_subset_case_ids": [
+    "answer-preference",
+    "campus-notice",
+    "emoji-separator",
+    "group-meeting",
+    "paper-number",
+    "python-version",
+    "synthetic-typo"
+  ],
+  "live_record_count": 56,
+  "manifest_digest": "dududa-c14n-v1:eval:memory-retrieval-dataset:v1:sha-256:7d2985903f6bea25ba7c2c9c004b66fad62e9119f2cb0b7d9f94c8a36c8fbd7f",
+  "network_allowed": false,
+  "policy_revision": "memory-eval-policy-v1",
+  "quality_claim": "synthetic_lexical_regression_only",
+  "ranker_revision": {
+    "artifact_digest": "stdlib-pure-python",
+    "component_id": "memory.cjk-bm25-ranker",
+    "config_revision": "dududa-c14n-v1:memory:cjk-bm25-config:v1:sha-256:b1ec8e0fb423ed29b2d8fcc11982184d61d586fcb9fb3fa91c719819e3127ae2",
+    "implementation_version": "1"
+  },
+  "real_chinese_quality_claimed": false,
+  "real_model_call_count": 0,
+  "reference_time": "2026-01-01T12:00:00+00:00",
+  "replay_evidence_empty": true,
+  "repository_fixture_format": "memory-json-v2-test-mirror",
+  "repository_revision": "memory-json-v2",
+  "retriever_revision": "memory.scoped-retriever:1:exact-eligibility-v1",
+  "schema_version": 1,
+  "state_revision": 9,
+  "strategies": [
+    "no_memory",
+    "recency",
+    "cjk_bm25"
+  ],
+  "tokenizer_revision": "cjk-bigram-nfc-casefold-v1",
+  "tombstone_count": 8,
+  "user_data_record_count": 0
+}

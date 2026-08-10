@@ -1,0 +1,2118 @@
+{
+  "consumed_delete_confirmations": [],
+  "consumed_write_decisions": [],
+  "delete_idempotency": [],
+  "records": [
+    {
+      "confidence": 1.0,
+      "content": "回答偏好是简洁回答",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:21ca3543457b00169e02f58294836251ca51bbdbc05b7207e4d45caf9532648c",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:cross-scope",
+          "source_id": "fixture:memory:answer-preference:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha:outside"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:answer-preference:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha:outside",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha:outside"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "回答偏好是简洁回答",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:21ca3543457b00169e02f58294836251ca51bbdbc05b7207e4d45caf9532648c",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:expired",
+          "source_id": "fixture:memory:answer-preference:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:answer-preference:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "回答偏好是简洁回答",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:21ca3543457b00169e02f58294836251ca51bbdbc05b7207e4d45caf9532648c",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:future",
+          "source_id": "fixture:memory:answer-preference:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:answer-preference:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "偏好使用深色主题",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:870ac3dffca67a2e356caaccb69736356f45323cf8f796d9a7a233d6395f63ec",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:newer-a",
+          "source_id": "fixture:memory:answer-preference:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:answer-preference:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:43:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "常用语言为中文",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:5ecce03d085929a067e5d0f699c7dfb05f9ee6328e894b58bb15c4ecc652d1a6",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:newer-b",
+          "source_id": "fixture:memory:answer-preference:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:answer-preference:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:42:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "回答偏好是简洁回答",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:21ca3543457b00169e02f58294836251ca51bbdbc05b7207e4d45caf9532648c",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:restricted",
+          "source_id": "fixture:memory:answer-preference:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:answer-preference:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "回答偏好是简洁回答",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:21ca3543457b00169e02f58294836251ca51bbdbc05b7207e4d45caf9532648c",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:answer-preference:target",
+          "source_id": "fixture:memory:answer-preference:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:answer-preference:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:56:00+00:00",
+      "version": 1,
+      "visibility": "safe_user_profile"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校园通知周五发布",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:7fe6d2d304f4c87f7ac43b652ad20dc9b218a372d614d95f7477b66a91c3a49d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:cross-scope",
+          "source_id": "fixture:memory:campus-notice:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:campus-notice:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha:outside",
+        "conversation_type": "group",
+        "group_id": "group-alpha:outside",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校园通知周五发布",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:7fe6d2d304f4c87f7ac43b652ad20dc9b218a372d614d95f7477b66a91c3a49d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:expired",
+          "source_id": "fixture:memory:campus-notice:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:campus-notice:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校园通知周五发布",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:7fe6d2d304f4c87f7ac43b652ad20dc9b218a372d614d95f7477b66a91c3a49d",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:future",
+          "source_id": "fixture:memory:campus-notice:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:campus-notice:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "今晚聚餐安排",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:6a60e6b89b520cdc766e467b723b57267f266b87efe790fc710dfffef7523158",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:newer-a",
+          "source_id": "fixture:memory:campus-notice:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:campus-notice:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:55:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "羽毛球报名",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:576080db7f77ffb861604a06be9c4f0e452be579040f2b72a9add5e025b4d39e",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:newer-b",
+          "source_id": "fixture:memory:campus-notice:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:campus-notice:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:54:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校园通知周五发布",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:7fe6d2d304f4c87f7ac43b652ad20dc9b218a372d614d95f7477b66a91c3a49d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:restricted",
+          "source_id": "fixture:memory:campus-notice:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:campus-notice:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校园通知周五发布",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:7fe6d2d304f4c87f7ac43b652ad20dc9b218a372d614d95f7477b66a91c3a49d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:campus-notice:target",
+          "source_id": "fixture:memory:campus-notice:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:campus-notice:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:59:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "咖啡☕时间安排在下午",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ae7eb78cfd6e129be39d4ee9b9f6807fc867f11ecfdb16e6f2fca512479a7a86",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:cross-scope",
+          "source_id": "fixture:memory:emoji-separator:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:emoji-separator:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon:outside",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "咖啡☕时间安排在下午",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ae7eb78cfd6e129be39d4ee9b9f6807fc867f11ecfdb16e6f2fca512479a7a86",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:expired",
+          "source_id": "fixture:memory:emoji-separator:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:emoji-separator:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "咖啡☕时间安排在下午",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ae7eb78cfd6e129be39d4ee9b9f6807fc867f11ecfdb16e6f2fca512479a7a86",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:future",
+          "source_id": "fixture:memory:emoji-separator:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:emoji-separator:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "午餐预约规则",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ca10faad98bcaeddff775ba13bc92444b6c9373ccb8eaacc158766e7c6a9b2c9",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:newer-a",
+          "source_id": "fixture:memory:emoji-separator:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:emoji-separator:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:27:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "会议纪要归档",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:c18b571ffda7c6b20054d3db1fdc51cfe30f9d579582ec7196ae0962431433e8",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:newer-b",
+          "source_id": "fixture:memory:emoji-separator:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:emoji-separator:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:26:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "咖啡☕时间安排在下午",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ae7eb78cfd6e129be39d4ee9b9f6807fc867f11ecfdb16e6f2fca512479a7a86",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:restricted",
+          "source_id": "fixture:memory:emoji-separator:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:emoji-separator:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "咖啡☕时间安排在下午",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ae7eb78cfd6e129be39d4ee9b9f6807fc867f11ecfdb16e6f2fca512479a7a86",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:emoji-separator:target",
+          "source_id": "fixture:memory:emoji-separator:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-epsilon"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:emoji-separator:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:52:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "周会地点在东教室",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:80cac63f6040e6585c458ae8462f32b7265d9e4b30ab7aed40a15b9469b063ab",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:cross-scope",
+          "source_id": "fixture:memory:group-meeting:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:group-meeting:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma:outside",
+        "conversation_type": "group",
+        "group_id": "group-gamma:outside",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "周会地点在东教室",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:80cac63f6040e6585c458ae8462f32b7265d9e4b30ab7aed40a15b9469b063ab",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:expired",
+          "source_id": "fixture:memory:group-meeting:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:group-meeting:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "周会地点在东教室",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:80cac63f6040e6585c458ae8462f32b7265d9e4b30ab7aed40a15b9469b063ab",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:future",
+          "source_id": "fixture:memory:group-meeting:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:group-meeting:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "本周运动安排",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:913f131c927c5e45869611313bf2f2b0e796e09162e28c2a81a9f82192846580",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:newer-a",
+          "source_id": "fixture:memory:group-meeting:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:group-meeting:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:39:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "社团招新时间",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:e7f025b78c8dcf7b2834173d01392720d2653cd368299ed04e98fa014a8229a2",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:newer-b",
+          "source_id": "fixture:memory:group-meeting:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:group-meeting:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:38:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "周会地点在东教室",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:80cac63f6040e6585c458ae8462f32b7265d9e4b30ab7aed40a15b9469b063ab",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:restricted",
+          "source_id": "fixture:memory:group-meeting:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:group-meeting:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "周会地点在东教室",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:80cac63f6040e6585c458ae8462f32b7265d9e4b30ab7aed40a15b9469b063ab",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:group-meeting:target",
+          "source_id": "fixture:memory:group-meeting:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": null
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:group-meeting:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:55:00+00:00",
+      "version": 1,
+      "visibility": "current_group"
+    },
+    {
+      "confidence": 1.0,
+      "content": "待读论文编号 arXiv 2401",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:15a68547384a74dd2a5fc10b2b91bfed550f89b33418492516359872202e122d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:cross-scope",
+          "source_id": "fixture:memory:paper-number:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:paper-number:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta:outside",
+        "conversation_type": "group",
+        "group_id": "research-beta:outside",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "待读论文编号 arXiv 2401",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:15a68547384a74dd2a5fc10b2b91bfed550f89b33418492516359872202e122d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:expired",
+          "source_id": "fixture:memory:paper-number:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:paper-number:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "待读论文编号 arXiv 2401",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:15a68547384a74dd2a5fc10b2b91bfed550f89b33418492516359872202e122d",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:future",
+          "source_id": "fixture:memory:paper-number:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:paper-number:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "版本发布检查",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:f963e4e947293f59ea27d5a9dfa1e83c22cfd09530fd9ca09889697be89905cf",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:newer-a",
+          "source_id": "fixture:memory:paper-number:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:paper-number:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:47:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "团队排班说明",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:1fe36940bdd49cdb02a4b0ce8f6fc1c42633fab7892dfda9df7ffb631e6ebe58",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:newer-b",
+          "source_id": "fixture:memory:paper-number:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:paper-number:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:46:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "待读论文编号 arXiv 2401",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:15a68547384a74dd2a5fc10b2b91bfed550f89b33418492516359872202e122d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:restricted",
+          "source_id": "fixture:memory:paper-number:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:paper-number:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "待读论文编号 arXiv 2401",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:15a68547384a74dd2a5fc10b2b91bfed550f89b33418492516359872202e122d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:paper-number:target",
+          "source_id": "fixture:memory:paper-number:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-beta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:paper-number:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "项目运行环境固定为 Python 3.12",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:23e568145750501edc42bf6ee91b598f465b32fbcc6f10b607395fec444e661a",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:cross-scope",
+          "source_id": "fixture:memory:python-version:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:python-version:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha:outside",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "项目运行环境固定为 Python 3.12",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:23e568145750501edc42bf6ee91b598f465b32fbcc6f10b607395fec444e661a",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:expired",
+          "source_id": "fixture:memory:python-version:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:python-version:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "项目运行环境固定为 Python 3.12",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:23e568145750501edc42bf6ee91b598f465b32fbcc6f10b607395fec444e661a",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:future",
+          "source_id": "fixture:memory:python-version:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:python-version:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "周末电影清单",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:caece675e1afa55ed685f2978a36b5f25be4ebb9f51b9550a7b776e0b805bf48",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:newer-a",
+          "source_id": "fixture:memory:python-version:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:python-version:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:51:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "早餐采购计划",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:92d5badb3c7e7741c7b8efbeef7a1f56a5442390b5e00302e59bb82e88dee83b",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:newer-b",
+          "source_id": "fixture:memory:python-version:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:python-version:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:50:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "项目运行环境固定为 Python 3.12",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:23e568145750501edc42bf6ee91b598f465b32fbcc6f10b607395fec444e661a",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:restricted",
+          "source_id": "fixture:memory:python-version:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:python-version:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "项目运行环境固定为 Python 3.12",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:23e568145750501edc42bf6ee91b598f465b32fbcc6f10b607395fec444e661a",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:python-version:target",
+          "source_id": "fixture:memory:python-version:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:python-version:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:3cf5594df9c0612dea6e4fda9b634a44bb67dee9f6959b1fb3d59f104c501411",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:cross-scope",
+          "source_id": "fixture:memory:single-han:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:single-han:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short:outside",
+        "conversation_type": "group",
+        "group_id": "group-short:outside",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:3cf5594df9c0612dea6e4fda9b634a44bb67dee9f6959b1fb3d59f104c501411",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:expired",
+          "source_id": "fixture:memory:single-han:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:single-han:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:3cf5594df9c0612dea6e4fda9b634a44bb67dee9f6959b1fb3d59f104c501411",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:future",
+          "source_id": "fixture:memory:single-han:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:single-han:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "社团值班安排",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:98ec39f6c309555b643938fb6ca50eee9e8fda9f7c192707bad8beb60a9421bc",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:newer-a",
+          "source_id": "fixture:memory:single-han:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:single-han:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:35:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "图书馆闭馆提醒",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:4452cdc7d15cd432904423be09b0703a36e731c51954df3ce9ecb0a99d5a5565",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:newer-b",
+          "source_id": "fixture:memory:single-han:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:single-han:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:34:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:3cf5594df9c0612dea6e4fda9b634a44bb67dee9f6959b1fb3d59f104c501411",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:restricted",
+          "source_id": "fixture:memory:single-han:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:single-han:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "校",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:3cf5594df9c0612dea6e4fda9b634a44bb67dee9f6959b1fb3d59f104c501411",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:single-han:target",
+          "source_id": "fixture:memory:single-han:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-alpha"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:single-han:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:34:30+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "保留合成错别字：校圆通知",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:a469e745fd18c9cc73eb8cfcb78a83f4b7a2bc15e3633aa36e0dbb45b30e1e05",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:cross-scope",
+          "source_id": "fixture:memory:synthetic-typo:cross-scope",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:synthetic-typo:cross-scope",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta:outside",
+        "conversation_type": "group",
+        "group_id": "group-delta:outside",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:58:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "保留合成错别字：校圆通知",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:a469e745fd18c9cc73eb8cfcb78a83f4b7a2bc15e3633aa36e0dbb45b30e1e05",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:expired",
+          "source_id": "fixture:memory:synthetic-typo:expired",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": "2026-01-01T11:59:00+00:00",
+      "memory_id": "memory:synthetic-typo:expired",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:57:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "保留合成错别字：校圆通知",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:a469e745fd18c9cc73eb8cfcb78a83f4b7a2bc15e3633aa36e0dbb45b30e1e05",
+      "created_at": "2026-01-01T13:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:future",
+          "source_id": "fixture:memory:synthetic-typo:future",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:synthetic-typo:future",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T13:00:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "食堂菜谱更新",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:36e0b1bc973264090a851a9e7ae250312d149f59cee1f1dbb9c4ed2112750e2d",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:newer-a",
+          "source_id": "fixture:memory:synthetic-typo:newer-a",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:synthetic-typo:newer-a",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:31:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "实验室开放安排",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:f4ab5498f703aed8ed898431853d2cf843d1bdd0b9e0563fbaddd44113383b51",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:newer-b",
+          "source_id": "fixture:memory:synthetic-typo:newer-b",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:synthetic-typo:newer-b",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:30:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "保留合成错别字：校圆通知",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:a469e745fd18c9cc73eb8cfcb78a83f4b7a2bc15e3633aa36e0dbb45b30e1e05",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:restricted",
+          "source_id": "fixture:memory:synthetic-typo:restricted",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:synthetic-typo:restricted",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "restricted",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T11:56:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    },
+    {
+      "confidence": 1.0,
+      "content": "保留合成错别字：校圆通知",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:a469e745fd18c9cc73eb8cfcb78a83f4b7a2bc15e3633aa36e0dbb45b30e1e05",
+      "created_at": "2025-12-25T12:00:00+00:00",
+      "evidence": [
+        {
+          "reference_id": "evidence:memory:synthetic-typo:target",
+          "source_id": "fixture:memory:synthetic-typo:target",
+          "source_type": "synthetic_fixture",
+          "source_user_id": "user-delta"
+        }
+      ],
+      "expires_at": null,
+      "memory_id": "memory:synthetic-typo:target",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "sensitivity": "personal",
+      "source": "explicit_user_request",
+      "updated_at": "2026-01-01T05:53:00+00:00",
+      "version": 1,
+      "visibility": "current_conversation"
+    }
+  ],
+  "repository_revision": "memory-json-v2",
+  "restore_idempotency": [],
+  "schema_version": 2,
+  "state_revision": 9,
+  "tombstones": [
+    {
+      "authorization_digest": "synthetic-authorization:answer-preference",
+      "confirmation_digest": "synthetic-confirmation:answer-preference",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:21ca3543457b00169e02f58294836251ca51bbdbc05b7207e4d45caf9532648c",
+      "delete_command_digest": "synthetic-delete-command:answer-preference",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:2d1b63af22d430a114f7526c73630736907b3a2f48d3fbf158dc58ec7a895a73",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:9dbc6128ee12dee2aed550b4be8995e5b30291edae92facdcf96401551bb1585",
+      "memory_id": "memory:answer-preference:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "profile-store:user-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "user_profile",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "state_revision": 5,
+      "tombstone_id": "tombstone:answer-preference",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:campus-notice",
+      "confirmation_digest": "synthetic-confirmation:campus-notice",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:7fe6d2d304f4c87f7ac43b652ad20dc9b218a372d614d95f7477b66a91c3a49d",
+      "delete_command_digest": "synthetic-delete-command:campus-notice",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:e29651b954b0a87a4aabbb76bccf68734efba859d4fadba7467fe17ff91c0984",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:2564f3920aee45f90b1facced494395290a354556bb363113dcd00e25466cb7e",
+      "memory_id": "memory:campus-notice:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-alpha",
+        "conversation_type": "group",
+        "group_id": "group-alpha",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "state_revision": 2,
+      "tombstone_id": "tombstone:campus-notice",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:emoji-separator",
+      "confirmation_digest": "synthetic-confirmation:emoji-separator",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:ae7eb78cfd6e129be39d4ee9b9f6807fc867f11ecfdb16e6f2fca512479a7a86",
+      "delete_command_digest": "synthetic-delete-command:emoji-separator",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:c71cfef1fa0dc89cefa8a0d73b8935427b611a33e25614eb9b7808bd79cd1b52",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:592628cd7dec2aae66924b904b55116e8ac689797f8fd0368d6b8b1ac8075c8e",
+      "memory_id": "memory:emoji-separator:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-epsilon",
+        "conversation_id": "dm-epsilon",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-epsilon"
+      },
+      "state_revision": 9,
+      "tombstone_id": "tombstone:emoji-separator",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:group-meeting",
+      "confirmation_digest": "synthetic-confirmation:group-meeting",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:80cac63f6040e6585c458ae8462f32b7265d9e4b30ab7aed40a15b9469b063ab",
+      "delete_command_digest": "synthetic-delete-command:group-meeting",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:fe9649581bfd9f484d1d9096d1c8ec382d87a2dbd03adc2b4be9c600bea16c32",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:0621dc1c3f69556328e728198d7708630c5e8cf94b1029a01d8d63c187b7d50c",
+      "memory_id": "memory:group-meeting:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-gamma",
+        "conversation_type": "group",
+        "group_id": "group-gamma",
+        "memory_type": "group_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": null
+      },
+      "state_revision": 6,
+      "tombstone_id": "tombstone:group-meeting",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:paper-number",
+      "confirmation_digest": "synthetic-confirmation:paper-number",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:15a68547384a74dd2a5fc10b2b91bfed550f89b33418492516359872202e122d",
+      "delete_command_digest": "synthetic-delete-command:paper-number",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:854847da395bd4ce8ffbb6e685bc360c7c022c3bbb82a411d8bec10860d7bbc8",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:1930d0cc41aab89c2bfeef42435aee406e978384c5e33da075ef4390e74fd3c6",
+      "memory_id": "memory:paper-number:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-beta",
+        "conversation_id": "research-beta",
+        "conversation_type": "group",
+        "group_id": "research-beta",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "research-persona",
+        "platform": "matrix-test",
+        "schema_version": 1,
+        "user_id": "user-beta"
+      },
+      "state_revision": 4,
+      "tombstone_id": "tombstone:paper-number",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:python-version",
+      "confirmation_digest": "synthetic-confirmation:python-version",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:23e568145750501edc42bf6ee91b598f465b32fbcc6f10b607395fec444e661a",
+      "delete_command_digest": "synthetic-delete-command:python-version",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:4acd8a7827e2e2fa028347215c18e0b86f50787546e547914ccdc81677271786",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:a914e96104ec66f66ff571cba3ca14da9f623ad77fe88f17f5e4bdccd7cbc3c2",
+      "memory_id": "memory:python-version:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "dm-alpha",
+        "conversation_type": "private",
+        "group_id": null,
+        "memory_type": "episodic",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "state_revision": 3,
+      "tombstone_id": "tombstone:python-version",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:single-han",
+      "confirmation_digest": "synthetic-confirmation:single-han",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:3cf5594df9c0612dea6e4fda9b634a44bb67dee9f6959b1fb3d59f104c501411",
+      "delete_command_digest": "synthetic-delete-command:single-han",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:ae2905c392596fa7d5bd907d6f60cfaeecea0a520d0a39b21ad14fb823635714",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:28acc8ee27ac60cba00530f0d32f1321b228b3e888d2a46b6ff3d3acb999eab0",
+      "memory_id": "memory:single-han:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-alpha",
+        "conversation_id": "group-short",
+        "conversation_type": "group",
+        "group_id": "group-short",
+        "memory_type": "explicit_user_memory",
+        "persona_id": "dududa",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-alpha"
+      },
+      "state_revision": 7,
+      "tombstone_id": "tombstone:single-han",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    },
+    {
+      "authorization_digest": "synthetic-authorization:synthetic-typo",
+      "confirmation_digest": "synthetic-confirmation:synthetic-typo",
+      "content_hash": "dududa-c14n-v1:memory:content:v1:sha-256:a469e745fd18c9cc73eb8cfcb78a83f4b7a2bc15e3633aa36e0dbb45b30e1e05",
+      "delete_command_digest": "synthetic-delete-command:synthetic-typo",
+      "deleted_at": "2026-01-01T11:00:00+00:00",
+      "deleted_record_digest": "dududa-c14n-v1:memory:record:v1:sha-256:ebe7072b13599736bf1540f986511a31bcddfc061417ae7e6e0a310c18c908f6",
+      "deleted_version": 1,
+      "integrity_digest": "dududa-c14n-v1:memory:tombstone:v1:sha-256:efc71a520e86b52d31268bda32317979949fbdb9c0e4e087a5f3ee78da390d18",
+      "memory_id": "memory:synthetic-typo:tombstoned",
+      "policy_revision": "memory-eval-policy-v1",
+      "schema_version": 1,
+      "scope": {
+        "bot_id": "bot-delta",
+        "conversation_id": "group-delta",
+        "conversation_type": "group",
+        "group_id": "group-delta",
+        "memory_type": "episodic",
+        "persona_id": "alternate-persona",
+        "platform": "qq-test",
+        "schema_version": 1,
+        "user_id": "user-delta"
+      },
+      "state_revision": 8,
+      "tombstone_id": "tombstone:synthetic-typo",
+      "writer_revision": {
+        "artifact_digest": "builtin",
+        "component_id": "memory.repository",
+        "config_revision": "memory-json-v2",
+        "implementation_version": "2"
+      }
+    }
+  ],
+  "write_idempotency": []
+}

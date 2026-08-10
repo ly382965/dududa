@@ -1,0 +1,213 @@
+{
+  "gold": [
+    {
+      "case_id": "answer-preference",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:answer-preference:cross-scope"
+        ],
+        "expired": [
+          "memory:answer-preference:expired"
+        ],
+        "future_created": [
+          "memory:answer-preference:future"
+        ],
+        "restricted": [
+          "memory:answer-preference:restricted"
+        ],
+        "tombstoned": [
+          "memory:answer-preference:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:6541554bb0627b82adfaaf451cd6021d7122afb52fadac791f4d9f88c5ce9e82",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:answer-preference:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "campus-notice",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:campus-notice:cross-scope"
+        ],
+        "expired": [
+          "memory:campus-notice:expired"
+        ],
+        "future_created": [
+          "memory:campus-notice:future"
+        ],
+        "restricted": [
+          "memory:campus-notice:restricted"
+        ],
+        "tombstoned": [
+          "memory:campus-notice:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:0a411573f46675c1a48815c8f4f91c1027999523b5db547cd0f4cb82907e7650",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:campus-notice:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "emoji-separator",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:emoji-separator:cross-scope"
+        ],
+        "expired": [
+          "memory:emoji-separator:expired"
+        ],
+        "future_created": [
+          "memory:emoji-separator:future"
+        ],
+        "restricted": [
+          "memory:emoji-separator:restricted"
+        ],
+        "tombstoned": [
+          "memory:emoji-separator:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:fb83f1b167e79281f3a1c0f2421fc03b1e806a2697f2950635a575c395d582a3",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:emoji-separator:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "group-meeting",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:group-meeting:cross-scope"
+        ],
+        "expired": [
+          "memory:group-meeting:expired"
+        ],
+        "future_created": [
+          "memory:group-meeting:future"
+        ],
+        "restricted": [
+          "memory:group-meeting:restricted"
+        ],
+        "tombstoned": [
+          "memory:group-meeting:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:76d05b8fd863274fc11fe02887f940689f1b13790a22ffe2858dd75d5a15e328",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:group-meeting:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "paper-number",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:paper-number:cross-scope"
+        ],
+        "expired": [
+          "memory:paper-number:expired"
+        ],
+        "future_created": [
+          "memory:paper-number:future"
+        ],
+        "restricted": [
+          "memory:paper-number:restricted"
+        ],
+        "tombstoned": [
+          "memory:paper-number:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:147bd6abe74f3d092563efff81a0ebd0746d2aa643382f7de6978c4f6aad3a3b",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:paper-number:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "python-version",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:python-version:cross-scope"
+        ],
+        "expired": [
+          "memory:python-version:expired"
+        ],
+        "future_created": [
+          "memory:python-version:future"
+        ],
+        "restricted": [
+          "memory:python-version:restricted"
+        ],
+        "tombstoned": [
+          "memory:python-version:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:c23c4ed790532dc13c99a23ea322f6da6462852e8bb4ac7947b58b7736511b24",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:python-version:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "single-han",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:single-han:cross-scope"
+        ],
+        "expired": [
+          "memory:single-han:expired"
+        ],
+        "future_created": [
+          "memory:single-han:future"
+        ],
+        "restricted": [
+          "memory:single-han:restricted"
+        ],
+        "tombstoned": [
+          "memory:single-han:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:d02d61c28a5dbac334e5c426a9782115174459ede55f99b5e873f6963a8e2fa0",
+      "lexical_subset": false,
+      "relevant_memory_ids": [
+        "memory:single-han:target"
+      ],
+      "schema_version": 1
+    },
+    {
+      "case_id": "synthetic-typo",
+      "forbidden_memory_ids": {
+        "cross_scope": [
+          "memory:synthetic-typo:cross-scope"
+        ],
+        "expired": [
+          "memory:synthetic-typo:expired"
+        ],
+        "future_created": [
+          "memory:synthetic-typo:future"
+        ],
+        "restricted": [
+          "memory:synthetic-typo:restricted"
+        ],
+        "tombstoned": [
+          "memory:synthetic-typo:tombstoned"
+        ]
+      },
+      "gold_digest": "dududa-c14n-v1:eval:memory-retrieval-gold:v1:sha-256:373aec213df4bbb8970a4a93dae0d9c4535d0e6fa5b0912faa253048e1fe0ccd",
+      "lexical_subset": true,
+      "relevant_memory_ids": [
+        "memory:synthetic-typo:target"
+      ],
+      "schema_version": 1
+    }
+  ],
+  "schema_version": 1
+}

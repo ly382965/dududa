@@ -11,8 +11,37 @@ Last sync: unix:1786329018
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S14's offline scope is implemented and remains disabled in the production
+  Runtime. Existing Scope selectors and the explicit WriteGate remain the only
+  authorities; no legacy command or Context Builder consumer was switched.
+- In-memory and JSON repositories now provide generation-bound reads, durable
+  delete/tombstone, scoped export and archive/checkpoint restore. Iris rejects
+  unsupported lifecycle operations instead of mutating a local projection.
+- M0 no-memory, M1 deterministic recency and M2 bounded pure-Python CJK BM25
+  share the exact authorized candidate layer. The checked-in Eval is synthetic
+  only and does not establish real Chinese or QQ relevance quality.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added immutable lifecycle/retrieval DTOs, digests, serializers and Ports;
+  JSON v2 persists tombstones and replay evidence while retaining the v1 scoped
+  reader and pre-Scope quarantine behavior.
+- Added the fixed `evals/memory-retrieval/v1` state/case/gold/manifest/report
+  bundle. Its eight cases use one state revision, replay three case orders and
+  retain non-empty cross-Scope, future, expired, tombstone and Restricted
+  opportunity denominators with zero observed exposures.
+- Python 3.10.20 and 3.12.13 each pass 521 repository tests with the two
+  AstrBot-host-only skips; each also passes the 50-test Memory/Eval/import
+  warning-as-error suite. Build/import, Web 66+42/type/build, lock, compile,
+  secret, Shell, Compose, Ruff/format and whitespace gates pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- None inside the accepted S14 offline scope.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- The next ready branch is `response-persona` (S15). Do not enable Memory or
+  absorb legacy-command/Context Builder migration into S15.
+- Real Iris, authorized Memory data, human judgments, Embedding/Hybrid,
+  automatic writes and S23 remain explicit external or later-stage gates.

@@ -51,12 +51,15 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.perception.complexity",
     "dududa.perception.contracts",
     "dududa.perception.social",
+    "dududa.memory.lexical",
+    "dududa.memory.retrieval",
     "dududa.mcp.client",
     "dududa.mcp.contracts",
     "dududa.mcp.registry",
     "dududa.mcp.subprocess_v2",
     "dududa.ports.context",
     "dududa.ports.mcp",
+    "dududa.ports.memory",
     "dududa.ports.models",
     "dududa.ports.perception",
     "dududa.ports.runtime",
@@ -92,6 +95,34 @@ FORBIDDEN_INTERNAL_IMPORTS = {
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s14_memory_exports_are_visible_and_owned_by_their_modules(self) -> None:
+        import importlib
+
+        memory = importlib.import_module("dududa.memory")
+        ports = importlib.import_module("dududa.ports")
+        expected_memory_owners = {
+            "CjkBm25MemoryRanker": "dududa.memory.lexical",
+            "DeterministicMemoryRetrievalPolicy": "dududa.memory.retrieval",
+            "DeterministicScopedMemoryRetriever": "dududa.memory.retrieval",
+            "MemoryDeleteCommand": "dududa.memory.models",
+            "MemoryRetrievalResult": "dududa.memory.models",
+            "MemoryTombstone": "dududa.memory.models",
+        }
+        expected_ports = {
+            "MemoryAdministration",
+            "MemoryRanker",
+            "MemoryRepository",
+            "MemoryRetrievalPolicy",
+            "ScopedMemoryRetriever",
+        }
+        self.assertLessEqual(set(expected_memory_owners), set(memory.__all__))
+        self.assertLessEqual(expected_ports, set(ports.__all__))
+        self.assertEqual(len(memory.__all__), len(set(memory.__all__)))
+        for name, module_name in expected_memory_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(memory, name), getattr(owner, name))
+
     def test_s11_rollout_exports_are_visible_and_framework_neutral(self) -> None:
         import importlib
 

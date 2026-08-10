@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Protocol, TypeAlias
+from typing import TypeAlias
 
 from dududa._compat import StrEnum
 from dududa.capabilities.contracts import (
@@ -48,7 +48,11 @@ from dududa.domain.primitives import (
 )
 from dududa.domain.task import TaskComplexityAssessment
 from dududa.errors import validation_error
-from dududa.memory.models import MemoryCandidate, MemorySubmissionReceipt
+from dududa.memory.models import (
+    MemoryCandidate,
+    MemoryRetrievalResult,
+    MemorySubmissionReceipt,
+)
 from dududa.models.contracts import ModelRole, ModelTier, RouteDecision, RouteHint
 from dududa.models.digests import (
     route_decision_digest,
@@ -128,14 +132,7 @@ class RuntimePhase(StrEnum):
     FAILED = "failed"
 
 
-class ProvisionalRuntimePayload(Protocol):
-    """Minimal marker until the owning S08+ DTO module is implemented."""
-
-    schema_version: int
-
-
 PreprocessResult: TypeAlias = OfflinePreprocessReceipt
-MemoryRetrievalResult: TypeAlias = ProvisionalRuntimePayload
 ContextBuildResult: TypeAlias = CurrentMessageContext
 
 

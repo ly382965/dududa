@@ -1,19 +1,20 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-09
+更新时间：2026-08-10
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S11 的**本地增量实施步骤已完成**；S08-S11 已实现确定性模型选择、难度判断、
-  离线 Runtime、无发送 Shadow 和受控 Canary 边界。
+- S01–S14 的既定离线工程已完成到 S14；S12/S13 已闭合统一 MCP 与受治理 Capability，
+  S14 已闭合 Memory 生命周期、M0-M2 词法基线和固定合成 Eval，并通过双 Python、构建、
+  Web 与安全综合 Verification。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
   取得持久单一所有权。真实 QQ 群运行统一延期到所有当前发布必需模块、既定 WebUI 测试和本地
   总审计完成之后；独立可选 S20 不属于该发布前置。
-- S04、S06、S07 新路径默认关闭；未迁移、改写或读取生产 Memory。
+- S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 2026-08-09 新增的短/中/长回答、Conversation Probe 和校园/行业/arXiv 订阅日报
-  仅完成 Alignment/设计文档，**实现均未开始**；不扩大 S08-S11 的历史完成结论。
+  仍只完成 Alignment/设计文档，**实现均未开始**；不扩大 S08-S14 的完成结论。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。
 
@@ -42,6 +43,14 @@
 | S10 Offline Runtime | 已完成 | Connector 到 Delivery receipt 的显式 @ 直聊闭环、两次模型预算、CAS/single-flight、Composition、reconciliation 与 Shadow | Tool、Memory、Attachment、生产 Provider 和主动群聊 |
 | S11 Controlled Rollout | 已完成（本地） | typed mode、白名单、SQLite claim/tombstone、priority-100 AstrBot Bridge、发送前熔断、脱敏指标和回滚 CLI | 未经授权的真实 QQ 群发送、广泛生产切流 |
 
+## S12–S14 实施状态
+
+| 步骤 | 状态 | 已交付 | 明确未做 |
+| --- | --- | --- | --- |
+| S12 Unified MCP | 已完成（离线） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker、iCourse facade/Legacy 回滚和 Fake/iCourse 同 Contract | 新真实 Server、实时来源、凭据和生产 Tool enablement |
+| S13 Capability Runtime | 已完成（离线） | 分离的 Capability Catalog、Retrieval、有限 Planner、逐步授权 Executor、Observation Validator、iCourse 只读映射和配置式 Fake 扩展 | 真实 Planning Endpoint、高风险/写能力、人工语言质量和生产 Tools Rollout |
+| S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
+
 ## 产品模块完成度
 
 | 模块 | 状态 | 判断依据 |
@@ -49,7 +58,7 @@
 | 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow 和 rollout Ports 已完成；真实 Provider/Tool/Memory/Attachment 全能力未完成 |
 | 安全组件 | 部分完成 | 授权、预算、内容安全、隐私、持久 claim 和发送前熔断已贯穿 S10/S11；旧命令兼容权限仍保留 |
 | Connector / Output / Attachment | 部分完成 | AstrBot Connector/Output、持久 rollout 去重、Bridge 和发送 tombstone 已完成；真实附件读取和第二平台未完成 |
-| Memory | 部分完成 | 安全边界与迁移工具已完成；真实 Iris、Context Builder、生产读取/写入未完成 |
+| Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 未完成 | 现有只有静态 Token/字数上限；缺少 SHORT/MEDIUM/LONG 决策、动态预算、与 Tier 正交性和最终长度/完整性校验 |
@@ -58,6 +67,18 @@
 | Bandit | 未完成（S20） | 当前无配置或执行 hook；禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | WebUI 测试工作 | 进行中 | 按既定测试计划推进，本次顺序调整不追加核验范围 |
 | 真实群聊放量 | 最终阶段（未开始） | 仅有本地仿真和安全边界；必须等待所有当前发布必需模块、既定 WebUI 测试和本地总审计完成；可选 S20 不阻塞 |
+
+## 2026-08-10 S14 阶段证据
+
+| 门禁 | 当前结果 |
+| --- | --- |
+| 生命周期与检索实现 | generation/time-bound read、CAS delete/tombstone、scoped export、archive/checkpoint restore、JSON v1/v2、Iris unsupported、M0/M1/M2 focused suites 已通过 |
+| 固定合成 Eval | 8 cases、56 live records、8 tombstones、同一 state revision 9；normal/reverse/fixed-shuffle ranking fingerprint 一致 |
+| 安全机会 | 每个策略的 cross-Scope、future-created、expired、tombstoned、Restricted 分母均为 8，暴露事件均为 0，并记录合成机会的一侧 95% 上界 |
+| 词法回归 | 预注册 7-case lexical subset 上 M2 binary nDCG@K `1.0`，M1 `0.0`；只作 synthetic regression，不作真实中文质量声明 |
+| 双 Python | 3.10.20 与 3.12.13 各 `521 tests OK`、2 个 AstrBot-host-only skip；各自 50 项 Memory/Eval/Iris/import `-W error` 聚焦套件全过、零 skip |
+| 构建与边界 | changed-file Ruff/format、compileall、uv lock、sdist/wheel 安装/import/pip check、729 文件 secret scan、Shell/CLI/Compose 和 whitespace 全过 |
+| unchanged Web | 66 frontend + 42 server tests、typecheck 和 production build 通过；未扩建 Control Plane，未运行或修改 NapCat/AstrBot 容器 |
 
 ## 2026-08-04 S08–S11 验证证据
 
@@ -125,7 +146,8 @@
 5. **真实 Iris 未接入。** 当前只有 `IrisBackend` Protocol、fail-closed Repository 和 Fake
    Backend 契约测试；仓库没有 Iris SDK 实现。
 6. **生产 Memory 不变。** 旧 `/remember` 仍写旧 JSON；Memory v2 自动读取/写入均关闭，迁移
-   CLI 只允许离线显式执行。
+   CLI 只允许离线显式执行。S14 的 synthetic M2 `Recall@K=1.0` 只证明固定 lexical fixture，
+   不证明真实中文质量或生产可启用性。
 7. **Hook 证据分层。** 宿主机两个 AstrBot 测试会 skip；真实 Hook 证据来自本次重建镜像，
    不能把宿主测试与镜像 smoke 合并成同一结果。
 8. **新回答档位只有设计。** 不得把长回答映射 Opus 或短回答映射 Haiku；在实现
@@ -135,7 +157,8 @@
 
 ## 下一步
 
-先完成 S12-S15、S15A-S15E 和既定 WebUI 测试，再执行 S16-S19 本地回归、
+完成当前 S14 综合 Verification 后，按 Tree 继续 S15、S15A-S15E 和既定 WebUI 回归，
+再执行 S16-S19 本地回归、
 30 日 fake-clock/no-send 仿真、故障注入和 S22 回滚/兼容审计。全部关闭后，才冻结群 ID、
 凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
 Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路

@@ -1,7 +1,9 @@
 # Memory Design
 
-Status: S06–S07 safety boundaries are implemented and disabled by default;
-semantic retrieval, a real Iris SDK backend, and production cutover are pending.
+Status: S14 offline reference implementation is complete and disabled by
+default. Scope-authorized lifecycle, M0/M1/M2 retrieval and a fixed synthetic
+Eval exist; Runtime consumption, a real Iris SDK backend, authorized-data
+quality evidence and production cutover remain pending.
 
 ## Goals
 
@@ -802,36 +804,66 @@ Tests are split into pure policy unit tests, `MemoryRepository` contract tests
 run against every implementation, Iris integration tests, and runtime
 Context/Write Gate integration tests.
 
-Retrieval quality is evaluated only after the isolation suite passes. A versioned held-out
-conversation set compares no-memory, recency, lexical/BM25, embedding, and hybrid baselines;
-reports Precision@K, Recall@K, MRR/nDCG, conflict/error attribution, P50/P95, token use, and
-cost; and records Policy, Ranker, embedding model, dataset, and config revisions. Scope leakage
-is a hard zero-tolerance gate, not a weighted quality metric. A graph, reranker, or automatic
-summary path enters shadow mode only when it has reproducible value beyond simpler baselines.
+Retrieval quality is evaluated only after the isolation suite passes. S14 now
+ships a fixed generated-data-only bundle at `evals/memory-retrieval/v1` that
+runs M0 no-memory, M1 deterministic recency and M2 bounded CJK BM25 over the
+same JSON v2 state revision. It reports Precision@K, Recall@K, recall-any/all,
+MRR, binary nDCG@K and a ranking fingerprint for every case. Cross-Scope,
+future-created, expired, tombstoned and Restricted opportunities come from
+actual non-empty fixture strata; their exposure counts are hard zero gates and
+each zero count retains a nominal one-sided 95% upper bound.
 
-The held-out set is split by user/group and time, includes high-similarity out-of-scope
-distractors and stale/conflicting facts, and freezes relevance judgments before comparison.
-Reports include sample/stratum counts, fixed seeds, repeated-run variance, and a predeclared minimum
-effect size. Independent cases use paired bootstrap; group/conversation-correlated cases use cluster
-or hierarchical bootstrap with a 95% confidence interval. A zero observed leakage count
-is reported with its denominator and one-sided confidence bound; it is never described as
-proof that leakage probability is literally zero.
+This bundle is a deterministic security and lexical regression, not a held-out
+real-language benchmark. It explicitly records `human_review_complete=false`,
+`real_chinese_quality_claimed=false` and `network_allowed=false`. Its JSON v2
+state is a reference-Adapter test mirror, not a stable Eval Domain storage
+format. The tombstone stratum proves that already-tombstoned IDs in that fixed
+state are not returned; lifecycle Contract Tests separately prove delete,
+restart, restore fences and fault rollback.
+
+M2 is a pure-Python Okapi BM25 reranker over the bounded authorized projection.
+This deliberately narrows the research option of a persistent SQLite FTS5
+index: a second derived store and platform tokenizer/runtime variance add no
+measured value at S14 scale. The lexical tokenizer and formula revisions are
+manifest-bound. M2 only claims improvement over M1 on the pre-registered
+synthetic lexical subset. Embedding, hybrid/RRF, reranking, P50/P95 and
+token/cost comparisons require an authorized held-out set and may enter shadow
+only after a predeclared stable gain with no safety regression.
+
+That future held-out set must be split by user/group and time, include
+high-similarity out-of-scope distractors and stale/conflicting facts, and freeze
+relevance judgments before comparison. Independent cases use paired bootstrap;
+group/conversation-correlated cases use cluster or hierarchical bootstrap with
+a 95% interval. No zero-event synthetic bound is described as proof that real
+leakage probability is literally zero.
 
 ## Current Implementation And Migration
 
 The production Core still stores user and group JSON directly and does not read
-Memory v2 into model context. The new package now provides scoped Repository,
-Write Gate, JSON reference adapter, fail-closed Iris backend Protocol, quarantine,
-and reversible migration tooling, all disabled from production. No real Iris SDK
-backend is present. The existing Iris patch remains defense in depth for the old
-path rather than proof of the new boundary.
+Memory v2 into model context. The framework-neutral package now provides
+generation-bound snapshots/cursors, durable delete/tombstone and replay
+evidence, scoped export, service archive/checkpoint restore, formal retrieval
+DTO/Ports, recency and CJK BM25. The in-memory and JSON reference adapters prove
+the supported lifecycle; Iris explicitly rejects delete/archive/restore that
+its current backend cannot prove. No real Iris SDK backend is present.
+
+All of this remains disabled from production. The legacy `/remember`, fuzzy
+`/forget` and direct export paths are not relabeled as governed operations and
+are not S14 consumers. The existing Iris patch remains defense in depth for the
+old path rather than proof of the new boundary.
 
 Migration order:
 
-1. Add domain Scope, record, candidate, decision, and Protocols with tests.
-2. Wrap existing JSON state only for compatible explicit-memory behavior.
-3. Add the fail-closed Iris adapter and contract tests.
-4. Add scoped retrieval to Context Builder behind a disabled-by-default flag.
-5. Add Write Gate in shadow mode, then selective persistence.
-6. Migrate or quarantine legacy records through an offline, reversible tool.
-7. Remove direct JSON/Iris access only after no production entry uses it.
+1. Completed: domain Scope, record, candidate, decisions and Ports with tests.
+2. Completed: JSON v1 reader/v2 atomic state, tombstones and crash-stable replay
+   evidence without overwriting pre-Scope legacy JSON.
+3. Completed: fail-closed Iris Protocol adapter and explicit unsupported
+   lifecycle tests.
+4. Pending: add scoped retrieval to Context Builder behind a disabled-by-default
+   flag using a separate consumer-migration branch.
+5. Pending: route user commands through governed Administration/Write Gate;
+   automatic writes remain out of scope.
+6. Available but not executed on production: reversible offline migration and
+   quarantine tooling.
+7. S22 only: remove direct JSON/Iris access after every consumer has migration
+   evidence and the previous release remains recoverable.

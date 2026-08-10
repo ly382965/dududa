@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import math
+from decimal import Decimal
 from typing import Generic, TypeVar
 
 from dududa._compat import StrEnum
@@ -73,6 +74,12 @@ class MemorySubmissionStatus(StrEnum):
     PERSISTED = "persisted"
 
 
+class MemoryRetrievalStrategy(StrEnum):
+    NO_MEMORY = "no_memory"
+    RECENCY = "recency"
+    CJK_BM25 = "cjk_bm25"
+
+
 @dataclass(frozen=True, slots=True)
 class EvidenceReference:
     reference_id: str
@@ -119,12 +126,15 @@ class MemoryScope:
             and self.conversation_id.strip().lower() == "private"
         ):
             raise validation_error("ambiguous_private_conversation_id")
-        if self.memory_type in {
-            MemoryType.USER_PROFILE,
-            MemoryType.EXPLICIT_USER_MEMORY,
-        }:
-            if not self.user_id:
-                raise validation_error("user_owned_memory_requires_user")
+        if (
+            self.memory_type
+            in {
+                MemoryType.USER_PROFILE,
+                MemoryType.EXPLICIT_USER_MEMORY,
+            }
+            and not self.user_id
+        ):
+            raise validation_error("user_owned_memory_requires_user")
         if self.memory_type is MemoryType.GROUP_MEMORY:
             if self.conversation_type is not ConversationType.GROUP:
                 raise validation_error("group_memory_requires_group_scope")
@@ -286,6 +296,7 @@ class MemoryRepositorySnapshot:
     schema_version: int
     snapshot_id: str
     repository_revision: str
+    state_revision: int
     selector_digests: tuple[DigestString, ...]
     request_digest: DigestString
     as_of: datetime
@@ -296,6 +307,8 @@ class MemoryRepositorySnapshot:
         _v1(self.schema_version)
         for name in ("snapshot_id", "repository_revision"):
             require_non_empty(str(getattr(self, name)), name)
+        if type(self.state_revision) is not int or self.state_revision < 0:
+            raise validation_error("invalid_memory_state_revision")
         for name in ("request_digest", "integrity_digest"):
             require_non_empty(str(getattr(self, name)), name)
         digests = tuple(self.selector_digests)
@@ -306,6 +319,254 @@ class MemoryRepositorySnapshot:
         if self.expires_at <= self.as_of:
             raise validation_error("invalid_memory_snapshot_expiry")
         object.__setattr__(self, "selector_digests", digests)
+
+
+@dataclass(frozen=True, slots=True)
+class IndexableMemoryProjection:
+    schema_version: int
+    memory_id: str
+    text: str
+    content_digest: DigestString
+    scope_digest: DigestString
+    sensitivity: Sensitivity
+    visibility: Visibility
+    updated_at: datetime
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(self.memory_id, "memory_id")
+        require_non_empty(self.text, "memory_projection_text")
+        if len(self.text.encode("utf-8")) > 32_768:
+            raise validation_error("memory_projection_text_too_large")
+        require_non_empty(str(self.content_digest), "content_digest")
+        require_non_empty(str(self.scope_digest), "scope_digest")
+        if not isinstance(self.sensitivity, Sensitivity):
+            raise validation_error("invalid_sensitivity")
+        if not isinstance(self.visibility, Visibility):
+            raise validation_error("invalid_memory_visibility")
+        require_aware(self.updated_at, "updated_at")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRankRequest:
+    schema_version: int
+    request_digest: DigestString
+    query: str
+    projections: tuple[IndexableMemoryProjection, ...]
+    limit: int
+    state_revision: int
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(str(self.request_digest), "request_digest")
+        require_non_empty(self.query, "memory_rank_query")
+        projections = tuple(self.projections)
+        if (
+            not projections
+            or len(projections) > 400
+            or any(
+                not isinstance(item, IndexableMemoryProjection) for item in projections
+            )
+            or len({item.memory_id for item in projections}) != len(projections)
+        ):
+            raise validation_error("invalid_memory_rank_projections")
+        if sum(len(item.text.encode("utf-8")) for item in projections) > 1_048_576:
+            raise validation_error("memory_rank_projection_budget_exceeded")
+        if type(self.limit) is not int or not 1 <= self.limit <= len(projections):
+            raise validation_error("invalid_memory_rank_limit")
+        if type(self.state_revision) is not int or self.state_revision < 0:
+            raise validation_error("invalid_memory_state_revision")
+        object.__setattr__(self, "projections", projections)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRankScore:
+    schema_version: int
+    memory_id: str
+    content_digest: DigestString
+    scope_digest: DigestString
+    score: Decimal
+    ranker_revision: ComponentRevision
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(self.memory_id, "memory_id")
+        require_non_empty(str(self.content_digest), "content_digest")
+        require_non_empty(str(self.scope_digest), "scope_digest")
+        if (
+            not isinstance(self.score, Decimal)
+            or not self.score.is_finite()
+            or self.score < 0
+        ):
+            raise validation_error("invalid_memory_rank_score")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRetrievalRequest:
+    schema_version: int
+    query_id: str
+    request_digest: DigestString
+    actor: Actor
+    conversation_scope: ConversationScope
+    query: MemoryQuery
+    memory_types: frozenset[MemoryType]
+    strategy: MemoryRetrievalStrategy
+    limit: int
+    candidate_limit_per_type: int
+    candidate_limit_total: int
+    as_of: datetime
+    allow_recency_degrade: bool = True
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(self.query_id, "query_id")
+        require_non_empty(str(self.request_digest), "request_digest")
+        if len(self.query.text.encode("utf-8")) > 8_192:
+            raise validation_error("memory_retrieval_query_too_large")
+        require_aware(self.as_of, "as_of")
+        memory_types = frozenset(self.memory_types)
+        if not memory_types or any(
+            not isinstance(item, MemoryType) for item in memory_types
+        ):
+            raise validation_error("invalid_retrieval_memory_types")
+        if not isinstance(self.strategy, MemoryRetrievalStrategy):
+            raise validation_error("invalid_memory_retrieval_strategy")
+        if (
+            self.actor.platform != self.conversation_scope.platform
+            or self.actor.bot_id != self.conversation_scope.bot_id
+        ):
+            raise validation_error("memory_retrieval_identity_scope_mismatch")
+        if self.query.reference_time != self.as_of:
+            raise validation_error("memory_retrieval_time_mismatch")
+        values = (
+            self.limit,
+            self.candidate_limit_per_type,
+            self.candidate_limit_total,
+        )
+        if (
+            any(type(value) is not int or value < 1 for value in values)
+            or self.limit > 100
+            or self.candidate_limit_per_type > 100
+            or self.candidate_limit_total > 400
+            or self.limit > self.candidate_limit_total
+            or self.candidate_limit_per_type > self.candidate_limit_total
+            or type(self.allow_recency_degrade) is not bool
+        ):
+            raise validation_error("invalid_memory_retrieval_limits")
+        object.__setattr__(self, "memory_types", memory_types)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryMatch:
+    schema_version: int
+    record: MemoryRecord
+    rank: int
+    score: Decimal | None
+    strategy: MemoryRetrievalStrategy
+    ranker_revision: ComponentRevision | None
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        if type(self.rank) is not int or self.rank < 1:
+            raise validation_error("invalid_memory_match_rank")
+        if not isinstance(self.strategy, MemoryRetrievalStrategy):
+            raise validation_error("invalid_memory_retrieval_strategy")
+        if self.score is not None and (
+            not isinstance(self.score, Decimal)
+            or not self.score.is_finite()
+            or self.score < 0
+        ):
+            raise validation_error("invalid_memory_rank_score")
+        if self.strategy is MemoryRetrievalStrategy.CJK_BM25:
+            if self.score is None or self.ranker_revision is None:
+                raise validation_error("bm25_memory_match_missing_rank_evidence")
+        elif self.score is not None or self.ranker_revision is not None:
+            raise validation_error("non_bm25_memory_match_has_rank_evidence")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryConflictGroup:
+    schema_version: int
+    conflict_id: str
+    matches: tuple[MemoryMatch, ...]
+    reason_codes: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(self.conflict_id, "conflict_id")
+        matches = tuple(self.matches)
+        reasons = tuple(self.reason_codes)
+        if len(matches) < 2 or len({item.record.memory_id for item in matches}) != len(
+            matches
+        ):
+            raise validation_error("invalid_memory_conflict_matches")
+        _validate_reason_codes(reasons)
+        object.__setattr__(self, "matches", matches)
+        object.__setattr__(self, "reason_codes", reasons)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRetrievalResult:
+    schema_version: int
+    request_digest: DigestString
+    strategy: MemoryRetrievalStrategy
+    matches: tuple[MemoryMatch, ...]
+    conflicts: tuple[MemoryConflictGroup, ...]
+    repository_snapshot_id: str | None
+    repository_revision: str | None
+    state_revision: int | None
+    policy_revision: str
+    ranker_revision: ComponentRevision | None
+    retriever_revision: ComponentRevision
+    degraded: bool
+    reason_codes: tuple[str, ...]
+    result_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        require_non_empty(str(self.request_digest), "request_digest")
+        require_non_empty(self.policy_revision, "policy_revision")
+        if not isinstance(self.strategy, MemoryRetrievalStrategy):
+            raise validation_error("invalid_memory_retrieval_strategy")
+        matches = tuple(self.matches)
+        conflicts = tuple(self.conflicts)
+        reasons = tuple(self.reason_codes)
+        if (
+            len(matches) > 100
+            or len({item.record.memory_id for item in matches}) != len(matches)
+            or tuple(item.rank for item in matches) != tuple(range(1, len(matches) + 1))
+            or type(self.degraded) is not bool
+        ):
+            raise validation_error("invalid_memory_retrieval_result")
+        _validate_reason_codes(reasons)
+        if self.strategy is MemoryRetrievalStrategy.NO_MEMORY:
+            if (
+                matches
+                or conflicts
+                or self.repository_snapshot_id is not None
+                or self.repository_revision is not None
+                or self.state_revision is not None
+                or self.ranker_revision is not None
+                or self.degraded
+            ):
+                raise validation_error("invalid_no_memory_result")
+        elif (
+            self.repository_snapshot_id is None
+            or not self.repository_snapshot_id.strip()
+            or self.repository_revision is None
+            or not self.repository_revision.strip()
+            or type(self.state_revision) is not int
+            or self.state_revision < 0
+        ):
+            raise validation_error("memory_result_missing_repository_evidence")
+        if self.strategy is MemoryRetrievalStrategy.CJK_BM25 and not self.degraded:
+            if self.ranker_revision is None:
+                raise validation_error("bm25_result_missing_ranker_revision")
+        elif self.ranker_revision is not None:
+            raise validation_error("non_bm25_result_has_ranker_revision")
+        object.__setattr__(self, "matches", matches)
+        object.__setattr__(self, "conflicts", conflicts)
+        object.__setattr__(self, "reason_codes", reasons)
 
 
 @dataclass(frozen=True, slots=True)
@@ -439,6 +700,263 @@ class MemorySubmissionReceipt:
     recorded_at: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class MemoryDeleteCommand:
+    schema_version: int
+    command_id: str
+    request_digest: DigestString
+    actor: Actor
+    conversation_scope: ConversationScope
+    memory_id: str
+    expected_version: int
+    record_digest: DigestString
+    authorization: AuthorizationDecision
+    confirmation: ConfirmationGrant
+    idempotency_key: str
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("command_id", "memory_id", "idempotency_key"):
+            require_non_empty(str(getattr(self, name)), name)
+        require_non_empty(str(self.request_digest), "request_digest")
+        require_non_empty(str(self.record_digest), "record_digest")
+        if type(self.expected_version) is not int or self.expected_version < 1:
+            raise validation_error("invalid_memory_expected_version")
+        if (
+            self.actor.platform != self.conversation_scope.platform
+            or self.actor.bot_id != self.conversation_scope.bot_id
+        ):
+            raise validation_error("memory_delete_identity_scope_mismatch")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryTombstone:
+    schema_version: int
+    tombstone_id: str
+    memory_id: str
+    scope: MemoryScope
+    deleted_record_digest: DigestString
+    content_hash: DigestString
+    deleted_version: int
+    delete_command_digest: DigestString
+    authorization_digest: DigestString
+    confirmation_digest: DigestString
+    policy_revision: str
+    writer_revision: ComponentRevision
+    deleted_at: datetime
+    state_revision: int
+    integrity_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("tombstone_id", "memory_id", "policy_revision"):
+            require_non_empty(str(getattr(self, name)), name)
+        for name in (
+            "deleted_record_digest",
+            "content_hash",
+            "delete_command_digest",
+            "authorization_digest",
+            "confirmation_digest",
+            "integrity_digest",
+        ):
+            require_non_empty(str(getattr(self, name)), name)
+        if type(self.deleted_version) is not int or self.deleted_version < 1:
+            raise validation_error("invalid_memory_deleted_version")
+        if type(self.state_revision) is not int or self.state_revision < 1:
+            raise validation_error("invalid_memory_state_revision")
+        require_aware(self.deleted_at, "deleted_at")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryDeleteReceipt:
+    schema_version: int
+    command_id: str
+    request_digest: DigestString
+    idempotency_key: str
+    memory_id: str
+    deleted_version: int
+    tombstone_digest: DigestString
+    state_revision: int
+    policy_revision: str
+    writer_revision: ComponentRevision
+    completed_at: datetime
+    receipt_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("command_id", "idempotency_key", "memory_id", "policy_revision"):
+            require_non_empty(str(getattr(self, name)), name)
+        for name in ("request_digest", "tombstone_digest", "receipt_digest"):
+            require_non_empty(str(getattr(self, name)), name)
+        if type(self.deleted_version) is not int or self.deleted_version < 1:
+            raise validation_error("invalid_memory_deleted_version")
+        if type(self.state_revision) is not int or self.state_revision < 1:
+            raise validation_error("invalid_memory_state_revision")
+        require_aware(self.completed_at, "completed_at")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryExportPage:
+    schema_version: int
+    records: tuple[MemoryRecord, ...]
+    next_cursor: str | None
+    repository_revision: str
+    state_revision: int
+    snapshot_id: str
+    exported_at: datetime
+    export_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        records = tuple(self.records)
+        if len({item.memory_id for item in records}) != len(records):
+            raise validation_error("duplicate_memory_export_record")
+        for name in ("repository_revision", "snapshot_id"):
+            require_non_empty(str(getattr(self, name)), name)
+        if type(self.state_revision) is not int or self.state_revision < 0:
+            raise validation_error("invalid_memory_state_revision")
+        require_aware(self.exported_at, "exported_at")
+        require_non_empty(str(self.export_digest), "export_digest")
+        object.__setattr__(self, "records", records)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryTombstoneCheckpoint:
+    schema_version: int
+    checkpoint_id: str
+    repository_revision: str
+    state_revision: int
+    tombstones: tuple[MemoryTombstone, ...]
+    created_at: datetime
+    checkpoint_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("checkpoint_id", "repository_revision"):
+            require_non_empty(str(getattr(self, name)), name)
+        if type(self.state_revision) is not int or self.state_revision < 0:
+            raise validation_error("invalid_memory_state_revision")
+        tombstones = tuple(self.tombstones)
+        if len({item.memory_id for item in tombstones}) != len(tombstones) or any(
+            item.state_revision > self.state_revision for item in tombstones
+        ):
+            raise validation_error("invalid_memory_tombstone_checkpoint")
+        require_aware(self.created_at, "created_at")
+        require_non_empty(str(self.checkpoint_digest), "checkpoint_digest")
+        object.__setattr__(self, "tombstones", tombstones)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRepositoryArchive:
+    schema_version: int
+    archive_id: str
+    repository_revision: str
+    state_revision: int
+    records: tuple[MemoryRecord, ...]
+    tombstone_checkpoint: MemoryTombstoneCheckpoint
+    exported_at: datetime
+    archive_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("archive_id", "repository_revision"):
+            require_non_empty(str(getattr(self, name)), name)
+        if type(self.state_revision) is not int or self.state_revision < 0:
+            raise validation_error("invalid_memory_state_revision")
+        records = tuple(self.records)
+        record_ids = {item.memory_id for item in records}
+        tombstone_ids = {
+            item.memory_id for item in self.tombstone_checkpoint.tombstones
+        }
+        if (
+            len(record_ids) != len(records)
+            or record_ids & tombstone_ids
+            or self.tombstone_checkpoint.repository_revision != self.repository_revision
+            or self.tombstone_checkpoint.state_revision != self.state_revision
+        ):
+            raise validation_error("invalid_memory_repository_archive")
+        require_aware(self.exported_at, "exported_at")
+        require_non_empty(str(self.archive_digest), "archive_digest")
+        object.__setattr__(self, "records", records)
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRestoreCommand:
+    schema_version: int
+    command_id: str
+    request_digest: DigestString
+    archive: MemoryRepositoryArchive
+    recovery_checkpoint: MemoryTombstoneCheckpoint
+    expected_state_revision: int
+    required_checkpoint_state_revision: int
+    idempotency_key: str
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("command_id", "idempotency_key"):
+            require_non_empty(str(getattr(self, name)), name)
+        require_non_empty(str(self.request_digest), "request_digest")
+        for name in (
+            "expected_state_revision",
+            "required_checkpoint_state_revision",
+        ):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise validation_error("invalid_memory_state_revision", name)
+        if (
+            self.recovery_checkpoint.state_revision
+            < self.required_checkpoint_state_revision
+        ):
+            raise validation_error("stale_memory_recovery_checkpoint")
+
+
+@dataclass(frozen=True, slots=True)
+class MemoryRestoreReceipt:
+    schema_version: int
+    command_id: str
+    request_digest: DigestString
+    idempotency_key: str
+    archive_digest: DigestString
+    checkpoint_digest: DigestString
+    restored_records: int
+    suppressed_records: int
+    state_revision_before: int
+    state_revision_after: int
+    writer_revision: ComponentRevision
+    completed_at: datetime
+    receipt_digest: DigestString
+
+    def __post_init__(self) -> None:
+        _v1(self.schema_version)
+        for name in ("command_id", "idempotency_key"):
+            require_non_empty(str(getattr(self, name)), name)
+        for name in (
+            "request_digest",
+            "archive_digest",
+            "checkpoint_digest",
+            "receipt_digest",
+        ):
+            require_non_empty(str(getattr(self, name)), name)
+        values = (
+            self.restored_records,
+            self.suppressed_records,
+            self.state_revision_before,
+            self.state_revision_after,
+        )
+        if any(type(value) is not int or value < 0 for value in values):
+            raise validation_error("invalid_memory_restore_counts")
+        if self.state_revision_after <= self.state_revision_before:
+            raise validation_error("memory_restore_revision_not_advanced")
+        require_aware(self.completed_at, "completed_at")
+
+
 def _v1(value: int) -> None:
     if type(value) is not int or value != 1:
         raise validation_error("unsupported_schema_version")
+
+
+def _validate_reason_codes(values: tuple[str, ...]) -> None:
+    if any(not isinstance(value, str) or not value.strip() for value in values) or len(
+        values
+    ) != len(set(values)):
+        raise validation_error("invalid_reason_codes")

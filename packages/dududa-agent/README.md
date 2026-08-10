@@ -2,7 +2,8 @@
 
 `dududa-agent` 是 Dududa 2.0 的框架无关核心契约包，要求 Python 3.10 或更高版本。
 它不依赖 AstrBot、模型/MCP/Iris 第三方 SDK；包含领域契约、安全组件，以及用于契约验证的
-内存/JSON 参考 Adapter。AstrBot Event/Result Adapter 位于插件目录，生产 Runtime 尚未切流。
+内存/JSON 参考 Adapter，以及 S12-S14 的离线 MCP/Capability/Memory Runtime 原语。
+AstrBot Event/Result Adapter 位于插件目录，生产 Runtime 尚未切流。
 
 ## 当前范围
 
@@ -14,6 +15,7 @@
 | S04 Adapter 边界 | 已完成 | Attachment 参考 Repository；AstrBot Connector/Output 位于插件目录 |
 | S06 Memory 边界 | 已完成 | Memory Scope/Selector/Repository、显式 Write Gate、内存/JSON Adapter |
 | S07 Iris/迁移边界 | 已完成 | fail-closed Iris Protocol Adapter、隔离区和可逆离线迁移工具 |
+| S14 Memory 生命周期/检索 | 已完成（离线） | 删除/tombstone、scoped export、archive/restore、M0/M1/M2、CJK BM25 与固定合成 Eval |
 
 这里的“已完成”指实施步骤与退出测试完成。Agent Orchestrator、RuntimeStateStore、真实 Iris
 Backend、真实 Attachment Source、生产切流和 canary 均未完成，因此产品模块仍是部分完成。
@@ -28,6 +30,7 @@ dududa/
 ├── runtime/         # 显式 Runtime State；不包含 Orchestrator
 ├── security/        # 确定性安全策略与服务
 ├── memory/          # Scope、Repository、Write Gate、参考 Adapter 和迁移逻辑
+├── evaluation/      # 版本化合成 Eval runner；不包含真实用户数据或模型调用
 ├── adapters/        # 不依赖外部 SDK 的参考 Adapter
 ├── compatibility/   # TargetTalk/ReplyPolish 的纯兼容逻辑
 └── testing/         # Fake 实现
@@ -75,7 +78,11 @@ Schema。生产切流前必须提供显式配置迁移和权限矩阵回归。
 - JSON Adapter 不覆盖 legacy JSON；临时文件独占创建并拒绝 symlink。
 - Iris Adapter 只暴露 exact-scope Backend Protocol，不提供全局 fallback。
 - Memory Port 等待遵守 deadline/cancellation；取消的 Iris 写入回滚本地暂存状态。
-- 自动写入、语义检索和生产 Memory v2 仍关闭。
+- S14 mutation 会递增 generation 并使旧 Snapshot/cursor fail closed；JSON v2 持久化
+  tombstone 和重放证据，restore 以 destination/checkpoint tombstone 胜出。
+- M0 no-memory、M1 recency 与纯 Python CJK BM25 只在已授权有界候选集上运行；固定合成
+  Eval 不声明真实中文质量。
+- 自动写入、Runtime Memory、Embedding/Hybrid、真实 Iris 和生产 Memory v2 仍关闭。
 
 离线迁移 CLI 必须在已安装本 Package 的环境中运行：
 

@@ -12,10 +12,16 @@ from dududa.errors import ErrorCategory, error
 from dududa.ports.context import PortCallContext, ServiceCallContext
 
 from .models import (
+    MemoryDeleteCommand,
+    MemoryDeleteReceipt,
     MemoryQuery,
     MemoryRecord,
+    MemoryRepositoryArchive,
     MemoryRepositorySnapshot,
+    MemoryRestoreCommand,
+    MemoryRestoreReceipt,
     MemorySubmissionReceipt,
+    MemoryTombstoneCheckpoint,
     MemoryType,
     MemoryWriteCommand,
     Page,
@@ -205,6 +211,8 @@ class IrisMemoryRepository(InMemoryMemoryRepository):
         self._validate_read(snapshot, selector, request_digest)
         if not 1 <= candidate_limit <= 100:
             raise _iris_error("invalid_memory_candidate_limit")
+        if query.reference_time != snapshot.as_of:
+            raise _iris_error("memory_query_snapshot_time_mismatch")
         query_digest = canonical_digest(query, domain="memory:query:v1")
         offset = self._decode_cursor(cursor, snapshot, selector, query_digest)
         backend_page = await _await_memory_operation(
@@ -282,6 +290,40 @@ class IrisMemoryRepository(InMemoryMemoryRepository):
         finally:
             self._pending_write.reset(token)
 
+    async def commit_delete(
+        self,
+        command: MemoryDeleteCommand,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> MemoryDeleteReceipt:
+        del command, call
+        raise _iris_error("iris_delete_unsupported")
+
+    async def export_tombstone_checkpoint(
+        self,
+        *,
+        call: ServiceCallContext,
+    ) -> MemoryTombstoneCheckpoint:
+        del call
+        raise _iris_error("iris_archive_unsupported")
+
+    async def export_archive(
+        self,
+        *,
+        call: ServiceCallContext,
+    ) -> MemoryRepositoryArchive:
+        del call
+        raise _iris_error("iris_archive_unsupported")
+
+    async def restore(
+        self,
+        command: MemoryRestoreCommand,
+        *,
+        call: ServiceCallContext,
+    ) -> MemoryRestoreReceipt:
+        del command, call
+        raise _iris_error("iris_restore_unsupported")
+
     async def _after_write_locked(self) -> None:
         pending = self._pending_write.get()
         if pending is None:
@@ -319,7 +361,7 @@ class IrisMemoryRepository(InMemoryMemoryRepository):
         _validate_memory_call(call, self._clock())
         try:
             record = record_from_dict(raw)
-        except Exception:
+        except Exception:  # noqa: BLE001 - malformed backend data is quarantined
             await self.quarantine.add(
                 raw,
                 reason_code="missing_or_invalid_scope_metadata",

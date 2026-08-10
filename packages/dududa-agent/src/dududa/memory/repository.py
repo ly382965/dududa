@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Iterable
-from contextlib import suppress
-from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
-from typing import TypeVar
 import uuid
+from collections.abc import Awaitable, Callable, Iterable
+from contextlib import suppress
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
+from typing import TypeVar
 
 from dududa.contracts.canonical import canonical_digest
 from dududa.domain.primitives import ComponentRevision, DigestString
@@ -20,13 +21,35 @@ from dududa.security.digests import (
 )
 from dududa.security.models import AuthorizationEffect
 
-from .digests import selector_digest
+from .digests import (
+    memory_delete_command_digest,
+    memory_delete_payload_digest,
+    memory_delete_receipt_digest,
+    memory_delete_request_digest,
+    memory_export_page_digest,
+    memory_record_digest,
+    memory_repository_archive_digest,
+    memory_restore_command_digest,
+    memory_restore_receipt_digest,
+    memory_restore_request_digest,
+    memory_tombstone_checkpoint_digest,
+    memory_tombstone_digest,
+    selector_digest,
+)
 from .models import (
+    MemoryDeleteCommand,
+    MemoryDeleteReceipt,
+    MemoryExportPage,
     MemoryQuery,
     MemoryRecord,
+    MemoryRepositoryArchive,
     MemoryRepositorySnapshot,
+    MemoryRestoreCommand,
+    MemoryRestoreReceipt,
     MemorySubmissionReceipt,
     MemorySubmissionStatus,
+    MemoryTombstone,
+    MemoryTombstoneCheckpoint,
     MemoryWriteAction,
     MemoryWriteCommand,
     Page,
@@ -43,7 +66,9 @@ class InMemoryMemoryRepository:
         selector_verifier: object,
         *,
         write_decision_verifier: object | None = None,
-        repository_revision: str = "memory-repository-v1",
+        authorization_decision_verifier: object | None = None,
+        confirmation_grant_verifier: object | None = None,
+        repository_revision: str = "memory-repository-v2",
         trusted_gate_component_ids: frozenset[str] = frozenset(
             {"memory.explicit-write-gate"}
         ),
@@ -53,28 +78,49 @@ class InMemoryMemoryRepository:
     ) -> None:
         self._selector_verifier = selector_verifier
         self._write_decision_verifier = write_decision_verifier
+        self._authorization_decision_verifier = authorization_decision_verifier
+        self._confirmation_grant_verifier = confirmation_grant_verifier
         self._repository_revision = repository_revision
         self._trusted_gate_component_ids = trusted_gate_component_ids
         self._cursor_secret = bytes(cursor_secret)
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._records: dict[str, MemoryRecord] = {}
+        self._tombstones: dict[str, MemoryTombstone] = {}
+        self._state_revision = 0
         self._snapshots: dict[str, MemoryRepositorySnapshot] = {}
         self._idempotency: dict[str, tuple[DigestString, MemorySubmissionReceipt]] = {}
+        self._delete_idempotency: dict[
+            str, tuple[DigestString, MemoryDeleteReceipt]
+        ] = {}
+        self._restore_idempotency: dict[
+            str, tuple[DigestString, MemoryRestoreReceipt]
+        ] = {}
         self._consumed_decisions: set[str] = set()
+        self._consumed_delete_confirmations: set[str] = set()
         self._writer_revision = ComponentRevision(
             "memory.repository",
-            "1",
+            "2",
             repository_revision,
             DigestString("builtin"),
         )
         self._lock = asyncio.Lock()
 
     def seed(self, records: Iterable[MemoryRecord]) -> None:
+        records = tuple(records)
+        if self._snapshots or self._idempotency or self._delete_idempotency:
+            raise ValueError("memory repository cannot seed after use")
+        if len({record.memory_id for record in records}) != len(records):
+            raise ValueError("duplicate memory id")
         for record in records:
-            if record.memory_id in self._records:
+            if (
+                record.memory_id in self._records
+                or record.memory_id in self._tombstones
+            ):
                 raise ValueError("duplicate memory id")
             self._records[record.memory_id] = record
+        if records:
+            self._state_revision += 1
 
     async def open_snapshot(
         self,
@@ -100,6 +146,7 @@ class InMemoryMemoryRepository:
         unsigned = {
             "snapshot_id": snapshot_id,
             "repository_revision": self._repository_revision,
+            "state_revision": self._state_revision,
             "selector_digests": tuple(selector_digests),
             "request_digest": request_digest,
             "as_of": as_of,
@@ -109,6 +156,7 @@ class InMemoryMemoryRepository:
             1,
             snapshot_id,
             self._repository_revision,
+            self._state_revision,
             tuple(selector_digests),
             request_digest,
             as_of,
@@ -135,7 +183,11 @@ class InMemoryMemoryRepository:
         _validate_memory_call(call, self._clock())
         self._validate_read(snapshot, selector, request_digest)
         record = self._records.get(memory_id)
-        if record is None or not _matches_selector(record, selector, snapshot.as_of):
+        if (
+            record is None
+            or memory_id in self._tombstones
+            or not _matches_selector(record, selector, snapshot.as_of)
+        ):
             return None
         return record
 
@@ -154,13 +206,16 @@ class InMemoryMemoryRepository:
         self._validate_read(snapshot, selector, request_digest)
         if not 1 <= candidate_limit <= 100:
             raise _memory_error("invalid_memory_candidate_limit")
+        if query.reference_time != snapshot.as_of:
+            raise _memory_error("memory_query_snapshot_time_mismatch")
         query_digest = canonical_digest(query, domain="memory:query:v1")
         offset = self._decode_cursor(cursor, snapshot, selector, query_digest)
         text = query.text.casefold().strip()
         eligible = [
             record
             for record in self._records.values()
-            if _matches_selector(record, selector, query.reference_time)
+            if record.memory_id not in self._tombstones
+            and _matches_selector(record, selector, snapshot.as_of)
             and (not text or text in record.content.casefold())
         ]
         eligible.sort(key=lambda item: (item.updated_at, item.memory_id), reverse=True)
@@ -210,22 +265,34 @@ class InMemoryMemoryRepository:
             existing = self._idempotency.get(command.idempotency_key)
             if existing is not None:
                 if existing[0] != command_digest:
-                    raise _memory_error("memory_write_idempotency_conflict")
+                    raise _memory_conflict("memory_write_idempotency_conflict")
                 return existing[1]
             self._validate_write(command, now)
             if decision.decision_id in self._consumed_decisions:
-                raise _memory_error("memory_write_decision_consumed")
+                raise _memory_conflict("memory_write_decision_consumed")
             record = decision.normalized_record
             if record is None:
                 raise _memory_error("memory_write_record_missing")
             current = self._records.get(record.memory_id)
+            if record.memory_id in self._tombstones:
+                raise _memory_conflict("memory_id_tombstoned")
             if current is None:
-                if decision.expected_record_version is not None:
-                    raise _memory_error("memory_expected_version_conflict")
-            elif decision.expected_record_version != current.version:
-                raise _memory_error("memory_expected_version_conflict")
+                if decision.expected_record_version is not None or record.version != 1:
+                    raise _memory_conflict("memory_expected_version_conflict")
+            elif (
+                decision.expected_record_version != current.version
+                or record.version != current.version + 1
+                or record.memory_id != current.memory_id
+                or record.scope != current.scope
+                or record.created_at != current.created_at
+            ):
+                raise _memory_conflict("memory_expected_version_conflict")
+            previous_revision = self._state_revision
+            previous_snapshots = dict(self._snapshots)
             self._records[record.memory_id] = record
             self._consumed_decisions.add(decision.decision_id)
+            self._state_revision += 1
+            self._snapshots.clear()
             receipt = MemorySubmissionReceipt(
                 1,
                 command.command_id,
@@ -249,6 +316,8 @@ class InMemoryMemoryRepository:
                     self._records.pop(record.memory_id, None)
                 else:
                     self._records[record.memory_id] = current
+                self._state_revision = previous_revision
+                self._snapshots = previous_snapshots
                 self._consumed_decisions.discard(decision.decision_id)
                 self._idempotency.pop(command.idempotency_key, None)
                 raise
@@ -256,8 +325,404 @@ class InMemoryMemoryRepository:
         finally:
             self._lock.release()
 
+    async def commit_delete(
+        self,
+        command: MemoryDeleteCommand,
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> MemoryDeleteReceipt:
+        now = self._clock()
+        _validate_memory_call(call, now)
+        command_digest = memory_delete_command_digest(command)
+        await _acquire_memory_lock(self._lock, call, self._clock)
+        try:
+            now = self._clock()
+            _validate_memory_call(call, now)
+            existing = self._delete_idempotency.get(command.idempotency_key)
+            if existing is not None:
+                if existing[0] != command_digest:
+                    raise _memory_conflict("memory_delete_idempotency_conflict")
+                return existing[1]
+            record = self._validate_delete(command, now)
+            confirmation_id = command.confirmation.confirmation_id
+            if confirmation_id in self._consumed_delete_confirmations:
+                raise _memory_conflict("memory_delete_confirmation_consumed")
+            next_revision = self._state_revision + 1
+            confirmation_digest = canonical_digest(
+                command.confirmation,
+                domain="security:confirmation-grant:v1",
+            )
+            tombstone = MemoryTombstone(
+                1,
+                self._id_factory(),
+                record.memory_id,
+                record.scope,
+                memory_record_digest(record),
+                record.content_hash,
+                record.version,
+                command_digest,
+                authorization_decision_digest(command.authorization),
+                confirmation_digest,
+                command.authorization.policy_revision,
+                self._writer_revision,
+                now,
+                next_revision,
+                DigestString("pending"),
+            )
+            tombstone = replace(
+                tombstone,
+                integrity_digest=memory_tombstone_digest(tombstone),
+            )
+            receipt = MemoryDeleteReceipt(
+                1,
+                command.command_id,
+                command.request_digest,
+                command.idempotency_key,
+                record.memory_id,
+                record.version,
+                tombstone.integrity_digest,
+                next_revision,
+                command.authorization.policy_revision,
+                self._writer_revision,
+                now,
+                DigestString("pending"),
+            )
+            receipt = replace(
+                receipt,
+                receipt_digest=memory_delete_receipt_digest(receipt),
+            )
+            previous_snapshots = dict(self._snapshots)
+            self._records.pop(record.memory_id)
+            self._tombstones[record.memory_id] = tombstone
+            self._consumed_delete_confirmations.add(confirmation_id)
+            self._delete_idempotency[command.idempotency_key] = (
+                command_digest,
+                receipt,
+            )
+            self._state_revision = next_revision
+            self._snapshots.clear()
+            try:
+                await self._after_delete_locked()
+            except BaseException:
+                self._records[record.memory_id] = record
+                self._tombstones.pop(record.memory_id, None)
+                self._consumed_delete_confirmations.discard(confirmation_id)
+                self._delete_idempotency.pop(command.idempotency_key, None)
+                self._state_revision = next_revision - 1
+                self._snapshots = previous_snapshots
+                raise
+            return receipt
+        finally:
+            self._lock.release()
+
+    async def export_page(
+        self,
+        snapshot: MemoryRepositorySnapshot,
+        selector: ScopeSelector,
+        page: PageRequest,
+        *,
+        request_digest: DigestString,
+        call: PortCallContext,
+    ) -> MemoryExportPage:
+        records = await self.list(
+            snapshot,
+            selector,
+            page,
+            request_digest=request_digest,
+            call=call,
+        )
+        self._validate_read(snapshot, selector, request_digest)
+        result = MemoryExportPage(
+            1,
+            records.items,
+            records.next_cursor,
+            snapshot.repository_revision,
+            snapshot.state_revision,
+            snapshot.snapshot_id,
+            self._clock(),
+            DigestString("pending"),
+        )
+        return replace(result, export_digest=memory_export_page_digest(result))
+
+    async def export_tombstone_checkpoint(
+        self,
+        *,
+        call: ServiceCallContext,
+    ) -> MemoryTombstoneCheckpoint:
+        _validate_memory_service_call(
+            call,
+            self._clock(),
+            operation_kind="memory.tombstone-checkpoint",
+            required_role="memory.backup",
+        )
+        await _acquire_memory_lock(self._lock, call, self._clock)
+        try:
+            _validate_memory_service_call(
+                call,
+                self._clock(),
+                operation_kind="memory.tombstone-checkpoint",
+                required_role="memory.backup",
+            )
+            return self._checkpoint_locked(self._clock())
+        finally:
+            self._lock.release()
+
+    async def export_archive(
+        self,
+        *,
+        call: ServiceCallContext,
+    ) -> MemoryRepositoryArchive:
+        _validate_memory_service_call(
+            call,
+            self._clock(),
+            operation_kind="memory.export",
+            required_role="memory.backup",
+        )
+        await _acquire_memory_lock(self._lock, call, self._clock)
+        try:
+            now = self._clock()
+            _validate_memory_service_call(
+                call,
+                now,
+                operation_kind="memory.export",
+                required_role="memory.backup",
+            )
+            checkpoint = self._checkpoint_locked(now)
+            archive = MemoryRepositoryArchive(
+                1,
+                self._id_factory(),
+                self._repository_revision,
+                self._state_revision,
+                tuple(sorted(self._records.values(), key=lambda item: item.memory_id)),
+                checkpoint,
+                now,
+                DigestString("pending"),
+            )
+            return replace(
+                archive,
+                archive_digest=memory_repository_archive_digest(archive),
+            )
+        finally:
+            self._lock.release()
+
+    async def restore(
+        self,
+        command: MemoryRestoreCommand,
+        *,
+        call: ServiceCallContext,
+    ) -> MemoryRestoreReceipt:
+        _validate_memory_service_call(
+            call,
+            self._clock(),
+            operation_kind="memory.restore",
+            required_role="memory.restore",
+        )
+        command_digest = memory_restore_command_digest(command)
+        await _acquire_memory_lock(self._lock, call, self._clock)
+        try:
+            now = self._clock()
+            _validate_memory_service_call(
+                call,
+                now,
+                operation_kind="memory.restore",
+                required_role="memory.restore",
+            )
+            existing = self._restore_idempotency.get(command.idempotency_key)
+            if existing is not None:
+                if existing[0] != command_digest:
+                    raise _memory_conflict("memory_restore_idempotency_conflict")
+                return existing[1]
+            self._validate_restore(command, now)
+            previous_records = self._records
+            previous_tombstones = self._tombstones
+            previous_revision = self._state_revision
+            previous_snapshots = self._snapshots
+            tombstones = _merge_tombstones(
+                tuple(previous_tombstones.values()),
+                command.archive.tombstone_checkpoint.tombstones,
+                command.recovery_checkpoint.tombstones,
+            )
+            tombstone_ids = set(tombstones)
+            restored = {
+                record.memory_id: record
+                for record in command.archive.records
+                if record.memory_id not in tombstone_ids
+            }
+            suppressed = len(command.archive.records) - len(restored)
+            next_revision = (
+                max(
+                    previous_revision,
+                    command.archive.state_revision,
+                    command.recovery_checkpoint.state_revision,
+                )
+                + 1
+            )
+            receipt = MemoryRestoreReceipt(
+                1,
+                command.command_id,
+                command.request_digest,
+                command.idempotency_key,
+                command.archive.archive_digest,
+                command.recovery_checkpoint.checkpoint_digest,
+                len(restored),
+                suppressed,
+                previous_revision,
+                next_revision,
+                self._writer_revision,
+                now,
+                DigestString("pending"),
+            )
+            receipt = replace(
+                receipt,
+                receipt_digest=memory_restore_receipt_digest(receipt),
+            )
+            self._records = restored
+            self._tombstones = tombstones
+            self._state_revision = next_revision
+            self._snapshots = {}
+            self._restore_idempotency[command.idempotency_key] = (
+                command_digest,
+                receipt,
+            )
+            try:
+                await self._after_restore_locked()
+            except BaseException:
+                self._records = previous_records
+                self._tombstones = previous_tombstones
+                self._state_revision = previous_revision
+                self._snapshots = previous_snapshots
+                self._restore_idempotency.pop(command.idempotency_key, None)
+                raise
+            return receipt
+        finally:
+            self._lock.release()
+
     async def _after_write_locked(self) -> None:
         return None
+
+    async def _after_delete_locked(self) -> None:
+        return None
+
+    async def _after_restore_locked(self) -> None:
+        return None
+
+    def _checkpoint_locked(self, now: datetime) -> MemoryTombstoneCheckpoint:
+        checkpoint = MemoryTombstoneCheckpoint(
+            1,
+            self._id_factory(),
+            self._repository_revision,
+            self._state_revision,
+            tuple(sorted(self._tombstones.values(), key=lambda item: item.memory_id)),
+            now,
+            DigestString("pending"),
+        )
+        return replace(
+            checkpoint,
+            checkpoint_digest=memory_tombstone_checkpoint_digest(checkpoint),
+        )
+
+    def _validate_delete(
+        self,
+        command: MemoryDeleteCommand,
+        now: datetime,
+    ) -> MemoryRecord:
+        if memory_delete_request_digest(command) != command.request_digest:
+            raise _memory_error("memory_delete_request_digest_mismatch")
+        if command.memory_id in self._tombstones:
+            raise _memory_conflict("memory_already_tombstoned")
+        record = self._records.get(command.memory_id)
+        if record is None:
+            raise _memory_conflict("memory_delete_record_missing")
+        record_digest = memory_record_digest(record)
+        if (
+            command.expected_version != record.version
+            or command.record_digest != record_digest
+            or not _record_belongs_to_command(record, command)
+        ):
+            raise _memory_conflict("memory_delete_version_or_scope_conflict")
+        authorization = command.authorization
+        actor_hash = actor_digest(command.actor)
+        conversation_hash = scope_digest(command.conversation_scope)
+        if (
+            authorization.effect is not AuthorizationEffect.ALLOW
+            or str(authorization.action) != "memory.delete"
+            or authorization.actor_digest != actor_hash
+            or authorization.scope_digest != conversation_hash
+            or authorization.decided_at > now
+            or authorization.expires_at <= now
+            or not self._verify_authorization_decision(authorization, now)
+        ):
+            raise _memory_error("memory_delete_authorization_invalid")
+        confirmation = command.confirmation
+        expected_payload = memory_delete_payload_digest(
+            command.memory_id,
+            command.expected_version,
+            command.record_digest,
+        )
+        if (
+            confirmation.actor_digest != actor_hash
+            or confirmation.scope_digest != conversation_hash
+            or str(confirmation.action) != "memory.delete"
+            or confirmation.payload_digest != expected_payload
+            or confirmation.required_permission != "memory.delete"
+            or confirmation.execution_id != command.command_id
+            or confirmation.idempotency_key != command.idempotency_key
+            or confirmation.authorization_digest
+            != authorization_decision_digest(authorization)
+            or confirmation.policy_revision != authorization.policy_revision
+            or confirmation.consumed_at > now
+            or confirmation.expires_at <= now
+            or not self._verify_confirmation_grant(confirmation, now)
+        ):
+            raise _memory_error("memory_delete_confirmation_invalid")
+        return record
+
+    def _validate_restore(self, command: MemoryRestoreCommand, now: datetime) -> None:
+        if memory_restore_request_digest(command) != command.request_digest:
+            raise _memory_error("memory_restore_request_digest_mismatch")
+        if command.expected_state_revision != self._state_revision:
+            raise _memory_conflict("memory_restore_state_conflict")
+        archive = command.archive
+        checkpoint = command.recovery_checkpoint
+        if (
+            memory_repository_archive_digest(archive) != archive.archive_digest
+            or memory_tombstone_checkpoint_digest(archive.tombstone_checkpoint)
+            != archive.tombstone_checkpoint.checkpoint_digest
+            or memory_tombstone_checkpoint_digest(checkpoint)
+            != checkpoint.checkpoint_digest
+            or checkpoint.repository_revision != archive.repository_revision
+            or checkpoint.state_revision < archive.state_revision
+            or checkpoint.state_revision < command.required_checkpoint_state_revision
+            or any(
+                memory_tombstone_digest(item) != item.integrity_digest
+                for item in (
+                    *archive.tombstone_checkpoint.tombstones,
+                    *checkpoint.tombstones,
+                )
+            )
+            or archive.exported_at > now
+            or archive.tombstone_checkpoint.created_at > now
+            or checkpoint.created_at > now
+        ):
+            raise _memory_error("invalid_memory_restore_evidence")
+
+    def _verify_authorization_decision(self, decision: object, now: datetime) -> bool:
+        verifier = self._authorization_decision_verifier
+        if verifier is None:
+            return False
+        try:
+            return bool(verifier.verify(decision, at=now))
+        except Exception:  # noqa: BLE001 - verifier failures fail closed
+            return False
+
+    def _verify_confirmation_grant(self, grant: object, now: datetime) -> bool:
+        verifier = self._confirmation_grant_verifier
+        if verifier is None:
+            return False
+        try:
+            return bool(verifier.verify_grant(grant, at=now))
+        except Exception:  # noqa: BLE001 - verifier failures fail closed
+            return False
 
     def _validate_read(
         self,
@@ -271,6 +736,7 @@ class InMemoryMemoryRepository:
         if (
             stored != snapshot
             or snapshot.repository_revision != self._repository_revision
+            or snapshot.state_revision != self._state_revision
             or snapshot.request_digest != request_digest
             or snapshot.expires_at <= now
             or selector_hash not in snapshot.selector_digests
@@ -349,7 +815,7 @@ class InMemoryMemoryRepository:
             return False
         try:
             return bool(verifier.verify_decision(decision, at=now))
-        except Exception:
+        except Exception:  # noqa: BLE001 - verifier failures fail closed
             return False
 
     def _verify_selector(
@@ -362,7 +828,7 @@ class InMemoryMemoryRepository:
                     expected_request_digest=request_digest,
                 )
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - verifier failures fail closed
             return False
 
     def _encode_cursor(
@@ -372,7 +838,10 @@ class InMemoryMemoryRepository:
         selector: ScopeSelector,
         query_digest: DigestString,
     ) -> str:
-        body = f"{offset}:{snapshot.snapshot_id}:{selector_digest(selector)}:{query_digest}"
+        body = (
+            f"{offset}:{snapshot.snapshot_id}:{snapshot.repository_revision}:"
+            f"{snapshot.state_revision}:{selector_digest(selector)}:{query_digest}"
+        )
         signature = hmac.new(
             self._cursor_secret, body.encode(), hashlib.sha256
         ).hexdigest()
@@ -404,6 +873,8 @@ def _matches_selector(
     record: MemoryRecord, selector: ScopeSelector, as_of: datetime
 ) -> bool:
     scope = record.scope
+    if record.created_at > as_of:
+        return False
     if record.expires_at is not None and record.expires_at <= as_of:
         return False
     if (
@@ -435,8 +906,45 @@ def _matches_selector(
     return False
 
 
+def _record_belongs_to_command(
+    record: MemoryRecord,
+    command: MemoryDeleteCommand,
+) -> bool:
+    scope = record.scope
+    conversation = command.conversation_scope
+    return (
+        scope.platform == conversation.platform == command.actor.platform
+        and scope.bot_id == conversation.bot_id == command.actor.bot_id
+        and scope.conversation_type is conversation.conversation_type
+        and scope.conversation_id == conversation.conversation_id
+        and scope.group_id == conversation.group_id
+        and scope.persona_id == conversation.persona_id
+        and (scope.user_id is None or scope.user_id == command.actor.user_id)
+    )
+
+
+def _merge_tombstones(
+    *groups: tuple[MemoryTombstone, ...],
+) -> dict[str, MemoryTombstone]:
+    result: dict[str, MemoryTombstone] = {}
+    for tombstone in (item for group in groups for item in group):
+        existing = result.get(tombstone.memory_id)
+        if existing is None or tombstone.state_revision > existing.state_revision:
+            result[tombstone.memory_id] = tombstone
+        elif (
+            tombstone.state_revision == existing.state_revision
+            and tombstone.integrity_digest != existing.integrity_digest
+        ):
+            raise _memory_conflict("memory_tombstone_revision_conflict")
+    return result
+
+
 def _memory_error(code: str):
     return error(code, ErrorCategory.AUTHORIZATION, "memory.unavailable")
+
+
+def _memory_conflict(code: str):
+    return error(code, ErrorCategory.CONFLICT, "memory.conflict")
 
 
 _T = TypeVar("_T")
@@ -483,3 +991,19 @@ def _validate_memory_call(
 ) -> None:
     if call.cancellation.is_cancelled or call.deadline <= now:
         raise _memory_error("memory_call_cancelled_or_expired")
+
+
+def _validate_memory_service_call(
+    call: ServiceCallContext,
+    now: datetime,
+    *,
+    operation_kind: str,
+    required_role: str,
+) -> None:
+    if (
+        not isinstance(call, ServiceCallContext)
+        or call.operation_kind != operation_kind
+        or required_role not in call.principal.roles
+    ):
+        raise _memory_error("memory_service_operation_unauthorized")
+    _validate_memory_call(call, now)

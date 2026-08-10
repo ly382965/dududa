@@ -44,9 +44,10 @@ plugins.lock.json        # 第三方插件精确版本
 ## Dududa 2.0 Refactor
 
 Phase 0–1 的审计与目标设计见
-[Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)。S01–S07 已以增量方式
-实现核心契约、安全组件、AstrBot 兼容拆分和 Memory 安全边界；旧 AstrBot Handler
-仍是生产权威入口，新 Runtime、Connector、Output 与 Memory v2 尚未切流。当前实现证据、
+[Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)。S01–S14 已沿既有 Tree 增量完成
+核心契约、安全边界、静态路由、离线 Runtime、统一 MCP、Capability Runtime，以及 S14
+Memory 生命周期和合成 M0-M2 检索回归；旧 AstrBot Handler 仍是生产权威入口，Memory v2
+尚未接入 Context Builder 或生产命令。当前实现证据、
 残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 为准。
 
 ## Requirements

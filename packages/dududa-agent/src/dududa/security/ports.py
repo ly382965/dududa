@@ -28,7 +28,6 @@ from .models import (
     SecretRef,
 )
 
-
 T = TypeVar("T")
 
 
@@ -48,8 +47,17 @@ class AuthorizationDecisionVerifier(Protocol):
     ) -> bool: ...
 
 
+class ConfirmationGrantVerifier(Protocol):
+    def verify_grant(
+        self,
+        grant: ConfirmationGrant,
+        *,
+        at: datetime | None = None,
+    ) -> bool: ...
+
+
 @runtime_checkable
-class ConfirmationService(Protocol):
+class ConfirmationService(ConfirmationGrantVerifier, Protocol):
     async def issue(
         self, request: ConfirmationRequest, *, call: PortCallContext
     ) -> ConfirmationRequirement: ...

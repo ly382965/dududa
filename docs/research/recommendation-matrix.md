@@ -22,7 +22,7 @@ Memory、ResponsePlan、主动出站和本地总审计；真实群聊始终位�
 | Unified MCP | 当前 v1 Server 可被 v2 Client legacy 模式调用 | spike v2 Client+Server 迁移，预期 adopt | Registry、generation、长 Session、Dududa Schema snapshot、取消/unknown outcome contract | 固定 v1/v2 fixture 完成并发、崩溃、Schema drift 和泄漏实验 | 任意写 Tool |
 | Scheduler | 只有局部原语 | adopt Dududa SQLite occurrence/CAS；APScheduler 3 只作 Trigger oracle | occurrence、IANA timezone、misfire、lease、revoke 和 fake clock | SQLite 3.51.3+ 或 rollback journal ADR；双 Worker/fault injection | 真实定时发送 S23 |
 | 校园/行业/arXiv 来源 | 官方 Feed/API 可用，全文权利未开放 | adopt allowlist metadata、有限摘要、规范链接 | USTC 教务 RSS、arXiv category Feed、官方 publisher RSS Adapter fixture | 用户冻结栏目、publisher、category/关键词、修订与条目上限 | HTML/OAI-PMH/full text |
-| Memory | Scope/WriteGate 基础存在，检索与生命周期未闭环 | adopt exact+recency+BM25 baseline；embedding 只做 shadow | 删除/导出/冲突、显式写入闭环、CJK lexical baseline、统一 Eval harness | CJK tokenizer/bigram、embedding/hybrid 对照；授权数据和外部 Backend 隔离实验 | Graph/temporal 自动化 |
+| Memory | S14 离线生命周期与 M0-M2 合成回归已实现；生产仍关闭 | adopt 既有 Scope + generation-bound lifecycle + bounded CJK BM25；不在无授权数据时做 embedding | 保持删除/恢复/词法/Eval Contract，后续只迁移明确消费者 | 授权数据、人工判断、Embedding/Hybrid 对照、真实 Iris/外部 Backend 隔离实验 | Graph/temporal 自动化 |
 | Conversation Probe | 只有设计 | adopt 默认 off 的确定性群级 no-send detector | Opportunity Snapshot、TTL、hard gates、cooldown、Shadow Eval | 授权脱敏群聊窗口、标注指南、管理员流程和打扰预算 | 单群 canary S23 |
 | Contextual Bandit | 只有可行性研究 | spike VW Worker + OBP research；当前禁止训练/live exploration | before-action DTO、support validator、合成 IPS/SNIPS/DR golden | 两个同 Role+Tier 合法 Endpoint、有效 propensity、显式反馈、足够 ESS | S20；不阻塞 S23 |
 | WebUI | 已完成既定 NapCat 测试客户端范围 | 保持测试入口，不扩大验证 | 只在相应后端契约变化时补测试 | 无产品级 Control Plane 需求时不扩建 | 写控制面 |
@@ -80,7 +80,7 @@ root
     mcp-v2-spike              S12A：v2 Client/Server + v1 legacy fixture
     unified-mcp               S12
     bounded-capability        S13
-  memory-retrieval            S14：生命周期 + lexical baseline + shadow comparison
+  memory-retrieval            S14：生命周期 + 固定 synthetic M0-M2 lexical baseline
   response-persona            S15：AnswerProfile + dynamic budget + Persona Eval
   proactive-outbound
     proactive-contracts       S15A

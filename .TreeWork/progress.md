@@ -11,11 +11,13 @@ Last sync: unix:1786329018
 
 ## Global Reality (current project reality and material corrections; not a branch table)
 
-- S01-S07 foundations and S08-S11 local runtime are committed on
-  `codex/s08-s11`; environment hardening is committed through `fcd95a1`.
-- Clean uv environments on Python 3.10.20 and 3.12.13 each pass 375 tests with
-  two AstrBot-host-only skips. The S09 synthetic Eval remains a policy-regression
-  gate; human Chinese multi-turn quality and calibration are not established.
+- S01-S11 foundations/runtime are integrated on `codex/s08-s11`; the Work Tree
+  has also integrated verified S12 Unified MCP, S13 Capability and S14 Memory
+  branches.
+- Clean uv environments on Python 3.10.20 and 3.12.13 each pass 521 tests with
+  two AstrBot-host-only skips. S09/S13/S14 synthetic Evals remain policy,
+  contract or lexical-regression gates; human Chinese quality and calibration
+  are not established.
 - S08-S11 local implementation and the cross-stage completion audit are
   complete and verified. Authorized real-group testing is a deferred final
   project stage, not an S08-S11 completion blocker.
@@ -29,7 +31,8 @@ Last sync: unix:1786329018
 - On 2026-08-09 the user added three future requirements: deterministic
   short/medium/long answers, controlled proactive conversation probes, and
   opt-in daily campus/industry/arXiv digests through governed MCP-backed public
-  capabilities. Alignment is open; no implementation or send is complete.
+  capabilities. The offline Alignment/Tree is accepted; S15/S15A-S15E remain
+  unimplemented and no send is complete.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -87,3 +90,12 @@ Last sync: unix:1786329018
 - Environment hardening established TreeWork 0.1.7, locked Python/Node inputs,
   clean package construction and the production-shape preflight without
   changing any running container or sending a message.
+- S12 returned a framework-neutral multi-Server MCP Client/Registry, isolated
+  v2 worker, iCourse compatibility facade and rollback path; iCourse remains the
+  only real Server and production Tools stay disabled.
+- S13 returned a separate governed Capability Catalog/Retrieval/Planner/
+  Executor/Validator with iCourse read-only mappings and configuration-only
+  Fake extension evidence.
+- S14 now returns generation-bound Memory lifecycle and restore, M0/M1/M2
+  bounded retrieval and a manifest-bound synthetic Eval. It did not migrate
+  legacy commands, enable Runtime Memory, use real data or integrate Iris.
