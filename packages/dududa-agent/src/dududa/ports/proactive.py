@@ -8,6 +8,7 @@ from dududa.domain.identity import Actor, ActorRef, ConversationScope
 from dududa.domain.primitives import DigestString
 from dududa.ports.context import PortCallContext, ServiceCallContext
 from dududa.proactive.contracts import (
+    ConversationOpportunitySnapshot,
     DispatchClaim,
     DispatchLedgerRecord,
     DispatchState,
@@ -38,6 +39,16 @@ from dududa.proactive.contracts import (
 from dududa.proactive.digest_contracts import (
     DigestCompositionPolicySnapshot,
     DigestShadowMetadata,
+)
+from dududa.proactive.probe_contracts import (
+    ProbeConversationWindow,
+    ProbeDetectionResult,
+    ProbeOutcomeObservation,
+    ProbePolicySnapshot,
+    ProbeShadowMetadata,
+    ProbeShadowRequest,
+    ProbeStateClaimReceipt,
+    ProbeStateSnapshot,
 )
 from dududa.proactive.source_contracts import (
     SourceCapabilityObservation,
@@ -130,6 +141,78 @@ class DigestShadowRunner(Protocol):
         *,
         call: ServiceCallContext,
     ) -> ProactiveRunReceipt: ...
+
+
+@runtime_checkable
+class ProbeOpportunityDetector(Protocol):
+    def detect(
+        self,
+        window: ProbeConversationWindow,
+        policy: ProbePolicySnapshot,
+        *,
+        at: datetime,
+    ) -> ProbeDetectionResult: ...
+
+
+@runtime_checkable
+class ProbeStateStore(Protocol):
+    async def load(
+        self,
+        namespace: str,
+        target_scope_digest: DigestString,
+        *,
+        call: PortCallContext,
+    ) -> ProbeStateSnapshot | None: ...
+
+    async def claim(
+        self,
+        opportunity: ConversationOpportunitySnapshot,
+        *,
+        namespace: str,
+        cooldown: timedelta,
+        at: datetime,
+        call: PortCallContext,
+    ) -> ProbeStateClaimReceipt: ...
+
+    async def record_outcome(
+        self,
+        observation: ProbeOutcomeObservation,
+        *,
+        attribution_window: timedelta,
+        ordinary_cooldown: timedelta,
+        no_response_cooldown: timedelta,
+        call: PortCallContext,
+    ) -> ProbeStateSnapshot: ...
+
+
+@runtime_checkable
+class ProbeComposer(Protocol):
+    def compose(
+        self,
+        opportunity: ConversationOpportunitySnapshot,
+        plan: ResponsePlan,
+        policy: ProbePolicySnapshot,
+    ) -> DraftResponse: ...
+
+
+@runtime_checkable
+class ProbeShadowMetadataSink(Protocol):
+    async def record(
+        self,
+        metadata: ProbeShadowMetadata,
+        *,
+        call: ServiceCallContext,
+    ) -> None: ...
+
+
+@runtime_checkable
+class ProbeShadowRunner(Protocol):
+    async def run(
+        self,
+        request: ProbeShadowRequest,
+        *,
+        call: ServiceCallContext,
+    ) -> ProbeShadowMetadata: ...
 
 
 @runtime_checkable
@@ -424,6 +507,11 @@ __all__ = [
     "ProactiveScheduler",
     "ProactiveSubscriptionStore",
     "ProactiveTargetRegistry",
+    "ProbeComposer",
+    "ProbeOpportunityDetector",
+    "ProbeShadowMetadataSink",
+    "ProbeShadowRunner",
+    "ProbeStateStore",
     "SourceCapabilityReader",
     "SourcePolicyRegistry",
     "SourceProvider",

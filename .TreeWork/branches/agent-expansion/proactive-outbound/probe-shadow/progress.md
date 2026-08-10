@@ -11,8 +11,28 @@ Last sync: unix:1786354259
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15D is verified and integrated. S15E now has a complete synthetic, group-level COLLECT/SHADOW
+  implementation with no delivery capability.
+- Sanitized windows pass deterministic hard gates into exact-bound Opportunity/Trigger/Run records;
+  candidates are fixed SHORT and the Shadow ledger is isolated from future live state.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Froze a synthetic group-projection -> hard gates -> namespaced state -> SHORT no-send candidate
+  chain and a six-class sampling strategy without reopening S15A-S15D design.
+- Added Probe contracts/digests/Ports, deterministic Detector, atomic in-memory state, attribution-
+  bound no-response cooldown, SHORT Persona/final-validation chain and digest-only metadata sink.
+- Python 3.10.20 and 3.12.13 each pass six representative scenarios. Python 3.12 passes the affected
+  13-test import suite; changed-file static, compile, lock and wheel checks pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- No branch-local implementation issue remains. Full-repository and unchanged Web regression are
+  deliberately deferred under the approved risk-based sampling policy.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Do not feed raw MessageEnvelope history into the Detector. Topic relevance and disturbance quality
+  remain external evaluation gates; this branch proves deterministic eligibility and no-send only.
+- Preserve the offline claim: state is an in-memory atomic reference, not restart-safe production
+  persistence. After integration, enter S16 Operations Hardening.
