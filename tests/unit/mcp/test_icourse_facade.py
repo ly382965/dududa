@@ -6,7 +6,17 @@ from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from astrbot_plugin_dududa_core.adapters.mcp_runtime import (
+    AllowlistedEnvironmentProvider,
+    build_icourse_client,
+)
+from astrbot_plugin_dududa_core.course import (
+    ICOURSE_COMPAT_TOOL_ALLOWLIST,
+    ICourseClient,
+    UnavailableICourseClient,
+)
 from dududa.contracts.canonical import canonical_json_bytes
+from dududa.errors import DududaError
 from dududa.mcp import (
     ManagedUnifiedMcpClient,
     McpContentBlock,
@@ -20,16 +30,6 @@ from dududa.testing import (
     FakeMcpSessionPlan,
     RecordingFakeMcpSessionFactory,
     RecordingMcpSchemaValidator,
-)
-
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_runtime import (
-    AllowlistedEnvironmentProvider,
-    build_icourse_client,
-)
-from plugins.astrbot_plugin_dududa_core.course import (
-    ICOURSE_COMPAT_TOOL_ALLOWLIST,
-    ICourseClient,
-    LegacyICourseClient,
 )
 
 from .helpers import (
@@ -154,7 +154,7 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
         )
         await facade.close()
 
-    async def test_composition_selection_is_explicit_and_startup_only(self) -> None:
+    async def test_composition_is_unified_or_fail_closed_unavailable(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
             registry = root / "servers"
@@ -167,7 +167,7 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
             worker = root / "python"
             worker.write_text("fixture", encoding="utf-8")
             unified, mode, reason = build_icourse_client(
-                {},
+                {"icourse_mcp_mode": "legacy"},
                 registry_directory=registry,
                 worker_python=worker,
                 environment_provider=AllowlistedEnvironmentProvider({}),
@@ -176,23 +176,73 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((mode, reason), ("unified", "unified_ready"))
             await unified.close()
 
-            legacy, mode, reason = build_icourse_client(
-                {"icourse_mcp_mode": "legacy"},
-                registry_directory=registry,
-                worker_python=worker,
-            )
-            self.assertIsInstance(legacy, LegacyICourseClient)
-            self.assertEqual((mode, reason), ("legacy", "operator_selected_legacy"))
-
             missing, mode, reason = build_icourse_client(
                 {},
                 registry_directory=root / "missing",
                 worker_python=root / "missing-python",
             )
-            self.assertIsInstance(missing, LegacyICourseClient)
+            self.assertIsInstance(missing, UnavailableICourseClient)
             self.assertEqual(
                 (mode, reason),
-                ("legacy", "unified_infrastructure_missing"),
+                ("unavailable", "unified_infrastructure_missing"),
+            )
+            errors = []
+            with self.assertRaises(DududaError) as call_error:
+                await missing.call("search_courses", {"query": "fixture"})
+            errors.append(call_error.exception.info)
+            with self.assertRaises(DududaError) as tools_error:
+                await missing.list_tools()
+            errors.append(tools_error.exception.info)
+            self.assertEqual(errors[0], errors[1])
+            self.assertEqual(errors[0].code, "icourse_client_unavailable")
+            self.assertEqual(
+                errors[0].reason_codes,
+                ("unified_infrastructure_missing",),
+            )
+            self.assertFalse(errors[0].retryable)
+            await missing.close()
+            await missing.close()
+
+            relative, mode, reason = build_icourse_client(
+                {"mcp_registry_dir": "relative"},
+                registry_directory=registry,
+                worker_python=worker,
+            )
+            self.assertIsInstance(relative, UnavailableICourseClient)
+            self.assertEqual(
+                (mode, reason),
+                ("unavailable", "unified_path_not_absolute"),
+            )
+
+            disabled_value = json.loads(source.read_text(encoding="utf-8"))
+            disabled_value["enabled"] = False
+            (registry / "icourse.json").write_text(
+                json.dumps(disabled_value),
+                encoding="utf-8",
+            )
+            disabled, mode, reason = build_icourse_client(
+                {},
+                registry_directory=registry,
+                worker_python=worker,
+            )
+            self.assertIsInstance(disabled, UnavailableICourseClient)
+            self.assertEqual(
+                (mode, reason),
+                ("unavailable", "icourse_definition_disabled"),
+            )
+
+            malformed = root / "malformed"
+            malformed.mkdir()
+            (malformed / "icourse.json").write_text("{", encoding="utf-8")
+            invalid, mode, reason = build_icourse_client(
+                {},
+                registry_directory=malformed,
+                worker_python=worker,
+            )
+            self.assertIsInstance(invalid, UnavailableICourseClient)
+            self.assertEqual(
+                (mode, reason),
+                ("unavailable", "unified_composition_invalid"),
             )
 
 

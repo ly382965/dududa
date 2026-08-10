@@ -8,7 +8,7 @@ impact. Do not include real QQ identifiers, conversations or credentials.
 
 The following must never be committed:
 
-- `.env` files other than `.env.example`
+- `.env` files other than `deploy/env/.env.example`
 - Provider API keys, WebUI passwords, JWT or OneBot tokens
 - Cookies, QQ login state and NapCat passkeys
 - SSH, TLS or signing private keys

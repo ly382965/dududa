@@ -9,7 +9,7 @@ from dududa.adapters.attachments import InMemoryAttachmentRepository
 from dududa.domain.primitives import ConversationType, RuntimeBudget, TraceContext
 from dududa.errors import DududaError
 from dududa.ports.context import NeverCancelled, ServiceCallContext, ServicePrincipal
-from plugins.astrbot_plugin_dududa_core.adapters.message import AstrBotInputConnector
+from astrbot_plugin_dududa_core.adapters.message import AstrBotInputConnector
 
 
 class Reply:

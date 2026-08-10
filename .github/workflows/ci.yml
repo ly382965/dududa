@@ -67,7 +67,7 @@ jobs:
         run: |
           docker compose \
             --project-directory . \
-            --env-file .env.example \
+            --env-file deploy/env/.env.example \
             -f deploy/compose/compose.yml \
             config --format json > "$RUNNER_TEMP/dududa-compose.json"
           .venv/bin/python ops/cli/dududa_ops.py compose-contract \

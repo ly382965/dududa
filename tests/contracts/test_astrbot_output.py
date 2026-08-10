@@ -54,7 +54,7 @@ from dududa.security.digests import (
 )
 from dududa.security.models import AuthorizationDecision, AuthorizationEffect
 
-from plugins.astrbot_plugin_dududa_core.adapters.output import (
+from astrbot_plugin_dududa_core.adapters.output import (
     ASTRBOT_OUTPUT_REVISION,
     AstrBotOutputAdapter,
     InMemoryDeliveryLedger,

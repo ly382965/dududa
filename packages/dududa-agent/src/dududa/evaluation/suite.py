@@ -641,17 +641,20 @@ def _git_evidence(root: Path) -> tuple[str, bool]:
 @contextmanager
 def _repository_context(root: Path):
     previous_cwd = Path.cwd()
-    root_text = str(root)
-    inserted = not sys.path or sys.path[0] != root_text
-    if inserted:
-        sys.path.insert(0, root_text)
+    inserted: list[str] = []
+    for path in reversed((root, root / "apps" / "astrbot-plugins")):
+        text = str(path)
+        if text not in sys.path:
+            sys.path.insert(0, text)
+            inserted.append(text)
     os.chdir(root)
     try:
         yield
     finally:
         os.chdir(previous_cwd)
-        if inserted and sys.path and sys.path[0] == root_text:
-            sys.path.pop(0)
+        for text in inserted:
+            if text in sys.path:
+                sys.path.remove(text)
 
 
 def _load_json(path: Path) -> dict[str, object]:

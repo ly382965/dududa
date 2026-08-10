@@ -21,6 +21,11 @@ class ReleaseImageSmokeContractTests(unittest.TestCase):
         self.assertEqual(source.count("--network none"), 2)
         self.assertIn('web_container="dududa-s19-web-${suffix}"', source)
         self.assertIn('--volume "$ROOT_DIR:/workspace:ro"', source)
+        self.assertIn(
+            '--volume "$ROOT_DIR/configs:/opt/dududa/config:ro"',
+            source,
+        )
+        self.assertIn('(mode, reason) == ("unified", "unified_ready")', source)
         self.assertIn("--env ASTRBOT_ROOT=/tmp/astrbot", source)
         self.assertIn(
             '--volume "$token_file:/run/secrets/onebot_access_token:ro"', source

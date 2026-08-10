@@ -9,8 +9,8 @@ from dududa.contracts.canonical import canonical_schema_digest
 from dududa.domain.primitives import SchemaRef
 from dududa.errors import DududaError
 
-from plugins.astrbot_plugin_dududa_core.adapters import mcp_schema
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
+from astrbot_plugin_dududa_core.adapters import mcp_schema
+from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaCapabilityValidator,
     JsonSchemaMcpValidator,
 )

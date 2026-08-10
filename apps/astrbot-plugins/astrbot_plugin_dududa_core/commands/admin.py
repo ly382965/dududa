@@ -72,7 +72,7 @@ class CoreAdminCommands:
                 + "\n".join(f"- {tool}" for tool in tools)
             )
         else:
-            mode = getattr(self, "icourse_mode", "legacy")
+            mode = getattr(self, "icourse_mode", "unavailable")
             yield event.plain_result(f"MCP 列表：\n- icourse：{mode}")
         event.stop_event()
 

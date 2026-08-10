@@ -11,8 +11,33 @@ Last sync: unix:1786378539
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+S22 implementation and scoped verification are complete. The canonical S17
+layout is now the only repository path authority. AstrBot iCourse composition
+has only `unified` and fail-closed `unavailable` outcomes; the dedicated MCP v1
+Client and runtime selection flag are absent. Explicit retain-live surfaces
+remain unchanged.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- `88ec307` migrated missed consumers, canonicalized tests/docs/CI and removed
+  ten symlinks.
+- `9f0ae9a` removed the dedicated iCourse stdio Client/fallback and added stable
+  unavailable composition plus image-smoke proof of the real Unified path.
+- Python 3.12 complete discovery passed 651 tests with two AstrBot-host skips;
+  Python 3.10 passed 32 S22 risk samples with the same two host skips. Package,
+  worker, Compose, image, import, secret and static gates passed.
+- Exact S19 candidate `e303dc8` was archived with SHA-256
+  `80500b51187905a45801e195a3d906adac2b11fcbced172a0657e3f00386dc77`.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Manifest v2 remains deferred for integrity, dependency-lock/SBOM and Iris
+  license evidence. This is outside S22 and does not justify restoring aliases.
+- Real Endpoint/source/QQ/human-quality evidence remains external; S22 did not
+  access or enable any of it.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+Protected completion is recorded. The next Tree branch is `bandit-offline`
+(S20). S23 remains separately authorized and must not inherit a send grant from
+this offline branch.

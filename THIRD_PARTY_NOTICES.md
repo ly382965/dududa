@@ -5,8 +5,8 @@ MIT license applies only to original Dududa code and documentation.
 
 | Component | Locked version | Upstream |
 | --- | --- | --- |
-| AstrBot | image digest in `.env.example` | https://github.com/AstrBotDevs/AstrBot |
-| NapCat Docker | image digest in `.env.example` | https://github.com/NapNeko/NapCat-Docker |
+| AstrBot | image digest in `deploy/env/.env.example` | https://github.com/AstrBotDevs/AstrBot |
+| NapCat Docker | image digest in `deploy/env/.env.example` | https://github.com/NapNeko/NapCat-Docker |
 | Better Reminder | v1.4, vendored | https://github.com/Sarit-x/astrbot_plugin_better_reminder |
 | ChatSummary v2 | `0a9d675218eb0441ec99bca8c6932830a5852c2f` | https://github.com/sinkinrin/astrbot_plugin_chatsummary_v2 |
 | Iris Chat Memory | `242164667d19061a316e8e8651d96c02690d4e4f` plus local privacy patch | https://github.com/Leafliber/astrbot_plugin_iris_chat_memory |

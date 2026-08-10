@@ -30,7 +30,7 @@ from dududa.ports.mcp import UnifiedMcpClient
 from icourse_mcp.models import Course, Review, Teacher
 from icourse_mcp.storage import ICourseStore
 
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
+from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaCapabilityValidator,
     JsonSchemaMcpValidator,
 )

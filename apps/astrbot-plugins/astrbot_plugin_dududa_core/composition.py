@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import inspect
+import logging
 from collections.abc import Callable, Iterable
 from datetime import timedelta
 from decimal import Decimal
-import inspect
-import logging
 from typing import Any
 
 from dududa.adapters import InMemoryAttachmentRepository
@@ -20,20 +20,19 @@ from dududa.rollout import (
 )
 from dududa.runtime.shadow import ShadowRunner
 
-from .adapters.message import AstrBotInputConnector
 from .adapters.mcp_runtime import build_icourse_client
+from .adapters.message import AstrBotInputConnector
 from .adapters.output import InMemoryDeliveryLedger
 from .config import (
-    PLUGIN_DATA_DIR,
     MCP_REGISTRY_DIR,
     MCP_WORKER_PYTHON,
+    PLUGIN_DATA_DIR,
     ROLLOUT_LEDGER_PATH,
     AstrBotRolloutControlProvider,
     ensure_dirs,
     load_json,
 )
 from .rollout_bridge import AstrBotRolloutBridge, AstrBotRuntimeRequestFactory
-
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +163,7 @@ def initialize_plugin(
         registry_directory=MCP_REGISTRY_DIR,
         worker_python=MCP_WORKER_PYTHON,
     )
+    plugin.icourse_reason = icourse_reason
     if plugin.icourse_mode != "unified":
         logger.warning("Unified iCourse MCP unavailable: reason=%s", icourse_reason)
     plugin.pending = {}

@@ -46,7 +46,6 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       HF_HOME: /AstrBot/data/model_cache/huggingface
       HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
-      ICOURSE_MCP_DB_PATH: /AstrBot/data/icourse-cache/icourse.sqlite3
       SUB2API_BASE_URL: ${SUB2API_BASE_URL:-}
       SUB2API_ADMIN_EMAIL: ${SUB2API_ADMIN_EMAIL:-}
       SUB2API_ADMIN_PASSWORD: ${SUB2API_ADMIN_PASSWORD:-}

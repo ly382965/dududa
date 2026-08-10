@@ -107,7 +107,7 @@ python -m dududa.evaluation.suite check evals/suite-v1.json \
 python -m compileall -q packages apps services ops tests
 python ops/cli/check_secrets.py
 mkdir -p .TreeWork/out
-docker compose --project-directory . --env-file .env.example \
+docker compose --project-directory . --env-file deploy/env/.env.example \
   -f deploy/compose/compose.yml config --format json \
   > .TreeWork/out/compose.json
 python ops/cli/dududa_ops.py compose-contract \

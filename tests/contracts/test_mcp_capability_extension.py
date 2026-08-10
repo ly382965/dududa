@@ -49,7 +49,7 @@ from dududa.security.authorization import (
 )
 from dududa.security.limits import InMemoryBudgetLedger, InMemoryInteractionLimiter
 
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
+from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaCapabilityValidator,
 )
 from tests.unit.capabilities.test_contracts import NOW

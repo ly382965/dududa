@@ -71,7 +71,7 @@ uv sync --locked --check
 uv run --locked python -c \
   'import sqlite3, sys; print(sys.version); print(sqlite3.sqlite_version)'
 PYTHONDONTWRITEBYTECODE=1 \
-  uv run --locked python -m unittest discover -s tests
+  uv run --locked python -m unittest discover -s tests -t .
 
 uv run --locked python -m dududa.evaluation.suite check \
   evals/suite-v1.json --profile committed-bundles \
@@ -89,9 +89,9 @@ UV_PROJECT_ENVIRONMENT=/tmp/dududa-py312 \
   uv sync --locked --python 3.12.13
 
 PYTHONDONTWRITEBYTECODE=1 \
-  /tmp/dududa-py310/bin/python -m unittest discover -s tests
+  /tmp/dududa-py310/bin/python -m unittest discover -s tests -t .
 PYTHONDONTWRITEBYTECODE=1 \
-  /tmp/dududa-py312/bin/python -m unittest discover -s tests
+  /tmp/dududa-py312/bin/python -m unittest discover -s tests -t .
 ```
 
 两个命令都必须发现相同数量的测试并全部通过。最近一次完整双 Python 基线是在 S15C 的
@@ -166,7 +166,7 @@ iCourse compatibility path，不能替代统一 Client 验证。
 
 ```bash
 mkdir -p .TreeWork/out
-docker compose --project-directory . --env-file .env.example \
+docker compose --project-directory . --env-file deploy/env/.env.example \
   -f deploy/compose/compose.yml config --format json \
   > .TreeWork/out/compose.json
 .venv/bin/python ops/cli/dududa_ops.py compose-contract \
@@ -197,7 +197,7 @@ bash -n manage.sh ops/manage.sh ops/cli/setup_dev.sh
 sh -n services/mcp/icourse/scripts/setup.sh \
   services/mcp/icourse/scripts/start_mcp.sh
 mkdir -p .TreeWork/out
-docker compose --project-directory . --env-file .env.example \
+docker compose --project-directory . --env-file deploy/env/.env.example \
   -f deploy/compose/compose.yml config --format json \
   > .TreeWork/out/compose.json
 .venv/bin/python ops/cli/dududa_ops.py compose-contract \

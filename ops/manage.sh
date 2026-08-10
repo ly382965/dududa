@@ -7,7 +7,7 @@ PYTHON="${PYTHON:-python3}"
 
 ENV_FILE=".env"
 if [[ ! -f "$ENV_FILE" ]]; then
-  ENV_FILE=".env.example"
+  ENV_FILE="deploy/env/.env.example"
 fi
 
 env_value() {
@@ -131,7 +131,7 @@ case "$cmd" in
   init)
     if [[ ! -f .env ]]; then
       umask 077
-      cp .env.example .env
+      cp deploy/env/.env.example .env
     fi
     chmod 600 .env
     runtime_root="$(data_root)"

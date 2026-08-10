@@ -50,7 +50,7 @@ class CoreBasicCommands:
         )
         role = self.perms.role(event)
         group = self._group_record(event)
-        icourse_mode = getattr(self, "icourse_mode", "legacy")
+        icourse_mode = getattr(self, "icourse_mode", "unavailable")
         yield event.plain_result(
             "嘟嘟哒状态\n"
             f"角色：{role}\n"

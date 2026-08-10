@@ -110,12 +110,6 @@
     "type": "int",
     "default": 600
   },
-  "icourse_mcp_mode": {
-    "description": "iCourse MCP 传输模式（unified/legacy）",
-    "type": "string",
-    "default": "unified",
-    "hint": "legacy 仅用于显式回滚；调用失败不会自动切换。"
-  },
   "default_model_id": {
     "description": "默认聊天模型 ID",
     "type": "string",

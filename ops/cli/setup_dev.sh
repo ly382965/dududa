@@ -20,4 +20,4 @@ uv run --locked python -c \
 printf '%s\n' \
   '本地开发环境已就绪。' \
   '激活命令：source .venv/bin/activate' \
-  '测试命令：PYTHONDONTWRITEBYTECODE=1 uv run --locked python -m unittest discover -s tests -v'
+  '测试命令：PYTHONDONTWRITEBYTECODE=1 uv run --locked python -m unittest discover -s tests -t . -v'

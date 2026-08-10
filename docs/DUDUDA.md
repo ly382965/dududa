@@ -74,15 +74,15 @@ cd .
 - `knowledge_base/kb.db`：知识库数据库。
 - `cmd_config.json`：命令配置，已有多份备份。
 - `mcp_server.json`：MCP 配置文件，已接入 `icourse` 评课社区 MCP。
-- `plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
-- `plugins/astrbot_plugin_sub2api_readonly/`：Sub2API 用量、排名和账号状态只读查询。
+- `apps/astrbot-plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
+- `apps/astrbot-plugins/astrbot_plugin_sub2api_readonly/`：Sub2API 用量、排名和账号状态只读查询。
 - `skills/`、`skills.json`：AstrBot skills 资源。
 - `t2i_templates/`：文本转图片模板。
 - `webchat/`、`workspaces/`：WebChat 与工作区数据。
 - `attachments/`、`temp/`：附件与临时文件目录。
 - 本地生成的历史备份。
 
-`./manage.sh plugins` 会按 `plugins.lock.json` 安装以下第三方插件：
+`./manage.sh plugins` 会按 `third_party/plugins.lock.json` 安装以下第三方插件：
 
 - `astrbot_plugin_iris_chat_memory`
 - `astrbot_plugin_better_reminder`
@@ -111,14 +111,14 @@ cd .
 
 ### 2.4 pksq / icourse MCP 资源
 
-`services/icourse-mcp/` 目录中已有面向 AstrBot 的 USTC 评课社区 MCP Server：
+`services/mcp/icourse/` 目录中已有面向 AstrBot 的 USTC 评课社区 MCP Server：
 
 - 数据源：`https://icourse.club/` 公开页面。
 - 数据库：运行时私有路径 `/AstrBot/data/icourse-cache/icourse.sqlite3`
-- MCP 启动脚本：`services/icourse-mcp/run_icourse_mcp.py`
-- 自检脚本：`services/icourse-mcp/scripts/check_mcp.py`
-- Linux 配置示例：`services/icourse-mcp/astrbot-mcp.example.linux.json`
-- Windows 配置示例：`services/icourse-mcp/astrbot-mcp.example.windows.json`
+- MCP 启动脚本：`services/mcp/icourse/run_icourse_mcp.py`
+- 自检脚本：`services/mcp/icourse/scripts/check_mcp.py`
+- Linux 配置示例：`services/mcp/icourse/astrbot-mcp.example.linux.json`
+- Windows 配置示例：`services/mcp/icourse/astrbot-mcp.example.windows.json`
 - 工具能力：
   - `icourse_stats`
   - `search_courses`
@@ -133,8 +133,8 @@ cd .
 当前仓库状态：
 
 - MCP 项目源码已纳入仓库；缓存库在首次运行时写入私有数据目录。
-- AstrBot 已通过 Compose 将 `services/icourse-mcp/` 挂载到容器内 `/AstrBot/data/icourse-mcp`。
-- `config/astrbot/mcp_server.json` 提供只包含 `icourse` 的脱敏模板，启动时合并到运行态配置。
+- AstrBot 已通过 Compose 将 `services/mcp/icourse/` 挂载到容器内 `/AstrBot/data/icourse-mcp`。
+- `configs/astrbot/mcp_server.json` 提供只包含 `icourse` 的脱敏模板，启动时合并到运行态配置。
 - MCP 使用 AstrBot 容器统一 Python：`/usr/local/bin/python`。
 - Python 依赖走 AstrBot 统一插件环境：`PYTHONPATH=/AstrBot/data/site-packages`。
 - 不再为该 MCP 维护单独的 Linux 虚拟环境。
@@ -153,12 +153,12 @@ cd .
 ├── docs/DUDUDA.md                    # 本项目文档
 ├── compose.yml                       # AstrBot + NapCat
 ├── manage.sh                         # 唯一运维入口
-├── plugins.lock.json                 # 第三方插件精确版本
-├── config/                           # 脱敏人格与 MCP 模板
-├── plugins/                          # 四个自研插件源码
-├── patches/                          # Iris 记忆隔离补丁
-├── services/icourse-mcp/             # 评课 MCP 源码
-├── vendor/                           # 受上游许可证约束的依赖源码
+├── apps/astrbot-plugins/             # 四个自研插件源码
+├── configs/                          # 脱敏人格与 MCP 模板
+├── deploy/                           # Compose、镜像与环境模板
+├── ops/                              # 管理入口和运维 CLI
+├── services/mcp/icourse/             # 评课 MCP 源码
+├── third_party/                      # 精确 lock、Iris patch 与 vendor 源码
 └── data/                             # 私有运行态，Git 永久忽略
     ├── astrbot/                      # 配置、数据库、记忆与插件数据
     └── napcat/                       # NapCat 配置和 QQ 登录态

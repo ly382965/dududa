@@ -929,10 +929,11 @@ outcome_unknown, public_message_key, reason_codes)`；Adapter 私有错误码只
 
 ### 11.1 当前事实
 
-当前 iCourse 同时保留 AstrBot MCP 配置和 `ICourseClient` 兼容入口。默认兼容入口经
-`UnifiedICourseClient` facade 复用统一 Client 的长生命周期 Session；显式 Legacy 启动路径仍可
-回滚到旧的逐调用 stdio Client。Server 仍包含缓存查询、联网抓取、robots 诊断和 JSONL 导出
-等管理工具，但 S13 Catalog 只映射批准的公开缓存只读查询。
+当前 iCourse 保留 AstrBot MCP 配置和 Unified-backed `ICourseClient` facade。正常入口复用
+统一 Client 的长生命周期 Session；S22 已删除插件内逐调用 stdio Client 和运行时 legacy
+选择。Unified 基础设施缺失时使用 fail-closed unavailable facade，回滚恢复精确上一 Release。
+Server 仍包含缓存查询、联网抓取、robots 诊断和 JSONL 导出等管理工具，但 S13 Catalog 只映射
+批准的公开缓存只读查询。
 
 ### 11.2 正式 Capability 映射
 
@@ -978,14 +979,17 @@ class CapabilityResult:
 
 1. 已为现有工具建立 transport contract fixture 和错误基线，不改变 Server；
 2. 已创建 Unified MCP Client、Registry 和 iCourse compatibility facade；
-3. 已将旧 `ICourseClient` 的默认组合转发统一 Client，并保留显式 Legacy 回滚；
+3. 已将 `ICourseClient` 组合转发统一 Client；S22 已删除显式 Legacy Client；
 4. 已通过通用 MCP Provider 映射四个公开缓存只读 Capability；
 5. `/course` 兼容命令继续使用 facade，crawl/refresh 管理路径不冒充模型 Capability；
 6. 新原子能力或统一 Server envelope 需要独立 Spec，不能由 discovery 自动发布；
-7. S22 只有在消费者迁移和上一 Release 恢复证据齐全后才能删除 Legacy；
-8. S17 已用 `git mv` 将 iCourse 移到 `services/mcp/icourse`，并同步 Docker、Compose、CI 和配置路径；旧路径只作兼容。
+7. S22 已在消费者迁移和上一 Release 恢复证据齐全后删除插件直连 Legacy；
+8. S17 已用 `git mv` 将 iCourse 移到 `services/mcp/icourse`，并同步 Docker、Compose、CI 和
+   配置路径；S22 已删除旧主机路径别名。
 
-任何一步失败都可以将调用入口切回旧 `ICourseClient`，SQLite 路径和 schema 在独立迁移前保持不变。
+当前 Release 不做跨 transport fallback。若统一路径不满足门禁，恢复精确 S19 Release；SQLite
+路径和 schema 在独立迁移前保持不变。隔离 worker 的 `protocol_mode=legacy` 仅表示连接当前
+iCourse MCP v1 Server，不是第二套插件 Client。
 
 ## 12. 测试与 Eval
 

@@ -7,7 +7,7 @@ import unittest
 
 from dududa.errors import DududaError
 from dududa.rollout import RolloutMode
-from plugins.astrbot_plugin_dududa_core.config import AstrBotRolloutControlProvider
+from astrbot_plugin_dududa_core.config import AstrBotRolloutControlProvider
 
 
 class AstrBotRolloutControlProviderTests(unittest.TestCase):

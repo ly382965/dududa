@@ -20,13 +20,13 @@ from dududa.models.contracts import (
     RouteAttemptKind,
 )
 from dududa.models.errors import ModelProviderError
-from plugins.astrbot_plugin_dududa_core.adapters.model import (
+from astrbot_plugin_dududa_core.adapters.model import (
     AstrBotModelProviderAdapter,
     AstrBotPromptArtifact,
     AstrBotProviderBindingEvidence,
     astrbot_prompt_artifact_digest,
 )
-from plugins.astrbot_plugin_dududa_core.adapters.model_codec import (
+from astrbot_plugin_dududa_core.adapters.model_codec import (
     JsonSchemaDocumentRegistry,
 )
 

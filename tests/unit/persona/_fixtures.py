@@ -14,7 +14,7 @@ from dududa.persona.contracts import (
 )
 
 NOW = datetime(2026, 8, 9, 12, 0, tzinfo=timezone.utc)
-ASSET_ROOT = Path(__file__).parents[3] / "config" / "personas" / "registry-v1"
+ASSET_ROOT = Path(__file__).parents[3] / "configs" / "personas" / "registry-v1"
 
 
 def definition(

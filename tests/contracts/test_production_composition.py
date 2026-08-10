@@ -1,19 +1,19 @@
 from __future__ import annotations
 
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 from unittest.mock import AsyncMock, patch
 
-from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
-from plugins.astrbot_plugin_dududa_core import audit, composition, config
-from plugins.astrbot_plugin_dududa_core.composition import (
+from astrbot_plugin_dududa_core import audit, composition, config
+from astrbot_plugin_dududa_core.composition import (
     ProductionRuntimeAssembly,
     install_production_runtime,
     unavailable_runtime_assembly,
 )
-from plugins.astrbot_plugin_dududa_core.lifecycle import CoreLifecycleMixin
-from plugins.astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
+from astrbot_plugin_dududa_core.lifecycle import CoreLifecycleMixin
+from astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
+from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
 
 from tests.unit.rollout.helpers import control, ledger
 from tests.unit.rollout.test_controlled_execution import (
@@ -99,6 +99,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             patch.object(config, "ASTRBOT_CONFIG_PATH", root / "astrbot.json"),
             patch.object(composition, "PLUGIN_DATA_DIR", root),
             patch.object(composition, "ROLLOUT_LEDGER_PATH", root / "rollout.sqlite3"),
+            patch.object(composition, "MCP_REGISTRY_DIR", root / "missing-registry"),
+            patch.object(composition, "MCP_WORKER_PYTHON", root / "missing-worker"),
             patch.object(audit, "PLUGIN_DATA_DIR", root),
         ):
             composition.initialize_plugin(plugin, {})
@@ -106,6 +108,11 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(plugin.rollout_bridge)
         self.assertIsNotNone(plugin.runtime_assembly)
         self.assertFalse(plugin.runtime_assembly.ready)
+        self.assertEqual(plugin.icourse_mode, "unavailable")
+        self.assertEqual(
+            plugin.icourse_reason,
+            "unified_infrastructure_missing",
+        )
         self.assertIs(
             plugin.rollout_ledger.config.journal_mode,
             SQLiteJournalMode.DELETE,
@@ -132,6 +139,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             patch.object(config, "ASTRBOT_CONFIG_PATH", root / "astrbot.json"),
             patch.object(composition, "PLUGIN_DATA_DIR", root),
             patch.object(composition, "ROLLOUT_LEDGER_PATH", root / "rollout.sqlite3"),
+            patch.object(composition, "MCP_REGISTRY_DIR", root / "missing-registry"),
+            patch.object(composition, "MCP_WORKER_PYTHON", root / "missing-worker"),
             patch.object(audit, "PLUGIN_DATA_DIR", root),
         ):
             composition.initialize_plugin(plugin, {}, runtime_assembly=assembly)

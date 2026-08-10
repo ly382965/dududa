@@ -474,7 +474,7 @@ async def probe_legacy_icourse(
     audit_journal = work / "legacy-audit.jsonl"
     database = work / "icourse.sqlite3"
     wrapper = root / "spikes" / "mcp-v2" / "process_wrapper.py"
-    server = root / "services" / "icourse-mcp" / "run_icourse_mcp.py"
+    server = root / "services" / "mcp" / "icourse" / "run_icourse_mcp.py"
     params = StdioServerParameters(
         command=str(legacy_python),
         args=[
@@ -489,7 +489,7 @@ async def probe_legacy_icourse(
             "--request-delay",
             "0",
         ],
-        cwd=str(root / "services" / "icourse-mcp"),
+        cwd=str(root / "services" / "mcp" / "icourse"),
         env={
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONPATH": str(root / "spikes" / "mcp-v2" / "guard"),
