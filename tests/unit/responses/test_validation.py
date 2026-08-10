@@ -16,6 +16,7 @@ from tests.unit.runtime.test_composition import (
     _context,
     _decision,
     _direct,
+    _persona_resolution,
     _renderer,
     _revision,
 )
@@ -39,7 +40,11 @@ class ResponseProfileValidatorTests(unittest.TestCase):
             _direct(context, response_plan=plan),
             plan,
         )
-        rendered = _renderer().render(draft, plan)
+        rendered = _renderer().render(
+            draft,
+            plan,
+            persona_resolution=_persona_resolution(),
+        )
         validator = _validator()
 
         result = validator.validate(draft, rendered, plan)
@@ -71,7 +76,12 @@ class ResponseProfileValidatorTests(unittest.TestCase):
             _direct(context, response_plan=plan),
             plan,
         )
-        rendered = _renderer().render(draft, plan)
+        resolution = _persona_resolution()
+        rendered = _renderer().render(
+            draft,
+            plan,
+            persona_resolution=resolution,
+        )
         overflow = replace(
             rendered,
             blocks=(
@@ -94,7 +104,11 @@ class ResponseProfileValidatorTests(unittest.TestCase):
             draft,
             fact_anchors=(FactAnchor("fact:1", "42", ("source:1",), True),),
         )
-        anchored_render = _renderer().render(anchored_draft, plan)
+        anchored_render = _renderer().render(
+            anchored_draft,
+            plan,
+            persona_resolution=resolution,
+        )
         missing = _validator().validate(
             anchored_draft,
             replace(anchored_render, fact_anchors=()),
