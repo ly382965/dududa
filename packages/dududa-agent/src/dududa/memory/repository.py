@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
+import uuid
 from collections.abc import Awaitable, Callable, Iterable
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
-import hashlib
-import hmac
 from typing import TypeVar
-import uuid
 
 from dududa.contracts.canonical import canonical_digest
 from dududa.domain.primitives import ComponentRevision, DigestString
@@ -59,6 +59,7 @@ class InMemoryMemoryRepository:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._records: dict[str, MemoryRecord] = {}
+        self._state_revision = 0
         self._snapshots: dict[str, MemoryRepositorySnapshot] = {}
         self._idempotency: dict[str, tuple[DigestString, MemorySubmissionReceipt]] = {}
         self._consumed_decisions: set[str] = set()
@@ -100,6 +101,7 @@ class InMemoryMemoryRepository:
         unsigned = {
             "snapshot_id": snapshot_id,
             "repository_revision": self._repository_revision,
+            "state_revision": self._state_revision,
             "selector_digests": tuple(selector_digests),
             "request_digest": request_digest,
             "as_of": as_of,
@@ -109,6 +111,7 @@ class InMemoryMemoryRepository:
             1,
             snapshot_id,
             self._repository_revision,
+            self._state_revision,
             tuple(selector_digests),
             request_digest,
             as_of,
@@ -349,7 +352,7 @@ class InMemoryMemoryRepository:
             return False
         try:
             return bool(verifier.verify_decision(decision, at=now))
-        except Exception:
+        except Exception:  # noqa: BLE001 - verifier failures fail closed
             return False
 
     def _verify_selector(
@@ -362,7 +365,7 @@ class InMemoryMemoryRepository:
                     expected_request_digest=request_digest,
                 )
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - verifier failures fail closed
             return False
 
     def _encode_cursor(

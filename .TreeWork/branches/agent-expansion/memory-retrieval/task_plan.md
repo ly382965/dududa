@@ -48,7 +48,7 @@ Title: S14 Memory Lifecycle And Retrieval
 
 - [x] Freeze S14 snapshot, lifecycle, restore, ranking and evaluation semantics
   in this Spec and record the branch-local executable Plan.
-- [ ] Implement lifecycle/retrieval DTOs, canonical digests, serializers and
+- [x] Implement lifecycle/retrieval DTOs, canonical digests, serializers and
   Port surface plus focused validation/import tests.
 - [ ] Implement state generation, delete/tombstone/export/archive/restore and
   crash-stable v2 JSON persistence with rollback and adapter Contract tests.

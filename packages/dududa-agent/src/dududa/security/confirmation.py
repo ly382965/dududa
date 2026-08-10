@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
-import uuid
 
 from dududa.errors import ErrorCategory, error
 from dududa.ports.context import PortCallContext
@@ -40,7 +40,7 @@ class InMemoryConfirmationService:
         if not policy_revision.strip() or maximum_ttl <= timedelta(0):
             raise ValueError("invalid confirmation service config")
         if not callable(getattr(authorization_verifier, "verify", None)):
-            raise ValueError("authorization verifier is required")
+            raise TypeError("authorization verifier is required")
         self._policy_revision = policy_revision
         self._authorization_verifier = authorization_verifier
         self._maximum_ttl = maximum_ttl
@@ -48,6 +48,7 @@ class InMemoryConfirmationService:
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._requirements: dict[str, ConfirmationRequirement] = {}
         self._consumed: set[str] = set()
+        self._grants: dict[str, ConfirmationGrant] = {}
         self._lock = asyncio.Lock()
 
     async def issue(
@@ -103,22 +104,40 @@ class InMemoryConfirmationService:
                 raise _confirmation_error("confirmation_missing_or_consumed")
             self._validate_binding(requirement, request, now)
             self._consumed.add(request.confirmation_id)
-        return ConfirmationGrant(
-            schema_version=1,
-            confirmation_id=requirement.confirmation_id,
-            consume_request_digest=request.request_digest,
-            actor_digest=requirement.actor_digest,
-            scope_digest=requirement.scope_digest,
-            action=requirement.action,
-            payload_digest=requirement.payload_digest,
-            required_permission=requirement.required_permission,
-            execution_id=request.execution_id,
-            idempotency_key=request.idempotency_key,
-            authorization_digest=authorization_decision_digest(request.authorization),
-            policy_revision=self._policy_revision,
-            created_at=requirement.created_at,
-            consumed_at=now,
-            expires_at=requirement.expires_at,
+            grant = ConfirmationGrant(
+                schema_version=1,
+                confirmation_id=requirement.confirmation_id,
+                consume_request_digest=request.request_digest,
+                actor_digest=requirement.actor_digest,
+                scope_digest=requirement.scope_digest,
+                action=requirement.action,
+                payload_digest=requirement.payload_digest,
+                required_permission=requirement.required_permission,
+                execution_id=request.execution_id,
+                idempotency_key=request.idempotency_key,
+                authorization_digest=authorization_decision_digest(
+                    request.authorization
+                ),
+                policy_revision=self._policy_revision,
+                created_at=requirement.created_at,
+                consumed_at=now,
+                expires_at=requirement.expires_at,
+            )
+            self._grants[grant.confirmation_id] = grant
+        return grant
+
+    def verify_grant(
+        self,
+        grant: ConfirmationGrant,
+        *,
+        at: datetime | None = None,
+    ) -> bool:
+        now = at or self._clock()
+        return (
+            isinstance(grant, ConfirmationGrant)
+            and self._grants.get(grant.confirmation_id) == grant
+            and grant.policy_revision == self._policy_revision
+            and grant.consumed_at <= now < grant.expires_at
         )
 
     def _validate_binding(
