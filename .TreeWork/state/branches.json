@@ -449,10 +449,19 @@
       "title": "S15C Governed Source Contracts",
       "purpose": "Define source-neutral contracts and prove them with fixed fixtures rather than fictitious live MCP Servers.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786272840"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/governed-sources",
+        "git_branch": "treework/governed-sources",
+        "managed_by_treework": false,
+        "created_at": "unix:1786344886",
+        "last_entered_at": "unix:1786344886",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786349291"
     },
     {
       "path": "digest-shadow",
