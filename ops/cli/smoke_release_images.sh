@@ -51,6 +51,7 @@ docker run --rm \
   --workdir /tmp \
   --env PYTHONDONTWRITEBYTECODE=1 \
   --env PYTHONPATH=/workspace/apps/astrbot-plugins:/workspace \
+  --env ASTRBOT_ROOT=/tmp/astrbot \
   --entrypoint /bin/sh \
   "$astrbot_tag" \
   -ec '
