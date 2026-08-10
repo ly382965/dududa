@@ -10,7 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 def merge_mcp_config(data_root: Path) -> None:
-    template_path = REPO_ROOT / "config" / "astrbot" / "mcp_server.json"
+    template_path = REPO_ROOT / "configs" / "astrbot" / "mcp_server.json"
     target_path = data_root / "astrbot" / "mcp_server.json"
     template = json.loads(template_path.read_text(encoding="utf-8"))
     current: dict = {}

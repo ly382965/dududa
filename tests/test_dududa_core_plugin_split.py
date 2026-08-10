@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = ROOT / "plugins" / "astrbot_plugin_dududa_core" / "main.py"
-COMMANDS = ROOT / "plugins" / "astrbot_plugin_dududa_core" / "commands"
+MAIN = ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core" / "main.py"
+COMMANDS = ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core" / "commands"
 COURSE_COMMANDS = COMMANDS / "course.py"
 
 

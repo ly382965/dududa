@@ -416,7 +416,7 @@ class OperationsHardeningTests(unittest.TestCase):
             "${NAPCAT_WEBUI_HOST:-127.0.0.1}",
             "./config:/opt/dududa/config:ro",
             "./scripts:/opt/dududa/scripts:ro",
-            "./services/icourse-mcp:/AstrBot/data/icourse-mcp:ro",
+            "./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro",
         ):
             self.assertIn(value, compose)
         self.assertNotIn(

@@ -42,7 +42,7 @@ jobs:
       - name: Validate shell
         run: |
           bash -n manage.sh scripts/setup_dev.sh
-          sh -n services/icourse-mcp/scripts/setup.sh services/icourse-mcp/scripts/start_mcp.sh
+          sh -n services/mcp/icourse/scripts/setup.sh services/mcp/icourse/scripts/start_mcp.sh
       - name: Validate memory migration entrypoint
         run: |
           test -x scripts/migrate_memory_v2.py

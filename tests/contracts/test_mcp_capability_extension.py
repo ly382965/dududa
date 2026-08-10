@@ -62,7 +62,7 @@ from tests.unit.capabilities.test_retrieval import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCTION_CAPABILITIES = ROOT / "config" / "capabilities"
+PRODUCTION_CAPABILITIES = ROOT / "configs" / "capabilities"
 FAKE_CAPABILITIES = ROOT / "tests" / "fixtures" / "capabilities"
 
 

@@ -6,6 +6,6 @@ help: |
   插件为被动触发模式：目标用户先在群里发言，命中概率、冷却和过滤条件后，Bot 会 @ 该用户并回复。
 version: v0.1.0
 author: mmdustc
-repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_target_talk
+repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_target_talk
 support_platforms:
   - aiocqhttp

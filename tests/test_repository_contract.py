@@ -71,7 +71,7 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_mcp_template_has_only_icourse(self) -> None:
         config = json.loads(
-            (ROOT / "config" / "astrbot" / "mcp_server.json").read_text(
+            (ROOT / "configs" / "astrbot" / "mcp_server.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -86,7 +86,11 @@ class RepositoryContractTests(unittest.TestCase):
         )
         plugin_schema = json.loads(
             (
-                ROOT / "plugins" / "astrbot_plugin_dududa_core" / "_conf_schema.json"
+                ROOT
+                / "apps"
+                / "astrbot-plugins"
+                / "astrbot_plugin_dududa_core"
+                / "_conf_schema.json"
             ).read_text(encoding="utf-8")
         )
         self.assertEqual(plugin_schema["icourse_mcp_mode"]["default"], "unified")
@@ -107,7 +111,7 @@ class RepositoryContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('"mcp==1.29.0"', dockerfile)
-        self.assertIn("services/unified-mcp-worker", dockerfile)
+        self.assertIn("services/mcp/unified-worker", dockerfile)
         self.assertIn("--locked --no-dev", dockerfile)
         self.assertIn('version("mcp") == "2.0.0"', dockerfile)
         compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
@@ -145,7 +149,7 @@ class RepositoryContractTests(unittest.TestCase):
                 "--astrbot-config",
                 str(config),
                 "--persona",
-                str(ROOT / "config" / "personas" / "dududa.json"),
+                str(ROOT / "configs" / "personas" / "dududa.json"),
             ]
             subprocess.run(command, check=True, capture_output=True, text=True)
             subprocess.run(command, check=True, capture_output=True, text=True)

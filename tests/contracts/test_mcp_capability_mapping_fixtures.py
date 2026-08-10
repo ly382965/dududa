@@ -14,10 +14,10 @@ from scripts.generate_icourse_capability_config import rendered_documents
 from tests.unit.capabilities.test_contracts import NOW
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCTION_CAPABILITIES = ROOT / "config" / "capabilities"
+PRODUCTION_CAPABILITIES = ROOT / "configs" / "capabilities"
 FAKE_CAPABILITIES = ROOT / "tests" / "fixtures" / "capabilities"
 SERVER_FIXTURES = ROOT / "tests" / "fixtures" / "mcp" / "servers"
-PRODUCTION_SERVERS = ROOT / "config" / "mcp" / "servers"
+PRODUCTION_SERVERS = ROOT / "configs" / "mcp" / "servers"
 
 
 def load_json(path: Path) -> dict[str, object]:

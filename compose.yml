@@ -57,12 +57,12 @@ services:
         protocol: tcp
     volumes:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
-      - ./plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
-      - ./plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
-      - ./plugins/astrbot_plugin_target_talk:/AstrBot/data/plugins/astrbot_plugin_target_talk:ro
-      - ./plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
-      - ./services/icourse-mcp:/AstrBot/data/icourse-mcp:ro
-      - ./config:/opt/dududa/config:ro
+      - ./apps/astrbot-plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
+      - ./apps/astrbot-plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
+      - ./apps/astrbot-plugins/astrbot_plugin_target_talk:/AstrBot/data/plugins/astrbot_plugin_target_talk:ro
+      - ./apps/astrbot-plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
+      - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
+      - ./configs:/opt/dududa/config:ro
       - ./scripts:/opt/dududa/scripts:ro
       - /etc/localtime:/etc/localtime:ro
     networks:

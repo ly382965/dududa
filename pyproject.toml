@@ -26,6 +26,6 @@ icourse-mcp = { workspace = true }
 [tool.uv.workspace]
 members = [
     "packages/dududa-agent",
-    "services/icourse-mcp",
+    "services/mcp/icourse",
 ]
-exclude = ["services/unified-mcp-worker"]
+exclude = ["services/mcp/unified-worker"]
