@@ -27,12 +27,20 @@ if TYPE_CHECKING:
         check_semantic_schema_pilot,
         run_semantic_schema_pilot,
     )
+    from .suite import (
+        EvaluationSuiteError,
+        SuiteCatalog,
+        load_suite_catalog,
+        run_suite_profile,
+    )
 
 __all__ = [
     "CapabilityRetrievalEvalCase",
     "CapabilityRetrievalEvalReport",
     "CapabilityRuntimeEvalCase",
     "CapabilityRuntimeEvalReport",
+    "EvaluationSuiteError",
+    "SuiteCatalog",
     "check_memory_retrieval_bundle",
     "check_response_profile_bundle",
     "check_semantic_schema_pilot",
@@ -41,10 +49,12 @@ __all__ = [
     "generate_memory_retrieval_bundle",
     "generate_response_profile_bundle",
     "generate_s09_bundle",
+    "load_suite_catalog",
     "run_memory_retrieval_eval",
     "run_response_profile_eval",
     "run_s09_eval",
     "run_semantic_schema_pilot",
+    "run_suite_profile",
 ]
 
 
@@ -74,6 +84,13 @@ def __getattr__(name: str) -> object:
         return getattr(import_module(".memory", __name__), name)
     if name in {"check_semantic_schema_pilot", "run_semantic_schema_pilot"}:
         return getattr(import_module(".semantic_v2", __name__), name)
+    if name in {
+        "EvaluationSuiteError",
+        "SuiteCatalog",
+        "load_suite_catalog",
+        "run_suite_profile",
+    }:
+        return getattr(import_module(".suite", __name__), name)
     raise AttributeError(name)
 
 

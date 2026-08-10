@@ -240,8 +240,40 @@ class TraceEvent:
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
+        require_non_empty(self.event_id, "trace_event_id")
+        require_non_empty(self.run_id, "trace_run_id")
+        require_non_empty(self.trace_id, "trace_id")
+        if not isinstance(self.phase, RuntimePhase):
+            raise validation_error("invalid_trace_phase")
+        if self.event_type != "runtime.phase.entered":
+            raise validation_error("invalid_trace_event_type")
         require_aware(self.occurred_at, "occurred_at")
-        object.__setattr__(self, "attributes", freeze_json(dict(self.attributes)))
+        reasons = tuple(self.reason_codes)
+        if reasons != tuple(sorted(set(reasons))) or any(
+            not _safe_trace_code(item) for item in reasons
+        ):
+            raise validation_error("invalid_trace_reason_codes")
+        attributes = dict(self.attributes)
+        if (
+            set(attributes) != {"sequence"}
+            or type(attributes["sequence"]) is not int
+            or attributes["sequence"] < 0
+        ):
+            raise validation_error("invalid_trace_attributes")
+        if self.sensitivity is not Sensitivity.PUBLIC:
+            raise validation_error("invalid_trace_sensitivity")
+        expected_id = _runtime_trace_event_id(
+            run_id=self.run_id,
+            trace_id=self.trace_id,
+            phase=self.phase,
+            occurred_at=self.occurred_at,
+            reason_codes=reasons,
+            sequence=attributes["sequence"],
+        )
+        if self.event_id != expected_id:
+            raise validation_error("runtime_trace_event_digest_mismatch")
+        object.__setattr__(self, "reason_codes", reasons)
+        object.__setattr__(self, "attributes", freeze_json(attributes))
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,6 +407,83 @@ class RuntimeState:
         ):
             object.__setattr__(self, field_name, tuple(getattr(self, field_name)))
         validate_runtime_state(self)
+
+
+def append_runtime_phase_trace(
+    state: RuntimeState,
+    phase: RuntimePhase,
+    occurred_at: datetime,
+    *,
+    reason_codes: tuple[str, ...] = (),
+) -> tuple[TraceEvent, ...]:
+    """Append one content-free phase event to the immutable Runtime trace."""
+
+    if not isinstance(state, RuntimeState) or not isinstance(phase, RuntimePhase):
+        raise validation_error("invalid_runtime_trace_projection")
+    require_aware(occurred_at, "runtime_trace_occurred_at")
+    if state.trace and occurred_at < state.trace[-1].occurred_at:
+        raise validation_error("runtime_trace_time_regression")
+    normalized_reasons = tuple(sorted(set(reason_codes)))
+    if any(not _safe_trace_code(item) for item in normalized_reasons):
+        raise validation_error("invalid_trace_reason_codes")
+    sequence = len(state.trace)
+    return (
+        *state.trace,
+        TraceEvent(
+            schema_version=1,
+            event_id=_runtime_trace_event_id(
+                run_id=state.run_id,
+                trace_id=state.trace_context.trace_id,
+                phase=phase,
+                occurred_at=occurred_at,
+                reason_codes=normalized_reasons,
+                sequence=sequence,
+            ),
+            run_id=state.run_id,
+            trace_id=state.trace_context.trace_id,
+            phase=phase,
+            event_type="runtime.phase.entered",
+            occurred_at=occurred_at,
+            reason_codes=normalized_reasons,
+            attributes={"sequence": sequence},
+            sensitivity=Sensitivity.PUBLIC,
+        ),
+    )
+
+
+def _runtime_trace_event_id(
+    *,
+    run_id: str,
+    trace_id: str,
+    phase: RuntimePhase,
+    occurred_at: datetime,
+    reason_codes: tuple[str, ...],
+    sequence: int,
+) -> str:
+    return str(
+        canonical_digest(
+            {
+                "schema_version": 1,
+                "run_id": run_id,
+                "trace_id": trace_id,
+                "phase": phase,
+                "event_type": "runtime.phase.entered",
+                "occurred_at": occurred_at,
+                "reason_codes": reason_codes,
+                "sequence": sequence,
+            },
+            domain="runtime:phase-trace-event:v1",
+        )
+    )
+
+
+def _safe_trace_code(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 0 < len(value) <= 128
+        and value.isascii()
+        and all(character.isalnum() or character in "._:-" for character in value)
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -746,12 +855,40 @@ def validate_runtime_state(
         ):
             raise validation_error("runtime_tool_attempt_budget_mismatch")
     _validate_budget_accounting(state)
+    _validate_runtime_trace(state)
     _validate_disabled_fields(state)
     _validate_artifact_types_and_bindings(state)
     _validate_phase_payloads(state)
     if previous is not None:
         _validate_state_revision(previous, state)
     return state
+
+
+def _validate_runtime_trace(state: RuntimeState) -> None:
+    if not state.trace:
+        return
+    previous: TraceEvent | None = None
+    for sequence, event in enumerate(state.trace):
+        if not isinstance(event, TraceEvent):
+            raise validation_error("invalid_runtime_trace_event")
+        if (
+            event.run_id != state.run_id
+            or event.trace_id != state.trace_context.trace_id
+            or event.attributes["sequence"] != sequence
+        ):
+            raise validation_error("runtime_trace_binding_mismatch")
+        if previous is None:
+            if event.phase is not RuntimePhase.RECEIVED:
+                raise validation_error("runtime_trace_missing_received")
+        else:
+            if (
+                event.phase not in _ALLOWED_TRANSITIONS[previous.phase]
+                or event.occurred_at < previous.occurred_at
+            ):
+                raise validation_error("invalid_runtime_trace_transition")
+        previous = event
+    if state.trace[-1].phase is not state.phase:
+        raise validation_error("runtime_trace_phase_mismatch")
 
 
 def _validate_budget_accounting(state: RuntimeState) -> None:
@@ -2382,7 +2519,12 @@ _ALLOWED_TRANSITIONS: Mapping[RuntimePhase, frozenset[RuntimePhase]] = {
 
 
 def transition(
-    state: RuntimeState, next_phase: RuntimePhase, **changes: object
+    state: RuntimeState,
+    next_phase: RuntimePhase,
+    *,
+    occurred_at: datetime | None = None,
+    trace_reason_codes: tuple[str, ...] = (),
+    **changes: object,
 ) -> RuntimeState:
     if next_phase not in _ALLOWED_TRANSITIONS[state.phase]:
         raise validation_error(
@@ -2390,6 +2532,17 @@ def transition(
         )
     if "phase" in changes:
         raise validation_error("phase_cannot_be_overridden")
+    if occurred_at is None and trace_reason_codes:
+        raise validation_error("trace_reason_without_timestamp")
+    if occurred_at is not None:
+        if "trace" in changes:
+            raise validation_error("runtime_trace_cannot_be_overridden")
+        changes["trace"] = append_runtime_phase_trace(
+            state,
+            next_phase,
+            occurred_at,
+            reason_codes=trace_reason_codes,
+        )
     forbidden = set(changes) & _IMMUTABLE_ROOT_FIELDS
     if forbidden:
         raise validation_error("runtime_root_cannot_change", *sorted(forbidden))

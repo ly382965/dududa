@@ -15,13 +15,13 @@ from dududa.contracts.delivery import (
 )
 from dududa.domain.content import ValidatedFinalResponse
 from dududa.domain.delivery import (
-    canonicalize_delivery_receipt,
     DeliveryConstraints,
     DeliveryPartReceipt,
     DeliveryPartStatus,
     DeliveryReceipt,
     DeliveryRequest,
     DeliveryStatus,
+    canonicalize_delivery_receipt,
     plan_delivery_parts,
 )
 from dududa.domain.identity import Actor, ConversationScope
@@ -301,6 +301,7 @@ def delivery_acknowledgement_states(
         current = transition(
             current,
             RuntimePhase.DELIVERY_ACKNOWLEDGED,
+            occurred_at=(receipt.acknowledged_at if current.trace else None),
             delivery_receipt=receipt,
             reconciliation_expires_at=expected_expiry,
         )
@@ -311,7 +312,11 @@ def delivery_acknowledgement_states(
     ):
         raise _conflict("delivery_acknowledgement_conflict")
     if current.phase is RuntimePhase.DELIVERY_ACKNOWLEDGED:
-        current = transition(current, RuntimePhase.MEMORY_EVALUATED)
+        current = transition(
+            current,
+            RuntimePhase.MEMORY_EVALUATED,
+            occurred_at=(completed_at if current.trace else None),
+        )
         states.append(current)
     completion = CompletionReceipt(
         schema_version=1,
@@ -321,7 +326,12 @@ def delivery_acknowledgement_states(
         completed_at=completed_at,
         memory_submissions=(),
     )
-    completed = transition(current, RuntimePhase.COMPLETED, completion=completion)
+    completed = transition(
+        current,
+        RuntimePhase.COMPLETED,
+        occurred_at=(completed_at if current.trace else None),
+        completion=completion,
+    )
     states.append(completed)
     return tuple(states)
 

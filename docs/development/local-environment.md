@@ -53,6 +53,16 @@ source .venv/bin/activate
 
 它不会读取 `.env`、访问真实 QQ 数据、启动 Docker 服务或发送消息。
 
+Unified MCP v2 worker 有独立 lock，且故意不进入根 workspace。首次运行 MCP Contract 前
+还需创建它自己的环境：
+
+```bash
+uv lock --project services/mcp/unified-worker --check
+uv sync --project services/mcp/unified-worker --locked --python 3.12.13
+services/mcp/unified-worker/.venv/bin/python \
+  -m unittest discover -s services/mcp/unified-worker/tests -v
+```
+
 日常验证：
 
 ```bash
@@ -62,6 +72,10 @@ uv run --locked python -c \
   'import sqlite3, sys; print(sys.version); print(sqlite3.sqlite_version)'
 PYTHONDONTWRITEBYTECODE=1 \
   uv run --locked python -m unittest discover -s tests
+
+uv run --locked python -m dududa.evaluation.suite check \
+  evals/suite-v1.json --profile committed-bundles \
+  --receipt .TreeWork/out/eval-bundles.json
 ```
 
 ## 4. Python 3.10/3.12 干净环境门禁
@@ -131,7 +145,7 @@ WIP=1 完成一个分支的 verify/complete/merge 后才能进入下一分支。
 
 ## 7. MCP 离线握手
 
-握手只使用临时 SQLite 文件，不抓取真实网页：
+旧 iCourse 握手只使用临时 SQLite 文件，不抓取真实网页：
 
 ```bash
 MCP_TEST_DB="$(mktemp --suffix=.sqlite3)"
@@ -140,15 +154,21 @@ ICOURSE_MCP_DB_PATH="$MCP_TEST_DB" \
 rm -f "$MCP_TEST_DB"
 ```
 
-预期完成 initialize、工具发现和 `icourse_stats`。持久 MCP Session、Schema cache、
-取消和恢复仍属于后续 Unified MCP Client Spike，不能由这次握手证明。
+预期完成 initialize、工具发现和 `icourse_stats`。统一 Client 的持久 Session、Schema
+Snapshot、取消和恢复由 root Contract 与隔离 worker Contract 证明；这个旧握手仅证明
+iCourse compatibility path，不能替代统一 Client 验证。
 
 ## 8. Compose 只读检查
 
 当前机器同时运行旧 AstrBot/NapCat Compose 与 Dududa Web Compose。只允许解析和只读检查：
 
 ```bash
-docker compose --env-file .env.example config --quiet
+mkdir -p .TreeWork/out
+docker compose --project-directory . --env-file .env.example \
+  -f deploy/compose/compose.yml config --format json \
+  > .TreeWork/out/compose.json
+.venv/bin/python ops/cli/dududa_ops.py compose-contract \
+  --input .TreeWork/out/compose.json
 docker compose ls
 docker compose ps
 ```
@@ -165,12 +185,21 @@ uv sync --locked --check
 PYTHONDONTWRITEBYTECODE=1 \
   uv run --locked python -m compileall -q packages apps services ops tests
 PYTHONDONTWRITEBYTECODE=1 \
-  uv run --locked python -m unittest discover -s tests
+  uv run --locked python -m dududa.evaluation.suite check \
+  evals/suite-v1.json --profile ci-python \
+  --receipt .TreeWork/out/eval-python.json
+services/mcp/unified-worker/.venv/bin/python \
+  -m unittest discover -s services/mcp/unified-worker/tests -v
 uv run --locked python ops/cli/check_secrets.py
 bash -n manage.sh ops/manage.sh ops/cli/setup_dev.sh
 sh -n services/mcp/icourse/scripts/setup.sh \
   services/mcp/icourse/scripts/start_mcp.sh
-docker compose --env-file .env.example config --quiet
+mkdir -p .TreeWork/out
+docker compose --project-directory . --env-file .env.example \
+  -f deploy/compose/compose.yml config --format json \
+  > .TreeWork/out/compose.json
+.venv/bin/python ops/cli/dududa_ops.py compose-contract \
+  --input .TreeWork/out/compose.json
 git diff --check
 ```
 

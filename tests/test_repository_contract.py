@@ -169,6 +169,33 @@ class RepositoryContractTests(unittest.TestCase):
         )
         self.assertIn("  astrbot:\n    init: true\n", compose)
 
+    def test_ci_provisions_both_python_locks_and_uses_versioned_evidence(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            "uv sync --project services/mcp/unified-worker",
+            workflow,
+        )
+        self.assertIn(
+            "services/mcp/unified-worker/.venv/bin/python",
+            workflow,
+        )
+        self.assertIn("--profile ci-python", workflow)
+        self.assertIn("--profile committed-bundles", workflow)
+        self.assertIn("config --format json", workflow)
+        self.assertIn("compose-contract", workflow)
+
+        web_dockerfile = (ROOT / "deploy" / "docker" / "web" / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        web_package = json.loads(
+            (ROOT / "apps" / "web" / "package.json").read_text(encoding="utf-8")
+        )
+        node_version = (ROOT / ".node-version").read_text(encoding="utf-8").strip()
+        self.assertIn(f"node:{node_version}-alpine", web_dockerfile)
+        self.assertIn("--target=node22", web_package["scripts"]["build:server"])
+
     def test_persona_seed_is_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)

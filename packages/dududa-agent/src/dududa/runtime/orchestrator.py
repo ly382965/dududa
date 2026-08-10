@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 
 from dududa.capabilities.contracts import (
@@ -110,6 +110,7 @@ from .state import (
     RuntimeStartRequest,
     RuntimeState,
     TraceSummary,
+    append_runtime_phase_trace,
     runtime_start_digest,
     transition,
 )
@@ -1088,9 +1089,21 @@ class OfflineRuntimeOrchestrator:
         call: PortCallContext,
         **changes: object,
     ) -> RuntimeCheckpoint:
+        pending_result = changes.get("pending_result")
+        trace_reason_codes = (
+            pending_result.reason_codes
+            if isinstance(pending_result, RuntimeResult)
+            else ()
+        )
         return await self._commit_state(
             checkpoint,
-            transition(checkpoint.state, phase, **changes),
+            transition(
+                checkpoint.state,
+                phase,
+                occurred_at=self._now(),
+                trace_reason_codes=trace_reason_codes,
+                **changes,
+            ),
             call,
         )
 
@@ -1178,7 +1191,7 @@ class OfflineRuntimeOrchestrator:
     ) -> RuntimeState:
         connector = request.connector_result
         message = connector.message
-        return RuntimeState(
+        state = RuntimeState(
             schema_version=1,
             run_id=call.run_id,
             phase=RuntimePhase.RECEIVED,
@@ -1209,6 +1222,14 @@ class OfflineRuntimeOrchestrator:
                 if request.options.feature_flags.get("tools", False)
                 and self._capability_runtime is not None
                 else None
+            ),
+        )
+        return replace(
+            state,
+            trace=append_runtime_phase_trace(
+                state,
+                RuntimePhase.RECEIVED,
+                connector.received_at,
             ),
         )
 
@@ -1393,10 +1414,13 @@ class OfflineRuntimeOrchestrator:
         phase: RuntimePhase,
         reason_codes: tuple[str, ...],
     ) -> TraceSummary:
+        phases = tuple(event.phase for event in state.trace)
+        if not phases or phases[-1] is not phase:
+            phases = (*phases, phase)
         return TraceSummary(
             schema_version=1,
             trace_id=state.trace_context.trace_id,
-            phases=(phase,),
+            phases=phases,
             degraded_components=(
                 state.current_context.perception.degraded_components
                 if state.current_context is not None

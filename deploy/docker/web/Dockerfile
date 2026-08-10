@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=public.ecr.aws/docker/library/node:20.20.2-alpine
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22.18.0-alpine
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
