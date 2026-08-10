@@ -30,9 +30,9 @@ Last sync: unix:1786344725
   NapCat data caching and the Mew source baseline.
 - On 2026-08-09 the user added deterministic short/medium/long answers,
   controlled proactive conversation probes, and opt-in campus/industry/arXiv
-  digests. S15 and S15A are now complete in their offline scopes: answer plans,
-  proactive contracts and the default-deny control layer exist, while S15B-S15E
-  scheduling/source/Shadow work and every real proactive send remain absent.
+  digests. S15-S15B are now complete in their offline scopes: answer plans,
+  proactive contracts/default-deny controls and durable scheduling exist, while
+  S15C-S15E source/Shadow work and every real proactive send remain absent.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -61,10 +61,10 @@ Last sync: unix:1786344725
   accepted module, Web testing and local audit work is complete.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
-- Durable scheduling, public-source providers, Digest/Probe Shadow and proactive
-  rollout evidence remain unimplemented. S15A now provides initiated-run,
-  Target/Grant, authorization, quota, Preview and Dispatch recovery contracts,
-  but the existing S10/S11 send claims remain limited to explicit mentions.
+- Public-source providers, Digest/Probe Shadow and proactive rollout evidence
+  remain unimplemented. S15B now provides durable Subscription/occurrence CAS,
+  DST/misfire and Trigger claim/ack, but it has no production composition and
+  the existing S10/S11 send claims remain limited to explicit mentions.
 - No real Provider Endpoint is currently enableable: composition, sampling,
   health and conformance evidence must close first. No second legal same-role/
   tier Endpoint, propensity log or attributable reward exists for Bandit.
@@ -106,3 +106,6 @@ Last sync: unix:1786344725
 - S15A now returns default-off initiated-run contracts, exact Target/Grant/current
   Actor revalidation, paired global/Scope quota, metadata-only Preview and stable
   PreparedDispatch recovery. It adds no Scheduler, source, model or real send.
+- S15B now returns typed SQLite Subscription/slot authority, deterministic
+  IANA/DST/misfire materialization and restart-safe lease/reclaim/ack. It adds no
+  source, model, Output ownership, production Scheduler entrypoint or real send.
