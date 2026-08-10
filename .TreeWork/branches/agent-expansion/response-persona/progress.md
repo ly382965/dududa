@@ -24,6 +24,9 @@ Last sync: unix:1786272840
 - Reconciled the Goal, root/parent Specs, implementation plan, response research, Persona design
   and current Runtime implementation. Froze the S15 implementation and evidence boundary before
   coding; no S08-S14 core module was redesigned.
+- Implemented the first `dududa.responses` slice: typed Profile/evidence/preference/Plan contracts,
+  deterministic 3x3-capable policy, pilot ceilings, Unicode/CJK policy-unit counter and output
+  reservation projection. Nine focused tests and Ruff/format/diff checks pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 

@@ -35,8 +35,8 @@ Title: S15 Response Profile And Persona
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Freeze S15 branch Spec/Plan and commit the design boundary before code.
-- [ ] Implement `dududa.responses` contracts, digests, policy, counter, budget projection
+- [x] Freeze S15 branch Spec/Plan and commit the design boundary before code.
+- [x] Implement `dududa.responses` contracts, digests, policy, counter, budget projection
   and Protocol exports with focused Unit/Contract tests.
 - [ ] Add ModelRequest/DirectChat/Runtime State Plan bindings and preserve S10-compatible
   readers; prove Tier/Profile/Reasoning orthogonality.

@@ -114,16 +114,17 @@ Renderer 显式接收 Plan 与 snapshot 解析出的 definition，只生成 `Fin
 声称已完成模型化风格改写。Render Validator 继续逐字段保持 Fact/Citation/Refusal/Target/
 Attachment 等受保护内容。
 
-新增 `ResponseProfileValidationResult`。最终 Validator 同时校验 Draft/Render 的 Plan digest、
-实际 visible token、Unicode 字符、估算 delivery parts、Plan selected profile，以及必要的 typed
-事实/引用/警告/拒绝集合。Profile 验证和 Content Safety 都通过后才能构造 Runtime 可投递的
-`ValidatedFinalResponse`。长度合规不能抵消内容漂移；必要内容完整也不能豁免硬上限。
+新增 `ResponseProfileValidationResult`。最终内容 Validator 校验 Draft/Render 的 Plan digest、
+实际 visible token、Unicode 字符、Plan selected profile，以及必要的 typed 事实/引用/警告/
+拒绝集合。Delivery Builder 之后再用同一 Plan 校验真实 part intents；两次验证和 Content
+Safety 都通过后才能获得发送授权。长度合规不能抵消内容漂移；必要内容完整也不能豁免硬上限。
 
 ### 7. Runtime 状态与兼容策略
 
-`RuntimeState.response_plan` 是 rank 4 的不可变阶段证据，与 Social Decision 同一 DECIDED
-commit 发布，随后 Tier/Tool/Direct/Compose/Render 都引用它。IGNORE/DEFER 不创建 Plan；
-DIRECT_REPLY、USE_TOOLS、ASK_CLARIFICATION 必须且只能有一个 Plan。状态恢复不重新选择。
+`RuntimeState.response_plan` 是不可变阶段证据。DIRECT_REPLY 和 ASK_CLARIFICATION 在 Social
+Decision 后的 DECIDED commit 首次发布；USE_TOOLS 必须等 Observation/Capability validation
+完成后，在 VALIDATED commit 首次发布。Tool Retrieval、Planning 和 Execution 不接收 Plan。
+IGNORE/DEFER 不创建 Plan；每条可见路径必须且只能有一个 Plan，状态恢复不重新选择。
 
 现有 Domain response 类型采用 additive optional binding 字段保持旧构造和 Output Adapter
 rollback 可读；一旦 RuntimeState 含 Plan，state validator 要求所有 S15 binding 和 profile
@@ -157,6 +158,8 @@ profile-fit 或真实 Provider Token 行为。人工盲评与预算冻结等待�
 Unit/Contract 覆盖契约拒绝、优先级、3x3、Preference Scope、动态预算、Router 正交反例、
 Registry publish/LKG/fallback/rollback、Composer/Renderer/Validator binding 和所有受保护字段。
 Integration 覆盖 direct、tool-backed、clarification、checkpoint/CAS 恢复和无 Delivery 的失败。
+实际 delivery part 门禁复用 `plan_delivery_parts`/`DeliveryRequestBuilder` 产生的 part intents，
+并在发送授权前与 Plan 比较；预估字符分片只用于 admission，不能冒充 QQ 分片证据。
 版本化 Eval 必须可重算并拒绝篡改。完成前运行 Python 3.10/3.12 全仓、warning-as-error 聚焦、
 import boundary、build/compile/secret/lock，以及既定 Web 必要回归；不启动真实 Provider、QQ、
 MCP 来源或运行中容器。
