@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: probe-shadow
 Parent: proactive-outbound
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1786272840
+Last sync: unix:1786351959
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
