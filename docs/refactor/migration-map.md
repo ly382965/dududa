@@ -1,7 +1,8 @@
 # Dududa Old-To-New Migration Map
 
-状态：S01–S07 的 Package 增量、公共逻辑抽取和插件内部拆分已完成；Phase 8 的物理路径
-迁移尚未开始，现有插件 ID、容器目标路径和生产入口保持不变。
+状态：S01–S16 的既定本地/离线范围已完成。S17 物理路径迁移正在独立工作树进行：插件、
+配置、MCP service 与 deploy/ops 两批已经提交，第三方 v1 资产批次仍未提交、未验证，整个
+S17 尚未合并。现有插件 ID、容器目标路径、包名、MCP Server ID 和根兼容入口保持不变。
 
 ## Mapping Rules
 
@@ -20,20 +21,22 @@
 
 | Current path | Target path | Migration mode | Compatibility requirement |
 | --- | --- | --- | --- |
-| `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | Phase 8 path-only `git mv`, after package extraction and Phase 4 adapter split | Container target and plugin ID remain unchanged |
-| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | Phase 8 path-only `git mv` | Keep global result hook until output contracts cut over |
-| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | Phase 8 path-only `git mv` | Keep plugin ID, config path, and event behavior |
+| `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | S17 batch 1 已在分支提交，尚未合并 | Container target and plugin ID remain unchanged |
+| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 batch 1 已在分支提交，尚未合并 | Keep global result hook until output contracts cut over |
+| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 batch 1 已在分支提交，尚未合并 | Keep plugin ID, config path, and event behavior |
 | New core | `packages/dududa-agent/` | Additive | Install in CI and image before any adapter import |
-| `services/icourse-mcp/` | `services/mcp/icourse/` | Phase 8 layout/deployment `git mv`, after Phase 7 logical cutover | Keep package and CLI names; update every path consumer together |
-| `config/` | `configs/` | Staged move | Runtime sync reads both during migration; one canonical source |
-| `compose.yml` | `deploy/compose/compose.yml` | Deployment phase | Root entry remains compatible until portability is proven |
-| `.env.example` | `deploy/env/.env.example` | Deployment phase | Root example remains a generated/copy compatibility artifact |
-| `docker/astrbot/` | `deploy/docker/astrbot/` | Deployment phase `git mv` | Compose and CI update in the same PR |
-| `manage.sh` | `ops/manage.sh` plus root wrapper | Rewrite orchestration only after CLI exists | Existing commands keep documented semantics |
-| `scripts/` | `ops/cli/` and `ops/` | Extract Python CLI, then `git mv` | Root wrapper forwards and emits deprecation only when safe |
-| `plugins.lock.json` | `third_party/manifest.json` | Read-only v1-to-v2 converter, CI equivalence comparison, then explicit authority cutover | Installer reads one explicitly selected authority; v1 remains only as a one-release compatibility rollback |
-| `patches/` | `third_party/patches/` | `git mv` | Manifest contains new path and patch digest |
-| `vendor/` | `third_party/vendor/` | `git mv` | Better Reminder tree and AGPL license remain byte-identifiable |
+| `services/icourse-mcp/` | `services/mcp/icourse/` | S17 batch 1 已在分支提交，尚未合并 | Keep package and CLI names; update every path consumer together |
+| `services/unified-mcp-worker/` | `services/mcp/unified-worker/` | S17 batch 1 已在分支提交，尚未合并 | Keep distribution/import name and isolated worker contract |
+| `config/` | `configs/` | S17 batch 1 已在分支提交，旧路径保留兼容链接 | One canonical source; runtime semantics unchanged |
+| `compose.yml` | `deploy/compose/compose.yml` | S17 batch 2 已在分支提交，根文件为兼容入口 | Root/canonical Compose must render equivalent contracts |
+| `.env.example` | `deploy/env/.env.example` | S17 batch 2 已在分支提交，根路径保留兼容链接 | Root example remains readable for one Release |
+| `docker/astrbot/` | `deploy/docker/astrbot/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Compose and CI update in the same batch |
+| `manage.sh` | `ops/manage.sh` plus root wrapper | S17 batch 2 已在分支提交 | Existing commands keep documented semantics |
+| `scripts/` | `ops/cli/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Root wrapper and repository-root resolution remain stable |
+| `plugins.lock.json` | `third_party/plugins.lock.json` | S17 batch 3 在途：移动当前 v1 authority，不切换格式 | 根 v1 lock 保留一 Release 兼容链接，installer 只读 canonical v1 lock |
+| `patches/` | `third_party/patches/` | S17 batch 3 在途、未提交/未验证 | v1 lock 使用 canonical patch path |
+| `vendor/` | `third_party/vendor/` | S17 batch 3 在途、未提交/未验证 | Better Reminder tree and AGPL license remain byte-identifiable |
+| 无 | `third_party/manifest.json`（Manifest v2） | 延期，尚未成为 authority | 需完整源码 hash、依赖 lock/SBOM 与许可证证据；不得伪造或静默切换 |
 | Flat `tests/` | layered `tests/` directories | `git mv` by concern | Test discovery and CI stay green in each move |
 | Existing docs | concern-specific docs plus archive | Fact-by-fact merge | No deletion until links and facts are mapped |
 
@@ -175,7 +178,7 @@ The first service move keeps distribution/import names stable.
 | `storage.py` | infrastructure SQLite repository | Fix export root and comment replacement semantics |
 | `models.py` | iCourse service domain | Do not move course entities to generic Agent domain |
 | `cli.py` | service operator CLI | Separate model-eligible tools from admin crawling/export |
-| MCP examples | `config/mcp/servers/icourse.json` and service examples | Strict JSON Registry is canonical; `configs/` naming waits for S17 |
+| MCP examples | `configs/mcp/servers/icourse.json` and service examples | Strict JSON Registry is canonical; S17 batch 1 moves the template without changing Server ID |
 
 Core receives an `ICourseCapabilityProvider` over generic MCP contracts. It
 never imports service modules.
@@ -196,14 +199,16 @@ never imports service modules.
 
 ## Third-Party Mapping
 
-`third_party/manifest.json` v2 normalizes every Git, sparse, vendor, patch, and
-image item. It records source, commit/version/digest, install target/mode,
-patch hashes, tree integrity, license status/files, and Python/system dependency
-locks. Install receipts use the normalized-entry hash and installed-tree hash.
+The current installation authority remains v1 `third_party/plugins.lock.json`
+after S17 batch 3, with the root v1 path retained as a one-Release compatibility
+link. The planned `third_party/manifest.json` v2 would normalize Git, sparse,
+vendor, patch and image items and bind source/tree/patch hashes, license evidence
+and Python/system dependency locks, but it is not implemented or authoritative.
 
 Better Reminder remains isolated AGPL vendor code. Iris remains a patched
 third-party backend; its code and uncertain license are not copied into the MIT
-core package.
+core package. Missing Iris license evidence is a v2 cutover blocker, not a fact
+that S17 may invent.
 
 ## Data Migration Map
 

@@ -2,8 +2,9 @@
 
 ## 1. 文档状态
 
-- 阶段：S10 入站显式 @ 离线 Runtime 与 S11 本地 rollout 边界已实现并审计；真实 Provider
-  composition、Tool/Memory/Attachment 产品接入、ResponsePlan 和主动出站尚未完成。
+- 阶段：S10 入站显式 @ 离线 Runtime、S11 本地 rollout、S15 ResponsePlan，以及 S15A-S15E
+  独立主动出站 no-send 链已实现并验证；真实 Provider composition、Tool/Memory/Attachment
+  产品接入和主动投递尚未完成。
 - 目标代码位置：`packages/dududa-agent/src/dududa/runtime/`。
 - 适用入口：AstrBot、后续 Web/测试入口以及不依赖具体平台的离线 Eval。
 - 兼容约束：迁移期间保留 `astrbot_plugin_dududa_core`、`astrbot_plugin_target_talk`、`astrbot_plugin_reply_polish` 三个插件 ID、配置和事件语义。

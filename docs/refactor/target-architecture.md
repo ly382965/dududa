@@ -1,7 +1,8 @@
 # Dududa 2.0 Target Architecture
 
-Status: S01-S13 offline local scope implemented; S14+ and the 2026-08-09
-ResponseProfile/proactive-outbound implementation remain pending
+Status: S01-S16 accepted offline/local scope implemented and verified; S17
+layout migration is in progress but unverified and unmerged. Real Endpoint,
+live Source, production proactive delivery, online Bandit and S23 remain pending.
 Baseline: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## Objectives

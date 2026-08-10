@@ -1,6 +1,7 @@
 # 在线学习与 Contextual Bandit 设计
 
-状态：Phase 1 `v1alpha` 目标契约；当前实现中尚无在线学习器。
+状态：S20 Offline Bandit 分支已进入 Tree 但尚未开始；当前没有 decision/feedback/OPE 实现，
+也没有 Shadow、训练器或在线学习器。
 
 ## 1. 适用边界
 
