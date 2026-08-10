@@ -33,7 +33,7 @@ from dududa.security.authorization import (
 )
 from dududa.security.content_safety import DefaultContentSafetyPolicy
 
-from plugins.astrbot_plugin_dududa_core.adapters.output import ASTRBOT_OUTPUT_REVISION
+from astrbot_plugin_dududa_core.adapters.output import ASTRBOT_OUTPUT_REVISION
 from tests.unit.models.helpers import NOW
 from tests.unit.runtime.test_composition import (
     _composer,

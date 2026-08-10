@@ -6,7 +6,7 @@ import unittest
 from dududa.contracts.canonical import canonical_schema_digest
 from dududa.domain.primitives import SchemaRef
 from dududa.errors import DududaError
-from plugins.astrbot_plugin_dududa_core.adapters.model_codec import (
+from astrbot_plugin_dududa_core.adapters.model_codec import (
     JsonSchemaDocumentRegistry,
     JsonSchemaOutputCodec,
 )

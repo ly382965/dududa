@@ -11,7 +11,7 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from plugins.astrbot_plugin_sub2api_readonly.charts import (
+from astrbot_plugin_sub2api_readonly.charts import (
     cumulative_user_series,
     linear_axis_bounds,
     render_total_trend_chart,
@@ -21,7 +21,7 @@ from plugins.astrbot_plugin_sub2api_readonly.charts import (
     trend_points,
     user_trend_series,
 )
-from plugins.astrbot_plugin_sub2api_readonly.client import (
+from astrbot_plugin_sub2api_readonly.client import (
     DateRange,
     Sub2APIClient,
     Sub2APIConfigError,
@@ -37,7 +37,7 @@ from plugins.astrbot_plugin_sub2api_readonly.client import (
     should_block_exclusive_group,
     today_in_timezone,
 )
-from plugins.astrbot_plugin_sub2api_readonly.formatters import (
+from astrbot_plugin_sub2api_readonly.formatters import (
     format_accounts,
     format_overview_history,
     format_range,

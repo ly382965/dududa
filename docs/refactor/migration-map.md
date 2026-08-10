@@ -3,7 +3,8 @@
 状态：S01–S16 的既定本地/离线范围已完成。S17 三批物理路径迁移均已提交：插件/config/MCP
 service 为 `8597d70`，deploy/ops 为 `92fd28c`，第三方 v1 资产为 `6b4ee09`；`43fe543`
 保持旧 lock marker 可兼容读取。S17 已完成、验证并合入控制分支。现有插件 ID、容器目标路径、
-包名、MCP Server ID 和根兼容入口保持不变。
+包名、MCP Server ID 以及根 `manage.sh`/`compose.yml` 操作入口保持不变。S22 已在迁移消费者和
+冻结 S19 恢复证据后删除十个路径别名；canonical 路径成为唯一当前入口。
 
 ## Mapping Rules
 
@@ -22,21 +23,21 @@ service 为 `8597d70`，deploy/ops 为 `92fd28c`，第三方 v1 资产为 `6b4ee
 
 | Current path | Target path | Migration mode | Compatibility requirement |
 | --- | --- | --- | --- |
-| `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | S17 batch 1 已完成并验证 | Container target and plugin ID remain unchanged |
-| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 batch 1 已完成并验证 | Keep global result hook until output contracts cut over |
-| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 batch 1 已完成并验证 | Keep plugin ID, config path, and event behavior |
+| `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | S17 moved；S22 alias removed | Container target and plugin ID remain unchanged |
+| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 moved；S22 alias removed | Keep global result hook until output contracts cut over |
+| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 moved；S22 alias removed | Keep plugin ID, config path, and event behavior |
 | New core | `packages/dududa-agent/` | Additive | Install in CI and image before any adapter import |
-| `services/icourse-mcp/` | `services/mcp/icourse/` | S17 batch 1 已完成并验证 | Keep package and CLI names; update every path consumer together |
-| `services/unified-mcp-worker/` | `services/mcp/unified-worker/` | S17 batch 1 已完成并验证 | Keep distribution/import name and isolated worker contract |
-| `config/` | `configs/` | S17 batch 1 已在分支提交，旧路径保留兼容链接 | One canonical source; runtime semantics unchanged |
+| `services/icourse-mcp/` | `services/mcp/icourse/` | S17 moved；S22 alias removed | Keep package and CLI names; update every path consumer together |
+| `services/unified-mcp-worker/` | `services/mcp/unified-worker/` | S17 moved；S22 alias removed | Keep distribution/import name and isolated worker contract |
+| `config/` | `configs/` | S17 moved；S22 alias removed | One canonical source; runtime semantics unchanged |
 | `compose.yml` | `deploy/compose/compose.yml` | S17 batch 2 已在分支提交，根文件为兼容入口 | Root/canonical Compose must render equivalent contracts |
-| `.env.example` | `deploy/env/.env.example` | S17 batch 2 已在分支提交，根路径保留兼容链接 | Root example remains readable for one Release |
-| `docker/astrbot/` | `deploy/docker/astrbot/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Compose and CI update in the same batch |
+| `.env.example` | `deploy/env/.env.example` | S17 moved；S22 alias removed | Canonical template is the only committed example |
+| `docker/astrbot/` | `deploy/docker/astrbot/` | S17 moved；S22 alias removed | Compose and CI use canonical paths |
 | `manage.sh` | `ops/manage.sh` plus root wrapper | S17 batch 2 已在分支提交 | Existing commands keep documented semantics |
-| `scripts/` | `ops/cli/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Root wrapper and repository-root resolution remain stable |
-| `plugins.lock.json` | `third_party/plugins.lock.json` | S17 batch 3 已提交：移动当前 v1 authority，不切换格式 | 根 v1 lock 保留一 Release 兼容链接，installer 只读 canonical v1 lock；旧 marker 别名可确定性读取 |
-| `patches/` | `third_party/patches/` | S17 batch 3 已提交并通过代表性验证 | v1 lock 使用 canonical patch path |
-| `vendor/` | `third_party/vendor/` | S17 batch 3 已提交并通过代表性验证 | Better Reminder tree and AGPL license remain byte-identifiable |
+| `scripts/` | `ops/cli/` | S17 moved；S22 alias removed | Root wrapper and repository-root resolution remain stable |
+| `plugins.lock.json` | `third_party/plugins.lock.json` | S17 moved；S22 alias removed | Installer only reads canonical v1 lock；old persisted marker values remain normalized |
+| `patches/` | `third_party/patches/` | S17 moved；S22 alias removed | v1 lock uses canonical patch path |
+| `vendor/` | `third_party/vendor/` | S17 moved；S22 alias removed | Better Reminder tree and AGPL license remain byte-identifiable |
 | 无 | `third_party/manifest.json`（Manifest v2） | 延期，尚未成为 authority | 需完整源码 hash、依赖 lock/SBOM 与许可证证据；不得伪造或静默切换 |
 | Flat `tests/` | layered `tests/` directories | `git mv` by concern | Test discovery and CI stay green in each move |
 | Existing docs | concern-specific docs plus archive | Fact-by-fact merge | No deletion until links and facts are mapped |
@@ -201,8 +202,8 @@ never imports service modules.
 ## Third-Party Mapping
 
 The current installation authority remains v1 `third_party/plugins.lock.json`
-after S17 batch 3, with the root v1 path retained as a one-Release compatibility
-link. The planned `third_party/manifest.json` v2 would normalize Git, sparse,
+after S17 batch 3. S22 removed the root compatibility link after every consumer
+migrated. The planned `third_party/manifest.json` v2 would normalize Git, sparse,
 vendor, patch and image items and bind source/tree/patch hashes, license evidence
 and Python/system dependency locks, but it is not implemented or authoritative.
 

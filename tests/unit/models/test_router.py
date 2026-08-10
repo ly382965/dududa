@@ -76,7 +76,7 @@ from dududa.testing.models import (
     RecordingFakeModelProvider,
     provider_failure,
 )
-from plugins.astrbot_plugin_dududa_core.adapters.model_codec import (
+from astrbot_plugin_dududa_core.adapters.model_codec import (
     JsonSchemaDocumentRegistry,
     JsonSchemaOutputCodec,
 )

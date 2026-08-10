@@ -51,7 +51,7 @@ from dududa.runtime.perception import (
     serialize_perception_context,
 )
 from dududa.testing.models import ProviderSuccess, RecordingFakeModelProvider
-from plugins.astrbot_plugin_dududa_core.adapters.model_codec import (
+from astrbot_plugin_dududa_core.adapters.model_codec import (
     JsonSchemaDocumentRegistry,
     JsonSchemaOutputCodec,
 )

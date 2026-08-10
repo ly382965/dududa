@@ -38,13 +38,12 @@ deploy/                        # Compose、Dockerfile 与环境模板
 ops/                           # 管理入口、CLI 和运维工具
 third_party/                   # v1 lock、patch 与必要 vendor 源码
 docs/                          # 项目设计、开发与运维文档
-manage.sh / compose.yml        # 一 Release 根兼容入口
+manage.sh / compose.yml        # 稳定的根操作入口
 third_party/plugins.lock.json  # 第三方插件唯一 v1 安装权威
 ```
 
-旧 `plugins/`、`config/`、`docker/`、`scripts/`、`vendor/`、`patches/` 和根
-`plugins.lock.json` 在一个 Release 内仅作为 symlink 兼容入口；新代码和文档不得把它们当作
-第二权威。Manifest v2 尚未启用。
+S22 已移除旧目录 symlink；代码、测试和文档只使用上面的 canonical 路径。根
+`manage.sh` 与 `compose.yml` 仍是稳定操作入口。Manifest v2 尚未启用。
 
 ## Dududa 2.0 Refactor
 
@@ -53,8 +52,8 @@ Phase 0–1 的审计与目标设计见
 既有 Tree 完成并验证，覆盖核心契约、安全边界、静态路由、离线 Runtime、统一 MCP、
 Capability Runtime、Memory 生命周期/检索、三档回答、默认关闭的主动出站链和离线运维事务。
 S17 路径迁移已完成、验证并合并，canonical 目录现在是主仓权威；S18 已建立统一离线
-Eval catalog、低敏 receipt、Runtime phase Trace 和双锁 CI，一 Release 兼容链接保留到
-S22。完整发布候选审计由 S19 统一执行。旧 AstrBot
+Eval catalog、低敏 receipt、Runtime phase Trace 和双锁 CI；S19 已完成完整候选审计，
+S22 已完成有证据的路径清理，专用 iCourse Client 清理正在同一分支收口。旧 AstrBot
 Handler 仍是生产权威入口，Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
 残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 和
 [阶段报告](docs/refactor/checkpoint-report-2026-08-10.md) 为准；真实质量和生产阶段需要的资料
@@ -85,7 +84,7 @@ compatibility aliases on `mmdustc-edge`. See the
 [production-shape preflight](docs/research/production-shape-preflight.md).
 
 ```bash
-cp .env.example .env
+cp deploy/env/.env.example .env
 chmod 600 .env
 ./manage.sh up
 ```
@@ -161,9 +160,9 @@ For the reproducible Ubuntu setup and troubleshooting steps, see
 ./ops/cli/setup_dev.sh
 uv lock --check
 uv run --locked python -m compileall -q packages apps services ops tests
-uv run --locked python -m unittest discover -s tests
+uv run --locked python -m unittest discover -s tests -t .
 uv run --locked python ops/cli/check_secrets.py
-docker compose --env-file .env.example config --quiet
+docker compose --env-file deploy/env/.env.example config --quiet
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch and review workflow.

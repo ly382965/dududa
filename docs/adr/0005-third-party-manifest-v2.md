@@ -4,9 +4,17 @@
 - 日期：2026-07-18
 - 决策范围：第三方插件、vendor、patch、容器镜像及其依赖和许可证证据
 
+实施状态（2026-08-10）：S17 已将当前 schema-v1 authority 移至
+`third_party/plugins.lock.json`，S22 已删除根 lock、patch 和 vendor symlink；安装器只读取
+canonical v1 authority。Manifest v2 仍因完整源码 hash、依赖 lock/SBOM 和 Iris 许可证证据
+不足而未启用。
+
 ## 背景
 
-当前第三方插件由根目录 `plugins.lock.json` 声明。五个插件按完整 Git commit 克隆，其中 Meme Manager 使用 sparse checkout，Iris 额外应用一个 patch；Better Reminder 从 `vendor/` 复制。AstrBot 和 NapCat 只以镜像 digest 出现在 `.env.example`，`THIRD_PARTY_NOTICES.md` 另行维护来源。
+作出本 ADR 时，第三方插件由根目录 `plugins.lock.json` 声明。五个插件按完整 Git commit
+克隆，其中 Meme Manager 使用 sparse checkout，Iris 额外应用一个 patch；Better Reminder
+从 `vendor/` 复制。AstrBot 和 NapCat 只以镜像 digest 出现在 `.env.example`，
+`THIRD_PARTY_NOTICES.md` 另行维护来源。当前 canonical v1 路径已按上面的实施状态迁移。
 
 安装器已经具备 staging、commit 格式检查、patch `--check` 和替换回滚，但当前模型存在以下缺口：
 
@@ -42,7 +50,8 @@ third_party/manifest.json
 
 生态系统的详细传递依赖继续使用适合该生态的锁文件，例如带 hash 的 Python lock 和 OCI SBOM。Manifest 必须引用这些锁文件及其摘要，不能用一份手写 JSON 重复并漂移整个传递依赖图。
 
-根 `plugins.lock.json` 在迁移窗口内保留为 compatibility 输入或由 v2 确定性生成；所有消费者迁移后删除。安装器不得长期同时接受两个可独立编辑的权威源。
+根 `plugins.lock.json` 在迁移窗口内保留为 compatibility 输入；S22 在所有消费者迁移后将其
+删除。安装器不得长期同时接受两个可独立编辑的权威源。
 
 ### 2. 顶层 Schema
 

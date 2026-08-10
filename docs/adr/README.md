@@ -15,3 +15,4 @@ Current records:
 - `0004-unified-mcp-client.md`
 - `0005-third-party-manifest-v2.md`
 - `0006-adopt-mcp-v2-for-unified-client.md`
+- `0007-remove-root-compatibility-aliases.md`

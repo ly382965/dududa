@@ -38,7 +38,7 @@ from dududa.ports.context import (
 from dududa.ports.mcp import McpTransportError
 from dududa.testing import MappingMcpEnvironmentProvider, MappingMcpSecretResolver
 
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
+from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaMcpValidator,
 )
 from tests.unit.mcp.helpers import NOW, replace_server_definition, server_definition

@@ -17,6 +17,25 @@ POLICY = ROOT / "configs" / "release" / "s19-pilot-slo-v1.json"
 SURFACES = ROOT / "configs" / "release" / "legacy-surfaces-v1.json"
 
 
+def create_s19_inventory_workspace(parent: Path) -> tuple[Path, Path]:
+    root = parent / "s19-inventory"
+    root.mkdir()
+    definitions = root / "legacy-surfaces-v1.json"
+    definitions.write_text(SURFACES.read_text(encoding="utf-8"), encoding="utf-8")
+    catalog = json.loads(definitions.read_text(encoding="utf-8"))
+    patterns: list[str] = []
+    for surface in catalog["surfaces"]:
+        patterns.extend(surface["patterns"])
+        for relative in surface["tracked_paths"]:
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"historical {surface['surface_id']}\n", encoding="utf-8")
+    (root / "consumer.txt").write_text("\n".join(patterns), encoding="utf-8")
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "add", "--all"], cwd=root, check=True)
+    return root, definitions
+
+
 class ReleaseCandidateAuditTests(unittest.TestCase):
     def test_policy_freezes_zero_safety_and_honest_pilot_defaults(self) -> None:
         policy, digest = audit.load_slo_policy(POLICY)
@@ -61,8 +80,10 @@ class ReleaseCandidateAuditTests(unittest.TestCase):
     def test_inventory_is_tracked_digest_bound_and_keeps_legacy_audit_separate(
         self,
     ) -> None:
-        inventory = audit.build_consumer_inventory(ROOT, SURFACES)
-        verified = audit.verify_consumer_inventory(inventory)
+        with tempfile.TemporaryDirectory(prefix="dududa-s19-inventory-") as temporary:
+            root, definitions = create_s19_inventory_workspace(Path(temporary))
+            inventory = audit.build_consumer_inventory(root, definitions)
+            verified = audit.verify_consumer_inventory(inventory)
 
         self.assertEqual(verified["surface_count"], 18)
         by_id = {item["surface_id"]: item for item in verified["surfaces"]}
@@ -70,10 +91,7 @@ class ReleaseCandidateAuditTests(unittest.TestCase):
         self.assertEqual(
             by_id["legacy-mcp-protocol-mode"]["classification"], "retain_live"
         )
-        self.assertIn(
-            "apps/astrbot-plugins/astrbot_plugin_dududa_core/audit.py",
-            by_id["legacy-audit-identities"]["consumer_paths"],
-        )
+        self.assertIn("consumer.txt", by_id["legacy-audit-identities"]["consumer_paths"])
         self.assertGreater(by_id["legacy-icourse-client"]["consumer_count"], 0)
 
         changed = deepcopy(inventory)
@@ -91,7 +109,7 @@ class ReleaseCandidateAuditTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 audit.CandidateAuditError, "surface_catalog_digest_mismatch"
             ):
-                audit.build_consumer_inventory(ROOT, changed_path)
+                audit.build_consumer_inventory(root, changed_path)
 
     def test_gate_receipt_hashes_sensitive_evidence_and_is_atomic_0600(self) -> None:
         sentinel = "sk-s19-secret /home/private group_id=123456789"
@@ -156,9 +174,10 @@ class ReleaseCandidateAuditTests(unittest.TestCase):
             previous_source = workspace / "previous.tar"
             previous_source.write_bytes(b"synthetic previous source")
             inventory_path = workspace / "inventory.json"
+            inventory_root, definitions = create_s19_inventory_workspace(workspace)
             audit._atomic_json(
                 inventory_path,
-                audit.build_consumer_inventory(ROOT, SURFACES),
+                audit.build_consumer_inventory(inventory_root, definitions),
             )
             gate_paths: list[Path] = []
             for gate_id in audit.REQUIRED_GATE_IDS:

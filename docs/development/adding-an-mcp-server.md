@@ -4,7 +4,8 @@
 
 本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。权威 Registry 路径是
 `configs/mcp/servers/*.json`；iCourse 是唯一真实 Server，位于 `services/mcp/icourse/`。
-旧 `config/` 与 `services/icourse-mcp/` 只是一个 Release 的兼容链接，不得成为第二权威。
+S22 已移除旧 `config/` 与 `services/icourse-mcp/` 兼容链接；新增 Server 只使用 canonical
+路径。
 
 MCP Server 和 worker 是传输/集成边界，不是完整 Agent。它们负责清晰、原子、结构化的操作和协议生命周期；它们不负责理解整段群聊、决定是否回复、选择 Persona、授予 Capability、判断 Schema freshness、调度或发送。模型可见性由独立的 Capability Registry 决定。
 
@@ -385,7 +386,8 @@ Server README 至少包含：
 
 iCourse 是当前唯一真实 Server，也是统一传输的兼容样板。S12 已保留其 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
 
-- `ICourseClient` 成为 Unified MCP facade；`LegacyICourseClient` 保留为显式回滚实现；
+- `ICourseClient` 是 Unified MCP facade；S22 路径切换完成后正在删除专用直连 Client，并将
+  Unified 基础设施缺失收敛为 fail-closed unavailable facade；
 - 六项 transport allowlist 与四项 management deny 分离；模型能力仅为四项公开缓存只读映射；
 - `get_course` 只有在 `refresh=false` 时属于只读语义；
 - 将 refresh 设为 trusted/admin、限流且有明确 timeout；

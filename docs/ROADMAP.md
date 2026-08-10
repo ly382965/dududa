@@ -40,7 +40,7 @@ Agent 开工前必须遵守：
   - `astrbot_plugin_target_talk`
   - `astrbot_plugin_reply_polish`
   - `meme_manager`
-- [x] `services/icourse-mcp/` 已挂载到 `/AstrBot/data/icourse-mcp`。
+- [x] `services/mcp/icourse/` 已挂载到 `/AstrBot/data/icourse-mcp`。
 - [x] `data/astrbot/mcp_server.json` 已接入 `icourse` MCP。
 - [x] `icourse` MCP 使用 AstrBot 容器统一 Python：`/usr/local/bin/python`。
 - [x] 已验证 `icourse_stats`、`search_courses`、`get_course`、`get_reviews`。

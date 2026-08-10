@@ -11,8 +11,8 @@ from dududa.rollout import (
     RolloutMode,
 )
 from dududa.runtime.shadow import ShadowRunner
-from plugins.astrbot_plugin_dududa_core.adapters.output import InMemoryDeliveryLedger
-from plugins.astrbot_plugin_dududa_core.rollout_bridge import (
+from astrbot_plugin_dududa_core.adapters.output import InMemoryDeliveryLedger
+from astrbot_plugin_dududa_core.rollout_bridge import (
     AstrBotBridgeAction,
     AstrBotRolloutBridge,
 )

@@ -142,11 +142,12 @@ dududa/
 │   ├── adr/
 │   └── roadmap/
 ├── manage.sh
-├── compose.yml
-└── .env.example
+└── compose.yml
 ```
 
-根级 `manage.sh`、`compose.yml` 和 `.env.example` 在迁移期保留为兼容入口。最终是否删除根级 Compose 和环境模板，必须由独立 ADR 决定；Phase 8 之前不删除。
+根级 `manage.sh` 和 `compose.yml` 是稳定操作入口。S22 按 ADR 0007 删除根级
+`.env.example` 和其余路径别名；唯一可提交环境模板是
+`deploy/env/.env.example`。
 
 ## 5. 目录职责
 
@@ -173,7 +174,7 @@ dududa/
 | `services/icourse-mcp` | `services/mcp/icourse` | 同步更新镜像 COPY、MCP 命令、CI、Dependabot 和文档 |
 | `config` | `configs` | 运行数据路径不变；迁移 sync/seed 的模板路径 |
 | `docker` | `deploy/docker` | 构建上下文保持仓库根，避免 COPY 失效 |
-| `compose.yml` | `deploy/compose/compose.yml` | 根文件先做兼容转发或继续作为权威入口 |
+| `compose.yml` | `deploy/compose/compose.yml` | 根文件保留为稳定转发入口 |
 | `scripts` | `ops/cli` | 根 `manage.sh` 转发；Python CLI 承担复杂逻辑 |
 | `plugins.lock.json`、`patches`、`vendor` | `third_party` | 已移动现有 v1 authority；Manifest v2 因 hash/lock/license 证据不足延期 |
 | `docs/DUDUDA.md`、`docs/ROADMAP.md` | 分主题文档 | 先建立内容映射，后合并，禁止直接删除 |
@@ -183,7 +184,7 @@ dududa/
 迁移期间必须维持：
 
 - `./manage.sh init|plugins|sync|seed|up|down|restart|logs|ps|pull|upgrade|config`
-- `docker compose --env-file .env.example -f compose.yml ...`
+- `docker compose --env-file deploy/env/.env.example -f compose.yml ...`
 - 三个现有 AstrBot 插件名、配置文件名和运行数据目录
 - `STACK_DATA_ROOT` 的相对路径仍以仓库根解析
 - 现有 MCP Server 名 `icourse` 和数据库路径

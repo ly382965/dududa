@@ -26,7 +26,7 @@ from dududa.domain.primitives import DigestString, RuntimeBudget, TraceContext
 from dududa.errors import DududaError, validation_error
 from dududa.ports.context import NeverCancelled, ServiceCallContext, ServicePrincipal
 
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
+from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaCapabilityValidator,
 )
 from tests.unit.capabilities.test_contracts import (

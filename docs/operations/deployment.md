@@ -125,7 +125,7 @@ prepare -> build（需要时）-> start -> health
 
 ### 6.1 Bootstrap
 
-输入：仓库根、`.env.example`、可选 `.env`、Docker 可用性。
+输入：仓库根、`deploy/env/.env.example`、可选 `.env`、Docker 可用性。
 
 必须执行：
 

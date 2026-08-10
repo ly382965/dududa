@@ -45,7 +45,7 @@ from dududa.mcp import (
 from dududa.ports.capabilities import CapabilityProvider
 from dududa.ports.mcp import UnifiedMcpClient
 
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_schema import (
+from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaCapabilityValidator,
 )
 from tests.unit.capabilities.test_contracts import NOW

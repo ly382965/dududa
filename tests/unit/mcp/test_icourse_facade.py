@@ -22,11 +22,11 @@ from dududa.testing import (
     RecordingMcpSchemaValidator,
 )
 
-from plugins.astrbot_plugin_dududa_core.adapters.mcp_runtime import (
+from astrbot_plugin_dududa_core.adapters.mcp_runtime import (
     AllowlistedEnvironmentProvider,
     build_icourse_client,
 )
-from plugins.astrbot_plugin_dududa_core.course import (
+from astrbot_plugin_dududa_core.course import (
     ICOURSE_COMPAT_TOOL_ALLOWLIST,
     ICourseClient,
     LegacyICourseClient,

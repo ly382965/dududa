@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_canonical_layout_and_compatibility_entries_are_unambiguous(self) -> None:
+    def test_canonical_layout_and_removed_aliases_are_unambiguous(self) -> None:
         canonical_directories = (
             "apps/astrbot-plugins",
             "configs",
@@ -30,23 +30,21 @@ class RepositoryContractTests(unittest.TestCase):
         for relative in canonical_directories:
             self.assertTrue((ROOT / relative).is_dir(), relative)
 
-        compatibility_links = {
-            "config": "configs",
-            "docker": "deploy/docker",
-            "plugins": "apps/astrbot-plugins",
-            "scripts": "ops/cli",
-            "services/icourse-mcp": "services/mcp/icourse",
-            "services/unified-mcp-worker": "services/mcp/unified-worker",
-            "patches": "third_party/patches",
-            "vendor": "third_party/vendor",
-            "plugins.lock.json": "third_party/plugins.lock.json",
-            ".env.example": "deploy/env/.env.example",
-        }
-        for compatibility, canonical in compatibility_links.items():
-            link = ROOT / compatibility
-            target = ROOT / canonical
-            self.assertTrue(link.is_symlink(), compatibility)
-            self.assertEqual(link.resolve(), target.resolve())
+        removed_aliases = (
+            ".env.example",
+            "config",
+            "docker",
+            "plugins",
+            "scripts",
+            "patches",
+            "vendor",
+            "plugins.lock.json",
+            "services/icourse-mcp",
+            "services/unified-mcp-worker",
+        )
+        for relative in removed_aliases:
+            path = ROOT / relative
+            self.assertFalse(path.exists() or path.is_symlink(), relative)
 
         root_manage = (ROOT / "manage.sh").read_text(encoding="utf-8")
         root_compose = (ROOT / "compose.yml").read_text(encoding="utf-8")
@@ -84,9 +82,6 @@ class RepositoryContractTests(unittest.TestCase):
 
     def test_plugin_lock_is_exact_and_complete(self) -> None:
         canonical = ROOT / "third_party" / "plugins.lock.json"
-        compatibility = ROOT / "plugins.lock.json"
-        self.assertTrue(compatibility.is_symlink())
-        self.assertEqual(compatibility.resolve(), canonical)
         lock = json.loads(canonical.read_text(encoding="utf-8"))
         self.assertEqual(lock["schema_version"], 1)
         plugins = {plugin["name"]: plugin for plugin in lock["plugins"]}

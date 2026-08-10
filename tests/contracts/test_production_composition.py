@@ -6,14 +6,14 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
-from plugins.astrbot_plugin_dududa_core import audit, composition, config
-from plugins.astrbot_plugin_dududa_core.composition import (
+from astrbot_plugin_dududa_core import audit, composition, config
+from astrbot_plugin_dududa_core.composition import (
     ProductionRuntimeAssembly,
     install_production_runtime,
     unavailable_runtime_assembly,
 )
-from plugins.astrbot_plugin_dududa_core.lifecycle import CoreLifecycleMixin
-from plugins.astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
+from astrbot_plugin_dududa_core.lifecycle import CoreLifecycleMixin
+from astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
 
 from tests.unit.rollout.helpers import control, ledger
 from tests.unit.rollout.test_controlled_execution import (
