@@ -28,19 +28,18 @@ Last sync: unix:1786356682
 - `43fe543` preserves existing Better Reminder/Iris installations by
   canonicalizing only the two known legacy marker paths during comparison;
   unknown marker differences remain fail closed.
-- Focused repository/operations/runtime/rollback tests, root/canonical Compose
-  equivalence, uv lock, Shell syntax, secret scan and marker compatibility have
-  passed. Final branch documentation and representative dual-Python evidence
-  remain to be recorded before protected completion.
+- Final evidence passed: Python 3.10/3.12 each ran 18 representative layout,
+  operations and rollback tests; the isolated worker/iCourse set ran 13 tests;
+  plugin split ran five tests with two expected host-only skips. Wheel build and
+  clean install, compileall, root/canonical Compose equivalence, uv lock, Shell
+  syntax and an 812-file secret scan also passed.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Complete the final focused verification matrix, synchronize Acceptance and
-  Verification, and run TreeWork verify/complete before Lead integration.
 - Manifest v2, dependency SBOM/locks and the Iris license decision remain a
   later supply-chain gate; they do not block this path-only v1 migration.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Resume from final verification and documentation only; do not redesign
-  Runtime or switch third-party authority formats inside S17.
+- Branch is ready for protected verify/complete and Lead integration. Do not
+  redesign Runtime or switch third-party authority formats during integration.

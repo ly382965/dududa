@@ -17,7 +17,8 @@
 1. S01-S16 的既定本地/离线工程范围已经完成，其中 S08-S16 的 TreeWork 叶分支均为
    `complete / verified`。
 2. Mew/NapCat Web epic 已完成并验证；它是 QQ 操作工作台，不是 Agent Control Plane。
-3. S17 三批路径迁移和旧 lock marker 兼容均已提交，正在最终验证，整个分支尚未合并。
+3. S17 三批路径迁移和旧 lock marker 兼容均已提交并通过代表性验证，正在 protected
+   completion，整个分支尚未合并。
 4. S18、S19、S22、S20 均未开始；S23 是最终真实群外部门禁，当前不得进入。
 5. 当前仍不是生产就绪状态。真实 Provider、生产 Memory/Tools、真实 Source Adapter、主动发送、
    在线 Bandit 和真实群质量均没有完成证据。
@@ -43,7 +44,7 @@
 | S15D Digest Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；fixture 日报、独立 Preview、零 Output | 真实来源、模型、持久 metadata 与投递 |
 | S15E Probe Shadow | 已完成、已验证（no-send） | 双 Python各 6 个代表场景；群级 hard gates、TTL、cooldown、no-response | 真实群 Projection、人工打扰度、投递 |
 | S16 Operations Hardening | 已完成、已验证、已合并（离线） | Release/State/Receipt、只读 Health、SQLite Backup、Restore Plan、失败单次回滚及 Compose contract | 真实容器升级/恢复、备份加密和生产 Driver |
-| S17 Layout Migration | **进行中、最终验证中、未合并** | `e2cc296` 冻结设计；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543` | 文档同步、最终 Verification/Complete 和合并 |
+| S17 Layout Migration | **已验证、待完成事务/合并** | `e2cc296` 冻结设计；三批迁移 `8597d70`/`92fd28c`/`6b4ee09`；旧 marker 兼容 `43fe543`；双 Python/worker/Compose/build 代表证据通过 | TreeWork complete 和合并 |
 | S18 Evaluation/CI | 未开始 | Tree 已定义 | 版本化 Trace/Eval/故障注入和 CI 汇总 |
 | S19 Local Integration Audit | 未开始 | Tree 已定义 | 双 Python全仓、镜像/配置/回滚包、SLO 冻结 |
 | S22 Legacy Cleanup | 未开始 | Tree 已定义 | 仅删除有消费者迁移和上一 Release 恢复证据的兼容面 |

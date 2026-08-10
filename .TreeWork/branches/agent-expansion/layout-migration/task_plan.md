@@ -13,15 +13,15 @@ Title: S17 Layout Migration
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Canonical `apps/`, `services/mcp/`, `configs/`, `deploy/`, `ops/` and
+- [x] Canonical `apps/`, `services/mcp/`, `configs/`, `deploy/`, `ops/` and
   `third_party/` paths own the moved sources; all tracked consumers use them.
-- [ ] Root `manage.sh`, `compose.yml`, `.env.example` and one-release
+- [x] Root `manage.sh`, `compose.yml`, `.env.example` and one-release
   `plugins.lock.json` compatibility entrypoints remain executable/readable.
-- [ ] Root/canonical Compose render equivalent service/mount/network contracts;
+- [x] Root/canonical Compose render equivalent service/mount/network contracts;
   plugin IDs, container targets and Python distribution/import names are stable.
-- [ ] Operations scripts, workspace lock, iCourse/unified worker and focused
+- [x] Operations scripts, workspace lock, iCourse/unified worker and focused
   repository contracts pass without real containers, data or credentials.
-- [ ] Chinese status and migration documents distinguish completed path moves
+- [x] Chinese status and migration documents distinguish completed path moves
   from the still-unmet third-party Manifest v2 and production rollback gates.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
@@ -30,7 +30,7 @@ Title: S17 Layout Migration
 - [x] Move plugins/config/services and update their consumers; verify the batch.
 - [x] Move deploy/ops assets and add root wrappers; verify the batch.
 - [x] Move third-party v1 assets, update installer/ownership and verify the batch.
-- [ ] Synchronize TreeWork/status evidence, commit, complete and integrate S17.
+- [x] Synchronize TreeWork/status evidence and commit a completion-ready branch.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

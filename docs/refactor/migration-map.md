@@ -2,7 +2,8 @@
 
 状态：S01–S16 的既定本地/离线范围已完成。S17 三批物理路径迁移均已提交：插件/config/MCP
 service 为 `8597d70`，deploy/ops 为 `92fd28c`，第三方 v1 资产为 `6b4ee09`；`43fe543`
-保持旧 lock marker 可兼容读取。S17 正在最终验证，尚未合并。现有插件 ID、容器目标路径、
+保持旧 lock marker 可兼容读取。S17 代表性验证已通过，正在 protected completion，尚未
+合并。现有插件 ID、容器目标路径、
 包名、MCP Server ID 和根兼容入口保持不变。
 
 ## Mapping Rules
@@ -35,8 +36,8 @@ service 为 `8597d70`，deploy/ops 为 `92fd28c`，第三方 v1 资产为 `6b4ee
 | `manage.sh` | `ops/manage.sh` plus root wrapper | S17 batch 2 已在分支提交 | Existing commands keep documented semantics |
 | `scripts/` | `ops/cli/` | S17 batch 2 已在分支提交，旧路径保留兼容链接 | Root wrapper and repository-root resolution remain stable |
 | `plugins.lock.json` | `third_party/plugins.lock.json` | S17 batch 3 已提交：移动当前 v1 authority，不切换格式 | 根 v1 lock 保留一 Release 兼容链接，installer 只读 canonical v1 lock；旧 marker 别名可确定性读取 |
-| `patches/` | `third_party/patches/` | S17 batch 3 已提交，待分支最终验证 | v1 lock 使用 canonical patch path |
-| `vendor/` | `third_party/vendor/` | S17 batch 3 已提交，待分支最终验证 | Better Reminder tree and AGPL license remain byte-identifiable |
+| `patches/` | `third_party/patches/` | S17 batch 3 已提交并通过代表性验证 | v1 lock 使用 canonical patch path |
+| `vendor/` | `third_party/vendor/` | S17 batch 3 已提交并通过代表性验证 | Better Reminder tree and AGPL license remain byte-identifiable |
 | 无 | `third_party/manifest.json`（Manifest v2） | 延期，尚未成为 authority | 需完整源码 hash、依赖 lock/SBOM 与许可证证据；不得伪造或静默切换 |
 | Flat `tests/` | layered `tests/` directories | `git mv` by concern | Test discovery and CI stay green in each move |
 | Existing docs | concern-specific docs plus archive | Fact-by-fact merge | No deletion until links and facts are mapped |

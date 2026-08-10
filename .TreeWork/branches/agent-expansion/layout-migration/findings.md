@@ -28,3 +28,6 @@ Branch: layout-migration
   is supplied.
 - Compatibility links can become accidental permanent APIs if S22 does not
   enforce the one-Release deletion evidence.
+- A clean checkout must run `uv sync --project services/mcp/unified-worker
+  --locked` before the worker Contract. Local verification did so explicitly;
+  S18 must encode that isolated-environment preparation in CI.

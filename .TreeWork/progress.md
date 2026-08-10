@@ -64,10 +64,10 @@ Last sync: unix:1786356682
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
 - S17 has committed all three path-only migration batches plus a narrow legacy
-  lock-marker compatibility fix. Canonical paths, root symlinks and active docs
-  are synchronized; final branch verification/completion and Lead integration
-  remain. Manifest v2 is still deferred for missing hash, dependency-lock and
-  license evidence.
+  lock-marker compatibility fix. Canonical paths, root symlinks, active docs and
+  representative verification are complete; protected completion and Lead
+  integration remain. Manifest v2 is still deferred for missing hash,
+  dependency-lock and license evidence.
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials, but is intentionally not actionable until all
   accepted module, Web testing and local audit work is complete.
