@@ -11,8 +11,23 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S15 is verified and integrated. S15A is the sole active WIP branch.
+- Root requirements, project Spec, proactive design and implementation plan already define the
+  initiated-run, Target/Grant, Preview, stable idempotency and default-off boundaries; the leaf
+  originally contained only generated templates.
+- No real proactive Runtime, Scheduler, source, model or Output path exists or is enabled.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Reconciled approved design into a branch-local Spec and executable Task Plan without changing
+  S01-S15 architecture or adding a second development route.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- All implementation and verification steps after the design commit remain open.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Continue only in `/home/mmdustc/Code/.treework-worktrees/dududa/proactive-contracts`.
+- First code slice owns immutable proactive contracts/digests; do not implement Scheduler or
+  source collection in S15A.
