@@ -26,6 +26,8 @@ from dududa.errors import validation_error
 from dududa.perception.contracts import ClarificationKey, SocialAction, SocialDecision
 from dududa.ports.context import PortCallContext
 from dududa.ports.runtime import OfflineRenderValidator
+from dududa.responses.contracts import ResponsePlan
+from dududa.responses.digests import response_plan_digest
 from dududa.security.digests import (
     actor_digest,
     content_safety_content_digest,
@@ -85,14 +87,22 @@ class MinimalResponseComposer:
         context: CurrentMessageContext,
         decision: SocialDecision,
         direct_content: DirectChatContent | None,
+        response_plan: ResponsePlan | None = None,
     ) -> DraftResponse:
         if not isinstance(context, CurrentMessageContext):
             raise validation_error("invalid_composer_context")
         if not isinstance(decision, SocialDecision):
             raise validation_error("invalid_composer_social_decision")
+        if response_plan is not None and not isinstance(response_plan, ResponsePlan):
+            raise validation_error("invalid_composer_response_plan")
+        expected_plan_digest = (
+            response_plan_digest(response_plan) if response_plan is not None else None
+        )
         if decision.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
             if not isinstance(direct_content, DirectChatContent):
                 raise validation_error("direct_reply_missing_direct_content")
+            if direct_content.response_plan_digest != expected_plan_digest:
+                raise validation_error("composer_direct_response_plan_mismatch")
             if context.perception.current_message_ref not in direct_content.source_refs:
                 raise validation_error("direct_content_source_outside_context")
             text = direct_content.text
@@ -131,6 +141,7 @@ class MinimalResponseComposer:
             ),
             target_users=targets,
             immutable_constraints=decision.response_constraints,
+            response_plan_digest=(expected_plan_digest),
         )
 
 
@@ -165,9 +176,20 @@ class DeterministicPersonaRenderer:
     def config(self) -> DeterministicPersonaRendererConfig:
         return self._config
 
-    def render(self, draft: DraftResponse) -> FinalResponse:
+    def render(
+        self,
+        draft: DraftResponse,
+        response_plan: ResponsePlan | None = None,
+    ) -> FinalResponse:
         if not isinstance(draft, DraftResponse):
             raise validation_error("invalid_persona_render_draft")
+        if response_plan is not None and not isinstance(response_plan, ResponsePlan):
+            raise validation_error("invalid_persona_response_plan")
+        expected_plan_digest = (
+            response_plan_digest(response_plan) if response_plan is not None else None
+        )
+        if draft.response_plan_digest != expected_plan_digest:
+            raise validation_error("persona_response_plan_mismatch")
         blocks: list[RenderedBlock] = []
         for block in draft.content_blocks:
             if not isinstance(block.content, str):
@@ -196,6 +218,7 @@ class DeterministicPersonaRenderer:
                 persona_version=self._config.persona_version,
                 renderer_revision=self._config.component_revision,
                 draft_digest=canonical_digest(draft, domain="response:draft:v1"),
+                response_plan_digest=expected_plan_digest,
             ),
         )
 
@@ -247,6 +270,8 @@ class DeterministicRenderValidator:
         draft_digest = canonical_digest(draft, domain="response:draft:v1")
         if rendered.render_metadata.draft_digest != draft_digest:
             reasons.add("render_metadata_draft_digest_changed")
+        if draft.response_plan_digest != rendered.render_metadata.response_plan_digest:
+            reasons.add("response_plan_digest_changed")
         changed_anchor_ids = _changed_anchor_ids(draft, rendered)
         return RenderValidationResult(
             schema_version=1,
@@ -286,10 +311,21 @@ class FinalResponseSafetyValidator:
         actor: Actor,
         scope: ConversationScope,
         *,
+        response_plan: ResponsePlan | None = None,
         call: PortCallContext,
     ) -> ValidatedFinalResponse:
         if not isinstance(actor, Actor) or not isinstance(scope, ConversationScope):
             raise validation_error("invalid_final_response_security_identity")
+        if response_plan is not None and not isinstance(response_plan, ResponsePlan):
+            raise validation_error("invalid_final_response_plan")
+        expected_plan_digest = (
+            response_plan_digest(response_plan) if response_plan is not None else None
+        )
+        if (
+            draft.response_plan_digest != expected_plan_digest
+            or rendered.render_metadata.response_plan_digest != expected_plan_digest
+        ):
+            raise validation_error("final_response_plan_mismatch")
         render_validation = self._render_validator.validate(draft, rendered)
         if not render_validation.valid or render_validation.changed_anchor_ids:
             raise validation_error("render_validation_failed")

@@ -20,6 +20,12 @@ Branch: response-persona
   selection, evidence, immutable Plan, policy-unit counting and reservation projection.
 - `ModelRequest` now has an additive pair of Plan digest/visible-output fields. Migrated visible
   calls use both; legacy calls may omit both only until their owning Runtime path is migrated.
+- Feature flag `response_profiles` is the additive checkpoint boundary: enabled states require a
+  bound selection request/Plan at the action-specific phase; disabled states reject partial Plan
+  artifacts and retain the S10 readable shape.
+- Actual delivery part enforcement occurs on `DeliveryAuthorizationIntent.part_intents` before
+  authorization. The test Runtime's former five-byte synthetic part size was replaced with a
+  realistic bounded fixture so Profile part ceilings test policy rather than fixture pathology.
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 

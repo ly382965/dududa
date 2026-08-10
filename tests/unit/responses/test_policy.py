@@ -13,6 +13,8 @@ from dududa.domain.primitives import (
 )
 from dududa.domain.task import TaskComplexityLevel, TaskReasoningDepth
 from dududa.errors import DududaError
+from dududa.models.contracts import ModelTier
+from dududa.models.tiering import DeterministicModelTierPolicy
 from dududa.perception.contracts import SocialAction
 from dududa.ports.responses import ResponseProfilePolicy, VisibleTokenCounter
 from dududa.responses import (
@@ -26,6 +28,16 @@ from dududa.responses import (
     pilot_response_profile_policy_config,
     project_response_reservation,
     response_plan_digest,
+)
+
+from tests.unit.models.test_tiering import (
+    _assessment as tier_assessment,
+)
+from tests.unit.models.test_tiering import (
+    _context as tier_context,
+)
+from tests.unit.models.test_tiering import (
+    _definition as tier_definition,
 )
 
 NOW = datetime(2026, 8, 9, 4, 0, tzinfo=timezone.utc)
@@ -130,6 +142,49 @@ class ResponseProfilePolicyTests(unittest.TestCase):
                     self.assertEqual(
                         plan.assessment_digest, DigestString("assessment:1")
                     )
+
+    def test_required_tier_reasoning_profile_counterexamples_are_orthogonal(
+        self,
+    ) -> None:
+        tier_policy = DeterministicModelTierPolicy(id_factory=lambda: "tier-decision-1")
+        high = tier_assessment(
+            TaskComplexityLevel.HIGH,
+            reasoning_depth=TaskReasoningDepth.DEEP,
+            reason_codes=(
+                "complexity_high",
+                "deep_reasoning",
+                "independent_verification",
+            ),
+        )
+        low = tier_assessment(
+            TaskComplexityLevel.LOW,
+            reasoning_depth=TaskReasoningDepth.SHALLOW,
+            reason_codes=("complexity_low", "simple_retrieval"),
+        )
+
+        opus = tier_policy.decide(tier_context(high), tier_definition(), now=NOW)
+        opus_short = self.policy.select(
+            request(
+                TaskComplexityLevel.HIGH,
+                AnswerProfile.SHORT,
+                reasoning=TaskReasoningDepth.DEEP,
+            ),
+            now=NOW,
+        )
+        haiku = tier_policy.decide(tier_context(low), tier_definition(), now=NOW)
+        haiku_long = self.policy.select(
+            request(
+                TaskComplexityLevel.LOW,
+                AnswerProfile.LONG,
+                reasoning=TaskReasoningDepth.SHALLOW,
+            ),
+            now=NOW,
+        )
+
+        self.assertIs(opus.selected_tier, ModelTier.OPUS)
+        self.assertIs(opus_short.selected_profile, AnswerProfile.SHORT)
+        self.assertIs(haiku.selected_tier, ModelTier.HAIKU)
+        self.assertIs(haiku_long.selected_profile, AnswerProfile.LONG)
 
     def test_task_defaults_clarification_and_runtime_caps_are_deterministic(
         self,

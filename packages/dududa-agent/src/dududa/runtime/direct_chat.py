@@ -280,6 +280,7 @@ class DirectChatModelCall:
                     reported_usage=None,
                     reservation=reservation,
                     failure_code=cause.info.code,
+                    response_plan_digest=request.response_plan_digest,
                 ),
             ) from None
         if not isinstance(response, ModelResponse):
@@ -292,6 +293,7 @@ class DirectChatModelCall:
                     reported_usage=None,
                     reservation=reservation,
                     failure_code=cause.info.code,
+                    response_plan_digest=request.response_plan_digest,
                 ),
             ) from None
         route = response.route_decision
@@ -335,6 +337,7 @@ class DirectChatModelCall:
                     reported_usage=response.usage,
                     reservation=reservation,
                     failure_code=cause.info.code,
+                    response_plan_digest=request.response_plan_digest,
                 ),
             ) from None
 
@@ -354,6 +357,7 @@ class DirectChatModelCall:
             source_refs=source_refs,
             model_request_fingerprint=request_fingerprint,
             model_response_digest=response_digest,
+            response_plan_digest=request.response_plan_digest,
         )
         return DirectChatExecutionReceipt(
             schema_version=1,
@@ -506,6 +510,7 @@ def _failure_receipt(
     reported_usage,
     reservation,
     failure_code: str,
+    response_plan_digest,
 ) -> DirectChatFailureReceipt:
     return DirectChatFailureReceipt(
         schema_version=1,
@@ -515,4 +520,5 @@ def _failure_receipt(
         reported_usage=reported_usage,
         charged_usage=reservation,
         failure_code=failure_code,
+        response_plan_digest=response_plan_digest,
     )

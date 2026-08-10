@@ -264,6 +264,7 @@ class DirectChatContent:
     source_refs: tuple[str, ...]
     model_request_fingerprint: DigestString
     model_response_digest: DigestString
+    response_plan_digest: DigestString | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -276,6 +277,11 @@ class DirectChatContent:
             "model_request_fingerprint",
         )
         require_non_empty(str(self.model_response_digest), "model_response_digest")
+        if self.response_plan_digest is not None:
+            require_non_empty(
+                str(self.response_plan_digest),
+                "response_plan_digest",
+            )
         object.__setattr__(
             self,
             "source_refs",
@@ -331,6 +337,7 @@ class DirectChatFailureReceipt:
     reported_usage: ModelUsage | None
     charged_usage: ResourceUsage
     failure_code: str
+    response_plan_digest: DigestString | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -341,6 +348,11 @@ class DirectChatFailureReceipt:
             "direct_chat_failure_request_fingerprint",
         )
         require_non_empty(self.failure_code, "direct_chat_failure_code")
+        if self.response_plan_digest is not None:
+            require_non_empty(
+                str(self.response_plan_digest),
+                "response_plan_digest",
+            )
         if self.route_decision is not None:
             if not isinstance(self.route_decision, RouteDecision):
                 raise validation_error("invalid_direct_chat_failure_route")

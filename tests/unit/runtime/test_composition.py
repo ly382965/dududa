@@ -28,6 +28,7 @@ from dududa.perception.contracts import (
     SocialDecision,
 )
 from dududa.ports.context import NeverCancelled, PortCallContext
+from dududa.responses import response_plan_digest
 from dududa.runtime.composition import (
     DeterministicPersonaRenderer,
     DeterministicPersonaRendererConfig,
@@ -89,7 +90,12 @@ def _decision(context, *, clarification: bool = False) -> SocialDecision:
     )
 
 
-def _direct(context, *, text: str = "A bounded answer.") -> DirectChatContent:
+def _direct(
+    context,
+    *,
+    text: str = "A bounded answer.",
+    response_plan=None,
+) -> DirectChatContent:
     return DirectChatContent(
         1,
         "direct-content-1",
@@ -97,6 +103,7 @@ def _direct(context, *, text: str = "A bounded answer.") -> DirectChatContent:
         (context.perception.current_message_ref,),
         DigestString("request-fingerprint"),
         DigestString("response-digest"),
+        response_plan_digest(response_plan) if response_plan is not None else None,
     )
 
 
@@ -149,6 +156,38 @@ class _ForgingSafetyPolicy:
 
 
 class CompositionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_all_composition_stages_bind_the_same_response_plan(self) -> None:
+        from tests.unit.runtime.test_direct_chat import _assessment, _response_plan
+
+        context, envelope = _context()
+        plan = _response_plan(_assessment(context))
+        direct = _direct(context, response_plan=plan)
+        draft = _composer().compose(context, _decision(context), direct, plan)
+        rendered = _renderer().render(draft, plan)
+        validator = FinalResponseSafetyValidator(
+            DeterministicRenderValidator(_revision("render-validator")),
+            DefaultContentSafetyPolicy(clock=lambda: NOW),
+            clock=lambda: NOW,
+        )
+
+        validated = await validator.validate(
+            draft,
+            rendered,
+            actor(envelope),
+            scope(envelope),
+            response_plan=plan,
+            call=_call(),
+        )
+
+        digest = response_plan_digest(plan)
+        self.assertEqual(draft.response_plan_digest, digest)
+        self.assertEqual(
+            validated.response.render_metadata.response_plan_digest,
+            digest,
+        )
+        with self.assertRaises(DududaError):
+            _renderer().render(draft, replace(plan, plan_id="plan:forged"))
+
     async def test_direct_content_reaches_validated_final_without_fact_drift(
         self,
     ) -> None:

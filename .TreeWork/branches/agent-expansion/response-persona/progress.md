@@ -31,11 +31,16 @@ Last sync: unix:1786272840
   now binds Plan digest/visible cap, uses projected generated tokens, checks assessment authority
   before Router dispatch and rejects character/Token-unit overflow; legacy empty fields remain
   readable until Runtime State migration. Fifteen focused plus 52 Router/Provider tests pass.
+- Migrated the feature-gated offline Runtime: selection request and Plan are immutable checkpoint
+  artifacts; direct/clarification publish at DECIDED, tools publish only at VALIDATED, projected
+  charges replace static direct output charges, and Plan digest reaches Draft/Render/Delivery.
+  Actual `part_intents` are checked before send authorization. Sixty-five focused Runtime,
+  tool, profile and Output Contract tests pass, including legacy flag-off rollback.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
 - All implementation, synthetic Eval and verification steps in `task_plan.md` remain open.
-- Runtime State/Orchestrator, composition, Persona Catalog and final delivery-part binding remain
+- Persona Catalog/assets, mechanical final ProfileValidation and synthetic Eval remain
   unimplemented, so production or full S15 completion is not claimed.
 - Real profile/persona quality and final pilot budgets remain an explicit external gate.
 

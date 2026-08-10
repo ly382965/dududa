@@ -12,6 +12,7 @@ from dududa.domain.delivery import DeliveryReceipt
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.message import MessageDedupKey
 from dududa.perception.contracts import PerceptionContext, SocialDecision
+from dududa.responses.contracts import ResponsePlan
 from dududa.runtime.contracts import (
     CurrentMessageContext,
     DeliveryReconciliationReceipt,
@@ -86,12 +87,17 @@ class OfflineResponseComposer(Protocol):
         context: CurrentMessageContext,
         decision: SocialDecision,
         direct_content: DirectChatContent | None,
+        response_plan: ResponsePlan | None = None,
     ) -> DraftResponse: ...
 
 
 @runtime_checkable
 class OfflinePersonaRenderer(Protocol):
-    def render(self, draft: DraftResponse) -> FinalResponse: ...
+    def render(
+        self,
+        draft: DraftResponse,
+        response_plan: ResponsePlan | None = None,
+    ) -> FinalResponse: ...
 
 
 @runtime_checkable
@@ -112,6 +118,7 @@ class OfflineFinalResponseValidator(Protocol):
         actor: Actor,
         scope: ConversationScope,
         *,
+        response_plan: ResponsePlan | None = None,
         call: PortCallContext,
     ) -> ValidatedFinalResponse: ...
 

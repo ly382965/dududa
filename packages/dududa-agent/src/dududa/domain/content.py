@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from dududa._compat import StrEnum
@@ -96,7 +96,10 @@ class DraftResponse:
     refusal: Refusal | None = None
     target_users: tuple[ResolvedIdentityRef, ...] = ()
     attachments: tuple[GeneratedAssetRef, ...] = ()
-    immutable_constraints: ResponseConstraints = ResponseConstraints()
+    immutable_constraints: ResponseConstraints = field(
+        default_factory=ResponseConstraints
+    )
+    response_plan_digest: DigestString | None = None
 
     def __post_init__(self) -> None:
         _v1(self.schema_version)
@@ -120,6 +123,11 @@ class DraftResponse:
         object.__setattr__(self, "warnings", warnings)
         object.__setattr__(self, "target_users", target_users)
         object.__setattr__(self, "attachments", attachments)
+        if self.response_plan_digest is not None:
+            require_non_empty(
+                str(self.response_plan_digest),
+                "response_plan_digest",
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +156,14 @@ class RenderMetadata:
     persona_version: str
     renderer_revision: ComponentRevision
     draft_digest: DigestString
+    response_plan_digest: DigestString | None = None
+
+    def __post_init__(self) -> None:
+        if self.response_plan_digest is not None:
+            require_non_empty(
+                str(self.response_plan_digest),
+                "response_plan_digest",
+            )
 
 
 @dataclass(frozen=True, slots=True)

@@ -25,14 +25,21 @@ from dududa.domain.primitives import (
     require_aware,
     require_non_empty,
 )
+from dududa.domain.task import TaskComplexityAssessment
 from dududa.errors import DududaError, ErrorCategory, error, validation_error
 from dududa.models.contracts import ModelRole
-from dududa.models.digests import route_decision_digest, tier_decision_digest
-from dududa.perception.contracts import SocialAction
+from dududa.models.digests import (
+    route_decision_digest,
+    task_complexity_assessment_digest,
+    tier_decision_digest,
+)
+from dududa.perception.contracts import SocialAction, SocialDecision
+from dududa.perception.digests import social_decision_digest
 from dududa.ports.capabilities import BoundedCapabilityRuntime
 from dududa.ports.context import NeverCancelled, PortCallContext
 from dududa.ports.models import ModelTierPolicy
 from dududa.ports.perception import SocialDecisionEngine, TaskComplexityAssessor
+from dududa.ports.responses import ResponseProfilePolicy
 from dududa.ports.runtime import (
     OfflineFinalResponseValidator,
     OfflinePersonaRenderer,
@@ -40,6 +47,13 @@ from dududa.ports.runtime import (
     RuntimePerceptionEngine,
     RuntimeStateStore,
 )
+from dududa.responses.budget import project_response_reservation
+from dududa.responses.contracts import (
+    ResponsePlan,
+    ResponseProfileSelectionRequest,
+)
+from dududa.responses.evidence import detect_detail_preference
+from dududa.security.digests import actor_digest, scope_digest
 from dududa.security.models import AuthorizationEffect
 from dududa.security.ports import AuthorizationDecisionVerifier, AuthorizationPolicy
 
@@ -63,6 +77,7 @@ from .capabilities import (
 )
 from .context import CurrentMessageContextBuilder
 from .contracts import (
+    CurrentMessageContext,
     DeliveryReconciliationReceipt,
     OfflineRuntimePolicySnapshot,
     RuntimeAdmissionAction,
@@ -155,6 +170,8 @@ class OfflineRuntimeOrchestrator:
         renderer: OfflinePersonaRenderer,
         final_validator: OfflineFinalResponseValidator,
         delivery_builder: DeliveryRequestBuilder,
+        response_profile_policy: ResponseProfilePolicy | None = None,
+        detail_detector_revision: ComponentRevision | None = None,
         capability_runtime: BoundedCapabilityRuntime | None = None,
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
@@ -192,6 +209,16 @@ class OfflineRuntimeOrchestrator:
                 raise TypeError(f"invalid {name}")
         if delivery_builder.config.adapter_binding not in config.negotiated_bindings:
             raise ValueError("delivery binding is not negotiated by Runtime")
+        if (response_profile_policy is None) != (detail_detector_revision is None):
+            raise TypeError("incomplete Response Profile Runtime configuration")
+        if response_profile_policy is not None and not isinstance(
+            response_profile_policy, ResponseProfilePolicy
+        ):
+            raise TypeError("response profile policy does not implement its port")
+        if detail_detector_revision is not None and not isinstance(
+            detail_detector_revision, ComponentRevision
+        ):
+            raise TypeError("invalid detail detector revision")
         if capability_runtime is not None and not isinstance(
             capability_runtime, BoundedCapabilityRuntime
         ):
@@ -210,6 +237,8 @@ class OfflineRuntimeOrchestrator:
         self._renderer = renderer
         self._final_validator = final_validator
         self._delivery_builder = delivery_builder
+        self._response_profile_policy = response_profile_policy
+        self._detail_detector_revision = detail_detector_revision
         self._capability_runtime = capability_runtime
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
@@ -464,6 +493,28 @@ class OfflineRuntimeOrchestrator:
                 call=self._call_with_budget(call, state.budget),
             )
 
+            response_profile_request = None
+            response_plan = None
+            response_reservation = (
+                self._config.model_budget_plan.direct_chat_reservation
+            )
+            response_profiles_enabled = state.invocation_options.feature_flags.get(
+                "response_profiles", False
+            )
+            if response_profiles_enabled and social.action in {
+                SocialAction.DIRECT_REPLY,
+                SocialAction.ASK_CLARIFICATION,
+            }:
+                response_profile_request, response_plan = self._select_response_plan(
+                    state,
+                    context,
+                    assessment,
+                    social,
+                )
+                response_reservation = project_response_reservation(
+                    response_reservation,
+                    response_plan,
+                )
             tier_context = None
             tier = None
             if social.action is SocialAction.DIRECT_REPLY:
@@ -475,9 +526,7 @@ class OfflineRuntimeOrchestrator:
                         context.perception.content_input_tokens_upper_bound
                     ),
                     data_classification=context.perception.data_classification,
-                    budget=reservation_budget(
-                        self._config.model_budget_plan.direct_chat_reservation
-                    ),
+                    budget=reservation_budget(response_reservation),
                 )
                 tier = select_model_tier(
                     context=tier_context,
@@ -491,6 +540,8 @@ class OfflineRuntimeOrchestrator:
                 call,
                 decision_signals=signals,
                 social_decision=social,
+                response_profile_request=response_profile_request,
+                response_plan=response_plan,
                 tier_selection_context=tier_context,
                 tier_decision=tier,
                 capability_plan_authorization_request=(
@@ -662,6 +713,25 @@ class OfflineRuntimeOrchestrator:
                     raise validation_error(
                         "runtime_completed_capability_has_no_validation"
                     )
+                response_profile_request = None
+                response_plan = None
+                response_reservation = (
+                    self._config.model_budget_plan.direct_chat_reservation
+                )
+                if response_profiles_enabled:
+                    (
+                        response_profile_request,
+                        response_plan,
+                    ) = self._select_response_plan(
+                        checkpoint.state,
+                        context,
+                        assessment,
+                        social,
+                    )
+                    response_reservation = project_response_reservation(
+                        response_reservation,
+                        response_plan,
+                    )
                 tier_context = project_tier_selection_context(
                     selection_id=self._id("tier-selection"),
                     role=ModelRole.DIRECT_CHAT,
@@ -674,9 +744,7 @@ class OfflineRuntimeOrchestrator:
                         capability_receipt,
                         context.perception.data_classification,
                     ),
-                    budget=reservation_budget(
-                        self._config.model_budget_plan.direct_chat_reservation
-                    ),
+                    budget=reservation_budget(response_reservation),
                 )
                 tier = select_model_tier(
                     context=tier_context,
@@ -690,11 +758,25 @@ class OfflineRuntimeOrchestrator:
                     self._commit_call(call, budget_after_tools),
                     tool_validation=capability_receipt.validation,
                     capability_run_receipt=capability_receipt,
+                    response_profile_request=response_profile_request,
+                    response_plan=response_plan,
                     tier_selection_context=tier_context,
                     tier_decision=tier,
                     charged_usage=tool_charge,
                     budget=budget_after_tools,
                 )
+
+            response_plan = checkpoint.state.response_plan
+            response_reservation = (
+                self._config.model_budget_plan.direct_chat_reservation
+            )
+            if response_plan is not None:
+                response_reservation = project_response_reservation(
+                    response_reservation,
+                    response_plan,
+                )
+            elif response_profiles_enabled:
+                raise validation_error("runtime_visible_response_plan_missing")
 
             direct = None
             direct_route = None
@@ -708,14 +790,13 @@ class OfflineRuntimeOrchestrator:
                         context,
                         assessment,
                         tier,
-                        self._config.model_budget_plan.direct_chat_reservation,
+                        response_reservation,
+                        response_plan=response_plan,
                         route_hint=checkpoint.state.invocation_options.route_hint,
                         capability_receipt=capability_receipt,
                         call=self._call_with_budget(
                             call,
-                            reservation_budget(
-                                self._config.model_budget_plan.direct_chat_reservation
-                            ),
+                            reservation_budget(response_reservation),
                         ),
                     )
                 except RuntimeDirectChatFailure as failure:
@@ -740,7 +821,7 @@ class OfflineRuntimeOrchestrator:
                 direct_route = direct.route_decision
                 charged_usage = add_usage(
                     charged_usage,
-                    self._config.model_budget_plan.direct_chat_reservation,
+                    response_reservation,
                 )
                 budget = charge_budget(
                     checkpoint.state.initial_budget,
@@ -750,6 +831,7 @@ class OfflineRuntimeOrchestrator:
                 context,
                 social,
                 direct.content if direct is not None else None,
+                response_plan,
             )
             checkpoint = await self._commit_transition(
                 checkpoint,
@@ -762,12 +844,13 @@ class OfflineRuntimeOrchestrator:
                 budget=budget,
             )
 
-            rendered = self._renderer.render(draft)
+            rendered = self._renderer.render(draft, response_plan)
             final = await self._final_validator.validate(
                 draft,
                 rendered,
                 checkpoint.state.actor,
                 checkpoint.state.conversation_scope,
+                response_plan=response_plan,
                 call=self._call_with_budget(call, checkpoint.state.budget),
             )
             checkpoint = await self._commit_transition(
@@ -777,7 +860,7 @@ class OfflineRuntimeOrchestrator:
                 final_response=final,
             )
 
-            plan = self._delivery_builder.plan(
+            delivery_plan = self._delivery_builder.plan(
                 run_id=checkpoint.state.run_id,
                 response=final,
                 actor=checkpoint.state.actor,
@@ -785,11 +868,19 @@ class OfflineRuntimeOrchestrator:
                 reply_to=context.current_message_reference,
                 policy_snapshot_id=checkpoint.state.policy_snapshot_id,
             )
+            if response_plan is not None and (
+                len(delivery_plan.intent.part_intents)
+                > response_plan.delivery_part_limit
+            ):
+                raise validation_error("response_delivery_part_limit_exceeded")
             send_authorization = await self._authorization_policy.decide(
-                plan.authorization_request,
+                delivery_plan.authorization_request,
                 call=self._call_with_budget(call, checkpoint.state.budget),
             )
-            delivery = self._delivery_builder.finalize(plan, send_authorization)
+            delivery = self._delivery_builder.finalize(
+                delivery_plan,
+                send_authorization,
+            )
             result = RuntimeResult(
                 schema_version=1,
                 run_id=checkpoint.state.run_id,
@@ -1076,6 +1167,63 @@ class OfflineRuntimeOrchestrator:
                 else None
             ),
         )
+
+    def _select_response_plan(
+        self,
+        state: RuntimeState,
+        context: CurrentMessageContext,
+        assessment: TaskComplexityAssessment,
+        social: SocialDecision,
+    ) -> tuple[ResponseProfileSelectionRequest, ResponsePlan]:
+        if (
+            self._response_profile_policy is None
+            or self._detail_detector_revision is None
+        ):
+            raise validation_error("response_profile_runtime_unavailable")
+        current = next(
+            message
+            for message in context.perception.messages
+            if message.message_ref == context.perception.current_message_ref
+        )
+        maximum_characters = self._direct_chat.config.maximum_response_characters
+        if social.response_constraints.max_characters is not None:
+            maximum_characters = min(
+                maximum_characters,
+                social.response_constraints.max_characters,
+            )
+        request = ResponseProfileSelectionRequest(
+            schema_version=1,
+            selection_id=self._id("response-profile-selection"),
+            actor_digest=actor_digest(state.actor),
+            scope_digest=scope_digest(state.conversation_scope),
+            persona_id=state.conversation_scope.persona_id,
+            conversation_type=state.conversation_scope.conversation_type,
+            current_message_ref=context.perception.current_message_ref,
+            complexity_level=assessment.level,
+            reasoning_depth=assessment.reasoning_depth,
+            expected_tool_steps=assessment.expected_tool_steps,
+            verification_required=assessment.verification_required,
+            social_action=social.action,
+            assessment_digest=task_complexity_assessment_digest(assessment),
+            social_decision_digest=social_decision_digest(social),
+            detail_evidence=detect_detail_preference(
+                context.perception.current_message_ref,
+                current.text,
+                detector_revision=self._detail_detector_revision,
+            ),
+            persistent_preference=None,
+            available_generated_tokens=(
+                state.model_budget_plan.direct_chat_reservation.output_tokens
+            ),
+            maximum_response_characters=maximum_characters,
+            maximum_delivery_parts=(
+                self._delivery_builder.config.constraints.max_parts
+            ),
+        )
+        plan = self._response_profile_policy.select(request, now=self._now())
+        if not isinstance(plan, ResponsePlan):
+            raise validation_error("invalid_response_profile_policy_result")
+        return request, plan
 
     def _validate_start(
         self,
