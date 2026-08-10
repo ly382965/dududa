@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: legacy-cleanup
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1786272840
+Status: in_progress
+Verification: verified
+Last sync: unix:1786378462
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
