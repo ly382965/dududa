@@ -11,8 +11,30 @@ Last sync: unix:1786272840
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- S19 is based on integrated S18 commit `9d1d82e`. The S18 fixed suite runner,
+  S16 operations core, canonical Dockerfiles and locked Web scripts are present;
+  no external data or running-stack change is needed.
+- The previously empty S19 Spec/Plan now freeze a release-candidate audit rather
+  than another Runtime or CI control plane. Complete expensive gates run once.
+- Current checked-in SLO values, candidate aggregate receipt, consumer inventory
+  and disposable image-smoke harness do not yet exist.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Read-only intake mapped the complete Python/Web/worker commands, S16 release
+  contracts, image boundaries and S22 legacy candidates before implementation.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Live latency/cost and human-quality thresholds remain external. S19 must label
+  committed defaults as pilot/unmeasured and leave `s23_ready=false`.
+- No actual previous-release source artifact or S19 aggregate receipt has been
+  generated yet.
+- Legacy AstrBot audit records sender/group fields and must be inventoried
+  separately; S18 Runtime Trace privacy cannot be used as its evidence.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Implement the strict standard-library audit/inventory layer first, then the
+  disposable image harness. Commit tooling before launching the long matrix so
+  all receipts bind a clean source revision.
