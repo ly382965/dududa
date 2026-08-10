@@ -34,6 +34,10 @@ Last sync: unix:1786356508
   proactive controls, durable scheduling, governed fixture sources, Digest
   Shadow and deterministic group-level Probe Shadow exist; every real proactive
   send remains absent.
+- S16 is complete and verified for the offline operations boundary: immutable
+  releases, atomic state/receipts, read-only health, consistent SQLite backup,
+  restore planning and failed-health rollback now exist. Real deployment
+  Drivers and production recovery evidence remain S19/S23 gates.
 - The current Alignment draft now binds proactive target/grant evidence through
   every durable handoff, separates preview from delivery, keeps business
   idempotency stable across Output Adapter revisions, and leaves optional S20
@@ -122,3 +126,6 @@ Last sync: unix:1786356508
   Opportunity detection, atomic namespaced cooldown/no-response state and fixed
   SHORT no-send candidates. Six representative scenarios pass on Python
   3.10/3.12; no raw chat, durable production state, model, Output or send exists.
+- S16 now returns a standard-library operations CLI, root command forwarding,
+  actual Compose mount/network contract evidence and bounded Source awaits.
+  Python 3.10/3.12 focused lifecycle samples pass; no container was changed.
