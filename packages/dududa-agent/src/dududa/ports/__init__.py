@@ -71,6 +71,14 @@ if TYPE_CHECKING:
         TaskComplexityAssessor,
     )
     from .persona import PersonaCatalogPublisher, PersonaRegistry
+    from .proactive import (
+        ProactiveActorResolver,
+        ProactiveDeliveryOrchestrator,
+        ProactiveDispatchStore,
+        ProactivePreviewPort,
+        ProactiveQuotaLedger,
+        ProactiveTargetRegistry,
+    )
     from .responses import (
         ResponseProfilePolicy,
         ResponseProfileValidator,
@@ -139,6 +147,12 @@ __all__ = [
     "PersonaCatalogPublisher",
     "PersonaRegistry",
     "PortCallContext",
+    "ProactiveActorResolver",
+    "ProactiveDeliveryOrchestrator",
+    "ProactiveDispatchStore",
+    "ProactivePreviewPort",
+    "ProactiveQuotaLedger",
+    "ProactiveTargetRegistry",
     "ResponseProfilePolicy",
     "ResponseProfileValidator",
     "RulePerception",
@@ -284,6 +298,31 @@ def __getattr__(name: str) -> object:
         return {
             "PersonaCatalogPublisher": PersonaCatalogPublisher,
             "PersonaRegistry": PersonaRegistry,
+        }[name]
+    if name in {
+        "ProactiveActorResolver",
+        "ProactiveDeliveryOrchestrator",
+        "ProactiveDispatchStore",
+        "ProactivePreviewPort",
+        "ProactiveQuotaLedger",
+        "ProactiveTargetRegistry",
+    }:
+        from .proactive import (
+            ProactiveActorResolver,
+            ProactiveDeliveryOrchestrator,
+            ProactiveDispatchStore,
+            ProactivePreviewPort,
+            ProactiveQuotaLedger,
+            ProactiveTargetRegistry,
+        )
+
+        return {
+            "ProactiveActorResolver": ProactiveActorResolver,
+            "ProactiveDeliveryOrchestrator": ProactiveDeliveryOrchestrator,
+            "ProactiveDispatchStore": ProactiveDispatchStore,
+            "ProactivePreviewPort": ProactivePreviewPort,
+            "ProactiveQuotaLedger": ProactiveQuotaLedger,
+            "ProactiveTargetRegistry": ProactiveTargetRegistry,
         }[name]
     if name in {
         "ResponseProfilePolicy",
