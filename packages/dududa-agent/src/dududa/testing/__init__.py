@@ -22,11 +22,13 @@ from .proactive import (
     RecordingProactivePreviewMetadataStore,
     StaticProactivePreviewProducer,
 )
+from .sources import FixtureSourceCapabilityReader, load_source_fixture_bundle
 
 __all__ = [
     "FakeAgentRuntime",
     "FakeInputConnector",
     "FakeMcpSessionPlan",
+    "FixtureSourceCapabilityReader",
     "MappingMcpEnvironmentProvider",
     "MappingMcpSecretResolver",
     "MappingProactiveActorResolver",
@@ -40,5 +42,6 @@ __all__ = [
     "RecordingMcpSchemaValidator",
     "RecordingProactivePreviewMetadataStore",
     "StaticProactivePreviewProducer",
+    "load_source_fixture_bundle",
     "provider_failure",
 ]

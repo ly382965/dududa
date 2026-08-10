@@ -83,6 +83,10 @@ if TYPE_CHECKING:
         ProactiveScheduleStore,
         ProactiveSubscriptionStore,
         ProactiveTargetRegistry,
+        SourceCapabilityReader,
+        SourcePolicyRegistry,
+        SourceProvider,
+        SourceStateStore,
     )
     from .responses import (
         ResponseProfilePolicy,
@@ -174,6 +178,10 @@ __all__ = [
     "ServicePrincipal",
     "ShadowReceiptSink",
     "SocialDecisionEngine",
+    "SourceCapabilityReader",
+    "SourcePolicyRegistry",
+    "SourceProvider",
+    "SourceStateStore",
     "TaskComplexityAssessor",
     "ToolExecutor",
     "ToolInvocationLedger",
@@ -321,6 +329,10 @@ def __getattr__(name: str) -> object:
         "ProactiveScheduler",
         "ProactiveSubscriptionStore",
         "ProactiveTargetRegistry",
+        "SourceCapabilityReader",
+        "SourcePolicyRegistry",
+        "SourceProvider",
+        "SourceStateStore",
     }:
         from .proactive import (
             ProactiveActorResolver,
@@ -334,6 +346,10 @@ def __getattr__(name: str) -> object:
             ProactiveScheduleStore,
             ProactiveSubscriptionStore,
             ProactiveTargetRegistry,
+            SourceCapabilityReader,
+            SourcePolicyRegistry,
+            SourceProvider,
+            SourceStateStore,
         )
 
         return {
@@ -348,6 +364,10 @@ def __getattr__(name: str) -> object:
             "ProactiveScheduler": ProactiveScheduler,
             "ProactiveSubscriptionStore": ProactiveSubscriptionStore,
             "ProactiveTargetRegistry": ProactiveTargetRegistry,
+            "SourceCapabilityReader": SourceCapabilityReader,
+            "SourcePolicyRegistry": SourcePolicyRegistry,
+            "SourceProvider": SourceProvider,
+            "SourceStateStore": SourceStateStore,
         }[name]
     if name in {
         "ResponseProfilePolicy",

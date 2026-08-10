@@ -41,6 +41,20 @@ if TYPE_CHECKING:
         SourceItem,
         SubscriptionMutationReceipt,
     )
+    from .source_contracts import (
+        SourceCapabilityObservation,
+        SourceCursor,
+        SourceDedupReceipt,
+        SourceDefinition,
+        SourceFetchReceipt,
+        SourceFetchRequest,
+        SourceItemIdentity,
+        SourcePolicySnapshot,
+        SourceProvenance,
+        SourceStateCommitPlan,
+        SourceStateCommitReceipt,
+        SourceStateMutation,
+    )
 
 
 _CONTRACT_DIGESTS = {
@@ -103,6 +117,51 @@ _CONTRACT_DIGESTS = {
     ),
     "SourceItem": ("content_digest", "proactive:source-item:v1"),
     "SourceBatch": ("batch_digest", "proactive:source-batch:v1"),
+    "SourceDefinition": (
+        "definition_digest",
+        "proactive:source-definition:v1",
+    ),
+    "SourcePolicySnapshot": (
+        "policy_digest",
+        "proactive:source-policy-snapshot:v1",
+    ),
+    "SourceCursor": ("cursor_digest", "proactive:source-cursor:v1"),
+    "SourceCapabilityObservation": (
+        "observation_digest",
+        "proactive:source-capability-observation:v1",
+    ),
+    "SourceProvenance": (
+        "provenance_digest",
+        "proactive:source-provenance:v1",
+    ),
+    "SourceItemIdentity": (
+        "identity_digest",
+        "proactive:source-item-identity:v1",
+    ),
+    "SourceFetchRequest": (
+        "request_digest",
+        "proactive:source-fetch-request:v1",
+    ),
+    "SourceDedupReceipt": (
+        "receipt_digest",
+        "proactive:source-dedup-receipt:v1",
+    ),
+    "SourceFetchReceipt": (
+        "receipt_digest",
+        "proactive:source-fetch-receipt:v1",
+    ),
+    "SourceStateMutation": (
+        "mutation_digest",
+        "proactive:source-state-mutation:v1",
+    ),
+    "SourceStateCommitPlan": (
+        "plan_digest",
+        "proactive:source-state-commit-plan:v1",
+    ),
+    "SourceStateCommitReceipt": (
+        "receipt_digest",
+        "proactive:source-state-commit-receipt:v1",
+    ),
     "ProactivePolicyDecision": (
         "decision_digest",
         "proactive:policy-decision:v1",
@@ -346,6 +405,174 @@ def source_batch_digest(
     )
 
 
+def source_definition_digest(
+    definition: SourceDefinition | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        definition,
+        "definition_digest",
+        domain="proactive:source-definition:v1",
+    )
+
+
+def source_policy_snapshot_digest(
+    snapshot: SourcePolicySnapshot | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        snapshot,
+        "policy_digest",
+        domain="proactive:source-policy-snapshot:v1",
+    )
+
+
+def source_cursor_digest(
+    cursor: SourceCursor | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        cursor,
+        "cursor_digest",
+        domain="proactive:source-cursor:v1",
+    )
+
+
+def source_capability_observation_digest(
+    observation: SourceCapabilityObservation | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        observation,
+        "observation_digest",
+        domain="proactive:source-capability-observation:v1",
+    )
+
+
+def source_provenance_digest(
+    provenance: SourceProvenance | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        provenance,
+        "provenance_digest",
+        domain="proactive:source-provenance:v1",
+    )
+
+
+def source_item_identity_digest(
+    identity: SourceItemIdentity | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        identity,
+        "identity_digest",
+        domain="proactive:source-item-identity:v1",
+    )
+
+
+def source_item_stable_key(source_id: str, external_identity: str) -> DigestString:
+    return canonical_digest(
+        {
+            "source_id": source_id,
+            "external_identity": external_identity,
+        },
+        domain="proactive:source-item-stable-key:v1",
+    )
+
+
+def source_item_revision_key(
+    stable_key_digest: DigestString,
+    source_revision: str,
+    revision_content_digest: DigestString,
+) -> DigestString:
+    return canonical_digest(
+        {
+            "stable_key_digest": stable_key_digest,
+            "source_revision": source_revision,
+            "revision_content_digest": revision_content_digest,
+        },
+        domain="proactive:source-item-revision-key:v1",
+    )
+
+
+def source_item_revision_content_digest(
+    item: SourceItem | Mapping[str, object],
+) -> DigestString:
+    fields = (
+        "source_id",
+        "external_id",
+        "category",
+        "title",
+        "summary",
+        "canonical_url",
+        "published_at",
+        "source_revision",
+    )
+    if isinstance(item, Mapping):
+        projection = {field: item[field] for field in fields}
+    else:
+        projection = {field: getattr(item, field) for field in fields}
+    return canonical_digest(
+        projection,
+        domain="proactive:source-item-revision-content:v1",
+    )
+
+
+def source_fetch_request_digest(
+    request: SourceFetchRequest | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        request,
+        "request_digest",
+        domain="proactive:source-fetch-request:v1",
+    )
+
+
+def source_dedup_receipt_digest(
+    receipt: SourceDedupReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:source-dedup-receipt:v1",
+    )
+
+
+def source_fetch_receipt_digest(
+    receipt: SourceFetchReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:source-fetch-receipt:v1",
+    )
+
+
+def source_state_mutation_digest(
+    mutation: SourceStateMutation | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        mutation,
+        "mutation_digest",
+        domain="proactive:source-state-mutation:v1",
+    )
+
+
+def source_state_commit_plan_digest(
+    plan: SourceStateCommitPlan | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        plan,
+        "plan_digest",
+        domain="proactive:source-state-commit-plan:v1",
+    )
+
+
+def source_state_commit_receipt_digest(
+    receipt: SourceStateCommitReceipt | Mapping[str, object],
+) -> DigestString:
+    return _digest_without(
+        receipt,
+        "receipt_digest",
+        domain="proactive:source-state-commit-receipt:v1",
+    )
+
+
 def proactive_policy_decision_digest(
     decision: ProactivePolicyDecision | Mapping[str, object],
 ) -> DigestString:
@@ -511,7 +738,22 @@ __all__: Iterable[str] = (
     "schedule_trigger_claim_digest",
     "seal_proactive_contract",
     "source_batch_digest",
+    "source_capability_observation_digest",
+    "source_cursor_digest",
+    "source_dedup_receipt_digest",
+    "source_definition_digest",
     "source_failure_digest",
+    "source_fetch_receipt_digest",
+    "source_fetch_request_digest",
     "source_item_digest",
+    "source_item_identity_digest",
+    "source_item_revision_content_digest",
+    "source_item_revision_key",
+    "source_item_stable_key",
+    "source_policy_snapshot_digest",
+    "source_provenance_digest",
+    "source_state_commit_plan_digest",
+    "source_state_commit_receipt_digest",
+    "source_state_mutation_digest",
     "subscription_mutation_receipt_digest",
 )

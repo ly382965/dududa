@@ -6,7 +6,7 @@ from typing import Protocol, runtime_checkable
 from dududa.domain.content import ValidatedFinalResponse
 from dududa.domain.identity import Actor, ActorRef, ConversationScope
 from dududa.domain.primitives import DigestString
-from dududa.ports.context import ServiceCallContext
+from dududa.ports.context import PortCallContext, ServiceCallContext
 from dududa.proactive.contracts import (
     DispatchClaim,
     DispatchLedgerRecord,
@@ -34,6 +34,66 @@ from dududa.proactive.contracts import (
     SourceCategory,
     SubscriptionMutationReceipt,
 )
+from dududa.proactive.source_contracts import (
+    SourceCapabilityObservation,
+    SourceCursor,
+    SourceDefinition,
+    SourceFetchReceipt,
+    SourceFetchRequest,
+    SourcePolicySnapshot,
+    SourceStateCommitPlan,
+    SourceStateCommitReceipt,
+)
+
+
+@runtime_checkable
+class SourcePolicyRegistry(Protocol):
+    def resolve(
+        self,
+        policy_id: str,
+        *,
+        expected_digest: DigestString,
+    ) -> SourcePolicySnapshot: ...
+
+
+@runtime_checkable
+class SourceCapabilityReader(Protocol):
+    async def read(
+        self,
+        definition: SourceDefinition,
+        cursor: SourceCursor | None,
+        request: SourceFetchRequest,
+        *,
+        call: PortCallContext,
+    ) -> SourceCapabilityObservation: ...
+
+
+@runtime_checkable
+class SourceStateStore(Protocol):
+    async def load_cursor(
+        self,
+        subscription_id: str,
+        source_id: str,
+        *,
+        call: PortCallContext,
+    ) -> SourceCursor | None: ...
+
+    async def commit_fetch(
+        self,
+        plan: SourceStateCommitPlan,
+        *,
+        call: PortCallContext,
+    ) -> SourceStateCommitReceipt: ...
+
+
+@runtime_checkable
+class SourceProvider(Protocol):
+    async def fetch(
+        self,
+        request: SourceFetchRequest,
+        *,
+        call: PortCallContext,
+    ) -> SourceFetchReceipt: ...
 
 
 @runtime_checkable
@@ -325,4 +385,8 @@ __all__ = [
     "ProactiveScheduler",
     "ProactiveSubscriptionStore",
     "ProactiveTargetRegistry",
+    "SourceCapabilityReader",
+    "SourcePolicyRegistry",
+    "SourceProvider",
+    "SourceStateStore",
 ]

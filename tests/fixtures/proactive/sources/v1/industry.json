@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "source_id": "industry-fixture",
+  "capability_id": "industry.list_allowlisted_updates.v1",
+  "provider_id": "fixture-capability-provider",
+  "provider_generation": 1,
+  "source_snapshot_revision": "industry-snapshot-v1",
+  "next_cursor_token": "industry-cursor-v1",
+  "observed_at": "2026-08-09T00:00:00Z",
+  "data": {
+    "schema_version": 1,
+    "items": [
+      {
+        "external_id": null,
+        "title": "Synthetic industry update",
+        "summary": "Fixture-only public metadata for an allowlisted industry source.",
+        "canonical_url": "https://industry.example.org/updates/2026-001",
+        "published_at": "2026-08-08T10:00:00Z",
+        "source_revision": "industry-v1"
+      }
+    ]
+  }
+}
