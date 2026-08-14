@@ -11,8 +11,29 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+`dududa.control_plane` now owns immutable S21 contracts, authorization,
+projection and an in-memory repository. Fake join ingestion creates one exact
+Bot/group pending record; an authorized operator can query the pending inbox
+and preview a fixed Profile against Fake service facts. Preview commits a
+stable Receipt and low-sensitivity audit record but never creates a Runtime
+Assignment or invokes an output path.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added Core-owned Control Plane Ports and lazy public exports.
+- Added Fake sessions, joins and service Catalog plus the first executable
+  pending/preview slice.
+- Seven focused tests and two existing import-boundary checks pass; targeted Ruff
+  and formatting checks pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+None within S21A. Durable assignments, activation lifecycle, restart/LKG and
+Web transport remain owned by S21B/S21C.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+The locally authorized Dududa corpus was not read because this branch did not
+change Connector, history, Perception or session projection behavior. It
+remains available for a later focused no-send replay; other accounts and the
+external long-term corpus remain excluded.

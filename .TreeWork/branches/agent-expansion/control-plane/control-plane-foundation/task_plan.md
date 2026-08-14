@@ -13,24 +13,24 @@ Title: S21A Control Plane Foundation
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Immutable Profile/Assignment/Scope/session/envelope/receipt/projection
+- [x] Immutable Profile/Assignment/Scope/session/envelope/receipt/projection
   contracts reject invalid or authority-bearing fields.
-- [ ] Duplicate Fake joins produce one pending record and pending Runtime
+- [x] Duplicate Fake joins produce one pending record and pending Runtime
   lookups always expose zero services and side effects.
-- [ ] A fixed Profile preview reports Desired/Effective service reasons from
+- [x] A fixed Profile preview reports Desired/Effective service reasons from
   Fake Catalog facts without publishing an Assignment.
-- [ ] Expired/unknown sessions, denied roles and cross-Scope requests fail
+- [x] Expired/unknown sessions, denied roles and cross-Scope requests fail
   without repository or audit-success mutation.
-- [ ] Accepted/replayed commands produce stable receipts and one business
+- [x] Accepted/replayed commands produce stable receipts and one business
   result through existing authorization, idempotency and Audit ports.
-- [ ] Focused Python tests, Ruff, package exports and import boundaries pass.
+- [x] Focused Python tests, Ruff, package exports and import boundaries pass.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Implement contracts, digests and package exports.
-- [ ] Implement repository/Fakes, pending join service and Profile preview.
-- [ ] Implement session auth, query/command gateway and projector.
-- [ ] Run focused verification and synchronize branch documents.
+- [x] Implement contracts, digests and package exports.
+- [x] Implement repository/Fakes, pending join service and Profile preview.
+- [x] Implement session auth, query/command gateway and projector.
+- [x] Run focused verification and synchronize branch documents.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
