@@ -580,9 +580,9 @@ baseline.
 ### Future Bot Control Plane And Group Onboarding
 
 The detailed design authority is
-`docs/design/bot-control-plane.md`. The next Tree Alignment must map this scope
-to S21 before S23 is resumed; this Spec update does not edit revision 3 or claim
-implementation.
+`docs/design/bot-control-plane.md`. Tree revision 4 maps this scope to S21A,
+S21B, S21C and S21 Audit before S23; the branches remain pending until their
+implementation and verification evidence is integrated.
 
 `GroupServiceProfile` is a versioned catalog artifact, not a permission object.
 It contains stable references to requested business services, Persona,

@@ -256,6 +256,46 @@ tree:
       spec: branches/agent-expansion/bandit-offline/spec.md
       depends_on:
       - legacy-cleanup
+    - id: control-plane
+      title: S21 Bot Control Plane
+      purpose: >-
+        Establish governed group-service initialization and operator control before
+        any real-group validation.
+      spec: branches/agent-expansion/control-plane/spec.md
+      children:
+      - id: control-plane-foundation
+        title: S21A Control Plane Foundation
+        purpose: >-
+          Define the framework-neutral profile, assignment, operator command and
+          projection foundation over Fake group and service facts.
+        spec: branches/agent-expansion/control-plane/control-plane-foundation/spec.md
+        depends_on:
+        - legacy-cleanup
+        - mew-parity-audit
+      - id: group-onboarding
+        title: S21B Group Onboarding
+        purpose: >-
+          Let an authorized administrator preview and activate one initial group
+          service profile with immutable Runtime assignment and recovery.
+        spec: branches/agent-expansion/control-plane/group-onboarding/spec.md
+        depends_on:
+        - control-plane-foundation
+      - id: governed-operations
+        title: S21C Governed Operations
+        purpose: >-
+          Expose authoritative operational projections and only the existing typed
+          Core mutations through the Control Plane.
+        spec: branches/agent-expansion/control-plane/governed-operations/spec.md
+        depends_on:
+        - group-onboarding
+      - id: control-plane-audit
+        title: S21 Completion Audit
+        purpose: >-
+          Prove isolation, recovery and governed Agent operations while removing
+          browser-local authority and direct-NapCat Agent delivery.
+        spec: branches/agent-expansion/control-plane/control-plane-audit/spec.md
+        depends_on:
+        - governed-operations
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-
@@ -265,3 +305,4 @@ tree:
       depends_on:
       - legacy-cleanup
       - mew-parity-audit
+      - control-plane-audit

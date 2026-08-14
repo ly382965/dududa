@@ -37,9 +37,8 @@ and directory slices and a joint audit.
 5. The Web audit depends on both user-facing slices and proves cross-account,
    security and responsive behavior at their integration point.
 6. Real group-chat validation is a terminal release gate. Revision 3 added S23
-   as the final leaf; the next revision must insert S21 Control Plane/group
-   onboarding before it, so product initialization is not hidden inside a live
-   test branch.
+   as the final leaf; revision 4 inserts S21 Control Plane/group onboarding
+   before it, so product initialization is not hidden inside a live test branch.
 7. Answer length is an independent response-planning concern, while proactive
    probes and scheduled digests use a separate initiated-run boundary. Neither
    behavior is hidden inside Model Router, MCP, or the completed inbound S10/S11
@@ -78,9 +77,8 @@ group send remain external gates.
 
 The user has confirmed a governed adaptive-runtime direction and a Web Bot
 Control Plane whose first use case is group onboarding through a versioned
-`GroupServiceProfile`. This is accepted product direction but not revision 3
-implementation. The next Tree Alignment must insert S21 Control Plane work
-before the paused S23 branch can resume.
+`GroupServiceProfile`. Revision 4 now owns that implementation as S21A-S21C and
+an S21 audit. All four branches are pending before paused S23 can resume.
 
 The current local Dududa account history is approved for private development
 replay and may support focused no-send regression during S21. The legacy local

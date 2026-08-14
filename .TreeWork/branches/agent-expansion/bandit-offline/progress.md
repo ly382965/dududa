@@ -6,7 +6,7 @@ Branch: bandit-offline
 Parent: agent-expansion
 Status: complete
 Verification: verified
-Last sync: unix:1786381598
+Last sync: unix:1786706085
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

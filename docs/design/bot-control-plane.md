@@ -1,7 +1,7 @@
 # Bot Control Plane 与群服务初始化设计
 
-状态：设计方向已由用户确认；尚未实现，尚未进入 Tree revision 3。下一次 Tree Alignment
-应将其映射为 S21，并置于暂停的 S23 真实群验证之前。
+状态：设计方向已由用户确认；Tree revision 4 已将其映射为 S21A-S21C 与 S21 Audit，当前尚未
+实现。S21 完成并通过离线审计前，暂停的 S23 真实群验证不得恢复。
 
 ## 1. 产品定位
 
@@ -232,9 +232,9 @@ Agent 生成的 Reply Draft、主动消息和自动回复则必须经过 Agent P
 - Bot 退群、授权撤销或群 Scope 改变：assignment 进入 `REVOKED`，未发送工作全部失效；
 - Control Plane 暂时不可用：已激活 Runtime 使用冻结 snapshot，不能猜测新配置。
 
-## 11. S21 建议顺序
+## 11. S21 执行顺序
 
-S21 应在下一次 Tree Alignment 中成为 S23 的前置，而不是隐藏在真实群测试里：
+Tree revision 4 已将 S21 设为 S23 的前置，按以下顺序执行：
 
 1. **S21A Control Plane Foundation**：冻结 Profile/Assignment/Command/Query DTO，建立 operator
    authentication/RBAC、Projector、Command Gateway、Audit 和 Fake Group Join；

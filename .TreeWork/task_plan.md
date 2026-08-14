@@ -71,12 +71,10 @@
   real-group shadow/canary records the frozen safety and SLO evidence.
 
 All S01-S20/S22 and Web criteria in their accepted local/offline scopes are
-satisfied. S23 is the only remaining Tree branch and is paused/partial after
-manifest-only readiness; environment-specific integration and a separately
-authorized external run both remain. The governed adaptive-runtime and Bot
-Control Plane direction is now user-confirmed, but remains outside accepted
-revision 3 implementation evidence. The next Tree revision must insert S21
-before S23 resumes.
+satisfied. Revision 4 adds S21A-S21C and S21 Audit as the remaining offline
+implementation chain before paused/partial S23. S23 still has manifest-only
+readiness; environment-specific integration and a separately authorized
+external run remain outside S21.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 

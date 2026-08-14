@@ -495,6 +495,94 @@
       "kind": "depends_on",
       "user_label": "proactive-contracts depends on response-persona",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-63",
+      "from": "agent-expansion",
+      "to": "control-plane",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains control-plane",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-64",
+      "from": "control-plane",
+      "to": "control-plane-foundation",
+      "kind": "parent_of",
+      "user_label": "control-plane contains control-plane-foundation",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-65",
+      "from": "control-plane",
+      "to": "group-onboarding",
+      "kind": "parent_of",
+      "user_label": "control-plane contains group-onboarding",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-66",
+      "from": "control-plane",
+      "to": "governed-operations",
+      "kind": "parent_of",
+      "user_label": "control-plane contains governed-operations",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-67",
+      "from": "control-plane",
+      "to": "control-plane-audit",
+      "kind": "parent_of",
+      "user_label": "control-plane contains control-plane-audit",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-68",
+      "from": "control-plane-foundation",
+      "to": "legacy-cleanup",
+      "kind": "depends_on",
+      "user_label": "control-plane-foundation depends on legacy-cleanup",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-69",
+      "from": "control-plane-audit",
+      "to": "governed-operations",
+      "kind": "depends_on",
+      "user_label": "control-plane-audit depends on governed-operations",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-70",
+      "from": "real-group-validation",
+      "to": "control-plane-audit",
+      "kind": "depends_on",
+      "user_label": "real-group-validation depends on control-plane-audit",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-71",
+      "from": "control-plane-foundation",
+      "to": "mew-parity-audit",
+      "kind": "depends_on",
+      "user_label": "control-plane-foundation depends on mew-parity-audit",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-72",
+      "from": "governed-operations",
+      "to": "group-onboarding",
+      "kind": "depends_on",
+      "user_label": "governed-operations depends on group-onboarding",
+      "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-73",
+      "from": "group-onboarding",
+      "to": "control-plane-foundation",
+      "kind": "depends_on",
+      "user_label": "group-onboarding depends on control-plane-foundation",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

@@ -4,9 +4,9 @@
 <!-- treework:root-status:start -->
 Stage: work_tree
 Lead cursor: real-group-validation
-Accepted tree revision: 3
+Accepted tree revision: 4
 Tree editing: closed
-Last sync: unix:1786383737
+Last sync: unix:1786706085
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)
@@ -68,8 +68,9 @@ Last sync: unix:1786383737
   corrected Web's role: it is a first-class Bot Control Plane, not an
   observation-only surface. A Bot administrator selects the initial service
   profile when the Bot joins a group; learned context cannot widen it. Root
-  Requirements/Spec now own this direction, but revision 3 has no S21 branch or
-  implementation evidence yet.
+  Requirements/Spec own this direction, and revision 4 now adds the pending
+  S21A-S21C/Audit chain before paused S23. No S21 implementation evidence exists
+  yet.
 - On 2026-08-14 the current local Dududa account history was approved for
   private development replay while the legacy local account was explicitly
   excluded. Exact account identifiers remain local runtime inputs.

@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 3,
-  "source_hash": "fnv1a64:fd5453733f505538",
-  "state_hash": "fnv1a64:76d9ea93c31c52a1",
-  "accepted_at": "unix:1786272840",
+  "revision": 4,
+  "source_hash": "fnv1a64:96e27a63e47f9df1",
+  "state_hash": "fnv1a64:edfe9ce67a01ba07",
+  "accepted_at": "unix:1786706085",
   "root": "root",
   "nodes": [
     {
@@ -350,15 +350,69 @@
       ]
     },
     {
+      "id": "control-plane",
+      "parent": "agent-expansion",
+      "title": "S21 Bot Control Plane",
+      "purpose": "Establish governed group-service initialization and operator control before any real-group validation.",
+      "spec": "branches/agent-expansion/control-plane/spec.md",
+      "sibling_order": 14
+    },
+    {
+      "id": "control-plane-foundation",
+      "parent": "control-plane",
+      "title": "S21A Control Plane Foundation",
+      "purpose": "Define the framework-neutral profile, assignment, operator command and projection foundation over Fake group and service facts.",
+      "spec": "branches/agent-expansion/control-plane/control-plane-foundation/spec.md",
+      "sibling_order": 0,
+      "depends_on": [
+        "legacy-cleanup",
+        "mew-parity-audit"
+      ]
+    },
+    {
+      "id": "group-onboarding",
+      "parent": "control-plane",
+      "title": "S21B Group Onboarding",
+      "purpose": "Let an authorized administrator preview and activate one initial group service profile with immutable Runtime assignment and recovery.",
+      "spec": "branches/agent-expansion/control-plane/group-onboarding/spec.md",
+      "sibling_order": 1,
+      "depends_on": [
+        "control-plane-foundation"
+      ]
+    },
+    {
+      "id": "governed-operations",
+      "parent": "control-plane",
+      "title": "S21C Governed Operations",
+      "purpose": "Expose authoritative operational projections and only the existing typed Core mutations through the Control Plane.",
+      "spec": "branches/agent-expansion/control-plane/governed-operations/spec.md",
+      "sibling_order": 2,
+      "depends_on": [
+        "group-onboarding"
+      ]
+    },
+    {
+      "id": "control-plane-audit",
+      "parent": "control-plane",
+      "title": "S21 Completion Audit",
+      "purpose": "Prove isolation, recovery and governed Agent operations while removing browser-local authority and direct-NapCat Agent delivery.",
+      "spec": "branches/agent-expansion/control-plane/control-plane-audit/spec.md",
+      "sibling_order": 3,
+      "depends_on": [
+        "governed-operations"
+      ]
+    },
+    {
       "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "spec": "branches/agent-expansion/real-group-validation/spec.md",
-      "sibling_order": 14,
+      "sibling_order": 15,
       "depends_on": [
         "legacy-cleanup",
-        "mew-parity-audit"
+        "mew-parity-audit",
+        "control-plane-audit"
       ]
     }
   ]
