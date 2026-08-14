@@ -189,20 +189,20 @@ they never activate services, grant capabilities, or widen side effects.
   integration and evidence-based compatibility cleanup with a recoverable
   previous release; S20 provides only replayable offline Bandit contracts and
   synthetic estimator goldens.
-- [ ] Group onboarding records a Bot/account/group-scoped pending state, and an
+- [x] Group onboarding records a Bot/account/group-scoped pending state, and an
   authorized administrator can preview and activate exactly one versioned
   `GroupServiceProfile` with expected-revision CAS, idempotency, Audit Receipt
   and last-known-good rollback.
-- [ ] The control backend separately exposes desired and effective services,
+- [x] The control backend separately exposes desired and effective services,
   rejects unavailable or unauthorized selections, and publishes one immutable
   assignment snapshot consumed by Runtime without browser-local authority.
-- [ ] Group Context, Skill candidates and Bandit cannot modify service
+- [x] Group Context, Skill candidates and Bandit cannot modify service
   assignment, Capability grants, Memory/proactive enablement, target, schedule
   or send authority; negative tests prove those boundaries.
-- [ ] Agent-generated draft approval and every Control Plane mutation use typed
-  governed commands and authoritative Receipts. The current direct-NapCat draft
-  path and browser-local permission/config placeholders are absent from the
-  connected Agent flow.
+- [x] Agent-generated draft approval either uses a typed governed command and
+  authoritative Receipt or remains explicitly unavailable. Every Control Plane
+  mutation follows that command path; direct-NapCat draft send and browser-local
+  permission/config success are absent from the Agent flow.
 - [x] Local development may replay only the current locally authorized Dududa
   account's group records through a no-send private runner. The legacy local
   account is excluded; its exact account mapping remains a local runtime input.

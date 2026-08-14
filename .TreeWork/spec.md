@@ -577,12 +577,12 @@ mutations unless explicitly authorized. Desktop and mobile screenshots, console
 errors, layout overlap and virtual-scroll stability are audited against the Mew
 baseline.
 
-### Future Bot Control Plane And Group Onboarding
+### Bot Control Plane And Group Onboarding
 
 The detailed design authority is
 `docs/design/bot-control-plane.md`. Tree revision 4 maps this scope to S21A,
-S21B, S21C and S21 Audit before S23; the branches remain pending until their
-implementation and verification evidence is integrated.
+S21B, S21C and S21 Audit before S23; all four branches are complete, verified
+and integrated for the accepted offline scope.
 
 `GroupServiceProfile` is a versioned catalog artifact, not a permission object.
 It contains stable references to requested business services, Persona,
@@ -639,9 +639,10 @@ role and the server-only OneBot token are not operator identity.
 
 Normal human operator messaging in the QQ workspace may continue through the
 typed NapCat gateway. Agent draft/proactive delivery must instead use the
-governed Preview/Dispatch/Output command and return a `DeliveryReceipt`; the
-current unreachable `approveDraft()` direct send and local permission/config
-mutations are placeholders to remove before Agent integration.
+governed Preview/Dispatch/Output command and return a `DeliveryReceipt`. S21
+removed the unreachable `approveDraft()` direct send and browser-local
+permission/config success; those controls remain unavailable until a dedicated
+Core command exists.
 
 Group Context, relationship evidence, Skill/Prompt/Style candidates and Bandit
 are downstream adaptive evidence. None may change `GroupServiceAssignment`,
@@ -660,8 +661,8 @@ URLs do not become committed fixtures or reports.
 
 This local corpus does not become a prerequisite for S21: Fake join, Fake
 services and a fixed Profile Catalog remain sufficient for the complete Control
-Plane implementation. It may be replayed during S21 as a focused regression
-when Connector, history or policy code changes.
+Plane implementation. It may be replayed during later development as a focused
+regression when Connector, history or policy code changes.
 
 The user also owns an external long-term corpus spanning hundreds of groups.
 That corpus is mounted only in the S23 test environment after S21 completes.
@@ -674,15 +675,14 @@ execution and attributable feedback.
 ### Verification And Change Discipline
 
 Each implementation branch has focused Unit, Contract, negative and failure
-tests. The final audits rerun the full Python and Web suites, import boundaries,
-typecheck/build, secret scan, shell, Compose parse, whitespace checks,
-wheel/image/plugin smoke where affected, and a requirement-by-requirement
-audit. Branch-local success is not evidence that its project epic is complete.
+tests. Final audits use the smallest cross-module sample that covers changed
+behavior, with full repository matrices reserved for release boundaries such as
+S19/S23. Branch-local success is not evidence that its project epic is complete.
 
-The release sequence is strict: finish S21 and its local audit, run external
-long-term history as no-send S23 Shadow, then run authorized single-group live
-Shadow and canary. Digest/Probe canaries and wider group testing follow only
-after their preceding stage passes.
+S21 and its local audit are complete. The remaining release sequence starts
+with external long-term history as no-send S23 Shadow, then an authorized
+single-group live Shadow and canary. Digest/Probe canaries and wider group
+testing follow only after their preceding stage passes.
 
 S20 may add versioned before-action decisions, complete action-set/propensity
 logging, support validation, deterministic replay and synthetic IPS/SNIPS/DR

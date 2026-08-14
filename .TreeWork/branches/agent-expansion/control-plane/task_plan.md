@@ -12,21 +12,21 @@ Title: S21 Bot Control Plane
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] S21A-S21C and the audit are complete, verified and integrated locally.
-- [ ] An authorized Fake operator can initialize a pending Fake group through
+- [x] S21A-S21C and the audit are complete, verified and integrated locally.
+- [x] An authorized Fake operator can initialize a pending Fake group through
   one versioned Profile and Runtime consumes only its immutable Assignment.
-- [ ] Desired/Effective state is explainable and no model/plugin/context/
+- [x] Desired/Effective state is explainable and no model/plugin/context/
   Bandit output can widen service, capability, Memory or send authority.
-- [ ] Web Agent operations use authoritative queries/commands and no Agent
+- [x] Web Agent operations use authoritative queries/commands and no Agent
   draft, permission or setting mutation succeeds in browser-local state.
-- [ ] S23 remains paused with real adapters, human quality and sends external.
+- [x] S23 remains paused with real adapters, human quality and sends external.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Complete and integrate `control-plane-foundation`.
-- [ ] Complete and integrate `group-onboarding`.
-- [ ] Complete and integrate `governed-operations`.
-- [ ] Complete the cross-stage `control-plane-audit` and parent verification.
+- [x] Complete and integrate `control-plane-foundation`.
+- [x] Complete and integrate `group-onboarding`.
+- [x] Complete and integrate `governed-operations`.
+- [x] Complete the cross-stage `control-plane-audit` and parent verification.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

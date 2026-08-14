@@ -11,11 +11,28 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-Tree revision 4 accepted the S21A -> S21B -> S21C -> Audit chain. All child
-branches are pending and S23 remains paused behind the audit dependency.
+S21A Foundation, S21B Group Onboarding, S21C Governed Operations and the
+Completion Audit are complete, verified and integrated. A Fake join stays at
+zero service until an authorized operator activates a versioned Profile; Core
+publishes the immutable Assignment consumed by Runtime, and Web only projects
+typed state or submits dedicated commands. S23 remains paused.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+Integrated the four child branches, including durable onboarding/LKG state,
+six operational projections, Python-to-Node-to-Vue transport, global command
+identity, post-lock deadline validation and Agent no-send UI cleanup. Focused
+Python, import, Ruff, Node, Web, build and one Playwright scenario passed.
+
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+None inside the accepted S21 offline scope. Production HTTP/operator identity,
+live Provider/Source/Projection/Output, human quality, external long-term data
+and every real QQ behavior remain S23 inputs.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+Record the parent verification, complete and merge this branch, synchronize the
+root TreeWork status and stop. Do not enter `real-group-validation`. The current
+local Dududa account is approved for later private development replay; the
+legacy account remains excluded.

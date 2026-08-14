@@ -61,20 +61,19 @@
   contracts without using real groups.
 - [x] Source-provider fixtures and S20 synthetic estimator goldens are clearly
   separated from live Source Adapters and online learning claims.
-- [ ] A newly joined group remains pending and receives no Agent service until
+- [x] A newly joined group remains pending and receives no Agent service until
   an authorized Bot administrator previews and activates a versioned service
   profile through a CAS/idempotent/audited Core command.
-- [ ] The Control Plane displays desired versus effective services, uses
+- [x] The Control Plane displays desired versus effective services, uses
   operator authentication and exact Bot/account/group Scope, and proves that
   Group Context, plugins, models and Bandit cannot widen the assignment.
 - [ ] After every earlier acceptance item and local audit passes, the authorized
   real-group shadow/canary records the frozen safety and SLO evidence.
 
-All S01-S20/S22 and Web criteria in their accepted local/offline scopes are
-satisfied. Revision 4 adds S21A-S21C and S21 Audit as the remaining offline
-implementation chain before paused/partial S23. S23 still has manifest-only
-readiness; environment-specific integration and a separately authorized
-external run remain outside S21.
+All S01-S22 and Web criteria in their accepted local/offline scopes are
+satisfied. Revision 4 completed S21A-S21C and S21 Audit before paused/partial
+S23. S23 still has manifest-only readiness; environment-specific integration
+and a separately authorized external run remain outside S21.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 
@@ -106,7 +105,7 @@ external run remain outside S21.
     digest Shadow and probe Shadow. Live Source Adapters remain external.
 15. Run fake-clock long-duration simulation, fault injection, repository-wide
     regression and a new local expansion audit.
-16. Add S21 Bot Control Plane foundations, group onboarding and governed
+16. Complete S21 Bot Control Plane foundations, group onboarding and governed
     operations: an authorized administrator selects an initial group service
     profile and Runtime consumes only the resulting immutable assignment.
 17. After S21 and every accepted local audit are complete, mount the user's
@@ -115,12 +114,10 @@ external run remain outside S21.
     authorized single-group live Shadow, inbound canary, separately authorized
     digest/probe canaries, and only afterward layered expansion/debugging.
 
-Tree revision 3 already contains the response/proactive expansion, operations,
-layout, Eval/CI, local audit, cleanup, offline Bandit and terminal real-group
-branches. The terminal branch depends on every accepted local audit and cannot
-be entered merely because credentials arrive. Before implementation continues,
-the next coherent Tree revision must add S21 as an explicit predecessor rather
-than hiding Control Plane work inside S23.
+Tree revision 4 contains the response/proactive expansion, operations, layout,
+Eval/CI, local audit, cleanup, offline Bandit, completed S21 Control Plane and
+terminal real-group branch. The terminal branch depends on every accepted local
+audit and cannot be entered merely because credentials arrive.
 
 ## Out Of Scope (project-wide exclusions; not branch ownership detail)
 

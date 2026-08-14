@@ -16,7 +16,7 @@ Last sync: unix:1786717559
   Unified MCP, S13 Capability, S14 Memory, S15 response/persona, S15A-S15E
   proactive no-send stages, S16 offline operations, S17 canonical layout and
   S18 reproducible offline evaluation/CI, S19 local candidate audit, S22 legacy
-  cleanup and S20 offline Bandit.
+  cleanup, S20 offline Bandit and S21 Bot Control Plane.
 - S19 completed the full release-candidate audit with Python 3.10/3.12 each at
   651 tests and two AstrBot-host-only skips. S20 then passed 16 focused tests on
   each Python, and S23 readiness passed eight on each; those additive stages did
@@ -68,9 +68,8 @@ Last sync: unix:1786717559
   corrected Web's role: it is a first-class Bot Control Plane, not an
   observation-only surface. A Bot administrator selects the initial service
   profile when the Bot joins a group; learned context cannot widen it. Root
-  Requirements/Spec own this direction, and revision 4 now adds the pending
-  S21A-S21C/Audit chain before paused S23. No S21 implementation evidence exists
-  yet.
+  Requirements/Spec own this direction. Revision 4 has completed and verified
+  S21A-S21C plus the Audit while leaving S23 paused.
 - On 2026-08-14 the current local Dududa account history was approved for
   private development replay while the legacy local account was explicitly
   excluded. Exact account identifiers remain local runtime inputs.
@@ -96,15 +95,13 @@ Last sync: unix:1786717559
 - No real Provider Endpoint is currently enableable: composition, sampling,
   health and conformance evidence must close first. No second legal same-role/
   tier Endpoint, propensity log or attributable reward exists for Bandit.
-- Authorized Chinese multi-turn data, a second annotator, profile examples and
-  source/operator policy inputs are unavailable; related reports correctly stop
-  at synthetic/Schema or no-send Spike readiness.
+- The local Dududa corpus is approved for private development replay but has no
+  human gold. External long-term data, a second annotator, profile examples and
+  source/operator policy inputs are still needed for quality claims.
 - Plugin Descriptor/Lifecycle/Realm/Profile, Group Context and relationship
-  projections, Skill candidate evolution, and Bot Control Plane query/command
-  pipelines remain unimplemented. The existing Agent Console is a UI shell with
-  an empty backend projection; currently unreachable direct-NapCat draft send
-  and browser-local permission placeholders must become governed commands before
-  the Agent data path is connected.
+  projections, and Skill candidate evolution remain unimplemented. S21 supplies
+  Control Plane query/command foundations; production HTTP/operator identity,
+  live projections and real Agent Output remain external.
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 
@@ -128,15 +125,18 @@ Last sync: unix:1786717559
 - S20 returned complete/verified offline Bandit contracts: full same-role/tier
   action support, execution/feedback binding, propensity validation and fixed
   Decimal IPS/SNIPS/DR/ESS. It adds no production hook, training or exploration.
+- S21 returned complete/verified offline Control Plane foundations, governed
+  group onboarding, six operational projections and a completion audit. New
+  groups stay at zero service until authorized Profile activation; Web Agent
+  placeholders neither send nor claim browser-local success.
 - S23 returned a committed low-sensitivity template, manifest-only readiness
   checker and Chinese Runbook. Its report always keeps
   `live_execution_authorized=false`; the branch is correctly paused/partial
   before any real group read, Provider/source call, container change or send.
-- The 2026-08-14 long-horizon report returned at `75537a3` and records proposed
-  design philosophy. The user has now accepted the product direction and added
-  administrator-selected group service initialization; neither event changes
-  revision 3, resumes S23 or proves an implemented Control Plane/plugin/social-
-  learning runtime.
+- The 2026-08-14 long-horizon report returned at `75537a3`; the user accepted
+  its product direction and administrator-selected group service initialization.
+  S21 now implements the Control Plane subset, but Plugin Runtime and social
+  learning remain design-only and S23 remains paused.
 - S10 completed with 325 tests on Python 3.10/3.12 and protected delivery,
   reconciliation and side-effect-free Shadow evidence.
 - S11 locally passes 350 tests on Python 3.10/3.12 with persistent single-owner

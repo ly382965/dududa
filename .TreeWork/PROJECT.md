@@ -77,11 +77,13 @@ group send remain external gates.
 
 The user has confirmed a governed adaptive-runtime direction and a Web Bot
 Control Plane whose first use case is group onboarding through a versioned
-`GroupServiceProfile`. Revision 4 now owns that implementation as S21A-S21C and
-an S21 audit. All four branches are pending before paused S23 can resume.
+`GroupServiceProfile`. Revision 4 implemented and verified that scope through
+S21A-S21C and the S21 audit. S23 remains paused until its environment adapters,
+human evaluation and behavior-specific authorizations are ready.
 
 The current local Dududa account history is approved for private development
-replay and may support focused no-send regression during S21. The legacy local
-account is excluded. Account identifiers remain local runtime inputs. A separate
-external long-term corpus spanning hundreds of groups is intentionally deferred
-to the S23 test environment, where historical Shadow precedes any live canary.
+replay and may support focused no-send regression during development. The
+legacy local account is excluded. Account identifiers remain local runtime
+inputs. A separate external long-term corpus spanning hundreds of groups is
+intentionally deferred to the S23 test environment, where historical Shadow
+precedes any live canary.
