@@ -6,12 +6,12 @@
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
-- S01–S20 与 S22 的既定本地/离线范围均已完成并验证；S19 已闭合本地候选总审计，S22 已按
+- S01–S22 的既定本地/离线范围均已完成并验证；S19 已闭合本地候选总审计，S22 已按
   消费者与回滚证据清理兼容面，S20 只完成离线 Bandit 契约。S23 仅在暂停分支完成
   manifest-only readiness；真实验证尚未开始，分支也未合并。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
-  取得持久单一所有权。本地发布模块、既定 QQ Web 测试和总审计已经完成；真实 QQ 群运行仍须
-  先完成新确认的 S21 群服务初始化、S23 环境适配并取得逐行为授权。
+  取得持久单一所有权。本地发布模块、既定 QQ Web 测试、S21 群服务初始化和总审计已经完成；
+  真实 QQ 群运行仍须闭合 S23 环境适配并取得逐行为授权。
 - 独立可选 S20 不属于主动出站、群服务 Profile 或 S23 的发布前置。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
@@ -20,16 +20,16 @@
 - S17 三批 path-only 迁移与旧 lock marker 兼容已经 protected completion 并合入控制分支。
   S18 已实现统一 Eval/Trace/CI，S19 已完成 18/18 本地候选审计；S22 已删除十个路径别名和
   插件专用 iCourse Client，并保留七个仍有消费者的兼容面。Manifest v2 继续因 hash、依赖锁
-  和许可证证据不足延期。S20 离线 Bandit 基础已经实现；真实学习/探索未开始，S23 仍是
-  S21A-S21C 已在 Tree revision 4 完成离线实现，当前只剩 S21 Completion Audit；S23 继续暂停。
+  和许可证证据不足延期。S20 离线 Bandit 基础已经实现，真实学习/探索未开始。S21A-S21C 与
+  Completion Audit 已在 Tree revision 4 完成离线实现和验证；S23 继续暂停。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
 - 2026-08-14 形成的
   [受治理自适应 Agent Runtime 长程研究](../research/deepseek-harness-inspired-dududa-evolution.md)
   已被用户确认为长期设计方向，并补充 Web Bot Control Plane 的首要用例：Bot 入群后由管理员
-  选择初始 `GroupServiceProfile`。Requirements/Project Spec 已更新；S21A-S21C 已实现，S21 Audit
-  尚未完成。Plugin Runtime、Group Context/关系证据/Skill 演化仍未实现，不是现有能力。
+  选择初始 `GroupServiceProfile`。Requirements/Project Spec 已更新，S21 已离线完成。Plugin
+  Runtime、Group Context/关系证据/Skill 演化仍未实现，不是现有能力。
 
 “步骤完成”表示该步骤约定的代码、负向测试和退出门禁已通过，不表示产品模块满足统一完成
 定义。模块只有具备真实 Adapter、端到端故障/取消/超时证据、生产 feature flag、shadow、
@@ -85,7 +85,7 @@
 | S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651 tests/2 skips、worker 各 2、350-case committed Eval、30 日/故障抽样、Web 108+6、双镜像无网 smoke、39 项 package/static、5 项 Compose、824 文件 secret scan 和两类 rollback 均通过；18/18 固定 gate 由低敏 receipt 绑定 | `s23_ready=false`；真实 Provider/source/QQ/人工质量仍是外部门禁；18 项 S22 清单为 10 remove candidate、7 retain live、1 blocked unknown |
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
-| S21 Bot Control Plane | **S21A-S21C 已完成，Audit 待完成** | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影和 Python→Node→Vue 查询链；Agent 占位不再发送或伪成功 | S21 Audit 仍需闭合 command ID 唯一、SQLite deadline-after-lock、跨 Scope/重启与组合构建抽样；生产 HTTP/身份和真实 QQ 留在外部门禁 |
+| S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
 | S23 Real Group Validation | **暂停、部分完成** | manifest-only readiness、低敏模板、checker 和 Runbook 已在 `treework/real-group-validation@01c8abf` 提交；无真实发送或真实来源声明 | 分支未合并；仍需 evidence resolver、真实 Provider/Source/Projection/Output 环境适配与 Conformance、外部输入和逐行为授权 |
 
 ## 产品模块完成度
@@ -104,7 +104,7 @@
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit 分权；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
-| Mew/NapCat WebUI / Bot Control Plane | QQ 客户端已完成；S21A-S21C 已完成 | Web 已提供群服务初始化与运行状态视图；Desired/Effective、Assignment、Receipt 和运维健康均来自 Core DTO。Agent 草稿直发 NapCat 已移除，permission/config 占位在无专用命令时保持不可用 | S21 Audit、生产 Core HTTP/operator identity、真实 Agent Run/健康数据和授权 QQ 操作仍未完成 |
+| Mew/NapCat WebUI / Bot Control Plane | QQ 客户端与 S21 离线范围已完成 | Web 已提供群服务初始化与运行状态视图；Desired/Effective、Assignment、Receipt 和运维健康均来自 Core DTO。Agent 草稿直发 NapCat 已移除，permission/config 占位为无事件只读状态 | 生产 Core HTTP/operator identity、真实 Agent Run/健康数据和授权 QQ 操作仍未完成 |
 | 真实群聊放量 | S23 暂停、真实运行未开始 | S19/S22 本地发布门禁和既定 WebUI 回归已通过；S23 仅在暂停分支完成 manifest-only readiness | 仍需环境适配工程、逐行为授权和真实外部输入；可选 S20 不阻塞 |
 
 ## 2026-08-14 长程设计整合状态
@@ -116,10 +116,10 @@
 | 群体情境与社会学习 | 设计方向已确认、实现未开始 | Group Context 只作为带 TTL 的群级弱先验，关系仅保存可撤销证据；不能修改群服务初值；尚无真实群数据、Projection 或效果证据 |
 | Skill/Prompt/Style 候选演化 | 设计方向已确认、实现未开始 | 模型只能提出候选资产，不能自动发布或开服务；尚无 lineage、离线 Eval、人工审批和回滚流水线 |
 | Bandit 在线学习 | S20 离线基础完成，在线未开始 | 只允许在安全等价合法候选间排序；没有真实 action support、before-action propensity、反馈 join、Shadow 或探索 |
-| Bot Control Plane | S21A-S21C 已完成，Audit 待完成 | Web 是统一控制后台，查询来自权威投影，写入经过专用 Core Command；Query/Command、operator auth/RBAC、Audit/Receipt、群入驻和六面运维投影已实现，未绑定数据源明确 unavailable |
+| Bot Control Plane | S21 已完成（离线） | Web 是统一控制后台，查询来自权威投影，写入经过专用 Core Command；Query/Command、operator auth/RBAC、Audit/Receipt、群入驻、六面运维投影和完成审计已实现，未绑定数据源明确 unavailable |
 
-上述方向已写入根 Requirements/Spec。Tree revision 4 已完成 S21A-S21C 的离线实现；Plugin
-Runtime、Group Context 与 Skill 演化仍没有实现证据。S23 暂停状态不变，先完成 S21 Audit。
+上述方向已写入根 Requirements/Spec。Tree revision 4 已完成 S21 的离线实现；Plugin Runtime、
+Group Context 与 Skill 演化仍没有实现证据。S23 暂停状态不变，等待外部输入和逐行为授权。
 
 ## 2026-08-10 S22 阶段证据
 
@@ -256,9 +256,9 @@ Runtime、Group Context 与 Skill 演化仍没有实现证据。S23 暂停状态
 
 ## 残余边界
 
-1. **真实群验证延期到最终阶段。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据；
-   即使提前具备群 ID、凭据和发送窗口，也要先把 S21 控制后台加入 Tree 并完成群服务初始化
-   离线审计，再恢复 S23。独立可选 S20 不属于该发布前置。
+1. **真实群验证延期到最终阶段。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据，S21
+   控制后台和群服务初始化离线审计也已完成；现在仍须先闭合 S23 环境适配和逐行为授权。
+   独立可选 S20 不属于该发布前置。
 2. **Attachment Actor 绑定不完整。** `AttachmentAccessRequest` 没有独立 `Actor` 字段；当前
    只能验证 `AuthorizationDecision.actor_digest`，Repository 没有第二份当前 Actor 做交叉核对。
 3. **去重分层。** S10 Runtime Store 证明同进程 CAS/single-flight；S11 SQLite rollout ledger
@@ -283,11 +283,9 @@ Runtime、Group Context 与 Skill 演化仍没有实现证据。S23 暂停状态
 
 ## 下一步
 
-S17、S18、S19、S22 和 S20 离线范围均已完成。下一步先进行一次小型 Tree Alignment，把
-`S21A Foundation -> S21B Group Onboarding -> S21C Governed Operations -> S21 Audit` 加为 S23
-前置，并用 Fake join/service 离线完成管理员选择初始服务的闭环。S21 完成后，再取得外部输入，
-按“入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”恢复
-S23。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
+S17–S22 与 S21 离线范围均已完成。下一步准备 S23 的外部长期记录、生产 Adapter、人工评测和
+逐行为授权，再按“入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频 Probe ->
+分层放量”恢复 S23。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
 
 后续分支采用风险分层验证：优先运行受影响 Contract、聚焦 warning-as-error 与抽样仓库回归；
 只有跨模块高风险变更或 S19/最终总集成才重复双 Python 全仓，避免每个 Sxx 重复执行同一套

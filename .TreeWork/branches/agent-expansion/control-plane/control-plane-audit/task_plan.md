@@ -12,21 +12,21 @@ Title: S21 Completion Audit
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Requirement-by-requirement evidence proves pending zero-service,
+- [x] Requirement-by-requirement evidence proves pending zero-service,
   authorized onboarding, Desired/Effective truth, immutable Runtime state,
   idempotency/CAS/Audit/Receipt, isolation and LKG recovery.
-- [ ] Group Context/Plugin/Model/Bandit cannot widen assignment or send rights.
-- [ ] Agent draft/permission/settings paths use governed commands or honest
+- [x] Group Context/Plugin/Model/Bandit cannot widen assignment or send rights.
+- [x] Agent draft/permission/settings paths use governed commands or honest
   unavailable receipts and never direct NapCat/browser-local success.
-- [ ] Focused Python/Web/server/typecheck/build and small E2E pass.
-- [ ] Root documents report S21 offline complete and S23 external gates exactly.
+- [x] Focused Python/Web/server/typecheck/build and small E2E pass.
+- [x] Root documents report S21 offline complete and S23 external gates exactly.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Review integrated code and close any explicit acceptance gap.
-- [ ] Replace residual browser-local/direct-NapCat Agent paths.
-- [ ] Run proportional cross-stage verification and record evidence.
-- [ ] Complete parent S21 verification, integrate commits and stop before S23.
+- [x] Review integrated code and close any explicit acceptance gap.
+- [x] Replace residual browser-local/direct-NapCat Agent paths.
+- [x] Run proportional cross-stage verification and record evidence.
+- [x] Prepare the parent S21 verification handoff and stop before S23.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

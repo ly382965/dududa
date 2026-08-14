@@ -1,5 +1,8 @@
 # 下一次 `/goal`：S21 Bot Control Plane
 
+状态：已于 2026-08-14 执行完成。本文件保留为历史 Goal 输入，不应再次启动；结果见
+[S21 Bot Control Plane 离线完成审计](s21-control-plane-completion-audit.md)。
+
 ## 目标与顺序
 
 下一次 Goal 只完成不依赖外部数据的 S21：

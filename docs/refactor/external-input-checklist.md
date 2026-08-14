@@ -2,9 +2,9 @@
 
 ## 1. 先说结论
 
-S17–S20 与 S22 已完成既定离线范围。下一步 S21 Bot Control Plane 不需要外部聊天数据。
+S17–S22 与 S21 Bot Control Plane 已完成既定离线范围。下一步是准备 S23 外部输入。
 本机当前嘟嘟哒账号记录已获准用于私有开发回放；旧账号排除，精确账号映射只在运行时提供。
-用户另有数百群长期记录，只在 S21 完成后的 S23 测试环境中提供。
+用户另有数百群长期记录，只在 S23 隔离测试环境中提供。
 
 建议立即准备的顺序：
 
@@ -22,8 +22,8 @@ S17–S20 与 S22 已完成既定离线范围。下一步 S21 Bot Control Plane 
 | S17–S19 | 已完成 | Iris 对当前固定 commit 的明确许可，或“保持阻断/升级/替换”的决定 | 只影响 Manifest v2，不影响已完成的 v1 路径 |
 | S22 Cleanup | 已完成 | 无 | 已使用消费者扫描、迁移 receipt 和上一 Release 恢复证据 |
 | S20 离线 Bandit | 已完成、不需要 | 奖励维度和安全 floor 的产品定义 | 只影响以后 Shadow/在线阶段；当前未训练、未在线探索 |
-| S21 Control Plane | 不需要外部数据 | 初始 `GroupServiceProfile` 产品定义、管理员角色映射 | Fake join/service/Catalog 足以完成 S21A-S21C 与审计 |
-| S23 历史 Shadow | S21 完成后需要 | 外部数百群长期记录的只读挂载、时间范围和可标注样本 | 先做全量兼容/分布回放，再做小样本质量评测；不自动写 Memory 或训练 Bandit |
+| S21 Control Plane | 已完成、不需要外部数据 | 初始 `GroupServiceProfile` 产品定义、管理员角色映射 | Fake join/service/Catalog 已完成 S21A-S21C 与审计 |
+| S23 历史 Shadow | 现在需要准备 | 外部数百群长期记录的只读挂载、时间范围和可标注样本 | 先做全量兼容/分布回放，再做小样本质量评测；不自动写 Memory 或训练 Bandit |
 
 源码 tree hash、patch hash、依赖 lock 和 SBOM 应由工程工具生成，不需要人工填写。
 
@@ -117,7 +117,7 @@ Tool Schema/allowlist、SecretRef、timeout、rate limit、health 和许可证�
 
 ### 4.2 外部长期语料
 
-用户持有数百个群的长期聊天记录；现在不要放进 Git、文档或聊天窗口，也不等待它启动 S21。
+用户持有数百个群的长期聊天记录；不要放进 Git、文档或聊天窗口。S21 已完成，不再等待该数据。
 S23 环境准备完成后，以只读方式挂载完整语料做 no-send Shadow；人工质量 Pilot 首批选取
 30-50 个 conversation window，流程稳定后扩至 200-500 个。
 
