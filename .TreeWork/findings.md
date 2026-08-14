@@ -74,13 +74,13 @@
 - MCP extensibility is proven by adding a Fake through Registry configuration
   and Capability mapping while reusing the same Contract. It is not proven by
   AstrBot merely preserving an unknown Server entry in its JSON file.
-- Plugin lifecycle, Group Context, Skill evolution and Control Plane contracts
-  are accepted long-horizon design inputs but remain outside revision 3. Their
-  implementation requires a coherent S21 Tree update and branch-level Specs.
+- S21 now implements the accepted offline Control Plane contracts and group
+  onboarding through revision 4. Plugin lifecycle, Group Context and Skill
+  evolution remain long-horizon design inputs without implementation evidence.
 
 ## Risks And Unknowns (project-wide residual hazards; not unfinished branch work)
 
-- S01-S20/S22 and S23 offline readiness are locally committed but not pushed;
+- S01-S22 and S23 offline readiness are locally committed but not pushed;
   the control branch plus the paused managed S23 worktree remain the authority.
 - Native DeepSeek and Anthropic model IDs/capabilities must remain Adapter
   configuration until verified; endpoint aliases cannot be treated as facts.
@@ -96,5 +96,5 @@
   independent annotation and adjudication. Silence remains censored evidence,
   not a negative reward.
 - The user has an external long-term corpus spanning hundreds of groups, but it
-  is intentionally withheld until the S23 test environment. S21 must not wait
-  for or silently consume it.
+  is intentionally withheld until the S23 test environment. The approved local
+  Dududa corpus remains available for private no-send development replay.
