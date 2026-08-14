@@ -4,8 +4,11 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .api import ControlPlaneApi
     from .authorization import ControlPlaneAuthorizer
     from .contracts import (
+        AssignmentCommitDisposition,
+        AssignmentCommitResult,
         AssignmentStatus,
         CommandOutcome,
         CommandReceipt,
@@ -14,12 +17,19 @@ if TYPE_CHECKING:
         GroupJoinFact,
         GroupOnboardingRecord,
         GroupServiceAssignment,
+        GroupServiceMutationCommand,
+        GroupServiceMutationExecution,
         GroupServicePreview,
         GroupServiceProfile,
+        ManagedGroupProjection,
+        ManagedGroupsProjection,
+        ManagedGroupsQuery,
         OnboardingStatus,
         OperatorSession,
         PendingInboxProjection,
         PendingInboxQuery,
+        ProfileCatalogProjection,
+        ProfileCatalogQuery,
         ProfileMemoryMode,
         ProfilePreviewCommand,
         ProfilePreviewExecution,
@@ -30,14 +40,23 @@ if TYPE_CHECKING:
         ServiceResolution,
     )
     from .gateway import ControlPlaneGateway, GroupJoinService
+    from .lifecycle import GroupServiceLifecycle
     from .projector import ControlPlaneProjector
     from .repository import InMemoryGroupServiceRepository
     from .resolution import resolve_profile_services
+    from .snapshot import RepositoryGroupServiceSnapshotProvider
+    from .sqlite_repository import (
+        SQLiteGroupServiceRepository,
+        SQLiteGroupServiceRepositoryConfig,
+    )
 
 __all__ = [
+    "AssignmentCommitDisposition",
+    "AssignmentCommitResult",
     "AssignmentStatus",
     "CommandOutcome",
     "CommandReceipt",
+    "ControlPlaneApi",
     "ControlPlaneAuditRecord",
     "ControlPlaneAuthorizer",
     "ControlPlaneGateway",
@@ -47,17 +66,28 @@ __all__ = [
     "GroupJoinService",
     "GroupOnboardingRecord",
     "GroupServiceAssignment",
+    "GroupServiceLifecycle",
+    "GroupServiceMutationCommand",
+    "GroupServiceMutationExecution",
     "GroupServicePreview",
     "GroupServiceProfile",
     "InMemoryGroupServiceRepository",
+    "ManagedGroupProjection",
+    "ManagedGroupsProjection",
+    "ManagedGroupsQuery",
     "OnboardingStatus",
     "OperatorSession",
     "PendingInboxProjection",
     "PendingInboxQuery",
+    "ProfileCatalogProjection",
+    "ProfileCatalogQuery",
     "ProfileMemoryMode",
     "ProfilePreviewCommand",
     "ProfilePreviewExecution",
     "ProfileRef",
+    "RepositoryGroupServiceSnapshotProvider",
+    "SQLiteGroupServiceRepository",
+    "SQLiteGroupServiceRepositoryConfig",
     "ServiceCatalogSnapshot",
     "ServiceDefinition",
     "ServiceEligibilityFact",
@@ -66,10 +96,13 @@ __all__ = [
 ]
 
 _EXPORT_MODULES = {
+    "AssignmentCommitDisposition": ".contracts",
+    "AssignmentCommitResult": ".contracts",
     "AssignmentStatus": ".contracts",
     "CommandOutcome": ".contracts",
     "CommandReceipt": ".contracts",
     "ControlPlaneAuditRecord": ".contracts",
+    "ControlPlaneApi": ".api",
     "ControlPlaneAuthorizer": ".authorization",
     "ControlPlaneGateway": ".gateway",
     "ControlPlaneProjector": ".projector",
@@ -78,17 +111,28 @@ _EXPORT_MODULES = {
     "GroupJoinService": ".gateway",
     "GroupOnboardingRecord": ".contracts",
     "GroupServiceAssignment": ".contracts",
+    "GroupServiceLifecycle": ".lifecycle",
+    "GroupServiceMutationCommand": ".contracts",
+    "GroupServiceMutationExecution": ".contracts",
     "GroupServicePreview": ".contracts",
     "GroupServiceProfile": ".contracts",
     "InMemoryGroupServiceRepository": ".repository",
+    "ManagedGroupProjection": ".contracts",
+    "ManagedGroupsProjection": ".contracts",
+    "ManagedGroupsQuery": ".contracts",
     "OnboardingStatus": ".contracts",
     "OperatorSession": ".contracts",
     "PendingInboxProjection": ".contracts",
     "PendingInboxQuery": ".contracts",
+    "ProfileCatalogProjection": ".contracts",
+    "ProfileCatalogQuery": ".contracts",
     "ProfileMemoryMode": ".contracts",
     "ProfilePreviewCommand": ".contracts",
     "ProfilePreviewExecution": ".contracts",
     "ProfileRef": ".contracts",
+    "RepositoryGroupServiceSnapshotProvider": ".snapshot",
+    "SQLiteGroupServiceRepository": ".sqlite_repository",
+    "SQLiteGroupServiceRepositoryConfig": ".sqlite_repository",
     "ServiceCatalogSnapshot": ".contracts",
     "ServiceDefinition": ".contracts",
     "ServiceEligibilityFact": ".contracts",

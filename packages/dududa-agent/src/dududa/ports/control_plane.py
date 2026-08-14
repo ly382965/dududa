@@ -3,15 +3,18 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from dududa.control_plane.contracts import (
+    AssignmentCommitResult,
     GroupControlScope,
     GroupJoinFact,
     GroupOnboardingRecord,
     GroupServiceAssignment,
+    GroupServicePreview,
     GroupServiceProfile,
     OperatorSession,
     PreviewCommitResult,
     ProfileRef,
     ServiceCatalogSnapshot,
+    StoredAssignmentCommand,
     StoredPreviewCommand,
 )
 from dududa.domain.primitives import DigestString
@@ -40,6 +43,14 @@ class GroupJoinSource(Protocol):
 
 @runtime_checkable
 class GroupServiceCatalog(Protocol):
+    async def profiles(
+        self,
+        platform: str,
+        bot_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> tuple[GroupServiceProfile, ...]: ...
+
     async def get_profile(
         self,
         profile_ref: ProfileRef,
@@ -86,6 +97,29 @@ class GroupServiceRepository(Protocol):
         call: ServiceCallContext,
     ) -> GroupServiceAssignment | None: ...
 
+    async def list_assignments(
+        self,
+        platform: str,
+        bot_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> tuple[GroupServiceAssignment, ...]: ...
+
+    async def get_assignment_revision(
+        self,
+        scope: GroupControlScope,
+        assignment_revision: int,
+        *,
+        call: ServiceCallContext,
+    ) -> GroupServiceAssignment | None: ...
+
+    async def get_preview(
+        self,
+        preview_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> GroupServicePreview | None: ...
+
     async def lookup_preview_command(
         self,
         idempotency_key: str,
@@ -99,14 +133,44 @@ class GroupServiceRepository(Protocol):
         idempotency_key: str,
         request_digest: DigestString,
         expected_onboarding_revision: int,
+        expected_assignment_revision: int | None,
         stored: StoredPreviewCommand,
         call: ServiceCallContext,
     ) -> PreviewCommitResult: ...
+
+    async def lookup_assignment_command(
+        self,
+        idempotency_key: str,
+        *,
+        call: ServiceCallContext,
+    ) -> StoredAssignmentCommand | None: ...
+
+    async def commit_assignment(
+        self,
+        *,
+        idempotency_key: str,
+        request_digest: DigestString,
+        expected_onboarding_revision: int,
+        expected_assignment_revision: int | None,
+        stored: StoredAssignmentCommand,
+        call: ServiceCallContext,
+    ) -> AssignmentCommitResult: ...
+
+
+@runtime_checkable
+class GroupServiceSnapshotProvider(Protocol):
+    async def current(
+        self,
+        scope: GroupControlScope,
+        *,
+        call: ServiceCallContext,
+    ) -> GroupServiceAssignment | None: ...
 
 
 __all__ = [
     "GroupJoinSource",
     "GroupServiceCatalog",
     "GroupServiceRepository",
+    "GroupServiceSnapshotProvider",
     "OperatorSessionResolver",
 ]

@@ -455,6 +455,10 @@ export class OneBotHub extends EventEmitter {
     return this.capabilityDocument(this.requireAccount(account))
   }
 
+  botId(account: string): string {
+    return this.requireAccount(account).account.botId
+  }
+
   async customFaceCatalog(account: string, type: 'group' | 'private', peerId: string): Promise<CustomFaceCatalog> {
     const state = this.requireConversation(account, type, peerId)
     this.requireCapability(state, 'message.custom_faces')

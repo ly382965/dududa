@@ -13,6 +13,7 @@ from dududa.domain.primitives import (
     require_non_empty,
 )
 from dududa.errors import validation_error
+from dududa.security.models import ConfirmationGrant
 
 
 class OnboardingStatus(StrEnum):
@@ -41,6 +42,11 @@ class CommandOutcome(StrEnum):
 
 
 class PreviewCommitDisposition(StrEnum):
+    CREATED = "created"
+    DUPLICATE = "duplicate"
+
+
+class AssignmentCommitDisposition(StrEnum):
     CREATED = "created"
     DUPLICATE = "duplicate"
 
@@ -253,6 +259,13 @@ class GroupServiceAssignment:
             raise validation_error("invalid_assignment_status")
         if not isinstance(self.profile_ref, ProfileRef):
             raise validation_error("invalid_profile_ref")
+        if not isinstance(self.selected_by, ActorRef):
+            raise validation_error("invalid_assignment_actor_ref")
+        if (
+            self.selected_by.platform != self.scope.platform
+            or self.selected_by.bot_id != self.scope.bot_id
+        ):
+            raise validation_error("assignment_actor_scope_mismatch")
         _require_positive_int(self.assignment_revision, "assignment_revision")
         _require_positive_int(
             self.last_known_good_revision,
@@ -260,6 +273,10 @@ class GroupServiceAssignment:
         )
         if self.previous_revision is not None:
             _require_positive_int(self.previous_revision, "previous_revision")
+            if self.previous_revision >= self.assignment_revision:
+                raise validation_error("invalid_assignment_previous_revision")
+        if self.last_known_good_revision > self.assignment_revision:
+            raise validation_error("invalid_assignment_lkg_revision")
         require_non_empty(str(self.profile_digest), "profile_digest")
         desired = _unique_strings(self.desired_service_ids, "desired_service_ids")
         effective = _unique_strings(
@@ -320,6 +337,38 @@ class PendingInboxQuery:
 
 
 @dataclass(frozen=True, slots=True)
+class ProfileCatalogQuery:
+    schema_version: int
+    query_id: str
+    session_ref: str
+    platform: str
+    bot_id: str
+    requested_at: datetime
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        for name in ("query_id", "session_ref", "platform", "bot_id"):
+            require_non_empty(str(getattr(self, name)), name)
+        require_aware(self.requested_at, "query_requested_at")
+
+
+@dataclass(frozen=True, slots=True)
+class ManagedGroupsQuery:
+    schema_version: int
+    query_id: str
+    session_ref: str
+    platform: str
+    bot_id: str
+    requested_at: datetime
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        for name in ("query_id", "session_ref", "platform", "bot_id"):
+            require_non_empty(str(getattr(self, name)), name)
+        require_aware(self.requested_at, "query_requested_at")
+
+
+@dataclass(frozen=True, slots=True)
 class ProfilePreviewCommand:
     schema_version: int
     command_id: str
@@ -331,6 +380,7 @@ class ProfilePreviewCommand:
     profile_ref: ProfileRef
     payload_digest: DigestString
     requested_at: datetime
+    expected_assignment_revision: int | None = None
 
     def __post_init__(self) -> None:
         _require_v1(self.schema_version)
@@ -346,6 +396,83 @@ class ProfilePreviewCommand:
             self.expected_onboarding_revision,
             "expected_onboarding_revision",
         )
+        if self.expected_assignment_revision is not None:
+            _require_positive_int(
+                self.expected_assignment_revision,
+                "expected_assignment_revision",
+            )
+        require_non_empty(str(self.payload_digest), "payload_digest")
+        require_aware(self.requested_at, "command_requested_at")
+
+
+@dataclass(frozen=True, slots=True)
+class GroupServiceMutationCommand:
+    schema_version: int
+    command_id: str
+    idempotency_key: str
+    session_ref: str
+    scope: GroupControlScope
+    action: ActionId
+    expected_onboarding_revision: int
+    expected_assignment_revision: int | None
+    preview_id: str | None
+    preview_digest: DigestString | None
+    rollback_revision: int | None
+    confirmation: ConfirmationGrant | None
+    payload_digest: DigestString
+    requested_at: datetime
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        for name in ("command_id", "idempotency_key", "session_ref"):
+            require_non_empty(str(getattr(self, name)), name)
+        if not isinstance(self.scope, GroupControlScope):
+            raise validation_error("invalid_group_control_scope")
+        _require_positive_int(
+            self.expected_onboarding_revision,
+            "expected_onboarding_revision",
+        )
+        if self.expected_assignment_revision is not None:
+            _require_positive_int(
+                self.expected_assignment_revision,
+                "expected_assignment_revision",
+            )
+        action = str(self.action)
+        if action not in {
+            "group_service.activate",
+            "group_service.update",
+            "group_service.pause",
+            "group_service.resume",
+            "group_service.rollback",
+        }:
+            raise validation_error("invalid_group_service_mutation_action")
+        if action == "group_service.activate":
+            if self.expected_assignment_revision is not None:
+                raise validation_error("activation_forbids_assignment_revision")
+        elif self.expected_assignment_revision is None:
+            raise validation_error("mutation_requires_assignment_revision")
+        if action in {"group_service.activate", "group_service.update"}:
+            require_non_empty(self.preview_id or "", "preview_id")
+            require_non_empty(str(self.preview_digest or ""), "preview_digest")
+            if not isinstance(self.confirmation, ConfirmationGrant):
+                raise validation_error("mutation_requires_confirmation")
+            if self.rollback_revision is not None:
+                raise validation_error("preview_mutation_forbids_rollback_revision")
+        elif action == "group_service.rollback":
+            _require_positive_int(self.rollback_revision, "rollback_revision")
+            if (
+                self.preview_id is not None
+                or self.preview_digest is not None
+                or self.confirmation is not None
+            ):
+                raise validation_error("rollback_forbids_preview_or_confirmation")
+        elif (
+            self.preview_id is not None
+            or self.preview_digest is not None
+            or self.rollback_revision is not None
+            or self.confirmation is not None
+        ):
+            raise validation_error("state_mutation_forbids_preview_or_confirmation")
         require_non_empty(str(self.payload_digest), "payload_digest")
         require_aware(self.requested_at, "command_requested_at")
 
@@ -388,6 +515,7 @@ class GroupServicePreview:
     resolutions: tuple[ServiceResolution, ...]
     created_at: datetime
     expires_at: datetime
+    assignment_revision: int | None = None
 
     def __post_init__(self) -> None:
         _require_v1(self.schema_version)
@@ -395,6 +523,11 @@ class GroupServicePreview:
         require_non_empty(str(self.profile_digest), "profile_digest")
         require_non_empty(self.catalog_revision, "catalog_revision")
         _require_positive_int(self.onboarding_revision, "onboarding_revision")
+        if self.assignment_revision is not None:
+            _require_positive_int(
+                self.assignment_revision,
+                "assignment_revision",
+            )
         desired = _unique_strings(self.desired_service_ids, "desired_service_ids")
         effective = _unique_strings(
             self.effective_service_ids,
@@ -537,6 +670,49 @@ class PreviewCommitResult:
 
 
 @dataclass(frozen=True, slots=True)
+class StoredAssignmentCommand:
+    schema_version: int
+    request_digest: DigestString
+    assignment: GroupServiceAssignment
+    receipt: CommandReceipt
+    audit_record: ControlPlaneAuditRecord
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        require_non_empty(str(self.request_digest), "request_digest")
+        if not isinstance(self.assignment, GroupServiceAssignment):
+            raise validation_error("invalid_stored_assignment")
+        if not isinstance(self.receipt, CommandReceipt):
+            raise validation_error("invalid_stored_command_receipt")
+        if not isinstance(self.audit_record, ControlPlaneAuditRecord):
+            raise validation_error("invalid_stored_audit_record")
+        if self.receipt.request_digest != self.request_digest:
+            raise validation_error("stored_command_request_mismatch")
+        if (
+            self.receipt.receipt_id != self.audit_record.receipt_id
+            or self.receipt.command_id != self.audit_record.command_id
+            or self.receipt.action != self.audit_record.action
+            or self.receipt.scope_digest != self.audit_record.scope_digest
+            or self.receipt.request_digest != self.audit_record.request_digest
+            or self.receipt.outcome is not self.audit_record.outcome
+            or self.receipt.reason_codes != self.audit_record.reason_codes
+        ):
+            raise validation_error("stored_command_audit_mismatch")
+
+
+@dataclass(frozen=True, slots=True)
+class AssignmentCommitResult:
+    schema_version: int
+    disposition: AssignmentCommitDisposition
+    stored: StoredAssignmentCommand
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        if not isinstance(self.disposition, AssignmentCommitDisposition):
+            raise validation_error("invalid_assignment_commit_disposition")
+
+
+@dataclass(frozen=True, slots=True)
 class PendingGroupProjection:
     schema_version: int
     scope: GroupControlScope
@@ -586,18 +762,92 @@ class PendingInboxProjection:
 
 
 @dataclass(frozen=True, slots=True)
+class ManagedGroupProjection:
+    schema_version: int
+    onboarding: PendingGroupProjection
+    assignment: GroupServiceAssignment
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        if not isinstance(self.onboarding, PendingGroupProjection):
+            raise validation_error("invalid_managed_group_onboarding")
+        if not isinstance(self.assignment, GroupServiceAssignment):
+            raise validation_error("invalid_managed_group_assignment")
+        if self.onboarding.scope != self.assignment.scope:
+            raise validation_error("managed_group_scope_mismatch")
+
+
+@dataclass(frozen=True, slots=True)
+class ManagedGroupsProjection:
+    schema_version: int
+    platform: str
+    bot_id: str
+    items: tuple[ManagedGroupProjection, ...]
+    generated_at: datetime
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        require_non_empty(self.platform, "platform")
+        require_non_empty(self.bot_id, "bot_id")
+        items = tuple(self.items)
+        if any(
+            item.onboarding.scope.platform != self.platform
+            or item.onboarding.scope.bot_id != self.bot_id
+            for item in items
+        ):
+            raise validation_error("managed_groups_projection_scope_mismatch")
+        object.__setattr__(self, "items", items)
+        require_aware(self.generated_at, "projection_generated_at")
+
+
+@dataclass(frozen=True, slots=True)
+class ProfileCatalogProjection:
+    schema_version: int
+    revision: str
+    profiles: tuple[GroupServiceProfile, ...]
+    generated_at: datetime
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        require_non_empty(self.revision, "profile_catalog_revision")
+        profiles = tuple(self.profiles)
+        _require_unique_ids(profiles, "profile_id", "duplicate_profile_id")
+        object.__setattr__(self, "profiles", profiles)
+        require_aware(self.generated_at, "projection_generated_at")
+
+
+@dataclass(frozen=True, slots=True)
 class ProfilePreviewExecution:
     schema_version: int
     receipt: CommandReceipt
     preview: GroupServicePreview | None
+    onboarding_revision: int
     audit_mirror_persisted: bool
 
     def __post_init__(self) -> None:
         _require_v1(self.schema_version)
+        _require_positive_int(self.onboarding_revision, "onboarding_revision")
         if type(self.audit_mirror_persisted) is not bool:
             raise validation_error("invalid_audit_mirror_status")
         if self.receipt.outcome is CommandOutcome.SUCCEEDED and self.preview is None:
             raise validation_error("successful_preview_missing_result")
+
+
+@dataclass(frozen=True, slots=True)
+class GroupServiceMutationExecution:
+    schema_version: int
+    receipt: CommandReceipt
+    assignment: GroupServiceAssignment
+    audit_mirror_persisted: bool
+
+    def __post_init__(self) -> None:
+        _require_v1(self.schema_version)
+        if not isinstance(self.receipt, CommandReceipt):
+            raise validation_error("invalid_command_receipt")
+        if not isinstance(self.assignment, GroupServiceAssignment):
+            raise validation_error("invalid_group_service_assignment")
+        if type(self.audit_mirror_persisted) is not bool:
+            raise validation_error("invalid_audit_mirror_status")
 
 
 def _require_v1(value: int) -> None:
@@ -635,6 +885,8 @@ def _require_unique_ids(values: tuple[object, ...], field: str, code: str) -> No
 
 
 __all__ = [
+    "AssignmentCommitDisposition",
+    "AssignmentCommitResult",
     "AssignmentStatus",
     "CommandOutcome",
     "CommandReceipt",
@@ -643,8 +895,13 @@ __all__ = [
     "GroupJoinFact",
     "GroupOnboardingRecord",
     "GroupServiceAssignment",
+    "GroupServiceMutationCommand",
+    "GroupServiceMutationExecution",
     "GroupServicePreview",
     "GroupServiceProfile",
+    "ManagedGroupProjection",
+    "ManagedGroupsProjection",
+    "ManagedGroupsQuery",
     "OnboardingStatus",
     "OperatorSession",
     "PendingGroupProjection",
@@ -652,6 +909,8 @@ __all__ = [
     "PendingInboxQuery",
     "PreviewCommitDisposition",
     "PreviewCommitResult",
+    "ProfileCatalogProjection",
+    "ProfileCatalogQuery",
     "ProfileMemoryMode",
     "ProfilePreviewCommand",
     "ProfilePreviewExecution",
@@ -660,5 +919,6 @@ __all__ = [
     "ServiceDefinition",
     "ServiceEligibilityFact",
     "ServiceResolution",
+    "StoredAssignmentCommand",
     "StoredPreviewCommand",
 ]

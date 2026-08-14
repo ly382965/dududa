@@ -11,8 +11,36 @@ Last sync: unix:1786713297
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+S21B implementation and focused verification are complete. Core owns Profile
+resolution, preview, lifecycle commands, SQLite assignment history/LKG and
+immutable Runtime reads. The authorized Web workflow consumes typed server
+projections for pending and managed groups, so active or paused Assignments are
+restored after a page/process restart rather than disappearing from the inbox.
+
+The Node server maps its existing account ID to Core `bot_id` and proxies typed
+queries/commands. Explicit Python Web DTO projection owns the approved
+camelCase response shape and exposes the committed onboarding revision; Vue
+does not derive Effective services, confirmation grants, permissions or CAS
+state.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+Completed the Vue `/control-plane` workflow, desktop/mobile navigation,
+Preview -> Activate/Update -> Pause/Resume/Rollback flow, command receipt
+rendering and unavailable state. Added managed-group recovery after finding
+that pending-only discovery lost activated groups on refresh. Final focused
+Python, Ruff, Web unit/server, typecheck/build and visual samples pass.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+None inside S21B. Production binding of the framework-neutral Core API to an
+HTTP server and operator identity provider remains a deployment input, and
+real QQ activation remains prohibited until S23.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+S21C may reuse `ControlPlaneApi`, `ControlPlaneAdapter`, operator session
+forwarding and the `/control-plane` shell for read-only governed operations.
+Do not move operation health/permission derivation into Node or Vue. The local
+Dududa corpus was not replayed because S21B changed no Connector, history,
+Perception or session-projection path.

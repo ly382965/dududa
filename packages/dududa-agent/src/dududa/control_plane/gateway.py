@@ -30,9 +30,13 @@ from .contracts import (
     ControlPlaneAuditRecord,
     GroupOnboardingRecord,
     GroupServicePreview,
+    ManagedGroupsProjection,
+    ManagedGroupsQuery,
     PendingInboxProjection,
     PendingInboxQuery,
     PreviewCommitDisposition,
+    ProfileCatalogProjection,
+    ProfileCatalogQuery,
     ProfilePreviewCommand,
     ProfilePreviewExecution,
     ProfileRef,
@@ -41,6 +45,7 @@ from .contracts import (
 from .digests import (
     group_control_scope_digest,
     group_service_preview_digest,
+    group_service_profile_catalog_digest,
     group_service_profile_digest,
     preview_command_payload_digest,
     preview_command_request_digest,
@@ -119,6 +124,60 @@ class ControlPlaneGateway:
             call=call,
         )
 
+    async def managed_groups(
+        self,
+        query: ManagedGroupsQuery,
+        *,
+        call: ServiceCallContext,
+    ) -> ManagedGroupsProjection:
+        if not isinstance(query, ManagedGroupsQuery):
+            raise validation_error("invalid_managed_groups_query")
+        self._validate_call(call)
+        session = await self._sessions.resolve(query.session_ref, call=call)
+        await self._authorizer.authorize_bot(
+            session.actor,
+            query.platform,
+            query.bot_id,
+            ActionId("group_service.query"),
+            risk_level=RiskLevel.LOW,
+            call=call,
+        )
+        return await self._projector.managed_groups(
+            query.platform,
+            query.bot_id,
+            call=call,
+        )
+
+    async def profile_catalog(
+        self,
+        query: ProfileCatalogQuery,
+        *,
+        call: ServiceCallContext,
+    ) -> ProfileCatalogProjection:
+        if not isinstance(query, ProfileCatalogQuery):
+            raise validation_error("invalid_profile_catalog_query")
+        self._validate_call(call)
+        session = await self._sessions.resolve(query.session_ref, call=call)
+        await self._authorizer.authorize_bot(
+            session.actor,
+            query.platform,
+            query.bot_id,
+            ActionId("group_service.query"),
+            risk_level=RiskLevel.LOW,
+            call=call,
+        )
+        profiles = await self._catalog.profiles(
+            query.platform,
+            query.bot_id,
+            call=call,
+        )
+        return ProfileCatalogProjection(
+            1,
+            str(group_service_profile_catalog_digest(profiles)),
+            profiles,
+            self._clock(),
+        )
+
     async def preview_profile(
         self,
         command: ProfilePreviewCommand,
@@ -146,7 +205,13 @@ class ControlPlaneGateway:
         if existing is not None:
             if existing.request_digest != request_digest:
                 raise _conflict("control_plane_idempotency_conflict")
-            return ProfilePreviewExecution(1, existing.receipt, existing.preview, False)
+            return ProfilePreviewExecution(
+                1,
+                existing.receipt,
+                existing.preview,
+                existing.preview.onboarding_revision + 1,
+                False,
+            )
 
         onboarding = await self._repository.get_onboarding(command.scope, call=call)
         if onboarding is None:
@@ -176,6 +241,7 @@ class ControlPlaneGateway:
             resolutions,
             now,
             now + self._preview_ttl,
+            command.expected_assignment_revision,
         )
         preview_digest = group_service_preview_digest(preview)
         scope_hash = group_control_scope_digest(command.scope)
@@ -217,6 +283,7 @@ class ControlPlaneGateway:
             idempotency_key=command.idempotency_key,
             request_digest=request_digest,
             expected_onboarding_revision=command.expected_onboarding_revision,
+            expected_assignment_revision=command.expected_assignment_revision,
             stored=stored,
             call=call,
         )
@@ -225,6 +292,7 @@ class ControlPlaneGateway:
                 1,
                 committed.stored.receipt,
                 committed.stored.preview,
+                committed.stored.preview.onboarding_revision + 1,
                 False,
             )
         mirrored = await self._mirror_audit(
@@ -237,6 +305,7 @@ class ControlPlaneGateway:
             1,
             committed.stored.receipt,
             committed.stored.preview,
+            committed.stored.preview.onboarding_revision + 1,
             mirrored,
         )
 

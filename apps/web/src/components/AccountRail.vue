@@ -8,6 +8,7 @@ import {
   Moon,
   Plus,
   Settings,
+  ShieldCheck,
   Sparkles,
   Sun,
   UsersRound,
@@ -23,7 +24,7 @@ defineProps<{
   mobilePanel: MobilePanel
   theme: ThemeMode
   agentActive: boolean
-  activeRoute: 'chat' | 'contacts' | 'notifications' | 'settings'
+  activeRoute: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'settings'
   notificationCount: number
 }>()
 
@@ -34,7 +35,7 @@ const emit = defineEmits<{
   openAgent: []
   openSettings: []
   addAccount: []
-  navigate: [route: 'chat' | 'contacts' | 'notifications' | 'settings']
+  navigate: [route: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'settings']
 }>()
 </script>
 
@@ -49,6 +50,7 @@ const emit = defineEmits<{
       <button class="rail-button" :class="{ active: activeRoute === 'chat' }" type="button" title="消息" aria-label="消息" @click="emit('navigate', 'chat')"><MessageCircle :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'contacts' }" type="button" title="联系人" aria-label="联系人" @click="emit('navigate', 'contacts')"><Contact :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'notifications' }" type="button" title="通知" aria-label="通知" @click="emit('navigate', 'notifications')"><Bell :size="19" /><span v-if="notificationCount" class="rail-badge">{{ notificationCount > 99 ? '99+' : notificationCount }}</span></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'control-plane' }" type="button" title="群服务" aria-label="群服务" @click="emit('navigate', 'control-plane')"><ShieldCheck :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'settings' }" type="button" title="设置" aria-label="设置" @click="emit('navigate', 'settings')"><Settings :size="19" /></button>
     </nav>
 
@@ -113,6 +115,10 @@ const emit = defineEmits<{
         <Bell :size="21" />
         <span>通知</span>
         <b v-if="notificationCount">{{ notificationCount }}</b>
+      </button>
+      <button :class="{ active: activeRoute === 'control-plane' }" type="button" @click="emit('navigate', 'control-plane')">
+        <ShieldCheck :size="21" />
+        <span>服务</span>
       </button>
       <button :class="{ active: mobilePanel === 'agent' }" type="button" @click="emit('setMobilePanel', 'agent')">
         <Sparkles :size="21" />
@@ -304,7 +310,7 @@ const emit = defineEmits<{
     display: grid;
     width: 100%;
     height: 100%;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .mobile-nav button {

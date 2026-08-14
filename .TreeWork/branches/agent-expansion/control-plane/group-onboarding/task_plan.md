@@ -12,22 +12,22 @@ Title: S21B Group Onboarding
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Pending inbox and Catalog expose only authoritative facts and stable
+- [x] Pending inbox and Catalog expose only authoritative facts and stable
   availability reasons.
-- [ ] Preview/activate/update/pause/resume/rollback obey auth, Scope, expiry,
+- [x] Preview/activate/update/pause/resume/rollback obey auth, Scope, expiry,
   expected revision, idempotency, Audit and Receipt contracts.
-- [ ] New groups remain zero-service until activation; failures preserve
+- [x] New groups remain zero-service until activation; failures preserve
   pending or LKG and Runtime reads immutable snapshots only.
-- [ ] Restart, two-admin CAS and multi-account/group isolation pass against
+- [x] Restart, two-admin CAS and multi-account/group isolation pass against
   temporary SQLite.
-- [ ] Web renders Desired/Effective and command receipts without local authority.
+- [x] Web renders Desired/Effective and command receipts without local authority.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Implement Catalog/resolver and preview contracts.
-- [ ] Implement lifecycle handlers and SQLite repository.
-- [ ] Implement Runtime snapshot provider and typed API adapter.
-- [ ] Implement focused onboarding UI and tests; synchronize branch evidence.
+- [x] Implement Catalog/resolver and preview contracts.
+- [x] Implement lifecycle handlers and SQLite repository.
+- [x] Implement Runtime snapshot provider and typed API adapter.
+- [x] Implement focused onboarding UI and tests; synchronize branch evidence.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
