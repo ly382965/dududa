@@ -219,7 +219,13 @@ class GroupServiceLifecycle:
                 now,
                 call=call,
             )
-            lkg_revision = 1 if current is None else current.assignment_revision
+            lkg_revision = (
+                1
+                if current is None
+                else current.last_known_good_revision
+                if current.status is AssignmentStatus.PAUSED
+                else current.assignment_revision
+            )
             return GroupServiceAssignment(
                 1,
                 command.scope,
@@ -285,6 +291,8 @@ class GroupServiceLifecycle:
             )
         if action == "group_service.rollback":
             target_revision = command.rollback_revision
+            if current.status is AssignmentStatus.ROLLED_BACK:
+                raise _conflict("rollback_already_at_last_known_good")
             if target_revision != current.last_known_good_revision:
                 raise _conflict("rollback_target_not_last_known_good")
             if target_revision >= current.assignment_revision:
@@ -299,15 +307,19 @@ class GroupServiceLifecycle:
                 AssignmentStatus.ROLLED_BACK,
             }:
                 raise _conflict("rollback_target_unavailable")
+            profile, desired, effective = await self._current_resolution(
+                target,
+                call=call,
+            )
             return GroupServiceAssignment(
                 1,
                 current.scope,
                 next_revision,
                 AssignmentStatus.ROLLED_BACK,
                 target.profile_ref,
-                target.profile_digest,
-                target.desired_service_ids,
-                target.effective_service_ids,
+                group_service_profile_digest(profile),
+                desired,
+                effective,
                 actor_ref,
                 authorization_decision_id,
                 policy_revision,
