@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "real-group-validation",
+  "current_branch": "control-plane-foundation",
   "artifact_layout_version": 2,
-  "last_event_seq": 110,
+  "last_event_seq": 113,
   "tree_revision": 4,
   "tree_editing": null,
   "tree_hash": "fnv1a64:96e27a63e47f9df1",
-  "last_sync": "unix:1786706085"
+  "last_sync": "unix:1786708904"
 }

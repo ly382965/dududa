@@ -640,10 +640,19 @@
       "title": "S21A Control Plane Foundation",
       "purpose": "Define the framework-neutral profile, assignment, operator command and projection foundation over Fake group and service facts.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786706085"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/control-plane-foundation",
+        "git_branch": "treework/control-plane-foundation",
+        "managed_by_treework": false,
+        "created_at": "unix:1786706813",
+        "last_entered_at": "unix:1786706813",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786708904"
     },
     {
       "path": "group-onboarding",
