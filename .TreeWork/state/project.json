@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "governed-operations",
+  "current_branch": "control-plane-audit",
   "artifact_layout_version": 2,
-  "last_event_seq": 119,
+  "last_event_seq": 122,
   "tree_revision": 4,
   "tree_editing": null,
   "tree_hash": "fnv1a64:96e27a63e47f9df1",
-  "last_sync": "unix:1786716007"
+  "last_sync": "unix:1786717559"
 }
