@@ -649,6 +649,28 @@ activate services, grant capabilities, alter Memory/proactive policy, select a
 target or obtain send authority. Their output is a candidate or weak prior
 subject to the active profile and deterministic validators.
 
+### Development Corpus And S23 Historical Replay
+
+The current local Dududa account group history is an approved private
+development input. A dedicated no-send runner may read it in memory and emit
+aggregate schema, reason-code and distribution evidence. The legacy local
+account is excluded, and exact account mapping is supplied only at runtime.
+Raw message bodies, group/member/message identifiers, sender names and media
+URLs do not become committed fixtures or reports.
+
+This local corpus does not become a prerequisite for S21: Fake join, Fake
+services and a fixed Profile Catalog remain sufficient for the complete Control
+Plane implementation. It may be replayed during S21 as a focused regression
+when Connector, history or policy code changes.
+
+The user also owns an external long-term corpus spanning hundreds of groups.
+That corpus is mounted only in the S23 test environment after S21 completes.
+S23 first runs a no-send historical replay across all readable records, then
+uses a bounded human-labeled sample for semantic, routing, response-profile and
+Probe judgments. Historical messages are not automatically written to Memory
+and cannot support Bandit training without before-action support, propensity,
+execution and attributable feedback.
+
 ### Verification And Change Discipline
 
 Each implementation branch has focused Unit, Contract, negative and failure
@@ -657,10 +679,10 @@ typecheck/build, secret scan, shell, Compose parse, whitespace checks,
 wheel/image/plugin smoke where affected, and a requirement-by-requirement
 audit. Branch-local success is not evidence that its project epic is complete.
 
-The release sequence is strict: finish all accepted development branches,
-finish their local audits, freeze the release/SLO/rollback inputs, and only then
-run authorized single-group shadow and canary. Wider group testing and debugging
-may follow only if the single-group safety gate passes.
+The release sequence is strict: finish S21 and its local audit, run external
+long-term history as no-send S23 Shadow, then run authorized single-group live
+Shadow and canary. Digest/Probe canaries and wider group testing follow only
+after their preceding stage passes.
 
 S20 may add versioned before-action decisions, complete action-set/propensity
 logging, support validation, deterministic replay and synthetic IPS/SNIPS/DR

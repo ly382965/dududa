@@ -81,3 +81,9 @@ Control Plane whose first use case is group onboarding through a versioned
 `GroupServiceProfile`. This is accepted product direction but not revision 3
 implementation. The next Tree Alignment must insert S21 Control Plane work
 before the paused S23 branch can resume.
+
+The current local Dududa account history is approved for private development
+replay and may support focused no-send regression during S21. The legacy local
+account is excluded. Account identifiers remain local runtime inputs. A separate
+external long-term corpus spanning hundreds of groups is intentionally deferred
+to the S23 test environment, where historical Shadow precedes any live canary.

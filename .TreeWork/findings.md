@@ -48,6 +48,17 @@
   pending until an authorized Bot administrator selects a versioned
   `GroupServiceProfile`; learned Group Context may adapt expression but cannot
   enable services, permissions, Memory, proactive behavior or delivery.
+- The current NapCat version interprets historical direction as
+  `before -> reverse_order=true` and `after -> reverse_order=false`. The deployed
+  Web Gateway had this mapping reversed, causing repeated pages; source and its
+  focused server contract were corrected without restarting NapCat.
+- The approved local `嘟嘟哒` development replay processed 84,159 usable log
+  records plus 1,464 structured Gateway records. After 83 current-Bot
+  self-message admission skips, 85,540 records completed the deterministic
+  policy path with no module exception. Rules-only Perception selected SONNET
+  for every assessed item because its fallback confidence is 0.59; this is
+  conservative defaulting, not real difficulty calibration.
+
 ## Interface Or Contract Effects (effects crossing branch or product boundaries)
 
 - Semantic v2 is additive: existing Perception ports and v1 readers remain;
@@ -84,3 +95,6 @@
 - Real semantic/Probe evaluation needs authorized de-identified group windows,
   independent annotation and adjudication. Silence remains censored evidence,
   not a negative reward.
+- The user has an external long-term corpus spanning hundreds of groups, but it
+  is intentionally withheld until the S23 test environment. S21 must not wait
+  for or silently consume it.

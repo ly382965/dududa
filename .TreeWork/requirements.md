@@ -203,6 +203,15 @@ they never activate services, grant capabilities, or widen side effects.
   governed commands and authoritative Receipts. The current direct-NapCat draft
   path and browser-local permission/config placeholders are absent from the
   connected Agent flow.
+- [x] Local development may replay only the current locally authorized Dududa
+  account's group records through a no-send private runner. The legacy local
+  account is excluded; its exact account mapping remains a local runtime input.
+  Raw message bodies and group/member/message identifiers are not committed as
+  fixtures or reports.
+- [ ] The user's external long-term corpus covering hundreds of groups is first
+  introduced inside the S23 real-test environment. It is not an S21 dependency;
+  full-corpus replay supplies compatibility/distribution evidence while quality
+  claims require a separately labeled human sample.
 - [ ] Only after every accepted module, Web testing task and local integration
   audit is complete, an explicitly authorized real-group shadow/canary run
   records zero duplicate, wrong-target, unauthorized-send or sensitive-trace
@@ -295,8 +304,10 @@ substituted for the later external run.
 18. The current Goal may complete S20's offline decision/log/support and
     estimator foundations, but may not train, run a production worker, or
     perform Shadow/live exploration.
-19. No S23 activity, real Provider call, live source fetch, running-container
-    mutation or user-data read is authorized by this offline Goal.
+19. The current local `嘟嘟哒` corpus may be read by the private no-send
+    development replay explicitly approved on 2026-08-14. No external corpus,
+    S23 live behavior, real Provider call, live source fetch or running-container
+    mutation is authorized by the next S21 Goal.
 20. Dududa's long-horizon architecture is a governed group-context adaptive
     Runtime: a non-removable governance kernel composes reversible, observable,
     scope-bound capability plugins, while self-improvement remains evaluated,
@@ -307,3 +318,6 @@ substituted for the later external run.
 22. When the Bot joins a group, an authorized Bot administrator chooses a
     versioned initial `GroupServiceProfile`. No model or learned context may
     enable services or permissions, and missing selection fails closed.
+23. External long-term records from hundreds of groups remain outside the
+    development workspace until S23. Historical replay precedes any real send;
+    raw history alone is not Memory truth, semantic gold or Bandit feedback.

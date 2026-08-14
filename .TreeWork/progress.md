@@ -70,6 +70,14 @@ Last sync: unix:1786383737
   profile when the Bot joins a group; learned context cannot widen it. Root
   Requirements/Spec now own this direction, but revision 3 has no S21 branch or
   implementation evidence yet.
+- On 2026-08-14 the current local Dududa account history was approved for
+  private development replay while the legacy local account was explicitly
+  excluded. Exact account identifiers remain local runtime inputs.
+  The corrected focused runner examined 84,210 current-account log records,
+  loaded 84,159 of them plus 1,464 structured Gateway records, skipped 83
+  current-Bot self-messages before Perception and completed 85,540 deterministic
+  policy paths with zero module exception. External long-term records from
+  hundreds of groups remain deferred to S23.
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 

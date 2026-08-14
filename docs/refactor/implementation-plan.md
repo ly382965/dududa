@@ -22,6 +22,11 @@ Projection、Output 的环境适配/Conformance 和外部授权输入均未闭�
 控制后台的产品边界、入群状态机、Profile/Assignment、命令面和完成定义见
 [Bot Control Plane 与群服务初始化设计](../design/bot-control-plane.md)。
 
+2026-08-14 已完成本机 NapCat 私有开发回放和历史游标核验，详见
+[NapCat 本机开发语料回放报告](napcat-development-replay-2026-08-14.md)。本机只允许使用当前
+嘟嘟哒账号数据；旧账号已排除，精确账号映射只在运行时提供。用户另有数百群长期记录，只在
+S23 真实测试环境中提供，不阻塞 S21。
+
 ## 交付规则
 
 每个 PR 必须说明：
@@ -206,7 +211,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S19 | 本地总集成 | 汇总所有当前发布必需模块，执行全仓回归、离线回放、30 日调度/Probe no-send 仿真、故障注入、SLO 预注册和发布候选审计 | 发布必需模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
 | S22 | 10 | 按 `migration-map.md` 删除十个路径别名和插件专用 iCourse Client；保留仍有消费者的 Handler、Role、Memory、Audit、worker protocol 与根操作入口 | canonical 入口、Unified-only Client、完整 Python 3.12、Python 3.10 抽样、镜像/Compose/package/secret 和精确 S19 归档通过 | 无消费者证据的删除、重设计核心模块或删除明确 retain surface |
 | S21 | Bot Control Plane | 在下一 Tree revision 中实现 S21A Foundation、S21B Group Onboarding 和 S21C Governed Operations；Bot 入群后管理员选择初始服务 Profile | 新群 pending 零服务；Profile 不授予 Capability；Desired/Effective 可解释；激活/更新/暂停/回滚具备 auth、Scope、CAS、幂等、Audit、Receipt、LKG 和跨账号/群隔离 | 浏览器本地配置、万能写 API、Agent 直发 NapCat、让模型/Group Context/Plugin/Bandit 开服务或扩权 |
-| S23 | 最终真实场景 | 所有当前发布必需模块、既定 WebUI 测试和本地审计完成后，在同一授权单群依次执行 no-send shadow、明确 @ canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，再考虑 3–5 群分层放量 | 重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
+| S23 | 最终真实场景 | S21、本地审计和既定 WebUI 测试完成后，先在隔离环境对外部长期语料执行全量历史 no-send Shadow 和小样本人工评测；再在同一授权单群依次执行实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，最后考虑 3–5 群分层放量 | 历史回放无链路异常且质量结论只来自标注样本；重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、把原始历史当质量 Gold/Memory/Bandit reward、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
 
 S20 不属于上述严格发布主线，已经单独批准并完成离线范围：
 
@@ -238,6 +243,10 @@ S20 不属于上述严格发布主线，已经单独批准并完成离线范围�
 | S21B Group Onboarding | pending inbox、Profile Catalog、Desired/Effective diff、Preview/Activate/Update/Pause/Resume/Rollback、immutable Runtime snapshot 和 LKG | 新群缺 Profile 零 Agent 服务；双管理员并发仅一个 revision 生效；失败保持 pending/LKG |
 | S21C Governed Operations | Run/Model/MCP/Plugin/Memory/Proactive 查询；只接已有专用 Core 命令的审批、订阅与行为级开关 | UI 不自行推导权限/状态；每个 mutation 有 Actor/Scope、CAS、幂等、Audit 和 Receipt |
 | S21 Audit | 移除 Agent Draft 直发 NapCat、浏览器本地 permission/config 占位；跨账号/群、重启、回滚和构建审计 | 真人 QQ 操作与 Agent Output 分离；Group Context/Plugin/Model/Bandit 无法改变 Assignment 或发送权 |
+
+S21 的实现和验收不依赖聊天正文。Fake join/service/Catalog 是主证据；只有 Connector、历史分页、
+Perception 或控制台会话投影发生变化时，才抽样重跑本机 `嘟嘟哒` 私有 replay。外部数百群语料
+不得提前进入 S21、Memory 或 Bandit。
 
 ### 可扩展框架约束
 
@@ -689,9 +698,11 @@ Tree Alignment，而不是直接取得凭据后运行 S23：
 3. 证明新群缺 Profile 时零服务，管理员激活具有 auth/Scope/CAS/幂等/Audit/Receipt/LKG；
 4. 证明 Profile 不授予 Capability，Group Context/Plugin/Model/Bandit 不能扩权；
 5. 移除 Agent Draft 直发 NapCat 和浏览器本地 permission/config 占位；
-6. S21 完成审计后，再冻结 S23 授权群、测试用户、发送窗口、SLO 和回滚包；
-7. S23 依次执行 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后才考虑
-   3–5 群和长时间 Debug。
+6. S21 完成审计后，在 S23 测试环境挂载外部长期记录，先做全量历史 no-send Shadow，再对小样本
+   人工标注和复核；
+7. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
+8. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
+   才考虑 3–5 群和长时间 Debug。
 
 Bandit 不作为主动出站、群服务 Profile 或 S23 的前置，且禁止探索 send/skip、目标、日程、频率
 和 Answer Profile。Web 可以执行写操作，但只能通过专用 Core Command，不能提供万能配置写 API。

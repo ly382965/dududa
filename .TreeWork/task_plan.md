@@ -111,10 +111,11 @@ before S23 resumes.
 16. Add S21 Bot Control Plane foundations, group onboarding and governed
     operations: an authorized administrator selects an initial group service
     profile and Runtime consumes only the resulting immutable assignment.
-17. After every accepted module and local audit is complete, freeze the SLO and
-    rollback bundle, then run authorized single-group shadow, single-group
-    inbound canary, separately authorized digest/probe canaries, and only
-    afterward any layered group expansion/debugging.
+17. After S21 and every accepted local audit are complete, mount the user's
+    external long-term group corpus only in the S23 test environment. Run
+    full-corpus no-send historical Shadow, then a labeled quality sample,
+    authorized single-group live Shadow, inbound canary, separately authorized
+    digest/probe canaries, and only afterward layered expansion/debugging.
 
 Tree revision 3 already contains the response/proactive expansion, operations,
 layout, Eval/CI, local audit, cleanup, offline Bandit and terminal real-group
@@ -158,3 +159,7 @@ than hiding Control Plane work inside S23.
 9. The repository currently contains only the iCourse real MCP Server. New real
    MCP Servers and live Source Adapters are not prerequisites for the generic
    S12/S13 or fixture-based S15C acceptance boundaries.
+10. The current local Dududa account history is approved for private
+    development replay; the legacy local account is excluded and exact account
+    mapping stays local. The separate hundreds-group long-term corpus remains
+    unavailable and unnecessary until S23.
