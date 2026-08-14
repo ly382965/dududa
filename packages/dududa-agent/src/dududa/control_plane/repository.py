@@ -42,6 +42,7 @@ class InMemoryGroupServiceRepository:
         self._previews: dict[str, GroupServicePreview] = {}
         self._commands: dict[str, StoredPreviewCommand] = {}
         self._assignment_commands: dict[str, StoredAssignmentCommand] = {}
+        self._command_ids: set[str] = set()
         self._audit_records: list[ControlPlaneAuditRecord] = []
 
     @property
@@ -234,6 +235,9 @@ class InMemoryGroupServiceRepository:
                     PreviewCommitDisposition.DUPLICATE,
                     existing,
                 )
+            command_id = stored.receipt.command_id
+            if command_id in self._command_ids:
+                raise _conflict("control_plane_command_id_conflict")
 
             preview = stored.preview
             key = _scope_key(preview.scope)
@@ -270,6 +274,7 @@ class InMemoryGroupServiceRepository:
             self._onboarding[key] = updated
             self._previews[preview.preview_id] = preview
             self._commands[idempotency_key] = stored
+            self._command_ids.add(command_id)
             self._audit_records.append(stored.audit_record)
             return PreviewCommitResult(
                 1,
@@ -329,6 +334,9 @@ class InMemoryGroupServiceRepository:
                     AssignmentCommitDisposition.DUPLICATE,
                     existing,
                 )
+            command_id = stored.receipt.command_id
+            if command_id in self._command_ids:
+                raise _conflict("control_plane_command_id_conflict")
 
             assignment = stored.assignment
             key = _scope_key(assignment.scope)
@@ -361,6 +369,7 @@ class InMemoryGroupServiceRepository:
             self._assignment_history[history_key] = assignment
             self._assignments[key] = assignment
             self._assignment_commands[idempotency_key] = stored
+            self._command_ids.add(command_id)
             self._audit_records.append(stored.audit_record)
             return AssignmentCommitResult(
                 1,

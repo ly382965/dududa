@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
 import tempfile
+import threading
 import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -181,6 +183,25 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
             str(self.last_preview_execution.receipt.result_digest),
         )
         self.assertEqual(projected_preview["onboardingRevision"], 2)
+        self.repository = self._repository()
+        self.gateway, self.lifecycle = self._services(self.repository)
+        reused_id = await self._mutation(
+            "activate",
+            onboarding_revision=2,
+            assignment_revision=None,
+            preview=first_preview,
+            command_id=self.last_preview_execution.receipt.command_id,
+            key="activate-key-reused-preview-command-id",
+        )
+        with self.assertRaises(DududaError) as raised:
+            await self.lifecycle.mutate(reused_id, call=self.call)
+        self.assertEqual(
+            raised.exception.info.code,
+            "control_plane_command_id_conflict",
+        )
+        self.assertIsNone(
+            await self.repository.get_assignment(self.scope, call=self.call)
+        )
         activate = await self._mutation(
             "activate",
             onboarding_revision=2,
@@ -358,6 +379,44 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             rolled_back.assignment.profile_ref, ProfileRef("profile-basic", 1)
+        )
+
+    async def test_sqlite_rechecks_deadline_after_waiting_for_write_lock(self) -> None:
+        path = Path(self.temporary.name) / "deadline.sqlite3"
+        clock = [NOW]
+        repository = SQLiteGroupServiceRepository(
+            SQLiteGroupServiceRepositoryConfig(
+                1,
+                path,
+                busy_timeout=timedelta(seconds=1),
+            ),
+            clock=lambda: clock[0],
+        )
+        blocker = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+        blocker.execute("BEGIN IMMEDIATE")
+
+        def release_after_deadline() -> None:
+            clock[0] = NOW + timedelta(hours=2)
+            blocker.commit()
+
+        timer = threading.Timer(0.05, release_after_deadline)
+        timer.start()
+        try:
+            with self.assertRaises(DududaError) as raised:
+                await repository.observe_join(
+                    GroupJoinFact(1, "deadline-join", self.scope, "fake-v1", NOW),
+                    call=self.call,
+                )
+        finally:
+            timer.join()
+            blocker.close()
+        self.assertEqual(raised.exception.info.code, "control_plane_call_expired")
+        valid_call = replace(
+            self.call,
+            deadline=NOW + timedelta(hours=3),
+        )
+        self.assertIsNone(
+            await repository.get_onboarding(self.scope, call=valid_call)
         )
 
     async def test_strict_failure_confirmation_binding_and_cas_preserve_pending(
