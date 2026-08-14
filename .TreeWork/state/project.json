@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "group-onboarding",
+  "current_branch": "governed-operations",
   "artifact_layout_version": 2,
-  "last_event_seq": 116,
+  "last_event_seq": 119,
   "tree_revision": 4,
   "tree_editing": null,
   "tree_hash": "fnv1a64:96e27a63e47f9df1",
-  "last_sync": "unix:1786713297"
+  "last_sync": "unix:1786716007"
 }

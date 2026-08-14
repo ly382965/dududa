@@ -680,10 +680,19 @@
       "title": "S21C Governed Operations",
       "purpose": "Expose authoritative operational projections and only the existing typed Core mutations through the Control Plane.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786706085"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/governed-operations",
+        "git_branch": "treework/governed-operations",
+        "managed_by_treework": false,
+        "created_at": "unix:1786713416",
+        "last_entered_at": "unix:1786713416",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786716007"
     },
     {
       "path": "control-plane-audit",
