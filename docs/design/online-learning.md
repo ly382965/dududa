@@ -1,7 +1,8 @@
 # 在线学习与 Contextual Bandit 设计
 
-状态：S20 Offline Bandit 分支已进入 Tree 但尚未开始；当前没有 decision/feedback/OPE 实现，
-也没有 Shadow、训练器或在线学习器。
+状态：S20 Offline Bandit 的 decision/execution/feedback、完整 action support、propensity
+校验和合成 IPS/SNIPS/DR/ESS Golden 已完成并验证；当前仍没有 Router/Runtime 生产 hook、
+真实 Endpoint support、Shadow、训练器或在线学习器。
 
 ## 1. 适用边界
 

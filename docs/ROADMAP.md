@@ -1,5 +1,9 @@
 # 嘟嘟哒 Agent 工作 TODOlist
 
+> 本文是 2026-07-06 的历史执行清单，不再代表 Dududa 2.0 当前状态。当前权威状态见
+> [重构进度](refactor/PROGRESS.md)，当前 Sxx 顺序与外部门禁见
+> [实施计划](refactor/implementation-plan.md)。
+
 - 来源：`DUDUDA.md` v0.4
 - 工作目录：`.`
 - 当前目标：先把嘟嘟哒做成稳定可用的 QQ 群聊助手，再逐步扩展校园能力。

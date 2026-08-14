@@ -1,9 +1,10 @@
 # Dududa 2.0 Design Overview
 
-状态：S01–S16 的既定本地/离线范围已实现并验证；S17 路径迁移进行中、未验证且未合并。
-Answer Profile、主动出站契约/Scheduler/fixture Source/Digest/Probe Shadow 已完成离线范围，
-但生产完整切流、真实来源、真实发送、在线 Bandit 和 S23 尚未完成。当前证据以
-`../refactor/PROGRESS.md` 和 `../refactor/checkpoint-report-2026-08-10.md` 为准。
+状态：S01–S20 与 S22 的既定本地/离线范围已实现并验证；S23 仅在暂停分支完成
+manifest-only readiness，真实验证尚未开始且分支未合并。生产完整切流、真实 Provider/来源、
+环境适配、人工质量、真实发送和在线 Bandit 尚未完成。2026-08-14 的长程演化研究只作为下一版
+Tree Alignment 候选，不代表插件 Runtime、群体情境学习或 Agent Observatory 数据链已经实现。
+当前证据以 `../refactor/PROGRESS.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository
@@ -27,6 +28,7 @@ runtime, service, operation, and compatibility changes together.
 - Full target architecture: `../refactor/target-architecture.md`
 - Detailed old/new mapping: `../refactor/migration-map.md`
 - Reviewable phase plan: `../refactor/implementation-plan.md`
+- Governed adaptive-runtime evolution research: `../research/deepseek-harness-inspired-dududa-evolution.md`
 
 ## Non-Negotiable Boundaries
 

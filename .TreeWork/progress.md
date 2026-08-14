@@ -64,12 +64,19 @@ Last sync: unix:1786383737
   Memory, semantic evaluation, real Endpoint conformance, AnswerProfile,
   Conversation Probe and same-role/tier Contextual Bandit. The recommendation
   matrix records the next Tree order and external-input gates.
+- The 2026-08-14 governed adaptive-runtime report proposes input for a future
+  Alignment: a non-removable governance kernel, reversible
+  realm-scoped capability plugins, separate Group Context/relationship/Skill
+  candidate projections and a read-only Agent Observatory. None of those new
+  directions has an accepted Spec, Tree branch or implementation yet.
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials. All accepted local predecessors are complete;
-  S23 is paused specifically for that external packet and live Preflight.
+  S23 is paused/partial after manifest-only readiness and still needs the live
+  evidence resolver plus Provider/Source/Projection/Output composition and
+  conformance before an authorized run.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
 - Real public-source/group-projection providers and proactive rollout evidence
@@ -82,6 +89,12 @@ Last sync: unix:1786383737
 - Authorized Chinese multi-turn data, a second annotator, profile examples and
   source/operator policy inputs are unavailable; related reports correctly stop
   at synthetic/Schema or no-send Spike readiness.
+- Plugin Descriptor/Lifecycle/Realm/Profile, Group Context and relationship
+  projections, Skill candidate evolution, and Agent Observatory query/event
+  pipelines remain unimplemented. The existing Agent Console is a UI shell with
+  an empty backend projection; currently unreachable direct-NapCat draft send
+  and browser-local permission placeholders must become governed commands before
+  the Agent data path is connected.
 
 ## Recent Branch Returns (latest meaningful branch outcomes; not a command log)
 
@@ -109,6 +122,9 @@ Last sync: unix:1786383737
   checker and Chinese Runbook. Its report always keeps
   `live_execution_authorized=false`; the branch is correctly paused/partial
   before any real group read, Provider/source call, container change or send.
+- The 2026-08-14 long-horizon report returned at `75537a3` and records proposed
+  design philosophy for later Alignment without changing revision 3,
+  resuming S23 or claiming an implemented plugin/social-learning runtime.
 - S10 completed with 325 tests on Python 3.10/3.12 and protected delivery,
   reconciliation and side-effect-free Shadow evidence.
 - S11 locally passes 350 tests on Python 3.10/3.12 with persistent single-owner

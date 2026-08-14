@@ -36,7 +36,6 @@
 - S23 offline readiness proves manifest structure only. A self-declared digest,
   `live` flag or authorized status never becomes executable evidence until live
   Preflight resolves it against the exact candidate, target and prior Receipt.
-
 ## Interface Or Contract Effects (effects crossing branch or product boundaries)
 
 - Semantic v2 is additive: existing Perception ports and v1 readers remain;
@@ -52,6 +51,23 @@
 - MCP extensibility is proven by adding a Fake through Registry configuration
   and Capability mapping while reusing the same Contract. It is not proven by
   AstrBot merely preserving an unknown Server entry in its JSON file.
+- Plugin, Group Context, Skill and Observatory contracts are future Alignment
+  inputs. The research report does not modify the accepted Tree or establish
+  implementation evidence for those interfaces.
+
+## Research Candidates For Next Alignment (not accepted project decisions)
+
+- The report recommends keeping governance authority in a non-removable kernel.
+  Model, Memory, MCP, Persona, Source and observation implementations may become
+  reversible realm-scoped plugins, while Identity, Scope, Authorization,
+  Budget, WriteGate, Dispatch commit and Receipt authority stay fixed.
+- The report recommends separating Group Context, Memory, relationship evidence,
+  Skill candidates and Bandit. Group Context would be a time-decayed weak prior,
+  relationship edges auditable evidence rather than social facts, and Bandit a
+  ranker only over already legal safety-equivalent candidates.
+- The report recommends a read-only Agent Observatory projected from authoritative
+  Receipts and checkpoints, never a second Router, permission, Memory, MCP or send
+  control plane. Any future mutation would require a dedicated governed command.
 
 ## Risks And Unknowns (project-wide residual hazards; not unfinished branch work)
 

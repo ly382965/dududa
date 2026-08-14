@@ -1,9 +1,10 @@
 # Dududa 2.0 Target Architecture
 
-Status: S01-S19 accepted offline/local scope implemented and verified; S22
-removes evidence-backed compatibility aliases and the dedicated iCourse Client.
-Real Endpoint, live Source, production proactive delivery, online Bandit and
-S23 remain pending.
+Status: S01-S20/S22 accepted offline/local scopes are implemented and verified;
+S22 removed evidence-backed compatibility aliases and the dedicated iCourse
+Client. Real Endpoint, live Source, production proactive delivery, online
+Bandit and real S23 validation remain pending; the paused S23 branch currently
+contains manifest-only readiness assets, not a runnable live composition.
 Baseline: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## Objectives
