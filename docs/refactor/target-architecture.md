@@ -4,7 +4,9 @@ Status: S01-S20/S22 accepted offline/local scopes are implemented and verified;
 S22 removed evidence-backed compatibility aliases and the dedicated iCourse
 Client. Real Endpoint, live Source, production proactive delivery, online
 Bandit and real S23 validation remain pending; the paused S23 branch currently
-contains manifest-only readiness assets, not a runnable live composition.
+contains manifest-only readiness assets, not a runnable live composition. The
+confirmed S21 Bot Control Plane/group-onboarding design is not implemented or
+present in Tree revision 3 yet.
 Baseline: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## Objectives
@@ -31,6 +33,12 @@ The architecture must make these statements true:
     Router consumes a validated output budget but never infers visible length.
 12. Proactive probes and scheduled digests use a target-bound initiated-run;
     Scheduler, MCP, policy, composition, and delivery keep separate authority.
+13. Web is a first-class Bot Control Plane backed by typed Query/Command APIs
+    and the same Core authorities used by non-Web adapters.
+14. A Bot/group binding starts pending; an authorized Bot administrator chooses
+    a versioned initial `GroupServiceProfile` before Agent services activate.
+15. Group Context, plugin lifecycle, Skill candidates and Bandit may adapt or
+    rank only inside the immutable effective service assignment.
 
 ## End-To-End Flow
 
@@ -81,6 +89,29 @@ A timer never fabricates `MessageEnvelope`, Actor, mention, or user authority.
 MCP retrieves public source data only and never owns subscription, schedule,
 target, send policy, composition, or delivery.
 
+Group onboarding and later administration use a separate control flow:
+
+```mermaid
+flowchart LR
+    J["Bot/group join fact"] --> P["PENDING_PROFILE"]
+    A["Authorized Bot administrator"] --> W["Web Bot Control Plane"]
+    W --> Q["Preview GroupServiceProfile"]
+    P --> Q
+    Q --> E["Resolve Desired / Effective services"]
+    E --> C["Typed Core activate command"]
+    C --> G["Immutable GroupServiceAssignment"]
+    C --> R["Audit / Command Receipt"]
+    G --> D["Agent Runtime data plane"]
+    D --> O["Decision / Delivery Receipts"]
+    O --> W
+```
+
+The profile expresses requested business services and initial policy references;
+it is not a grant. Effective services are the intersection of requested
+services, installed/healthy implementations, current Capability/group grants,
+and rollout/budget/kill-switch eligibility. The complete authority is
+`../design/bot-control-plane.md`.
+
 Every transition appends a redacted trace event. A transition cannot be hidden
 inside one prompt. Models may produce structured proposals, but deterministic
 code validates states, permissions, scopes, call budgets, and tool results.
@@ -99,6 +130,11 @@ packages/dududa-agent domain models and owned Protocols
         |
 infrastructure implementations injected by a composition root
 ```
+
+The Web UI and HTTP/SSE gateway are outward adapters. Control Plane command
+handlers live in the application layer and publish versioned authority
+snapshots; Query Projectors consume authoritative facts. The browser never
+writes Runtime stores, registries or Agent delivery adapters directly.
 
 Domain and Runtime must not import:
 
@@ -122,6 +158,7 @@ This is an end state, not a one-PR move. The exhaustive path authority is
 ```text
 dududa/
 ├── apps/
+│   ├── web/                        # Bot Control Plane UI and typed gateway
 │   └── astrbot-plugins/
 │       ├── astrbot_plugin_dududa_core/
 │       │   ├── main.py

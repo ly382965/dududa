@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Develop Dududa as a deterministic QQ Agent runtime with controlled proactive
-outbound behavior, and a real NapCat-backed, Mew-equivalent multi-account
-operator client through isolated, verified epics.
+Develop Dududa as a governed group-context adaptive QQ Agent runtime with
+controlled proactive outbound behavior, and a real NapCat-backed Bot Control
+Plane that includes a Mew-equivalent multi-account operator client and governed
+group onboarding.
 
 ## Documents
 
@@ -35,14 +36,17 @@ and directory slices and a joint audit.
    NapCat boundary.
 5. The Web audit depends on both user-facing slices and proves cross-account,
    security and responsive behavior at their integration point.
-6. Real group-chat validation is a terminal release gate. The next Tree
-   revision must add it as the final leaf after the accepted module topology is
-   complete, so every later module audit remains a predecessor rather than
-   being bypassed.
+6. Real group-chat validation is a terminal release gate. Revision 3 added S23
+   as the final leaf; the next revision must insert S21 Control Plane/group
+   onboarding before it, so product initialization is not hidden inside a live
+   test branch.
 7. Answer length is an independent response-planning concern, while proactive
    probes and scheduled digests use a separate initiated-run boundary. Neither
    behavior is hidden inside Model Router, MCP, or the completed inbound S10/S11
    runtime scope.
+8. The confirmed long-horizon Web role is a first-class Bot Control Plane. Its
+   first write workflow lets an authorized Bot administrator choose the initial
+   group service profile; Core command handlers remain the single authority.
 
 ### Revisit Conditions
 
@@ -71,3 +75,9 @@ readiness checker and operator Runbook, but its branch is paused: real Endpoint
 evidence, group authorization/SecretRefs, live sources, production Projection/
 Output composition, human quality data, online Bandit learning and every real
 group send remain external gates.
+
+The user has confirmed a governed adaptive-runtime direction and a Web Bot
+Control Plane whose first use case is group onboarding through a versioned
+`GroupServiceProfile`. This is accepted product direction but not revision 3
+implementation. The next Tree Alignment must insert S21 Control Plane work
+before the paused S23 branch can resume.

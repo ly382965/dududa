@@ -4,6 +4,12 @@
 
 审查基线：`4c6686bab559be1ffe0e66de0860828e44876678`
 
+> 2026-08-14 设计更新：本文对当时实现的批评与证据继续保留，但“S21 仅做只读测试 WebUI”的
+> 建议已被后续用户决策取代。当前方向是 Bot Control Plane，首个用例为 Bot 入群后由管理员
+> 选择版本化初始服务；所有写操作必须经过 Core Command/Audit/Receipt。现行计划见
+> [实施计划](../refactor/implementation-plan.md) 与
+> [控制后台设计](../design/bot-control-plane.md)。
+
 范围：模型路由器、Memory、MCP、输入 Connector、语义理解、OC/Persona、WebUI，以及新增的
 实时学习/Contextual Bandit 技术栈。
 

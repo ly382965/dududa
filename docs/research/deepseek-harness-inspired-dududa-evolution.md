@@ -1,6 +1,6 @@
 # 从“一切皆插件”到受治理的群体情境 Agent Runtime
 
-状态：长程研究报告，不代表已经实现或批准生产切流
+状态：长程研究报告；核心设计方向已由用户确认，不代表已经实现或批准生产切流
 
 研究日期：2026-08-14
 
@@ -27,8 +27,9 @@ Dududa 不应该把 DeepSeek Harness 的“一切皆插件”照字面搬进 Pyt
    性写成真实人物关系，也不让群默认风格覆盖当前任务。
 3. **会优化**：静态 Router 先完成资格过滤、Tier 选择和预算准入，Bandit 只对同 Role、同
    Tier、同安全等级的 Endpoint 或同语义 Variant 排序。
-4. **可解释**：QQ 客户端旁的 Agent Observatory 从权威事件和 Receipt 投影运行轨迹，而不是
-   再造 Router、权限、Memory、MCP 或发送控制面。
+4. **可运营**：QQ 工作台演进为一等 Bot Control Plane，从权威事件和 Receipt 投影事实，并把
+   管理员操作提交给同一套 Core Command Handler；它可以控制 Bot，但不复制 Router、权限、
+   Memory、MCP 或发送权威。
 
 DeepSeek Harness 最有价值的不是包数量，也不是让模型直接生成运行时代码，而是三项方法：
 
@@ -267,11 +268,11 @@ Conversation/Run/Settings、Tool、Permission、Reply Draft、Token、Cost 和 T
 但 Agent Runtime 尚未接通。生产后端当前固定返回空的 `sessions`、`agentMessages`、`runs`
 和 `configs`；现有 Agent DTO 是早期 UI DTO，缺少当前 Core 的 digest、revision、reason code、
 Route Receipt、Capability/MCP 和 Bandit 事实。界面里的模型、Memory、Tool 开关不能直接接成
-生产写 API，否则 Web 会变成第二套控制面。
+浏览器本地配置或任意 REST 写入；它们应成为 Bot Control Plane 上的受治理命令。
 
 因此正确结论是：**QQ 工作台的真实 NapCat 数据路径已实现并通过工程测试，但真实账号的外部
-操作证据仍有限；Agent Console 是成熟布局原型，Runtime Observation API 和管理员控制面尚未
-实现。**
+操作证据仍有限；Agent Console 是成熟布局原型，Bot Control Plane 的 Query/Command API、群
+服务初始化和管理员认证尚未实现。**
 
 ## 5. 核心方法一：受治理的可组合 Runtime
 
@@ -740,7 +741,7 @@ Dududa S20 已有 Decision/Execution/Feedback、propensity validator 和 IPS/SNI
 Vowpal Wabbit 可作为隔离 Policy Worker；Open Bandit Pipeline 可交叉验证离线估计。两者都只
 实现 Dududa Port，不拥有 Router eligibility、日志事实或发布控制。
 
-## 10. 核心方法六：QQ 与 Agent Observatory 融合
+## 10. 核心方法六：QQ 与 Bot Control Plane 融合
 
 ### 10.1 事件、投影、UI 和外部 Telemetry 分层
 
@@ -750,7 +751,7 @@ Vowpal Wabbit 可作为隔离 Policy Worker；Open Bandit Pipeline 可交叉验�
 Dududa 现有 phase Trace / checkpoint / Decision / Receipt / Audit
         |
         v
-只读、脱敏、版本化 Receipt/Checkpoint Projector
+脱敏、版本化 Receipt/Checkpoint Projector
         |
         +-> Observation Projection
         +-> 若重放缺口确实存在，再新增 durable Agent Event Ledger
@@ -760,7 +761,11 @@ Dududa Query API          可选 Telemetry Mapper
 + /api/agent/events SSE
         |                      |
         v                      v
-QQ 内 Agent Observatory  OTel/OTLP -> Phoenix/Langfuse/其他 Sink
+Web Bot Control Plane     OTel/OTLP -> Phoenix/Langfuse/其他 Sink
+        |
+        v
+Typed Command API -> Authentication/Actor/Scope -> Core Command Handler
+        -> versioned authority store + Audit/Command Receipt
 ```
 
 当前 Runtime Trace 主要记录进入的 phase，而完整 Decision、TTL checkpoint、Receipt 和 Audit
@@ -781,6 +786,8 @@ Phoenix 适合本地 Trace/Eval 调试，Langfuse 的 Session、成本、反馈�
 
 | 投影 | 关键字段 | 当前来源状态 |
 | --- | --- | --- |
+| Group Onboarding | Bot/account/group Scope 引用、pending/active 状态、发现时间 | 新契约；当前 Web 无 Agent onboarding 数据 |
+| Group Service | Profile/Assignment revision、Desired/Effective 服务、降级原因、LKG | 新契约；当前浏览器 config 不是权威状态 |
 | Run | trigger、shadow/canary、phase、result、组件 revision | 可从现有 phase Trace/checkpoint/Receipt 派生，Projector 待实现 |
 | Perception | intent/复杂度/should-reply、置信度、reason code；无 CoT | 可从现有结构化结果派生 |
 | Group Context | 内容/形式分布、窗口、熵、有效期、analyzer revision | 新契约与新埋点 |
@@ -794,6 +801,7 @@ Phoenix 适合本地 Trace/Eval 调试，Langfuse 的 Session、成本、反馈�
 | Bandit | action support、chosen、policy、propensity、feedback join、OPE/ESS | 离线 Contract 已有，生产来源与投影未实现 |
 | Plugin | descriptor、realm、generation、依赖、health、LKG、失活原因 | 新契约与新埋点 |
 | Eval | evidence mode、provenance、bundle/revision、metric、score/label、失败原因 | 离线 manifest/report 已有，查询投影待实现 |
+| Command | Actor/Scope、command/revision、状态、Audit/Receipt、rollback ref | 部分领域有命令契约；统一 Control Plane Gateway 待实现 |
 
 成本不能只是一个格式化字符串，应拆为币种、定价 revision、input/cache/reasoning/output Token
 以及 `estimated/settled/unknown`。
@@ -802,8 +810,10 @@ Phoenix 适合本地 Trace/Eval 调试，Langfuse 的 Session、成本、反馈�
 
 保留现有 QQ 主工作区，增加两级入口：
 
-**全局 Agent 运维页**
+**全局 Bot Control Plane**
 
+- Onboarding：Bot 新入群待办、可选 Profile、Desired/Effective diff、Preview 与激活状态；
+- Groups/Services：当前 `GroupServiceAssignment`、Profile/LKG revision、服务健康、暂停和回滚；
 - Overview：Run 量、错误率、P50/P95、TTFT、Token/成本、Delivery UNKNOWN，以及 rollout、
   digest、probe 等按行为和 Scope 分开的 switch/revision/owner；
 - Runs：按账号、群 Scope 引用、触发、模式、Tier、Endpoint、状态筛选；
@@ -817,42 +827,61 @@ Phoenix 适合本地 Trace/Eval 调试，Langfuse 的 Session、成本、反馈�
 
 **QQ 会话内 Agent 抽屉**
 
-1. `运行`：当前会话关联的 Run；
-2. `决策`：Perception -> Social -> AnswerProfile -> Router；
-3. `执行`：Model、Capability/MCP、Memory、Composer、Delivery 时间线；
-4. `反馈`：对已投递 Bot 消息进行显式评分和归因。
+1. `服务`：当前群 Profile、Desired/Effective 服务和降级原因；
+2. `运行`：当前会话关联的 Run；
+3. `决策`：Perception -> Social -> AnswerProfile -> Router；
+4. `执行`：Model、Capability/MCP、Memory、Composer、Delivery 时间线；
+5. `反馈`：对已投递 Bot 消息进行显式评分和归因。
 
 当前 QQ Message DTO 只预留了 `runId` 字段，服务端 mapper 尚不会填充。未来必须由服务端根据
 `DeliveryReceipt -> account/conversation/message` 建立可信绑定，不能接受浏览器自报的 `runId`。
 建立该绑定后才可以深链到 Run。需要查看正文时从当前获准 QQ 会话读取，不应把正文复制到通用
 Trace 表。
 
-### 10.4 Web 不是第二控制面
+### 10.4 Web 是 Bot Control Plane，但不是第二套决策权威
 
-第一阶段只读。少量写动作只有在各自的专用权威命令实现后才能暴露，并携带 Actor、expected
-revision/CAS、授权、幂等键和 Audit Receipt。当前状态需要逐项区分：
+控制后台的首要产品目的不是展示 Trace，而是给予可审计的初值：Bot 进入群聊后，Bot 管理员从
+当前合法 Catalog 中选择一个版本化 `GroupServiceProfile`。缺少选择时群处于
+`PENDING_PROFILE`，Agent 不取得回复、Tool、Memory、Scheduler 或主动发送所有权。
 
-- 人工反馈：S20 有离线 Feedback Contract，但生产写命令待实现；
-- 取消 Run：已有取消契约不等于管理员 API，专用命令待实现；
-- Preview/Permission 审批：部分领域有 Contract，统一 Web 命令待实现；
-- switch/pause/unsubscribe：按 rollout、digest、probe 和 Scope 分别实现，不能假装一个全局开关。
+Profile 只表达期望服务、Persona、触发/回答默认、模型预算、Memory/主动行为模式和运维限制，
+不携带权限或物理 Endpoint。实际服务始终是：
 
-禁止 Web 直接强制 Tier/Endpoint、修改 Router/Bandit/Prompt/Persona、动态开放 MCP Tool、读写
-Memory、读取 Secret 或绕过 Output 直接发送 QQ。当前 Agent Console 的本地可变开关应替换成
-“有效配置只读投影”，而不是简单接上 REST 写接口。
+```text
+Profile Requested
+  ∩ installed/healthy implementation
+  ∩ current Capability/group grants
+  ∩ rollout/budget/kill-switch eligibility
+```
 
-现有 `approveDraft()` 会直接调用 NapCat；当前因 Agent Session 未接通而不可达，但在接通前必须
-删除这条直发语义，改为调用权威 Preview/Dispatch/Output 命令并取得 DeliveryReceipt，否则会
-绕过 Runtime 的授权、幂等和对账链。
+管理员先看到 Desired/Effective diff 和稳定降级原因，再通过带 Actor、exact Scope、expected
+revision/CAS、幂等键、确认和 Audit Receipt 的 Core 命令激活。Runtime 只读取原子不可变的
+`GroupServiceAssignment`；Group Context、模型、Plugin、Skill Candidate 和 Bandit 都不能改写它。
 
-Observatory 还必须先补管理员认证和读权限。当前 loopback Host 与同源写校验不等于 operator
-authentication/RBAC；每次查询都要绑定 operator、Bot/account 和 group Scope，并留下只读审计。
-在认证、会话安全和非 loopback 部署门禁完成前，不得向外网暴露 Runs、Memory、Group Context
-或 Bandit 页面。
+在群入驻之外，Control Plane 可以逐步承载人工反馈、取消 Run、Preview/Permission 审批、订阅
+变更、Profile 更新/暂停/回滚，以及 rollout、digest、probe 按 Scope 分开的 switch。每项写操作
+必须先有专用权威命令，不能用一个万能 REST 配置端点代替领域语义。
+
+禁止浏览器直接强制 Tier/Endpoint、修改活动 Router/Bandit/Prompt/Persona、动态开放 MCP Tool、
+读写 Memory、读取 Secret 或绕过 Output 执行 Agent 发送。正常真人 QQ 操作仍可使用现有 typed
+NapCat Gateway；Agent 生成的消息必须走 Preview/Dispatch/Output 并取得 DeliveryReceipt。
+
+现有 `approveDraft()` 会直接调用 NapCat，`respondPermission()` 和 `saveSettings()` 只改变浏览器
+状态；它们因 Agent Session 未接通而暂不可达。接通前必须替换为 governed command，不能把原型
+开关误认为有效配置。
+
+Control Plane 必须先补 operator authentication/RBAC。当前 loopback Host 与同源写校验不等于
+操作者身份；每次查询和命令都要绑定 operator、Bot/account 和 group Scope，并记录 Query/Audit
+证据。在认证、会话安全和非 loopback 部署门禁完成前，不得向外网暴露 Runs、Memory、Group
+Context、Bandit 或群服务配置。
 
 ## 11. 一个统一的端到端形状
 
 ```text
+Bot/group join fact -> PENDING_PROFILE
+  -> Bot Control Plane -> administrator Preview/Activate
+  -> immutable GroupServiceAssignment -------------------|
+                                                         |
 QQ Connector
   -> Conversation Disentangler
   -> Group Context Provider -----------------------------|
@@ -869,7 +898,7 @@ QQ Connector
               -> Output Commit / DeliveryReceipt --------|
                                                           v
                                        Observation Projection
-                                          -> QQ Observatory
+                                          -> Bot Control Plane
                                           -> optional OTel Sink
 
 获准的 Receipt / Feedback / 群聊窗口
@@ -886,10 +915,11 @@ QQ Connector
 
 ## 12. 长程路线
 
-这不是第二套 Sxx 路线。现有 S01-S23 事实保持不变；新方向应在下一次 Tree Alignment 中作为
-S23 之后或与外部数据门禁解耦的增量分支映射到既有工程顺序。
+这不是第二套 Sxx 路线。现有 S01-S23 实现事实保持不变；下一次 Tree Alignment 应把控制后台
+映射为 S21，并将群初始化最小闭环放在暂停的 S23 之前。依赖真实数据的 Group Context/Skill/
+Bandit 阶段仍与 S23 外部门禁分开。
 
-### P0：组合与观察基础，不依赖真实群聊
+### P0：组合与控制基础，不依赖真实群聊
 
 目标：让现有 Port 真正成为可管理能力，同时不改变生产行为。
 
@@ -900,15 +930,19 @@ S23 之后或与外部数据门禁解耦的增量分支映射到既有工程顺�
 4. 先实现 Receipt/Checkpoint Projector 和低敏 `ObservationProjection`，用重放缺口决定是否
    新增 durable Agent Event Ledger，明确正文不进入默认 Trace；
 5. 建立 `offline-eval`、`shadow` 等 digest-bound Profile 和组合 LKG；
-6. 增加 operator authentication/RBAC、账号/群 Scope 和只读审计，作为所有 Observatory 页面的
-   前置；
-7. 接通 Web 只读 Run/Decision/Plugin Query API 与独立 `/api/agent/events` SSE，替换空 Agent
-   DTO；现有携带 QQ 消息的 `/api/events` 保持独立数据面；
-8. 移除 Agent Reply Draft 的 NapCat 直发路径，在未来专用权威命令完成前保持不可用；
-9. 只接本地可选 Phoenix/OTel Sink Spike，默认关闭；
-10. 为 Group Context 定义双轴、多标签、时间衰减的 DTO 和固定合成 fixture。
+6. 冻结 `GroupServiceProfile/Assignment`、join/pending/preview/activate/rollback 和 Command Receipt
+   契约，用 Fake join/Fake services 证明 Profile 不授予 Capability；
+7. 增加 operator authentication/RBAC、账号/群 Scope、查询审计和命令审计，作为 Control Plane
+   的前置；
+8. 接通 Web Onboarding、Run/Decision/Plugin Query API 与独立 `/api/agent/events` SSE，替换空
+   Agent DTO；现有携带 QQ 消息的 `/api/events` 保持独立数据面；
+9. 实现群服务 Preview/Activate/Pause/Rollback 的专用 Core 命令；移除 Agent Reply Draft 的
+   NapCat 直发和浏览器本地权限/配置占位；
+10. 只接本地可选 Phoenix/OTel Sink Spike，默认关闭；
+11. 为 Group Context 定义双轴、多标签、时间衰减的 DTO 和固定合成 fixture。
 
-P0 完成只能声明“组合契约和可观察投影完成”，不能声明插件生态、群风格学习或在线自进化完成。
+P0 完成只能声明“组合契约、群初始化控制面和可观察投影完成”，不能声明插件生态、群风格学习、
+真实服务可用或在线自进化完成。
 
 ### P1：真实数据上的有限群体适应
 
@@ -934,7 +968,8 @@ P1 不进行自动 Prompt 改写、人物关系断言、跨群画像或主动行
 4. 建立签名插件包、兼容矩阵、迁移/回滚、依赖漂移和 quarantine；
 5. 只对可信插件开放同进程运行，不可信 Adapter 进入独立 Worker/容器；
 6. 将真实 Source/MCP、Memory Backend、可观测 Sink 按同一 Contract 接入；
-7. Web 从只读逐步增加经过权威命令的窄写操作。
+7. Control Plane 在已完成群初始化命令的基础上，逐步接入经过权威 Core Command 的插件发布、
+   Policy rollout 和实验回滚；不增加任意配置写接口。
 
 主动消息的发送/沉默、目标和频率永不进入 Bandit exploration。真实群放量继续遵守 S23 的逐
 行为授权，不因插件或 Bandit 完成而自动扩大。
@@ -977,10 +1012,14 @@ P1 不进行自动 Prompt 改写、人物关系断言、跨群画像或主动行
 - 质量 floor、成本/延迟上限和 LKG 自动回滚；
 - 以 conversation/group cluster 分析，避免把相互影响的消息当独立样本。
 
-### 13.5 Observatory
+### 13.5 Bot Control Plane
 
 - 权威 Event 可重放出同一 Run Projection；
 - UI 不自行推导权限、模型选择或 Delivery 状态；
+- 新群缺 Profile 时零 Agent 服务；并发管理员激活只有一个 assignment revision 成功；
+- Desired/Effective 服务差异可解释，未知、不健康或未授权服务不能被 Profile 激活；
+- Group Context、Plugin、模型和 Bandit 不能修改 Assignment 或取得发送权；
+- 每个 mutation 都有 Actor/Scope、expected revision、幂等、Audit/Command Receipt 和 LKG 回滚；
 - 默认 Trace/metric 和新的 `/api/agent/events` Observation SSE 不含正文、QQ ID、Prompt、Tool
   body、Memory 文本或 CoT；现有 QQ `/api/events` 属于独立数据面并继续按其授权传输会话消息；
 - QQ Message -> Run 深链和分页/重连不改变统计；
@@ -1001,7 +1040,7 @@ P1 不进行自动 Prompt 改写、人物关系断言、跨群画像或主动行
 | 聊天记录直接生成 Skill | Prompt Injection 长期固化 | Candidate/Eval/人工发布 |
 | Bandit 学发送与权限 | 用探索制造真实副作用 | action set 硬限制 |
 | 把沉默当负反馈 | 非随机缺失导致策略偏差 | 采集侧 pending，窗口关闭后 `CENSORED` |
-| Web 直接改运行配置 | 第二控制面和状态漂移 | 只读投影 + 权威命令 |
+| Web/浏览器直接改运行配置 | 绕过统一控制面并产生状态漂移 | Query Projection + typed Core Command + Receipt |
 | 全量 Telemetry | 群聊、Memory、Tool 数据泄露 | metadata-first、正文 opt-in |
 | 引入外部 Memory/Agent 框架 | 第二套 Scope/写入/权限 | 只能实现 Port |
 
@@ -1013,6 +1052,8 @@ P1 不进行自动 Prompt 改写、人物关系断言、跨群画像或主动行
 | Descriptor/Realm/Lifecycle/Disposer | Adopt | 当前最关键的组合缺口 |
 | 持久事实与实时 Hook 分离 | Adopt | Runtime、回放和 UI 共同基础 |
 | Profile/Bundle/LKG | Adopt | 先做受验证组合，不做任意脚本 |
+| Web Bot Control Plane | Adopt | 统一 Query/Command 后台，Core Handler 保持权威 |
+| GroupServiceProfile/Assignment | Adopt | 管理员给出群服务初值，学习不能扩权 |
 | GroupContext 多轴分布 | Adopt | 替代僵硬群分类 |
 | StyleEnvelope 有界顺应 | Adopt | 当前任务和事实门禁优先 |
 | Relationship Evidence | Adopt | 只表示可观察互动 |
@@ -1022,7 +1063,8 @@ P1 不进行自动 Prompt 改写、人物关系断言、跨群画像或主动行
 | pluggy Hook | Spike | 仅用于有界多参与者 Hook |
 | Graphiti/Embedding Memory | Spike | 先由真实数据证明收益 |
 | Phoenix/OTel Exporter | Spike | 本地、默认关闭、Mapper 隔离 |
-| Cordis 作为 Dududa Runtime | Reject | 会形成第二技术栈和控制面 |
+| Cordis 作为 Dududa Runtime | Reject | 会形成第二技术栈和重复治理权威 |
+| 浏览器本地配置即运行权威 | Reject | 无 Actor/Scope/CAS/Audit/Receipt，无法回滚 |
 | 任意模型生成 Host 代码 | Reject | 同进程 VM 不是安全边界 |
 | 权限/Scope/发送普通插件化 | Reject | 破坏治理权威 |
 | 自动写活动 Prompt/Skill | Reject | 数据到控制指令的越权升级 |
@@ -1032,16 +1074,17 @@ P1 不进行自动 Prompt 改写、人物关系断言、跨群画像或主动行
 ## 16. 最终设计哲学
 
 Dududa 的方法创新不应被描述为“接入了很多模型、Memory、MCP、Bandit 和 WebUI”。更准确的
-五条原则是：
+六条原则是：
 
 1. **组合而不失权威**：所有实现可替换，身份、Scope、授权、预算和副作用不可被替换。
-2. **适应而不伪装**：学习群体情境和表达习惯，但保留稳定 OC、事实密度和任务义务。
-3. **记证据而不造事实**：Memory 保存来源、时间、置信度和冲突，关系只保留互动证据。
-4. **学习而不越界**：Skill 和 Policy 都从候选开始，Bandit 只在合法等价动作中优化。
-5. **可观察而不复制控制面**：同一权威事件派生回放、评测和 UI，Web 与 Telemetry 不拥有业务
-   决策，也不默认复制群聊正文。
+2. **先给初值，再允许适应**：Bot 管理员选择群服务档案；学习只能在档案内调整，不能自动开服务。
+3. **适应而不伪装**：学习群体情境和表达习惯，但保留稳定 OC、事实密度和任务义务。
+4. **记证据而不造事实**：Memory 保存来源、时间、置信度和冲突，关系只保留互动证据。
+5. **学习而不越界**：Skill 和 Policy 都从候选开始，Bandit 只在合法等价动作中优化。
+6. **控制而不复制权威**：Web 是 Bot Control Plane；查询来自权威投影，写入经过同一 Core
+   Command、Audit 和 Receipt，Telemetry 不拥有业务决策，也不默认复制群聊正文。
 
-如果这五点能够形成可执行契约、真实数据 Eval 和逐步放量证据，Dududa 的创新就不再是功能
+如果这六点能够形成可执行契约、真实数据 Eval 和逐步放量证据，Dududa 的创新就不再是功能
 堆砌，而是一种适用于长期社交 Agent 的系统方法：**在持续变化的人群环境中保持身份与治理
 稳定，同时让能力、表达和资源分配可以被安全地组合、学习和撤销。**
 
@@ -1057,6 +1100,7 @@ Dududa 的方法创新不应被描述为“接入了很多模型、Memory、MCP�
   [S20 离线完成报告](../refactor/s20-offline-bandit-report.md)；
 - [MCP/Capability 设计](../design/capability-and-mcp.md) 与
   [主动消息设计](../design/proactive-messaging.md)；
+- [Bot Control Plane 与群服务初始化](../design/bot-control-plane.md)；
 - [QQ Web 工作台说明](../../apps/web/README.md)、
   [Agent Console](../../apps/web/src/components/AgentConsole.vue) 与
   [现有空 Agent 后端投影](../../apps/web/server/onebot-hub.ts)；

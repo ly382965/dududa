@@ -13,10 +13,11 @@ handlers remain production authority because the running composition has not
 installed Dududa's rollout runtime.
 
 The Mew/NapCat Web epic is committed, complete and verified as the real
-multi-account QQ test/operator client. It remains a testing surface for the
-Agent expansion rather than a new product Control Plane. Unrelated and isolated
-repositories are outside this workspace's development evidence and are never
-used as implementation inputs.
+multi-account QQ test/operator client. Its Agent Console is still an empty UI
+shell, but the user has now confirmed its next product role as Dududa's Bot
+Control Plane. That direction is not implemented and is not present in accepted
+Tree revision 3. Unrelated and isolated repositories are outside this
+workspace's development evidence and are never used as implementation inputs.
 
 iCourse is the sole real MCP Server currently present. Its dedicated plugin
 Client hard-codes the Server process and opens a new session per operation;
@@ -24,6 +25,27 @@ the accepted Unified MCP ADR is design, not implementation. This expansion
 therefore treats iCourse as the compatibility Adapter and a local Fake as the
 extension proof. Campus, arXiv and industry fixtures establish source contracts
 without implying that their live MCP Servers or Adapters exist.
+
+### Confirmed Long-Horizon Direction
+
+Dududa evolves toward a governed group-context adaptive Runtime. A small,
+non-removable kernel retains Identity, Scope, Authorization, Budget, WriteGate,
+Dispatch and Receipt authority. Replaceable model, Memory, MCP, Capability,
+Persona, Source, group-analysis, Bandit and observation implementations may be
+managed as reversible, realm-scoped capabilities, but never acquire those
+kernel authorities.
+
+Web is the product Bot Control Plane rather than an observation-only sidecar.
+It consists of a browser operator surface, typed Query/Command APIs and Core
+application command handlers. It is one logical control plane with the
+governance kernel, not a second implementation of policy. Runtime remains the
+data plane consuming immutable snapshots and emitting authoritative Receipts.
+
+The first Control Plane use case is group onboarding. A Bot/group binding is
+created as `PENDING_PROFILE`; an authorized Bot administrator previews and
+selects a versioned `GroupServiceProfile` before any Agent service becomes
+active. Group Context starts empty and later adapts expression only inside the
+selected service, identity, permission and budget envelope.
 
 ### Integrated Model Selection Architecture
 
@@ -554,6 +576,78 @@ uses connected NapCat accounts, without sending destructive or user-visible
 mutations unless explicitly authorized. Desktop and mobile screenshots, console
 errors, layout overlap and virtual-scroll stability are audited against the Mew
 baseline.
+
+### Future Bot Control Plane And Group Onboarding
+
+The detailed design authority is
+`docs/design/bot-control-plane.md`. The next Tree Alignment must map this scope
+to S21 before S23 is resumed; this Spec update does not edit revision 3 or claim
+implementation.
+
+`GroupServiceProfile` is a versioned catalog artifact, not a permission object.
+It contains stable references to requested business services, Persona,
+trigger/response policy, model-budget policy, Memory mode, proactive defaults,
+quiet hours, limits and rollout mode. It contains no Provider credentials,
+physical Endpoint choice, raw MCP Tool name, QQ identifiers or self-declared
+grant.
+
+`GroupServiceAssignment` binds one exact platform/Bot/account/group Scope to a
+profile ID, revision and digest; selecting Actor and authorization evidence;
+desired and effective service sets; activation state; expected previous
+revision; and Audit/rollback Receipts. Effective services resolve as:
+
+```text
+requested profile services
+  intersect installed and healthy service implementations
+  intersect current Capability and group-policy grants
+  intersect rollout, budget and kill-switch eligibility
+```
+
+Profile selection never grants a Capability. Unknown, unhealthy, unauthorized
+or production-incomplete services remain inactive and are reported as such.
+iCourse is still the only real MCP Server; planned campus/arXiv/industry sources
+must appear unavailable until real Adapters and policy evidence exist.
+
+The onboarding state machine is:
+
+```text
+JOIN_DETECTED
+  -> PENDING_PROFILE
+  -> PREVIEW_READY
+  -> ACTIVE
+       -> PAUSED | RECONFIGURING | ROLLED_BACK | REVOKED
+```
+
+Before `ACTIVE`, Agent Runtime owns no group reply or proactive-send path. A
+preview resolves the effective service set and all degradation reasons without
+publishing a Runtime snapshot. Activation uses an authenticated Actor, exact
+Scope, expected-revision CAS, idempotency key, canonical request digest,
+deadline, confirmation where required and append-only Audit Receipt. Failed or
+partial publication retains the last-known-good assignment.
+
+The Control Plane has separate read and write paths. Projectors derive bounded
+query models from checkpoints, Decisions, Receipts and Audit. Command handlers
+own onboarding, profile activation/update/pause/rollback, subscription changes,
+run cancellation, preview approval and behavior-specific kill switches. The
+browser cannot write config files/databases directly or invoke Agent-generated
+delivery through the ordinary human QQ send route.
+
+The existing loopback QQ workspace may retain its no-login data path. Control
+Plane routes require a separate authenticated operator session and exact
+Bot/account/group authorization; same-origin, loopback deployment, QQ group
+role and the server-only OneBot token are not operator identity.
+
+Normal human operator messaging in the QQ workspace may continue through the
+typed NapCat gateway. Agent draft/proactive delivery must instead use the
+governed Preview/Dispatch/Output command and return a `DeliveryReceipt`; the
+current unreachable `approveDraft()` direct send and local permission/config
+mutations are placeholders to remove before Agent integration.
+
+Group Context, relationship evidence, Skill/Prompt/Style candidates and Bandit
+are downstream adaptive evidence. None may change `GroupServiceAssignment`,
+activate services, grant capabilities, alter Memory/proactive policy, select a
+target or obtain send authority. Their output is a candidate or weak prior
+subject to the active profile and deterministic validators.
 
 ### Verification And Change Discipline
 

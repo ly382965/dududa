@@ -10,8 +10,9 @@
   消费者与回滚证据清理兼容面，S20 只完成离线 Bandit 契约。S23 仅在暂停分支完成
   manifest-only readiness；真实验证尚未开始，分支也未合并。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
-  取得持久单一所有权。本地发布模块、既定 WebUI 测试和总审计已经完成；真实 QQ 群运行仍须
-  先完成 S23 环境适配并取得逐行为授权。独立可选 S20 不属于该发布前置。
+  取得持久单一所有权。本地发布模块、既定 QQ Web 测试和总审计已经完成；真实 QQ 群运行仍须
+  先完成新确认的 S21 群服务初始化、S23 环境适配并取得逐行为授权。
+- 独立可选 S20 不属于主动出站、群服务 Profile 或 S23 的发布前置。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
   S15B 持久调度、S15C 来源框架/合成 fixture、S15D fixture 日报和 S15E synthetic group
@@ -20,14 +21,15 @@
   S18 已实现统一 Eval/Trace/CI，S19 已完成 18/18 本地候选审计；S22 已删除十个路径别名和
   插件专用 iCourse Client，并保留七个仍有消费者的兼容面。Manifest v2 继续因 hash、依赖锁
   和许可证证据不足延期。S20 离线 Bandit 基础已经实现；真实学习/探索未开始，S23 仍是
-  唯一下一阶段。
+  revision 3 唯一未完成分支，但下一次 Tree revision 将先加入 S21 Control Plane。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
 - 2026-08-14 形成的
   [受治理自适应 Agent Runtime 长程研究](../research/deepseek-harness-inspired-dududa-evolution.md)
-  提出下一版 Alignment 候选；其 Plugin Runtime、Group Context/关系证据/Skill 演化和 Agent
-  Observatory 方向尚未获 Alignment 批准，也未进入当前 Spec/Tree，不是现有实现能力。
+  已被用户确认为长期设计方向，并补充 Web Bot Control Plane 的首要用例：Bot 入群后由管理员
+  选择初始 `GroupServiceProfile`。Requirements/Project Spec 已更新；S21、Plugin Runtime、
+  Group Context/关系证据/Skill 演化仍未实现，不是现有能力。
 
 “步骤完成”表示该步骤约定的代码、负向测试和退出门禁已通过，不表示产品模块满足统一完成
 定义。模块只有具备真实 Adapter、端到端故障/取消/超时证据、生产 feature flag、shadow、
@@ -83,6 +85,7 @@
 | S19 Local Integration Audit | **已完成（离线候选审计）** | 双 Python 各 651 tests/2 skips、worker 各 2、350-case committed Eval、30 日/故障抽样、Web 108+6、双镜像无网 smoke、39 项 package/static、5 项 Compose、824 文件 secret scan 和两类 rollback 均通过；18/18 固定 gate 由低敏 receipt 绑定 | `s23_ready=false`；真实 Provider/source/QQ/人工质量仍是外部门禁；18 项 S22 清单为 10 remove candidate、7 retain live、1 blocked unknown |
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
+| S21 Bot Control Plane | **设计已确认、未进入 Tree** | 根 Requirements/Spec 与 [控制后台设计](../design/bot-control-plane.md) 已定义群入驻、初始服务 Profile、Desired/Effective、统一 Query/Command 和治理边界 | 下一次 Tree revision 增加 S21A-S21C/Audit；当前无后端、Projector、auth/RBAC、命令、持久 Assignment 或 Runtime snapshot |
 | S23 Real Group Validation | **暂停、部分完成** | manifest-only readiness、低敏模板、checker 和 Runbook 已在 `treework/real-group-validation@01c8abf` 提交；无真实发送或真实来源声明 | 分支未合并；仍需 evidence resolver、真实 Provider/Source/Projection/Output 环境适配与 Conformance、外部输入和逐行为授权 |
 
 ## 产品模块完成度
@@ -99,22 +102,24 @@
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker和 iCourse facade；S22 已删除专用直连 Client，缺失时 fail closed；S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据 | 生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
-| 可组合插件 Runtime | 研究完成、工程未开始 | 研究报告提出“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚未获 Alignment 批准，也无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
-| Group Context / 关系证据 / Skill 演化 | 研究完成、工程未开始 | 已区分群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
-| Mew/NapCat WebUI / Agent Observatory | QQ 客户端已完成；Observatory 研究完成、数据链未接通 | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests。Agent Console 只有 UI 壳、后端返回空数据；另有当前不可达的 NapCat 草稿直发和浏览器本地权限占位，接通前必须改走 governed command |
+| 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
+| Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit 分权；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
+| Mew/NapCat WebUI / Bot Control Plane | QQ 客户端已完成；控制后台设计已确认、工程未开始 | Web epic complete/verified；66 frontend、42 server、6 Playwright 和 352 repository tests。Agent Console 仍是空后端 UI 壳；尚无 onboarding/Assignment/命令链，当前不可达的 NapCat 草稿直发和浏览器本地权限/配置占位必须移除 |
 | 真实群聊放量 | S23 暂停、真实运行未开始 | S19/S22 本地发布门禁和既定 WebUI 回归已通过；S23 仅在暂停分支完成 manifest-only readiness | 仍需环境适配工程、逐行为授权和真实外部输入；可选 S20 不阻塞 |
 
-## 2026-08-14 长程演化调研状态
+## 2026-08-14 长程设计整合状态
 
 | 方向 | 当前状态 | 状态边界 |
 | --- | --- | --- |
-| 插件组合与生命周期 | 研究完成、实现未开始 | 报告建议治理内核不可卸载，能力插件具备 Descriptor、Realm、generation、disposer 和 LKG；尚待 Alignment 审批，未建立 Runtime 或迁移现有 Registry |
-| 群体情境与社会学习 | 研究完成、实现未开始 | Group Context 只作为带 TTL 的群级弱先验；关系仅保存可撤销证据；尚无真实群数据、Projection 或效果证据 |
-| Skill/Prompt/Style 候选演化 | 研究完成、实现未开始 | 模型只能提出候选资产，不能自动发布；尚无 lineage、离线 Eval、人工审批和回滚流水线 |
+| 插件组合与生命周期 | 设计方向已确认、实现未开始 | 治理内核不可卸载，能力插件具备 Descriptor、Realm、generation、disposer 和 LKG；未建立 Runtime 或迁移现有 Registry |
+| 群服务初始化 | 设计方向已确认、实现未开始 | Bot 入群后进入 pending，管理员选择版本化 `GroupServiceProfile`；尚无 Profile/Assignment DTO、命令、Store、Projector 或 Runtime snapshot |
+| 群体情境与社会学习 | 设计方向已确认、实现未开始 | Group Context 只作为带 TTL 的群级弱先验，关系仅保存可撤销证据；不能修改群服务初值；尚无真实群数据、Projection 或效果证据 |
+| Skill/Prompt/Style 候选演化 | 设计方向已确认、实现未开始 | 模型只能提出候选资产，不能自动发布或开服务；尚无 lineage、离线 Eval、人工审批和回滚流水线 |
 | Bandit 在线学习 | S20 离线基础完成，在线未开始 | 只允许在安全等价合法候选间排序；没有真实 action support、before-action propensity、反馈 join、Shadow 或探索 |
-| Agent Observatory | 研究完成、Web 壳存在 | 第一阶段建议只读投影 Receipt/checkpoint；查询 API、独立 Agent SSE、管理员认证/RBAC 和 Agent 数据源均未实现，现有直发/本地权限占位必须先替换 |
+| Bot Control Plane | 设计方向已确认、Web 壳存在 | Web 是统一控制后台，查询来自权威投影，写入经过 Core Command；Query/Command API、operator auth/RBAC、Audit/Receipt 和 Agent 数据源均未实现，现有直发/本地权限占位必须替换 |
 
-上述方向只进入后续 Alignment 候选池。当前 Tree revision 3、Sxx 顺序和 S23 暂停状态均不变。
+上述方向已写入根 Requirements/Spec，但没有实现证据。当前 Tree revision 3 和 S23 暂停状态仍
+不变；下一次 Tree revision 应把 S21A-S21C/Audit 插在 S23 前。
 
 ## 2026-08-10 S22 阶段证据
 
@@ -252,8 +257,8 @@
 ## 残余边界
 
 1. **真实群验证延期到最终阶段。** S11 已有本地 Bridge/Shadow/Canary/kill switch 证据；
-   即使提前具备群 ID、凭据和发送窗口，也要等所有当前发布必需模块、既定 WebUI 测试和本地
-   总审计完成后才执行。独立可选 S20 不属于该发布前置。
+   即使提前具备群 ID、凭据和发送窗口，也要先把 S21 控制后台加入 Tree 并完成群服务初始化
+   离线审计，再恢复 S23。独立可选 S20 不属于该发布前置。
 2. **Attachment Actor 绑定不完整。** `AttachmentAccessRequest` 没有独立 `Actor` 字段；当前
    只能验证 `AuthorizationDecision.actor_digest`，Repository 没有第二份当前 Actor 做交叉核对。
 3. **去重分层。** S10 Runtime Store 证明同进程 CAS/single-flight；S11 SQLite rollout ledger
@@ -278,10 +283,11 @@
 
 ## 下一步
 
-S17、S18、S19、S22 和 S20 离线范围均已完成。下一步只在取得外部输入与逐行为授权后冻结群 ID、
-凭据、分行为 SLO、发送窗口和 digest-pinned 回滚清单，并按“入站 Shadow -> 明确 @
-Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”执行 S23。Bandit 不是主动链路
-前置，也不得对主动行为开启探索。
+S17、S18、S19、S22 和 S20 离线范围均已完成。下一步先进行一次小型 Tree Alignment，把
+`S21A Foundation -> S21B Group Onboarding -> S21C Governed Operations -> S21 Audit` 加为 S23
+前置，并用 Fake join/service 离线完成管理员选择初始服务的闭环。S21 完成后，再取得外部输入，
+按“入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频 Probe -> 分层放量”恢复
+S23。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
 
 后续分支采用风险分层验证：优先运行受影响 Contract、聚焦 warning-as-error 与抽样仓库回归；
 只有跨模块高风险变更或 S19/最终总集成才重复双 Python 全仓，避免每个 Sxx 重复执行同一套

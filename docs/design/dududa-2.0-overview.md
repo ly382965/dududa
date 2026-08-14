@@ -2,9 +2,9 @@
 
 状态：S01–S20 与 S22 的既定本地/离线范围已实现并验证；S23 仅在暂停分支完成
 manifest-only readiness，真实验证尚未开始且分支未合并。生产完整切流、真实 Provider/来源、
-环境适配、人工质量、真实发送和在线 Bandit 尚未完成。2026-08-14 的长程演化研究只作为下一版
-Tree Alignment 候选，不代表插件 Runtime、群体情境学习或 Agent Observatory 数据链已经实现。
-当前证据以 `../refactor/PROGRESS.md` 为准。
+环境适配、人工质量、真实发送和在线 Bandit 尚未完成。2026-08-14 已确认“受治理的群体情境
+适应 Runtime + Web Bot Control Plane”长期方向；S21、插件 Runtime、群体情境学习和控制后台
+数据/命令链仍未实现。当前证据以 `../refactor/PROGRESS.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository
@@ -20,6 +20,7 @@ runtime, service, operation, and compatibility changes together.
 - Model-role routing: `model-routing.md`
 - Conservative online learning and Contextual Bandit: `online-learning.md`
 - Proactive conversation probes, subscriptions and scheduled digests: `proactive-messaging.md`
+- Bot Control Plane and group-service onboarding: `bot-control-plane.md`
 - Persona and OC rendering: `persona.md`
 - Security, privacy, audit, and rate limits: `security.md`
 - Target repository layout: `repository-layout.md`
@@ -56,6 +57,12 @@ runtime, service, operation, and compatibility changes together.
 15. Proactive behavior is default-off and target-bound. Empty allowlists,
     missing authorization, quiet hours, limiter/audit failure, unsubscribe and
     kill switch all fail closed before delivery.
+16. Web is the product Bot Control Plane, but every mutation goes through the
+    same typed Core command authority; browser state never becomes Runtime
+    policy, permission or delivery truth.
+17. A newly joined group stays `PENDING_PROFILE` until an authorized Bot
+    administrator activates a versioned `GroupServiceProfile`. Group Context,
+    plugins, models and Bandit cannot widen that assignment.
 
 ## Delivery Strategy
 

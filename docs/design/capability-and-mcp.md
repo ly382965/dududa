@@ -28,6 +28,8 @@ Test。公共字段变化必须先更新这些权威类型及测试，再同步�
 - 让内建能力和 MCP 能力使用相同的执行、审计和结果校验契约；
 - 使 iCourse 成为首个标准 Capability Provider 和 MCP Server 样板；
 - 为主动日报预留 source-neutral、公开只读、带来源与新鲜度的 Capability 边界，当前只用固定 fixture 证明；
+- 允许 Bot Control Plane 的 `GroupServiceProfile` 请求业务服务，但仍由 Capability Registry、
+  当前群授权、健康和 rollout 计算 Effective，Profile 本身不授予 Capability；
 - 保留现有入口，在新链路验证完成前可按提交回滚。
 
 非目标：
@@ -38,6 +40,8 @@ Test。公共字段变化必须先更新这些权威类型及测试，再同步�
 - 不在本阶段训练 Tool Planner 模型；
 - 不把批量抓取、文件导出和诊断工具默认暴露给模型。
 - 不让 MCP 或 Capability Provider 创建订阅、决定发送时间/目标、生成发送授权或直接投递消息。
+- 不让浏览器、Group Service Profile、Group Context、Plugin Descriptor 或模型把发现/期望服务
+  直接升级为可调用 Capability。
 
 ## 3. 总体关系
 
