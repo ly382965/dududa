@@ -660,10 +660,19 @@
       "title": "S21B Group Onboarding",
       "purpose": "Let an authorized administrator preview and activate one initial group service profile with immutable Runtime assignment and recovery.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1786706085"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/group-onboarding",
+        "git_branch": "treework/group-onboarding",
+        "managed_by_treework": false,
+        "created_at": "unix:1786709028",
+        "last_entered_at": "unix:1786709028",
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
+      },
+      "last_sync": "unix:1786713297"
     },
     {
       "path": "governed-operations",
