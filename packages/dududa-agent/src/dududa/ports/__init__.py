@@ -33,6 +33,7 @@ if TYPE_CHECKING:
         GroupJoinSource,
         GroupServiceCatalog,
         GroupServiceRepository,
+        GroupServiceSnapshotProvider,
         OperatorSessionResolver,
     )
     from .mcp import (
@@ -140,6 +141,7 @@ __all__ = [
     "GroupJoinSource",
     "GroupServiceCatalog",
     "GroupServiceRepository",
+    "GroupServiceSnapshotProvider",
     "InputConnector",
     "ManualCancellationToken",
     "McpEnvironmentProvider",
@@ -224,12 +226,14 @@ def __getattr__(name: str) -> object:
         "GroupJoinSource",
         "GroupServiceCatalog",
         "GroupServiceRepository",
+        "GroupServiceSnapshotProvider",
         "OperatorSessionResolver",
     }:
         from .control_plane import (
             GroupJoinSource,
             GroupServiceCatalog,
             GroupServiceRepository,
+            GroupServiceSnapshotProvider,
             OperatorSessionResolver,
         )
 
@@ -237,6 +241,7 @@ def __getattr__(name: str) -> object:
             "GroupJoinSource": GroupJoinSource,
             "GroupServiceCatalog": GroupServiceCatalog,
             "GroupServiceRepository": GroupServiceRepository,
+            "GroupServiceSnapshotProvider": GroupServiceSnapshotProvider,
             "OperatorSessionResolver": OperatorSessionResolver,
         }[name]
     if name in {

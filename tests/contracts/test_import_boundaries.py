@@ -48,11 +48,16 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.capabilities.runtime",
     "dududa.capabilities.validation",
     "dududa.control_plane.authorization",
+    "dududa.control_plane.api",
+    "dududa.control_plane.codec",
     "dududa.control_plane.contracts",
     "dududa.control_plane.gateway",
+    "dududa.control_plane.lifecycle",
     "dududa.control_plane.projector",
     "dududa.control_plane.repository",
     "dududa.control_plane.resolution",
+    "dududa.control_plane.snapshot",
+    "dududa.control_plane.sqlite_repository",
     "dududa.domain.attachments",
     "dududa.domain.delivery",
     "dududa.domain.task",
@@ -160,16 +165,21 @@ class ImportBoundaryTests(unittest.TestCase):
         control_plane = importlib.import_module("dududa.control_plane")
         ports = importlib.import_module("dududa.ports")
         expected_owners = {
+            "ControlPlaneApi": "dududa.control_plane.api",
             "ControlPlaneGateway": "dududa.control_plane.gateway",
             "ControlPlaneProjector": "dududa.control_plane.projector",
             "GroupControlScope": "dududa.control_plane.contracts",
+            "GroupServiceLifecycle": "dududa.control_plane.lifecycle",
             "GroupServiceProfile": "dududa.control_plane.contracts",
             "InMemoryGroupServiceRepository": "dududa.control_plane.repository",
+            "RepositoryGroupServiceSnapshotProvider": "dududa.control_plane.snapshot",
+            "SQLiteGroupServiceRepository": "dududa.control_plane.sqlite_repository",
         }
         expected_ports = {
             "GroupJoinSource",
             "GroupServiceCatalog",
             "GroupServiceRepository",
+            "GroupServiceSnapshotProvider",
             "OperatorSessionResolver",
         }
         self.assertLessEqual(set(expected_owners), set(control_plane.__all__))

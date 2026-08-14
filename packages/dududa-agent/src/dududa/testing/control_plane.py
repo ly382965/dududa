@@ -88,7 +88,26 @@ class StaticFakeServiceCatalog:
         self._snapshot = snapshot
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self.profile_calls: list[tuple[ProfileRef, ServiceCallContext]] = []
+        self.catalog_calls: list[tuple[str, str, ServiceCallContext]] = []
         self.snapshot_calls: list[tuple[GroupControlScope, ServiceCallContext]] = []
+
+    async def profiles(
+        self,
+        platform: str,
+        bot_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> tuple[GroupServiceProfile, ...]:
+        _validate_call(call, self._clock())
+        if not platform.strip() or not bot_id.strip():
+            raise validation_error("invalid_profile_catalog_scope")
+        self.catalog_calls.append((platform, bot_id, call))
+        return tuple(
+            sorted(
+                self._profiles.values(),
+                key=lambda profile: (profile.profile_id, profile.revision),
+            )
+        )
 
     async def get_profile(
         self,

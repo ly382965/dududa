@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WebSocket } from 'ws'
 
 import { createDududaServer } from './app'
+import type { ControlPlaneClient } from './control-plane'
 import { OneBotHub, type HubOptions } from './onebot-hub'
 
 const token = 'test-only-onebot-token-32-characters'
@@ -37,9 +38,12 @@ function realGroupMessage(content = '来自真实 NapCat 的消息', overrides: 
   }
 }
 
-async function startTestServer(options: Omit<HubOptions, 'token'> = {}) {
+async function startTestServer(
+  options: Omit<HubOptions, 'token'> = {},
+  controlPlane?: ControlPlaneClient,
+) {
   const hub = new OneBotHub({ token, actionTimeoutMs: 2_000, ...options })
-  const server = createDududaServer({ hub, publicDir: '/tmp/dududa-web-does-not-exist' })
+  const server = createDududaServer({ hub, publicDir: '/tmp/dududa-web-does-not-exist', controlPlane })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const port = (server.address() as AddressInfo).port
   const baseUrl = `http://127.0.0.1:${port}`
@@ -53,7 +57,7 @@ async function closeServer(server: ReturnType<typeof createDududaServer>): Promi
 async function rawHttpRequest(
   port: number,
   path: string,
-  options: { method?: string; host: string; origin?: string; body?: string },
+  options: { method?: string; host: string; origin?: string; body?: string; headers?: Record<string, string> },
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const request = httpRequest({
@@ -65,6 +69,7 @@ async function rawHttpRequest(
         Host: options.host,
         ...(options.origin ? { Origin: options.origin } : {}),
         ...(options.body ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(options.body) } : {}),
+        ...options.headers,
       },
     }, (response) => {
       const chunks: Buffer[] = []
@@ -497,6 +502,136 @@ describe('Dududa NapCat gateway', () => {
     const response = await fetch(`${baseUrl}/api/workspace`)
 
     expect(response.status).toBe(200)
+  })
+
+  it('maps account identity and proxies typed control-plane queries and commands', async () => {
+    const pendingInbox = vi.fn(async () => ({
+      platform: 'qq',
+      botId: selfId,
+      items: [],
+      generatedAt: '2026-08-14T13:00:00Z',
+    }))
+    const managedGroups = vi.fn(async () => ({
+      platform: 'qq',
+      botId: selfId,
+      items: [],
+      generatedAt: '2026-08-14T13:00:00Z',
+    }))
+    const profileCatalog = vi.fn(async () => ({
+      revision: 'catalog-v1',
+      profiles: [],
+      generatedAt: '2026-08-14T13:00:00Z',
+    }))
+    const preview = vi.fn(async (_session: string, _platform: string, botId: string, groupId: string) => ({
+      preview: {
+        previewId: 'preview-1',
+        scope: { platform: 'qq', botId, groupId },
+        profileId: 'profile-basic',
+        profileRevision: 1,
+        previewDigest: 'preview-digest',
+        onboardingRevision: 1,
+        catalogRevision: 'catalog-v1',
+        desiredServiceIds: ['chat'],
+        effectiveServiceIds: ['chat'],
+        resolutions: [{ serviceId: 'chat', eligible: true, reasonCodes: [] }],
+        expiresAt: '2026-08-14T13:10:00Z',
+      },
+      onboardingRevision: 2,
+      receipt: {
+        receiptId: 'receipt-preview',
+        commandId: 'preview-command',
+        action: 'group_service.preview',
+        outcome: 'succeeded' as const,
+        reasonCodes: ['preview_ready'],
+        committedAt: '2026-08-14T13:00:00Z',
+      },
+    }))
+    const command = vi.fn(async (_session: string, _platform: string, botId: string, groupId: string) => ({
+      assignment: {
+        scope: { platform: 'qq', botId, groupId },
+        assignmentRevision: 1,
+        status: 'active' as const,
+        profileId: 'profile-basic',
+        profileRevision: 1,
+        desiredServiceIds: ['chat'],
+        effectiveServiceIds: ['chat'],
+        lastKnownGoodRevision: 1,
+        activatedAt: '2026-08-14T13:00:00Z',
+      },
+      receipt: {
+        receiptId: 'receipt-activate',
+        commandId: 'activate-command',
+        action: 'group_service.activate',
+        outcome: 'succeeded' as const,
+        reasonCodes: ['activate_committed'],
+        committedAt: '2026-08-14T13:00:00Z',
+      },
+    }))
+    const controlPlane: ControlPlaneClient = {
+      status: () => ({ available: true }),
+      pendingInbox,
+      managedGroups,
+      profileCatalog,
+      preview,
+      command,
+    }
+    const { hub, server, port, baseUrl } = await startTestServer({}, controlPlane)
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts.length === 1)
+    const headers = { 'X-Dududa-Operator-Session': 'operator-session' }
+
+    const pending = await fetch(`${baseUrl}/api/control-plane/accounts/qq-${selfId}/pending`, { headers })
+    expect(pending.status).toBe(200)
+    expect(pendingInbox).toHaveBeenCalledWith('operator-session', 'qq', selfId)
+
+    const managed = await fetch(`${baseUrl}/api/control-plane/accounts/qq-${selfId}/managed`, { headers })
+    expect(managed.status).toBe(200)
+    expect(managedGroups).toHaveBeenCalledWith('operator-session', 'qq', selfId)
+
+    const previewResponse = await fetch(
+      `${baseUrl}/api/control-plane/accounts/qq-${selfId}/groups/345678901/preview`,
+      {
+        method: 'POST',
+        headers: { ...headers, Origin: baseUrl, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileId: 'profile-basic',
+          profileRevision: 1,
+          expectedOnboardingRevision: 1,
+        }),
+      },
+    )
+    expect(previewResponse.status).toBe(200)
+    expect(preview).toHaveBeenCalledWith(
+      'operator-session',
+      'qq',
+      selfId,
+      '345678901',
+      expect.objectContaining({ profileId: 'profile-basic' }),
+    )
+
+    const commandResponse = await fetch(
+      `${baseUrl}/api/control-plane/accounts/qq-${selfId}/groups/345678901/commands`,
+      {
+        method: 'POST',
+        headers: { ...headers, Origin: baseUrl, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'activate',
+          expectedOnboardingRevision: 2,
+          previewId: 'preview-1',
+          previewDigest: 'preview-digest',
+        }),
+      },
+    )
+    expect(commandResponse.status).toBe(200)
+    expect(command).toHaveBeenCalledWith(
+      'operator-session',
+      'qq',
+      selfId,
+      '345678901',
+      expect.objectContaining({ action: 'activate' }),
+    )
   })
 
   it('rejects DNS-rebinding hosts and browser writes without a same-origin header', async () => {

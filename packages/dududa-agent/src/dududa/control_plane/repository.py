@@ -9,6 +9,8 @@ from dududa.errors import ErrorCategory, error, validation_error
 from dududa.ports.context import ServiceCallContext
 
 from .contracts import (
+    AssignmentCommitDisposition,
+    AssignmentCommitResult,
     ControlPlaneAuditRecord,
     GroupControlScope,
     GroupJoinFact,
@@ -18,6 +20,7 @@ from .contracts import (
     OnboardingStatus,
     PreviewCommitDisposition,
     PreviewCommitResult,
+    StoredAssignmentCommand,
     StoredPreviewCommand,
 )
 
@@ -33,8 +36,12 @@ class InMemoryGroupServiceRepository:
         self._onboarding: dict[tuple[str, str, str], GroupOnboardingRecord] = {}
         self._join_events: dict[str, tuple[str, str, str]] = {}
         self._assignments: dict[tuple[str, str, str], GroupServiceAssignment] = {}
+        self._assignment_history: dict[
+            tuple[tuple[str, str, str], int], GroupServiceAssignment
+        ] = {}
         self._previews: dict[str, GroupServicePreview] = {}
         self._commands: dict[str, StoredPreviewCommand] = {}
+        self._assignment_commands: dict[str, StoredAssignmentCommand] = {}
         self._audit_records: list[ControlPlaneAuditRecord] = []
 
     @property
@@ -123,6 +130,58 @@ class InMemoryGroupServiceRepository:
             self._validate_call(call)
             return self._assignments.get(_scope_key(scope))
 
+    async def list_assignments(
+        self,
+        platform: str,
+        bot_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> tuple[GroupServiceAssignment, ...]:
+        require_non_empty(platform, "platform")
+        require_non_empty(bot_id, "bot_id")
+        self._validate_call(call)
+        async with self._lock:
+            self._validate_call(call)
+            return tuple(
+                sorted(
+                    (
+                        assignment
+                        for assignment in self._assignments.values()
+                        if assignment.scope.platform == platform
+                        and assignment.scope.bot_id == bot_id
+                    ),
+                    key=lambda item: item.scope.group_id,
+                )
+            )
+
+    async def get_assignment_revision(
+        self,
+        scope: GroupControlScope,
+        assignment_revision: int,
+        *,
+        call: ServiceCallContext,
+    ) -> GroupServiceAssignment | None:
+        if type(assignment_revision) is not int or assignment_revision < 1:
+            raise validation_error("invalid_assignment_revision")
+        self._validate_call(call)
+        async with self._lock:
+            self._validate_call(call)
+            return self._assignment_history.get(
+                (_scope_key(scope), assignment_revision)
+            )
+
+    async def get_preview(
+        self,
+        preview_id: str,
+        *,
+        call: ServiceCallContext,
+    ) -> GroupServicePreview | None:
+        require_non_empty(preview_id, "preview_id")
+        self._validate_call(call)
+        async with self._lock:
+            self._validate_call(call)
+            return self._previews.get(preview_id)
+
     async def lookup_preview_command(
         self,
         idempotency_key: str,
@@ -141,6 +200,7 @@ class InMemoryGroupServiceRepository:
         idempotency_key: str,
         request_digest: DigestString,
         expected_onboarding_revision: int,
+        expected_assignment_revision: int | None,
         stored: StoredPreviewCommand,
         call: ServiceCallContext,
     ) -> PreviewCommitResult:
@@ -151,6 +211,11 @@ class InMemoryGroupServiceRepository:
             or expected_onboarding_revision < 1
         ):
             raise validation_error("invalid_onboarding_revision")
+        if expected_assignment_revision is not None and (
+            type(expected_assignment_revision) is not int
+            or expected_assignment_revision < 1
+        ):
+            raise validation_error("invalid_assignment_revision")
         if not isinstance(stored, StoredPreviewCommand):
             raise validation_error("invalid_stored_preview_command")
         if stored.request_digest != request_digest:
@@ -179,6 +244,16 @@ class InMemoryGroupServiceRepository:
                 raise _conflict("group_onboarding_revision_conflict")
             if preview.onboarding_revision != expected_onboarding_revision:
                 raise validation_error("preview_onboarding_revision_mismatch")
+            if preview.assignment_revision != expected_assignment_revision:
+                raise validation_error("preview_assignment_revision_mismatch")
+            current_assignment = self._assignments.get(key)
+            current_assignment_revision = (
+                current_assignment.assignment_revision
+                if current_assignment is not None
+                else None
+            )
+            if current_assignment_revision != expected_assignment_revision:
+                raise _conflict("group_assignment_revision_conflict")
             if preview.preview_id in self._previews:
                 raise _conflict("preview_id_conflict")
 
@@ -199,6 +274,97 @@ class InMemoryGroupServiceRepository:
             return PreviewCommitResult(
                 1,
                 PreviewCommitDisposition.CREATED,
+                stored,
+            )
+
+    async def lookup_assignment_command(
+        self,
+        idempotency_key: str,
+        *,
+        call: ServiceCallContext,
+    ) -> StoredAssignmentCommand | None:
+        require_non_empty(idempotency_key, "idempotency_key")
+        self._validate_call(call)
+        async with self._lock:
+            self._validate_call(call)
+            return self._assignment_commands.get(idempotency_key)
+
+    async def commit_assignment(
+        self,
+        *,
+        idempotency_key: str,
+        request_digest: DigestString,
+        expected_onboarding_revision: int,
+        expected_assignment_revision: int | None,
+        stored: StoredAssignmentCommand,
+        call: ServiceCallContext,
+    ) -> AssignmentCommitResult:
+        require_non_empty(idempotency_key, "idempotency_key")
+        require_non_empty(str(request_digest), "request_digest")
+        if (
+            type(expected_onboarding_revision) is not int
+            or expected_onboarding_revision < 1
+        ):
+            raise validation_error("invalid_onboarding_revision")
+        if expected_assignment_revision is not None and (
+            type(expected_assignment_revision) is not int
+            or expected_assignment_revision < 1
+        ):
+            raise validation_error("invalid_assignment_revision")
+        if not isinstance(stored, StoredAssignmentCommand):
+            raise validation_error("invalid_stored_assignment_command")
+        if stored.request_digest != request_digest:
+            raise validation_error("assignment_commit_request_mismatch")
+        if stored.receipt.idempotency_key != idempotency_key:
+            raise validation_error("assignment_commit_idempotency_mismatch")
+        self._validate_call(call)
+        async with self._lock:
+            self._validate_call(call)
+            existing = self._assignment_commands.get(idempotency_key)
+            if existing is not None:
+                if existing.request_digest != request_digest:
+                    raise _conflict("control_plane_idempotency_conflict")
+                return AssignmentCommitResult(
+                    1,
+                    AssignmentCommitDisposition.DUPLICATE,
+                    existing,
+                )
+
+            assignment = stored.assignment
+            key = _scope_key(assignment.scope)
+            onboarding = self._onboarding.get(key)
+            if onboarding is None:
+                raise _not_found("group_onboarding_not_found")
+            if onboarding.revision != expected_onboarding_revision:
+                raise _conflict("group_onboarding_revision_conflict")
+            current = self._assignments.get(key)
+            current_revision = (
+                current.assignment_revision if current is not None else None
+            )
+            if current_revision != expected_assignment_revision:
+                raise _conflict("group_assignment_revision_conflict")
+            next_revision = 1 if current_revision is None else current_revision + 1
+            if assignment.assignment_revision != next_revision:
+                raise validation_error("assignment_revision_not_next")
+            if assignment.previous_revision != current_revision:
+                raise validation_error("assignment_previous_revision_mismatch")
+            lkg_revision = assignment.last_known_good_revision
+            if (
+                lkg_revision != next_revision
+                and (key, lkg_revision) not in self._assignment_history
+            ):
+                raise validation_error("assignment_lkg_not_found")
+            history_key = (key, assignment.assignment_revision)
+            if history_key in self._assignment_history:
+                raise _conflict("assignment_revision_conflict")
+
+            self._assignment_history[history_key] = assignment
+            self._assignments[key] = assignment
+            self._assignment_commands[idempotency_key] = stored
+            self._audit_records.append(stored.audit_record)
+            return AssignmentCommitResult(
+                1,
+                AssignmentCommitDisposition.CREATED,
                 stored,
             )
 
