@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: group-onboarding
 Parent: control-plane
-Status: pending
-Verification: unverified
-Last sync: unix:1786706085
+Status: in_progress
+Verification: verified
+Last sync: unix:1786713165
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
