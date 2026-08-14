@@ -17,6 +17,11 @@ from dududa.control_plane.contracts import (
     StoredAssignmentCommand,
     StoredPreviewCommand,
 )
+from dududa.control_plane.operations import (
+    OperationalProjection,
+    OperationalScope,
+    OperationalSurface,
+)
 from dududa.domain.primitives import DigestString
 
 from .context import ServiceCallContext
@@ -167,10 +172,24 @@ class GroupServiceSnapshotProvider(Protocol):
     ) -> GroupServiceAssignment | None: ...
 
 
+@runtime_checkable
+class OperationalProjectionProvider(Protocol):
+    @property
+    def surface(self) -> OperationalSurface: ...
+
+    async def project(
+        self,
+        scope: OperationalScope,
+        *,
+        call: ServiceCallContext,
+    ) -> OperationalProjection: ...
+
+
 __all__ = [
     "GroupJoinSource",
     "GroupServiceCatalog",
     "GroupServiceRepository",
     "GroupServiceSnapshotProvider",
+    "OperationalProjectionProvider",
     "OperatorSessionResolver",
 ]

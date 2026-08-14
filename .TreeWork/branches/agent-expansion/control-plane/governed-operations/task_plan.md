@@ -13,22 +13,22 @@ Title: S21C Governed Operations
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Every operations surface is backed by a Core projection with revision,
+- [x] Every operations surface is backed by a Core projection with revision,
   evidence mode and honest unavailable reasons.
-- [ ] Unknown providers and cross-Scope queries fail or degrade without stale
+- [x] Unknown providers and cross-Scope queries fail or degrade without stale
   browser-derived authority.
-- [ ] Mutation discovery exposes only dedicated authorized handlers; no generic
+- [x] Mutation discovery exposes only dedicated authorized handlers; no generic
   settings writer exists.
-- [ ] Agent draft/permission actions cannot call NapCat or claim success when
+- [x] Agent draft/permission actions cannot call NapCat or claim success when
   Output/command composition is unavailable.
-- [ ] Focused Python/Web tests, typecheck and build pass.
+- [x] Focused Python/Web tests, typecheck and build pass.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Implement projection contracts/registry and current Core adapters.
-- [ ] Implement governed mutation bindings and HTTP endpoints.
-- [ ] Connect operations/Agent Console views to projections and receipts.
-- [ ] Run focused verification and synchronize branch evidence.
+- [x] Implement projection contracts/registry and current Core adapters.
+- [x] Implement governed mutation bindings and HTTP endpoints.
+- [x] Connect operations/Agent Console views to projections and receipts.
+- [x] Run focused verification and synchronize branch evidence.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

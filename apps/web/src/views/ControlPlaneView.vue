@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  Activity,
   Check,
   CircleAlert,
   CircleCheck,
@@ -24,6 +25,7 @@ import type {
   ControlPlaneStatus,
   GroupServiceAssignment,
   GroupServicePreview,
+  GovernedOperationsProjection,
   ManagedGroups,
   PendingGroup,
   PendingInbox,
@@ -40,6 +42,9 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ notify: [message: string] }>()
 const status = ref<ControlPlaneStatus>({ available: false })
+const viewMode = ref<'groups' | 'operations'>('groups')
+const operations = ref<GovernedOperationsProjection>()
+const operationsError = ref('')
 const inbox = ref<PendingInbox>()
 const managedGroups = ref<ManagedGroups>()
 const catalog = ref<ProfileCatalog>()
@@ -71,7 +76,9 @@ const selectedProfile = computed(() =>
   catalog.value?.profiles.find((profile) => profile.profileId === selectedProfileId.value),
 )
 const canRollback = computed(() => Boolean(
-  assignment.value && assignment.value.lastKnownGoodRevision < assignment.value.assignmentRevision,
+  assignment.value &&
+  assignment.value.status !== 'rolled_back' &&
+  assignment.value.lastKnownGoodRevision < assignment.value.assignmentRevision,
 ))
 const primaryAction = computed<'activate' | 'update'>(() => assignment.value ? 'update' : 'activate')
 
@@ -87,6 +94,32 @@ const reasonLabels: Record<string, string> = {
   resume_committed: '服务已恢复',
   rollback_committed: '已回滚到稳定版本',
 }
+
+const surfaceLabels = {
+  runs: 'Agent Runs',
+  model_router: 'Model Router',
+  mcp_capability: 'MCP / Capability',
+  plugins: 'Plugins',
+  memory: 'Memory',
+  proactive: 'Proactive / Scheduler',
+} as const
+
+const statusLabels = {
+  ready: '正常',
+  degraded: '降级',
+  off: '关闭',
+  shadow: 'Shadow',
+  unavailable: '不可用',
+} as const
+
+const evidenceLabels = {
+  unavailable: '无证据',
+  fixture: 'Fixture',
+  offline: '离线',
+  shadow: 'Shadow',
+  canary: 'Canary',
+  live: 'Live',
+} as const
 
 function reasonLabel(code: string): string {
   return reasonLabels[code] ?? code
@@ -117,10 +150,49 @@ function selectGroup(entry: GroupEntry): void {
   clearSelectionState(entry)
 }
 
+function storeAssignment(
+  group: PendingGroup,
+  nextAssignment: GroupServiceAssignment,
+  nextReceipt: ControlPlaneReceipt,
+  previewId?: string,
+): void {
+  const onboarding: PendingGroup = {
+    ...group,
+    status: 'preview_ready',
+    revision: onboardingRevision.value,
+    updatedAt: nextReceipt.committedAt,
+    ...(previewId || group.previewId ? { previewId: previewId || group.previewId } : {}),
+  }
+  if (inbox.value) {
+    inbox.value = {
+      ...inbox.value,
+      items: inbox.value.items.filter((item) => item.scope.groupId !== group.scope.groupId),
+      generatedAt: nextReceipt.committedAt,
+    }
+  }
+  const current = managedGroups.value ?? {
+    platform: group.scope.platform,
+    botId: group.scope.botId,
+    items: [],
+    generatedAt: nextReceipt.committedAt,
+  }
+  managedGroups.value = {
+    ...current,
+    items: [
+      ...current.items.filter((item) => item.onboarding.scope.groupId !== group.scope.groupId),
+      { onboarding, assignment: nextAssignment },
+    ].sort((left, right) => left.onboarding.scope.groupId.localeCompare(right.onboarding.scope.groupId)),
+    generatedAt: nextReceipt.committedAt,
+  }
+}
+
 async function load(): Promise<void> {
   const account = props.account
   const generation = ++loadGeneration
+  const preferredGroupId = selectedGroupId.value
   inbox.value = undefined
+  operations.value = undefined
+  operationsError.value = ''
   managedGroups.value = undefined
   catalog.value = undefined
   selectedGroupId.value = ''
@@ -134,17 +206,31 @@ async function load(): Promise<void> {
     if (generation !== loadGeneration) return
     status.value = currentStatus
     if (!currentStatus.available) return
-    const [nextInbox, nextManagedGroups, nextCatalog] = await Promise.all([
-      props.adapter.pendingInbox(account.id),
-      props.adapter.managedGroups(account.id),
-      props.adapter.profileCatalog(account.id),
+    const [[nextInbox, nextManagedGroups, nextCatalog], operationsResult] = await Promise.all([
+      Promise.all([
+        props.adapter.pendingInbox(account.id),
+        props.adapter.managedGroups(account.id),
+        props.adapter.profileCatalog(account.id),
+      ]),
+      props.adapter.operations(account.id)
+        .then((value) => ({ value }))
+        .catch((cause: unknown) => ({ cause })),
     ])
     if (generation !== loadGeneration) return
     inbox.value = nextInbox
     managedGroups.value = nextManagedGroups
     catalog.value = nextCatalog
+    if ('value' in operationsResult) {
+      operations.value = operationsResult.value
+    } else {
+      operationsError.value = operationsResult.cause instanceof Error
+        ? operationsResult.cause.message
+        : '运行状态读取失败'
+    }
     selectedProfileId.value = nextCatalog.profiles[0]?.profileId ?? ''
-    const first = groupEntries.value[0]
+    const first = groupEntries.value.find(
+      (entry) => entry.onboarding.scope.groupId === preferredGroupId,
+    ) ?? groupEntries.value[0]
     if (first) selectGroup(first)
   } catch (cause) {
     if (generation !== loadGeneration) return
@@ -199,6 +285,7 @@ async function runCommand(
   busyAction.value = action
   error.value = ''
   try {
+    const previewId = preview.value?.previewId
     const expectedAssignmentRevision = assignment.value?.assignmentRevision
     const request = action === 'activate' || action === 'update'
       ? {
@@ -221,6 +308,7 @@ async function runCommand(
             expectedAssignmentRevision: expectedAssignmentRevision!,
           }
     const response = await props.adapter.command(account.id, group.scope.groupId, request)
+    storeAssignment(group, response.assignment, response.receipt, previewId)
     assignment.value = response.assignment
     receipt.value = response.receipt
     if (action === 'activate' || action === 'update') preview.value = undefined
@@ -242,10 +330,16 @@ watch(selectedProfileId, () => {
 <template>
   <main class="control-plane-view">
     <header class="view-header">
-      <div><small>BOT CONTROL PLANE</small><h1>群服务</h1></div>
-      <button class="icon-button" type="button" title="刷新群服务" :disabled="loading" @click="load">
-        <RefreshCw :class="{ spin: loading }" :size="17" />
-      </button>
+      <div><small>BOT CONTROL PLANE</small><h1>{{ viewMode === 'groups' ? '群服务' : '运行状态' }}</h1></div>
+      <div class="header-actions">
+        <div class="view-switch" role="tablist" aria-label="Control Plane 视图">
+          <button type="button" role="tab" :aria-selected="viewMode === 'groups'" :class="{ active: viewMode === 'groups' }" @click="viewMode = 'groups'">群服务</button>
+          <button type="button" role="tab" :aria-selected="viewMode === 'operations'" :class="{ active: viewMode === 'operations' }" @click="viewMode = 'operations'">运行状态</button>
+        </div>
+        <button class="icon-button" type="button" title="刷新 Control Plane" :disabled="loading" @click="load">
+          <RefreshCw :class="{ spin: loading }" :size="17" />
+        </button>
+      </div>
     </header>
 
     <div v-if="loading" class="page-state"><LoaderCircle class="spin" :size="25" />正在读取群服务</div>
@@ -256,7 +350,7 @@ watch(selectedProfileId, () => {
     </div>
     <p v-else-if="error && !inbox" class="inline-error" role="alert">{{ error }}</p>
 
-    <div v-else class="control-workspace">
+    <div v-else-if="viewMode === 'groups'" class="control-workspace">
       <aside class="pending-panel">
         <div class="panel-heading">
           <span><UsersRound :size="16" /><strong>待配置群</strong></span>
@@ -355,12 +449,50 @@ watch(selectedProfileId, () => {
         </template>
       </section>
     </div>
+
+    <section v-else class="operations-view" aria-label="Bot 运行状态">
+      <div v-if="operationsError" class="page-state unavailable">
+        <CircleAlert :size="26" />
+        <strong>运行状态不可用</strong>
+        <span>{{ operationsError }}</span>
+      </div>
+      <template v-else>
+      <header class="operations-scope">
+        <span><Activity :size="16" /><strong>{{ operations?.scope.platform.toUpperCase() }} · {{ operations?.scope.botId }}</strong></span>
+        <time>{{ operations ? formatTime(operations.generatedAt) : '' }}</time>
+      </header>
+      <div class="operations-list">
+        <section v-for="projection in operations?.projections" :key="projection.surface" class="operation-surface">
+          <header>
+            <span class="surface-icon"><Activity :size="16" /></span>
+            <span><strong>{{ surfaceLabels[projection.surface] }}</strong><small>{{ evidenceLabels[projection.evidenceMode] }} · {{ projection.revision }}</small></span>
+            <b :class="`status-${projection.status}`">{{ statusLabels[projection.status] }}</b>
+          </header>
+          <div v-if="projection.facts.length" class="operation-facts">
+            <div v-for="fact in projection.facts" :key="fact.factId" class="operation-fact">
+              <span><strong>{{ fact.label }}</strong><small>{{ fact.detail }}</small></span>
+              <span><b :class="`status-${fact.status}`">{{ statusLabels[fact.status] }}</b><small>{{ fact.revision }}</small></span>
+            </div>
+          </div>
+          <p v-else>{{ projection.reasonCodes.map(reasonLabel).join(' · ') || '无可显示事实' }}</p>
+        </section>
+      </div>
+      <div v-if="operations?.mutations.length" class="mutation-strip">
+        <ShieldCheck :size="15" />
+        <span v-for="mutation in operations.mutations" :key="mutation.action">{{ mutation.displayName }}</span>
+      </div>
+      </template>
+    </section>
   </main>
 </template>
 
 <style scoped>
 .control-plane-view { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow: hidden; background: var(--app-background); padding: 24px clamp(16px, 3vw, 38px) 34px; }
 .view-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 17px; }
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.view-switch { display: flex; height: 32px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); padding: 2px; }
+.view-switch button { min-width: 68px; cursor: pointer; border: 0; border-radius: 3px; color: var(--text-muted); background: transparent; padding: 0 9px; font-size: 10px; }
+.view-switch button.active { color: var(--text); background: var(--surface-muted); font-weight: 700; }
 .view-header small { color: var(--brand-strong); font-size: 9px; font-weight: 800; }
 h1 { margin: 4px 0 0; color: var(--text); font-size: 22px; letter-spacing: 0; }
 .control-workspace { display: grid; min-width: 0; min-height: 0; flex: 1; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); border-bottom: 1px solid var(--border); }
@@ -420,6 +552,28 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--text); font-
 .page-state { min-height: 320px; }
 .page-state strong { color: var(--text); font-size: 12px; }
 .page-state span { color: var(--text-muted); font-size: 10px; }
+.operations-view { min-width: 0; min-height: 0; flex: 1; overflow-y: auto; }
+.operations-scope { display: flex; min-height: 52px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 9px; }
+.operations-scope > span { display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 11px; }
+.operations-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.operation-surface { min-width: 0; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 15px 17px; }
+.operation-surface:nth-child(2n) { border-right: 0; }
+.operation-surface > header { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; }
+.surface-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 6px; color: var(--brand-strong); background: var(--brand-soft); }
+.operation-surface header > span:nth-child(2), .operation-fact > span { display: grid; min-width: 0; gap: 3px; }
+.operation-surface strong { color: var(--text); font-size: 10px; }
+.operation-surface small { overflow-wrap: anywhere; color: var(--text-muted); font-size: 9px; line-height: 1.45; }
+.operation-surface header > b, .operation-fact b { justify-self: end; border-radius: 4px; padding: 3px 6px; font-size: 9px; }
+.status-ready { color: var(--success); background: var(--success-soft); }
+.status-degraded, .status-shadow { color: var(--warning); background: var(--warning-soft); }
+.status-off, .status-unavailable { color: var(--text-muted); background: var(--surface-muted); }
+.operation-facts { display: grid; margin-top: 12px; border-top: 1px solid var(--border); }
+.operation-fact { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); padding: 9px 0; }
+.operation-fact:last-child { border-bottom: 0; }
+.operation-fact > span:last-child { justify-items: end; }
+.operation-surface > p { margin: 12px 0 0; color: var(--text-muted); font-size: 9px; overflow-wrap: anywhere; }
+.mutation-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); color: var(--text-muted); padding: 12px 16px; font-size: 9px; }
+.mutation-strip span { border: 1px solid var(--border); border-radius: 4px; color: var(--text-secondary); padding: 4px 6px; }
 .spin { animation: spin 850ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 840px) {
@@ -431,5 +585,8 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--text); font-
   .profile-facts, .assignment-facts, .commit-strip, .lifecycle-actions { grid-column: 1; }
   .service-table { overflow-x: auto; }
   .service-row { min-width: 540px; }
+  .header-actions { align-items: flex-end; flex-direction: column-reverse; }
+  .operations-list { grid-template-columns: minmax(0, 1fr); }
+  .operation-surface, .operation-surface:nth-child(2n) { border-right: 0; }
 }
 </style>

@@ -7,6 +7,7 @@ import type {
   GroupServiceAssignment,
   GroupServiceCommandRequest,
   GroupServicePreview,
+  GovernedOperationsProjection,
   PendingInbox,
   ProfileCatalog,
 } from '../types/control-plane'
@@ -26,6 +27,43 @@ const account = {
 } as Account
 
 const scope = { platform: 'qq', botId: account.botId, groupId: '345678901' }
+const secondScope = { platform: 'qq', botId: account.botId, groupId: '456789012' }
+
+const operations: GovernedOperationsProjection = {
+  scope: { platform: 'qq', botId: account.botId },
+  projections: [
+    {
+      surface: 'model_router',
+      scope: { platform: 'qq', botId: account.botId },
+      revision: 'router-r3',
+      evidenceMode: 'offline',
+      status: 'ready',
+      facts: [{
+        factId: 'model.catalog',
+        label: '模型路由目录',
+        status: 'ready',
+        revision: 'catalog-r3',
+        detail: 'providers=3;enabled_endpoints=6',
+        reasonCodes: [],
+        observedAt: '2026-08-14T13:00:00Z',
+      }],
+      reasonCodes: [],
+      observedAt: '2026-08-14T13:00:00Z',
+    },
+    {
+      surface: 'proactive',
+      scope: { platform: 'qq', botId: account.botId },
+      revision: 'unavailable',
+      evidenceMode: 'unavailable',
+      status: 'unavailable',
+      facts: [],
+      reasonCodes: ['projection_provider_not_bound'],
+      observedAt: '2026-08-14T13:00:00Z',
+    },
+  ],
+  mutations: [],
+  generatedAt: '2026-08-14T13:00:00Z',
+}
 
 function receipt(action: string, reason: string): ControlPlaneReceipt {
   return {
@@ -107,18 +145,29 @@ describe('ControlPlaneView', () => {
         receipt: receipt(request.action, `${request.action}_committed`),
       }
     })
+    const operationsCall = vi.fn(async () => operations)
     const adapter: ControlPlaneAdapter = {
       status: vi.fn(async () => ({ available: true })),
+      operations: operationsCall,
       pendingInbox: vi.fn(async (): Promise<PendingInbox> => ({
         platform: 'qq',
         botId: account.botId,
-        items: activated ? [] : [{
-          scope,
-          status: 'pending_profile',
-          revision: 1,
-          firstSeenAt: '2026-08-14T12:00:00Z',
-          updatedAt: '2026-08-14T12:00:00Z',
-        }],
+        items: [
+          ...(activated ? [] : [{
+            scope,
+            status: 'pending_profile' as const,
+            revision: 1,
+            firstSeenAt: '2026-08-14T12:00:00Z',
+            updatedAt: '2026-08-14T12:00:00Z',
+          }]),
+          {
+            scope: secondScope,
+            status: 'pending_profile' as const,
+            revision: 1,
+            firstSeenAt: '2026-08-14T12:05:00Z',
+            updatedAt: '2026-08-14T12:05:00Z',
+          },
+        ],
         generatedAt: '2026-08-14T13:00:00Z',
       })),
       managedGroups: vi.fn(async () => ({
@@ -191,6 +240,13 @@ describe('ControlPlaneView', () => {
     })
     expect(wrapper.get('.assignment-section').text()).toContain('revision 1')
 
+    const groupButton = (groupId: string) => wrapper.findAll('.pending-list > button')
+      .find((button) => button.text().includes(groupId))!
+    await groupButton(secondScope.groupId).trigger('click')
+    expect(wrapper.find('.assignment-section').exists()).toBe(false)
+    await groupButton(scope.groupId).trigger('click')
+    expect(wrapper.get('.assignment-section').text()).toContain('revision 1')
+
     await wrapper.get('select[aria-label="群服务档案"]').setValue('profile-expanded')
     await wrapper.get('.preview-button').trigger('click')
     await flushPromises()
@@ -220,10 +276,25 @@ describe('ControlPlaneView', () => {
     ])
     expect(wrapper.get('.assignment-section').text()).toContain('rolled_back')
     expect(wrapper.get('.receipt-strip').text()).toContain('已回滚到稳定版本')
+    expect(lifecycleButton('回滚').attributes('disabled')).toBeDefined()
 
     await wrapper.get('.view-header .icon-button').trigger('click')
     await flushPromises()
     expect(wrapper.get('.assignment-section').text()).toContain('rolled_back')
     expect(wrapper.get('.pending-list').text()).toContain('群 345678901')
+
+    await wrapper.findAll('.view-switch button')[1]!.trigger('click')
+    expect(wrapper.get('.operations-view').text()).toContain('Model Router')
+    expect(wrapper.get('.operations-view').text()).toContain('模型路由目录')
+    expect(wrapper.get('.operations-view').text()).toContain('Proactive / Scheduler')
+    expect(wrapper.get('.operations-view').text()).toContain('不可用')
+
+    operationsCall.mockRejectedValueOnce(new Error('运维后端断开'))
+    await wrapper.get('.view-header .icon-button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.operations-view').text()).toContain('运维后端断开')
+    expect(wrapper.get('.operations-view').text()).not.toContain('Model Router')
+    await wrapper.findAll('.view-switch button')[0]!.trigger('click')
+    expect(wrapper.get('.assignment-section').text()).toContain('rolled_back')
   })
 })

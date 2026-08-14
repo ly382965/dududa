@@ -365,6 +365,16 @@ export function createDududaServer(options: DududaServerOptions) {
         json(response, 200, controlPlane.status())
         return
       }
+      const operationsRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/operations$/.exec(url.pathname)
+      if (method === 'GET' && operationsRoute) {
+        const accountId = decodeURIComponent(operationsRoute[1]!)
+        json(
+          response,
+          200,
+          await controlPlane.operations(operatorSession(request), 'qq', options.hub.botId(accountId)),
+        )
+        return
+      }
       const pendingGroupsRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/pending$/.exec(url.pathname)
       if (method === 'GET' && pendingGroupsRoute) {
         const accountId = decodeURIComponent(pendingGroupsRoute[1]!)

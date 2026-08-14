@@ -1,7 +1,8 @@
 # Dududa 2.0 实施计划
 
 状态：S01–S20 的既定本地/离线工程步骤已完成；S22 已完成基于消费者和回滚证据的兼容清理。
-唯一剩余 Tree 分支是 S23，当前暂停且只完成 manifest-only readiness；真实 Provider、Source、
+S21A Foundation、S21B Group Onboarding 与 S21C Governed Operations 已完成离线实现，当前只剩
+S21 Completion Audit；S23 继续暂停且只完成 manifest-only readiness。真实 Provider、Source、
 Projection、Output 的环境适配/Conformance 和外部授权输入均未闭合。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 所需的本地模块、既定 WebUI 测试和集成审计已经完成，但 S23 仍须先闭合环境适配和外部授权；
@@ -17,8 +18,9 @@ Projection、Output 的环境适配/Conformance 和外部授权输入均未闭�
 `checkpoint-report-2026-08-10.md` 与 `external-input-checklist.md`。2026-08-14 完成的
 [受治理自适应 Agent Runtime 长程研究](../research/deepseek-harness-inspired-dududa-evolution.md)
 已经形成并由用户确认长期设计方向；Web 的目标是 Bot Control Plane，其首个用例是管理员在 Bot
-入群后选择初始 `GroupServiceProfile`。这些方向已写入 Requirements/Project Spec，但 S21 和其他
-新增能力仍无 Tree 分支或实现证据；下一次 Tree revision 才能改变实施顺序。
+入群后选择初始 `GroupServiceProfile`。Tree revision 4 已据此加入 S21；Foundation、Onboarding
+和 Governed Operations 已有实现与聚焦验证，Completion Audit 尚未完成。其他长期新增能力仍
+没有实现证据。
 控制后台的产品边界、入群状态机、Profile/Assignment、命令面和完成定义见
 [Bot Control Plane 与群服务初始化设计](../design/bot-control-plane.md)。
 
@@ -80,7 +82,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 的能力插件”方向，并给出 Descriptor/Lifecycle/Generation/Disposer 边界 | 尚无 Sxx 分支、Plugin Runtime、迁移或故障恢复证据；不得据此宣称已有插件生态 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI / Bot Control Plane | QQ 客户端已完成；控制后台设计已确认、工程未开始 | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E；已定义管理员选择群初始服务的 `GroupServiceProfile/Assignment` 方向 | Agent 后端仍返回空数据；S21 尚未建分支；需替换 NapCat 草稿直发和浏览器本地权限占位，并实现 onboarding、operator auth/RBAC、Query/Command API、Projector、Audit/Receipt 和 LKG |
+| WebUI / Bot Control Plane | S21A-S21C 已完成，Audit 待完成 | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、Preview/Activate/Update/Pause/Resume/Rollback、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；Agent Draft 不再直发 NapCat，permission/config 占位不再伪成功 | 完成重复 command ID、SQLite deadline-after-lock、跨 Scope/重启/构建组合审计；生产 HTTP/身份绑定和真实 QQ 仍是外部门禁 |
 | 大规模真实群测试与 Debug | S23 暂停、部分完成 | S19/S22、本地仿真和既定 WebUI 回归均已通过；低敏模板、readiness checker 和 Runbook 仅提交在暂停分支 `treework/real-group-validation@01c8abf` | 先完成真实 evidence resolver 与 Provider/Source/Projection/Output 环境适配，再取得逐行为授权，执行单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
 
 ### 实施步骤完成度
@@ -114,7 +116,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S18 | **已完成、已验证、已合并（离线）** | `daf3111` 冻结 Spec；`5be566a` 实现十个固定 runner/十四维 catalog、原子低敏 receipt、append-only Runtime Trace、双锁 CI 与 Node 22；`7e7cbab`/`4cd9ddc` 绑定完整 catalog 并移除外部 run-ID 注入；四套 350-case bundle、146 项 focused Contract、Python 3.10 受影响样本和构建/Compose/secret 门禁通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障与 SLO/回滚候选证据统一留给 S19；不声明真实质量 |
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
-| S21 | **已进入 Tree revision 4、待实现** | Bot Control Plane、`GroupServiceProfile/Assignment`、管理员入群初始化和统一 Query/Command 边界已写入根 Requirements/Spec，并拆为 S21A-S21C 与 Audit | 四个分支依次完成离线实现/验证后才恢复 S23 |
+| S21 | **S21A-S21C 已完成，Audit 待完成** | Foundation、Group Onboarding 和 Governed Operations 已实现并通过聚焦 Python/Web 验证；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影 | 完成 S21 Audit 后才恢复 S23；生产 HTTP/身份、真实健康、真实 QQ 操作仍不在离线完成声明内 |
 | S23 | 暂停、部分完成 | manifest-only readiness、低敏模板和 Runbook 已在 `treework/real-group-validation@01c8abf` 提交；无真实发送或真实来源声明 | 分支尚未合并；仍需 evidence resolver、环境 Adapter/Conformance、外部输入和逐行为授权 |
 
 ### 公共开工门禁
@@ -221,7 +223,7 @@ S20 不属于上述严格发布主线，已经单独批准并完成离线范围�
 
 达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S15E 算“主动出站
 本地 Shadow 完整”，达到 S16 算“离线发布事务骨架完整”。S17、S18、S19、S22 和 S20 的
-既定离线范围均已完成。Tree revision 4 的剩余离线链是 S21A-S21C 与 S21 Audit，之后才是暂停的
+既定离线范围均已完成。Tree revision 4 的剩余离线链只有 S21 Audit，之后才是暂停的
 `S23`；S23 同时受真实环境集成工程和外部输入阻塞，并非拿到授权即可直接运行。S20 Bandit 不是
 主动出站或 S23 的前置；既定 QQ Web 客户端测试已经通过，但不等于 Bot Control Plane 已实现。
 
@@ -238,9 +240,9 @@ S20 不属于上述严格发布主线，已经单独批准并完成离线范围�
 
 | 子步骤 | 本步范围 | 离线退出证据 |
 | --- | --- | --- |
-| S21A Foundation | `GroupServiceProfile/Assignment`、join/pending、Query/Command Envelope、operator auth/RBAC、Projector、Audit/Receipt 和 Fake join/service | 未授权、跨 Bot/account/group、未知 service、stale revision、重复命令和浏览器直写全部 fail closed |
-| S21B Group Onboarding | pending inbox、Profile Catalog、Desired/Effective diff、Preview/Activate/Update/Pause/Resume/Rollback、immutable Runtime snapshot 和 LKG | 新群缺 Profile 零 Agent 服务；双管理员并发仅一个 revision 生效；失败保持 pending/LKG |
-| S21C Governed Operations | Run/Model/MCP/Plugin/Memory/Proactive 查询；只接已有专用 Core 命令的审批、订阅与行为级开关 | UI 不自行推导权限/状态；每个 mutation 有 Actor/Scope、CAS、幂等、Audit 和 Receipt |
+| S21A Foundation（已完成） | `GroupServiceProfile/Assignment`、join/pending、Query/Command Envelope、operator auth/RBAC、Projector、Audit/Receipt 和 Fake join/service | 未授权、跨 Bot/account/group、未知 service、stale revision、重复命令和浏览器直写全部 fail closed |
+| S21B Group Onboarding（已完成） | pending inbox、Profile Catalog、Desired/Effective diff、Preview/Activate/Update/Pause/Resume/Rollback、immutable Runtime snapshot 和 LKG | 新群缺 Profile 零 Agent 服务；双管理员并发仅一个 revision 生效；失败保持 pending/LKG |
+| S21C Governed Operations（已完成） | Run/Model/MCP/Plugin/Memory/Proactive 六面投影；Model 与 MCP/Capability 使用快照，未绑定面明确 unavailable；只发现已有 Group Service Core 命令 | UI 不自行推导权限/状态；Agent Draft/permission/config 无专用命令时不发送、不改状态、不伪成功 |
 | S21 Audit | 移除 Agent Draft 直发 NapCat、浏览器本地 permission/config 占位；跨账号/群、重启、回滚和构建审计 | 真人 QQ 操作与 Agent Output 分离；Group Context/Plugin/Model/Bandit 无法改变 Assignment 或发送权 |
 
 S21 的实现和验收不依赖聊天正文。Fake join/service/Catalog 是主证据；只有 Connector、历史分页、
