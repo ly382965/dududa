@@ -661,7 +661,7 @@ describe('Dududa NapCat gateway', () => {
       group_id: '345678901',
       count: 2,
       message_seq: '101',
-      reverse_order: false,
+      reverse_order: true,
     })
 
     const sent = await fetch(messageUrl, {

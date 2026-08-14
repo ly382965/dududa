@@ -1149,7 +1149,7 @@ export class OneBotHub extends EventEmitter {
         [key]: peerId,
         count: requestCount,
         ...(decodedCursor ? { message_seq: decodedCursor.messageSeq } : {}),
-        reverse_order: direction === 'after',
+        reverse_order: decodedCursor ? direction === 'before' : false,
         disable_get_url: false,
         parse_mult_msg: true,
       })
