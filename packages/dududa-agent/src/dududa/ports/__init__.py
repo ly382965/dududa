@@ -29,6 +29,12 @@ if TYPE_CHECKING:
         ToolPlanValidator,
         ToolResultValidator,
     )
+    from .control_plane import (
+        GroupJoinSource,
+        GroupServiceCatalog,
+        GroupServiceRepository,
+        OperatorSessionResolver,
+    )
     from .mcp import (
         McpEnvironmentProvider,
         McpSchemaValidator,
@@ -131,6 +137,9 @@ __all__ = [
     "DigestComposer",
     "DigestShadowMetadataSink",
     "DigestShadowRunner",
+    "GroupJoinSource",
+    "GroupServiceCatalog",
+    "GroupServiceRepository",
     "InputConnector",
     "ManualCancellationToken",
     "McpEnvironmentProvider",
@@ -160,6 +169,7 @@ __all__ = [
     "OfflinePersonaRenderer",
     "OfflineRenderValidator",
     "OfflineResponseComposer",
+    "OperatorSessionResolver",
     "OutputAdapter",
     "PerceptionEngine",
     "PerceptionMerger",
@@ -210,6 +220,25 @@ __all__ = [
 
 
 def __getattr__(name: str) -> object:
+    if name in {
+        "GroupJoinSource",
+        "GroupServiceCatalog",
+        "GroupServiceRepository",
+        "OperatorSessionResolver",
+    }:
+        from .control_plane import (
+            GroupJoinSource,
+            GroupServiceCatalog,
+            GroupServiceRepository,
+            OperatorSessionResolver,
+        )
+
+        return {
+            "GroupJoinSource": GroupJoinSource,
+            "GroupServiceCatalog": GroupServiceCatalog,
+            "GroupServiceRepository": GroupServiceRepository,
+            "OperatorSessionResolver": OperatorSessionResolver,
+        }[name]
     if name in {
         "ArgumentBinder",
         "BoundedCapabilityRuntime",

@@ -46,8 +46,10 @@ An `OperatorSessionAuthenticator` port resolves an opaque session to the
 existing `Actor`; a Fake adapter supplies offline sessions. The Command Gateway
 uses the existing `AuthorizationPolicy`, decision verifier and Audit contracts.
 Each action has an exact resource constraint. It validates Scope before
-dispatch and returns one typed receipt for success, denial, conflict or known
-failure. HTTP status is never the domain result.
+dispatch. A committed or exactly replayed mutation returns one typed receipt;
+authorization, validation, not-found and pre-commit conflict paths raise the
+existing stable `DududaError` contract without a success Receipt. The Web
+Adapter maps that domain result and never treats HTTP status as authority.
 
 The repository commits state, idempotency key/request digest, Command Receipt
 and a low-sensitivity audit record under one lock. The generic `AuditSink`
@@ -59,10 +61,11 @@ cross-Port transaction.
 Define a framework-neutral `ControlPlaneRepository` port and an in-memory
 adapter with one lock, exact Scope keys, revision checks and command-result
 replay. `GroupJoinService` creates or returns the same pending record for a
-duplicate fact. A preview handler reads a fixed Profile/Fake Catalog and returns
-Desired/Effective service reasons without publishing Assignment or Runtime
-state. `ControlPlaneProjector` reads repository facts and produces a pending
-inbox and group summary without inventing health or permissions.
+duplicate fact. A preview handler reads a fixed Profile/Fake Catalog, verifies
+that both Profile and Catalog facts bind the requested revision and Scope, and
+returns Desired/Effective service reasons without publishing Assignment or
+Runtime state. `ControlPlaneProjector` reads repository facts and produces a
+pending inbox and group summary without inventing health or permissions.
 
 ### Verification
 
