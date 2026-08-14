@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: control-plane-foundation
 Parent: control-plane
-Status: pending
-Verification: unverified
-Last sync: unix:1786706085
+Status: in_progress
+Verification: verified
+Last sync: unix:1786708795
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
