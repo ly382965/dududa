@@ -70,6 +70,7 @@ const emit = defineEmits<{
 }>()
 
 const prompt = ref('')
+const settingsWritable = false
 const sessionMenuOpen = ref(false)
 const stream = ref<HTMLElement>()
 
@@ -162,7 +163,7 @@ watch(
       </div>
       <label class="model-picker">
         <span>MODEL</span>
-        <select v-model="config.model" aria-label="选择模型" :disabled="!available">
+        <select v-model="config.model" aria-label="选择模型" disabled>
           <option>GPT-5</option>
           <option>Claude Sonnet 4</option>
           <option>DeepSeek V3</option>
@@ -328,46 +329,46 @@ watch(
       <div class="settings-intro">
         <div><span>会话配置</span><h3>{{ conversation?.name }}</h3></div>
         <label class="switch-control">
-          <input v-model="config.enabled" type="checkbox" />
+          <input v-model="config.enabled" type="checkbox" :disabled="!settingsWritable" />
           <span />
         </label>
       </div>
 
       <section class="settings-section">
         <div class="section-heading"><Bot :size="15" /><span><strong>Agent 与模型</strong><small>CONVERSATION DEFAULT</small></span></div>
-        <label class="form-row"><span>Agent</span><select v-model="config.agent"><option>群聊助手 v2</option><option>课程信息助手</option><option>回复审校</option></select></label>
-        <label class="form-row"><span>模型</span><select v-model="config.model"><option>GPT-5</option><option>Claude Sonnet 4</option><option>DeepSeek V3</option><option>Qwen3 235B</option></select></label>
-        <div class="form-row"><span>推理强度</span><div class="segmented-control"><button v-for="level in (['low', 'medium', 'high'] as const)" :key="level" type="button" :class="{ active: config.reasoning === level }" @click="config.reasoning = level">{{ { low: '低', medium: '中', high: '高' }[level] }}</button></div></div>
+        <label class="form-row"><span>Agent</span><select v-model="config.agent" :disabled="!settingsWritable"><option>群聊助手 v2</option><option>课程信息助手</option><option>回复审校</option></select></label>
+        <label class="form-row"><span>模型</span><select v-model="config.model" :disabled="!settingsWritable"><option>GPT-5</option><option>Claude Sonnet 4</option><option>DeepSeek V3</option><option>Qwen3 235B</option></select></label>
+        <div class="form-row"><span>推理强度</span><div class="segmented-control"><button v-for="level in (['low', 'medium', 'high'] as const)" :key="level" type="button" :class="{ active: config.reasoning === level }" :disabled="!settingsWritable" @click="config.reasoning = level">{{ { low: '低', medium: '中', high: '高' }[level] }}</button></div></div>
       </section>
 
       <section class="settings-section">
         <div class="section-heading"><Activity :size="15" /><span><strong>触发与上下文</strong><small>SOCIAL POLICY</small></span></div>
-        <label class="form-row"><span>触发策略</span><select v-model="config.trigger"><option value="mention">被 @ 时</option><option value="keyword">关键词触发</option><option value="manual">仅手动</option><option value="observe">Shadow Mode</option></select></label>
-        <label class="range-row"><span><span>上下文消息</span><strong>{{ config.contextMessages }} 条</strong></span><input v-model.number="config.contextMessages" type="range" min="10" max="100" step="10" /></label>
-        <label class="toggle-row"><span><strong>包含回复链</strong><small>读取引用消息的关联上下文</small></span><input v-model="config.includeReplyChain" type="checkbox" /></label>
-        <label class="toggle-row"><span><strong>包含图片摘要</strong><small>只传递经过处理的图片描述</small></span><input v-model="config.includeImages" type="checkbox" /></label>
-        <label class="toggle-row"><span><strong>长期群记忆</strong><small>按账号与群聊作用域隔离</small></span><input v-model="config.longTermMemory" type="checkbox" /></label>
+        <label class="form-row"><span>触发策略</span><select v-model="config.trigger" :disabled="!settingsWritable"><option value="mention">被 @ 时</option><option value="keyword">关键词触发</option><option value="manual">仅手动</option><option value="observe">Shadow Mode</option></select></label>
+        <label class="range-row"><span><span>上下文消息</span><strong>{{ config.contextMessages }} 条</strong></span><input v-model.number="config.contextMessages" type="range" min="10" max="100" step="10" :disabled="!settingsWritable" /></label>
+        <label class="toggle-row"><span><strong>包含回复链</strong><small>读取引用消息的关联上下文</small></span><input v-model="config.includeReplyChain" type="checkbox" :disabled="!settingsWritable" /></label>
+        <label class="toggle-row"><span><strong>包含图片摘要</strong><small>只传递经过处理的图片描述</small></span><input v-model="config.includeImages" type="checkbox" :disabled="!settingsWritable" /></label>
+        <label class="toggle-row"><span><strong>长期群记忆</strong><small>按账号与群聊作用域隔离</small></span><input v-model="config.longTermMemory" type="checkbox" :disabled="!settingsWritable" /></label>
       </section>
 
       <section class="settings-section">
         <div class="section-heading"><Wrench :size="15" /><span><strong>工具</strong><small>CAPABILITY SCOPE</small></span></div>
         <div class="tool-grid">
-          <button type="button" :class="{ active: config.tools.course }" @click="toggleTool('course')"><FileSearch :size="15" /><span><strong>校园课程</strong><small>iCourse MCP</small></span><Check v-if="config.tools.course" :size="13" /></button>
-          <button type="button" :class="{ active: config.tools.web }" @click="toggleTool('web')"><Search :size="15" /><span><strong>网络搜索</strong><small>受限域名</small></span><Check v-if="config.tools.web" :size="13" /></button>
-          <button type="button" :class="{ active: config.tools.groupFiles }" @click="toggleTool('groupFiles')"><FileSearch :size="15" /><span><strong>群文件</strong><small>只读</small></span><Check v-if="config.tools.groupFiles" :size="13" /></button>
-          <button type="button" :class="{ active: config.tools.shell }" @click="toggleTool('shell')"><Bot :size="15" /><span><strong>Shell</strong><small>默认禁止</small></span><Check v-if="config.tools.shell" :size="13" /></button>
+          <button type="button" :disabled="!settingsWritable" :class="{ active: config.tools.course }" @click="toggleTool('course')"><FileSearch :size="15" /><span><strong>校园课程</strong><small>iCourse MCP</small></span><Check v-if="config.tools.course" :size="13" /></button>
+          <button type="button" :disabled="!settingsWritable" :class="{ active: config.tools.web }" @click="toggleTool('web')"><Search :size="15" /><span><strong>网络搜索</strong><small>受限域名</small></span><Check v-if="config.tools.web" :size="13" /></button>
+          <button type="button" :disabled="!settingsWritable" :class="{ active: config.tools.groupFiles }" @click="toggleTool('groupFiles')"><FileSearch :size="15" /><span><strong>群文件</strong><small>只读</small></span><Check v-if="config.tools.groupFiles" :size="13" /></button>
+          <button type="button" :disabled="!settingsWritable" :class="{ active: config.tools.shell }" @click="toggleTool('shell')"><Bot :size="15" /><span><strong>Shell</strong><small>默认禁止</small></span><Check v-if="config.tools.shell" :size="13" /></button>
         </div>
       </section>
 
       <section class="settings-section permission-settings">
         <div class="section-heading"><ShieldCheck :size="15" /><span><strong>权限</strong><small>FAIL CLOSED</small></span></div>
-        <label class="form-row"><span>工具调用</span><select v-model="config.toolPermission"><option value="ask">需要审核</option><option value="allow">自动允许</option><option value="deny">全部拒绝</option></select></label>
-        <label class="form-row"><span>发送 QQ 消息</span><select v-model="config.sendPermission"><option value="ask">需要审核</option><option value="allow">自动允许</option><option value="deny">禁止发送</option></select></label>
+        <label class="form-row"><span>工具调用</span><select v-model="config.toolPermission" :disabled="!settingsWritable"><option value="ask">需要审核</option><option value="allow">自动允许</option><option value="deny">全部拒绝</option></select></label>
+        <label class="form-row"><span>发送 QQ 消息</span><select v-model="config.sendPermission" :disabled="!settingsWritable"><option value="ask">需要审核</option><option value="allow">自动允许</option><option value="deny">禁止发送</option></select></label>
       </section>
 
       <footer class="settings-footer">
-        <span><ShieldCheck :size="13" />配置变更会记录审计</span>
-        <button type="button" class="save-button" @click="emit('saveSettings')"><Save :size="14" />保存</button>
+        <span><ShieldCheck :size="13" />等待专用 Core Command</span>
+        <button type="button" class="save-button" disabled @click="emit('saveSettings')"><Save :size="14" />不可用</button>
       </footer>
     </section>
   </aside>

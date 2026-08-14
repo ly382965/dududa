@@ -1,7 +1,7 @@
 # Bot Control Plane 与群服务初始化设计
 
-状态：设计方向已由用户确认；Tree revision 4 已将其映射为 S21A-S21C 与 S21 Audit，当前尚未
-实现。S21 完成并通过离线审计前，暂停的 S23 真实群验证不得恢复。
+状态：设计方向已由用户确认；Tree revision 4 已将其映射为 S21A-S21C 与 S21 Audit。S21A-S21C
+已完成离线实现，Completion Audit 尚未完成；暂停的 S23 真实群验证仍不得恢复。
 
 ## 1. 产品定位
 
@@ -217,9 +217,9 @@ canonical payload digest、deadline、reason 和 confirmation reference。HTTP �
 现有 Mew/NapCat 工作台允许真人操作者通过 typed gateway 发送普通 QQ 消息，这是 QQ 客户端能力。
 Agent 生成的 Reply Draft、主动消息和自动回复则必须经过 Agent Preview/Dispatch/Output 权威链。
 
-当前 `approveDraft()` 直接调用 NapCat、`respondPermission()` 和 `saveSettings()` 只改浏览器状态；
-因为 Agent 后端为空，这些路径当前不可达。接通 Control Plane 前必须替换为 governed command，
-并以 `DeliveryReceipt` 或 Command Receipt 为结果，不能复用真人 QQ 发送路径绕过 Runtime。
+S21C 已移除 `approveDraft()` 对 NapCat 的调用；`respondPermission()` 不再修改浏览器状态，Agent
+配置控件在没有专用 Core Command 时保持禁用。未来接入这些能力时仍必须返回
+`DeliveryReceipt` 或 Command Receipt，不能复用真人 QQ 发送路径绕过 Runtime。
 
 ## 10. 故障与恢复
 
@@ -236,11 +236,11 @@ Agent 生成的 Reply Draft、主动消息和自动回复则必须经过 Agent P
 
 Tree revision 4 已将 S21 设为 S23 的前置，按以下顺序执行：
 
-1. **S21A Control Plane Foundation**：冻结 Profile/Assignment/Command/Query DTO，建立 operator
+1. **S21A Control Plane Foundation（已完成）**：冻结 Profile/Assignment/Command/Query DTO，建立 operator
    authentication/RBAC、Projector、Command Gateway、Audit 和 Fake Group Join；
-2. **S21B Group Onboarding**：实现 pending inbox、Profile Catalog、Preview/Activate/Pause/Rollback、
+2. **S21B Group Onboarding（已完成）**：实现 pending inbox、Profile Catalog、Preview/Activate/Pause/Rollback、
    Desired/Effective diff 和 immutable Runtime snapshot；
-3. **S21C Governed Operations**：接入 Run/Model/MCP/Plugin/Memory/Proactive 查询，以及已有专用
+3. **S21C Governed Operations（已完成）**：接入 Run/Model/MCP/Plugin/Memory/Proactive 查询，以及已有专用
    Core 命令支持的审批、订阅和行为级开关；
 4. **S21 Completion Audit**：跨账号/群 Scope、并发 CAS、重启/LKG、权限、审计、浏览器直写和
    direct-NapCat Agent send 的负向审计。

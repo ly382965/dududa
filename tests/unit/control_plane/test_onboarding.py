@@ -238,6 +238,12 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(resumed.assignment.status, AssignmentStatus.ACTIVE)
         self.assertEqual(resumed.assignment.assignment_revision, 4)
+        self.catalog = StaticFakeServiceCatalog(
+            self.profiles,
+            self._catalog(ready_granted=False),
+            clock=lambda: NOW,
+        )
+        reopened_gateway, reopened_lifecycle = self._services(reopened)
         rolled_back = await reopened_lifecycle.mutate(
             await self._mutation(
                 "rollback",
@@ -251,6 +257,8 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             rolled_back.assignment.profile_ref, ProfileRef("profile-basic", 1)
         )
+        self.assertEqual(rolled_back.assignment.desired_service_ids, ("service-ready",))
+        self.assertEqual(rolled_back.assignment.effective_service_ids, ())
         self.assertEqual(
             await RepositoryGroupServiceSnapshotProvider(reopened).current(
                 self.scope,
@@ -279,6 +287,77 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             project_mutation_execution(rolled_back)["assignment"]["assignmentRevision"],
             5,
+        )
+        with self.assertRaises(DududaError) as raised:
+            await reopened_lifecycle.mutate(
+                await self._mutation(
+                    "rollback",
+                    onboarding_revision=3,
+                    assignment_revision=5,
+                    rollback_revision=1,
+                    command_id="rollback-again",
+                    key="rollback-key-again",
+                ),
+                call=self.call,
+            )
+        self.assertEqual(
+            raised.exception.info.code,
+            "rollback_already_at_last_known_good",
+        )
+        self.assertEqual(
+            (
+                await reopened.get_assignment(self.scope, call=self.call)
+            ).assignment_revision,
+            5,
+        )
+
+    async def test_paused_update_inherits_last_active_lkg(self) -> None:
+        await self._join(self.scope)
+        first_preview = await self._preview(self.profiles[0], 1, None)
+        activated = await self.lifecycle.mutate(
+            await self._mutation(
+                "activate",
+                onboarding_revision=2,
+                assignment_revision=None,
+                preview=first_preview,
+            ),
+            call=self.call,
+        )
+        paused = await self.lifecycle.mutate(
+            await self._mutation(
+                "pause",
+                onboarding_revision=2,
+                assignment_revision=activated.assignment.assignment_revision,
+            ),
+            call=self.call,
+        )
+        update_preview = await self._preview(
+            self.profiles[1],
+            2,
+            paused.assignment.assignment_revision,
+        )
+        updated = await self.lifecycle.mutate(
+            await self._mutation(
+                "update",
+                onboarding_revision=3,
+                assignment_revision=paused.assignment.assignment_revision,
+                preview=update_preview,
+            ),
+            call=self.call,
+        )
+        self.assertEqual(updated.assignment.assignment_revision, 3)
+        self.assertEqual(updated.assignment.last_known_good_revision, 1)
+        rolled_back = await self.lifecycle.mutate(
+            await self._mutation(
+                "rollback",
+                onboarding_revision=3,
+                assignment_revision=updated.assignment.assignment_revision,
+                rollback_revision=1,
+            ),
+            call=self.call,
+        )
+        self.assertEqual(
+            rolled_back.assignment.profile_ref, ProfileRef("profile-basic", 1)
         )
 
     async def test_strict_failure_confirmation_binding_and_cas_preserve_pending(
@@ -550,11 +629,11 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
             strict,
         )
 
-    def _catalog(self) -> ServiceCatalogSnapshot:
+    def _catalog(self, *, ready_granted: bool = True) -> ServiceCatalogSnapshot:
         return ServiceCatalogSnapshot(
             1,
             self.scope,
-            "catalog-v1",
+            "catalog-v1" if ready_granted else "catalog-v2",
             (
                 ServiceDefinition(
                     1, "service-ready", "Ready", (), RiskLevel.LOW, "ready-v1"
@@ -565,7 +644,13 @@ class GroupOnboardingTests(unittest.IsolatedAsyncioTestCase):
             ),
             (
                 ServiceEligibilityFact(
-                    1, "service-ready", True, True, True, True, "ready-v1"
+                    1,
+                    "service-ready",
+                    True,
+                    True,
+                    ready_granted,
+                    True,
+                    "ready-v1" if ready_granted else "ready-v2",
                 ),
                 ServiceEligibilityFact(
                     1, "service-limited", True, False, True, True, "limited-v1"

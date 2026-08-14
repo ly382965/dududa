@@ -505,6 +505,22 @@ describe('Dududa NapCat gateway', () => {
   })
 
   it('maps account identity and proxies typed control-plane queries and commands', async () => {
+    const operationsProjection = {
+      scope: { platform: 'qq', botId: selfId },
+      projections: [{
+        surface: 'model_router' as const,
+        scope: { platform: 'qq', botId: selfId },
+        revision: 'router-v3',
+        evidenceMode: 'live' as const,
+        status: 'ready' as const,
+        facts: [],
+        reasonCodes: [],
+        observedAt: '2026-08-14T13:00:00Z',
+      }],
+      mutations: [],
+      generatedAt: '2026-08-14T13:00:00Z',
+    }
+    const operations = vi.fn(async () => operationsProjection)
     const pendingInbox = vi.fn(async () => ({
       platform: 'qq',
       botId: selfId,
@@ -569,6 +585,7 @@ describe('Dududa NapCat gateway', () => {
     }))
     const controlPlane: ControlPlaneClient = {
       status: () => ({ available: true }),
+      operations,
       pendingInbox,
       managedGroups,
       profileCatalog,
@@ -581,6 +598,11 @@ describe('Dududa NapCat gateway', () => {
     await napcat.ready
     await waitFor(async () => hub.workspaceSnapshot().accounts.length === 1)
     const headers = { 'X-Dududa-Operator-Session': 'operator-session' }
+
+    const operationsResponse = await fetch(`${baseUrl}/api/control-plane/accounts/qq-${selfId}/operations`, { headers })
+    expect(operationsResponse.status).toBe(200)
+    expect(await operationsResponse.json()).toEqual(operationsProjection)
+    expect(operations).toHaveBeenCalledWith('operator-session', 'qq', selfId)
 
     const pending = await fetch(`${baseUrl}/api/control-plane/accounts/qq-${selfId}/pending`, { headers })
     expect(pending.status).toBe(200)

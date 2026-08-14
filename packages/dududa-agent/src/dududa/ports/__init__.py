@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         GroupServiceCatalog,
         GroupServiceRepository,
         GroupServiceSnapshotProvider,
+        OperationalProjectionProvider,
         OperatorSessionResolver,
     )
     from .mcp import (
@@ -171,6 +172,7 @@ __all__ = [
     "OfflinePersonaRenderer",
     "OfflineRenderValidator",
     "OfflineResponseComposer",
+    "OperationalProjectionProvider",
     "OperatorSessionResolver",
     "OutputAdapter",
     "PerceptionEngine",
@@ -227,6 +229,7 @@ def __getattr__(name: str) -> object:
         "GroupServiceCatalog",
         "GroupServiceRepository",
         "GroupServiceSnapshotProvider",
+        "OperationalProjectionProvider",
         "OperatorSessionResolver",
     }:
         from .control_plane import (
@@ -234,6 +237,7 @@ def __getattr__(name: str) -> object:
             GroupServiceCatalog,
             GroupServiceRepository,
             GroupServiceSnapshotProvider,
+            OperationalProjectionProvider,
             OperatorSessionResolver,
         )
 
@@ -242,6 +246,7 @@ def __getattr__(name: str) -> object:
             "GroupServiceCatalog": GroupServiceCatalog,
             "GroupServiceRepository": GroupServiceRepository,
             "GroupServiceSnapshotProvider": GroupServiceSnapshotProvider,
+            "OperationalProjectionProvider": OperationalProjectionProvider,
             "OperatorSessionResolver": OperatorSessionResolver,
         }[name]
     if name in {

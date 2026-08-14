@@ -2,6 +2,7 @@ import type {
   ControlPlaneStatus,
   GroupServiceCommandRequest,
   GroupServiceCommandResponse,
+  GovernedOperationsProjection,
   ManagedGroups,
   PendingInbox,
   PreviewRequest,
@@ -11,6 +12,7 @@ import type {
 
 export interface ControlPlaneAdapter {
   status(): Promise<ControlPlaneStatus>
+  operations(accountId: string): Promise<GovernedOperationsProjection>
   pendingInbox(accountId: string): Promise<PendingInbox>
   managedGroups(accountId: string): Promise<ManagedGroups>
   profileCatalog(accountId: string): Promise<ProfileCatalog>
@@ -30,6 +32,10 @@ export class HttpControlPlaneAdapter implements ControlPlaneAdapter {
 
   status(): Promise<ControlPlaneStatus> {
     return this.request('/api/control-plane/status', false)
+  }
+
+  operations(accountId: string): Promise<GovernedOperationsProjection> {
+    return this.request(`${this.accountPath(accountId)}/operations`, true)
   }
 
   pendingInbox(accountId: string): Promise<PendingInbox> {

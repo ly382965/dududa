@@ -703,15 +703,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   async function approveDraft(draft: ReplyDraftPart): Promise<void> {
     const conversation = conversations.value.find((item) => item.id === draft.conversationId)
     if (!conversation || draft.status !== 'draft') return
-    try {
-      const message = await adapter.sendMessage(conversation, draft.content)
-      mergeMessages(conversation.id, [message])
-      void adapter.cacheMessages(conversation, [message])
-      draft.status = 'sent'
-      notify('草稿已由 NapCat 发送')
-    } catch (error) {
-      notify(error instanceof Error ? error.message : '草稿发送失败')
-    }
+    notify('Agent 草稿发送命令尚未接入，未发送 QQ 消息')
   }
 
   function discardDraft(draft: ReplyDraftPart): void {
@@ -719,7 +711,9 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   }
 
   function respondPermission(part: Extract<AgentPart, { type: 'permission' }>, allow: boolean): void {
-    part.state = allow ? 'allowed' : 'denied'
+    if (part.state !== 'pending') return
+    void allow
+    notify('Agent 权限命令尚未接入，状态未变更')
   }
 
   function newSession(): void {

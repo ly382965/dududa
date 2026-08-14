@@ -19,6 +19,8 @@ from .contracts import (
 )
 from .gateway import ControlPlaneGateway
 from .lifecycle import GroupServiceLifecycle
+from .operations import GovernedOperationsProjection, OperationalProjectionQuery
+from .operations_service import GovernedOperationsService
 
 
 class ControlPlaneApi:
@@ -30,10 +32,12 @@ class ControlPlaneApi:
         gateway: ControlPlaneGateway,
         lifecycle: GroupServiceLifecycle,
         snapshots: GroupServiceSnapshotProvider,
+        operations: GovernedOperationsService,
     ) -> None:
         self._gateway = gateway
         self._lifecycle = lifecycle
         self._snapshots = snapshots
+        self._operations = operations
 
     async def pending_inbox(
         self,
@@ -82,6 +86,14 @@ class ControlPlaneApi:
         call: ServiceCallContext,
     ) -> GroupServiceAssignment | None:
         return await self._snapshots.current(scope, call=call)
+
+    async def operational_projections(
+        self,
+        query: OperationalProjectionQuery,
+        *,
+        call: ServiceCallContext,
+    ) -> GovernedOperationsProjection:
+        return await self._operations.query(query, call=call)
 
 
 __all__ = ["ControlPlaneApi"]

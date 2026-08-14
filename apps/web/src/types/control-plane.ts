@@ -129,3 +129,63 @@ export interface ControlPlaneStatus {
   available: boolean
   reason?: string
 }
+
+export type OperationalSurface =
+  | 'runs'
+  | 'model_router'
+  | 'mcp_capability'
+  | 'plugins'
+  | 'memory'
+  | 'proactive'
+
+export type OperationalStatus = 'ready' | 'degraded' | 'off' | 'shadow' | 'unavailable'
+
+export type OperationalEvidenceMode =
+  | 'unavailable'
+  | 'fixture'
+  | 'offline'
+  | 'shadow'
+  | 'canary'
+  | 'live'
+
+export interface OperationalScope {
+  platform: string
+  botId: string
+  groupId?: string
+}
+
+export interface OperationalFact {
+  factId: string
+  label: string
+  status: OperationalStatus
+  revision: string
+  detail: string
+  reasonCodes: string[]
+  observedAt: string
+}
+
+export interface OperationalProjection {
+  surface: OperationalSurface
+  scope: OperationalScope
+  revision: string
+  evidenceMode: OperationalEvidenceMode
+  status: OperationalStatus
+  facts: OperationalFact[]
+  reasonCodes: string[]
+  observedAt: string
+}
+
+export interface GovernedMutationDescriptor {
+  action: string
+  displayName: string
+  handlerId: string
+  scopeKind: 'bot' | 'group'
+  riskLevel: 'low' | 'medium' | 'high' | 'critical'
+}
+
+export interface GovernedOperationsProjection {
+  scope: OperationalScope
+  projections: OperationalProjection[]
+  mutations: GovernedMutationDescriptor[]
+  generatedAt: string
+}

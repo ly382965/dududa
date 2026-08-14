@@ -16,6 +16,13 @@ from dududa.control_plane.contracts import (
     ProfilePreviewExecution,
     ServiceResolution,
 )
+from dududa.control_plane.operations import (
+    GovernedMutationDescriptor,
+    GovernedOperationsProjection,
+    OperationalFact,
+    OperationalProjection,
+    OperationalScope,
+)
 from dududa.errors import validation_error
 
 
@@ -72,11 +79,67 @@ def project_mutation_execution(
     }
 
 
+def project_governed_operations(
+    value: GovernedOperationsProjection,
+) -> dict[str, object]:
+    return {
+        "scope": _operational_scope(value.scope),
+        "projections": [_operational_projection(item) for item in value.projections],
+        "mutations": [_governed_mutation(item) for item in value.mutations],
+        "generatedAt": _timestamp(value.generated_at),
+    }
+
+
 def _scope(value: GroupControlScope) -> dict[str, object]:
     return {
         "platform": value.platform,
         "botId": value.bot_id,
         "groupId": value.group_id,
+    }
+
+
+def _operational_scope(value: OperationalScope) -> dict[str, object]:
+    result: dict[str, object] = {
+        "platform": value.platform,
+        "botId": value.bot_id,
+    }
+    if value.group_id is not None:
+        result["groupId"] = value.group_id
+    return result
+
+
+def _operational_fact(value: OperationalFact) -> dict[str, object]:
+    return {
+        "factId": value.fact_id,
+        "label": value.label,
+        "status": value.status.value,
+        "revision": value.revision,
+        "detail": value.detail,
+        "reasonCodes": list(value.reason_codes),
+        "observedAt": _timestamp(value.observed_at),
+    }
+
+
+def _operational_projection(value: OperationalProjection) -> dict[str, object]:
+    return {
+        "surface": value.surface.value,
+        "scope": _operational_scope(value.scope),
+        "revision": value.revision,
+        "evidenceMode": value.evidence_mode.value,
+        "status": value.status.value,
+        "facts": [_operational_fact(item) for item in value.facts],
+        "reasonCodes": list(value.reason_codes),
+        "observedAt": _timestamp(value.observed_at),
+    }
+
+
+def _governed_mutation(value: GovernedMutationDescriptor) -> dict[str, object]:
+    return {
+        "action": str(value.action),
+        "displayName": value.display_name,
+        "handlerId": value.handler_id,
+        "scopeKind": value.scope_kind.value,
+        "riskLevel": value.risk_level.value,
     }
 
 
@@ -169,6 +232,7 @@ def _timestamp(value: datetime) -> str:
 
 
 __all__ = [
+    "project_governed_operations",
     "project_managed_groups",
     "project_mutation_execution",
     "project_pending_inbox",

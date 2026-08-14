@@ -1,5 +1,6 @@
 import type {
   ControlPlaneStatus,
+  GovernedOperationsProjection,
   GroupServiceCommandRequest,
   GroupServiceCommandResponse,
   ManagedGroups,
@@ -11,6 +12,7 @@ import type {
 
 export interface ControlPlaneClient {
   status(): ControlPlaneStatus
+  operations(sessionRef: string, platform: string, botId: string): Promise<GovernedOperationsProjection>
   pendingInbox(sessionRef: string, platform: string, botId: string): Promise<PendingInbox>
   managedGroups(sessionRef: string, platform: string, botId: string): Promise<ManagedGroups>
   profileCatalog(sessionRef: string, platform: string, botId: string): Promise<ProfileCatalog>
@@ -42,6 +44,10 @@ export class UnavailableControlPlaneClient implements ControlPlaneClient {
 
   status(): ControlPlaneStatus {
     return { available: false, reason: this.reason }
+  }
+
+  async operations(): Promise<GovernedOperationsProjection> {
+    throw new ControlPlaneClientError(this.reason, 503)
   }
 
   async pendingInbox(): Promise<PendingInbox> {
@@ -76,6 +82,17 @@ export class HttpControlPlaneClient implements ControlPlaneClient {
 
   status(): ControlPlaneStatus {
     return { available: true }
+  }
+
+  async operations(
+    sessionRef: string,
+    platform: string,
+    botId: string,
+  ): Promise<GovernedOperationsProjection> {
+    return this.request(
+      `/v1/control-plane/${encodeURIComponent(platform)}/bots/${encodeURIComponent(botId)}/operations`,
+      sessionRef,
+    )
   }
 
   async pendingInbox(sessionRef: string, platform: string, botId: string): Promise<PendingInbox> {

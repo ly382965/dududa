@@ -6,7 +6,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { WorkspaceCache, WorkspaceDatabase } from '../services/database'
 import type { WorkspaceAdapter } from '../services/workspace-adapter'
-import type { Account, ChatMessage, Conversation, HistoryPage, WorkspaceEvent, WorkspaceSnapshot } from '../types/workspace'
+import type {
+  Account,
+  ChatMessage,
+  Conversation,
+  HistoryPage,
+  PermissionPart,
+  ReplyDraftPart,
+  WorkspaceEvent,
+  WorkspaceSnapshot,
+} from '../types/workspace'
 import { useWorkspace } from './useWorkspace'
 
 const databases: WorkspaceDatabase[] = []
@@ -483,5 +492,63 @@ describe('useWorkspace account-scoped state', () => {
     ])).resolves.toBe(true)
     expect(sendFile).toHaveBeenCalledTimes(2)
     secondHost.unmount()
+  })
+
+  it('does not let Agent placeholders send QQ messages or approve permissions', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const sendMessage = vi.fn()
+    const adapter = {
+      load: async () => snapshot,
+      loadCachedMessages: async () => [],
+      loadHistory: async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false }),
+      loadDraft: async () => undefined,
+      markRead: async () => undefined,
+      sendMessage,
+      subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+
+    const draft: ReplyDraftPart = {
+      type: 'reply_draft',
+      id: 'draft-1',
+      accountId: owner.id,
+      conversationId: target.id,
+      content: '不得直发',
+      status: 'draft',
+    }
+    await workspace.approveDraft(draft)
+    expect(sendMessage).not.toHaveBeenCalled()
+    expect(draft.status).toBe('draft')
+    expect(workspace.toast.value).toContain('未发送 QQ 消息')
+
+    const permission: PermissionPart = {
+      type: 'permission',
+      id: 'permission-1',
+      title: '发送消息',
+      detail: '请求发送',
+      state: 'pending',
+    }
+    workspace.respondPermission(permission, true)
+    expect(permission.state).toBe('pending')
+    expect(workspace.toast.value).toContain('状态未变更')
+    wrapper.unmount()
   })
 })
