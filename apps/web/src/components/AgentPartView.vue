@@ -102,8 +102,8 @@ watch(
       <span><strong>{{ permission.title }}</strong><small>{{ permission.detail }}</small></span>
     </div>
     <div v-if="permission.state === 'pending'" class="permission-actions">
-      <button type="button" class="button-secondary" disabled title="Agent 权限命令不可用" @click="emit('respondPermission', permission, false)">拒绝</button>
-      <button type="button" class="button-primary" disabled title="Agent 权限命令不可用" @click="emit('respondPermission', permission, true)">允许一次</button>
+      <button type="button" class="button-secondary" disabled title="Agent 权限命令不可用">拒绝</button>
+      <button type="button" class="button-primary" disabled title="Agent 权限命令不可用">允许一次</button>
     </div>
     <span v-else class="permission-result">
       <Check v-if="permission.state === 'allowed'" :size="13" />
@@ -143,7 +143,7 @@ watch(
         <button class="button-ghost icon-text danger" type="button" @click="emit('discardDraft', draft)">
           <Trash2 :size="13" />丢弃
         </button>
-        <button class="button-primary icon-text send-draft" type="button" disabled title="Agent 草稿发送命令不可用" @click="emit('approveDraft', draft)">
+        <button class="button-primary icon-text send-draft" type="button" disabled title="Agent 草稿发送命令不可用">
           <SendHorizontal :size="14" />发送不可用
         </button>
       </template>

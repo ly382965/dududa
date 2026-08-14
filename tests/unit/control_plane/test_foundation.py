@@ -320,6 +320,22 @@ class ControlPlaneFoundationTests(unittest.IsolatedAsyncioTestCase):
             "control_plane_idempotency_conflict",
         )
 
+        reused_id = replace(
+            command,
+            idempotency_key="preview-key-reused-command-id",
+            expected_onboarding_revision=2,
+        )
+        reused_id = replace(
+            reused_id,
+            payload_digest=preview_command_payload_digest(reused_id),
+        )
+        with self.assertRaises(DududaError) as raised:
+            await self.gateway.preview_profile(reused_id, call=self.call)
+        self.assertEqual(
+            raised.exception.info.code,
+            "control_plane_command_id_conflict",
+        )
+
         stale = replace(
             command,
             command_id="command-stale",

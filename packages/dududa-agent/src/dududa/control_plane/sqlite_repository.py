@@ -78,7 +78,7 @@ class SQLiteGroupServiceRepository:
             raise validation_error("invalid_group_join_fact")
         self._validate_call(call)
         key = _scope_key(fact.scope)
-        with self._transaction() as connection:
+        with self._transaction(call) as connection:
             event = connection.execute(
                 "SELECT platform, bot_id, group_id FROM cp_join_events WHERE event_id = ?",
                 (fact.event_id,),
@@ -256,7 +256,7 @@ class SQLiteGroupServiceRepository:
         if stored.receipt.idempotency_key != idempotency_key:
             raise validation_error("preview_commit_idempotency_mismatch")
         self._validate_call(call)
-        with self._transaction() as connection:
+        with self._transaction(call) as connection:
             existing = self._select_preview_command(connection, idempotency_key)
             if existing is not None:
                 if existing.request_digest != request_digest:
@@ -264,6 +264,12 @@ class SQLiteGroupServiceRepository:
                 return PreviewCommitResult(
                     1, PreviewCommitDisposition.DUPLICATE, existing
                 )
+            self._reserve_command_id(
+                connection,
+                stored.receipt.command_id,
+                "preview",
+                idempotency_key,
+            )
             preview = stored.preview
             onboarding = self._select_onboarding_required(connection, preview.scope)
             if onboarding.revision != expected_onboarding_revision:
@@ -347,7 +353,7 @@ class SQLiteGroupServiceRepository:
         if stored.receipt.idempotency_key != idempotency_key:
             raise validation_error("assignment_commit_idempotency_mismatch")
         self._validate_call(call)
-        with self._transaction() as connection:
+        with self._transaction(call) as connection:
             existing = self._select_assignment_command(connection, idempotency_key)
             if existing is not None:
                 if existing.request_digest != request_digest:
@@ -357,6 +363,12 @@ class SQLiteGroupServiceRepository:
                     AssignmentCommitDisposition.DUPLICATE,
                     existing,
                 )
+            self._reserve_command_id(
+                connection,
+                stored.receipt.command_id,
+                "assignment",
+                idempotency_key,
+            )
             assignment = stored.assignment
             onboarding = self._select_onboarding_required(connection, assignment.scope)
             if onboarding.revision != expected_onboarding_revision:
@@ -500,6 +512,11 @@ class SQLiteGroupServiceRepository:
                     request_digest TEXT NOT NULL,
                     payload TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS cp_command_ids (
+                    command_id TEXT PRIMARY KEY,
+                    command_kind TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS cp_audit_records (
                     audit_record_id TEXT PRIMARY KEY,
                     recorded_at TEXT NOT NULL,
@@ -526,10 +543,15 @@ class SQLiteGroupServiceRepository:
         return connection
 
     @contextmanager
-    def _transaction(self) -> Iterator[sqlite3.Connection]:
+    def _transaction(
+        self,
+        call: ServiceCallContext | None = None,
+    ) -> Iterator[sqlite3.Connection]:
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
+            if call is not None:
+                self._validate_call(call)
             yield connection
             connection.commit()
         except BaseException:
@@ -537,6 +559,21 @@ class SQLiteGroupServiceRepository:
             raise
         finally:
             connection.close()
+
+    @staticmethod
+    def _reserve_command_id(
+        connection: sqlite3.Connection,
+        command_id: str,
+        command_kind: str,
+        idempotency_key: str,
+    ) -> None:
+        try:
+            connection.execute(
+                "INSERT INTO cp_command_ids VALUES (?, ?, ?)",
+                (command_id, command_kind, idempotency_key),
+            )
+        except sqlite3.IntegrityError:
+            raise _conflict("control_plane_command_id_conflict") from None
 
     @staticmethod
     def _select_onboarding(

@@ -1,7 +1,7 @@
 # Bot Control Plane 与群服务初始化设计
 
-状态：设计方向已由用户确认；Tree revision 4 已将其映射为 S21A-S21C 与 S21 Audit。S21A-S21C
-已完成离线实现，Completion Audit 尚未完成；暂停的 S23 真实群验证仍不得恢复。
+状态：设计方向已由用户确认；Tree revision 4 已将其映射为 S21A-S21C 与 S21 Audit，四阶段均
+已完成离线实现和验证。暂停的 S23 真实群验证仍需外部适配、人工质量和逐行为授权后才能恢复。
 
 ## 1. 产品定位
 
@@ -242,7 +242,7 @@ Tree revision 4 已将 S21 设为 S23 的前置，按以下顺序执行：
    Desired/Effective diff 和 immutable Runtime snapshot；
 3. **S21C Governed Operations（已完成）**：接入 Run/Model/MCP/Plugin/Memory/Proactive 查询，以及已有专用
    Core 命令支持的审批、订阅和行为级开关；
-4. **S21 Completion Audit**：跨账号/群 Scope、并发 CAS、重启/LKG、权限、审计、浏览器直写和
+4. **S21 Completion Audit（已完成）**：跨账号/群 Scope、并发 CAS、重启/LKG、权限、审计、浏览器直写和
    direct-NapCat Agent send 的负向审计。
 
 S21 使用 Fake join、Fake services 和固定 Catalog 即可离线闭环，不需要 100 群聊天记录。只有
