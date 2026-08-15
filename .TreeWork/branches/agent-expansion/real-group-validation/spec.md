@@ -19,6 +19,71 @@ cannot redesign the Router, Capability, Memory, ResponsePlan, Scheduler,
 proactive authority or Output contracts. Deterministic code continues to own
 target, Scope, permission, budget, schedule and every send.
 
+### Authorized Offline Historical-Corpus Stage
+
+Before the live ladder, S23 may process the user-authorized static export at
+`/home/mmdustc/temp` entirely offline. This stage is evidence preparation, not
+current Dududa traffic and not authorization to reconnect the exported account,
+read live QQ state or send a message. Private chat is excluded. Source and
+derived text, identity mappings, labels, models and the rendered Demo remain
+outside Git under the configured private dataset root.
+
+The offline stage is one vertical pipeline:
+
+1. **S23A Historical Corpus Intake** classifies every input file, parses
+   directory JSONL first, ZIP JSONL only for missing records and message-bearing
+   HTML last, then normalizes group messages with opaque identities and the
+   stable `(conversation_ref, normalized_message_id)` key. Conflicting bodies,
+   mentions or elements are recorded without blocking unrelated records.
+2. **S23B Conversation Window Dataset** builds 3--12 message, past-only windows
+   separated by group and time, projects them to the existing
+   `PerceptionContext`, and deterministically samples 50 then a time-boxed
+   target across observable conversation shapes.
+3. **S23C Semantic v2 Silver Annotation** sends only selected, de-identified
+   text windows to one fixed medium Teacher through the Responses-compatible
+   Endpoint. Existing Semantic v2 schema, decoder and validator own the model
+   projection; dataset-only topic/task/tool/complexity/profile/confidence fields
+   remain sidecars. Invalid and uncertain output enters a review queue and is
+   never called Gold.
+4. **S23D Local Student Training And Evaluation** trains lightweight local
+   classifiers for tool need, semantic complexity and answer profile. Splits
+   are isolated by conversation/group. Reported metrics are Silver agreement,
+   not production semantic accuracy, and Student output does not enter the
+   production Router.
+5. **S23E Private No-Send Product Demo** renders the corpus, annotation,
+   validation and Student results into a reusable localhost-only HTML artifact.
+   Reopening it performs no Provider call, Tool call, Memory write, Bandit
+   learning or QQ send.
+
+The batch CLI reuses `MessageEnvelope`, Perception/Semantic v2,
+`TierPolicy` and `ResponsePlan` contracts rather than defining a parallel
+runtime. Attachments contribute only typed metadata; no uploaded code, HTML,
+remote resource or media content is executed or fetched. Focused synthetic
+tests plus staged 5/50/target Teacher runs are sufficient for this development
+artifact; the stage does not add a new release gate.
+
+### Offline Runtime Budget And Sampling
+
+The S23A--S23E product Demo is a time-boxed development run. It targets four
+hours and stops launching new Teacher requests early enough to finish local
+training, evaluation, Demo generation, documentation and focused verification
+within a hard five-hour wall-clock budget.
+
+The 5-request Schema smoke and 50-request distributed pilot measure actual
+valid-label throughput, including retries and rate limiting. After the pilot,
+the runner selects the largest feasible target from 240, 360, 480 or 600
+windows using observed throughput with a 25 percent time reserve. It may use
+fewer than 240 only when the Endpoint or corpus cannot support that target; the
+resulting limitation must be reported rather than hidden.
+
+Sampling quality is defined by coverage before count: conversation-isolated
+splits, bounded contribution from any one group, coverage of the available
+conversation-shape buckets and deliberate inclusion of ambiguous, reply,
+mention and media-boundary cases. Terra remains the single Teacher so that a
+smaller run does not trade time savings for label-policy drift. Completed
+responses are reused on restart; transient calls receive at most one retry.
+Sol and Luna are not added to the labeling path merely to fill the target.
+
 ### Readiness Manifest
 
 Before any read of real group data, a low-sensitivity, canonical readiness
@@ -98,13 +163,13 @@ values and Provider error bodies are excluded from committed evidence.
 
 ### External And Engineering Gates
 
-The current repository has completed all local predecessors, but S23 cannot
-start real execution until the operator supplies the authorization packet and
-private SecretRefs. At branch start the current pilot SLO still says
-`s23_ready=false`; no real Provider Endpoint is enableable; campus/arXiv/
-industry live Source Adapters and proactive production Projection/Output
-composition do not exist. iCourse remains the only real MCP Server and does not
-substitute for a news source.
+The static historical export and one private Responses-compatible Teacher
+Endpoint are now authorized for the offline S23A--S23E stage only. This does not
+satisfy any live gate. S23 live execution still waits for an operator-supplied
+authorization packet and private SecretRefs. The current pilot SLO remains
+`s23_ready=false`; campus/arXiv/industry live Source Adapters and proactive
+production Projection/Output composition do not exist. iCourse remains the
+only real MCP Server and does not substitute for a news source.
 
 Any Adapter needed after real source/Provider facts arrive is implemented and
 contract-tested inside the existing Port boundary before the corresponding
@@ -112,9 +177,13 @@ stage is authorized. Fixtures cannot be presented as live evidence.
 
 ### Completion Evidence
 
-Completion requires the exact single-group ladder receipts, frozen SLO report,
-zero safety counters, behavior-specific grants, source citations/freshness,
-delivery reconciliation, kill-switch and rollback evidence, and an executed
-retention/deletion record. Local simulations, prior S19/S22 artifacts or S20
-synthetic OPE are prerequisites/supporting evidence, not substitutes for these
-real receipts.
+The current goal completes when S23A--S23E have reproducible private artifacts,
+real Silver labels, group-isolated Student metrics, full eligible-window offline
+predictions, an openable no-send Demo, synchronized documents and local commits.
+That milestone must remain explicitly distinct from live S23 completion.
+
+Later live completion still requires the exact single-group ladder receipts,
+frozen SLO report, zero safety counters, behavior-specific grants, source
+citations/freshness, delivery reconciliation, kill-switch and rollback evidence,
+and an executed retention/deletion record. Offline corpus evidence, prior
+S19/S22 artifacts and S20 synthetic OPE cannot substitute for those receipts.

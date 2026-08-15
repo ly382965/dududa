@@ -6,6 +6,9 @@ Title: S23 Authorized Real-Group Validation
 
 ## Scope
 
+- Complete S23A--S23E as an offline historical-corpus pipeline: deterministic
+  intake, Conversation Windows, real Semantic v2 Silver labeling, local Student
+  training/evaluation and a private no-send HTML Demo.
 - Freeze and validate one low-sensitivity S23 readiness manifest and operator
   runbook without resolving credentials or touching live systems.
 - After explicit inputs arrive, implement only the missing approved
@@ -16,6 +19,21 @@ Title: S23 Authorized Real-Group Validation
 
 ## Acceptance
 
+- [x] S23A classifies all 1,402 files and reports authoritative JSONL/ZIP/HTML,
+  duplicate, supplement, conflict, excluded-private and unique-message counts.
+- [x] S23B produces valid 3--12 message past-only `PerceptionContext` windows,
+  including at least 50 real windows and a stratified time-boxed target chosen
+  from 240/360/480/600 after measuring real Teacher throughput.
+- [x] S23C obtains real Semantic v2 Silver labels for the selected target from
+  Terra as the fixed Teacher, routes invalid, low-confidence or ambiguous
+  results into a review queue without storing raw requests in Git, and records
+  the measured throughput and reason for the selected sample size.
+- [x] S23D trains and evaluates `need_tools`, `semantic_complexity` and
+  `answer_profile` Students on a group-isolated split, reports Silver agreement
+  and generates offline predictions for every eligible window.
+- [x] S23E produces a private, reusable localhost HTML Demo that visibly states
+  PRIVATE DEVELOPMENT DATA, SILVER NOT GOLD, NO SEND, NO MEMORY WRITE, NO TOOL
+  CALL, NO BANDIT and NOT CURRENT DUDUDA BOT TRAFFIC.
 - [x] A canonical readiness manifest binds exact release/rollback/SLO,
   Endpoint/source evidence, private SecretRefs, data policy and separate
   behavior grants; placeholder or incomplete manifests fail closed offline.
@@ -34,11 +52,26 @@ Title: S23 Authorized Real-Group Validation
 - [ ] All canaries end disabled, retention/deletion actions are recorded, and a
   sanitized S23 report contains no raw message, prompt, answer, real QQ/group/
   user ID, credential or Provider error body.
-- [ ] Progress, Findings and Verification are synchronized and all changes are
+- [x] Progress, Findings and Verification are synchronized and all changes are
   locally committed without push.
 
 ## Local Steps
 
+- [x] S23A: implement and run `inventory`/`extract`; write private normalized
+  messages and source-conflict artifacts, then record authoritative counts.
+- [x] S23B: implement and run `window`/`sample`; validate 50-window smoke and
+  produce stratified 240/360/480/600 candidate samples with per-group caps.
+- [x] S23C: implement the private Responses-compatible labeler; run 5, then 50,
+  estimate completion from the 50-run throughput, then run the largest target
+  that leaves enough of the five-hour budget for training, Demo and handoff.
+- [x] Enforce a four-hour target and five-hour hard wall-clock budget: reserve
+  at least 75 minutes after annotation, stop launching requests at the
+  annotation deadline, reuse successful cached labels and retry a transient
+  request no more than once.
+- [x] S23D: train three lightweight Students, evaluate with group isolation and
+  classify all eligible windows.
+- [x] S23E: generate/replay/serve the private no-send Demo, synchronize S23 and
+  Chinese development documents, and create no more than three local commits.
 - [x] Implement the offline readiness manifest/checker, template and runbook;
   record the current fail-closed external blockers.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
@@ -57,6 +90,9 @@ Title: S23 Authorized Real-Group Validation
 
 ## Out Of Scope
 
+- Calling the historical export current Dududa traffic, reconnecting its source
+  account, real QQ sends, production routing, live probes/digests or online
+  Bandit learning during S23A--S23E.
 - Default-on or broad production launch, private/personal proactive targets,
   arbitrary Tool writes, automatic Memory writes or unbounded group history.
 - Bandit selection of send/skip, target, schedule, frequency, AnswerProfile,
