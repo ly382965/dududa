@@ -48,6 +48,7 @@ from dududa.runtime.perception import (
     HybridPerceptionEngine,
     RouterBackedModelPerception,
     RouterBackedModelPerceptionConfig,
+    RuleOnlyRuntimePerception,
     serialize_perception_context,
 )
 from dududa.testing.models import ProviderSuccess, RecordingFakeModelProvider
@@ -247,6 +248,28 @@ class _RuntimePerceptionFixture:
 
 
 class RouterBackedModelPerceptionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_rule_only_runtime_returns_unavailable_receipt_without_model_call(
+        self,
+    ) -> None:
+        fixture = _RuntimePerceptionFixture(())
+        engine = RuleOnlyRuntimePerception(
+            fixture.rules,
+            fixture.merger,
+            clock=lambda: ROUTER_NOW,
+        )
+
+        receipt = await engine.perceive_with_receipt(context(), call=fixture.call)
+
+        self.assertIs(receipt.result.model_status, PerceptionModelStatus.UNAVAILABLE)
+        self.assertIs(receipt.model_status, PerceptionModelStatus.UNAVAILABLE)
+        self.assertFalse(receipt.model_call_started)
+        self.assertIsNone(receipt.request_fingerprint)
+        self.assertIsNone(receipt.route_decision)
+        self.assertIsNone(receipt.reported_usage)
+        self.assertEqual(receipt.failure_code, "model_unavailable")
+        self.assertEqual(fixture.router.calls, [])
+        self.assertEqual(fixture.provider.calls, [])
+
     async def test_real_static_router_is_fixed_haiku_and_has_no_route_hint(
         self,
     ) -> None:

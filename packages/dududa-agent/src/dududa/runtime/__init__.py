@@ -75,6 +75,7 @@ if TYPE_CHECKING:
         HybridPerceptionEngine,
         RouterBackedModelPerception,
         RouterBackedModelPerceptionConfig,
+        RuleOnlyRuntimePerception,
         RuntimeModelPerceptionFailure,
         serialize_perception_context,
     )
@@ -122,6 +123,7 @@ __all__ = [
     "PerceptionExecutionReceipt",
     "RouterBackedModelPerception",
     "RouterBackedModelPerceptionConfig",
+    "RuleOnlyRuntimePerception",
     "RuntimeAdmissionAction",
     "RuntimeCheckpoint",
     "RuntimeCommitDisposition",
@@ -185,6 +187,7 @@ _LAZY_EXPORTS = {
     "HybridPerceptionEngine": ".perception",
     "RouterBackedModelPerception": ".perception",
     "RouterBackedModelPerceptionConfig": ".perception",
+    "RuleOnlyRuntimePerception": ".perception",
     "RuntimeModelPerceptionFailure": ".perception",
     "serialize_perception_context": ".perception",
     "project_s10_decision_signals": ".selection",

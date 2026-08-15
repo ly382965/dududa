@@ -160,6 +160,24 @@ class RepositoryContractTests(unittest.TestCase):
         )
         self.assertEqual(registry["protocol_mode"], "legacy")
 
+    def test_astrbot_runtime_config_defaults_are_safe(self) -> None:
+        schema = json.loads(
+            (
+                ROOT
+                / "apps"
+                / "astrbot-plugins"
+                / "astrbot_plugin_dududa_core"
+                / "_conf_schema.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(schema["runtime_enabled"]["type"], "bool")
+        self.assertFalse(schema["runtime_enabled"]["default"])
+        self.assertEqual(schema["runtime_models_json"]["type"], "text")
+        self.assertEqual(schema["runtime_models_json"]["default"], "[]")
+        self.assertEqual(schema["runtime_response_profiles_enabled"]["type"], "bool")
+        self.assertTrue(schema["runtime_response_profiles_enabled"]["default"])
+
     def test_compose_keeps_owned_code_read_only(self) -> None:
         compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
             encoding="utf-8"

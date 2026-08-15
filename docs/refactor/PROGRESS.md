@@ -12,6 +12,11 @@
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
   取得持久单一所有权。本地发布模块、既定 QQ Web 测试、S21 群服务初始化和总审计已经完成；
   真实 QQ 群运行仍须闭合 S23 环境适配并取得逐行为授权。
+- S23 分支已经补齐配置驱动的入站生产 Runtime 最短纵切：实际声明的 1–3 个模型档位经
+  AstrBot Provider Adapter、既有 Static Router 和 DirectChat 链装配；默认关闭，`off` 不调用
+  Provider，`shadow` 只做一次候选回答调用且不取得事件或发送所有权。当前证据只来自 Fake
+  Provider：27 项最终聚焦契约在 1.005 秒内通过，此前 6 项冒烟在 0.196 秒内通过；这不等于
+  真实 Endpoint Conformance、部署或上线。
 - 独立可选 S20 不属于主动出站、群服务 Profile 或 S23 的发布前置。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
@@ -55,7 +60,7 @@
 | --- | --- | --- | --- |
 | S08 静态 Model Router | 已完成 | Haiku/Sonnet/Opus 契约、Registry、硬过滤、流量 admission、容量、fallback、Fake 与兼容 Adapter | Bandit、随机路由、真实多 Provider 效果声明 |
 | S09 Perception 与 Tiering | 已完成 | Rule/Model/Merger/Validator、Social Decision、Complexity、TierPolicy、320 条合成/固定 Eval | 人工标签确认、真实群数据校准、多轮与附件语义 |
-| S10 Offline Runtime | 已完成 | Connector 到 Delivery receipt 的显式 @ 直聊闭环、两次模型预算、CAS/single-flight、Composition、reconciliation 与 Shadow | Tool、Memory、Attachment、生产 Provider 和主动群聊 |
+| S10 Offline Runtime | 已完成 | Connector 到 Delivery receipt 的显式 @ 直聊闭环、两次模型预算、CAS/single-flight、Composition、reconciliation 与 Shadow；S23 分支另补配置驱动的入站生产装配形状 | Tool、Memory、Attachment、真实 Endpoint Conformance/部署和主动群聊 |
 | S11 Controlled Rollout | 已完成（本地） | typed mode、白名单、SQLite claim/tombstone、priority-100 AstrBot Bridge、发送前熔断、脱敏指标和回滚 CLI | 未经授权的真实 QQ 群发送、广泛生产切流 |
 
 ## S12–S15E 实施状态
@@ -88,18 +93,18 @@
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **暂停、部分完成；离线 S23A–S23E 已完成** | 1,402 个文件、155,567 条唯一群消息、137,026 个窗口；600 条 Terra 抽样得到 592 草稿/8 Review，464 条编译 Silver；群隔离 Student 完成全量预测和 localhost no-send Demo | 优先补均衡人工 Gold；真实发送、来源、生产 Router 和逐行为 Canary 仍保持关闭 |
+| S23 Real Group Validation | **暂停、部分完成；离线 S23A–S23E 与入站 production shape 已完成** | 1,402 个文件、155,567 条唯一群消息、137,026 个窗口；600 条 Terra 抽样得到 592 草稿/8 Review，464 条编译 Silver；群隔离 Student 完成全量预测和 localhost no-send Demo；配置驱动 Builder 已用 Fake Provider 聚焦验证 `off/shadow/fallback` | 优先补 150–300 条类别均衡人工 Gold；真实 Endpoint Conformance/部署、实时单群 Shadow/Canary、真实来源和发送仍保持关闭 |
 
 ## 产品模块完成度
 
 | 模块 | 状态 | 判断依据 |
 | --- | --- | --- |
-| 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow 和 rollout Ports 已完成；真实 Provider/Tool/Memory/Attachment 全能力未完成 |
+| 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow、rollout Ports 与配置驱动入站装配形状已完成；仅有 Fake Provider 聚焦证据，真实 Endpoint/Tool/Memory/Attachment 全能力未完成 |
 | 安全组件 | 部分完成 | 授权、预算、内容安全、隐私、持久 claim 和发送前熔断已贯穿 S10/S11；旧命令兼容权限仍保留 |
 | Connector / Output / Attachment | 部分完成 | AstrBot Connector/Output、持久 rollout 去重、Bridge 和发送 tombstone 已完成；真实附件读取和第二平台未完成 |
 | Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
-| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09 和 S10 最小 Composer/Renderer 已实现；真实质量、完整 OC 资产和多轮能力仍待 Eval |
+| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 最小 Composer/Renderer 与 S23 配置驱动 AstrBot Provider→Static Router→DirectChat 纵切已实现；Perception 首版为 rule-only，避免每条 Shadow 消息发生第二次模型调用；真实 Endpoint Conformance、人工质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker和 iCourse facade；S22 已删除专用直连 Client，缺失时 fail closed；S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据 | 生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
@@ -107,7 +112,7 @@
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit 分权；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
 | Mew/NapCat WebUI / Bot Control Plane | QQ 客户端与 S21 离线范围已完成 | Web 已提供群服务初始化与运行状态视图；Desired/Effective、Assignment、Receipt 和运维健康均来自 Core DTO。Agent 草稿直发 NapCat 已移除，permission/config 占位为无事件只读状态 | 生产 Core HTTP/operator identity、真实 Agent Run/健康数据和授权 QQ 操作仍未完成 |
-| 真实群聊放量 | S23 离线历史语料 Demo 已完成，实时运行未开始 | 获授权静态快照已完成确定性处理、600 条 Silver 抽样、群隔离 Student、137,026 条预测和私有 no-send Demo | 先补人工 Gold；实时授权、发送、来源和 Canary 继续后置 |
+| 真实群聊放量 | S23 离线历史语料 Demo 与入站 production shape 已完成，实时运行未开始 | 获授权静态快照已完成确定性处理、600 条 Silver 抽样、群隔离 Student、137,026 条预测和私有 no-send Demo；Builder 的 `off/shadow/fallback` 只用 Fake Provider 验证 | 先补 150–300 条均衡人工 Gold；真实 Endpoint、部署、实时授权、发送、来源和 Canary 继续后置 |
 
 ## 2026-08-14 长程设计整合状态
 

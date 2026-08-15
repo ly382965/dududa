@@ -11,8 +11,10 @@ Title: S23 Authorized Real-Group Validation
   training/evaluation and a private no-send HTML Demo.
 - Freeze and validate one low-sensitivity S23 readiness manifest and operator
   runbook without resolving credentials or touching live systems.
-- After explicit inputs arrive, implement only the missing approved
-  Provider/source/projection composition through existing Ports.
+- The configuration-driven inbound Runtime production shape is now closed
+  without real credentials. After explicit inputs arrive, add only real
+  Endpoint Conformance/evidence resolution and the Source, Projection and
+  Output environment Adapters required by the authorized stage.
 - Execute the single authorized group ladder from no-send Shadow through
   inbound, manual/scheduled digest and low-frequency Probe canaries.
 - Reconcile delivery, SLO, incident, rollback and deletion evidence.
@@ -37,6 +39,10 @@ Title: S23 Authorized Real-Group Validation
 - [x] A canonical readiness manifest binds exact release/rollback/SLO,
   Endpoint/source evidence, private SecretRefs, data policy and separate
   behavior grants; placeholder or incomplete manifests fail closed offline.
+- [x] A configuration-driven inbound production Runtime parses the actually
+  configured 1--3 model tiers and assembles the Static Router and DirectChat
+  chain; `off` performs zero Provider calls/sends, `shadow` does not claim or
+  send, and disabled or unresolved Providers fall back to legacy.
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -74,10 +80,13 @@ Title: S23 Authorized Real-Group Validation
   Chinese development documents, and create no more than three local commits.
 - [x] Implement the offline readiness manifest/checker, template and runbook;
   record the current fail-closed external blockers.
+- [x] Implement the production Builder, automatic plugin wiring, AnswerProfile
+  feature flag and rule-only Runtime Perception; sample the production
+  composition, Perception and Rollout contracts.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
-- [ ] Close approved Provider/source/projection/Output composition gaps with
-  focused Contract and conformance evidence.
+- [ ] Obtain real Endpoint Conformance/health/evidence resolution and add live
+  Source, Projection and Output composition only for the authorized stage.
 - [ ] Execute Preflight and single-group no-send/no-write Shadow; review the
   sanitized receipt before promotion.
 - [ ] Execute explicit-mention inbound Canary and reconcile every request and

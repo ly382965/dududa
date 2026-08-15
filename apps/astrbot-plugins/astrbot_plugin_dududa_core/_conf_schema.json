@@ -4,6 +4,21 @@
     "type": "bool",
     "default": true
   },
+  "runtime_enabled": {
+    "description": "启用 Dududa 生产 Runtime 装配",
+    "type": "bool",
+    "default": false
+  },
+  "runtime_models_json": {
+    "description": "生产 Runtime 模型端点配置 JSON 数组",
+    "type": "text",
+    "default": "[]"
+  },
+  "runtime_response_profiles_enabled": {
+    "description": "启用短、中、长回答档位",
+    "type": "bool",
+    "default": true
+  },
   "rollout_mode": {
     "description": "新 Runtime 上线模式（off/shadow/canary）",
     "type": "string",

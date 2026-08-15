@@ -15,6 +15,13 @@ Branch: real-group-validation
 - The current Student is an exploration and Demo asset, not a production
   classifier. High accuracy for `need_tools` and `answer_profile` mostly tracks
   majority classes; `semantic_complexity` held-out Silver agreement is 57.0%.
+- 入站 production shape 采用配置驱动装配，不建立第二套路由控制面；AstrBot
+  Provider 只实现模型调用 Port，Tier、预算、Runtime 状态和 rollout 所有权
+  仍由 Dududa Core 决定。
+- 首版生产装配使用 `RuleOnlyRuntimePerception`，不为未经校准的语义感知额外
+  调用模型；回答生成仍经过 Static Router 和 DirectChat Model Call。
+- `off`/`shadow` 始终保留 legacy 所有权；只有既有 Canary 协议完成持久
+  claim 后，Runtime 才可能取得发送所有权。
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 
@@ -34,6 +41,13 @@ Branch: real-group-validation
 - Deployment authorization and group-data readability are separate windows.
   Both must be valid IANA-timezone intervals, and the initial S23 data window
   is capped at seven days.
+- 插件配置新增 Runtime 总开关、模型 Endpoint JSON 和回答档位开关；可只配置
+  Haiku/Sonnet/Opus 的实际子集，同一 AstrBot Provider 下的各 Endpoint 仍使用
+  独立 Dududa Adapter。
+- 配置或 AstrBot Provider 解析失败时，初始化安装 unavailable assembly 并
+  回退 legacy；日志只记录固定原因码，不写配置、凭据或 Provider 响应。
+- `conformance_verified` 只是 Builder 的装配输入，不替代 S23 Preflight 所需
+  的真实 Conformance、health 和候选 Release 绑定证据。
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 
@@ -43,3 +57,5 @@ Branch: real-group-validation
 - The running AstrBot/NapCat stack is not the S19 derived candidate and has not
   been authorized for replacement. S23 needs an explicit deployment window and
   a rollback owner before mutation.
+- 当前 focused Contract 使用 Fake AstrBot Provider；尚未证明真实 Endpoint 的
+  协议兼容、健康、延迟、成本、输出质量或部署环境可用性。

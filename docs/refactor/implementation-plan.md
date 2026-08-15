@@ -4,7 +4,8 @@
 S21A Foundation、S21B Group Onboarding、S21C Governed Operations 与 S21 Completion Audit
 均已完成离线实现和验证；S23A–S23E 私有历史语料离线 Demo 已完成，但 S23 整体仍为
 paused/partial，实时 Shadow/Canary 尚未开始。真实 Provider、Source、Projection、Output 的
-环境适配/Conformance 和外部授权输入均未闭合。旧 AstrBot Handler 在 `off/shadow`
+环境适配/Conformance 和外部授权输入均未闭合。S23 分支已补齐配置驱动的入站生产 Runtime
+最短纵切，但当前只通过 Fake AstrBot Provider 聚焦契约。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 所需的本地模块、既定 WebUI 测试和集成审计已经完成，但 S23 仍须先闭合环境适配和外部授权；
 独立可选 S20 不属于该发布前置。
@@ -31,6 +32,14 @@ Governed Operations 和 Completion Audit 均已有实现与聚焦验证。其他
 静态导出已在 S23 私有目录完成筛选、Silver 标注、Student 评测和 no-send Demo；它不是当前
 Dududa Bot 实时流量。完整结果见
 [S23 私有历史群聊离线 Demo 报告](s23-private-corpus-demo-2026-08-15.md)。
+
+同一 S23 分支已实现配置驱动的入站生产装配：可按实际配置接入 Haiku/Sonnet/Opus 的任意
+1–3 个档位，每个 Endpoint 由独立 AstrBot Provider Adapter 接入既有 Static Router；API Key
+继续由 AstrBot Provider 管理。首版采用 rule-only Perception，`off` 零 Provider 调用，
+`shadow` 每条消息至多进行一次候选回答调用且不 claim、不发送；配置关闭、无效或 Provider
+无法解析时回退 legacy。27 项最终聚焦契约在 1.005 秒内通过，此前 6 项冒烟在 0.196 秒内
+通过。以上仅证明 repository production shape，不证明真实 Endpoint、运行容器、实时群或
+QQ 发送已经就绪。
 
 ## 交付规则
 
@@ -71,8 +80,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | --- | --- | --- | --- |
 | 开发环境与研究基线 | 已完成（本地） | TreeWork 0.1.7、根 uv lock、Python 3.10/3.12、Node 22、Playwright、干净构建及十份研究报告已形成 | 生产环境仍未就绪；真实 Provider/来源/数据/标注和授权按各模块门禁补充 |
 | Phase 0 审计、`v1alpha` 接口与迁移计划 | 已完成 | 当前状态、依赖、设计、ADR、迁移和实施文档已形成，并通过文档门禁 | 不包含 Runtime 代码；进入 S01 后按实现证据重新判断 |
-| 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、默认关闭的有界 Tool 链、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Attachment Runtime 与授权生产证据 |
-| 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现 | 真实 Attachment Source、第二平台与授权真实群 delivery 证据 |
+| 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、默认关闭的有界 Tool 链、Delivery acknowledgement/reconciliation、无副作用 Shadow、受控 Bridge 与配置驱动入站 production shape 已实现 | 真实 Endpoint Conformance/部署、Memory/Attachment Runtime 与授权生产证据 |
+| 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现；S23 Builder 可从 AstrBot Provider 装配模型 Adapter | 真实 Attachment Source、第二平台、真实 Endpoint 绑定与授权真实群 delivery 证据 |
 | 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
 | Memory | 部分完成 | S14 已闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 重启证据、M0/M1/M2、纯 Python CJK BM25 和固定合成 Eval；Scope/Write Gate 与 fail-closed Iris 边界保持不变 | 旧命令与 Context Builder 消费者迁移、真实 Iris SDK Backend、授权数据/人工质量评测、Embedding/Hybrid 证据、shadow 和生产切流 |
 | MCP 集成 | 已完成（S12/S22 离线范围） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker、Fake/iCourse 共享 Contract；S22 已删除插件专用直连 Client，缺失时 fail closed | 真实新 Server、凭据和在线来源仍是外部门禁 |
@@ -86,7 +95,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI / Bot Control Plane | S21 已完成（离线） | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；command ID 与 deadline 语义已审计，Agent Draft/permission/config 不发送、不改状态、不伪成功 | 生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁 |
-| 大规模真实群测试与 Debug | S23 部分完成（离线 Demo 完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成 | 先补人工 Gold；实时阶段仍需 evidence resolver、Provider/Source/Projection/Output 环境适配和逐行为授权，再执行单群 Shadow/Canary、分层放量、SLO 与复盘 |
+| 大规模真实群测试与 Debug | S23 部分完成（离线 Demo 与入站 production shape 完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成；Builder 的 `off/shadow/fallback` 已用 Fake Provider 聚焦验证 | 先补 150–300 条类别均衡人工 Gold；实时阶段仍需真实 Endpoint evidence/Conformance、部署绑定、Source/Projection/Output 环境适配和逐行为授权，再执行单群 Shadow/Canary、分层放量、SLO 与复盘 |
 
 ### 实施步骤完成度
 
@@ -120,7 +129,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | **已完成、已验证（离线）** | Foundation、Group Onboarding、Governed Operations 与 Completion Audit 均通过；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影，Agent 路径不直发 NapCat | 生产 HTTP/身份、真实健康、真实 Provider/Source/Projection/Output、人工质量和真实 QQ 操作仍属于 S23 外部门禁 |
-| S23 | **暂停、部分完成；S23A–S23E 已完成** | manifest-only readiness、低敏模板/Runbook、历史语料 intake/window、600 条 Terra Silver 抽样、464 条编译样本、群隔离 Student、137,026 条本地预测和私有 no-send Demo 已形成；无真实发送或真实来源声明 | 分支尚未合并；实时 Shadow/Canary 仍需人工 Gold、evidence resolver、环境 Adapter/Conformance 和逐行为授权 |
+| S23 | **暂停、部分完成；S23A–S23E 与入站 production shape 已完成** | manifest-only readiness、低敏模板/Runbook、历史语料 intake/window、600 条 Terra Silver 抽样、464 条编译样本、群隔离 Student、137,026 条本地预测和私有 no-send Demo 已形成；配置驱动 Builder 的 27 项 Fake Provider 聚焦契约在 1.005 秒内验证 `off/shadow/fallback`；无真实发送或真实来源声明 | 分支尚未合并；实时 Shadow/Canary 仍需 150–300 条均衡人工 Gold、真实 Endpoint evidence/Conformance、部署绑定、环境 Source/Projection/Output Adapter 和逐行为授权 |
 
 ### 公共开工门禁
 

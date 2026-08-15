@@ -73,6 +73,7 @@ class AstrBotRuntimeRequestFactory:
         runtime_budget: RuntimeBudget,
         policy_snapshot_id: str,
         *,
+        response_profiles_enabled: bool = False,
         clock=None,
     ) -> None:
         if not isinstance(connector, InputConnector):
@@ -84,6 +85,7 @@ class AstrBotRuntimeRequestFactory:
         self._connector = connector
         self._runtime_budget = runtime_budget
         self._policy_snapshot_id = policy_snapshot_id
+        self._response_profiles_enabled = response_profiles_enabled
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     async def prepare(
@@ -113,11 +115,14 @@ class AstrBotRuntimeRequestFactory:
             policy_snapshot_id=self._policy_snapshot_id,
         )
         connector = await self._connector.convert(event, operation=connector_call)
+        requested_features = {"tools": False, "memory": False}
+        if self._response_profiles_enabled:
+            requested_features["response_profiles"] = True
         options = RuntimeInvocationOptions(
             1,
             None,
             "astrbot_rollout",
-            {"tools": False, "memory": False},
+            requested_features,
             control_revision,
         )
         request = RuntimeStartRequest(

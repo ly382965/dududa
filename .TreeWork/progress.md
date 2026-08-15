@@ -57,9 +57,14 @@ Last sync: unix:1786717871
   clean sdist-to-wheel path and warning-free MCP v1 fallback are reproducible.
   The Web unit/server/type/build/E2E gates pass; the existing containers were
   inspected read-only and were not restarted or switched.
-- Production is still NOT READY: the running AstrBot has no installed rollout
-  bridge, Runtime sampling conflicts with the Adapter, Adapter health remains
-  UNKNOWN, and its SQLite 3.46.1 is inside the WAL-reset bug range.
+- The repository now has a configuration-driven inbound production Runtime
+  shape: declared AstrBot Providers can be adapted into the existing Static
+  Router and DirectChat path, with Runtime default-off and legacy ownership in
+  `off/shadow`. Twenty-seven focused Fake-Provider tests passed in 1.005 seconds
+  after a six-test smoke passed in 0.196 seconds; construction made zero model
+  calls. The running AstrBot/NapCat stack was not changed and production remains
+  NOT READY until real Endpoint conformance, health, release binding and
+  authorization exist.
 - The 2026-08-09 research set now covers Unified MCP, Scheduler, public sources,
   Memory, semantic evaluation, real Endpoint conformance, AnswerProfile,
   Conversation Probe and same-role/tier Contextual Bandit. The recommendation
@@ -91,8 +96,9 @@ Last sync: unix:1786717871
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials. All accepted local predecessors are complete;
   S23 is paused/partial after completing its offline S23A--S23E milestone and
-  still needs the live evidence resolver plus Provider/Source/Projection/Output
-  composition and conformance before an authorized run.
+  the configuration-driven inbound Runtime shape. It still needs real Endpoint
+  evidence resolution/conformance and the live Source/Projection/Output
+  composition required by each separately authorized proactive stage.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
 - Real public-source/group-projection providers and proactive rollout evidence
@@ -142,8 +148,16 @@ Last sync: unix:1786717871
   authorized static export: deterministic intake/windowing, 600 Terra Silver
   labels, 464 compiled rows, group-isolated Student evaluation, 137,026 local
   predictions and a private no-send Demo. It remains paused/partial before
-  current Dududa traffic, production Router binding, live sources, container
-  change or send; `live_execution_authorized=false` remains authoritative.
+  current Dududa traffic, real Endpoint/deployment binding, live sources,
+  container change or send; `live_execution_authorized=false` remains
+  authoritative.
+- The current S23 branch also closes the repository-side inbound production
+  vertical slice: one to three configured model tiers are assembled through
+  AstrBot Provider Adapters, the existing Static Router and DirectChat Runtime;
+  answer profiles are feature-flagged, rule-only Perception avoids a second
+  model call, and disabled/unresolved configuration falls back to legacy. This
+  is focused Fake-Provider Contract evidence, not real Endpoint or deployment
+  conformance.
 - The 2026-08-14 long-horizon report returned at `75537a3`; the user accepted
   its product direction and administrator-selected group service initialization.
   S21 now implements the Control Plane subset, but Plugin Runtime and social

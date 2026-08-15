@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
+from astrbot_plugin_dududa_core.adapters.output import InMemoryDeliveryLedger
+from astrbot_plugin_dududa_core.rollout_bridge import (
+    AstrBotBridgeAction,
+    AstrBotRolloutBridge,
+    AstrBotRuntimeRequestFactory,
+)
 from dududa.rollout import (
     BoundedShadowSupervisor,
     CanaryCoordinator,
@@ -11,11 +17,6 @@ from dududa.rollout import (
     RolloutMode,
 )
 from dududa.runtime.shadow import ShadowRunner
-from astrbot_plugin_dududa_core.adapters.output import InMemoryDeliveryLedger
-from astrbot_plugin_dududa_core.rollout_bridge import (
-    AstrBotBridgeAction,
-    AstrBotRolloutBridge,
-)
 
 from tests.unit.models.helpers import NOW
 from tests.unit.rollout.helpers import control, ledger
@@ -37,6 +38,14 @@ class _PreparedRequests:
     async def prepare(self, event, *, control_revision, timeout_seconds):
         self.calls += 1
         return self.request, self.call
+
+
+class _Connector:
+    def __init__(self, result) -> None:
+        self.result = result
+
+    async def convert(self, event, *, operation):
+        return self.result
 
 
 class _Event:
@@ -88,6 +97,40 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
             output_factory=lambda event, output_ledger, guard: output(guard),
         )
         return bridge, runtime, requests, output
+
+    async def test_request_factory_advertises_response_profiles_only_when_enabled(
+        self,
+    ) -> None:
+        connector = _Connector(self.request.connector_result)
+        default_factory = AstrBotRuntimeRequestFactory(
+            connector,
+            self.call.budget,
+            "policy-v1",
+            clock=lambda: NOW,
+        )
+        enabled_factory = AstrBotRuntimeRequestFactory(
+            connector,
+            self.call.budget,
+            "policy-v1",
+            response_profiles_enabled=True,
+            clock=lambda: NOW,
+        )
+
+        default_request, _ = await default_factory.prepare(
+            object(), control_revision="rollout-v1", timeout_seconds=10
+        )
+        enabled_request, _ = await enabled_factory.prepare(
+            object(), control_revision="rollout-v1", timeout_seconds=10
+        )
+
+        self.assertEqual(
+            dict(default_request.options.feature_flags),
+            {"tools": False, "memory": False},
+        )
+        self.assertEqual(
+            dict(enabled_request.options.feature_flags),
+            {"tools": False, "memory": False, "response_profiles": True},
+        )
 
     async def test_off_and_shadow_leave_legacy_and_event_ownership_untouched(
         self,

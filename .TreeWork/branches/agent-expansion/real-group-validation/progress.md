@@ -17,11 +17,12 @@ Last sync: unix:1786706085
   私有 no-send Demo。
 - 该批静态导出不是当前 Dududa Bot 实时流量；Teacher 是 Silver 而非 Gold，
   Student 指标只表示 held-out Silver agreement，且未接生产 Router。
-- S23 整体仍为 paused/partial。实时执行仍未就绪：
-  `configs/release/s19-pilot-slo-v1.json` has
-  `s23_ready=false`; no real model Endpoint has conformance/enablement evidence;
-  no live campus/arXiv/industry Source Adapter or proactive production
-  Projection/Output composition exists.
+- 配置驱动的入站生产 Runtime 纵切已经在代码层闭合：配置声明的 Endpoint
+  经 AstrBot Provider Adapter、Static Router 和 DirectChat 链接入既有
+  Rollout Bridge；Runtime 默认关闭，Tool、Memory 和 Capability 仍关闭。
+- S23 整体仍为 `paused/partial`。当前缺少的不是入站 Builder 本身，而是
+  真实 Endpoint 的 Conformance、健康与部署绑定，以及主动来源所需的 live
+  Source/Projection/Output 组合；`s23_ready=false` 继续有效。
 - No authorization packet, private SecretRef binding or deployment window has
   been supplied. No container or QQ state was changed; no QQ send, Tool call,
   Memory write or online Bandit exploration occurred.
@@ -39,6 +40,15 @@ Last sync: unix:1786706085
 - The 600-window Teacher run finished in 1,773.74 seconds with 592 structured
   drafts, 8 request-stage reviews, 464 quality-eligible prelabels and measured
   latency P50/P95 of 11.325/22.86 seconds.
+- 完成由 `runtime_enabled`、`runtime_models_json` 和
+  `runtime_response_profiles_enabled` 驱动的生产装配；Dududa 配置不持有
+  API Key，Provider 凭据继续由 AstrBot 管理。
+- 聚焦抽样证明 Builder 可装配声明的 Endpoint；`off` 为零 Provider 调用和
+  零发送；`shadow` 只调用一次 Fake Provider，legacy 继续拥有事件且无发送；
+  未知 Provider 或关闭 Runtime 时回退 unavailable/legacy。
+- 最终 27 项 production-composition、rule-only Perception 和 rollout 聚焦契约
+  在 1.005 秒内通过；此前 6 项冒烟在 0.196 秒内通过。Builder 构造期
+  `text_chat()` 调用为 0，未再扩展全仓测试矩阵。
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
@@ -47,8 +57,9 @@ Last sync: unix:1786706085
   imbalanced and are not production calibration evidence.
 - Await the external packet enumerated in the S23 Spec/Plan before any live
   preflight or environment-specific Adapter work.
-- After the packet arrives, implement a real evidence resolver and only the
-  Provider/source/projection/Output Adapters required by the authorized stage.
+- Implement real Endpoint evidence resolution, Conformance/health and deployment
+  binding; add Source/Projection/Output Adapters only after the corresponding
+  proactive behavior is authorized.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 

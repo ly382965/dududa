@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from astrbot_plugin_dududa_core import audit, composition, config
@@ -27,12 +29,78 @@ class _Plugin(CoreLifecycleMixin):
     pass
 
 
+class _ProviderContext:
+    def __init__(self, providers: dict[str, object]) -> None:
+        self.providers = dict(providers)
+
+    def get_provider_by_id(self, provider_id: str) -> object | None:
+        return self.providers.get(provider_id)
+
+
+class _AstrBotProvider:
+    def __init__(self, provider_id: str = "astrbot-luna") -> None:
+        self.provider_id = provider_id
+        self.calls: list[dict[str, object]] = []
+
+    def meta(self) -> object:
+        return SimpleNamespace(id=self.provider_id)
+
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        return SimpleNamespace(
+            completion_text="这是来自生产 Runtime 的影子回答。",
+            usage=SimpleNamespace(input_other=12, input_cached=0, output=8),
+        )
+
+
+class At:
+    def __init__(self, qq: str) -> None:
+        self.qq = qq
+        self.name = None
+
+
 class _Event:
-    def __init__(self) -> None:
+    def __init__(self, *, group_id: str = "group-1") -> None:
         self.stop_calls = 0
+        self.send_calls = 0
+        self.message_str = "@嘟嘟哒 你好"
+        self.message_obj = SimpleNamespace(
+            message_id="message-1",
+            timestamp=1_786_723_200,
+            message=[At("bot-1")],
+            raw_message={"time": 1_786_723_200, "message": []},
+        )
+        self._group_id = group_id
 
     def stop_event(self) -> None:
         self.stop_calls += 1
+
+    def get_platform_id(self) -> str:
+        return "qq-adapter-1"
+
+    def get_platform_name(self) -> str:
+        return "aiocqhttp"
+
+    def get_self_id(self) -> str:
+        return "bot-1"
+
+    def get_sender_id(self) -> str:
+        return "user-1"
+
+    def get_group_id(self) -> str:
+        return self._group_id
+
+    def get_message_type(self) -> str:
+        return "group"
+
+    def get_messages(self) -> list[object]:
+        return list(self.message_obj.message)
+
+    def is_admin(self) -> bool:
+        return False
+
+    async def send(self, chain: object) -> None:
+        self.send_calls += 1
 
 
 class _Closeable:
@@ -69,6 +137,144 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         plugin.runtime_assembly = None
         plugin._dududa_runtime_cleanup_assemblies = []
         return plugin
+
+    def _production_plugin(
+        self,
+        provider: _AstrBotProvider | None = None,
+    ) -> _Plugin:
+        plugin = _Plugin()
+        plugin.context = _ProviderContext(
+            {provider.provider_id: provider} if provider is not None else {}
+        )
+        return plugin
+
+    def _runtime_config(
+        self,
+        *,
+        astrbot_provider_id: str = "astrbot-luna",
+        rollout_mode: str = "off",
+    ) -> dict[str, object]:
+        return {
+            "runtime_enabled": True,
+            "runtime_models_json": json.dumps(
+                [
+                    {
+                        "provider_id": "openai-luna",
+                        "astrbot_provider_id": astrbot_provider_id,
+                        "endpoint_id": "luna",
+                        "model_id": "gpt-5.6-luna",
+                        "tier": "haiku",
+                        "max_context_tokens": 128_000,
+                        "max_output_tokens": 4_096,
+                        "max_concurrency": 4,
+                        "rpm_limit": 60,
+                        "tpm_limit": 100_000,
+                        "conformance_verified": True,
+                    }
+                ]
+            ),
+            "runtime_response_profiles_enabled": True,
+            "rollout_mode": rollout_mode,
+            "rollout_revision": f"rollout-{rollout_mode}-test-v1",
+            "rollout_delivery_enabled": False,
+            "rollout_allowlisted_groups": ["group-1"],
+            "rollout_kill_switch": rollout_mode != "shadow",
+            "rollout_tools_enabled": False,
+            "rollout_memory_enabled": False,
+        }
+
+    def _initialize(
+        self,
+        plugin: _Plugin,
+        values: dict[str, object],
+        directory: str,
+    ) -> None:
+        root = Path(self.temp.name) / directory
+        with (
+            patch.object(config, "PLUGIN_DATA_DIR", root),
+            patch.object(config, "PLUGIN_CONFIG_PATH", root / "config.json"),
+            patch.object(config, "ASTRBOT_CONFIG_PATH", root / "astrbot.json"),
+            patch.object(composition, "PLUGIN_DATA_DIR", root),
+            patch.object(composition, "ROLLOUT_LEDGER_PATH", root / "rollout.sqlite3"),
+            patch.object(composition, "MCP_REGISTRY_DIR", root / "missing-registry"),
+            patch.object(composition, "MCP_WORKER_PYTHON", root / "missing-worker"),
+            patch.object(audit, "PLUGIN_DATA_DIR", root),
+        ):
+            composition.initialize_plugin(plugin, values)
+
+    async def test_builder_accepts_one_declared_luna_provider(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+
+        assembly = composition.build_production_runtime(
+            plugin,
+            self._runtime_config(),
+        )
+
+        self.assertTrue(assembly.ready)
+        self.assertEqual(provider.calls, [])
+        await assembly.close()
+
+    async def test_auto_assembled_off_runtime_never_calls_provider(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(plugin, self._runtime_config(), "production-off")
+
+        event = _Event()
+        result = await plugin.rollout_bridge.handle(event)
+
+        self.assertTrue(plugin.runtime_assembly.ready)
+        self.assertIs(result.action, AstrBotBridgeAction.LEGACY)
+        self.assertEqual(result.reason_code, "rollout_not_active")
+        self.assertEqual(provider.calls, [])
+        self.assertEqual(event.stop_calls, 0)
+        self.assertEqual(event.send_calls, 0)
+        await plugin.terminate()
+
+    async def test_auto_assembled_shadow_runs_without_claiming_or_sending(
+        self,
+    ) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(
+            plugin,
+            self._runtime_config(rollout_mode="shadow"),
+            "production-shadow",
+        )
+
+        event = _Event()
+        result = await plugin.rollout_bridge.handle(event)
+        await plugin.rollout_bridge.close()
+
+        self.assertTrue(plugin.runtime_assembly.ready)
+        self.assertIs(result.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
+        self.assertTrue(result.legacy_owner)
+        self.assertFalse(result.runtime_owner)
+        self.assertEqual(len(provider.calls), 1)
+        self.assertEqual(event.stop_calls, 0)
+        self.assertEqual(event.send_calls, 0)
+        await plugin.terminate()
+
+    async def test_missing_or_unknown_provider_falls_back_to_legacy(self) -> None:
+        cases = {
+            "runtime-disabled": {},
+            "unknown-provider": self._runtime_config(
+                astrbot_provider_id="missing-provider"
+            ),
+        }
+        for name, values in cases.items():
+            with self.subTest(name=name):
+                plugin = self._production_plugin()
+                self._initialize(plugin, values, name)
+
+                event = _Event()
+                result = await plugin.rollout_bridge.handle(event)
+
+                self.assertFalse(plugin.runtime_assembly.ready)
+                self.assertIs(result.action, AstrBotBridgeAction.LEGACY)
+                self.assertEqual(event.stop_calls, 0)
+                self.assertEqual(event.send_calls, 0)
+                await plugin.terminate()
 
     async def test_unavailable_default_never_reads_or_claims_an_event(self) -> None:
         plugin = self._plugin(RolloutMode.CANARY)

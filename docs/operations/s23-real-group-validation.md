@@ -2,8 +2,10 @@
 
 ## 1. 当前状态
 
-S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和既定 WebUI 回归已经完成本地范围，
-但当前只能执行离线 readiness 校验：
+S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和既定 WebUI 回归已经完成本地范围；
+S23 分支也已补齐配置驱动的入站生产 Runtime 纵切，但当前只用 Fake AstrBot Provider 做过聚焦
+契约验证：27 项最终抽样在 1.005 秒内通过，此前 6 项冒烟在 0.196 秒内通过。它仍只能执行
+离线 readiness 与 no-send 验证：
 
 - `configs/release/s19-pilot-slo-v1.json` 仍为 `s23_ready=false`；
 - 没有完成 conformance 的真实模型 Endpoint；
@@ -13,6 +15,17 @@ S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和�
 
 在这些门禁关闭前，不读取真实群消息、不修改运行中的 NapCat/AstrBot、不调用真实模型或来源，
 也不发送 QQ 消息。iCourse 是评课社区 MCP，不能作为资讯日报来源。
+
+当前入站 production shape 的边界如下：
+
+- `runtime_enabled` 默认 `false`；关闭、配置非法或 AstrBot Provider 无法解析时回退 legacy；
+- `runtime_models_json` 只声明实际接入的 1–3 个 Haiku/Sonnet/Opus Endpoint，API Key 仍由
+  AstrBot Provider 管理；
+- Dududa Core 继续拥有 Tier、预算、Runtime 状态和 rollout 所有权；Provider 只实现模型调用 Port；
+- 首版使用 rule-only Perception，`off` 零 Provider 调用，`shadow` 每条消息只产生一次候选回答
+  Provider 调用，且不 claim、不调用 Output；
+- `conformance_verified=true` 只是 Builder 输入，不是本 Runbook 第 5 节要求的真实 Conformance、
+  health、Release 绑定或授权证据。
 
 ## 2. 固定验证阶梯
 
@@ -99,6 +112,10 @@ Preflight 在任何真实群读取前完成：
 5. 检查系统时钟、IANA timezone、授权窗、数据可读窗和保留期限；
 6. 检查行为 kill switch 和精确回滚命令，但不执行破坏性 restore；
 7. 运行 readiness checker，只有退出码 `0` 才能进入该阶段。
+
+完成第 4 步后，才允许把真实 Endpoint 对应的 AstrBot Provider ID 写入私有部署配置并打开
+`runtime_enabled`。仓库内 Fake Provider Contract、历史 HTTP 200 最小探测或配置中的
+`conformance_verified` 字段都不能替代该步骤。
 
 Preflight 失败时修正输入并重新生成证据。不得通过删除 blocker、使用 fixture digest 或把
 `s23_ready` 直接改为 `true` 绕过。

@@ -35,7 +35,10 @@ from dududa.perception.schema import (
     decode_model_projection,
     model_projection_schema_ref,
 )
-from dududa.perception.validation import validate_model_projection
+from dududa.perception.validation import (
+    validate_model_projection,
+    validate_perception_result,
+)
 from dududa.ports.context import PortCallContext
 from dududa.ports.models import BootstrapModelTierPolicy, ModelRouter
 from dududa.ports.perception import ModelPerception, PerceptionMerger, RulePerception
@@ -298,6 +301,49 @@ class RouterBackedModelPerception:
             request_fingerprint=request_fingerprint,
             route_decision=response.route_decision,
             reported_usage=response.usage,
+        )
+
+
+class RuleOnlyRuntimePerception:
+    def __init__(
+        self,
+        rules: RulePerception,
+        merger: PerceptionMerger,
+        *,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        if not isinstance(rules, RulePerception):
+            raise ValueError("rules do not implement RulePerception")
+        if not isinstance(merger, PerceptionMerger):
+            raise ValueError("merger does not implement PerceptionMerger")
+        self._rules = rules
+        self._merger = merger
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
+
+    async def perceive_with_receipt(
+        self,
+        context: PerceptionContext,
+        *,
+        call: PortCallContext,
+    ) -> PerceptionExecutionReceipt:
+        _raise_if_stopped(call, self._clock())
+        rules = self._rules.perceive(context)
+        result = self._merger.merge(
+            context,
+            rules,
+            None,
+            model_status=PerceptionModelStatus.UNAVAILABLE,
+        )
+        validate_perception_result(context, result)
+        return PerceptionExecutionReceipt(
+            schema_version=1,
+            result=result,
+            model_call_started=False,
+            request_fingerprint=None,
+            route_decision=None,
+            reported_usage=None,
+            model_status=PerceptionModelStatus.UNAVAILABLE,
+            failure_code="model_unavailable",
         )
 
 
