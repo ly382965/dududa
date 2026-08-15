@@ -22,6 +22,9 @@ Branch: real-group-validation
   candidate image now carries the approved request overrides, but the running
   AstrBot registry still requires deployment binding, Contract/Conformance and
   refreshable health evidence.
+- Candidate configuration is merged by stable AstrBot IDs into an isolated data
+  root instead of replacing `cmd_config.json`; disabled is the default, while
+  Shadow rendering still cannot enable delivery or select a group.
 - The current Student is an exploration and Demo asset, not a production
   classifier. High accuracy for `need_tools` and `answer_profile` mostly tracks
   majority classes; `semantic_complexity` held-out Silver agreement is 57.0%.

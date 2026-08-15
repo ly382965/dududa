@@ -4,6 +4,16 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `uv run --locked python -m unittest tests.test_render_astrbot_candidate -v`
+- Result: partial; 2 focused tests passed in 0.144 seconds.
+- Evidence: disabled mode merges Source/Provider additions by ID without
+  replacing unrelated AstrBot configuration; explicit Shadow rendering reads
+  private values outside Git, does not print the Key, and keeps delivery off,
+  kill switch on and the group allowlist empty.
+- Evidence boundary: the test uses an isolated temporary data root. It does not
+  modify the running AstrBot/NapCat instance or prove live Provider health.
+- Recorded: 2026-08-15
+
 - Command: `uv run python -m unittest -q tests.contracts.test_production_composition.ProductionCompositionContractTests.test_builder_accepts_private_provider_evidence_file tests.contracts.test_production_composition.ProductionCompositionContractTests.test_builder_rejects_mismatched_private_provider_evidence tests.contracts.test_production_composition.ProductionCompositionContractTests.test_shadow_uses_endpoint_fixed_reasoning_after_healthy_evidence tests.contracts.test_production_composition.ProductionCompositionContractTests.test_shadow_stops_calling_provider_after_health_ttl`
 - Result: partial; 4 focused tests passed in 0.245 seconds.
 - Evidence: repository-external Evidence matching assembles the Builder;

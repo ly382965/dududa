@@ -51,7 +51,20 @@ Git。
 
 ## 最短使用顺序
 
-1. 把 Source 和三个 Provider 追加到私有 AstrBot 配置，保留 `enable=false`。
+仓库提供 `ops/cli/render_astrbot_candidate.py`，用于把样板按 ID 合并进一个隔离的 AstrBot
+数据目录，避免手工覆盖现有 Provider。先以关闭状态生成候选配置：
+
+```bash
+uv run --locked python ops/cli/render_astrbot_candidate.py \
+  --template configs/astrbot/luna-terra-sol.candidate.example.json \
+  --data-root /path/to/isolated-astrbot-data
+```
+
+脚本默认保持 Source、三个 Provider 和 Dududa Runtime 关闭。只有在仓库外准备好 Base URL、Key
+与真实 Evidence 文件后，才可显式选择 `--mode shadow`；脚本不会把 Key 打印到标准输出，且仍会
+保持投递关闭、kill switch 开启、群白名单为空。不要对正在运行的 AstrBot 数据目录直接执行。
+
+1. 用上述脚本把 Source 和三个 Provider 合并到隔离的私有 AstrBot 配置，保留关闭状态。
 2. 在私有环境中设置 Base URL 和 `DUDUDA_GPT56_API_KEY`，不要改仓库样板。
 3. 在实际 AstrBot 路径验证 Provider ID、模型绑定、参数透传、输出上限、residency、retention、
    日志、deadline 和 cancellation。

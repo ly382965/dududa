@@ -71,6 +71,9 @@ Last sync: unix:1786706085
   与 `reasoning_effort=high`，且未泄漏未批准的插件参数。无凭据三档样板将
   Luna/Terra/Sol 映射为 Haiku/Sonnet/Opus，固定初值分别为 light/balanced/deep，
   Runtime、rollout、Tool、Memory 和发送全部默认关闭。
+- 新增隔离候选配置渲染器：按 ID 合并现有 AstrBot 配置，默认关闭三档 Provider
+  与 Runtime；显式 Shadow 模式从环境或私有文件读取连接信息，仍保持零投递、
+  kill switch 开启和空群白名单。2 项聚焦测试通过，未修改运行中容器。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
