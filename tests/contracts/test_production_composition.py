@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import unittest
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from astrbot_plugin_dududa_core import audit, composition, config
+from astrbot_plugin_dududa_core.adapters.model import (
+    AstrBotProviderBindingEvidence,
+)
 from astrbot_plugin_dududa_core.composition import (
     ProductionRuntimeAssembly,
     install_production_runtime,
@@ -15,6 +20,11 @@ from astrbot_plugin_dududa_core.composition import (
 )
 from astrbot_plugin_dududa_core.lifecycle import CoreLifecycleMixin
 from astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
+from dududa.domain.primitives import ComponentRevision, DigestString
+from dududa.models.contracts import (
+    EndpointHealthStatus,
+    ModelProviderDescriptor,
+)
 from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
 
 from tests.unit.rollout.helpers import control, ledger
@@ -30,11 +40,49 @@ class _Plugin(CoreLifecycleMixin):
 
 
 class _ProviderContext:
-    def __init__(self, providers: dict[str, object]) -> None:
+    def __init__(
+        self,
+        providers: dict[str, object],
+        *,
+        evidence_enabled: bool = True,
+    ) -> None:
         self.providers = dict(providers)
+        self.evidence_enabled = evidence_enabled
 
     def get_provider_by_id(self, provider_id: str) -> object | None:
         return self.providers.get(provider_id)
+
+    def resolve_dududa_model_provider_evidence(
+        self,
+        astrbot_provider_id: str,
+        descriptor: ModelProviderDescriptor,
+    ) -> AstrBotProviderBindingEvidence | None:
+        if not self.evidence_enabled:
+            return None
+        endpoint = descriptor.endpoints[0]
+        return AstrBotProviderBindingEvidence(
+            schema_version=1,
+            astrbot_provider_id=astrbot_provider_id,
+            host_version="astrbot-test",
+            conformance_revision=ComponentRevision(
+                "astrbot-provider-conformance",
+                "1.0.0",
+                "test-v1",
+                DigestString("builtin:astrbot-provider-conformance"),
+            ),
+            verified_model_id=endpoint.model_id,
+            verified_max_output_tokens=endpoint.capabilities.max_output_tokens,
+            verified_data_residencies=endpoint.available_data_residencies,
+            verified_retention_modes=endpoint.supported_retention_modes,
+            single_request_verified=True,
+            model_binding_verified=True,
+            output_limit_verified=True,
+            residency_verified=True,
+            retention_verified=True,
+            sanitized_logging_verified=True,
+            deadline_enforcement_verified=True,
+            cancellation_enforcement_verified=True,
+        )
 
 
 class _AstrBotProvider:
@@ -141,10 +189,13 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
     def _production_plugin(
         self,
         provider: _AstrBotProvider | None = None,
+        *,
+        evidence_enabled: bool = True,
     ) -> _Plugin:
         plugin = _Plugin()
         plugin.context = _ProviderContext(
-            {provider.provider_id: provider} if provider is not None else {}
+            {provider.provider_id: provider} if provider is not None else {},
+            evidence_enabled=evidence_enabled,
         )
         return plugin
 
@@ -164,12 +215,12 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                         "endpoint_id": "luna",
                         "model_id": "gpt-5.6-luna",
                         "tier": "haiku",
+                        "reasoning_depth": "light",
                         "max_context_tokens": 128_000,
                         "max_output_tokens": 4_096,
                         "max_concurrency": 4,
                         "rpm_limit": 60,
                         "tpm_limit": 100_000,
-                        "conformance_verified": True,
                     }
                 ]
             ),
@@ -212,6 +263,16 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertTrue(assembly.ready)
+        self.assertIsNotNone(assembly.model_operational_registry)
+        snapshot = assembly.model_operational_registry.acquire_snapshot()
+        self.assertIs(
+            snapshot.provider_health[0].status,
+            EndpointHealthStatus.UNKNOWN,
+        )
+        self.assertIs(
+            snapshot.provider_health[0].endpoints[0].status,
+            EndpointHealthStatus.UNKNOWN,
+        )
         self.assertEqual(provider.calls, [])
         await assembly.close()
 
@@ -231,7 +292,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
 
-    async def test_auto_assembled_shadow_runs_without_claiming_or_sending(
+    async def test_auto_assembled_shadow_with_unknown_health_does_not_call_or_send(
         self,
     ) -> None:
         provider = _AstrBotProvider()
@@ -250,21 +311,90 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(result.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
         self.assertTrue(result.legacy_owner)
         self.assertFalse(result.runtime_owner)
+        self.assertEqual(provider.calls, [])
+        self.assertEqual(event.stop_calls, 0)
+        self.assertEqual(event.send_calls, 0)
+        await plugin.terminate()
+
+    async def test_shadow_uses_endpoint_fixed_reasoning_after_healthy_snapshot(
+        self,
+    ) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(
+            plugin,
+            self._runtime_config(rollout_mode="shadow"),
+            "production-shadow-healthy",
+        )
+        registry = plugin.runtime_assembly.model_operational_registry
+        self.assertIsNotNone(registry)
+        initial = registry.acquire_snapshot()
+        observed_at = datetime.now(timezone.utc)
+        healthy = replace(
+            initial,
+            snapshot_id="production-healthy-test",
+            provider_health=tuple(
+                replace(
+                    health,
+                    status=EndpointHealthStatus.HEALTHY,
+                    endpoints=tuple(
+                        replace(
+                            endpoint,
+                            status=EndpointHealthStatus.HEALTHY,
+                            reason_codes=(),
+                        )
+                        for endpoint in health.endpoints
+                    ),
+                    checked_at=observed_at,
+                    reason_codes=(),
+                )
+                for health in initial.provider_health
+            ),
+            endpoint_load=tuple(
+                replace(load, checked_at=observed_at)
+                for load in initial.endpoint_load
+            ),
+            acquired_at=observed_at,
+        )
+        await registry.publish(
+            healthy,
+            call=replace(
+                self.call,
+                deadline=observed_at + timedelta(minutes=1),
+            ),
+        )
+
+        event = _Event()
+        result = await plugin.rollout_bridge.handle(event)
+        await plugin.rollout_bridge.close()
+
+        self.assertIs(result.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
         self.assertEqual(len(provider.calls), 1)
+        self.assertEqual(provider.calls[0]["reasoning_effort"], "low")
         self.assertEqual(event.stop_calls, 0)
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
 
     async def test_missing_or_unknown_provider_falls_back_to_legacy(self) -> None:
         cases = {
-            "runtime-disabled": {},
-            "unknown-provider": self._runtime_config(
-                astrbot_provider_id="missing-provider"
+            "runtime-disabled": (None, True, {}),
+            "unknown-provider": (
+                None,
+                True,
+                self._runtime_config(astrbot_provider_id="missing-provider"),
+            ),
+            "missing-evidence": (
+                _AstrBotProvider(),
+                False,
+                self._runtime_config(),
             ),
         }
-        for name, values in cases.items():
+        for name, (provider, evidence_enabled, values) in cases.items():
             with self.subTest(name=name):
-                plugin = self._production_plugin()
+                plugin = self._production_plugin(
+                    provider,
+                    evidence_enabled=evidence_enabled,
+                )
                 self._initialize(plugin, values, name)
 
                 event = _Event()

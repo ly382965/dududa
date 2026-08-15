@@ -179,6 +179,7 @@ class _RuntimeModelConfig:
     endpoint_id: str
     model_id: str
     tier: ModelTier
+    reasoning_depth: ReasoningDepth
     max_context_tokens: int
     max_output_tokens: int
     max_concurrency: int
@@ -194,6 +195,8 @@ class ProductionRuntimeAssembly:
         ready: bool,
         closeables: Iterable[object] = (),
         abort_callbacks: Iterable[Callable[[], None]] = (),
+        model_operational_registry: InMemoryModelOperationalStateRegistry
+        | None = None,
     ) -> None:
         if not isinstance(runtime, AgentRuntime):
             raise TypeError("runtime does not implement AgentRuntime")
@@ -205,8 +208,14 @@ class ProductionRuntimeAssembly:
         callbacks = tuple(abort_callbacks)
         if any(not callable(callback) for callback in callbacks):
             raise TypeError("invalid production Runtime abort callback")
+        if model_operational_registry is not None and not isinstance(
+            model_operational_registry,
+            InMemoryModelOperationalStateRegistry,
+        ):
+            raise TypeError("invalid model operational registry")
         self.runtime = runtime
         self.ready = ready
+        self.model_operational_registry = model_operational_registry
         self._closeables = list(resources)
         self._abort_callbacks = list(callbacks)
         self._abort_started = False
@@ -346,12 +355,17 @@ def _parse_runtime_models(config: dict[str, object]) -> tuple[_RuntimeModelConfi
             tier = ModelTier(tier_value)
         except ValueError as exc:
             raise ValueError(f"runtime model {index} has invalid tier") from exc
+        reasoning_value = item.get("reasoning_depth", ReasoningDepth.OFF.value)
+        try:
+            reasoning_depth = ReasoningDepth(reasoning_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"runtime model {index} has invalid reasoning_depth"
+            ) from exc
         if provider_id in provider_ids:
             raise ValueError("runtime model provider_id must be unique")
         if endpoint_id in endpoint_ids:
             raise ValueError("runtime model endpoint_id must be unique")
-        if item.get("conformance_verified") is not True:
-            raise ValueError(f"runtime model {index} is not conformance verified")
 
         max_context_tokens = _positive_integer(
             item,
@@ -378,6 +392,7 @@ def _parse_runtime_models(config: dict[str, object]) -> tuple[_RuntimeModelConfi
                 endpoint_id=endpoint_id,
                 model_id=_required_text(item, "model_id", index),
                 tier=tier,
+                reasoning_depth=reasoning_depth,
                 max_context_tokens=max_context_tokens,
                 max_output_tokens=max_output_tokens,
                 max_concurrency=_positive_integer(
@@ -425,6 +440,13 @@ def build_production_runtime(
     get_provider = getattr(provider_context, "get_provider_by_id", None)
     if not callable(get_provider):
         raise ValueError("AstrBot provider registry is unavailable")
+    resolve_evidence = getattr(
+        provider_context,
+        "resolve_dududa_model_provider_evidence",
+        None,
+    )
+    if not callable(resolve_evidence):
+        raise ValueError("AstrBot provider conformance evidence is unavailable")
 
     prompt = _direct_chat_prompt()
     adapters: list[AstrBotModelProviderAdapter] = []
@@ -459,7 +481,7 @@ def build_production_runtime(
         reasoning_profile = ReasoningProfile(
             schema_version=1,
             profile_id="provider-default",
-            depth=ReasoningDepth.OFF,
+            depth=spec.reasoning_depth,
             max_reasoning_tokens=None,
             required=False,
         )
@@ -507,31 +529,13 @@ def build_production_runtime(
             revision=_revision(f"model-provider:{spec.provider_id}"),
             endpoints=(endpoint,),
         )
+        evidence = resolve_evidence(spec.astrbot_provider_id, descriptor)
+        if not isinstance(evidence, AstrBotProviderBindingEvidence):
+            raise ValueError("AstrBot provider conformance evidence is unavailable")
         adapter = AstrBotModelProviderAdapter(
             astrbot_provider,
             descriptor,
-            AstrBotProviderBindingEvidence(
-                schema_version=1,
-                astrbot_provider_id=spec.astrbot_provider_id,
-                host_version="astrbot",
-                conformance_revision=_revision(
-                    f"astrbot-conformance:{spec.astrbot_provider_id}"
-                ),
-                verified_model_id=spec.model_id,
-                verified_max_output_tokens=spec.max_output_tokens,
-                verified_data_residencies=frozenset({"global"}),
-                verified_retention_modes=frozenset(
-                    {ModelRetentionMode.NO_RETENTION}
-                ),
-                single_request_verified=True,
-                model_binding_verified=True,
-                output_limit_verified=True,
-                residency_verified=True,
-                retention_verified=True,
-                sanitized_logging_verified=True,
-                deadline_enforcement_verified=True,
-                cancellation_enforcement_verified=True,
-            ),
+            evidence,
             schema_registry=JsonSchemaDocumentRegistry({}),
             prompt_artifacts=(prompt,),
         )
@@ -541,19 +545,19 @@ def build_production_runtime(
             ModelProviderHealth(
                 schema_version=1,
                 provider_id=spec.provider_id,
-                status=EndpointHealthStatus.HEALTHY,
+                status=EndpointHealthStatus.UNKNOWN,
                 endpoints=(
                     ModelEndpointHealth(
                         schema_version=1,
                         endpoint_id=spec.endpoint_id,
                         endpoint_descriptor_digest=endpoint.descriptor_digest,
-                        status=EndpointHealthStatus.HEALTHY,
-                        reason_codes=(),
+                        status=EndpointHealthStatus.UNKNOWN,
+                        reason_codes=("preflight_health_not_observed",),
                     ),
                 ),
                 snapshot_revision="production-v1",
                 checked_at=now,
-                reason_codes=(),
+                reason_codes=("preflight_health_not_observed",),
             )
         )
         endpoint_load.append(
@@ -784,6 +788,7 @@ def build_production_runtime(
         router,
         DirectChatModelCallConfig(
             schema_version=1,
+            # S08's RoutePolicy binds one profile id, so depth is fixed per Endpoint.
             reasoning_profiles={
                 depth: "provider-default" for depth in TaskReasoningDepth
             },
@@ -929,7 +934,12 @@ def build_production_runtime(
         persona_registry=persona_registry,
         capability_runtime=None,
     )
-    return ProductionRuntimeAssembly(runtime, ready=True, closeables=adapters)
+    return ProductionRuntimeAssembly(
+        runtime,
+        ready=True,
+        closeables=adapters,
+        model_operational_registry=operational,
+    )
 
 
 def initialize_plugin(

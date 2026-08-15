@@ -17,8 +17,11 @@ from dududa.models.contracts import (
     ModelFailureKind,
     ModelRetentionMode,
     ModelRole,
+    ReasoningDepth,
+    ReasoningProfile,
     RouteAttemptKind,
 )
+from dududa.models.digests import model_endpoint_descriptor_digest
 from dududa.models.errors import ModelProviderError
 from astrbot_plugin_dududa_core.adapters.model import (
     AstrBotModelProviderAdapter,
@@ -302,6 +305,54 @@ class AstrBotModelProviderContractTests(
         self.assertEqual(first.usage.input_tokens, 12)  # type: ignore[union-attr]
         self.assertEqual(first.usage.cached_input_tokens, 2)  # type: ignore[union-attr]
         self.assertEqual(first.usage.generated_tokens, 5)  # type: ignore[union-attr]
+
+    async def test_declared_reasoning_profiles_reach_public_text_chat(self) -> None:
+        raw = _AstrBotProvider()
+        descriptor = compatible_descriptor()
+        profiles = tuple(
+            ReasoningProfile(
+                schema_version=1,
+                profile_id=f"provider-{depth.value}",
+                depth=depth,
+                max_reasoning_tokens=None,
+                required=False,
+            )
+            for depth in (
+                ReasoningDepth.LIGHT,
+                ReasoningDepth.BALANCED,
+                ReasoningDepth.DEEP,
+                ReasoningDepth.MAXIMUM,
+            )
+        )
+        endpoint = replace(
+            descriptor.endpoints[0],
+            descriptor_digest=DigestString("pending"),
+            reasoning_profiles=profiles,
+            default_reasoning_profile_id=profiles[0].profile_id,
+        )
+        endpoint = replace(
+            endpoint,
+            descriptor_digest=model_endpoint_descriptor_digest(endpoint),
+        )
+        descriptor = replace(descriptor, endpoints=(endpoint,))
+        adapter, _ = _adapter(raw, descriptor=descriptor)
+        request = _request(descriptor)
+
+        for index, (profile, expected_effort) in enumerate(
+            zip(profiles, ("low", "medium", "high", "xhigh"), strict=True)
+        ):
+            await adapter.generate(
+                replace(
+                    request,
+                    request_id=f"reasoning-request-{index}",
+                    idempotency_key=f"reasoning-key-{index}",
+                    reasoning_profile=profile,
+                ),
+                call=provider_call(),
+            )
+            self.assertEqual(raw.calls[-1]["reasoning_effort"], expected_effort)
+
+        self.assertEqual(len(raw.calls), 4)
 
     async def test_unknown_outcome_creates_idempotency_tombstone(self) -> None:
         raw = _StubbornThenSuccessProvider()

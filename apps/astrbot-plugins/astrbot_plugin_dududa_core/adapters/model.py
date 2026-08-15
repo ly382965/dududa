@@ -39,6 +39,14 @@ from .model_codec import JsonSchemaDocumentRegistry
 
 _ATTRIBUTE_READ_FAILED = object()
 
+_REASONING_EFFORT_BY_DEPTH = {
+    ReasoningDepth.OFF: None,
+    ReasoningDepth.LIGHT: "low",
+    ReasoningDepth.BALANCED: "medium",
+    ReasoningDepth.DEEP: "high",
+    ReasoningDepth.MAXIMUM: "xhigh",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class _IdempotencyFailure:
@@ -377,12 +385,20 @@ class AstrBotModelProviderAdapter:
                 "astrbot_text_chat_missing",
             )
         try:
+            provider_kwargs: dict[str, object] = {
+                "prompt": prompt,
+                "system_prompt": artifact.system_prompt,
+                "model": request.model_id,
+                "max_tokens": request.max_output_tokens,
+                "request_max_retries": 1,
+            }
+            reasoning_effort = _REASONING_EFFORT_BY_DEPTH[
+                request.reasoning_profile.depth
+            ]
+            if reasoning_effort is not None:
+                provider_kwargs["reasoning_effort"] = reasoning_effort
             provider_awaitable = text_chat(
-                prompt=prompt,
-                system_prompt=artifact.system_prompt,
-                model=request.model_id,
-                max_tokens=request.max_output_tokens,
-                request_max_retries=1,
+                **provider_kwargs,
             )
             task = asyncio.create_task(provider_awaitable)
         except asyncio.CancelledError:
@@ -647,13 +663,10 @@ def _validate_descriptor(
         or capabilities.supports_seed
     ):
         raise validation_error("astrbot_adapter_capability_overclaim")
-    if len(endpoint.reasoning_profiles) != 1:
-        raise validation_error("astrbot_adapter_reasoning_overclaim")
-    profile = endpoint.reasoning_profiles[0]
-    if (
-        profile.depth is not ReasoningDepth.OFF
+    if any(
+        profile.depth not in _REASONING_EFFORT_BY_DEPTH
         or profile.max_reasoning_tokens is not None
-        or profile.required
+        for profile in endpoint.reasoning_profiles
     ):
         raise validation_error("astrbot_adapter_reasoning_overclaim")
 
@@ -675,7 +688,7 @@ def _validate_request(
             ModelFailureKind.INVALID_REQUEST,
             "astrbot_request_binding_mismatch",
         )
-    if request.reasoning_profile != endpoint.reasoning_profiles[0]:
+    if request.reasoning_profile not in endpoint.reasoning_profiles:
         raise _failure(
             ModelFailureKind.CAPABILITY_MISMATCH,
             "astrbot_reasoning_profile_mismatch",
