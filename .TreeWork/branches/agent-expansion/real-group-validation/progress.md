@@ -22,8 +22,9 @@ Last sync: unix:1786706085
   Rollout Bridge；Runtime 默认关闭，Tool、Memory 和 Capability 仍关闭。
 - Luna、Terra、Sol 已分别通过 Responses API 和 AstrBot 所用 Chat
   Completions 的最小真实请求抽样；两种协议均返回 HTTP 200、匹配模型 ID
-  和 usage。当前 AstrBot 尚未注册三个模型，且请求级输出上限和动态思考
-  深度不能从 Dududa 透传，因此这些结果不构成 AstrBot Conformance 或健康证据。
+  和 usage。固定 AstrBot 4.26.2 候选镜像现已显式透传请求级 `max_tokens`
+  和 Endpoint 配置声明的 `reasoning_effort`；当前运行中的 AstrBot 尚未切换或
+  注册三个模型，因此这些结果仍不构成 AstrBot Conformance 或健康证据。
 - S23 整体仍为 `paused/partial`。当前缺少的不是入站 Builder 本身，而是
   真实 Endpoint 的 Conformance、健康与部署绑定，以及主动来源所需的 live
   Source/Projection/Output 组合；`s23_ready=false` 继续有效。
@@ -50,9 +51,13 @@ Last sync: unix:1786706085
 - 聚焦抽样证明 Builder 可装配声明的 Endpoint；`off` 为零 Provider 调用和
   零发送；`shadow` 只调用一次 Fake Provider，legacy 继续拥有事件且无发送；
   未知 Provider 或关闭 Runtime 时回退 unavailable/legacy。
-- 最终 27 项 production-composition、rule-only Perception 和 rollout 聚焦契约
-  在 1.005 秒内通过；此前 6 项冒烟在 0.196 秒内通过。Builder 构造期
-  `text_chat()` 调用为 0，未再扩展全仓测试矩阵。
+- Runtime 后续修复又完成 34 项 AstrBot Adapter/production-composition 聚焦测试，
+  证明请求级输出上限、固定 Endpoint 思考深度、真实 Evidence resolver 和初始
+  `UNKNOWN` 健康契约；此前 27 项 Runtime/rollout 抽样仍有效。未扩展全仓测试矩阵。
+- 已构建并隔离抽样固定 AstrBot 4.26.2 候选镜像：payload 保留 `max_tokens=321`
+  与 `reasoning_effort=high`，且未泄漏未批准的插件参数。无凭据三档样板将
+  Luna/Terra/Sol 映射为 Haiku/Sonnet/Opus，固定初值分别为 light/balanced/deep，
+  Runtime、rollout、Tool、Memory 和发送全部默认关闭。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
@@ -68,12 +73,12 @@ Last sync: unix:1786706085
   imbalanced and are not production calibration evidence.
 - Await the external packet enumerated in the S23 Spec/Plan before any live
   preflight or environment-specific Adapter work.
-- Implement real Endpoint evidence resolution, Conformance/health and deployment
-  binding; add Source/Projection/Output Adapters only after the corresponding
-  proactive behavior is authorized.
-- Register Luna/Terra/Sol as AstrBot Providers, bind their actual Provider IDs,
-  fix per-request output-limit/reasoning passthrough, and replace hard-coded
-  conformance/health assumptions with refreshable observations before Shadow.
+- Complete real Endpoint Conformance/health and deployment binding; add
+  Source/Projection/Output Adapters only after the corresponding proactive
+  behavior is authorized.
+- Register Luna/Terra/Sol in the running AstrBot, bind their actual Provider
+  IDs, resolve real Conformance Evidence and publish refreshable health before
+  Shadow. 当前思考深度是每个 Endpoint 的固定配置，不是同 Endpoint 动态切换。
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 

@@ -4,6 +4,16 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `uv run python -m unittest tests.contracts.test_astrbot_model_provider tests.contracts.test_production_composition`
+- Result: partial; 34 focused tests passed in 0.719 seconds.
+- Evidence: Adapter passes request-level `max_tokens`; fixed Endpoint reasoning
+  maps OFF/LIGHT/BALANCED/DEEP/MAXIMUM to omitted/low/medium/high/xhigh; Builder
+  requires resolved Provider binding evidence; initial health is `UNKNOWN`.
+- Candidate-image sample: fixed AstrBot 4.26.2 patch applied to the pinned base;
+  an isolated `--network none` payload sample retained `max_tokens=321` and
+  `reasoning_effort=high` while dropping an unapproved plugin kwarg. The running
+  container was not replaced.
+
 - Command: `uv run python -m unittest tests.contracts.test_production_composition tests.unit.runtime.test_perception tests.contracts.test_astrbot_rollout`
 - Result: partial
 - Evidence: 27 unique focused tests passed in 1.005 seconds. An earlier six-test
@@ -26,10 +36,10 @@ Branch: real-group-validation
   Completions returned HTTP 200 for both ordinary and `reasoning_effort=low`
   requests on all three models, with exact model IDs and usage at roughly
   2.2--2.3 seconds.
-- Evidence boundary: these probes prove one-shot protocol reachability only.
-  The models are not registered in the running AstrBot, request-level output
-  limits/reasoning are not passed through that path, and no refreshable health
-  or AstrBot Provider Conformance evidence exists.
+- Evidence boundary: the probes prove one-shot protocol reachability only. The
+  candidate path now carries output/reasoning parameters, but the models are not
+  registered in the running AstrBot and no refreshable health or real AstrBot
+  Provider Conformance evidence exists. Only `low` was remotely sampled.
 - Coverage gap: no human Gold, live Dududa traffic, real Endpoint Conformance or
   health, container deployment and Release binding, live campus/arXiv/industry
   Source, production Projection/Output composition, QQ send, online Bandit or

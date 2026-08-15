@@ -3,8 +3,8 @@
 ## 1. 当前状态
 
 S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和既定 WebUI 回归已经完成本地范围；
-S23 分支也已补齐配置驱动的入站生产 Runtime 纵切，但当前只用 Fake AstrBot Provider 做过聚焦
-契约验证：27 项最终抽样在 1.005 秒内通过，此前 6 项冒烟在 0.196 秒内通过。它仍只能执行
+S23 分支也已补齐配置驱动的入站生产 Runtime 纵切和固定 AstrBot 4.26.2 候选镜像；
+Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过。它仍只能执行
 离线 readiness 与 no-send 验证：
 
 - `configs/release/s19-pilot-slo-v1.json` 仍为 `s23_ready=false`；
@@ -45,14 +45,16 @@ Endpoint Conformance、持续健康、质量、成本或生产可用性证据。
 
 当前运行中的 AstrBot 只注册了 `deepseek/deepseek-v4-pro`、
 `deepseek_1/deepseek-v4-flash` 和 `openai/gpt-5.5`，三个 GPT-5.6 Endpoint 尚未成为 AstrBot
-Provider。现有 AstrBot OpenAI Provider 虽接受额外参数，但组装 Chat Completions payload 时
-没有透传它们，因此 Dududa 请求级输出上限和动态思考深度目前不会生效；Provider
-`custom_extra_body` 只能提供每个 Provider 的静态初值。Dududa Adapter 也仍只声明
-`ReasoningDepth.OFF`，当前硬编码的 Conformance/健康初值不能作为 Preflight 证据。
+Provider。固定版本候选镜像已用显式 allowlist 透传 `max_tokens` 和 `reasoning_effort`；
+隔离 payload 抽样保留了 `max_tokens=321`、`reasoning_effort=high`，且未放行无关插件参数。
+Runtime 将 OFF/LIGHT/BALANCED/DEEP/MAXIMUM 映射为省略/low/medium/high/xhigh，但远程请求只
+抽样验证过 `low`。思考深度当前由每个 Endpoint 固定配置，不是同一 Endpoint 请求级动态切换。
+Builder 必须解析真实 Conformance Evidence，初始健康为 `UNKNOWN`。
 
-进入真实 Shadow 前的最短接入顺序固定为：注册三个 AstrBot Provider 并取得实际 Provider ID，
-修复或升级请求参数透传，完成 AstrBot Provider Contract/Conformance，接入可刷新健康观测，
-再配置 Luna -> Haiku、Terra -> Sonnet、Sol -> Opus。全过程保持 `runtime_enabled=false`、
+仓库已提供无凭据、默认关闭的候选样板：Luna -> Haiku/light、Terra -> Sonnet/balanced、
+Sol -> Opus/deep。进入真实 Shadow 前的最短接入顺序固定为：在部署窗口切换候选镜像，注册
+三个 AstrBot Provider 并取得实际 Provider ID，完成 AstrBot Provider Contract/Conformance，
+接入可刷新健康观测。全过程保持 `runtime_enabled=false`、
 `rollout_mode=off`，直到 Preflight 证据闭合。
 
 ### 1.2 4--5 小时离线抽样预算

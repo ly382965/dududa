@@ -19,8 +19,9 @@
   真实 Endpoint Conformance、部署或上线。
 - 2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 完成 Responses 与
   AstrBot 所用 Chat Completions 的最小真实请求抽样，均返回 HTTP 200、模型 ID 匹配和 usage；
-  这只证明协议可达。三个模型尚未注册到当前 AstrBot，现有 Provider 路径也不能透传请求级
-  输出上限和动态思考深度，因此 S23 仍无真实 AstrBot Conformance 或持续健康证据。
+  这只证明协议可达。固定 AstrBot 4.26.2 候选镜像现已透传请求级输出上限和配置声明的固定
+  Endpoint 思考深度，且 34 项 Adapter/Composition 聚焦测试通过；当前 AstrBot 尚未切换或
+  注册三模型，因此 S23 仍无真实 AstrBot Conformance 或持续健康证据。
 - 已有 600 条 Terra Silver、137,026 条 Student 预测和私有 Demo 不重跑。若进行新一轮多模型
   校准，采用五小时硬时间盒：20--24 条先测吞吐，Luna 主样本默认 250/最多 350，Terra 复核
   最多 50，Sol 抽查最多 15，T+3.5 小时停止新请求，并按群隔离 train/dev/test。
@@ -100,7 +101,7 @@
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **暂停、部分完成；离线 S23A–S23E 与入站 production shape 已完成** | 1,402 个文件、155,567 条唯一群消息、137,026 个窗口；600 条 Terra 抽样得到 592 草稿/8 Review，464 条编译 Silver；群隔离 Student 完成全量预测和 localhost no-send Demo；配置驱动 Builder 已用 Fake Provider 聚焦验证 `off/shadow/fallback`；Luna/Terra/Sol 两种协议最小探测均成功 | 优先补 150–300 条类别均衡人工 Gold；在 AstrBot 注册三模型、修复动态参数透传并完成 Provider Contract/健康观测；真实部署、实时单群 Shadow/Canary、来源和发送仍保持关闭 |
+| S23 Real Group Validation | **暂停、部分完成；离线 Demo 与候选模型接入工程已完成** | 历史语料 Demo、配置驱动 Builder、34 项 Adapter/Composition 聚焦测试、固定 AstrBot 4.26.2 候选镜像、默认关闭的三档样板和 Luna/Terra/Sol 两种协议最小探测均已完成 | 优先补 150–300 条类别均衡人工 Gold；切换候选镜像并在 AstrBot 注册三模型，完成真实 Provider Contract/Conformance/健康；真实部署、实时单群 Shadow/Canary、来源和发送仍保持关闭 |
 
 ## 产品模块完成度
 
@@ -111,7 +112,7 @@
 | Connector / Output / Attachment | 部分完成 | AstrBot Connector/Output、持久 rollout 去重、Bridge 和发送 tombstone 已完成；真实附件读取和第二平台未完成 |
 | Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
-| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 最小 Composer/Renderer 与 S23 配置驱动 AstrBot Provider→Static Router→DirectChat 纵切已实现；Perception 首版为 rule-only，避免每条 Shadow 消息发生第二次模型调用；Luna/Terra/Sol 直连协议抽样成功，但尚未注册到 AstrBot，动态思考深度/输出上限未透传；真实 Endpoint Conformance、人工质量、完整 OC 资产和多轮能力仍待 Eval |
+| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 最小 Composer/Renderer 与 S23 配置驱动 AstrBot Provider→Static Router→DirectChat 纵切已实现；候选镜像已透传请求级输出上限和固定 Endpoint 思考深度，Luna/Terra/Sol 无凭据样板默认关闭；运行中的 AstrBot 尚未切换/注册三模型，真实 Endpoint Conformance、健康、人工质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker和 iCourse facade；S22 已删除专用直连 Client，缺失时 fail closed；S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据 | 生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
@@ -157,8 +158,8 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 | Chat Completions | 三模型普通请求和 `reasoning_effort=low` 均 HTTP 200，模型 ID 匹配且有 usage，约 2.2--2.3 秒 |
 | 证据边界 | 只证明单次协议可达；不等于 AstrBot Provider Contract、Conformance、持续健康、质量或上线 |
 | 当前 AstrBot | 只注册 DeepSeek V4 Pro/Flash 与 GPT-5.5；Luna/Terra/Sol 尚未注册 |
-| 参数缺口 | 当前 AstrBot payload 组装不透传 Dududa 请求级输出上限或动态思考深度；静态 Provider 初值不能替代动态路由参数 |
-| 下一步 | 注册三模型并确认 Provider ID -> 修复参数透传 -> 完成 Contract/Conformance 和健康刷新 -> 配置 Luna/Haiku、Terra/Sonnet、Sol/Opus -> 单群 Shadow |
+| 参数接入 | 候选镜像已透传请求级输出上限和配置声明的固定 Endpoint 思考深度；当前不是同 Endpoint 按请求动态切换，且运行中的 AstrBot 尚未切换 |
+| 下一步 | 切换候选镜像并注册三模型/确认 Provider ID -> 解析真实 Conformance Evidence -> 发布可刷新健康 -> 单群 Shadow |
 | 数据预算 | 不重跑现有语料 Demo；新一轮最多五小时，Luna 120--350、Terra <= 50、Sol <= 15，T+3.5 小时停止新请求 |
 
 完整运行边界与时间表见 [S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md)。
