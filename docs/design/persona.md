@@ -8,7 +8,11 @@
 - 目标代码：`packages/dududa-agent/src/dududa/persona/`。
 - 当前资产：`configs/personas/dududa.json`、`dududa.md` 及幂等 Persona seed 流程。
 
-Persona 定义“嘟嘟哒如何表达”，不定义“事实是什么、用户能做什么、是否调用工具、记忆能否读取”。确定性代码负责流程、权限、隐私和事实约束；模型负责受限的语言表达；Persona 不能成为绕过安全策略的第二套控制面。
+Persona 定义“嘟嘟哒如何表达”，不定义“事实是什么、用户能做什么、是否调用工具、记忆能否读取”。确定性代码负责流程、权限、隐私和事实约束；模型负责受限的语言表达；Persona 不是控制权威，不能绕过安全策略。
+
+Bot 管理员可在群入驻时通过 `GroupServiceProfile` 选择初始 Persona 引用。该引用只确定身份与
+表达基线；Group Context、用户偏好、模型和 Bandit 不能替换 Persona identity，也不能借风格
+适应改变服务、Capability、Memory、主动行为或发送权限。
 
 ## 2. 职责边界
 

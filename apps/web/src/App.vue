@@ -14,6 +14,7 @@ import { useWorkspace } from './composables/useWorkspace'
 import { groupMemberDirectoryKey, useQqDirectoryStore } from './stores/qq-directory'
 import type { MobilePanel } from './types/workspace'
 import ContactsView from './views/ContactsView.vue'
+import ControlPlaneView from './views/ControlPlaneView.vue'
 import NotificationsView from './views/NotificationsView.vue'
 import SettingsView from './views/SettingsView.vue'
 
@@ -27,8 +28,8 @@ const directoryStore = useQqDirectoryStore()
 const actingAccountId = ref('')
 const managedGroupId = ref('')
 const managedGroupAccountId = ref('')
-const activeRoute = computed<'chat' | 'contacts' | 'notifications' | 'settings'>(() =>
-  route.meta.section === 'contacts' || route.meta.section === 'notifications' || route.meta.section === 'settings'
+const activeRoute = computed<'chat' | 'contacts' | 'notifications' | 'control-plane' | 'settings'>(() =>
+  route.meta.section === 'contacts' || route.meta.section === 'notifications' || route.meta.section === 'control-plane' || route.meta.section === 'settings'
     ? route.meta.section
     : 'chat',
 )
@@ -94,7 +95,7 @@ function resolveActingAccount(): void {
     ''
 }
 
-function navigate(target: 'chat' | 'contacts' | 'notifications' | 'settings'): void {
+function navigate(target: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'settings'): void {
   if (target !== 'chat') resolveActingAccount()
   if (target === 'chat') workspace.mobilePanel.value = 'inbox'
   void router.push({ name: target })
@@ -395,6 +396,11 @@ watch(
       />
       <NotificationsView
         v-else-if="activeRoute === 'notifications'"
+        :account="managementAccount"
+        @notify="workspace.notify"
+      />
+      <ControlPlaneView
+        v-else-if="activeRoute === 'control-plane'"
         :account="managementAccount"
         @notify="workspace.notify"
       />

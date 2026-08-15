@@ -1,7 +1,10 @@
 # Dududa Old-To-New Migration Map
 
-状态：S01–S16 的既定本地/离线范围已完成。S17 三批物理路径迁移均已提交：插件/config/MCP
-service 为 `8597d70`，deploy/ops 为 `92fd28c`，第三方 v1 资产为 `6b4ee09`；`43fe543`
+状态：S01–S20 与 S22 的既定本地/离线范围已完成，revision 3 唯一剩余分支是暂停且部分完成的
+S23；它仍缺环境集成工程和外部输入。下一次 revision 将先加入 S21 Control Plane，但不改变
+本映射的路径结论。本映射涉及的 S17 三批物理路径迁移均已提交：
+插件/config/MCP service 为 `8597d70`，deploy/ops 为
+`92fd28c`，第三方 v1 资产为 `6b4ee09`；`43fe543`
 保持旧 lock marker 可兼容读取。S17 已完成、验证并合入控制分支。现有插件 ID、容器目标路径、
 包名、MCP Server ID 以及根 `manage.sh`/`compose.yml` 操作入口保持不变。S22 已在迁移消费者和
 冻结 S19 恢复证据后删除十个路径别名；canonical 路径成为唯一当前入口。

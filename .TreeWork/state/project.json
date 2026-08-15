@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "bandit-offline",
+  "current_branch": "control-plane",
   "artifact_layout_version": 2,
-  "last_event_seq": 103,
-  "tree_revision": 3,
+  "last_event_seq": 125,
+  "tree_revision": 4,
   "tree_editing": null,
-  "tree_hash": "fnv1a64:fd5453733f505538",
-  "last_sync": "unix:1786381598"
+  "tree_hash": "fnv1a64:96e27a63e47f9df1",
+  "last_sync": "unix:1786717871"
 }

@@ -2,8 +2,9 @@
 
 ## 1. 先说结论
 
-S17–S20 与 S22 已完成既定离线范围。现在最有价值的是准备
-产品策略与公开证据，而不是提供 API Key、QQ 登录态或整库群聊原文。
+S17–S22 与 S21 Bot Control Plane 已完成既定离线范围。下一步是准备 S23 外部输入。
+本机当前嘟嘟哒账号记录已获准用于私有开发回放；旧账号排除，精确账号映射只在运行时提供。
+用户另有数百群长期记录，只在 S23 隔离测试环境中提供。
 
 建议立即准备的顺序：
 
@@ -21,6 +22,8 @@ S17–S20 与 S22 已完成既定离线范围。现在最有价值的是准备
 | S17–S19 | 已完成 | Iris 对当前固定 commit 的明确许可，或“保持阻断/升级/替换”的决定 | 只影响 Manifest v2，不影响已完成的 v1 路径 |
 | S22 Cleanup | 已完成 | 无 | 已使用消费者扫描、迁移 receipt 和上一 Release 恢复证据 |
 | S20 离线 Bandit | 已完成、不需要 | 奖励维度和安全 floor 的产品定义 | 只影响以后 Shadow/在线阶段；当前未训练、未在线探索 |
+| S21 Control Plane | 已完成、不需要外部数据 | 初始 `GroupServiceProfile` 产品定义、管理员角色映射 | Fake join/service/Catalog 已完成 S21A-S21C 与审计 |
+| S23 历史 Shadow | 现在需要准备 | 外部数百群长期记录的只读挂载、时间范围和可标注样本 | 先做全量兼容/分布回放，再做小样本质量评测；不自动写 Memory 或训练 Bandit |
 
 源码 tree hash、patch hash、依赖 lock 和 SBOM 应由工程工具生成，不需要人工填写。
 
@@ -104,10 +107,19 @@ Tool Schema/allowlist、SecretRef、timeout、rate limit、health 和许可证�
 `SAFE_USER_PROFILE` 字段、`/forget` 交互、导出格式/加密、embedding residency，以及 Iris
 “保持阻断、升级或替换”的选择。现在不要提供生产 Memory 文件。
 
-## 4. 群聊记录准备方式
+## 4. 群聊记录分层
 
-约 100 个群的原始聊天记录现在不要放进 Git、文档或聊天窗口。先完成数据治理清单，再提供
-一个小型私有 Pilot：首批 30-50 个脱敏 conversation window；确认流程后扩至 200-500 个。
+### 4.1 本机开发语料
+
+仅使用当前嘟嘟哒账号，精确账号 ID 和日志标签通过本机参数或环境变量提供。正文只在本地进程
+内进入私有 replay，报告只含聚合计数和 reason code。旧账号日志只检查账号标签后立即排除，
+正文不进入回放。该语料可以持续用于开发回归，但没有人工标签时不能产生准确率或体验结论。
+
+### 4.2 外部长期语料
+
+用户持有数百个群的长期聊天记录；不要放进 Git、文档或聊天窗口。S21 已完成，不再等待该数据。
+S23 环境准备完成后，以只读方式挂载完整语料做 no-send Shadow；人工质量 Pilot 首批选取
+30-50 个 conversation window，流程稳定后扩至 200-500 个。
 
 数据治理清单必须包含：
 
@@ -141,9 +153,9 @@ Provider 故障后的 fallback 不能冒充同一次 Bandit 抽样，也不能�
 
 ## 6. S23 前的单独授权
 
-S23 只能在 S17、S18、S19、S22 和既定 Web 回归完成后进入。每类行为分别授权：
-离线 readiness 已完成，实际填写和执行顺序见
-[S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md)。
+S23 的历史语料离线阶段在 S17-S22、S21、既定 Web 回归和本地审计完成后进入；本轮获授权
+静态快照仅用于本机解析、Silver 标注、Student 评测和 no-send Demo。该阶段完成后，再按
+[S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md) 为每类实时行为分别授权：
 
 | 行为 | 最小授权内容 |
 | --- | --- |
@@ -182,7 +194,7 @@ data_retention_until:
 
 - Provider API Key、QQ/NapCat/OneBot Token、Cookie 或登录二维码；
 - 真实群号、QQ 号和成员映射；
-- 原始 100 群聊天库、生产数据库、Memory 文件或备份；
+- 外部数百群长期聊天库、生产数据库、Memory 文件或备份（直到 S23 测试环境）；
 - 运行中容器的 Secret、完整 `.env` 或可写生产挂载；
 - 尚未签发对应阶段 Grant 时的真实发送授权。
 

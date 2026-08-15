@@ -1,10 +1,12 @@
 # Dududa 2.0 实施计划
 
-状态：S01–S20 的既定本地/离线工程步骤已完成；S22 已完成基于消费者和回滚证据的兼容清理，
-当前只剩 S23 真实群外部门禁。旧 AstrBot Handler 在 `off/shadow`
+状态：S01–S20 的既定本地/离线工程步骤已完成；S22 已完成基于消费者和回滚证据的兼容清理。
+S21A Foundation、S21B Group Onboarding、S21C Governed Operations 与 S21 Completion Audit
+均已完成离线实现和验证；S23 继续暂停且只完成 manifest-only readiness。真实 Provider、Source、
+Projection、Output 的环境适配/Conformance 和外部授权输入均未闭合。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
-统一延期到所有当前发布必需模块、既定 WebUI 测试工作和本地集成审计完成之后；独立可选 S20
-不属于该发布前置。
+所需的本地模块、既定 WebUI 测试和集成审计已经完成，但 S23 仍须先闭合环境适配和外部授权；
+独立可选 S20 不属于该发布前置。
 
 2026-08-09 Alignment 新增的短/中/长回答、低频 Conversation Probe 和公开来源订阅日报，
 现已完成 S15/S15A-S15E 的离线契约与 no-send Shadow 范围；真实来源、人工质量和真实发送仍
@@ -12,8 +14,20 @@
 
 同日完成的开发环境预检、重点 Topic 调研、外部输入门禁和下一轮建议 Tree 汇总见
 `../research/recommendation-matrix.md`。这些结论用于开工排序，不构成 S12-S20 实现证据。
-截至 2026-08-10 的实现快照和可立即准备的产品输入分别见
-`checkpoint-report-2026-08-10.md` 与 `external-input-checklist.md`。
+截至 2026-08-10 的阶段快照和可立即准备的产品输入分别见
+`checkpoint-report-2026-08-10.md` 与 `external-input-checklist.md`。2026-08-14 完成的
+[受治理自适应 Agent Runtime 长程研究](../research/deepseek-harness-inspired-dududa-evolution.md)
+已经形成并由用户确认长期设计方向；Web 的目标是 Bot Control Plane，其首个用例是管理员在 Bot
+入群后选择初始 `GroupServiceProfile`。Tree revision 4 已据此加入 S21；Foundation、Onboarding、
+Governed Operations 和 Completion Audit 均已有实现与聚焦验证。其他长期新增能力仍没有
+实现证据。完整证据见 [S21 Bot Control Plane 离线完成审计](s21-control-plane-completion-audit.md)。
+控制后台的产品边界、入群状态机、Profile/Assignment、命令面和完成定义见
+[Bot Control Plane 与群服务初始化设计](../design/bot-control-plane.md)。
+
+2026-08-14 已完成本机 NapCat 私有开发回放和历史游标核验，详见
+[NapCat 本机开发语料回放报告](napcat-development-replay-2026-08-14.md)。本机只允许使用当前
+嘟嘟哒账号数据；旧账号已排除，精确账号映射只在运行时提供。用户另有数百群长期记录，只在
+S23 真实测试环境中提供，不阻塞 S21。
 
 ## 交付规则
 
@@ -37,7 +51,7 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 
 - P0：Phase 2–5，建立公共契约、安全边界、兼容层和可重复 Eval 基线；
 - P1：Phase 6–7，形成可选择性切换的端到端 Runtime、工具闭环与受控主动出站闭环；
-- P2：Phase 8–10，完成规模化质量优化、Control Plane、部署和兼容清理。
+- P2：Phase 8–10 加单独批准的 S20/S21，完成部署/兼容清理、离线学习基础和 Bot Control Plane。
 
 原 4 人并行估算只保留为历史参考。当前按 **1 人、WIP=1** 执行：任何时刻只实现一个
 可独立验证和回滚的步骤，完成退出门禁后再进入下一步。不要把原工期机械乘除；Memory 数据
@@ -45,14 +59,14 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 
 ### 当前模块完成度
 
-下表按 2026-08-11 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S13 已补齐静态
+下表按 2026-08-14 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S13 已补齐静态
 路由、语义/难度判断、离线 Runtime、Shadow、受控 Canary 与回滚边界；真实 Provider 效果、
 Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权群放量不再穿插在模块开发中，
 只在最终阶段执行。
 
 | 模块或工作流 | 状态 | 已有证据 | 达到完成仍缺少 |
 | --- | --- | --- | --- |
-| 开发环境与研究基线 | 已完成（本地） | TreeWork 0.1.7、根 uv lock、Python 3.10/3.12、Node 22、Playwright、干净构建及九个 Topic 研究报告已验证 | Production shape 仍有四个 P0；外部 Provider/数据/标注输入按各模块门禁补充 |
+| 开发环境与研究基线 | 已完成（本地） | TreeWork 0.1.7、根 uv lock、Python 3.10/3.12、Node 22、Playwright、干净构建及十份研究报告已形成 | 生产环境仍未就绪；真实 Provider/来源/数据/标注和授权按各模块门禁补充 |
 | Phase 0 审计、`v1alpha` 接口与迁移计划 | 已完成 | 当前状态、依赖、设计、ADR、迁移和实施文档已形成，并通过文档门禁 | 不包含 Runtime 代码；进入 S01 后按实现证据重新判断 |
 | 核心 Package 与 Agent Runtime | 部分完成 | Orchestrator、CAS State Store、完整直聊、默认关闭的有界 Tool 链、Delivery acknowledgement/reconciliation、无副作用 Shadow 和受控 Bridge 已实现 | 真实 Provider composition、Memory/Attachment Runtime 与授权生产证据 |
 | 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现 | 真实 Attachment Source、第二平台与授权真实群 delivery 证据 |
@@ -63,11 +77,13 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
-| 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录；S16-S22 本地发布闭环已完成 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送和人工相关性/打扰度仍是 S23 外部门禁 |
+| 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录；S16-S22 本地发布闭环已完成 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送和人工相关性/打扰度仍是 S23 的环境集成与外部门禁 |
 | 在线学习 / Bandit | 离线基础已完成（S20） | Framework-neutral decision/execution/feedback DTO、Router-planned baseline、完整 action support、propensity validator、Decimal IPS/SNIPS/DR/ESS 和固定合成 bundle 已通过；生产路径无 Bandit import/hook | 真实同档 Endpoint、before-action 日志、可归因反馈、Shadow/在线训练和探索仍未开始；禁止学习主动发送和 Answer Profile |
+| 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 的能力插件”方向，并给出 Descriptor/Lifecycle/Generation/Disposer 边界 | 尚无 Sxx 分支、Plugin Runtime、迁移或故障恢复证据；不得据此宣称已有插件生态 |
+| Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI 测试客户端 | 已完成（既定测试范围） | NapCat 多账号客户端通过 66 frontend、42 server、typecheck/build 和 6 Playwright E2E | 不扩建产品 Control Plane；后端契约变化时只补对应测试 |
-| 大规模真实群测试与 Debug | 最终阶段（未开始） | 白名单/显式 @/并发/重启/TargetTalk/kill switch/UNKNOWN 已完成本地仿真 | 等所有当前发布必需模块、既定 WebUI 测试和本地总审计完成后，再执行授权单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
+| WebUI / Bot Control Plane | S21 已完成（离线） | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；command ID 与 deadline 语义已审计，Agent Draft/permission/config 不发送、不改状态、不伪成功 | 生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁 |
+| 大规模真实群测试与 Debug | S23 暂停、部分完成 | S19/S22、本地仿真和既定 WebUI 回归均已通过；低敏模板、readiness checker 和 Runbook 仅提交在暂停分支 `treework/real-group-validation@01c8abf` | 先完成真实 evidence resolver 与 Provider/Source/Projection/Output 环境适配，再取得逐行为授权，执行单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
 
 ### 实施步骤完成度
 
@@ -100,8 +116,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S18 | **已完成、已验证、已合并（离线）** | `daf3111` 冻结 Spec；`5be566a` 实现十个固定 runner/十四维 catalog、原子低敏 receipt、append-only Runtime Trace、双锁 CI 与 Node 22；`7e7cbab`/`4cd9ddc` 绑定完整 catalog 并移除外部 run-ID 注入；四套 350-case bundle、146 项 focused Contract、Python 3.10 受影响样本和构建/Compose/secret 门禁通过 | 完整双 Python 全仓、Web/E2E、镜像/容器、完整故障与 SLO/回滚候选证据统一留给 S19；不声明真实质量 |
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
-| S21 | 独立可选/未开始 | 不包含既定 WebUI 测试 | 单独 ADR/Spec 获批后排期 |
-| S23 | 最终门禁、未开始 | 无真实发送或真实来源声明 | 所有发布必需分支与本地总审计完成后另行授权 |
+| S21 | **已完成、已验证（离线）** | Foundation、Group Onboarding、Governed Operations 与 Completion Audit 均通过；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影，Agent 路径不直发 NapCat | 生产 HTTP/身份、真实健康、真实 Provider/Source/Projection/Output、人工质量和真实 QQ 操作仍属于 S23 外部门禁 |
+| S23 | 暂停、部分完成 | manifest-only readiness、低敏模板和 Runbook 已在 `treework/real-group-validation@01c8abf` 提交；无真实发送或真实来源声明 | 分支尚未合并；仍需 evidence resolver、环境 Adapter/Conformance、外部输入和逐行为授权 |
 
 ### 公共开工门禁
 
@@ -137,7 +153,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | 任务 | P0 | P1 | P2 | 退出证据 |
 | --- | --- | --- | --- | --- |
 | Trace、Eval 与测试框架 | 建立版本化 fixture、Fake、Contract Test、run/trace ID 和隐私安全记录格式 | 将 Runtime、Router、ResponsePlan、Memory、Capability、MCP、OC 和 Proactive 指标接入同一回放/Eval 入口 | 纳入完整 CI、fake-clock 长期仿真、趋势对比、故障注入和发布门禁 | 同一版本数据与配置可重复运行；安全门禁不可设为非阻塞 |
-| WebUI / Control Plane | 先提交 ADR，再定义权限、脱敏、审计、配置版本和只读查询 API；不抢先制作第二套业务逻辑 | 提供只读 Trace Viewer、Agent Playground、Eval 结果和 Model/MCP Health | 增加 RBAC、Memory Explorer、Persona/Model/Capability 配置、成本性能和告警 | UI 不绕过 Runtime Policy 或 Repository；所有写操作有审计、确认和回滚 |
+| WebUI / Bot Control Plane | 冻结 operator auth、Query/Command、`GroupServiceProfile/Assignment`、群入驻状态机和 Receipt；用 Fake join/service 闭环 | 实现管理员选择初始服务的 Onboarding、Desired/Effective diff、CAS 激活/LKG 回滚，以及 Run/Model/MCP/Plugin 投影 | 只在专用 Core 命令存在后增加订阅、审批、行为级开关、Policy/Plugin 发布和实验回滚 | Web 是控制后台但不是第二套决策权威；所有 mutation 绑定 Actor/Scope、revision、幂等、Audit 和 Receipt，学习不能扩权 |
 | 集成与真实群聊测试 | 使用合成 Event、fake clock、公开来源 fixture、离线回放和跨 Scope 负向数据，不读取生产聊天 | 完成跨模块离线集成、30 日调度仿真、故障注入和 no-send/no-write 仿真，不连接真实测试群 | 冻结全仓回归、SLO、各行为授权清单和回滚包；真实群执行仍留到最终 S23 | S23 依次通过入站 Shadow/明确 @ Canary、手动日报、定时日报、低频 Probe，再决定分层放量；所有错误目标、重复/静默时段/撤销后发送、未授权 Tool、跨 Scope Memory 和敏感 Trace 为 0 |
 
 ### 依赖与单人执行原则
@@ -159,9 +175,9 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
    准备白名单 canary；此前只做离线/仿真。独立可选 S20 不属于该发布前置。进入最终阶段前
    必须具备 kill switch、上一版本镜像、无副作用 shadow 证据和明确回滚命令，不能把真实群聊
    当集成测试环境。
-9. Bandit 依赖稳定 Router、before-action 日志、延迟反馈和足够流量；WebUI 依赖稳定只读 API、
-   权限和脱敏。Bandit 永不选择主动 send/skip、目标、订阅、日程、频率、Answer Profile 或
-   follow-up；二者都不在首个主动闭环关键路径上。
+9. Bandit 依赖稳定 Router、before-action 日志、延迟反馈和足够流量；Bot Control Plane 依赖
+   稳定 Query/Command API、operator auth、Scope、脱敏和 Receipt。Bandit 永不选择主动
+   send/skip、目标、订阅、日程、频率、Answer Profile、follow-up 或群服务 Profile。
 
 ### 单人完整开发流程
 
@@ -196,25 +212,43 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、固定 runner/catalog、低敏 receipt、模型/ResponsePlan/MCP/Memory/OC/Proactive 维度和可复现 CI 命令 | 双 Python 风险样本、bundle/Contract、Trace 隐私、锁/构建/Compose/secret 门禁通过；完整全仓、Web、镜像/容器和故障矩阵明确交给 S19 | 通过删除安全测试恢复绿色状态，或把合成证据写成真实质量 |
 | S19 | 本地总集成 | 汇总所有当前发布必需模块，执行全仓回归、离线回放、30 日调度/Probe no-send 仿真、故障注入、SLO 预注册和发布候选审计 | 发布必需模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
 | S22 | 10 | 按 `migration-map.md` 删除十个路径别名和插件专用 iCourse Client；保留仍有消费者的 Handler、Role、Memory、Audit、worker protocol 与根操作入口 | canonical 入口、Unified-only Client、完整 Python 3.12、Python 3.10 抽样、镜像/Compose/package/secret 和精确 S19 归档通过 | 无消费者证据的删除、重设计核心模块或删除明确 retain surface |
-| S23 | 最终真实场景 | 所有当前发布必需模块、既定 WebUI 测试和本地审计完成后，在同一授权单群依次执行 no-send shadow、明确 @ canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，再考虑 3–5 群分层放量 | 重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
+| S21 | Bot Control Plane | Tree revision 4 已拆分 S21A Foundation、S21B Group Onboarding、S21C Governed Operations 与 Audit；Bot 入群后管理员选择初始服务 Profile | 新群 pending 零服务；Profile 不授予 Capability；Desired/Effective 可解释；激活/更新/暂停/回滚具备 auth、Scope、CAS、幂等、Audit、Receipt、LKG 和跨账号/群隔离 | 浏览器本地配置、万能写 API、Agent 直发 NapCat、让模型/Group Context/Plugin/Bandit 开服务或扩权 |
+| S23 | 最终真实场景 | S21、本地审计和既定 WebUI 测试完成后，先在隔离环境对外部长期语料执行全量历史 no-send Shadow 和小样本人工评测；再在同一授权单群依次执行实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，最后考虑 3–5 群分层放量 | 历史回放无链路异常且质量结论只来自标注样本；重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、把原始历史当质量 Gold/Memory/Bandit reward、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
 
-以下阶段不属于上述严格发布主线，只有单独 ADR/Spec 获批后才排期：
+S20 不属于上述严格发布主线，已经单独批准并完成离线范围：
 
 | 可选阶段 | 定位 | 本步只实现 | 完成门禁 | 明确不做 |
 | --- | --- | --- | --- | --- |
-| S20 | P2 离线学习基础 | 定义 decision/feedback、同 Role+Tier action support、propensity validator、静态 baseline 和合成 IPS/SNIPS/DR golden | 固定输入的 estimator/validator 结果可重放，非法 support/propensity fail closed，并证明无生产执行 hook | 训练、生产 Worker、Shadow/live exploration；权限、Memory Scope、高风险 Tool、Reply/Ignore、主动发送/目标/日程/频率和 Answer Profile 探索 |
-| S21 | 后续规划 | 在 ADR 批准后实现只读 WebUI：Trace/Eval/Model/MCP Health；稳定后才讨论带审计和回滚的写操作 | API 复用 Runtime 权限/Scope/脱敏；RBAC、审计、CSRF/越权和回滚测试通过 | 既定 WebUI 测试已在发布主线内；不得在 UI 重写第二套业务逻辑或抢先做完整 Control Plane |
+| S20（已完成，离线） | P2 离线学习基础 | 定义 decision/feedback、同 Role+Tier action support、propensity validator、静态 baseline 和合成 IPS/SNIPS/DR golden | 固定输入的 estimator/validator 结果可重放，非法 support/propensity fail closed，并证明无生产执行 hook | 训练、生产 Worker、Shadow/live exploration；权限、Memory Scope、高风险 Tool、Reply/Ignore、主动发送/目标/日程/频率和 Answer Profile 探索 |
 
 达到 S11 算“本地可用直聊版本”，达到 S13 算“本地可用工具闭环”，达到 S15E 算“主动出站
-本地 Shadow 完整”，达到 S16 算“离线发布事务骨架完整”；当前剩余发布主线为
-`S17 -> S18 -> S19 -> S22 -> S23`。
-达到 S22 且通过 S19 本地总审计后，才允许进入 S23 真实群验证。S20 Bandit 是独立可选阶段，
-不是主动出站或 S23 的前置；既定 WebUI 测试仍是前置，但不追加可写控制面。
+本地 Shadow 完整”，达到 S16 算“离线发布事务骨架完整”。S17、S18、S19、S22 和 S20 的
+既定离线范围与 S21 均已完成。下一步只剩暂停的
+`S23`；S23 同时受真实环境集成工程和外部输入阻塞，并非拿到授权即可直接运行。S20 Bandit 不是
+主动出站或 S23 的前置；既定 QQ Web 客户端测试和 Bot Control Plane 离线闭环均已通过，但不等于
+生产环境适配、真实群质量或真实发送已经就绪。
 
 单人阶段主动暂停以下范围：第二聊天平台、通用高风险 Tool、自动 Memory 写入、Graph Memory、
 主动私聊/个人目标、私人校园 Feed、自动 LONG 推送、模型微调、neural bandit、多 Persona 市场
-和可写 Control Plane。只有前一里程碑的真实错误证据证明它们必要时，才把其中一项加入新的
-Spec 和顺序表。
+和任意未治理的 Web 写入口。只有前一里程碑的真实错误证据证明其他暂停项必要时，才把其中一项
+加入新的 Spec 和顺序表。
+
+2026-08-14 已确认受治理 Runtime、通用插件生命周期、Group Context、关系证据、Skill 候选演化
+和 Bot Control Plane 的长期方向。首个实现范围只取可离线闭环的 S21 控制后台与群服务初始化；
+其余能力必须继续拆入后续 Spec，不能塞进 S21 或绕过 S23 门禁。
+
+### S21 Bot Control Plane 建议拆分
+
+| 子步骤 | 本步范围 | 离线退出证据 |
+| --- | --- | --- |
+| S21A Foundation（已完成） | `GroupServiceProfile/Assignment`、join/pending、Query/Command Envelope、operator auth/RBAC、Projector、Audit/Receipt 和 Fake join/service | 未授权、跨 Bot/account/group、未知 service、stale revision、重复命令和浏览器直写全部 fail closed |
+| S21B Group Onboarding（已完成） | pending inbox、Profile Catalog、Desired/Effective diff、Preview/Activate/Update/Pause/Resume/Rollback、immutable Runtime snapshot 和 LKG | 新群缺 Profile 零 Agent 服务；双管理员并发仅一个 revision 生效；失败保持 pending/LKG |
+| S21C Governed Operations（已完成） | Run/Model/MCP/Plugin/Memory/Proactive 六面投影；Model 与 MCP/Capability 使用快照，未绑定面明确 unavailable；只发现已有 Group Service Core 命令 | UI 不自行推导权限/状态；Agent Draft/permission/config 无专用命令时不发送、不改状态、不伪成功 |
+| S21 Audit（已完成） | 移除 Agent Draft 直发 NapCat、浏览器本地 permission/config 占位；跨账号/群、重启、回滚和构建审计 | 真人 QQ 操作与 Agent Output 分离；Group Context/Plugin/Model/Bandit 无法改变 Assignment 或发送权 |
+
+S21 的实现和验收不依赖聊天正文。Fake join/service/Catalog 是主证据；只有 Connector、历史分页、
+Perception 或控制台会话投影发生变化时，才抽样重跑本机 `嘟嘟哒` 私有 replay。外部数百群语料
+不得提前进入 S21、Memory 或 Bandit。
 
 ### 可扩展框架约束
 
@@ -653,28 +687,27 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 - 数据迁移与回滚均已完成。
 - 聚焦于移除工作的 PR 具有可独立测试的回滚 Release。
 
-## 下一可审阅实施步骤
+## 已完成的 Tree 变更
 
-标题：**完成 S23 离线 readiness，等待逐行为授权与真实 Preflight**
+标题：**S21 Bot Control Plane 已完成，S23 已恢复离线历史语料阶段**
 
-S01–S20 与 S22 的既定本地/离线范围已经完成。S20 仅建立可重放离线基础，未增加生产执行
-hook；具体证据见 [S20 离线 Bandit 完成报告](s20-offline-bandit-report.md)。
-既定 WebUI 回归已经在 S19 通过，回答档位和主动出站不得跳过真实外部门禁。
-S23 已新增严格模板、manifest-only checker 和
-[单群验证 Runbook](../operations/s23-real-group-validation.md)。离线报告即使结构完整也固定
-`live_execution_authorized=false`，不能把任意 digest 或 fixture 当作真实证据。取得外部输入后：
+Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S23 的 manifest-only readiness、
+模板和 [单群验证 Runbook](../operations/s23-real-group-validation.md) 已完成，当前只恢复获授权静态
+历史语料的 S23A-S23E no-send Demo，不授权任何实时发送或 Canary：
 
-1. 冻结授权群、测试用户、发送窗口、SLO 和 digest-pinned 回滚包；
-2. 单群执行 no-send/no-write Shadow，先检查脱敏指标；
-3. 同一授权群仅对结构化明确 @ 执行入站 Canary；
-4. 单独授权并验证手动日报，再验证定时日报；
-5. 前述门禁通过后，单独授权一次低频 Conversation Probe；
-6. 所有单群行为门禁通过后，才考虑 3–5 群和长时间 Debug；
-7. 任一重复、错误目标、quiet-hour/退订后发送、越权、无引用内容、敏感 Trace 或熔断异常
-   立即关闭对应行为并回滚。
+1. 在 revision 4 中把 `S21A -> S21B -> S21C -> S21 Audit` 加为 S23 的前置；
+2. 用 Fake join、Fake services 和固定 Catalog 完成控制后台离线闭环；
+3. 证明新群缺 Profile 时零服务，管理员激活具有 auth/Scope/CAS/幂等/Audit/Receipt/LKG；
+4. 证明 Profile 不授予 Capability，Group Context/Plugin/Model/Bandit 不能扩权；
+5. 移除 Agent Draft 直发 NapCat 和浏览器本地 permission/config 占位；
+6. S21 完成审计后，在 S23 测试环境挂载外部长期记录，先做全量历史 no-send Shadow，再对小样本
+   人工标注和复核；
+7. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
+8. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
+   才考虑 3–5 群和长时间 Debug。
 
-Bandit 不作为主动出站或 S23 的前置，且禁止探索 send/skip、目标、日程、频率和 Answer
-Profile；WebUI 只按既定测试范围验证，不追加可写控制面。
+Bandit 不作为主动出站、群服务 Profile 或 S23 的前置，且禁止探索 send/skip、目标、日程、频率
+和 Answer Profile。Web 可以执行写操作，但只能通过专用 Core Command，不能提供万能配置写 API。
 
 ## Phase 验收矩阵
 
@@ -690,4 +723,5 @@ Profile；WebUI 只按既定测试范围验证，不追加可写控制面。
 | 8 | 运维/布局/Manifest | 一次性完整生命周期和回滚 |
 | 9 | Trace/Eval/CI | 回答档位、主动调度/来源/投递与完整 CI/隐私安全 Fixture |
 | 10 | 无兼容依赖 | 无旧消费者，并具备回滚 Release |
+| S21 Control Plane | 群入驻、初始服务 Profile、Query/Command 与 governed operations | operator auth/RBAC、Desired/Effective、CAS/幂等/Audit/Receipt/LKG、跨 Scope 和零浏览器直写 |
 | 最终真实场景 | 入站、日报、Probe 分行为授权群 Shadow/Canary | 所有前置模块和本地审计完成；冻结分行为 SLO、kill switch、回滚包和授权窗口 |

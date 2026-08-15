@@ -1,7 +1,8 @@
 # 在线学习与 Contextual Bandit 设计
 
-状态：S20 Offline Bandit 分支已进入 Tree 但尚未开始；当前没有 decision/feedback/OPE 实现，
-也没有 Shadow、训练器或在线学习器。
+状态：S20 Offline Bandit 的 decision/execution/feedback、完整 action support、propensity
+校验和合成 IPS/SNIPS/DR/ESS Golden 已完成并验证；当前仍没有 Router/Runtime 生产 hook、
+真实 Endpoint support、Shadow、训练器或在线学习器。
 
 ## 1. 适用边界
 
@@ -19,10 +20,14 @@ Contextual Bandit 适合在**已经通过确定性硬约束的有限候选集合
 | Reply/Ignore | 只做离线或 shadow 研究 | 默认禁止 live exploration，避免用群聊成员承担试验成本 |
 | Answer Profile | 不作为首版 Bandit 决策点 | `SHORT/MEDIUM/LONG` 由确定性策略选择，显式用户要求与硬上限优先 |
 | Proactive Send/Skip | 禁止作为 Bandit 决策点 | 目标、订阅、日程、频率、probe/follow-up 均保持确定性，禁止 live/shadow 候选取得发送权 |
+| Group Service Profile | 禁止作为 Bandit 决策点 | 管理员选择 Profile；Assignment、服务开关、Capability/Memory/主动模式均不可探索 |
 
 高风险/不可逆 Tool、敏感数据 Provider、权限结果、Memory Scope、Confirmation、Content
 Safety 和 Output 目标不进入探索。硬约束失败时返回确定性 baseline；Bandit 不能通过高奖励
 抵消任何安全违规。
+
+`GroupServiceAssignment` 是 Bandit 之前的硬过滤输入，不是 action。Bandit 既不能选择新群的
+初始服务，也不能利用奖励修改 Desired/Effective 服务集合或管理员 Profile revision。
 
 主动日报/探测即使进入最终 canary，Bandit 也不能选择是否发送、发送给谁、何时发送、推送
 主题、Answer Profile、频率或无人响应后的动作。模型路由 Bandit 可以把 trigger/profile 当作

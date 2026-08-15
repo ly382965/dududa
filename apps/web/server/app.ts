@@ -7,6 +7,10 @@ import { pipeline } from 'node:stream/promises'
 
 import type { WorkspaceEvent } from '../src/types/workspace'
 import {
+  groupServiceCommandSchema,
+  previewGroupServiceSchema,
+} from '../src/schemas/control-plane'
+import {
   createGroupFolderSchema,
   directoryQuerySchema,
   groupFileMutationSchema,
@@ -23,11 +27,17 @@ import {
   setGroupMuteAllSchema,
 } from '../src/schemas/workspace'
 import { OneBotHub } from './onebot-hub'
+import {
+  ControlPlaneClientError,
+  UnavailableControlPlaneClient,
+  type ControlPlaneClient,
+} from './control-plane'
 import { readBrowserUpload } from './uploads'
 
 export interface DududaServerOptions {
   hub: OneBotHub
   publicDir: string
+  controlPlane?: ControlPlaneClient
   maxRequestBytes?: number
 }
 
@@ -60,6 +70,10 @@ function json(response: ServerResponse, status: number, payload: unknown): void 
 }
 
 function routeError(response: ServerResponse, error: unknown): void {
+  if (error instanceof ControlPlaneClientError) {
+    json(response, error.status, { error: error.message })
+    return
+  }
   const message = error instanceof Error ? error.message : '请求失败'
   const status = /未连接|连接已断开/.test(message)
     ? 503
@@ -75,6 +89,14 @@ function routeError(response: ServerResponse, error: unknown): void {
         ? 400
         : 502
   json(response, status, { error: message })
+}
+
+function operatorSession(request: IncomingMessage): string {
+  const value = request.headers['x-dududa-operator-session']
+  if (typeof value !== 'string' || !value.trim() || value.length > 2_048) {
+    throw new ControlPlaneClientError('管理员会话缺失', 401)
+  }
+  return value
 }
 
 function trustedLoopbackHost(value: string | undefined): boolean {
@@ -314,6 +336,7 @@ async function serveStatic(response: ServerResponse, pathname: string, publicDir
 
 export function createDududaServer(options: DududaServerOptions) {
   const maxRequestBytes = options.maxRequestBytes ?? 64 * 1024
+  const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const eventClients = new Set<ServerResponse>()
   const onWorkspaceEvent = (event: WorkspaceEvent) => {
     const frame = `event: workspace\ndata: ${JSON.stringify(event)}\n\n`
@@ -336,6 +359,74 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       if (method === 'GET' && url.pathname === '/api/health') {
         json(response, 200, options.hub.runtimeStatus())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/control-plane/status') {
+        json(response, 200, controlPlane.status())
+        return
+      }
+      const operationsRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/operations$/.exec(url.pathname)
+      if (method === 'GET' && operationsRoute) {
+        const accountId = decodeURIComponent(operationsRoute[1]!)
+        json(
+          response,
+          200,
+          await controlPlane.operations(operatorSession(request), 'qq', options.hub.botId(accountId)),
+        )
+        return
+      }
+      const pendingGroupsRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/pending$/.exec(url.pathname)
+      if (method === 'GET' && pendingGroupsRoute) {
+        const accountId = decodeURIComponent(pendingGroupsRoute[1]!)
+        json(
+          response,
+          200,
+          await controlPlane.pendingInbox(operatorSession(request), 'qq', options.hub.botId(accountId)),
+        )
+        return
+      }
+      const managedGroupsRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/managed$/.exec(url.pathname)
+      if (method === 'GET' && managedGroupsRoute) {
+        const accountId = decodeURIComponent(managedGroupsRoute[1]!)
+        json(
+          response,
+          200,
+          await controlPlane.managedGroups(operatorSession(request), 'qq', options.hub.botId(accountId)),
+        )
+        return
+      }
+      const profileCatalogRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/profiles$/.exec(url.pathname)
+      if (method === 'GET' && profileCatalogRoute) {
+        const accountId = decodeURIComponent(profileCatalogRoute[1]!)
+        json(
+          response,
+          200,
+          await controlPlane.profileCatalog(operatorSession(request), 'qq', options.hub.botId(accountId)),
+        )
+        return
+      }
+      const controlPlaneGroupRoute = /^\/api\/control-plane\/accounts\/([^/]+)\/groups\/([^/]+)\/(preview|commands)$/.exec(
+        url.pathname,
+      )
+      if (method === 'POST' && controlPlaneGroupRoute) {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源控制后台提交命令' })
+          return
+        }
+        const accountId = decodeURIComponent(controlPlaneGroupRoute[1]!)
+        const groupId = decodeURIComponent(controlPlaneGroupRoute[2]!)
+        const sessionRef = operatorSession(request)
+        const botId = options.hub.botId(accountId)
+        const body = await readJson(request, maxRequestBytes)
+        if (controlPlaneGroupRoute[3] === 'preview') {
+          const parsed = previewGroupServiceSchema.safeParse(body)
+          if (!parsed.success) throw new Error('群服务 Preview 参数无效')
+          json(response, 200, await controlPlane.preview(sessionRef, 'qq', botId, groupId, parsed.data))
+        } else {
+          const parsed = groupServiceCommandSchema.safeParse(body)
+          if (!parsed.success) throw new Error('群服务命令参数无效')
+          json(response, 200, await controlPlane.command(sessionRef, 'qq', botId, groupId, parsed.data))
+        }
         return
       }
       if (method === 'GET' && url.pathname === '/api/workspace') {

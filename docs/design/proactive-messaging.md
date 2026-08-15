@@ -24,6 +24,10 @@ Runtime 和 S15 Response/Persona 产品化。首版不依赖 Memory；未来若�
 - 外部来源均为不可信数据，必须保留来源、新鲜度和引用，不能成为系统指令；
 - Shadow 没有 `OutputAdapter`，不具备发送、停止事件、Tool 写操作或 Memory 写入能力。
 
+未来 Bot Control Plane 可以在群入驻时让管理员选择包含 digest/probe **默认值**的
+`GroupServiceProfile`，但 Profile 不等于订阅、Target/Grant 或发送授权。主动行为仍默认关闭，
+必须经本设计的独立订阅/群策略、Preview、Dispatch 和发送前重验才能进入真实投递。
+
 ## 2. 明确非目标
 
 首版不做：

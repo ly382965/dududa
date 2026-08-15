@@ -16,6 +16,7 @@ PUBLIC_PACKAGES = (
     "dududa.capabilities",
     "dududa.compatibility",
     "dududa.config",
+    "dududa.control_plane",
     "dududa.contracts",
     "dududa.domain",
     "dududa.evaluation",
@@ -46,6 +47,17 @@ ORDER_SENSITIVE_MODULES = (
     "dududa.capabilities.retrieval",
     "dududa.capabilities.runtime",
     "dududa.capabilities.validation",
+    "dududa.control_plane.authorization",
+    "dududa.control_plane.api",
+    "dududa.control_plane.codec",
+    "dududa.control_plane.contracts",
+    "dududa.control_plane.gateway",
+    "dududa.control_plane.lifecycle",
+    "dududa.control_plane.projector",
+    "dududa.control_plane.repository",
+    "dududa.control_plane.resolution",
+    "dududa.control_plane.snapshot",
+    "dududa.control_plane.sqlite_repository",
     "dududa.domain.attachments",
     "dududa.domain.delivery",
     "dududa.domain.task",
@@ -119,6 +131,17 @@ ORDER_SENSITIVE_MODULES = (
 )
 
 FORBIDDEN_INTERNAL_IMPORTS = {
+    "dududa.control_plane": (
+        "dududa.adapters",
+        "dududa.bandit",
+        "dududa.capabilities",
+        "dududa.mcp",
+        "dududa.memory",
+        "dududa.models",
+        "dududa.proactive",
+        "dududa.runtime",
+        "dududa.testing",
+    ),
     "dududa.perception": ("dududa.models", "dududa.runtime"),
     "dududa.models": ("dududa.bandit", "dududa.perception", "dududa.runtime"),
     "dududa.responses": ("dududa.models", "dududa.runtime"),
@@ -134,6 +157,42 @@ FORBIDDEN_INTERNAL_IMPORTS = {
 
 
 class ImportBoundaryTests(unittest.TestCase):
+    def test_s21a_control_plane_exports_are_visible_and_framework_neutral(
+        self,
+    ) -> None:
+        import importlib
+
+        control_plane = importlib.import_module("dududa.control_plane")
+        ports = importlib.import_module("dududa.ports")
+        expected_owners = {
+            "ControlPlaneApi": "dududa.control_plane.api",
+            "ControlPlaneGateway": "dududa.control_plane.gateway",
+            "ControlPlaneProjector": "dududa.control_plane.projector",
+            "GroupControlScope": "dududa.control_plane.contracts",
+            "GroupServiceLifecycle": "dududa.control_plane.lifecycle",
+            "GroupServiceProfile": "dududa.control_plane.contracts",
+            "InMemoryGroupServiceRepository": "dududa.control_plane.repository",
+            "RepositoryGroupServiceSnapshotProvider": "dududa.control_plane.snapshot",
+            "SQLiteGroupServiceRepository": "dududa.control_plane.sqlite_repository",
+        }
+        expected_ports = {
+            "GroupJoinSource",
+            "GroupServiceCatalog",
+            "GroupServiceRepository",
+            "GroupServiceSnapshotProvider",
+            "OperatorSessionResolver",
+        }
+        self.assertLessEqual(set(expected_owners), set(control_plane.__all__))
+        self.assertLessEqual(expected_ports, set(ports.__all__))
+        self.assertEqual(
+            len(control_plane.__all__),
+            len(set(control_plane.__all__)),
+        )
+        for name, module_name in expected_owners.items():
+            with self.subTest(name=name):
+                owner = importlib.import_module(module_name)
+                self.assertIs(getattr(control_plane, name), getattr(owner, name))
+
     def test_s15a_proactive_exports_are_visible_and_framework_neutral(self) -> None:
         import importlib
 

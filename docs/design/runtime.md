@@ -11,6 +11,11 @@
 
 本文定义一次嘟嘟哒 Agent 执行的边界、状态、端口和失败语义。它不规定某个模型供应商、MCP 进程或 AstrBot Event 的具体实现。
 
+未来 S21 Bot Control Plane 会为每个群发布不可变 `GroupServiceAssignment`。群聊 Runtime 只有在
+Assignment 为 `ACTIVE` 且当前 revision/Scope/授权仍有效时才可取得执行所有权；缺 Profile、
+pending、paused、revoked 或 snapshot 不一致均在模型/Memory/Tool 前停止。Group Context 只作为
+Assignment 允许范围内的弱先验，不能改变服务、Capability、预算或发送权。该前置尚未实现。
+
 ## 2. 目标与非目标
 
 Runtime 的目标是把一次消息处理变成可观察、可中止、可测试的显式状态转换：
@@ -52,6 +57,8 @@ Runtime 不负责：
 - 启动某个具体 MCP Server；
 - 决定 Persona 的文学设定；
 - 把安全、权限或事实正确性交给 Persona Prompt。
+- 接受浏览器、模型、Group Context、Plugin 或 Bandit 直接修改群服务 Assignment；只有受治理的
+  Control Plane Core Command 可以发布新 revision。
 - 把定时器伪造成用户消息；无入站消息的日报和主动探测由独立
   `ProactiveDeliveryOrchestrator` 负责，见 `proactive-messaging.md`。
 

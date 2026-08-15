@@ -2,9 +2,10 @@
 
 ## Purpose
 
-Develop Dududa as a deterministic QQ Agent runtime with controlled proactive
-outbound behavior, and a real NapCat-backed, Mew-equivalent multi-account
-operator client through isolated, verified epics.
+Develop Dududa as a governed group-context adaptive QQ Agent runtime with
+controlled proactive outbound behavior, and a real NapCat-backed Bot Control
+Plane that includes a Mew-equivalent multi-account operator client and governed
+group onboarding.
 
 ## Documents
 
@@ -35,14 +36,16 @@ and directory slices and a joint audit.
    NapCat boundary.
 5. The Web audit depends on both user-facing slices and proves cross-account,
    security and responsive behavior at their integration point.
-6. Real group-chat validation is a terminal release gate. The next Tree
-   revision must add it as the final leaf after the accepted module topology is
-   complete, so every later module audit remains a predecessor rather than
-   being bypassed.
+6. Real group-chat validation is a terminal release gate. Revision 3 added S23
+   as the final leaf; revision 4 inserts S21 Control Plane/group onboarding
+   before it, so product initialization is not hidden inside a live test branch.
 7. Answer length is an independent response-planning concern, while proactive
    probes and scheduled digests use a separate initiated-run boundary. Neither
    behavior is hidden inside Model Router, MCP, or the completed inbound S10/S11
    runtime scope.
+8. The confirmed long-horizon Web role is a first-class Bot Control Plane. Its
+   first write workflow lets an authorized Bot administrator choose the initial
+   group service profile; Core command handlers remain the single authority.
 
 ### Revisit Conditions
 
@@ -62,11 +65,25 @@ and directory slices and a joint audit.
 
 ## Current Direction
 
-The local S08-S11 implementation/audit and the independent Mew/NapCat Web
-parity epic are complete and verified. The user approved the next Agent
-expansion through every offline S12-S22 engineering gate plus the bounded S20
-foundation. Production-shape and additive semantic gates come first; iCourse is
-the only real MCP Server, while later MCPs and proactive sources receive
+The local S08-S20/S22 engineering sequence and the independent Mew/NapCat Web
+parity epic are complete and verified in their declared local/offline scopes.
+iCourse is the only real MCP Server; later MCPs and proactive sources have
 framework-neutral Ports, Registry entries, Fakes and fixtures rather than
-invented production integrations. Real Endpoint evidence, human quality data,
-live sources, online Bandit learning and S23 group sends remain external gates.
+invented production integrations. S23 now has a committed manifest-only
+readiness checker and operator Runbook, but its branch is paused: real Endpoint
+evidence, group authorization/SecretRefs, live sources, production Projection/
+Output composition, human quality data, online Bandit learning and every real
+group send remain external gates.
+
+The user has confirmed a governed adaptive-runtime direction and a Web Bot
+Control Plane whose first use case is group onboarding through a versioned
+`GroupServiceProfile`. Revision 4 implemented and verified that scope through
+S21A-S21C and the S21 audit. S23 remains paused until its environment adapters,
+human evaluation and behavior-specific authorizations are ready.
+
+The current local Dududa account history is approved for private development
+replay and may support focused no-send regression during development. The
+legacy local account is excluded. Account identifiers remain local runtime
+inputs. A separate external long-term corpus spanning hundreds of groups is
+intentionally deferred to the S23 test environment, where historical Shadow
+precedes any live canary.

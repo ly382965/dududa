@@ -6,7 +6,7 @@ Branch: durable-scheduler
 Parent: proactive-outbound
 Status: complete
 Verification: verified
-Last sync: unix:1786344725
+Last sync: unix:1786706085
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

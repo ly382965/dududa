@@ -12,6 +12,9 @@ production policy migration, and several later-phase controls remain pending.
   prompts, tool output, or public errors.
 - Isolate conversations, users, groups, Bots, Personas, and tool contexts.
 - Make every high-risk action attributable, reviewable, bounded, and reversible.
+- Treat Bot Control Plane mutations as authenticated Core commands with exact
+  Bot/account/group Scope, expected revision, idempotency, confirmation, Audit
+  and Receipt; browser-local state is never authorization evidence.
 - Reduce container and third-party blast radius.
 
 ## Trust Boundaries
@@ -23,6 +26,8 @@ Untrusted inputs include:
 - Model completions, structured-output fields, and generated tool plans.
 - Third-party plugin output and mutable upstream repositories.
 - Provider error bodies and remote URLs.
+- Web form values, Profile selections, command payloads and browser-cached Agent
+  state. The fact that the UI labels an actor “administrator” is untrusted.
 
 Trusted only after validation:
 
@@ -32,6 +37,14 @@ Trusted only after validation:
 - Verified third-party manifest, integrity, patch, and license data.
 
 Persona text is not a trust or authorization boundary.
+
+QQ group owner/admin status and Bot administrator authority are separate facts.
+Group onboarding may activate a `GroupServiceProfile` only after an authenticated
+operator is mapped to an `Actor` authorized for the exact Bot/account/group
+Scope. The Profile expresses desired services but cannot grant a Capability.
+Loopback, same-origin and the OneBot Access Token do not authenticate that
+operator; existing QQ workspace routes and new Control Plane routes may use
+different session requirements.
 
 ## Authorization Model
 

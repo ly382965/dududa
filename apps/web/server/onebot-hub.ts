@@ -455,6 +455,10 @@ export class OneBotHub extends EventEmitter {
     return this.capabilityDocument(this.requireAccount(account))
   }
 
+  botId(account: string): string {
+    return this.requireAccount(account).account.botId
+  }
+
   async customFaceCatalog(account: string, type: 'group' | 'private', peerId: string): Promise<CustomFaceCatalog> {
     const state = this.requireConversation(account, type, peerId)
     this.requireCapability(state, 'message.custom_faces')
@@ -1149,7 +1153,7 @@ export class OneBotHub extends EventEmitter {
         [key]: peerId,
         count: requestCount,
         ...(decodedCursor ? { message_seq: decodedCursor.messageSeq } : {}),
-        reverse_order: direction === 'after',
+        reverse_order: decodedCursor ? direction === 'before' : false,
         disable_get_url: false,
         parse_mult_msg: true,
       })

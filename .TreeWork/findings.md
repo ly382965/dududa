@@ -25,15 +25,39 @@
   scheduling nor delivery. Scheduler occurrence/CAS remains Dududa-owned.
 - iCourse remains the only real MCP Server. S12 now owns the Unified MCP Port,
   Registry, shared lifecycle and compatibility facade; S13 maps only four
-  approved public cache-read Capabilities through the generic Provider. The
-  per-call stdio path remains an explicit Legacy rollback until S22 evidence.
+  approved public cache-read Capabilities through the generic Provider. S22
+  removed the plugin-dedicated per-call Client; the isolated worker still
+  retains its evidenced legacy server-protocol compatibility mode.
 - The current S09 Eval and Memory retrieval are narrower than their interface
   names imply: the former is synthetic policy gold, and the latter is exact
   Scope/TTL plus substring/recency rather than semantic retrieval.
-- Root tests exercise the isolated Unified MCP worker through its local locked
-  environment, but the fresh GitHub CI workflow does not yet provision that
-  worker before running the root suite. S18 owns making this bootstrap explicit;
-  local pre-existing worker state must not be reported as fresh-CI evidence.
+- S18 makes root and isolated Unified MCP worker lock provisioning explicit in
+  CI; fresh runs no longer rely on a pre-existing local worker environment.
+- S23 offline readiness proves manifest structure only. A self-declared digest,
+  `live` flag or authorized status never becomes executable evidence until live
+  Preflight resolves it against the exact candidate, target and prior Receipt.
+- The accepted long-horizon product shape is a governed group-context adaptive
+  Runtime: a non-removable governance kernel composes reversible scope-bound
+  capabilities, while learned outputs remain evaluated candidate assets and
+  Bandit ranks only safe-equivalent legal actions.
+- Web is a first-class Bot Control Plane, not an observation-only test surface.
+  It forms one logical control plane with typed Core command handlers; the
+  browser and Web gateway do not duplicate Authorization, Router, Memory,
+  Capability, Scheduler or Output authority.
+- Group onboarding supplies the hard initial condition. A newly joined group is
+  pending until an authorized Bot administrator selects a versioned
+  `GroupServiceProfile`; learned Group Context may adapt expression but cannot
+  enable services, permissions, Memory, proactive behavior or delivery.
+- The current NapCat version interprets historical direction as
+  `before -> reverse_order=true` and `after -> reverse_order=false`. The deployed
+  Web Gateway had this mapping reversed, causing repeated pages; source and its
+  focused server contract were corrected without restarting NapCat.
+- The approved local `嘟嘟哒` development replay processed 84,159 usable log
+  records plus 1,464 structured Gateway records. After 83 current-Bot
+  self-message admission skips, 85,540 records completed the deterministic
+  policy path with no module exception. Rules-only Perception selected SONNET
+  for every assessed item because its fallback confidence is 0.59; this is
+  conservative defaulting, not real difficulty calibration.
 
 ## Interface Or Contract Effects (effects crossing branch or product boundaries)
 
@@ -50,11 +74,14 @@
 - MCP extensibility is proven by adding a Fake through Registry configuration
   and Capability mapping while reusing the same Contract. It is not proven by
   AstrBot merely preserving an unknown Server entry in its JSON file.
+- S21 now implements the accepted offline Control Plane contracts and group
+  onboarding through revision 4. Plugin lifecycle, Group Context and Skill
+  evolution remain long-horizon design inputs without implementation evidence.
 
 ## Risks And Unknowns (project-wide residual hazards; not unfinished branch work)
 
-- S01-S11 and environment hardening are locally committed but not pushed; the
-  current control branch remains the only authority for this Alignment work.
+- S01-S22 and S23 offline readiness are locally committed but not pushed;
+  the control branch plus the paused managed S23 worktree remain the authority.
 - Native DeepSeek and Anthropic model IDs/capabilities must remain Adapter
   configuration until verified; endpoint aliases cannot be treated as facts.
 - The workspace does not establish authorization or credentials for a real QQ
@@ -68,3 +95,6 @@
 - Real semantic/Probe evaluation needs authorized de-identified group windows,
   independent annotation and adjudication. Silence remains censored evidence,
   not a negative reward.
+- The user has an external long-term corpus spanning hundreds of groups, but it
+  is intentionally withheld until the S23 test environment. The approved local
+  Dududa corpus remains available for private no-send development replay.

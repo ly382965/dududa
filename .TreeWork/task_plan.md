@@ -28,6 +28,9 @@
   local integration work is complete.
 - An isolated S20 offline logging/support/OPE foundation that never controls
   safety, proactive behavior or the S23 prerequisite chain.
+- A Web Bot Control Plane that onboards each new Bot/group binding through an
+  administrator-selected, versioned initial service profile and routes every
+  mutation through authoritative Core commands.
 
 ## Project Acceptance (project-level completion criteria; not branch-local steps)
 
@@ -56,16 +59,21 @@
   idempotency across Adapter revisions, fake-clock, concurrency, MCP-source,
   citation, deduplication, quiet-hour, unsubscribe, delivery and rollback
   contracts without using real groups.
-- [ ] Source-provider fixtures and S20 synthetic estimator goldens are clearly
+- [x] Source-provider fixtures and S20 synthetic estimator goldens are clearly
   separated from live Source Adapters and online learning claims.
+- [x] A newly joined group remains pending and receives no Agent service until
+  an authorized Bot administrator previews and activates a versioned service
+  profile through a CAS/idempotent/audited Core command.
+- [x] The Control Plane displays desired versus effective services, uses
+  operator authentication and exact Bot/account/group Scope, and proves that
+  Group Context, plugins, models and Bandit cannot widen the assignment.
 - [ ] After every earlier acceptance item and local audit passes, the authorized
   real-group shadow/canary records the frozen safety and SLO evidence.
 
-All local S08-S18 and Web criteria in their accepted offline scopes are
-satisfied. S17 is integrated and S18 has reproducible focused evidence; S19,
-S22 and S20 remain pending. The final real-group gate remains last and requires
-a separate authorized external run after these local criteria and their audit
-pass.
+All S01-S22 and Web criteria in their accepted local/offline scopes are
+satisfied. Revision 4 completed S21A-S21C and S21 Audit before paused/partial
+S23. S23 still has manifest-only readiness; environment-specific integration
+and a separately authorized external run remain outside S21.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 
@@ -97,15 +105,19 @@ pass.
     digest Shadow and probe Shadow. Live Source Adapters remain external.
 15. Run fake-clock long-duration simulation, fault injection, repository-wide
     regression and a new local expansion audit.
-16. After every accepted module and local audit is complete, freeze the SLO and
-    rollback bundle, then run authorized single-group shadow, single-group
-    inbound canary, separately authorized digest/probe canaries, and only
-    afterward any layered group expansion/debugging.
+16. Complete S21 Bot Control Plane foundations, group onboarding and governed
+    operations: an authorized administrator selects an initial group service
+    profile and Runtime consumes only the resulting immutable assignment.
+17. After S21 and every accepted local audit are complete, mount the user's
+    external long-term group corpus only in the S23 test environment. Run
+    full-corpus no-send historical Shadow, then a labeled quality sample,
+    authorized single-group live Shadow, inbound canary, separately authorized
+    digest/probe canaries, and only afterward layered expansion/debugging.
 
-Tree revision 3 already contains the response/proactive expansion, operations,
-layout, Eval/CI, local audit, cleanup, offline Bandit and terminal real-group
-branches. The terminal branch depends on every accepted local audit and cannot
-be entered merely because credentials arrive.
+Tree revision 4 contains the response/proactive expansion, operations, layout,
+Eval/CI, local audit, cleanup, offline Bandit, completed S21 Control Plane and
+terminal real-group branch. The terminal branch depends on every accepted local
+audit and cannot be entered merely because credentials arrive.
 
 ## Out Of Scope (project-wide exclusions; not branch ownership detail)
 
@@ -142,3 +154,7 @@ be entered merely because credentials arrive.
 9. The repository currently contains only the iCourse real MCP Server. New real
    MCP Servers and live Source Adapters are not prerequisites for the generic
    S12/S13 or fixture-based S15C acceptance boundaries.
+10. The current local Dududa account history is approved for private
+    development replay; the legacy local account is excluded and exact account
+    mapping stays local. The separate hundreds-group long-term corpus remains
+    unavailable and unnecessary until S23.

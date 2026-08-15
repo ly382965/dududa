@@ -29,6 +29,14 @@ if TYPE_CHECKING:
         ToolPlanValidator,
         ToolResultValidator,
     )
+    from .control_plane import (
+        GroupJoinSource,
+        GroupServiceCatalog,
+        GroupServiceRepository,
+        GroupServiceSnapshotProvider,
+        OperationalProjectionProvider,
+        OperatorSessionResolver,
+    )
     from .mcp import (
         McpEnvironmentProvider,
         McpSchemaValidator,
@@ -131,6 +139,10 @@ __all__ = [
     "DigestComposer",
     "DigestShadowMetadataSink",
     "DigestShadowRunner",
+    "GroupJoinSource",
+    "GroupServiceCatalog",
+    "GroupServiceRepository",
+    "GroupServiceSnapshotProvider",
     "InputConnector",
     "ManualCancellationToken",
     "McpEnvironmentProvider",
@@ -160,6 +172,8 @@ __all__ = [
     "OfflinePersonaRenderer",
     "OfflineRenderValidator",
     "OfflineResponseComposer",
+    "OperationalProjectionProvider",
+    "OperatorSessionResolver",
     "OutputAdapter",
     "PerceptionEngine",
     "PerceptionMerger",
@@ -210,6 +224,31 @@ __all__ = [
 
 
 def __getattr__(name: str) -> object:
+    if name in {
+        "GroupJoinSource",
+        "GroupServiceCatalog",
+        "GroupServiceRepository",
+        "GroupServiceSnapshotProvider",
+        "OperationalProjectionProvider",
+        "OperatorSessionResolver",
+    }:
+        from .control_plane import (
+            GroupJoinSource,
+            GroupServiceCatalog,
+            GroupServiceRepository,
+            GroupServiceSnapshotProvider,
+            OperationalProjectionProvider,
+            OperatorSessionResolver,
+        )
+
+        return {
+            "GroupJoinSource": GroupJoinSource,
+            "GroupServiceCatalog": GroupServiceCatalog,
+            "GroupServiceRepository": GroupServiceRepository,
+            "GroupServiceSnapshotProvider": GroupServiceSnapshotProvider,
+            "OperationalProjectionProvider": OperationalProjectionProvider,
+            "OperatorSessionResolver": OperatorSessionResolver,
+        }[name]
     if name in {
         "ArgumentBinder",
         "BoundedCapabilityRuntime",

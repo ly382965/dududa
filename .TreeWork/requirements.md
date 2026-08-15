@@ -10,6 +10,12 @@ outbound foundations, while retaining the existing security, rollback and
 terminal real-group gates. Missing credentials, live sources and human data do
 not block this offline development scope and must not be fabricated.
 
+The confirmed long-horizon product direction is a governed group-context
+adaptive Runtime with a first-class Web Bot Control Plane. When a Bot joins a
+group, an authorized Bot administrator selects the initial group service
+profile. Models and learned group context may adapt only inside that profile;
+they never activate services, grant capabilities, or widen side effects.
+
 ## Target User (who experiences the result and whose constraints matter)
 
 - The sole Dududa developer/operator needs a comprehensible, extensible system
@@ -24,6 +30,9 @@ not block this offline development scope and must not be fabricated.
 - The Dududa operator uses one browser workspace to read and operate multiple
   real QQ accounts connected by NapCat, with Mew-equivalent chat, directory,
   notification, group-management, resource and settings workflows.
+- An authorized Bot administrator uses the same Web control backend to onboard
+  a newly joined group, preview the eligible service bundle, choose its initial
+  service profile, and later pause, revise or roll it back with an audit trail.
 
 ## Desired Experience (observable behavior and qualities the user expects)
 
@@ -59,9 +68,11 @@ not block this offline development scope and must not be fabricated.
 - Canary delivery is restricted to an allowlisted group and explicit mention,
   supports a kill switch, prevents duplicate replies, and preserves the legacy
   route as the rollback authority.
-- The Web client opens directly into a Mew-style workspace when NapCat accounts
-  are online and otherwise shows an honest connection state. It has no browser
-  login, locally invented account, conversation, message or Agent result.
+- The existing QQ workspace opens directly into a Mew-style client when NapCat
+  accounts are online and otherwise shows an honest connection state. Its
+  current loopback data path has no browser login or locally invented account,
+  conversation, message or Agent result. Future Control Plane routes separately
+  require an authenticated operator identity.
 - Multiple NapCat accounts remain connected concurrently. Every conversation,
   request, message, draft, cache entry, unread state and capability is isolated
   by `accountId`, while the operator may use either an account filter or a
@@ -78,6 +89,22 @@ not block this offline development scope and must not be fabricated.
   cache only real NapCat-derived messages, coverage metadata, conversations and
   drafts; clearing it never changes QQ server data and the UI remains honest
   when a history range cannot be recovered.
+- A newly discovered Bot/group binding starts in `PENDING_PROFILE`. No Agent
+  service is activated until an authorized Bot administrator selects and
+  confirms a versioned `GroupServiceProfile` through the control backend.
+- The selected profile supplies initial values for service membership, Persona,
+  trigger policy, response defaults, model-budget policy, Memory mode and
+  proactive defaults. Effective services are always the intersection of the
+  requested profile, installed/healthy implementations, current grants and
+  rollout policy; unavailable or unauthorized services remain visibly inactive.
+- Group Context and later learning are soft, time-bound evidence. They may tune
+  expression within the active profile but cannot mutate the profile, enable an
+  MCP/Capability, turn on Memory or proactive delivery, select a physical model
+  endpoint, or grant send authority.
+- Web is the product Bot Control Plane, backed by the same authoritative Core
+  command handlers and projections used by other adapters. The browser does not
+  become a second policy engine and never writes runtime stores or calls Agent
+  side effects directly.
 
 ## Success Criteria (testable outcomes that show the need was met)
 
@@ -162,6 +189,29 @@ not block this offline development scope and must not be fabricated.
   integration and evidence-based compatibility cleanup with a recoverable
   previous release; S20 provides only replayable offline Bandit contracts and
   synthetic estimator goldens.
+- [x] Group onboarding records a Bot/account/group-scoped pending state, and an
+  authorized administrator can preview and activate exactly one versioned
+  `GroupServiceProfile` with expected-revision CAS, idempotency, Audit Receipt
+  and last-known-good rollback.
+- [x] The control backend separately exposes desired and effective services,
+  rejects unavailable or unauthorized selections, and publishes one immutable
+  assignment snapshot consumed by Runtime without browser-local authority.
+- [x] Group Context, Skill candidates and Bandit cannot modify service
+  assignment, Capability grants, Memory/proactive enablement, target, schedule
+  or send authority; negative tests prove those boundaries.
+- [x] Agent-generated draft approval either uses a typed governed command and
+  authoritative Receipt or remains explicitly unavailable. Every Control Plane
+  mutation follows that command path; direct-NapCat draft send and browser-local
+  permission/config success are absent from the Agent flow.
+- [x] Local development may replay only the current locally authorized Dududa
+  account's group records through a no-send private runner. The legacy local
+  account is excluded; its exact account mapping remains a local runtime input.
+  Raw message bodies and group/member/message identifiers are not committed as
+  fixtures or reports.
+- [ ] The user's external long-term corpus covering hundreds of groups is first
+  introduced inside the S23 real-test environment. It is not an S21 dependency;
+  full-corpus replay supplies compatibility/distribution evidence while quality
+  claims require a separately labeled human sample.
 - [ ] Only after every accepted module, Web testing task and local integration
   audit is complete, an explicitly authorized real-group shadow/canary run
   records zero duplicate, wrong-target, unauthorized-send or sensitive-trace
@@ -200,6 +250,9 @@ substituted for the later external run.
 - Connecting or simulating the Agent Console runtime in the Mew parity epic.
   Agent sessions, model controls and reply approval remain a separate project
   branch and the UI must show an honest unavailable state until then.
+- Letting the browser, a model, Group Context or a plugin grant service access,
+  edit Core policy stores directly, or bypass governed commands merely because
+  Web is the product Control Plane.
 - Features that Mew itself does not implement, including calls/recording,
   temporary sessions, friend add/delete, message editing, red packets,
   location, announcement publishing and per-member mute management.
@@ -222,11 +275,14 @@ substituted for the later external run.
    single active client.
 9. Browser persistence is allowed only for real NapCat data, drafts and derived
    UI metadata; it is never an alternate QQ source.
-10. Browser identity authentication remains removed for the local deployment.
-    The OneBot Access Token remains mandatory between NapCat and the server and
-    never enters the browser.
-11. The Agent Console runtime is deferred until QQ/Mew parity is independently
-    implemented and audited.
+10. Browser identity authentication remains absent from the existing local QQ
+    workspace. S21 Control Plane queries and mutations require a separate
+    authenticated operator session; loopback origin, QQ role and the OneBot
+    Access Token are not administrator identity. The OneBot token remains
+    server-only.
+11. The Agent Console runtime was deferred until QQ/Mew parity was independently
+    implemented and audited. That prerequisite is now complete; its next role
+    is the Web Bot Control Plane, not a browser-local Agent simulator.
 12. Real group-chat scenario testing runs last, after all accepted modules,
     Web testing work and local integration audits are complete. Static inbound
     canary runs before separately authorized digest and probe canaries.
@@ -248,5 +304,20 @@ substituted for the later external run.
 18. The current Goal may complete S20's offline decision/log/support and
     estimator foundations, but may not train, run a production worker, or
     perform Shadow/live exploration.
-19. No S23 activity, real Provider call, live source fetch, running-container
-    mutation or user-data read is authorized by this offline Goal.
+19. The current local `嘟嘟哒` corpus may be read by the private no-send
+    development replay explicitly approved on 2026-08-14. No external corpus,
+    S23 live behavior, real Provider call, live source fetch or running-container
+    mutation is authorized by the next S21 Goal.
+20. Dududa's long-horizon architecture is a governed group-context adaptive
+    Runtime: a non-removable governance kernel composes reversible, observable,
+    scope-bound capability plugins, while self-improvement remains evaluated,
+    reversible candidate assets and Bandit ranks only safe-equivalent actions.
+21. Web is a first-class Bot Control Plane. It may expose governed mutations,
+    but the UI/API cannot duplicate Router, Authorization, Memory, Capability,
+    Scheduler or Output authority; it calls the same typed Core commands.
+22. When the Bot joins a group, an authorized Bot administrator chooses a
+    versioned initial `GroupServiceProfile`. No model or learned context may
+    enable services or permissions, and missing selection fails closed.
+23. External long-term records from hundreds of groups remain outside the
+    development workspace until S23. Historical replay precedes any real send;
+    raw history alone is not Memory truth, semantic gold or Bandit feedback.

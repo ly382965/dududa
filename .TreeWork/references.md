@@ -22,6 +22,11 @@
   failure criteria for the next implementation Tree.
 - `docs/research/recommendation-matrix.md`: adopt/spike/defer/reject synthesis,
   external-input gates and the proposed single-developer Tree order.
+- `docs/research/deepseek-harness-inspired-dududa-evolution.md`: 2026-08-14
+  long-horizon synthesis for governed plugin lifecycle, Group Context, Skill
+  candidates, Bandit and the Web Bot Control Plane.
+- `docs/design/bot-control-plane.md`: user-confirmed group-onboarding and
+  administrator-selected initial service-profile design.
 
 ## External Design Evidence Reviewed 2026-08-03
 
@@ -66,6 +71,21 @@
   Open Bandit Pipeline 0.5.7 (Apache-2.0) is research-only OPE verification.
   Both remain unusable for policy claims without pre-action propensity,
   support, two legal same-role/tier endpoints and attributable feedback.
+
+## Long-Horizon Evidence Reviewed 2026-08-14
+
+- DeepSeek Harness `47f943859bef60e4160492346772ded9b24f765a` and Cordis
+  `948a07b369c62adb3b12e102458be5c18dfb69b9` demonstrate explicit dependency,
+  lifecycle/disposer and event-projection patterns. Dududa adopts the method,
+  not a second Runtime stack or plugin-owned governance.
+- Group-context, conversational accommodation, long-memory, Skill evolution,
+  Contextual Bandit and Agent observability sources are assessed in the local
+  long-horizon report with their evidence maturity and limits. They support a
+  bounded adaptive design, not current implementation or real-quality claims.
+- The user confirmed the governed adaptive-runtime philosophy and corrected
+  Web's product role: it is a Bot Control Plane. Its first workflow is an
+  authorized Bot administrator selecting a versioned initial service profile
+  after the Bot joins a group; learned context cannot widen that profile.
 
 ## Evidence (external or project sources that materially informed requirements or Spec; not an undigested link dump)
 
