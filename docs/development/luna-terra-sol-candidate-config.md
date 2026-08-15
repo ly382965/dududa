@@ -46,8 +46,38 @@ Git。
   retention 和现有验证 flags。不得写入 Key、Base URL、QQ ID 或聊天正文。
 - Builder 按 Context resolver 优先、私有文件 fallback 的顺序解析 Evidence。Provider/model
   不匹配或验证 flags 不完整时拒绝装配。可解析文件本身不构成真实 Conformance 证据。
-- Builder 装配后健康仍为 `UNKNOWN`。外部健康采集器必须显式发布有 TTL 的
-  `ModelHealthEvidence`；到期未刷新时 Router 自动停止使用该 Endpoint。
+- Builder 装配后健康仍为 `UNKNOWN`。仓库已提供可选的周期健康刷新，但
+  `runtime_health_probe_enabled=false` 是默认值，候选样板和运行中的 AstrBot 都没有启用它。
+  显式启用后，单次探测最多输出 8 Token、零重试，并按配置的 timeout/TTL 发布
+  `ModelHealthEvidence`；成功转为 `HEALTHY`，超时、异常或空结果只转为脱敏 `UNKNOWN`，到期
+  未刷新时 Router 自动停止使用该 Endpoint。默认 interval/timeout/TTL 为 45/15/90 秒。
+
+## 已完成的隔离抽样
+
+候选渲染器已经在隔离 AstrBot 数据目录抽样：它按 ID 合并 Source、Provider 和插件配置，不覆盖
+无关配置；默认保持三个 Provider、Runtime 和投递关闭，kill switch 开启，群白名单为空。该抽样
+没有修改、重启或替换运行中的 AstrBot/NapCat。
+
+固定镜像 `dududa/astrbot:s23-candidate-local` 也已在 `--network none`、临时
+`/AstrBot/data`、无 NapCat 和无端口暴露的容器中启动，AstrBot 4.26.2 成功加载 Dududa Core；
+候选容器随后停止并清理。这是隔离启动证据，不是运行中部署或生产切换。
+
+三个模型还各完成一次固定合成的 Provider-level no-send 请求：
+
+| 模型 | Tier | 结果 | 延迟 | usage（输入/输出/总计） | Provider / Output 调用 |
+| --- | --- | --- | ---: | ---: | ---: |
+| `gpt-5.6-luna` | Haiku | 成功 | 1.980 秒 | 21 / 7 / 28 | 1 / 0 |
+| `gpt-5.6-terra` | Sonnet | 成功 | 1.846 秒 | 21 / 7 / 28 | 1 / 0 |
+| `gpt-5.6-sol` | Opus | 成功 | 2.503 秒 | 21 / 7 / 28 | 1 / 0 |
+
+Runner 不导入 QQ Connector 或 Output Adapter，并丢弃 Prompt、回答和 Provider 错误正文；私有
+Receipt 位于 `/home/mmdustc/temp/dududa-s23-provider-no-send-shadow.json`，权限为 `0600`。
+这只证明三种模型的一次 Responses 请求可用和该隔离路径零 QQ Output，不是运行中 AstrBot 的
+Provider Conformance、候选部署或真实单群 Shadow。
+
+健康刷新也只完成了 Fake Provider 的代表性抽样：周期成功能够刷新 `HEALTHY`，超时会取消请求
+并发布 `UNKNOWN`，没有运行事件循环时保持零 Provider 调用，TTL 到期后恢复 `UNKNOWN`。真实
+Endpoint 的持续健康、错误率和配额仍须在候选部署后取得证据。
 
 ## 最短使用顺序
 
@@ -70,12 +100,14 @@ uv run --locked python ops/cli/render_astrbot_candidate.py \
    日志、deadline 和 cancellation。
 4. 将结果写入仓库外 Evidence 文件，并在私有插件配置中设置
    `runtime_provider_evidence_path`。
-5. 配置 `runtime_models_json`，接入持续健康采集；确认
-   `UNKNOWN -> HEALTHY -> TTL 到期 UNKNOWN`。
+5. 配置 `runtime_models_json`；完成真实 Conformance 后，接入外部健康采集或显式启用默认关闭的
+   `runtime_health_probe_enabled`，确认 `UNKNOWN -> HEALTHY -> TTL 到期 UNKNOWN`，并抽样
+   Provider 超时/错误仍只产生脱敏 `UNKNOWN`。
 6. Preflight 完成前继续保持 Runtime、rollout、投递和主动出站关闭。
 
 聊天数据的 4--5 小时抽样预算见 `docs/operations/s23-real-group-validation.md` 第 1.2 节；首轮按
 分层小样测量吞吐，不把约 410 MB 原始记录一次性提交给模型。
 
-私有 Evidence 解析和 TTL 健康发布工程纵切已经完成；真实运行 AstrBot Provider 注册、真实
-Conformance、持续健康采集、部署切换和单群 Shadow 仍未完成。S23 保持 `paused/partial`。
+私有 Evidence 解析、TTL 健康发布、默认关闭的刷新循环和三模型 Provider-level no-send 抽样已经
+完成；真实运行 AstrBot Provider 注册、真实 Conformance、实际启用后的持续健康证据、部署切换
+和单群 Shadow 仍未完成。S23 保持 `paused/partial`。

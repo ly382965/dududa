@@ -13,8 +13,9 @@ Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过。它仍只能�
 - 没有生产 Probe Projection/Output composition；
 - 没有单群授权、私有 SecretRef 绑定或部署窗口。
 
-在这些门禁关闭前，不读取真实群消息、不修改运行中的 NapCat/AstrBot、不调用真实模型或来源，
-也不发送 QQ 消息。iCourse 是评课社区 MCP，不能作为资讯日报来源。
+除本节记录的无群聊输入、无 Output 路径的隔离 Provider 抽样外，在这些门禁关闭前不读取真实
+群消息、不修改运行中的 NapCat/AstrBot、不调用实时来源、不执行单群 Runtime Shadow，也不发送
+QQ 消息。iCourse 是评课社区 MCP，不能作为资讯日报来源。
 
 当前入站 production shape 的边界如下：
 
@@ -30,8 +31,12 @@ Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过。它仍只能�
 - 私有 Evidence 文件只保存模型绑定和验证结论，不保存 API Key、Base URL、QQ 标识或聊天正文。
   文件能够被解析不等于已经完成真实 Conformance；
 - 初始 operational health 固定为 `UNKNOWN`。只有显式发布的、descriptor 和 revision 绑定正确
-  且未过期的 `ModelHealthEvidence` 才能转为 `HEALTHY`；TTL 到期后自动恢复 `UNKNOWN`。当前
-  工程没有持续健康采集器。
+  且未过期的 `ModelHealthEvidence` 才能转为 `HEALTHY`；TTL 到期后自动恢复 `UNKNOWN`。
+  仓库已经实现可选的 AstrBot Provider 健康刷新循环，但 `runtime_health_probe_enabled` 默认
+  `false`，没有在运行中的 AstrBot 启用。启用后每个 Endpoint 使用最多 8 个输出 Token、零重试
+  的有界探测；成功发布短 TTL 的 `HEALTHY`，超时、Provider 异常或空结果只发布脱敏
+  `UNKNOWN`，不记录 Provider 错误正文。默认刷新间隔、单次超时和证据 TTL 分别为
+  45/15/90 秒，插件关闭时取消刷新任务。
 
 ### 1.1 真实 Endpoint 最小可达性抽样
 
@@ -44,6 +49,23 @@ Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过。它仍只能�
 | `gpt-5.6-terra` | HTTP 200 | 2.816 秒 | 是 | 有 |
 | `gpt-5.6-sol` | HTTP 200 | 2.698 秒 | 是 | 有 |
 
+随后又通过独立 CLI 对三个模型各执行一次固定合成的 Provider-level no-send 请求。该 Runner
+不导入 QQ Connector 或 Output Adapter，不保留 Prompt、回答、Base URL、Key 或 Provider 错误
+正文；仓库外 Receipt 权限为 `0600`，每项只保存模型、Tier、成功状态、延迟、usage、Provider
+调用数和 Output 调用数：
+
+| 模型 | Tier | 结果 | 延迟 | usage（输入/输出/总计） | Provider / Output 调用 |
+| --- | --- | --- | ---: | ---: | ---: |
+| `gpt-5.6-luna` | Haiku | 成功 | 1.980 秒 | 21 / 7 / 28 | 1 / 0 |
+| `gpt-5.6-terra` | Sonnet | 成功 | 1.846 秒 | 21 / 7 / 28 | 1 / 0 |
+| `gpt-5.6-sol` | Opus | 成功 | 2.503 秒 | 21 / 7 / 28 | 1 / 0 |
+
+私有 Receipt 位于
+`/home/mmdustc/temp/dududa-s23-provider-no-send-shadow.json`。这组结果只证明真实 Provider
+能够完成一次合成 Responses 请求，并证明这条隔离路径没有 QQ Output 调用；它绕过了运行中的
+AstrBot、Production Runtime 和真实群 Connector，因此不是 AstrBot Conformance、候选部署或
+单群 no-send Shadow Receipt。
+
 AstrBot 实际使用的 Chat Completions 路径也完成了普通请求和
 `reasoning_effort=low` 各一次抽样：Luna、Terra、Sol 均为 HTTP 200、返回模型 ID 匹配并包含
 usage，单次延迟约 2.2--2.3 秒。这只证明两种协议的单次可达、模型绑定和基本输出，不是
@@ -53,15 +75,25 @@ Endpoint Conformance、持续健康、质量、成本或生产可用性证据。
 `deepseek_1/deepseek-v4-flash` 和 `openai/gpt-5.5`，三个 GPT-5.6 Endpoint 尚未成为 AstrBot
 Provider。固定版本候选镜像已用显式 allowlist 透传 `max_tokens` 和 `reasoning_effort`；
 隔离 payload 抽样保留了 `max_tokens=321`、`reasoning_effort=high`，且未放行无关插件参数。
+固定镜像 `dududa/astrbot:s23-candidate-local` 还曾在 `--network none`、临时
+`/AstrBot/data`、无 NapCat、无端口暴露的容器中启动；AstrBot 4.26.2 成功加载 Dududa Core 后，
+候选容器即被停止并清理。它证明候选能够启动，不是运行中部署或生产切换。
 Runtime 将 OFF/LIGHT/BALANCED/DEEP/MAXIMUM 映射为省略/low/medium/high/xhigh，但远程请求只
 抽样验证过 `low`。思考深度当前由每个 Endpoint 固定配置，不是同一 Endpoint 请求级动态切换。
 Builder 必须解析真实 Conformance Evidence，初始健康为 `UNKNOWN`。
 
+健康刷新使用 Fake Provider 做了代表性错误抽样：正常结果能够周期刷新 `HEALTHY`；探测超时
+会取消请求并发布 `UNKNOWN`；没有运行事件循环时不启动、不调用 Provider；TTL 到期后 Router
+重新看到 `UNKNOWN`。这些测试证明默认关闭、刷新、取消和失效语义，不证明真实 Endpoint 的
+长期健康、配额、故障率或 AstrBot Conformance。
+
 仓库已提供无凭据、默认关闭的候选样板：Luna -> Haiku/light、Terra -> Sonnet/balanced、
-Sol -> Opus/deep。进入真实 Shadow 前的最短顺序为：在部署窗口切换候选镜像；注册三个
-AstrBot Provider 并取得实际 Provider ID；在实际 AstrBot 路径完成 Contract/Conformance；把验证
-结论写入仓库外 Evidence 文件并配置 `runtime_provider_evidence_path`；接入能在 TTL 前持续刷新的
-健康采集源；完成 Preflight 后再进入单群 no-send Shadow。此前始终保持
+Sol -> Opus/deep。进入真实 Shadow 前的最短顺序为：在部署窗口启动或切换到仍保持 Runtime/rollout
+关闭的隔离候选实例；注册三个 AstrBot Provider 并取得实际 Provider ID；在该实际 AstrBot 路径
+完成 Contract/Conformance；把验证结论写入仓库外 Evidence 文件并配置
+`runtime_provider_evidence_path`；接入能在 TTL 前持续刷新的健康采集源，或在验证配置后显式启用
+默认关闭的内置刷新循环。只有 Conformance 与 Preflight 均通过后，才启用运行中的候选 Runtime
+进入单群 no-send Shadow。此前始终保持
 `runtime_enabled=false`、`rollout_mode=off`。
 
 ### 1.2 4--5 小时离线抽样预算
@@ -72,7 +104,7 @@ AstrBot Provider 并取得实际 Provider ID；在实际 AstrBot 路径完成 Co
 
 | 累计时间 | 工作 | 硬上限 |
 | --- | --- | ---: |
-| 0--60 分钟 | 全量本地索引、过滤、去重和 past-only 窗口构建 | 只做本地处理 |
+| 0--60 分钟 | 复用并校验现有索引；仅处理新增或失效文件的过滤、去重和 past-only 窗口 | 只做本地处理 |
 | 60--85 分钟 | 分层抽取窗口测量实际吞吐 | 20--24 次请求 |
 | 85--210 分钟 | Luna 生成主结构化样本 | 默认 250，最多 350 |
 | 并行复核 | Terra 只处理低置信度和 Schema 边界 | 最多 50 |
@@ -253,5 +285,5 @@ Closeout 必须：
 
 S23 只有在完整单群阶梯及 Closeout 证据存在后才能标记完成。在此之前应保持 TreeWork 分支
 `partial/paused`，不能用离线 checker、S19 Release 或 S20 合成 Bandit 结果替代真实 Receipt。
-私有 Evidence 解析和 TTL 健康发布工程纵切已经完成；真实运行 AstrBot Provider 注册、真实
-Conformance、持续健康采集、部署切换和单群 Shadow 仍未完成。
+私有 Evidence 解析、TTL 健康发布和默认关闭的周期刷新工程纵切已经完成；真实运行 AstrBot
+Provider 注册、真实 Conformance、实际启用后的持续健康证据、部署切换和单群 Shadow 仍未完成。

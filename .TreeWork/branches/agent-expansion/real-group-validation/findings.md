@@ -22,6 +22,12 @@ Branch: real-group-validation
   candidate image now carries the approved request overrides, but the running
   AstrBot registry still requires deployment binding, Contract/Conformance and
   refreshable health evidence.
+- 固定 AstrBot 4.26.2 候选在完全隔离环境启动，只证明镜像、插件加载和
+  `DududaCore loaded` 的启动形状成立；它不等于运行中注册、正式部署、
+  Provider Conformance 或真实单群 Shadow。
+- Luna/Terra/Sol 的新增证据称为“隔离 Provider no-send 抽样”：runner 直接
+  调用 Responses API，绕过 AstrBot Provider、Dududa Runtime、Connector 和
+  Rollout Bridge，因此不能升级为 AstrBot Runtime Shadow 或生产健康证据。
 - Candidate configuration is merged by stable AstrBot IDs into an isolated data
   root instead of replacing `cmd_config.json`; disabled is the default, while
   Shadow rendering still cannot enable delivery or select a group.
@@ -38,7 +44,9 @@ Branch: real-group-validation
 - 仓库外 Evidence 文件是环境 Adapter，不是新的控制面：AstrBot Context
   resolver 保持优先，文件只作为缺失或返回 `None` 时的 fallback。
 - 生产装配复用既有 `BoundedModelHealthPublisher`，不新增第二套健康状态机。
-  Builder 只暴露显式健康发布入口；本轮不伪造后台轮询器或持续健康来源。
+  插件现已内置默认关闭的周期刷新器，默认间隔/超时/TTL 为 45/15/90 秒；
+  固定模型探测使用 `max_tokens=8`、`request_max_retries=0`，成功发布
+  `HEALTHY`，失败、超时或 TTL 到期发布/保持 `UNKNOWN`，terminate 时取消任务。
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 
@@ -71,6 +79,13 @@ Branch: real-group-validation
 - `ProductionRuntimeAssembly.publish_model_health()` 将显式健康证据交给
   bounded publisher。Router 和 Admission 读取同一投影视图；初始无证据和
   TTL 过期均表现为 `UNKNOWN`。思考深度当前是 Endpoint 固定 Profile。
+- `ops/cli/run_provider_no_send_shadow.py` 对 Luna/Terra/Sol 各执行一次直接
+  Responses API 调用，并只持久化模型/档位、成功标志、延迟、usage、
+  `provider_calls=1` 与 `output_calls=0`。收据不包含 Key、Base URL、Prompt、
+  回答、QQ 标识或 Provider 错误正文；失败样本使用注入故障验证脱敏。
+- 插件配置新增默认关闭的 `runtime_health_probe_enabled` 及刷新间隔、探测超时、
+  Evidence TTL 参数。刷新任务随插件生命周期启动/取消，不改变 Capability、
+  Rollout 或 Output 所有权。
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 
@@ -82,11 +97,14 @@ Branch: real-group-validation
   a rollback owner before mutation.
 - 可解析的 Evidence JSON 只证明工程契约成立，不证明字段来自真实
   Conformance 执行。当前聚焦测试仍使用 Fake AstrBot Provider 和固定
-  Evidence fixture；运行中 AstrBot 的 Conformance、持续健康、部署绑定和
-  实际 Shadow 均未证明。
-- 当前没有后台健康采集器；即使首次发布为 `HEALTHY`，如果外部采集源未在
-  TTL 前刷新，Router 会自动恢复 `UNKNOWN`。
+  Evidence fixture；健康刷新实现已经存在，但运行中 AstrBot 未启用，正式
+  Conformance、持续生产健康、部署绑定和实际 Shadow 均未证明。
+- 默认关闭的刷新器只有在正式部署配置启用后才会周期探测；在此之前没有生产
+  健康证据。即使曾发布 `HEALTHY`，TTL 内没有成功刷新时 Router 仍会恢复
+  `UNKNOWN`。
 - 当前运行中的 AstrBot 只注册 DeepSeek V4 Pro/Flash 和 GPT-5.5，尚未切换到
   已打补丁的候选镜像，也未注册 Luna/Terra/Sol。候选样板的 light/balanced/deep
   是待 Conformance 的 pilot 初值；真实请求只抽样验证过 `low`，不能据此声称
   medium/high/xhigh 或持续观测已经通过。
+- 注入的 no-send 失败样本只证明收据脱敏和零 Output 行为，不代表真实 Endpoint
+  曾发生故障，也不能替代正式故障注入或生产错误率观测。

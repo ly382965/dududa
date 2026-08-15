@@ -14,19 +14,21 @@
   真实 QQ 群运行仍须闭合 S23 环境适配并取得逐行为授权。
 - S23 分支已经补齐配置驱动的入站生产 Runtime 最短纵切：实际声明的 1–3 个模型档位经
   AstrBot Provider Adapter、既有 Static Router 和 DirectChat 链装配；默认关闭，`off` 不调用
-  Provider，`shadow` 只做一次候选回答调用且不取得事件或发送所有权。当前证据只来自 Fake
-  Provider：27 项最终聚焦契约在 1.005 秒内通过，此前 6 项冒烟在 0.196 秒内通过；这不等于
-  真实 Endpoint Conformance、部署或上线。
+  Provider，`shadow` 只做一次候选回答调用且不取得事件或发送所有权。Runtime/rollout 契约
+  仍由 Fake Provider 证明；真实模型调用仅发生在独立 Provider-level no-send runner 中，不等于
+  Runtime Shadow、Endpoint Conformance、部署或上线。
 - 2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 完成 Responses 与
   AstrBot 所用 Chat Completions 的最小真实请求抽样，均返回 HTTP 200、模型 ID 匹配和 usage；
-  这只证明协议可达。固定 AstrBot 4.26.2 候选镜像现已透传请求级输出上限和配置声明的固定
-  Endpoint 思考深度，且 34 项 Adapter/Composition 聚焦测试通过；当前 AstrBot 尚未切换或
-  注册三模型，因此 S23 仍无真实 AstrBot Conformance 或持续健康证据。
+  又使用无 QQ Connector/Output 的独立 runner 对三模型各调用一次，均成功且
+  `provider_calls=1`、`output_calls=0`。固定 AstrBot 4.26.2 隔离候选已完成启动，候选镜像可透传
+  请求级输出上限和配置声明的固定 Endpoint 思考深度；运行中的 AstrBot 仍未切换或正式注册
+  三模型，因此这些结果仍不是 AstrBot Conformance、Runtime Shadow 或真实群 Shadow。
 - 本轮补齐了 Provider Evidence 与健康 TTL 的工程路径：Builder 优先使用 AstrBot Context
   resolver，也可从 `runtime_provider_evidence_path` 读取仓库外私有 Evidence；同一个
   `BoundedModelHealthPublisher` 供 Router 和 Admission 使用。有效健康可使
-  `UNKNOWN -> HEALTHY`，TTL 到期后恢复 `UNKNOWN`。当前没有操作员提供的真实 Evidence 文件或
-  持续健康采集器。
+  `UNKNOWN -> HEALTHY`，TTL 到期后恢复 `UNKNOWN`。默认关闭的主动健康刷新器已完成成功、
+  超时失败、无运行 event loop 保持 `UNKNOWN`、TTL 到期和 `terminate()` 取消的 6 项聚焦抽样；
+  当前仍无正式 Conformance Evidence，运行中部署也未启用刷新器。
 - 已有 600 条 Terra Silver、137,026 条 Student 预测和私有 Demo 不重跑。若进行新一轮多模型
   校准，采用五小时硬时间盒：20--24 条先测吞吐，Luna 主样本默认 250/最多 350，Terra 复核
   最多 50，Sol 抽查最多 15，T+3.5 小时停止新请求，并按群隔离 train/dev/test。
@@ -106,7 +108,7 @@
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **暂停、部分完成；离线 Demo 与候选模型工程纵切已完成** | 历史语料 Demo、配置驱动 Builder、固定 AstrBot 4.26.2 候选镜像、默认关闭的三档样板、Luna/Terra/Sol 两种协议最小探测，以及仓库外 Evidence Store 与 bounded health TTL 路径均已完成聚焦验证 | 生成真实 AstrBot Conformance Evidence，接入持续健康采集，切换候选部署并完成单群 no-send Shadow；实时 Canary、来源和发送继续关闭 |
+| S23 Real Group Validation | **暂停、部分完成；离线 Demo 与候选模型工程纵切已完成** | 历史语料 Demo、配置驱动 Builder、固定 AstrBot 4.26.2 隔离候选启动、Luna/Terra/Sol 各一次真实 Provider-level no-send，以及默认关闭健康刷新器的成功/超时/UNKNOWN/TTL/terminate 聚焦证据已完成；这些均无 QQ Output | 在运行 AstrBot 正式注册三模型，生成真实 Conformance Evidence，启用候选部署与持续健康刷新，再完成真实单群 no-send Shadow；实时 Canary、来源和发送继续关闭 |
 
 ## 产品模块完成度
 
@@ -117,7 +119,7 @@
 | Connector / Output / Attachment | 部分完成 | AstrBot Connector/Output、持久 rollout 去重、Bridge 和发送 tombstone 已完成；真实附件读取和第二平台未完成 |
 | Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分、priority-100 rollout handler 和镜像内 43/1/1 registry 已验证；旧 Handler 按回滚设计继续保留 |
-| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 最小 Composer/Renderer 与 S23 配置驱动 AstrBot Provider→Static Router→DirectChat 纵切已实现；候选路径现可从仓库外 Evidence 装配，并在 TTL 健康失效时自动停止路由；运行中的 AstrBot 尚未切换或注册三模型，真实 Conformance、持续健康、人工质量、完整 OC 资产和多轮能力仍待 Eval |
+| 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 最小 Composer/Renderer 与 S23 配置驱动 AstrBot Provider→Static Router→DirectChat 纵切已实现；候选路径可从仓库外 Evidence 装配并在 TTL 健康失效时停止路由；三模型 Provider-level no-send 与默认关闭刷新器已有聚焦证据，但运行中的 AstrBot 尚未正式注册三模型，真实 Conformance、部署启用、人工质量、完整 OC 资产和多轮能力仍待 Eval |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
 | Unified MCP / Capability Runtime | 已完成（离线） | S12 Unified Client/Registry、独立 worker和 iCourse facade；S22 已删除专用直连 Client，缺失时 fail closed；S13 Catalog/Retrieval/有限 Planner/Executor/Validator 和四个只读映射均有本地证据 | 生产 Tools 仍关闭，真实 Planner Endpoint、新 Server 和在线来源未实现 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
@@ -125,7 +127,7 @@
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit 分权；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
 | Mew/NapCat WebUI / Bot Control Plane | QQ 客户端与 S21 离线范围已完成 | Web 已提供群服务初始化与运行状态视图；Desired/Effective、Assignment、Receipt 和运维健康均来自 Core DTO。Agent 草稿直发 NapCat 已移除，permission/config 占位为无事件只读状态 | 生产 Core HTTP/operator identity、真实 Agent Run/健康数据和授权 QQ 操作仍未完成 |
-| 真实群聊放量 | S23 离线历史语料 Demo 与候选模型工程纵切已完成，实时运行未开始 | 获授权静态快照已完成确定性处理、600 条 Silver 抽样、群隔离 Student、137,026 条预测和私有 no-send Demo；Provider Evidence/health 的工程接口已经存在，但测试仍使用 Fake Provider，没有真实 Conformance、持续健康、部署或单群 Receipt | 先补 150–300 条均衡人工 Gold；真实 Endpoint、部署、实时授权、发送、来源和 Canary 继续后置 |
+| 真实群聊放量 | S23 暂停、部分完成；离线历史语料 Demo 与候选模型工程纵切已完成，实时运行未开始 | 获授权静态快照已完成确定性处理、600 条 Silver 抽样、群隔离 Student、137,026 条预测和私有 no-send Demo；固定 AstrBot 4.26.2 隔离候选、三模型 Provider-level no-send 和默认关闭健康刷新器已有证据，但没有 Runtime/真实群 Shadow 或 QQ Output | 150–300 条均衡人工 Gold 是推荐的质量校准分支，不阻塞 no-send Shadow；先在隔离候选正式注册模型并完成 Conformance，再启用运行中的候选 Runtime 与健康刷新。Projection/Connector 是 Shadow 前置，Output 是 Inbound Canary 前置，真实 Source 是 Manual Digest 前置 |
 
 ## 2026-08-14 长程设计整合状态
 
@@ -161,10 +163,11 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 | --- | --- |
 | Responses API | Luna/Terra/Sol 均 HTTP 200；延迟分别为 2.212/2.816/2.698 秒，模型 ID 匹配且有文本和 usage |
 | Chat Completions | 三模型普通请求和 `reasoning_effort=low` 均 HTTP 200，模型 ID 匹配且有 usage，约 2.2--2.3 秒 |
-| 证据边界 | 只证明单次协议可达；不等于 AstrBot Provider Contract、Conformance、持续健康、质量或上线 |
+| Provider-level no-send | 独立 runner 对 Luna/Terra/Sol 各调用一次，均成功；延迟分别为 1.980/1.846/2.503 秒，每次 `provider_calls=1`、`output_calls=0`，receipt 不保存回答 |
+| 证据边界 | 上述 no-send 不经过 Runtime、Rollout、QQ Connector 或 Output；不等于 AstrBot Provider Contract/Conformance、真实群 Shadow、质量或上线 |
 | 当前 AstrBot | 只注册 DeepSeek V4 Pro/Flash 与 GPT-5.5；Luna/Terra/Sol 尚未注册 |
-| 参数接入 | 候选镜像已透传请求级输出上限和配置声明的固定 Endpoint 思考深度；当前不是同 Endpoint 按请求动态切换，且运行中的 AstrBot 尚未切换 |
-| 下一步 | 切换候选镜像并注册三模型/确认 Provider ID -> 运行真实 Conformance 并写入仓库外 Evidence -> 接入持续健康采集 -> 单群 Shadow |
+| 参数接入/启动 | 候选镜像已透传请求级输出上限和配置声明的固定 Endpoint 思考深度；固定 AstrBot 4.26.2 隔离候选启动通过，但运行中的 AstrBot 尚未切换 |
+| 下一步 | 在运行 AstrBot 正式注册三模型/确认 Provider ID -> 运行真实 Conformance 并写入仓库外 Evidence -> 启用默认关闭的健康刷新 -> 真实单群 no-send Shadow |
 | 数据预算 | 不重跑现有语料 Demo；新一轮最多五小时，Luna 120--350、Terra <= 50、Sol <= 15，T+3.5 小时停止新请求 |
 
 ## 2026-08-15 S23 Provider Evidence 与健康 TTL 工程纵切
@@ -175,7 +178,9 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 | 绑定 | Provider ID 与模型 ID 精确解析，Adapter 继续验证输出上限、residency、retention 和 conformance flags |
 | 健康状态 | 初始 `UNKNOWN`；有效 TTL Evidence 可发布 `HEALTHY`；TTL 到期自动恢复 `UNKNOWN` |
 | 路由影响 | Router 与 Admission 使用同一 bounded operational view；过期后不再调用 Provider |
-| 证据边界 | 仅完成 Fake/fixture 工程验证；真实 AstrBot Conformance、持续采集、部署切换和单群 Shadow 未完成 |
+| 主动刷新 | 默认关闭；显式开启后对已配置模型做有界、零重试、短输出探测，插件终止时取消并等待刷新任务 |
+| 聚焦验证 | 成功、超时并取消 Provider Task、无 event loop 保持 `UNKNOWN`、TTL 到期和 `terminate()` 关闭等 6 项抽样通过（0.394 秒） |
+| 证据边界 | 刷新器仍未在运行中部署启用；真实 AstrBot Conformance、正式三模型注册和真实单群 Shadow 未完成 |
 
 完整运行边界与时间表见 [S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md)。
 
@@ -352,9 +357,10 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 
 ## 下一步
 
-S17–S22、S21 和 S23A–S23E 离线范围均已完成。下一步若以质量为先，先建立 150–300 条
-类别均衡的人工 Gold，复核 Tool、复杂度和 AnswerProfile；若进入实时阶段，则从单群 no-send
-Shadow 开始，并继续等待 Provider/Source/Projection/Output 环境适配和逐行为授权。实时
+S17–S22、S21 和 S23A–S23E 离线范围均已完成。下一步若以质量为先，可先建立 150–300 条
+类别均衡的人工 Gold，复核 Tool、复杂度和 AnswerProfile；该质量校准分支不阻塞单群 no-send
+Shadow。进入实时阶段时，先完成 Provider Conformance 与 Projection/Connector 环境适配；Output
+只在 Inbound Canary 前启用，真实 Source 只在 Manual Digest 前接入，并继续执行逐行为授权。实时
 “入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频 Probe”不得跳级。Bandit
 不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
 

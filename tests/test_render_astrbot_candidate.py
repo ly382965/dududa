@@ -77,7 +77,11 @@ class RenderAstrBotCandidateTests(unittest.TestCase):
         receipt = json.loads(result.stdout)
         astrbot = json.loads((self.data_root / "cmd_config.json").read_text())
         plugin = json.loads(
-            (self.data_root / "config" / "astrbot_plugin_dududa_core_config.json").read_text()
+            (
+                self.data_root
+                / "config"
+                / "astrbot_plugin_dududa_core_config.json"
+            ).read_text()
         )
         sources = {item["id"]: item for item in astrbot["provider_sources"]}
         providers = {item["id"]: item for item in astrbot["provider"]}
@@ -120,7 +124,11 @@ class RenderAstrBotCandidateTests(unittest.TestCase):
 
         astrbot = json.loads((self.data_root / "cmd_config.json").read_text())
         plugin = json.loads(
-            (self.data_root / "config" / "astrbot_plugin_dududa_core_config.json").read_text()
+            (
+                self.data_root
+                / "config"
+                / "astrbot_plugin_dududa_core_config.json"
+            ).read_text()
         )
         source = next(
             item

@@ -120,7 +120,9 @@ def render_candidate(
                 rendered["key"] = [api_key]
         rendered_sources.append(rendered)
     if not matched_source:
-        raise ValueError(f"provider source is absent from template: {provider_source_id}")
+        raise ValueError(
+            f"provider source is absent from template: {provider_source_id}"
+        )
 
     rendered_providers: list[dict[str, Any]] = []
     for provider in providers:
@@ -133,7 +135,9 @@ def render_candidate(
 
     if enabled:
         selected_source = next(
-            source for source in rendered_sources if source.get("id") == provider_source_id
+            source
+            for source in rendered_sources
+            if source.get("id") == provider_source_id
         )
         selected_base = selected_source.get("api_base")
         selected_keys = selected_source.get("key")

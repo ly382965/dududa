@@ -49,6 +49,15 @@ Title: S23 Authorized Real-Group Validation
   不匹配时拒绝装配；初始健康为 `UNKNOWN`，有效且未过期的
   `ModelHealthEvidence` 可使 Router/Admission 看到 `HEALTHY`，TTL 到期后
   自动恢复 `UNKNOWN` 并停止调用 Provider。
+- [x] 固定 AstrBot 4.26.2 候选已在 `--network none`、临时
+  `/AstrBot/data`、只读插件挂载、无 NapCat 且无端口的完全隔离环境启动；
+  同时完成 Luna/Terra/Sol 各一次隔离 Provider no-send 抽样，每档均为
+  `provider_calls=1`、`output_calls=0`。
+- [x] 默认关闭的周期模型健康刷新已实现并完成聚焦抽样：默认刷新间隔、
+  超时与 Evidence TTL 分别为 45/15/90 秒；固定模型探测使用
+  `max_tokens=8`、`request_max_retries=0`，成功发布 `HEALTHY`，失败、超时
+  或 TTL 到期保持/恢复 `UNKNOWN`，插件终止时取消刷新任务。脱敏失败样本
+  不保存 Key、Base URL、Prompt、回答、QQ 标识或 Provider 错误正文。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -93,12 +102,18 @@ Title: S23 Authorized Real-Group Validation
   existing bounded health publisher through Production Assembly, Router and
   Admission; verify exact binding, `UNKNOWN -> HEALTHY` and TTL expiry with
   focused Fake tests.
+- [x] Start the fixed AstrBot 4.26.2 candidate in a fully isolated environment
+  and sample Luna/Terra/Sol once each through the isolated Provider no-send
+  runner; retain only sanitized operational receipts.
+- [x] Implement the default-off periodic model-health refresher and sample its
+  success, failure/timeout, Evidence TTL expiry and terminate-time cancellation
+  paths without enabling it in the running AstrBot.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,
-  connect a refreshable health collector before the evidence TTL expires, and
-  add live Source, Projection and Output composition only for the authorized
-  stage.
+  bind it to the formal candidate, then enable and configure the implemented
+  health refresher before the Evidence TTL expires. Add live Source, Projection
+  and Output composition only for the authorized stage.
 - [ ] Execute Preflight and single-group no-send/no-write Shadow; review the
   sanitized receipt before promotion.
 - [ ] Execute explicit-mention inbound Canary and reconcile every request and

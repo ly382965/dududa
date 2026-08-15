@@ -4,6 +4,46 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `PYTHONPATH=packages/dududa-agent/src:apps/astrbot-plugins .venv/bin/python -m unittest tests.test_provider_no_send_shadow tests.test_render_astrbot_candidate`
+- Result: 4 focused tests passed in 0.166 seconds.
+- Command: `.venv/bin/ruff check --select E,F,I ops/cli/run_provider_no_send_shadow.py tests/test_provider_no_send_shadow.py ops/cli/render_astrbot_candidate.py tests/test_render_astrbot_candidate.py`
+- Result: passed. `git diff --check` also passed.
+- Evidence boundary: this closeout reused fixtures and local files; it did not
+  repeat Endpoint requests, corpus processing, container startup or QQ output.
+- Recorded: 2026-08-15
+
+- Evidence source: isolated fixed AstrBot 4.26.2 candidate startup associated
+  with `e9cb9e0`.
+- Result: partial. The candidate started with `--network none`, a temporary
+  `/AstrBot/data`, read-only plugin mount, no NapCat and no exposed port;
+  AstrBot 4.26.2, plugin loading and `DududaCore loaded` were observed.
+- Evidence boundary: this proves an isolated startup shape only. It did not
+  register or replace the running AstrBot, call a Provider, attach NapCat,
+  select a group or send Output.
+
+- Evidence source: isolated Provider no-send sampling and sanitized receipt
+  implementation in `a866812`.
+- Result: partial. Luna, Terra and Sol were sampled once each; every tier
+  recorded `provider_calls=1` and `output_calls=0`. A separate injected failure
+  sample retained no API Key, Base URL, Prompt, answer, QQ identifier or
+  Provider error body.
+- Evidence boundary: `ops/cli/run_provider_no_send_shadow.py` calls the
+  Responses API directly. It does not traverse AstrBot Provider, Dududa Runtime,
+  Connector or Rollout Bridge, so this is not AstrBot Runtime Shadow, real
+  single-group Shadow, Provider Conformance or production-health evidence. The
+  failure sample was injected, not an observed Endpoint incident.
+
+- Evidence source: focused periodic model-health implementation and lifecycle
+  cases in `05c307f`.
+- Result: partial. Configuration defaults to disabled with 45-second refresh,
+  15-second timeout and 90-second Evidence TTL. The fixed-model probe uses
+  `max_tokens=8` and `request_max_retries=0`; success publishes `HEALTHY`, while
+  failure/timeout publishes or retains `UNKNOWN`, expired evidence returns to
+  `UNKNOWN`, and plugin termination cancels the refresh task.
+- Evidence boundary: the implementation has focused evidence but is not enabled
+  in the running AstrBot. It does not establish formal Provider Conformance,
+  deployed continuous health or live single-group execution.
+
 - Command: `uv run --locked python -m unittest tests.test_render_astrbot_candidate -v`
 - Result: partial; 2 focused tests passed in 0.144 seconds.
 - Evidence: disabled mode merges Source/Provider additions by ID without
@@ -22,8 +62,10 @@ Branch: real-group-validation
   fake clock beyond the health TTL changes it back to `UNKNOWN` and prevents a
   further Provider call.
 - Evidence boundary: these are Fake Provider and fixed private-file fixture
-  tests. They do not prove real AstrBot Provider Conformance, a continuous
-  health collector, candidate deployment, live single-group Shadow or QQ send.
+  tests. The refresh implementation now has separate focused evidence, but it
+  is not enabled in the running AstrBot; these tests do not prove real AstrBot
+  Provider Conformance, candidate deployment, continuous production health,
+  live single-group Shadow or QQ send.
 - Verification remains `partial`; S23 remains `paused`.
 - Recorded: 2026-08-15
 
@@ -61,8 +103,10 @@ Branch: real-group-validation
   2.2--2.3 seconds.
 - Evidence boundary: the probes prove one-shot protocol reachability only. The
   candidate path now carries output/reasoning parameters, but the models are not
-  registered in the running AstrBot and no refreshable health or real AstrBot
-  Provider Conformance evidence exists. Only `low` was remotely sampled.
+  registered in the running AstrBot. A default-off refresh implementation now
+  exists, but it has not been enabled against formally conformant Providers and
+  no continuous production-health evidence exists. Only `low` was remotely
+  sampled.
 - Coverage gap: no human Gold, live Dududa traffic, real Endpoint Conformance or
   health, container deployment and Release binding, live campus/arXiv/industry
   Source, production Projection/Output composition, QQ send, online Bandit or

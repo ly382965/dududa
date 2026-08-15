@@ -28,12 +28,22 @@ Last sync: unix:1786706085
 - Production Assembly 已复用现有 `BoundedModelHealthPublisher`，并将同一
   operational view 提供给 Router 与 Admission。初始状态为 `UNKNOWN`；
   只有 descriptor/revision 绑定正确且 TTL 有效的健康证据才能发布为
-  `HEALTHY`，到期后自动投影回 `UNKNOWN`。当前没有持续健康采集器。
+  `HEALTHY`，到期后自动投影回 `UNKNOWN`。插件现已内置默认关闭的周期刷新器，
+  默认间隔/超时/TTL 为 45/15/90 秒；固定模型探测使用 `max_tokens=8` 和
+  `request_max_retries=0`，失败或超时发布/保持 `UNKNOWN`，插件终止会取消任务。
+  该刷新器尚未在运行中的 AstrBot 启用，因此没有生产持续健康证据。
 - Luna、Terra、Sol 已分别通过 Responses API 和 AstrBot 所用 Chat
   Completions 的最小真实请求抽样；两种协议均返回 HTTP 200、匹配模型 ID
   和 usage。固定 AstrBot 4.26.2 候选镜像现已显式透传请求级 `max_tokens`
-  和 Endpoint 配置声明的 `reasoning_effort`；当前运行中的 AstrBot 尚未切换或
-  注册三个模型，因此这些结果仍不构成 AstrBot Conformance 或健康证据。
+  和 Endpoint 配置声明的 `reasoning_effort`，并在 `--network none`、临时数据
+  目录、只读插件、无 NapCat/端口的隔离环境启动，观察到 4.26.2、插件加载和
+  `DududaCore loaded`。当前运行中的 AstrBot 尚未切换或注册三个模型，因此
+  这些结果仍不构成 AstrBot Conformance、正式部署或生产健康证据。
+- Luna/Terra/Sol 还各完成一次隔离 Provider no-send 抽样，每档均为
+  `provider_calls=1`、`output_calls=0`；一个注入的失败样本验证了脱敏收据。
+  该 runner 直接调用 Responses API，未经过 AstrBot Provider、Dududa Runtime、
+  Connector 或 Rollout Bridge，不能称为 AstrBot Runtime Shadow、真实单群
+  Shadow 或 Provider Conformance。
 - S23 整体仍为 `paused/partial`。当前缺少的不是入站 Builder 本身，而是
   真实 Endpoint 的 Conformance、健康与部署绑定，以及主动来源所需的 live
   Source/Projection/Output 组合；`s23_ready=false` 继续有效。
@@ -74,6 +84,15 @@ Last sync: unix:1786706085
 - 新增隔离候选配置渲染器：按 ID 合并现有 AstrBot 配置，默认关闭三档 Provider
   与 Runtime；显式 Shadow 模式从环境或私有文件读取连接信息，仍保持零投递、
   kill switch 开启和空群白名单。2 项聚焦测试通过，未修改运行中容器。
+- 固定 AstrBot 4.26.2 候选随后在完全隔离环境完成启动抽样：网络关闭、数据目录
+  临时、插件只读、无 NapCat 且无端口；日志只用于确认 AstrBot 版本、插件加载
+  和 `DududaCore loaded`，未形成运行中部署证据。
+- Luna/Terra/Sol 各完成一次隔离 Provider no-send 抽样，每档只调用 Provider
+  一次且 Output 为零；收据不保存 Key、Base URL、Prompt、回答、QQ 标识或错误
+  正文。另有一个注入的脱敏失败样本；它不是一次真实 Endpoint 故障。
+- 默认关闭的健康刷新工程实现已覆盖成功刷新为 `HEALTHY`、失败/超时保持
+  `UNKNOWN`、Evidence TTL 到期恢复 `UNKNOWN`，以及插件 terminate 取消刷新
+  任务。运行中的 AstrBot 未启用该配置，未产生连续生产观测。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
@@ -93,10 +112,10 @@ Last sync: unix:1786706085
   Source/Projection/Output Adapters only after the corresponding proactive
   behavior is authorized.
 - 在实际候选 AstrBot 上运行 Provider Conformance，生成并私下绑定真实
-  Evidence 文件；注册实际 Provider ID，并接入能在 TTL 前刷新
-  `ModelHealthEvidence` 的持续采集源。随后仍需完成候选镜像部署切换和
-  单群 no-send Shadow。当前思考深度是每个 Endpoint 的固定配置，不是同
-  Endpoint 动态切换。
+  Evidence 文件并注册实际 Provider ID；在正式部署中启用和配置已经实现的
+  周期健康刷新器，取得持续健康证据。随后仍需完成候选镜像部署切换和单群
+  no-send Shadow。当前思考深度是每个 Endpoint 的固定配置，不是同 Endpoint
+  动态切换。
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 

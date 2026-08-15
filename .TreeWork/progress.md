@@ -65,12 +65,21 @@ Last sync: unix:1786717871
   calls. The running AstrBot/NapCat stack was not changed and production remains
   NOT READY until real Endpoint conformance, health, release binding and
   authorization exist.
-- On 2026-08-15 private one-shot probes confirmed that Luna, Terra and Sol each
-  return HTTP 200, matching model IDs and usage through both Responses and the
-  Chat Completions protocol used by AstrBot. This is reachability only: the
-  running AstrBot has not registered those Providers, and its current payload
-  path does not pass Dududa's per-request output limit or dynamic reasoning
-  depth. No container or Provider configuration was changed.
+- A fixed AstrBot 4.26.2 candidate has now started in a fully isolated
+  `--network none` environment with temporary data, a read-only plugin mount,
+  no NapCat and no port. AstrBot 4.26.2, plugin loading and `DududaCore loaded`
+  were observed. This is separate from the unchanged running AstrBot and proves
+  neither deployment nor Provider Conformance.
+- Private one-shot probes confirmed that Luna, Terra and Sol each return HTTP
+  200, matching model IDs and usage through both Responses and the Chat
+  Completions protocol used by AstrBot. Each tier also completed one isolated
+  Provider no-send sample with `provider_calls=1` and `output_calls=0`; that
+  runner calls Responses directly and bypasses AstrBot/Dududa/Connector/Rollout.
+- The plugin now includes a default-off periodic model-health refresher with
+  45/15/90-second interval/timeout/TTL defaults, fixed-model eight-token probes,
+  zero request retries, `HEALTHY` success, `UNKNOWN` failure/expiry behavior and
+  terminate-time cancellation. It is not enabled in the running AstrBot, so no
+  continuous production-health evidence exists.
 - The 2026-08-09 research set now covers Unified MCP, Scheduler, public sources,
   Memory, semantic evaluation, real Endpoint conformance, AnswerProfile,
   Conversation Probe and same-role/tier Contextual Bandit. The recommendation
@@ -106,20 +115,24 @@ Last sync: unix:1786717871
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials. All accepted local predecessors are complete;
   S23 is paused/partial after completing its offline S23A--S23E milestone and
-  the configuration-driven inbound Runtime shape. It still needs real Endpoint
-  evidence resolution/conformance and the live Source/Projection/Output
-  composition required by each separately authorized proactive stage.
+  the configuration-driven inbound Runtime shape, isolated candidate startup,
+  three-tier Provider no-send sampling and default-off health-refresh
+  implementation. It still needs formal Endpoint Conformance, running AstrBot
+  registration/deployment, enabled continuous health and the live
+  Source/Projection/Output composition required by each separately authorized
+  proactive stage.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
 - Real public-source/group-projection providers and proactive rollout evidence
   remain unimplemented. S15C-S15E provide fixture/synthetic no-send candidates,
   but add no live Adapter, durable Probe persistence, production composition or
   send authority.
-- No real Provider Endpoint is currently enableable: Luna/Terra/Sol must first
-  be registered in AstrBot with actual Provider IDs; request-level output-limit
-  and reasoning passthrough, Provider Contract/Conformance, refreshable health,
-  composition and sampling evidence must close. No second legal same-role/tier
-  Endpoint, propensity log or attributable reward exists for Bandit.
+- No real Provider Endpoint is currently enableable in the running AstrBot:
+  Luna/Terra/Sol must first be registered with actual Provider IDs, formally
+  conformant evidence must be bound, the candidate must be deployed, and the
+  implemented health refresher must be enabled/configured for continuous
+  observation. No second legal same-role/tier Endpoint, propensity log or
+  attributable reward exists for Bandit.
 - The local and external static corpora have no human Gold. The 600-window
   Teacher sample is imbalanced Silver; a balanced 150--300-window Gold subset,
   a second annotator, profile examples and source/operator policy inputs are
@@ -170,6 +183,13 @@ Last sync: unix:1786717871
   model call, and disabled/unresolved configuration falls back to legacy. This
   is focused Fake-Provider Contract evidence, not real Endpoint or deployment
   conformance.
+- The same branch now starts the fixed AstrBot 4.26.2 candidate in a fully
+  isolated environment, samples Luna/Terra/Sol once each with zero Output, and
+  implements a default-off periodic health refresher with failure, TTL and
+  shutdown behavior. These are isolated engineering and Provider no-send
+  results, not running-AstrBot registration, formal Conformance, production
+  health or a real single-group Shadow; `live_execution_authorized=false`
+  remains authoritative.
 - Private Endpoint sampling additionally proved one-shot Responses and Chat
   Completions reachability for Luna/Terra/Sol, including low reasoning requests.
   It changed no AstrBot/NapCat state and does not upgrade S23 beyond
