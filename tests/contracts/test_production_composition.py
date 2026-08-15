@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import unittest
 from dataclasses import replace
@@ -112,6 +113,21 @@ class _AstrBotProvider:
         )
 
 
+class _BlockingAstrBotProvider(_AstrBotProvider):
+    def __init__(self, provider_id: str = "astrbot-luna") -> None:
+        super().__init__(provider_id)
+        self.started = asyncio.Event()
+        self.cancelled = asyncio.Event()
+
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        self.started.set()
+        try:
+            await asyncio.Future()
+        finally:
+            self.cancelled.set()
+
+
 class At:
     def __init__(self, qq: str) -> None:
         self.qq = qq
@@ -199,6 +215,14 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self) -> None:
         self.temp.cleanup()
+
+    async def _wait_until(self, predicate, *, timeout: float = 1.0) -> None:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        while not predicate():
+            if loop.time() >= deadline:
+                self.fail("condition was not reached before timeout")
+            await asyncio.sleep(0.002)
 
     def _plugin(self, mode: RolloutMode = RolloutMode.OFF) -> _Plugin:
         plugin = _Plugin()
@@ -404,6 +428,91 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             "provider conformance evidence is unavailable",
         ):
             composition.build_production_runtime(plugin, values)
+
+    async def test_enabled_health_probe_publishes_and_periodically_refreshes(
+        self,
+    ) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        values = self._runtime_config()
+        values.update(
+            {
+                "runtime_health_probe_enabled": True,
+                "runtime_health_probe_interval_seconds": 0.01,
+                "runtime_health_probe_timeout_seconds": 0.1,
+                "runtime_health_evidence_ttl_seconds": 0.2,
+            }
+        )
+
+        self._initialize(plugin, values, "production-health-refresh")
+        await self._wait_until(lambda: len(provider.calls) >= 2)
+
+        snapshot = plugin.runtime_assembly.model_operational_registry.acquire_snapshot()
+        self.assertIs(
+            snapshot.provider_health[0].status,
+            EndpointHealthStatus.HEALTHY,
+        )
+        self.assertEqual(provider.calls[0]["model"], "gpt-5.6-luna")
+        self.assertEqual(provider.calls[0]["max_tokens"], 8)
+        self.assertEqual(provider.calls[0]["request_max_retries"], 0)
+        self.assertNotIn("reasoning_effort", provider.calls[0])
+
+        await plugin.terminate()
+        calls_after_close = len(provider.calls)
+        await asyncio.sleep(0.02)
+        self.assertEqual(len(provider.calls), calls_after_close)
+        self.assertIsNone(plugin._dududa_model_health_task)
+
+    async def test_timed_out_health_probe_publishes_unknown(self) -> None:
+        provider = _BlockingAstrBotProvider()
+        plugin = self._production_plugin(provider)
+        values = self._runtime_config()
+        values.update(
+            {
+                "runtime_health_probe_enabled": True,
+                "runtime_health_probe_interval_seconds": 60,
+                "runtime_health_probe_timeout_seconds": 0.01,
+                "runtime_health_evidence_ttl_seconds": 1,
+            }
+        )
+
+        self._initialize(plugin, values, "production-health-timeout")
+        await self._wait_until(provider.cancelled.is_set)
+        await self._wait_until(
+            lambda: (
+                plugin.runtime_assembly.model_operational_registry.acquire_snapshot()
+                .provider_health[0]
+                .reason_codes
+                == ("health_probe_failed",)
+            )
+        )
+
+        self.assertEqual(len(provider.calls), 1)
+        self.assertEqual(provider.calls[0]["request_max_retries"], 0)
+        await plugin.terminate()
+
+    async def test_health_probe_without_running_loop_stays_unknown(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        values = self._runtime_config()
+        self._initialize(plugin, values, "production-health-no-loop")
+        plugin.config["runtime_health_probe_enabled"] = True
+
+        with patch.object(
+            composition.asyncio,
+            "get_running_loop",
+            side_effect=RuntimeError,
+        ):
+            composition._start_model_health_refresh(plugin)
+
+        snapshot = plugin.runtime_assembly.model_operational_registry.acquire_snapshot()
+        self.assertIs(
+            snapshot.provider_health[0].status,
+            EndpointHealthStatus.UNKNOWN,
+        )
+        self.assertEqual(provider.calls, [])
+        self.assertIsNone(plugin._dududa_model_health_task)
+        await plugin.terminate()
 
     async def test_auto_assembled_off_runtime_never_calls_provider(self) -> None:
         provider = _AstrBotProvider()

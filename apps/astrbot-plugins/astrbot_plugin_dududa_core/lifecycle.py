@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import secrets
 import time
 from dataclasses import dataclass
@@ -33,6 +34,16 @@ class CoreLifecycleMixin:
         bridge = getattr(self, "rollout_bridge", None)
         assembly = getattr(self, "runtime_assembly", None)
         first_error: BaseException | None = None
+        health_task = getattr(self, "_dududa_model_health_task", None)
+        if health_task is not None:
+            health_task.cancel()
+            try:
+                await health_task
+            except asyncio.CancelledError:
+                pass
+            except BaseException as exc:
+                first_error = exc
+            self._dududa_model_health_task = None
         if bridge is not None:
             try:
                 await bridge.close()

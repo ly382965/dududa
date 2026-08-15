@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-import json
 from types import MappingProxyType
 
 from dududa.contracts.canonical import canonical_digest
@@ -32,10 +32,10 @@ from dududa.models.contracts import (
 )
 from dududa.models.digests import provider_request_digest
 from dududa.models.errors import ModelProviderError, model_error_info
+from dududa.models.health import ModelHealthEvidence
 from dududa.ports.context import PortCallContext, ServiceCallContext
 
 from .model_codec import JsonSchemaDocumentRegistry
-
 
 _ATTRIBUTE_READ_FAILED = object()
 
@@ -346,6 +346,84 @@ class AstrBotModelProviderAdapter:
             snapshot_revision="astrbot-passive-health-v1",
             checked_at=self._now(),
             reason_codes=("no_reliable_astrbot_health_probe",),
+        )
+
+    async def probe_health(
+        self,
+        *,
+        timeout_seconds: float,
+        evidence_ttl: timedelta,
+    ) -> ModelHealthEvidence:
+        """Run one bounded, content-free probe against the bound model."""
+
+        if (
+            not isinstance(timeout_seconds, (int, float))
+            or isinstance(timeout_seconds, bool)
+            or timeout_seconds <= 0
+        ):
+            raise ValueError("timeout_seconds must be positive")
+        if not isinstance(evidence_ttl, timedelta) or evidence_ttl <= timedelta(0):
+            raise ValueError("evidence_ttl must be positive")
+
+        endpoint = self._descriptor.endpoints[0]
+        status = EndpointHealthStatus.UNKNOWN
+        reason_codes = ("astrbot_active_health_probe_failed",)
+        task: asyncio.Task[object] | None = None
+        try:
+            text_chat = getattr(self._provider, "text_chat", None)
+            if not callable(text_chat):
+                raise TypeError("AstrBot Provider has no text_chat")
+            task = asyncio.create_task(
+                text_chat(
+                    prompt="Reply with OK.",
+                    system_prompt="Health check. Return only OK.",
+                    model=endpoint.model_id,
+                    max_tokens=8,
+                    request_max_retries=0,
+                )
+            )
+            done, _ = await asyncio.wait((task,), timeout=float(timeout_seconds))
+            if task not in done:
+                if await _cancel_task(task):
+                    raise asyncio.CancelledError
+            else:
+                response = task.result()
+                completion = _safe_getattr(response, "completion_text")
+                if isinstance(completion, str) and completion.strip():
+                    status = EndpointHealthStatus.HEALTHY
+                    reason_codes = ()
+        except asyncio.CancelledError:
+            if task is not None:
+                await _cancel_task(task)
+            raise
+        except Exception:  # noqa: BLE001 - failures become sanitized UNKNOWN evidence
+            if task is not None and await _cancel_task(task):
+                raise asyncio.CancelledError
+
+        checked_at = self._now()
+        health = ModelProviderHealth(
+            schema_version=1,
+            provider_id=self._descriptor.provider_id,
+            status=status,
+            endpoints=(
+                ModelEndpointHealth(
+                    schema_version=1,
+                    endpoint_id=endpoint.endpoint_id,
+                    endpoint_descriptor_digest=endpoint.descriptor_digest,
+                    status=status,
+                    reason_codes=reason_codes,
+                ),
+            ),
+            snapshot_revision="astrbot-active-health-v1",
+            checked_at=checked_at,
+            reason_codes=reason_codes,
+        )
+        return ModelHealthEvidence(
+            schema_version=1,
+            provider_revision=self._descriptor.revision,
+            health=health,
+            expires_at=checked_at + evidence_ttl,
+            evidence_revision="astrbot-active-health-v1",
         )
 
     async def close(self) -> None:

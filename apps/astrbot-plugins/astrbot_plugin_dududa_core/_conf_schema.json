@@ -20,6 +20,26 @@
     "default": "",
     "hint": "仅保存验证结论和模型绑定，不包含 API Key、Base URL、QQ 标识或聊天正文。"
   },
+  "runtime_health_probe_enabled": {
+    "description": "启用生产 Runtime 模型健康主动刷新",
+    "type": "bool",
+    "default": false
+  },
+  "runtime_health_probe_interval_seconds": {
+    "description": "模型健康刷新间隔（秒）",
+    "type": "int",
+    "default": 45
+  },
+  "runtime_health_probe_timeout_seconds": {
+    "description": "单次模型健康探测超时（秒）",
+    "type": "int",
+    "default": 15
+  },
+  "runtime_health_evidence_ttl_seconds": {
+    "description": "模型健康证据有效期（秒）",
+    "type": "int",
+    "default": 90
+  },
   "runtime_response_profiles_enabled": {
     "description": "启用短、中、长回答档位",
     "type": "bool",

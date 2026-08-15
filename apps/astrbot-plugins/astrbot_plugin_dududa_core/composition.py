@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 import logging
@@ -9,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from dududa.adapters import InMemoryAttachmentRepository
 from dududa.contracts.binding import NegotiatedBindingReceipt
@@ -20,6 +22,7 @@ from dududa.domain.primitives import (
     ResourceUsage,
     RiskLevel,
     RuntimeBudget,
+    TraceContext,
 )
 from dududa.domain.task import TaskReasoningDepth
 from dududa.errors import ErrorCategory, error
@@ -89,7 +92,12 @@ from dududa.perception.social import (
 )
 from dududa.persona.assets import load_persona_directory
 from dududa.persona.registry import InMemoryPersonaRegistry
-from dududa.ports.context import PortCallContext, ServiceCallContext
+from dududa.ports.context import (
+    NeverCancelled,
+    PortCallContext,
+    ServiceCallContext,
+    ServicePrincipal,
+)
 from dududa.ports.models import ModelOperationalStateRegistry
 from dududa.ports.runtime import AgentRuntime, InputConnector
 from dududa.responses import (
@@ -191,6 +199,13 @@ class _RuntimeModelConfig:
     tpm_limit: int
 
 
+@dataclass(frozen=True, slots=True)
+class _ModelHealthRefreshConfig:
+    interval_seconds: float
+    timeout_seconds: float
+    evidence_ttl: timedelta
+
+
 class ProductionRuntimeAssembly:
     def __init__(
         self,
@@ -202,6 +217,8 @@ class ProductionRuntimeAssembly:
         model_operational_registry: ModelOperationalStateRegistry | None = None,
         model_health_publisher: BoundedModelHealthPublisher | None = None,
         model_endpoint_load: Iterable[EndpointLoadSnapshot] = (),
+        model_health_probes: Iterable[AstrBotModelProviderAdapter] = (),
+        model_health_clock: Callable[[], datetime] | None = None,
     ) -> None:
         if not isinstance(runtime, AgentRuntime):
             raise TypeError("runtime does not implement AgentRuntime")
@@ -226,11 +243,20 @@ class ProductionRuntimeAssembly:
         endpoint_load = tuple(model_endpoint_load)
         if any(not isinstance(item, EndpointLoadSnapshot) for item in endpoint_load):
             raise TypeError("invalid model endpoint load")
+        health_probes = tuple(model_health_probes)
+        if any(
+            not isinstance(item, AstrBotModelProviderAdapter) for item in health_probes
+        ):
+            raise TypeError("invalid model health probe")
         self.runtime = runtime
         self.ready = ready
         self.model_operational_registry = model_operational_registry
         self.model_health_publisher = model_health_publisher
         self._model_endpoint_load = endpoint_load
+        self._model_health_probes = health_probes
+        self._model_health_clock = model_health_clock or (
+            lambda: datetime.now(timezone.utc)
+        )
         self._closeables = list(resources)
         self._abort_callbacks = list(callbacks)
         self._abort_started = False
@@ -267,6 +293,57 @@ class ProductionRuntimeAssembly:
             tuple(evidence),
             self._model_endpoint_load,
             call=call,
+        )
+
+    @property
+    def has_model_health_probes(self) -> bool:
+        return bool(self._model_health_probes)
+
+    async def refresh_model_health(
+        self,
+        *,
+        timeout_seconds: float,
+        evidence_ttl: timedelta,
+    ) -> ModelOperationalSnapshot:
+        if not self._model_health_probes:
+            raise RuntimeError("model health probes are unavailable")
+        evidence = await asyncio.gather(
+            *(
+                probe.probe_health(
+                    timeout_seconds=timeout_seconds,
+                    evidence_ttl=evidence_ttl,
+                )
+                for probe in self._model_health_probes
+            )
+        )
+        now = self._model_health_clock()
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError("model health clock returned a naive datetime")
+        now = now.astimezone(timezone.utc)
+        identity = uuid4().hex
+        return await self.publish_model_health(
+            evidence,
+            call=ServiceCallContext(
+                operation_id=f"astrbot-model-health:{identity}",
+                principal=ServicePrincipal(
+                    service_id="astrbot-plugin-dududa-core",
+                    instance_id="model-health-refresh",
+                    roles=frozenset({"model-health"}),
+                ),
+                operation_kind="model_health_refresh",
+                trace=TraceContext(f"astrbot-model-health:{identity}"),
+                deadline=now + timedelta(seconds=float(timeout_seconds) + 1.0),
+                cancellation=NeverCancelled(),
+                budget=RuntimeBudget(
+                    model_calls_remaining=len(self._model_health_probes),
+                    tool_steps_remaining=0,
+                    retries_remaining=0,
+                    input_tokens_remaining=64 * len(self._model_health_probes),
+                    output_tokens_remaining=8 * len(self._model_health_probes),
+                    cost_units_remaining=Decimal(0),
+                ),
+                policy_snapshot_id="astrbot-model-health-v1",
+            ),
         )
 
     def abort(self) -> None:
@@ -995,7 +1072,88 @@ def build_production_runtime(
         model_operational_registry=health_publisher,
         model_health_publisher=health_publisher,
         model_endpoint_load=endpoint_load,
+        model_health_probes=adapters,
+        model_health_clock=effective_clock,
     )
+
+
+def _model_health_refresh_config(
+    config: dict[str, object],
+) -> _ModelHealthRefreshConfig | None:
+    if config.get("runtime_health_probe_enabled") is not True:
+        return None
+    return _ModelHealthRefreshConfig(
+        interval_seconds=_positive_seconds(
+            config,
+            "runtime_health_probe_interval_seconds",
+            45.0,
+        ),
+        timeout_seconds=_positive_seconds(
+            config,
+            "runtime_health_probe_timeout_seconds",
+            15.0,
+        ),
+        evidence_ttl=timedelta(
+            seconds=_positive_seconds(
+                config,
+                "runtime_health_evidence_ttl_seconds",
+                90.0,
+            )
+        ),
+    )
+
+
+def _positive_seconds(
+    config: dict[str, object],
+    key: str,
+    default: float,
+) -> float:
+    value = config.get(key, default)
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        return default
+    return float(value)
+
+
+def _start_model_health_refresh(plugin: Any) -> None:
+    refresh_config = _model_health_refresh_config(plugin.config)
+    assembly = getattr(plugin, "runtime_assembly", None)
+    if (
+        refresh_config is None
+        or not isinstance(assembly, ProductionRuntimeAssembly)
+        or not assembly.ready
+        or not assembly.has_model_health_probes
+    ):
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.warning(
+            "Dududa model health refresh not started: reason=no_running_event_loop"
+        )
+        return
+    plugin._dududa_model_health_task = loop.create_task(
+        _model_health_refresh_loop(assembly, refresh_config),
+        name="dududa-model-health-refresh",
+    )
+
+
+async def _model_health_refresh_loop(
+    assembly: ProductionRuntimeAssembly,
+    config: _ModelHealthRefreshConfig,
+) -> None:
+    while True:
+        try:
+            await assembly.refresh_model_health(
+                timeout_seconds=config.timeout_seconds,
+                evidence_ttl=config.evidence_ttl,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - keep refresh alive without error details
+            logger.warning(
+                "Dududa model health refresh failed: reason=refresh_cycle_failed"
+            )
+        await asyncio.sleep(config.interval_seconds)
 
 
 def initialize_plugin(
@@ -1035,6 +1193,7 @@ def initialize_plugin(
     plugin.rollout_bridge = None
     plugin.runtime_assembly = None
     plugin._dududa_runtime_cleanup_assemblies = []
+    plugin._dududa_model_health_task = None
     plugin._dududa_runtime_terminated = False
     try:
         plugin.rollout_ledger = SQLiteRolloutLedger(
@@ -1079,6 +1238,7 @@ def initialize_plugin(
         _default_runtime_budget(),
         "production-shape-v1",
     )
+    _start_model_health_refresh(plugin)
     logger.info("DududaCore loaded: enabled=%s", plugin.enabled)
 
 
