@@ -2,8 +2,9 @@
 
 状态：S01–S20 的既定本地/离线工程步骤已完成；S22 已完成基于消费者和回滚证据的兼容清理。
 S21A Foundation、S21B Group Onboarding、S21C Governed Operations 与 S21 Completion Audit
-均已完成离线实现和验证；S23 继续暂停且只完成 manifest-only readiness。真实 Provider、Source、
-Projection、Output 的环境适配/Conformance 和外部授权输入均未闭合。旧 AstrBot Handler 在 `off/shadow`
+均已完成离线实现和验证；S23A–S23E 私有历史语料离线 Demo 已完成，但 S23 整体仍为
+paused/partial，实时 Shadow/Canary 尚未开始。真实 Provider、Source、Projection、Output 的
+环境适配/Conformance 和外部授权输入均未闭合。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 所需的本地模块、既定 WebUI 测试和集成审计已经完成，但 S23 仍须先闭合环境适配和外部授权；
 独立可选 S20 不属于该发布前置。
@@ -26,8 +27,10 @@ Governed Operations 和 Completion Audit 均已有实现与聚焦验证。其他
 
 2026-08-14 已完成本机 NapCat 私有开发回放和历史游标核验，详见
 [NapCat 本机开发语料回放报告](napcat-development-replay-2026-08-14.md)。本机只允许使用当前
-嘟嘟哒账号数据；旧账号已排除，精确账号映射只在运行时提供。用户另有数百群长期记录，只在
-S23 真实测试环境中提供，不阻塞 S21。
+嘟嘟哒账号数据；旧账号已排除，精确账号映射只在运行时提供。2026-08-15 提供的外部长期
+静态导出已在 S23 私有目录完成筛选、Silver 标注、Student 评测和 no-send Demo；它不是当前
+Dududa Bot 实时流量。完整结果见
+[S23 私有历史群聊离线 Demo 报告](s23-private-corpus-demo-2026-08-15.md)。
 
 ## 交付规则
 
@@ -74,7 +77,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | Memory | 部分完成 | S14 已闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 重启证据、M0/M1/M2、纯 Python CJK BM25 和固定合成 Eval；Scope/Write Gate 与 fail-closed Iris 边界保持不变 | 旧命令与 Context Builder 消费者迁移、真实 Iris SDK Backend、授权数据/人工质量评测、Embedding/Hybrid 证据、shadow 和生产切流 |
 | MCP 集成 | 已完成（S12/S22 离线范围） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker、Fake/iCourse 共享 Contract；S22 已删除插件专用直连 Client，缺失时 fail closed | 真实新 Server、凭据和在线来源仍是外部门禁 |
 | Capability 与 Tool Runtime | 已完成（S13 离线范围） | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator、通用 MCP Provider、四个 iCourse 公开缓存映射、配置式 Fake 扩展及默认关闭的 Offline Runtime 工具链均有测试 | 无真实 Tool Planning Endpoint、真实语言质量、生产 Tools Rollout、高风险/写能力或新真实 Server 证据 |
-| 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现 | 真实脱敏数据、人工标签确认、校准和多轮/附件语义 |
+| 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现；S23 又对 600 条分层历史窗口生成 Terra Silver，并以 464 条编译样本训练群隔离 Student | Silver 类别严重不均衡；仍缺人工 Gold、阈值校准、当前 Bot 实时流量和多轮/附件语义质量证据 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
 | 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录；S16-S22 本地发布闭环已完成 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送和人工相关性/打扰度仍是 S23 的环境集成与外部门禁 |
@@ -83,7 +86,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI / Bot Control Plane | S21 已完成（离线） | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；command ID 与 deadline 语义已审计，Agent Draft/permission/config 不发送、不改状态、不伪成功 | 生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁 |
-| 大规模真实群测试与 Debug | S23 暂停、部分完成 | S19/S22、本地仿真和既定 WebUI 回归均已通过；低敏模板、readiness checker 和 Runbook 仅提交在暂停分支 `treework/real-group-validation@01c8abf` | 先完成真实 evidence resolver 与 Provider/Source/Projection/Output 环境适配，再取得逐行为授权，执行单群 shadow/canary、分层放量、冻结 SLO 和复盘；可选 S20 不阻塞 |
+| 大规模真实群测试与 Debug | S23 部分完成（离线 Demo 完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成 | 先补人工 Gold；实时阶段仍需 evidence resolver、Provider/Source/Projection/Output 环境适配和逐行为授权，再执行单群 Shadow/Canary、分层放量、SLO 与复盘 |
 
 ### 实施步骤完成度
 
@@ -117,7 +120,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | **已完成、已验证（离线）** | Foundation、Group Onboarding、Governed Operations 与 Completion Audit 均通过；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影，Agent 路径不直发 NapCat | 生产 HTTP/身份、真实健康、真实 Provider/Source/Projection/Output、人工质量和真实 QQ 操作仍属于 S23 外部门禁 |
-| S23 | 暂停、部分完成 | manifest-only readiness、低敏模板和 Runbook 已在 `treework/real-group-validation@01c8abf` 提交；无真实发送或真实来源声明 | 分支尚未合并；仍需 evidence resolver、环境 Adapter/Conformance、外部输入和逐行为授权 |
+| S23 | **暂停、部分完成；S23A–S23E 已完成** | manifest-only readiness、低敏模板/Runbook、历史语料 intake/window、600 条 Terra Silver 抽样、464 条编译样本、群隔离 Student、137,026 条本地预测和私有 no-send Demo 已形成；无真实发送或真实来源声明 | 分支尚未合并；实时 Shadow/Canary 仍需人工 Gold、evidence resolver、环境 Adapter/Conformance 和逐行为授权 |
 
 ### 公共开工门禁
 
@@ -692,16 +695,16 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 标题：**S21 Bot Control Plane 已完成，S23 已恢复离线历史语料阶段**
 
 Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S23 的 manifest-only readiness、
-模板和 [单群验证 Runbook](../operations/s23-real-group-validation.md) 已完成，当前只恢复获授权静态
-历史语料的 S23A-S23E no-send Demo，不授权任何实时发送或 Canary：
+模板和 [单群验证 Runbook](../operations/s23-real-group-validation.md) 已完成；获授权静态历史
+语料的 S23A-S23E no-send Demo 也已闭环，但不授权任何实时发送或 Canary：
 
 1. 在 revision 4 中把 `S21A -> S21B -> S21C -> S21 Audit` 加为 S23 的前置；
 2. 用 Fake join、Fake services 和固定 Catalog 完成控制后台离线闭环；
 3. 证明新群缺 Profile 时零服务，管理员激活具有 auth/Scope/CAS/幂等/Audit/Receipt/LKG；
 4. 证明 Profile 不授予 Capability，Group Context/Plugin/Model/Bandit 不能扩权；
 5. 移除 Agent Draft 直发 NapCat 和浏览器本地 permission/config 占位；
-6. S21 完成审计后，在 S23 测试环境挂载外部长期记录，先做全量历史 no-send Shadow，再对小样本
-   人工标注和复核；
+6. S21 完成审计后，已在 S23 私有环境处理外部长期记录，完成全量本地预测和 600 条 Teacher
+   Silver 抽样；下一步以 150–300 条均衡人工 Gold 复核质量，不把 Silver 当 Gold；
 7. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
 8. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
    才考虑 3–5 群和长时间 Debug。

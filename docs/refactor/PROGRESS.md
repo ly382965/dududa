@@ -1,14 +1,14 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-14
+更新时间：2026-08-15
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
 - S01–S22 的既定本地/离线范围均已完成并验证；S19 已闭合本地候选总审计，S22 已按
-  消费者与回滚证据清理兼容面，S20 只完成离线 Bandit 契约。S23 仅在暂停分支完成
-  manifest-only readiness；真实验证尚未开始，分支也未合并。
+  消费者与回滚证据清理兼容面，S20 只完成离线 Bandit 契约。S23A–S23E 私有历史语料
+  离线 Demo 已完成；S23 整体仍为暂停/部分完成，实时验证尚未开始，分支也未合并。
 - 旧 AstrBot Handler 在 `off/shadow` 下仍是权威入口；Canary 只对允许群的结构化显式 @
   取得持久单一所有权。本地发布模块、既定 QQ Web 测试、S21 群服务初始化和总审计已经完成；
   真实 QQ 群运行仍须闭合 S23 环境适配并取得逐行为授权。
@@ -22,7 +22,8 @@
   插件专用 iCourse Client，并保留七个仍有消费者的兼容面。Manifest v2 继续因 hash、依赖锁
   和许可证证据不足延期。S20 离线 Bandit 基础已经实现，真实学习/探索未开始。S21A-S21C 与
   Completion Audit 已在 Tree revision 4 完成离线实现和验证。S23 已完成 manifest-only
-  readiness、模板和中文 Runbook；现已恢复其获授权历史群聊离线数据阶段，实时单群阶梯仍未开始。
+  readiness、模板、中文 Runbook，以及 S23A–S23E 历史语料 intake/window、Terra Silver、
+  本地 Student 和私有 no-send Demo；实时单群阶梯仍未开始。
 - 本文是当前实施状态的权威台账；`docs/design/` 保存冻结 Spec，历史基线文档不随实现结果
   改写。完整阶段快照见 [2026-08-10 阶段完成报告](checkpoint-report-2026-08-10.md)，
   待准备输入见 [外部输入清单](external-input-checklist.md)。
@@ -87,7 +88,7 @@
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **进行中（离线历史语料阶段）** | manifest-only readiness、低敏模板、checker 和 Runbook 已在 `treework/real-group-validation@01c8abf` 提交；获授权静态语料与可用 Teacher Endpoint 已就绪 | 先完成 S23A-S23E 私有 no-send Demo；真实发送、来源和逐行为 Canary 仍保持关闭 |
+| S23 Real Group Validation | **暂停、部分完成；离线 S23A–S23E 已完成** | 1,402 个文件、155,567 条唯一群消息、137,026 个窗口；600 条 Terra 抽样得到 592 草稿/8 Review，464 条编译 Silver；群隔离 Student 完成全量预测和 localhost no-send Demo | 优先补均衡人工 Gold；真实发送、来源、生产 Router 和逐行为 Canary 仍保持关闭 |
 
 ## 产品模块完成度
 
@@ -106,7 +107,7 @@
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit 分权；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
 | Mew/NapCat WebUI / Bot Control Plane | QQ 客户端与 S21 离线范围已完成 | Web 已提供群服务初始化与运行状态视图；Desired/Effective、Assignment、Receipt 和运维健康均来自 Core DTO。Agent 草稿直发 NapCat 已移除，permission/config 占位为无事件只读状态 | 生产 Core HTTP/operator identity、真实 Agent Run/健康数据和授权 QQ 操作仍未完成 |
-| 真实群聊放量 | S23 离线历史语料阶段进行中，实时运行未开始 | S19/S22 本地发布门禁、S21 控制后台和 S23 manifest-only readiness 已完成；当前只处理获授权静态快照 | 先交付私有 no-send Demo；实时授权、发送和 Canary 继续后置 |
+| 真实群聊放量 | S23 离线历史语料 Demo 已完成，实时运行未开始 | 获授权静态快照已完成确定性处理、600 条 Silver 抽样、群隔离 Student、137,026 条预测和私有 no-send Demo | 先补人工 Gold；实时授权、发送、来源和 Canary 继续后置 |
 
 ## 2026-08-14 长程设计整合状态
 
@@ -120,7 +121,21 @@
 | Bot Control Plane | S21 已完成（离线） | Web 是统一控制后台，查询来自权威投影，写入经过专用 Core Command；Query/Command、operator auth/RBAC、Audit/Receipt、群入驻、六面运维投影和完成审计已实现，未绑定数据源明确 unavailable |
 
 上述方向已写入根 Requirements/Spec。Tree revision 4 已完成 S21 的离线实现；Plugin Runtime、
-Group Context 与 Skill 演化仍没有实现证据。S23 当前只恢复获授权历史语料的离线阶段。
+Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程碑已完成，S23 整体仍等待
+实时环境适配和逐行为授权。
+
+## 2026-08-15 S23 私有历史语料 Demo
+
+| 项目 | 结果 |
+| --- | --- |
+| Intake / Window | 1,402 个输入文件，155,567 条唯一群消息，39 个群产生 137,026 个 3–12 条 past-only 窗口 |
+| Teacher 抽样 | Terra 固定 Teacher；600 条分层窗口占全量约 0.44%；592 个结构化草稿、8 个请求阶段 Review，P50/P95 为 11.325/22.860 秒 |
+| Silver 编译 | 464 条达到 0.65 最低置信度和结构/引用条件；217 条进入编译 Review；Teacher 仍是 Silver，不是人工 Gold |
+| Student | 23 群/343 条训练，6 群/121 条测试；指标仅为 held-out Silver agreement，类别偏斜明显，不接生产 Router |
+| 全量产物 | 137,026 条本地预测；300 条样本私有 Demo 可由 `http://127.0.0.1:8766/` 查看 |
+| 明确未做 | 无 QQ 发送、Tool 调用、Memory 写入、生产路由、在线 Bandit、实时 Shadow/Canary、日报或 Probe |
+
+详细报告见 [S23 私有历史群聊离线 Demo 报告](s23-private-corpus-demo-2026-08-15.md)。
 
 ## 2026-08-11 S23 manifest-only 准备证据
 
@@ -295,10 +310,11 @@ Group Context 与 Skill 演化仍没有实现证据。S23 当前只恢复获授�
 
 ## 下一步
 
-S17–S22 与 S21 离线范围均已完成。当前先完成 S23A-S23E：获授权历史群聊的确定性解析、
-Conversation Window、真实 LLM Silver 标注、本地 Student 训练评测和私有 no-send Demo。达到该
-Demo 条件后立即停止；实时“入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频
-Probe”继续等待逐行为授权。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
+S17–S22、S21 和 S23A–S23E 离线范围均已完成。下一步若以质量为先，先建立 150–300 条
+类别均衡的人工 Gold，复核 Tool、复杂度和 AnswerProfile；若进入实时阶段，则从单群 no-send
+Shadow 开始，并继续等待 Provider/Source/Projection/Output 环境适配和逐行为授权。实时
+“入站 Shadow -> 明确 @ Canary -> 手动日报 -> 定时日报 -> 低频 Probe”不得跳级。Bandit
+不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
 
 后续分支采用风险分层验证：优先运行受影响 Contract、聚焦 warning-as-error 与抽样仓库回归；
 只有跨模块高风险变更或 S19/最终总集成才重复双 Python 全仓，避免每个 Sxx 重复执行同一套

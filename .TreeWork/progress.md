@@ -77,15 +77,22 @@ Last sync: unix:1786717871
   loaded 84,159 of them plus 1,464 structured Gateway records, skipped 83
   current-Bot self-messages before Perception and completed 85,540 deterministic
   policy paths with zero module exception. External long-term records from
-  hundreds of groups remain deferred to S23.
+  hundreds of groups were subsequently supplied as a separately authorized
+  static export for the S23 offline stage.
+- On 2026-08-15 S23A--S23E completed the private historical-corpus milestone:
+  1,402 files produced 155,567 unique group messages and 137,026 past-only
+  windows; Terra labeled a stratified 600-window sample, 464 rows compiled as
+  Silver, and local group-isolated Students predicted every window. A private
+  localhost no-send Demo now exposes the results and existing Static TierPolicy
+  as a clearly non-production preview.
 
 ## Unverified Or Paused Work (project-level gaps requiring attention; not latent completed-work risks)
 
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials. All accepted local predecessors are complete;
-  S23 is paused/partial after manifest-only readiness and still needs the live
-  evidence resolver plus Provider/Source/Projection/Output composition and
-  conformance before an authorized run.
+  S23 is paused/partial after completing its offline S23A--S23E milestone and
+  still needs the live evidence resolver plus Provider/Source/Projection/Output
+  composition and conformance before an authorized run.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
 - Real public-source/group-projection providers and proactive rollout evidence
@@ -95,9 +102,10 @@ Last sync: unix:1786717871
 - No real Provider Endpoint is currently enableable: composition, sampling,
   health and conformance evidence must close first. No second legal same-role/
   tier Endpoint, propensity log or attributable reward exists for Bandit.
-- The local Dududa corpus is approved for private development replay but has no
-  human gold. External long-term data, a second annotator, profile examples and
-  source/operator policy inputs are still needed for quality claims.
+- The local and external static corpora have no human Gold. The 600-window
+  Teacher sample is imbalanced Silver; a balanced 150--300-window Gold subset,
+  a second annotator, profile examples and source/operator policy inputs are
+  still needed for quality claims.
 - Plugin Descriptor/Lifecycle/Realm/Profile, Group Context and relationship
   projections, and Skill candidate evolution remain unimplemented. S21 supplies
   Control Plane query/command foundations; production HTTP/operator identity,
@@ -130,9 +138,12 @@ Last sync: unix:1786717871
   groups stay at zero service until authorized Profile activation; Web Agent
   placeholders neither send nor claim browser-local success.
 - S23 returned a committed low-sensitivity template, manifest-only readiness
-  checker and Chinese Runbook. Its report always keeps
-  `live_execution_authorized=false`; the branch is correctly paused/partial
-  before any real group read, Provider/source call, container change or send.
+  checker and Chinese Runbook, then completed S23A--S23E over the separately
+  authorized static export: deterministic intake/windowing, 600 Terra Silver
+  labels, 464 compiled rows, group-isolated Student evaluation, 137,026 local
+  predictions and a private no-send Demo. It remains paused/partial before
+  current Dududa traffic, production Router binding, live sources, container
+  change or send; `live_execution_authorized=false` remains authoritative.
 - The 2026-08-14 long-horizon report returned at `75537a3`; the user accepted
   its product direction and administrator-selected group service initialization.
   S21 now implements the Control Plane subset, but Plugin Runtime and social

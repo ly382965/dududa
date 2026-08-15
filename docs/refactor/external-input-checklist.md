@@ -2,18 +2,20 @@
 
 ## 1. 先说结论
 
-S17–S22 与 S21 Bot Control Plane 已完成既定离线范围。下一步是准备 S23 外部输入。
+S17–S22、S21 Bot Control Plane 与 S23A–S23E 私有历史语料 Demo 已完成既定离线范围。
+下一步不需要继续上传更多未标注原文；质量优先时应准备均衡人工 Gold，实时优先时才准备
+单群逐行为授权与环境适配输入。
 本机当前嘟嘟哒账号记录已获准用于私有开发回放；旧账号排除，精确账号映射只在运行时提供。
-用户另有数百群长期记录，只在 S23 隔离测试环境中提供。
+外部长期静态导出已在 S23 私有隔离目录处理完成，它不是当前 Dududa Bot 实时流量。
 
 建议立即准备的顺序：
 
-1. 来源与调度策略；
+1. 150–300 条类别均衡的人工 Gold 与标注人员；
 2. SHORT/MEDIUM/LONG 理想样例；
 3. Intent/实体/风险 taxonomy；
 4. Provider/Endpoint 公开能力证据；
-5. Memory 产品策略；
-6. 群聊数据治理规则和标注人员。
+5. 来源与调度策略；
+6. 实时单群授权、SLO、部署窗口与回滚负责人。
 
 ## 2. 近期工程输入
 
@@ -23,7 +25,9 @@ S17–S22 与 S21 Bot Control Plane 已完成既定离线范围。下一步是�
 | S22 Cleanup | 已完成 | 无 | 已使用消费者扫描、迁移 receipt 和上一 Release 恢复证据 |
 | S20 离线 Bandit | 已完成、不需要 | 奖励维度和安全 floor 的产品定义 | 只影响以后 Shadow/在线阶段；当前未训练、未在线探索 |
 | S21 Control Plane | 已完成、不需要外部数据 | 初始 `GroupServiceProfile` 产品定义、管理员角色映射 | Fake join/service/Catalog 已完成 S21A-S21C 与审计 |
-| S23 历史 Shadow | 现在需要准备 | 外部数百群长期记录的只读挂载、时间范围和可标注样本 | 先做全量兼容/分布回放，再做小样本质量评测；不自动写 Memory 或训练 Bandit |
+| S23A–S23E 历史语料 Demo | 已完成 | 已提供的 1,402 个静态文件 | 137,026 个窗口完成本地预测，600 条由 Terra 抽样标注；无 Memory 写入或在线 Bandit |
+| 人工 Gold 与质量校准 | 现在最有价值 | 150–300 条均衡窗口的人工 Tool/Complexity/AnswerProfile 标签 | 纠正 Silver 类别偏斜，得到真正可解释的质量指标 |
+| S23 实时单群阶梯 | 尚未提供 | 当前 Bot 实时 Projection、逐行为授权、Provider/Source/Output、SLO、SecretRef、部署窗口 | 从 no-send Shadow 开始，不继承历史语料授权 |
 
 源码 tree hash、patch hash、依赖 lock 和 SBOM 应由工程工具生成，不需要人工填写。
 
@@ -117,9 +121,12 @@ Tool Schema/allowlist、SecretRef、timeout、rate limit、health 和许可证�
 
 ### 4.2 外部长期语料
 
-用户持有数百个群的长期聊天记录；不要放进 Git、文档或聊天窗口。S21 已完成，不再等待该数据。
-S23 环境准备完成后，以只读方式挂载完整语料做 no-send Shadow；人工质量 Pilot 首批选取
-30-50 个 conversation window，流程稳定后扩至 200-500 个。
+外部长期静态导出已经以只读方式进入私有 S23A–S23E 流水线。正式结果为 155,567 条唯一群
+消息、137,026 个合格窗口；Terra 只标注 600 条分层样本，本地 Student 对全量窗口预测。
+正文、身份映射、标签、模型和 Demo 均留在仓库外，Git 只保存代码、合成测试和聚合报告。
+
+下一步不要用更多无标签原文替代质量工作。应从当前样本中建立 150–300 条类别均衡人工 Gold，
+主动补足 Tool=true、medium/high 与 LONG，并保留无法判断/歧义选项。
 
 数据治理清单必须包含：
 
@@ -153,8 +160,9 @@ Provider 故障后的 fallback 不能冒充同一次 Bandit 抽样，也不能�
 
 ## 6. S23 前的单独授权
 
-S23 的历史语料离线阶段在 S17-S22、S21、既定 Web 回归和本地审计完成后进入；本轮获授权
-静态快照仅用于本机解析、Silver 标注、Student 评测和 no-send Demo。该阶段完成后，再按
+S23 的历史语料离线阶段已在 S17-S22、S21、既定 Web 回归和本地审计完成后闭环；获授权
+静态快照仅用于本机解析、Silver 标注、Student 评测和 no-send Demo，且未产生实时授权。
+后续仍须按
 [S23 单群真实场景验证 Runbook](../operations/s23-real-group-validation.md) 为每类实时行为分别授权：
 
 | 行为 | 最小授权内容 |
@@ -194,7 +202,7 @@ data_retention_until:
 
 - Provider API Key、QQ/NapCat/OneBot Token、Cookie 或登录二维码；
 - 真实群号、QQ 号和成员映射；
-- 外部数百群长期聊天库、生产数据库、Memory 文件或备份（直到 S23 测试环境）；
+- 更多未标注长期聊天库、生产数据库、Memory 文件或备份（先完成当前 Gold 复核）；
 - 运行中容器的 Secret、完整 `.env` 或可写生产挂载；
 - 尚未签发对应阶段 Grant 时的真实发送授权。
 

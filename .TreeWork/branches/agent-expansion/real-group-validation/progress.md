@@ -11,15 +11,20 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- All local predecessors, S20 offline Bandit and the existing WebUI regression
-  are complete. S23 is now the only active project leaf.
-- Real execution is not ready: `configs/release/s19-pilot-slo-v1.json` has
+- S23A--S23E 的离线历史语料里程碑已经完成：1,402 个输入文件被确定性
+  分类，155,567 条唯一群消息形成 137,026 个 past-only 窗口；Terra 仅对
+  600 条分层样本进行 Silver 预标注，本地 Student 随后完成全量预测并生成
+  私有 no-send Demo。
+- 该批静态导出不是当前 Dududa Bot 实时流量；Teacher 是 Silver 而非 Gold，
+  Student 指标只表示 held-out Silver agreement，且未接生产 Router。
+- S23 整体仍为 paused/partial。实时执行仍未就绪：
+  `configs/release/s19-pilot-slo-v1.json` has
   `s23_ready=false`; no real model Endpoint has conformance/enablement evidence;
   no live campus/arXiv/industry Source Adapter or proactive production
   Projection/Output composition exists.
 - No authorization packet, private SecretRef binding or deployment window has
-  been supplied. No real group data has been read and no container or QQ state
-  has been changed.
+  been supplied. No container or QQ state was changed; no QQ send, Tool call,
+  Memory write or online Bandit exploration occurred.
 - The canonical S23 template, manifest-only checker and Chinese operator
   Runbook are implemented. A complete synthetic manifest can only produce
   `manifest_ready=true`; the report always keeps
@@ -27,12 +32,19 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Completed the offline S23 preparation surface: strict JSON/reference/digest,
-  IANA timezone, bounded authorization/data/grant windows, per-stage blockers,
-  low-sensitivity reports, distinct invalid/blocked exit codes and Runbook.
+- Completed S23A--S23E: deterministic intake/deduplication, 3--12 message
+  past-only windows, a time-boxed 600-window Terra Silver sample, 464 compiled
+  Silver rows, group-isolated local Students, 137,026 predictions and a private
+  localhost Demo with a non-production Static TierPolicy preview.
+- The 600-window Teacher run finished in 1,773.74 seconds with 592 structured
+  drafts, 8 request-stage reviews, 464 quality-eligible prelabels and measured
+  latency P50/P95 of 11.325/22.86 seconds.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Obtain a human-reviewed, class-balanced Gold subset before making semantic,
+  tool-use or AnswerProfile quality claims; current labels are strongly
+  imbalanced and are not production calibration evidence.
 - Await the external packet enumerated in the S23 Spec/Plan before any live
   preflight or environment-specific Adapter work.
 - After the packet arrives, implement a real evidence resolver and only the
@@ -40,7 +52,7 @@ Last sync: unix:1786706085
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Offline preparation is ready to commit and pause. Resume in this worktree
-  only after the authorization, Endpoint, SLO, SecretRef and deployment packet
-  arrives; the first resumed action is evidence-resolving Preflight, not QQ
-  send or a later ladder stage.
+- The private Demo is served at `http://127.0.0.1:8766/` from a repository-
+  external data root. Resume S23 only for human Gold curation or after the
+  authorization, Endpoint, SLO, SecretRef and deployment packet arrives; the
+  first live action remains evidence-resolving Preflight, not QQ send.
