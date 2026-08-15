@@ -24,8 +24,14 @@ Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过。它仍只能�
 - Dududa Core 继续拥有 Tier、预算、Runtime 状态和 rollout 所有权；Provider 只实现模型调用 Port；
 - 首版使用 rule-only Perception，`off` 零 Provider 调用，`shadow` 每条消息只产生一次候选回答
   Provider 调用，且不 claim、不调用 Output；
-- `conformance_verified=true` 只是 Builder 输入，不是本 Runbook 第 5 节要求的真实 Conformance、
-  health、Release 绑定或授权证据。
+- Builder 优先解析 AstrBot Context 提供的 Provider Evidence；resolver 不存在或返回 `None` 时，
+  才读取 `runtime_provider_evidence_path` 指向的仓库外私有 JSON。路径为空、文件非法或
+  Provider/model 绑定不匹配时，Runtime 保持 unavailable 并回退 legacy；
+- 私有 Evidence 文件只保存模型绑定和验证结论，不保存 API Key、Base URL、QQ 标识或聊天正文。
+  文件能够被解析不等于已经完成真实 Conformance；
+- 初始 operational health 固定为 `UNKNOWN`。只有显式发布的、descriptor 和 revision 绑定正确
+  且未过期的 `ModelHealthEvidence` 才能转为 `HEALTHY`；TTL 到期后自动恢复 `UNKNOWN`。当前
+  工程没有持续健康采集器。
 
 ### 1.1 真实 Endpoint 最小可达性抽样
 
@@ -52,10 +58,11 @@ Runtime 将 OFF/LIGHT/BALANCED/DEEP/MAXIMUM 映射为省略/low/medium/high/xhig
 Builder 必须解析真实 Conformance Evidence，初始健康为 `UNKNOWN`。
 
 仓库已提供无凭据、默认关闭的候选样板：Luna -> Haiku/light、Terra -> Sonnet/balanced、
-Sol -> Opus/deep。进入真实 Shadow 前的最短接入顺序固定为：在部署窗口切换候选镜像，注册
-三个 AstrBot Provider 并取得实际 Provider ID，完成 AstrBot Provider Contract/Conformance，
-接入可刷新健康观测。全过程保持 `runtime_enabled=false`、
-`rollout_mode=off`，直到 Preflight 证据闭合。
+Sol -> Opus/deep。进入真实 Shadow 前的最短顺序为：在部署窗口切换候选镜像；注册三个
+AstrBot Provider 并取得实际 Provider ID；在实际 AstrBot 路径完成 Contract/Conformance；把验证
+结论写入仓库外 Evidence 文件并配置 `runtime_provider_evidence_path`；接入能在 TTL 前持续刷新的
+健康采集源；完成 Preflight 后再进入单群 no-send Shadow。此前始终保持
+`runtime_enabled=false`、`rollout_mode=off`。
 
 ### 1.2 4--5 小时离线抽样预算
 
@@ -142,7 +149,8 @@ Preflight 前由操作员提供：
 
 1. 单个 Bot/群和测试用户引用、数据可读窗、有效期不超过 7 天的部署授权窗；
 2. 数据用途、保留期限、删除负责人和私有审计位置；
-3. 至少一个真实模型 Endpoint 的公开能力目录及私有 Provider SecretRef；
+3. 至少一个真实模型 Endpoint 的公开能力目录、实际 AstrBot Provider ID、私有 Provider
+   SecretRef、仓库外 Conformance Evidence 文件和持续健康采集配置；
 4. OneBot/NapCat 私有连接引用和 SecretRef；
 5. 各阶段独立预算、quiet hours、kill-switch 负责人和停止条件；
 6. 允许配置/重启当前实例的部署窗口，或一个隔离测试实例。
@@ -165,9 +173,10 @@ Preflight 在任何真实群读取前完成：
 6. 检查行为 kill switch 和精确回滚命令，但不执行破坏性 restore；
 7. 运行 readiness checker，只有退出码 `0` 才能进入该阶段。
 
-完成第 4 步后，才允许把真实 Endpoint 对应的 AstrBot Provider ID 写入私有部署配置并打开
-`runtime_enabled`。仓库内 Fake Provider Contract、历史 HTTP 200 最小探测或配置中的
-`conformance_verified` 字段都不能替代该步骤。
+实际 Provider ID 和 `runtime_provider_evidence_path` 可以在 `runtime_enabled=false` 时写入私有
+部署配置；只有第 4 步的真实 Conformance 和首份未过期健康证据均通过后，才允许为授权 Shadow
+打开 Runtime。Fake Contract、历史 HTTP 200、可解析的 Evidence JSON 或手工填写全部 `true` 的
+flags 都不能替代真实 Conformance。
 
 Preflight 失败时修正输入并重新生成证据。不得通过删除 blocker、使用 fixture digest 或把
 `s23_ready` 直接改为 `true` 绕过。
@@ -244,3 +253,5 @@ Closeout 必须：
 
 S23 只有在完整单群阶梯及 Closeout 证据存在后才能标记完成。在此之前应保持 TreeWork 分支
 `partial/paused`，不能用离线 checker、S19 Release 或 S20 合成 Bandit 结果替代真实 Receipt。
+私有 Evidence 解析和 TTL 健康发布工程纵切已经完成；真实运行 AstrBot Provider 注册、真实
+Conformance、持续健康采集、部署切换和单群 Shadow 仍未完成。

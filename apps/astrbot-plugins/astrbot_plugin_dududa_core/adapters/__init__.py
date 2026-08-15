@@ -1,5 +1,11 @@
 """AstrBot-facing adapters. Legacy handlers remain authoritative in S04."""
 
+from .mcp_runtime import (
+    AllowlistedEnvironmentProvider,
+    RejectingMcpSecretResolver,
+    build_icourse_client,
+)
+from .mcp_schema import JsonSchemaMcpValidator
 from .message import AstrBotInputConnector
 from .model import (
     AstrBotModelProviderAdapter,
@@ -8,21 +14,17 @@ from .model import (
     astrbot_prompt_artifact_digest,
 )
 from .model_codec import JsonSchemaDocumentRegistry, JsonSchemaOutputCodec
-from .mcp_schema import JsonSchemaMcpValidator
-from .mcp_runtime import (
-    AllowlistedEnvironmentProvider,
-    RejectingMcpSecretResolver,
-    build_icourse_client,
-)
+from .model_evidence import AstrBotProviderEvidenceStore
 from .output import AstrBotOutputAdapter, InMemoryDeliveryLedger
 
 __all__ = [
+    "AllowlistedEnvironmentProvider",
     "AstrBotInputConnector",
     "AstrBotModelProviderAdapter",
     "AstrBotOutputAdapter",
     "AstrBotPromptArtifact",
     "AstrBotProviderBindingEvidence",
-    "AllowlistedEnvironmentProvider",
+    "AstrBotProviderEvidenceStore",
     "InMemoryDeliveryLedger",
     "JsonSchemaDocumentRegistry",
     "JsonSchemaMcpValidator",

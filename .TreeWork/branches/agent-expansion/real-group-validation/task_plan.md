@@ -43,6 +43,12 @@ Title: S23 Authorized Real-Group Validation
   configured 1--3 model tiers and assembles the Static Router and DirectChat
   chain; `off` performs zero Provider calls/sends, `shadow` does not claim or
   send, and disabled or unresolved Providers fall back to legacy.
+- [x] Production Builder 优先使用 AstrBot Context 的 Evidence resolver；
+  resolver 缺失或返回 `None` 时，从 `runtime_provider_evidence_path`
+  指向的仓库外私有 JSON 解析 Provider binding evidence。Provider/model
+  不匹配时拒绝装配；初始健康为 `UNKNOWN`，有效且未过期的
+  `ModelHealthEvidence` 可使 Router/Admission 看到 `HEALTHY`，TTL 到期后
+  自动恢复 `UNKNOWN` 并停止调用 Provider。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -83,10 +89,16 @@ Title: S23 Authorized Real-Group Validation
 - [x] Implement the production Builder, automatic plugin wiring, AnswerProfile
   feature flag and rule-only Runtime Perception; sample the production
   composition, Perception and Rollout contracts.
+- [x] Implement the repository-external Provider Evidence Store and wire the
+  existing bounded health publisher through Production Assembly, Router and
+  Admission; verify exact binding, `UNKNOWN -> HEALTHY` and TTL expiry with
+  focused Fake tests.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
-- [ ] Obtain real Endpoint Conformance/health/evidence resolution and add live
-  Source, Projection and Output composition only for the authorized stage.
+- [ ] Produce and privately bind real AstrBot Provider Conformance evidence,
+  connect a refreshable health collector before the evidence TTL expires, and
+  add live Source, Projection and Output composition only for the authorized
+  stage.
 - [ ] Execute Preflight and single-group no-send/no-write Shadow; review the
   sanitized receipt before promotion.
 - [ ] Execute explicit-mention inbound Canary and reconcile every request and

@@ -270,6 +270,12 @@ S20 不属于上述严格发布主线，已经单独批准并完成离线范围�
 主动出站或 S23 的前置；既定 QQ Web 客户端测试和 Bot Control Plane 离线闭环均已通过，但不等于
 生产环境适配、真实群质量或真实发送已经就绪。
 
+截至 2026-08-15，S23 又完成了候选模型上线前的一段工程纵切：仓库外私有 Provider Evidence
+解析已接入 Production Builder，既有 `BoundedModelHealthPublisher` 已连接 Router 与 Admission，
+并能表现 `UNKNOWN -> HEALTHY -> TTL 到期后 UNKNOWN`。这只闭合了证据输入与健康状态传播路径；
+真实 AstrBot Conformance、持续健康采集、候选部署切换和单群 Shadow 仍未完成，因此 S23 继续
+保持暂停、部分完成。
+
 单人阶段主动暂停以下范围：第二聊天平台、通用高风险 Tool、自动 Memory 写入、Graph Memory、
 主动私聊/个人目标、私人校园 Feed、自动 LONG 推送、模型微调、neural bandit、多 Persona 市场
 和任意未治理的 Web 写入口。只有前一里程碑的真实错误证据证明其他暂停项必要时，才把其中一项
@@ -731,7 +737,7 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 已完成的 Tree 变更
 
-标题：**S21 Bot Control Plane 已完成，S23 已恢复离线历史语料阶段**
+标题：**S21 Bot Control Plane 已完成，S23 离线 Demo 与候选模型工程纵切已完成**
 
 Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S23 的 manifest-only readiness、
 模板和 [单群验证 Runbook](../operations/s23-real-group-validation.md) 已完成；获授权静态历史
@@ -744,8 +750,11 @@ Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S2
 5. 移除 Agent Draft 直发 NapCat 和浏览器本地 permission/config 占位；
 6. S21 完成审计后，已在 S23 私有环境处理外部长期记录，完成全量本地预测和 600 条 Teacher
    Silver 抽样；下一步以 150–300 条均衡人工 Gold 复核质量，不把 Silver 当 Gold；
-7. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
-8. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
+7. 候选模型生产装配现可从 AstrBot Context 或仓库外私有文件解析 Provider Evidence，并复用
+   bounded health publisher 向 Router/Admission 发布有 TTL 的健康状态；真实 Evidence 生产和
+   持续采集尚未完成；
+8. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
+9. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
    才考虑 3–5 群和长时间 Debug。
 
 Bandit 不作为主动出站、群服务 Profile 或 S23 的前置，且禁止探索 send/skip、目标、日程、频率

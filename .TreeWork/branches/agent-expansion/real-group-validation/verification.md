@@ -4,6 +4,19 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `uv run python -m unittest -q tests.contracts.test_production_composition.ProductionCompositionContractTests.test_builder_accepts_private_provider_evidence_file tests.contracts.test_production_composition.ProductionCompositionContractTests.test_builder_rejects_mismatched_private_provider_evidence tests.contracts.test_production_composition.ProductionCompositionContractTests.test_shadow_uses_endpoint_fixed_reasoning_after_healthy_evidence tests.contracts.test_production_composition.ProductionCompositionContractTests.test_shadow_stops_calling_provider_after_health_ttl`
+- Result: partial; 4 focused tests passed in 0.245 seconds.
+- Evidence: repository-external Evidence matching assembles the Builder;
+  Provider/model mismatch is rejected; valid descriptor-bound health changes
+  `UNKNOWN -> HEALTHY` and permits one Fake Shadow Provider call; advancing the
+  fake clock beyond the health TTL changes it back to `UNKNOWN` and prevents a
+  further Provider call.
+- Evidence boundary: these are Fake Provider and fixed private-file fixture
+  tests. They do not prove real AstrBot Provider Conformance, a continuous
+  health collector, candidate deployment, live single-group Shadow or QQ send.
+- Verification remains `partial`; S23 remains `paused`.
+- Recorded: 2026-08-15
+
 - Command: `uv run python -m unittest tests.contracts.test_astrbot_model_provider tests.contracts.test_production_composition`
 - Result: partial; 34 focused tests passed in 0.719 seconds.
 - Evidence: Adapter passes request-level `max_tokens`; fixed Endpoint reasoning

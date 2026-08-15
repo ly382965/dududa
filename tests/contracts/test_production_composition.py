@@ -23,8 +23,11 @@ from astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
 from dududa.domain.primitives import ComponentRevision, DigestString
 from dududa.models.contracts import (
     EndpointHealthStatus,
+    ModelEndpointHealth,
     ModelProviderDescriptor,
+    ModelProviderHealth,
 )
+from dududa.models.health import ModelHealthEvidence
 from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
 
 from tests.unit.rollout.helpers import control, ledger
@@ -85,6 +88,14 @@ class _ProviderContext:
         )
 
 
+class _ProviderRegistryContext:
+    def __init__(self, providers: dict[str, object]) -> None:
+        self.providers = dict(providers)
+
+    def get_provider_by_id(self, provider_id: str) -> object | None:
+        return self.providers.get(provider_id)
+
+
 class _AstrBotProvider:
     def __init__(self, provider_id: str = "astrbot-luna") -> None:
         self.provider_id = provider_id
@@ -108,12 +119,17 @@ class At:
 
 
 class _Event:
-    def __init__(self, *, group_id: str = "group-1") -> None:
+    def __init__(
+        self,
+        *,
+        group_id: str = "group-1",
+        message_id: str = "message-1",
+    ) -> None:
         self.stop_calls = 0
         self.send_calls = 0
         self.message_str = "@嘟嘟哒 你好"
         self.message_obj = SimpleNamespace(
-            message_id="message-1",
+            message_id=message_id,
             timestamp=1_786_723_200,
             message=[At("bot-1")],
             raw_message={"time": 1_786_723_200, "message": []},
@@ -164,6 +180,14 @@ class _FailOnceCloseable(_Closeable):
         self.close_calls += 1
         if self.close_calls == 1:
             raise RuntimeError("transient close failure")
+
+
+class _MutableClock:
+    def __init__(self, now: datetime) -> None:
+        self.now = now
+
+    def __call__(self) -> datetime:
+        return self.now
 
 
 class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
@@ -234,11 +258,94 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             "rollout_memory_enabled": False,
         }
 
+    def _provider_evidence_path(
+        self,
+        *,
+        model_id: str = "gpt-5.6-luna",
+    ) -> Path:
+        path = Path(self.temp.name) / f"provider-evidence-{model_id}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "providers": [
+                        {
+                            "schema_version": 1,
+                            "astrbot_provider_id": "astrbot-luna",
+                            "host_version": "astrbot-test",
+                            "conformance_revision": {
+                                "component_id": "astrbot-provider-conformance",
+                                "implementation_version": "1.0.0",
+                                "config_revision": "private-test-v1",
+                                "artifact_digest": "private:astrbot-luna-v1",
+                            },
+                            "verified_model_id": model_id,
+                            "verified_max_output_tokens": 4_096,
+                            "verified_data_residencies": ["global"],
+                            "verified_retention_modes": ["no_retention"],
+                            "single_request_verified": True,
+                            "model_binding_verified": True,
+                            "output_limit_verified": True,
+                            "residency_verified": True,
+                            "retention_verified": True,
+                            "sanitized_logging_verified": True,
+                            "deadline_enforcement_verified": True,
+                            "cancellation_enforcement_verified": True,
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return path
+
+    @staticmethod
+    def _healthy_evidence(
+        assembly: ProductionRuntimeAssembly,
+        observed_at: datetime,
+        *,
+        ttl: timedelta = timedelta(seconds=5),
+    ) -> ModelHealthEvidence:
+        registry = assembly.model_operational_registry
+        if registry is None:
+            raise AssertionError("model operational registry is unavailable")
+        initial = registry.acquire_snapshot()
+        provider = initial.provider_health[0]
+        endpoint = provider.endpoints[0]
+        health = ModelProviderHealth(
+            schema_version=1,
+            provider_id=provider.provider_id,
+            status=EndpointHealthStatus.HEALTHY,
+            endpoints=(
+                ModelEndpointHealth(
+                    schema_version=1,
+                    endpoint_id=endpoint.endpoint_id,
+                    endpoint_descriptor_digest=endpoint.endpoint_descriptor_digest,
+                    status=EndpointHealthStatus.HEALTHY,
+                    reason_codes=(),
+                ),
+            ),
+            snapshot_revision="astrbot-preflight-test-v1",
+            checked_at=observed_at,
+            reason_codes=(),
+        )
+        return ModelHealthEvidence(
+            schema_version=1,
+            provider_revision=composition._revision(
+                f"model-provider:{provider.provider_id}"
+            ),
+            health=health,
+            expires_at=observed_at + ttl,
+            evidence_revision="astrbot-preflight-test-v1",
+        )
+
     def _initialize(
         self,
         plugin: _Plugin,
         values: dict[str, object],
         directory: str,
+        *,
+        runtime_assembly: ProductionRuntimeAssembly | None = None,
     ) -> None:
         root = Path(self.temp.name) / directory
         with (
@@ -251,15 +358,22 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             patch.object(composition, "MCP_WORKER_PYTHON", root / "missing-worker"),
             patch.object(audit, "PLUGIN_DATA_DIR", root),
         ):
-            composition.initialize_plugin(plugin, values)
+            composition.initialize_plugin(
+                plugin,
+                values,
+                runtime_assembly=runtime_assembly,
+            )
 
-    async def test_builder_accepts_one_declared_luna_provider(self) -> None:
+    async def test_builder_accepts_private_provider_evidence_file(self) -> None:
         provider = _AstrBotProvider()
-        plugin = self._production_plugin(provider)
+        plugin = _Plugin()
+        plugin.context = _ProviderRegistryContext({provider.provider_id: provider})
+        values = self._runtime_config()
+        values["runtime_provider_evidence_path"] = str(self._provider_evidence_path())
 
         assembly = composition.build_production_runtime(
             plugin,
-            self._runtime_config(),
+            values,
         )
 
         self.assertTrue(assembly.ready)
@@ -275,6 +389,21 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(provider.calls, [])
         await assembly.close()
+
+    async def test_builder_rejects_mismatched_private_provider_evidence(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = _Plugin()
+        plugin.context = _ProviderRegistryContext({provider.provider_id: provider})
+        values = self._runtime_config()
+        values["runtime_provider_evidence_path"] = str(
+            self._provider_evidence_path(model_id="gpt-5.6-terra")
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "provider conformance evidence is unavailable",
+        ):
+            composition.build_production_runtime(plugin, values)
 
     async def test_auto_assembled_off_runtime_never_calls_provider(self) -> None:
         provider = _AstrBotProvider()
@@ -316,52 +445,30 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
 
-    async def test_shadow_uses_endpoint_fixed_reasoning_after_healthy_snapshot(
+    async def test_shadow_uses_endpoint_fixed_reasoning_after_healthy_evidence(
         self,
     ) -> None:
         provider = _AstrBotProvider()
         plugin = self._production_plugin(provider)
-        self._initialize(
+        observed_at = datetime.now(timezone.utc)
+        clock = _MutableClock(observed_at)
+        assembly = composition.build_production_runtime(
             plugin,
             self._runtime_config(rollout_mode="shadow"),
-            "production-shadow-healthy",
+            clock=clock,
         )
-        registry = plugin.runtime_assembly.model_operational_registry
-        self.assertIsNotNone(registry)
-        initial = registry.acquire_snapshot()
-        observed_at = datetime.now(timezone.utc)
-        healthy = replace(
-            initial,
-            snapshot_id="production-healthy-test",
-            provider_health=tuple(
-                replace(
-                    health,
-                    status=EndpointHealthStatus.HEALTHY,
-                    endpoints=tuple(
-                        replace(
-                            endpoint,
-                            status=EndpointHealthStatus.HEALTHY,
-                            reason_codes=(),
-                        )
-                        for endpoint in health.endpoints
-                    ),
-                    checked_at=observed_at,
-                    reason_codes=(),
-                )
-                for health in initial.provider_health
-            ),
-            endpoint_load=tuple(
-                replace(load, checked_at=observed_at)
-                for load in initial.endpoint_load
-            ),
-            acquired_at=observed_at,
-        )
-        await registry.publish(
-            healthy,
+        await assembly.publish_model_health(
+            (self._healthy_evidence(assembly, observed_at),),
             call=replace(
                 self.call,
                 deadline=observed_at + timedelta(minutes=1),
             ),
+        )
+        self._initialize(
+            plugin,
+            self._runtime_config(rollout_mode="shadow"),
+            "production-shadow-healthy",
+            runtime_assembly=assembly,
         )
 
         event = _Event()
@@ -373,6 +480,49 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(provider.calls[0]["reasoning_effort"], "low")
         self.assertEqual(event.stop_calls, 0)
         self.assertEqual(event.send_calls, 0)
+        await plugin.terminate()
+
+    async def test_shadow_stops_calling_provider_after_health_ttl(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        observed_at = datetime.now(timezone.utc)
+        clock = _MutableClock(observed_at)
+        values = self._runtime_config(rollout_mode="shadow")
+        assembly = composition.build_production_runtime(
+            plugin,
+            values,
+            clock=clock,
+        )
+        await assembly.publish_model_health(
+            (self._healthy_evidence(assembly, observed_at),),
+            call=replace(
+                self.call,
+                deadline=observed_at + timedelta(minutes=1),
+            ),
+        )
+        self._initialize(
+            plugin,
+            values,
+            "production-shadow-health-ttl",
+            runtime_assembly=assembly,
+        )
+
+        first = await plugin.rollout_bridge.handle(_Event(message_id="healthy"))
+        await plugin.rollout_bridge._shadow.drain()
+        self.assertIs(first.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
+        self.assertEqual(len(provider.calls), 1)
+
+        clock.now = observed_at + timedelta(seconds=6)
+        snapshot = assembly.model_operational_registry.acquire_snapshot()
+        self.assertIs(
+            snapshot.provider_health[0].status,
+            EndpointHealthStatus.UNKNOWN,
+        )
+        second = await plugin.rollout_bridge.handle(_Event(message_id="expired"))
+        await plugin.rollout_bridge.close()
+
+        self.assertIs(second.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
+        self.assertEqual(len(provider.calls), 1)
         await plugin.terminate()
 
     async def test_missing_or_unknown_provider_falls_back_to_legacy(self) -> None:
@@ -460,7 +610,9 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         await plugin.terminate()
         self.assertFalse(plugin._dududa_runtime_initialized)
 
-    async def test_repeated_plugin_initialization_preserves_the_first_owner(self) -> None:
+    async def test_repeated_plugin_initialization_preserves_the_first_owner(
+        self,
+    ) -> None:
         root = Path(self.temp.name) / "plugin-repeat"
         plugin = _Plugin()
         resource = _Closeable()
@@ -647,7 +799,9 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(plugin.runtime_assembly)
         self.assertEqual(plugin._dududa_runtime_cleanup_assemblies, [])
 
-    async def test_termination_retries_only_resources_that_failed_to_close(self) -> None:
+    async def test_termination_retries_only_resources_that_failed_to_close(
+        self,
+    ) -> None:
         plugin = self._plugin()
         runtime = _RuntimeProxy(self.fixture.runtime)
         closed = _Closeable()
@@ -678,6 +832,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(flaky.close_calls, 2)
         self.assertTrue(assembly.closed)
         self.assertIsNone(plugin.runtime_assembly)
+
     async def test_termination_retries_failed_icourse_close(self) -> None:
         plugin = self._plugin()
         plugin.icourse = _FailOnceCloseable()

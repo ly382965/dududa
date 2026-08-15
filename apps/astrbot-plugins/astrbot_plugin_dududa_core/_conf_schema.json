@@ -14,6 +14,12 @@
     "type": "text",
     "default": "[]"
   },
+  "runtime_provider_evidence_path": {
+    "description": "仓库外 AstrBot Provider Conformance Evidence JSON 路径",
+    "type": "string",
+    "default": "",
+    "hint": "仅保存验证结论和模型绑定，不包含 API Key、Base URL、QQ 标识或聊天正文。"
+  },
   "runtime_response_profiles_enabled": {
     "description": "启用短、中、长回答档位",
     "type": "bool",

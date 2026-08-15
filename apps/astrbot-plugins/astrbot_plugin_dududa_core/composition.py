@@ -52,6 +52,7 @@ from dududa.models.estimation import (
     ConservativeModelInvocationEstimator,
     ModelTokenPricing,
 )
+from dududa.models.health import BoundedModelHealthPublisher, ModelHealthEvidence
 from dududa.models.policy import (
     ModelCapabilitiesRequirement,
     ModelFallbackPolicy,
@@ -88,6 +89,8 @@ from dududa.perception.social import (
 )
 from dududa.persona.assets import load_persona_directory
 from dududa.persona.registry import InMemoryPersonaRegistry
+from dududa.ports.context import PortCallContext, ServiceCallContext
+from dududa.ports.models import ModelOperationalStateRegistry
 from dududa.ports.runtime import AgentRuntime, InputConnector
 from dududa.responses import (
     DeterministicResponseProfilePolicy,
@@ -150,6 +153,7 @@ from .adapters.model import (
     astrbot_prompt_artifact_digest,
 )
 from .adapters.model_codec import JsonSchemaDocumentRegistry
+from .adapters.model_evidence import AstrBotProviderEvidenceStore
 from .adapters.output import ASTRBOT_OUTPUT_REVISION, InMemoryDeliveryLedger
 from .config import (
     MCP_REGISTRY_DIR,
@@ -195,8 +199,9 @@ class ProductionRuntimeAssembly:
         ready: bool,
         closeables: Iterable[object] = (),
         abort_callbacks: Iterable[Callable[[], None]] = (),
-        model_operational_registry: InMemoryModelOperationalStateRegistry
-        | None = None,
+        model_operational_registry: ModelOperationalStateRegistry | None = None,
+        model_health_publisher: BoundedModelHealthPublisher | None = None,
+        model_endpoint_load: Iterable[EndpointLoadSnapshot] = (),
     ) -> None:
         if not isinstance(runtime, AgentRuntime):
             raise TypeError("runtime does not implement AgentRuntime")
@@ -210,12 +215,22 @@ class ProductionRuntimeAssembly:
             raise TypeError("invalid production Runtime abort callback")
         if model_operational_registry is not None and not isinstance(
             model_operational_registry,
-            InMemoryModelOperationalStateRegistry,
+            ModelOperationalStateRegistry,
         ):
             raise TypeError("invalid model operational registry")
+        if model_health_publisher is not None and not isinstance(
+            model_health_publisher,
+            BoundedModelHealthPublisher,
+        ):
+            raise TypeError("invalid model health publisher")
+        endpoint_load = tuple(model_endpoint_load)
+        if any(not isinstance(item, EndpointLoadSnapshot) for item in endpoint_load):
+            raise TypeError("invalid model endpoint load")
         self.runtime = runtime
         self.ready = ready
         self.model_operational_registry = model_operational_registry
+        self.model_health_publisher = model_health_publisher
+        self._model_endpoint_load = endpoint_load
         self._closeables = list(resources)
         self._abort_callbacks = list(callbacks)
         self._abort_started = False
@@ -239,6 +254,20 @@ class ProductionRuntimeAssembly:
         if not self.installable:
             raise RuntimeError("production Runtime assembly is not installable")
         self._installed = True
+
+    async def publish_model_health(
+        self,
+        evidence: Iterable[ModelHealthEvidence],
+        *,
+        call: PortCallContext | ServiceCallContext,
+    ) -> ModelOperationalSnapshot:
+        if self.model_health_publisher is None:
+            raise RuntimeError("model health publisher is unavailable")
+        return await self.model_health_publisher.publish(
+            tuple(evidence),
+            self._model_endpoint_load,
+            call=call,
+        )
 
     def abort(self) -> None:
         if self._aborted or self._closed:
@@ -432,6 +461,8 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
 def build_production_runtime(
     plugin: Any,
     config: dict[str, object],
+    *,
+    clock: Callable[[], datetime] | None = None,
 ) -> ProductionRuntimeAssembly:
     """Build the smallest config-driven inbound production Runtime."""
 
@@ -445,7 +476,12 @@ def build_production_runtime(
         "resolve_dududa_model_provider_evidence",
         None,
     )
-    if not callable(resolve_evidence):
+    evidence_store: AstrBotProviderEvidenceStore | None = None
+    evidence_store_path: Path | None = None
+    evidence_path = config.get("runtime_provider_evidence_path")
+    if isinstance(evidence_path, str) and evidence_path.strip():
+        evidence_store_path = Path(evidence_path.strip()).expanduser()
+    if not callable(resolve_evidence) and evidence_store_path is None:
         raise ValueError("AstrBot provider conformance evidence is unavailable")
 
     prompt = _direct_chat_prompt()
@@ -455,7 +491,11 @@ def build_production_runtime(
     ] = []
     provider_health: list[ModelProviderHealth] = []
     endpoint_load: list[EndpointLoadSnapshot] = []
-    now = datetime.now(timezone.utc)
+    effective_clock = clock or (lambda: datetime.now(timezone.utc))
+    now = effective_clock()
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("clock returned a naive datetime")
+    now = now.astimezone(timezone.utc)
 
     for index, spec in enumerate(specs):
         astrbot_provider = get_provider(spec.astrbot_provider_id)
@@ -497,9 +537,7 @@ def build_production_runtime(
                 output_modalities=frozenset({ModelOutputModality.TEXT}),
                 native_structured_output=StructuredOutputSupport.NONE,
                 max_context_tokens=spec.max_context_tokens,
-                max_input_tokens=(
-                    spec.max_context_tokens - spec.max_output_tokens
-                ),
+                max_input_tokens=(spec.max_context_tokens - spec.max_output_tokens),
                 max_output_tokens=spec.max_output_tokens,
                 supports_temperature=False,
                 supports_streaming=False,
@@ -512,9 +550,7 @@ def build_production_runtime(
             ),
             processing_boundary=ModelProcessingBoundary.EXTERNAL,
             available_data_residencies=frozenset({"global"}),
-            supported_retention_modes=frozenset(
-                {ModelRetentionMode.NO_RETENTION}
-            ),
+            supported_retention_modes=frozenset({ModelRetentionMode.NO_RETENTION}),
             quota_pool_id=f"{spec.provider_id}:{spec.endpoint_id}",
             traffic_policy=traffic_policy,
             enabled=True,
@@ -529,7 +565,16 @@ def build_production_runtime(
             revision=_revision(f"model-provider:{spec.provider_id}"),
             endpoints=(endpoint,),
         )
-        evidence = resolve_evidence(spec.astrbot_provider_id, descriptor)
+        evidence = (
+            resolve_evidence(spec.astrbot_provider_id, descriptor)
+            if callable(resolve_evidence)
+            else None
+        )
+        if evidence is None and evidence_store_path is not None:
+            evidence_store = evidence_store or AstrBotProviderEvidenceStore(
+                evidence_store_path
+            )
+            evidence = evidence_store.resolve(spec.astrbot_provider_id, descriptor)
         if not isinstance(evidence, AstrBotProviderBindingEvidence):
             raise ValueError("AstrBot provider conformance evidence is unavailable")
         adapter = AstrBotModelProviderAdapter(
@@ -538,6 +583,7 @@ def build_production_runtime(
             evidence,
             schema_registry=JsonSchemaDocumentRegistry({}),
             prompt_artifacts=(prompt,),
+            clock=effective_clock,
         )
         adapters.append(adapter)
         configured_endpoints.append((index, spec, endpoint))
@@ -586,9 +632,7 @@ def build_production_runtime(
 
     tiers = frozenset(spec.tier for spec in specs)
     ordered_tiers = tuple(sorted(tiers, key=_TIER_ORDER.__getitem__))
-    default_tier = (
-        ModelTier.SONNET if ModelTier.SONNET in tiers else ordered_tiers[0]
-    )
+    default_tier = ModelTier.SONNET if ModelTier.SONNET in tiers else ordered_tiers[0]
     ordered_candidates = sorted(
         configured_endpoints,
         key=lambda item: (_TIER_ORDER[item[1].tier], item[0]),
@@ -638,7 +682,11 @@ def build_production_runtime(
         tier_fallback_edges=(),
         policy_revision="direct-chat-route-v1",
     )
-    routing = InMemoryModelRoutingRegistry(adapters, (route_policy,))
+    routing = InMemoryModelRoutingRegistry(
+        adapters,
+        (route_policy,),
+        clock=effective_clock,
+    )
     operational = InMemoryModelOperationalStateRegistry(
         routing,
         ModelOperationalSnapshot(
@@ -648,11 +696,18 @@ def build_production_runtime(
             endpoint_load=tuple(endpoint_load),
             acquired_at=now,
         ),
+        clock=effective_clock,
+    )
+    health_publisher = BoundedModelHealthPublisher(
+        routing,
+        operational,
+        clock=effective_clock,
     )
     admission = InMemoryModelAdmissionController(
         routing,
-        operational,
+        health_publisher,
         admission_revision="production-v1",
+        clock=effective_clock,
     )
     endpoints = tuple(item[2] for item in configured_endpoints)
     estimator = ConservativeModelInvocationEstimator(
@@ -673,12 +728,13 @@ def build_production_runtime(
     )
     router = StaticModelRouter(
         routing,
-        operational,
+        health_publisher,
         admission,
         estimator,
         output_codec=None,
         prompt_template_revisions={ModelRole.DIRECT_CHAT: prompt.revision},
         schema_repair_prompt_revisions={},
+        clock=effective_clock,
     )
 
     complexity_config = default_complexity_assessor_config(
@@ -926,9 +982,7 @@ def build_production_runtime(
         final_validator=final_validator,
         delivery_builder=delivery_builder,
         response_profile_policy=DeterministicResponseProfilePolicy(
-            pilot_response_profile_policy_config(
-                _revision("response-profile-policy")
-            )
+            pilot_response_profile_policy_config(_revision("response-profile-policy"))
         ),
         detail_detector_revision=_revision("detail-detector"),
         persona_registry=persona_registry,
@@ -938,7 +992,9 @@ def build_production_runtime(
         runtime,
         ready=True,
         closeables=adapters,
-        model_operational_registry=operational,
+        model_operational_registry=health_publisher,
+        model_health_publisher=health_publisher,
+        model_endpoint_load=endpoint_load,
     )
 
 

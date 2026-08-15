@@ -39,16 +39,30 @@ Git。
   `medium/high` 仍须由真实 AstrBot Provider conformance 证明；证据不满足时 Builder 会拒绝启用。
 - 样板中的上下文、输出和流量值只是保守的 pilot 初值，不代表模型公开能力、真实配额、质量或
   生产可用性；应根据 Provider 合同与短时吞吐测量调整。
-- 当前生产 Builder 还要求 AstrBot Context 提供 Provider conformance evidence。注册 Provider、
-  单次请求成功或填写本样板，都不能替代该证据。
+- 候选样板不填写 `runtime_provider_evidence_path`，因为该值必须指向部署机上的仓库外私有文件。
+  若 AstrBot Context 没有 Evidence resolver，则实际部署必须在私有插件配置中补充该路径。
+- Evidence 文件顶层为 `schema_version=1` 和 `providers` 数组；每条记录绑定
+  `astrbot_provider_id`、`verified_model_id`、Conformance revision、输出上限、residency、
+  retention 和现有验证 flags。不得写入 Key、Base URL、QQ ID 或聊天正文。
+- Builder 按 Context resolver 优先、私有文件 fallback 的顺序解析 Evidence。Provider/model
+  不匹配或验证 flags 不完整时拒绝装配。可解析文件本身不构成真实 Conformance 证据。
+- Builder 装配后健康仍为 `UNKNOWN`。外部健康采集器必须显式发布有 TTL 的
+  `ModelHealthEvidence`；到期未刷新时 Router 自动停止使用该 Endpoint。
 
 ## 最短使用顺序
 
 1. 把 Source 和三个 Provider 追加到私有 AstrBot 配置，保留 `enable=false`。
 2. 在私有环境中设置 Base URL 和 `DUDUDA_GPT56_API_KEY`，不要改仓库样板。
-3. 分别验证 Luna、Terra、Sol 的 AstrBot Provider ID、模型绑定、参数透传、健康和 conformance。
-4. 将 `runtime_models_json` 复制到插件配置，并按测量结果调整每个 Endpoint 的资源初值。
-5. 在验证证据闭合前继续保持 Runtime、rollout、投递和主动出站关闭。
+3. 在实际 AstrBot 路径验证 Provider ID、模型绑定、参数透传、输出上限、residency、retention、
+   日志、deadline 和 cancellation。
+4. 将结果写入仓库外 Evidence 文件，并在私有插件配置中设置
+   `runtime_provider_evidence_path`。
+5. 配置 `runtime_models_json`，接入持续健康采集；确认
+   `UNKNOWN -> HEALTHY -> TTL 到期 UNKNOWN`。
+6. Preflight 完成前继续保持 Runtime、rollout、投递和主动出站关闭。
 
 聊天数据的 4--5 小时抽样预算见 `docs/operations/s23-real-group-validation.md` 第 1.2 节；首轮按
 分层小样测量吞吐，不把约 410 MB 原始记录一次性提交给模型。
+
+私有 Evidence 解析和 TTL 健康发布工程纵切已经完成；真实运行 AstrBot Provider 注册、真实
+Conformance、持续健康采集、部署切换和单群 Shadow 仍未完成。S23 保持 `paused/partial`。
