@@ -1,6 +1,11 @@
 ARG ASTRBOT_BASE_IMAGE=m.daocloud.io/docker.io/soulter/astrbot@sha256:369164f8c2a063a6076203b8ef90be25e79be2d70c52c5317607035dece177ea
 FROM ${ASTRBOT_BASE_IMAGE}
 
+COPY deploy/patches/astrbot/4.26.2-openai-request-overrides.patch /tmp/astrbot-openai-request-overrides.patch
+RUN cd /AstrBot \
+    && patch --batch --forward -p1 < /tmp/astrbot-openai-request-overrides.patch \
+    && rm /tmp/astrbot-openai-request-overrides.patch
+
 COPY packages/dududa-agent /opt/dududa/dududa-agent
 COPY services/mcp/icourse /opt/dududa/icourse-mcp
 COPY services/mcp/unified-worker /opt/dududa/unified-mcp-worker

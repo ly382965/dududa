@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "status": "candidate_disabled",
+  "astrbot_config_additions": {
+    "provider_sources": [
+      {
+        "id": "dududa-gpt56-source",
+        "type": "openai_chat_completion",
+        "provider_type": "chat_completion",
+        "api_base": "https://example.invalid/v1",
+        "key": [
+          "$DUDUDA_GPT56_API_KEY"
+        ],
+        "custom_headers": {},
+        "timeout": 120
+      }
+    ],
+    "provider": [
+      {
+        "id": "astrbot-luna",
+        "provider_source_id": "dududa-gpt56-source",
+        "model": "gpt-5.6-luna",
+        "modalities": [
+          "text"
+        ],
+        "custom_extra_body": {},
+        "enable": false
+      },
+      {
+        "id": "astrbot-terra",
+        "provider_source_id": "dududa-gpt56-source",
+        "model": "gpt-5.6-terra",
+        "modalities": [
+          "text"
+        ],
+        "custom_extra_body": {},
+        "enable": false
+      },
+      {
+        "id": "astrbot-sol",
+        "provider_source_id": "dududa-gpt56-source",
+        "model": "gpt-5.6-sol",
+        "modalities": [
+          "text"
+        ],
+        "custom_extra_body": {},
+        "enable": false
+      }
+    ]
+  },
+  "dududa_plugin_config": {
+    "runtime_enabled": false,
+    "runtime_models_json": "[{\"provider_id\":\"dududa-luna\",\"astrbot_provider_id\":\"astrbot-luna\",\"endpoint_id\":\"luna\",\"model_id\":\"gpt-5.6-luna\",\"tier\":\"haiku\",\"reasoning_depth\":\"light\",\"max_context_tokens\":32768,\"max_output_tokens\":2048,\"max_concurrency\":4,\"rpm_limit\":30,\"tpm_limit\":120000},{\"provider_id\":\"dududa-terra\",\"astrbot_provider_id\":\"astrbot-terra\",\"endpoint_id\":\"terra\",\"model_id\":\"gpt-5.6-terra\",\"tier\":\"sonnet\",\"reasoning_depth\":\"balanced\",\"max_context_tokens\":65536,\"max_output_tokens\":4096,\"max_concurrency\":2,\"rpm_limit\":20,\"tpm_limit\":100000},{\"provider_id\":\"dududa-sol\",\"astrbot_provider_id\":\"astrbot-sol\",\"endpoint_id\":\"sol\",\"model_id\":\"gpt-5.6-sol\",\"tier\":\"opus\",\"reasoning_depth\":\"deep\",\"max_context_tokens\":128000,\"max_output_tokens\":8192,\"max_concurrency\":1,\"rpm_limit\":10,\"tpm_limit\":80000}]",
+    "runtime_response_profiles_enabled": true,
+    "rollout_mode": "off",
+    "rollout_delivery_enabled": false,
+    "rollout_kill_switch": true,
+    "rollout_tools_enabled": false,
+    "rollout_memory_enabled": false,
+    "rollout_allowlisted_groups": []
+  }
+}

@@ -1,0 +1,16 @@
+diff --git a/astrbot/core/provider/sources/openai_source.py b/astrbot/core/provider/sources/openai_source.py
+--- a/astrbot/core/provider/sources/openai_source.py
++++ b/astrbot/core/provider/sources/openai_source.py
+@@ -1048,6 +1048,12 @@ class ProviderOpenAIChatCompletion(BaseProvider):
+ 
+         payloads = {"messages": context_query, "model": model}
+ 
++        # Dududa owns the request-level output and reasoning budgets. Keep this
++        # list explicit so unrelated plugin kwargs never become Provider input.
++        for key in ("max_tokens", "reasoning_effort"):
++            if (value := kwargs.get(key)) is not None:
++                payloads[key] = value
++
+         self._finally_convert_payload(payloads)
+ 
+         return payloads, context_query
