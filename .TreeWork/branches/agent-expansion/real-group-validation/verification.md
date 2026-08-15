@@ -18,6 +18,18 @@ Branch: real-group-validation
   464 compiled Silver rows; 23/6 train/test conversation groups; 137,026
   Student predictions; Demo HTTP 200 at `127.0.0.1:8766` with all private,
   no-send and non-production notices.
+- Command: private minimal Responses API and Chat Completions probes; the
+  credential-bearing invocation, API key and private Base URL are intentionally
+  not recorded.
+- Result: partial. Responses returned HTTP 200 for Luna/Terra/Sol in
+  2.212/2.816/2.698 seconds with exact model IDs, text and usage. Chat
+  Completions returned HTTP 200 for both ordinary and `reasoning_effort=low`
+  requests on all three models, with exact model IDs and usage at roughly
+  2.2--2.3 seconds.
+- Evidence boundary: these probes prove one-shot protocol reachability only.
+  The models are not registered in the running AstrBot, request-level output
+  limits/reasoning are not passed through that path, and no refreshable health
+  or AstrBot Provider Conformance evidence exists.
 - Coverage gap: no human Gold, live Dududa traffic, real Endpoint Conformance or
   health, container deployment and Release binding, live campus/arXiv/industry
   Source, production Projection/Output composition, QQ send, online Bandit or

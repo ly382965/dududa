@@ -20,6 +20,10 @@ Last sync: unix:1786706085
 - 配置驱动的入站生产 Runtime 纵切已经在代码层闭合：配置声明的 Endpoint
   经 AstrBot Provider Adapter、Static Router 和 DirectChat 链接入既有
   Rollout Bridge；Runtime 默认关闭，Tool、Memory 和 Capability 仍关闭。
+- Luna、Terra、Sol 已分别通过 Responses API 和 AstrBot 所用 Chat
+  Completions 的最小真实请求抽样；两种协议均返回 HTTP 200、匹配模型 ID
+  和 usage。当前 AstrBot 尚未注册三个模型，且请求级输出上限和动态思考
+  深度不能从 Dududa 透传，因此这些结果不构成 AstrBot Conformance 或健康证据。
 - S23 整体仍为 `paused/partial`。当前缺少的不是入站 Builder 本身，而是
   真实 Endpoint 的 Conformance、健康与部署绑定，以及主动来源所需的 live
   Source/Projection/Output 组合；`s23_ready=false` 继续有效。
@@ -49,6 +53,13 @@ Last sync: unix:1786706085
 - 最终 27 项 production-composition、rule-only Perception 和 rollout 聚焦契约
   在 1.005 秒内通过；此前 6 项冒烟在 0.196 秒内通过。Builder 构造期
   `text_chat()` 调用为 0，未再扩展全仓测试矩阵。
+- 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
+  2.212/2.816/2.698 秒；Chat Completions 普通请求和
+  `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
+  Base URL 未写入仓库或普通日志。
+- 已决定不重跑现有历史语料 Demo。若需要新的多模型结构化样本，先用
+  20--24 个窗口测吞吐，Luna 主样本为 120--350，Terra 复核最多 50，
+  Sol 抽查最多 15；T+3.5 小时停止新请求，T+5 小时硬停止。
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
@@ -60,6 +71,9 @@ Last sync: unix:1786706085
 - Implement real Endpoint evidence resolution, Conformance/health and deployment
   binding; add Source/Projection/Output Adapters only after the corresponding
   proactive behavior is authorized.
+- Register Luna/Terra/Sol as AstrBot Providers, bind their actual Provider IDs,
+  fix per-request output-limit/reasoning passthrough, and replace hard-coded
+  conformance/health assumptions with refreshable observations before Shadow.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
@@ -67,3 +81,7 @@ Last sync: unix:1786706085
   external data root. Resume S23 only for human Gold curation or after the
   authorization, Endpoint, SLO, SecretRef and deployment packet arrives; the
   first live action remains evidence-resolving Preflight, not QQ send.
+- Reuse the completed corpus artifacts. Any later multi-model calibration run
+  must follow the documented five-hour timebox and group-isolated sampling;
+  do not submit the full 410 MB corpus to an LLM or extend the run to chase
+  full coverage.

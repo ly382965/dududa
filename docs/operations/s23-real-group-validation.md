@@ -27,6 +27,56 @@ S23 分支也已补齐配置驱动的入站生产 Runtime 纵切，但当前只�
 - `conformance_verified=true` 只是 Builder 输入，不是本 Runbook 第 5 节要求的真实 Conformance、
   health、Release 绑定或授权证据。
 
+### 1.1 真实 Endpoint 最小可达性抽样
+
+2026-08-15 已在私有进程中对三个候选 Endpoint 做一次最小请求；凭据和私有 Base URL 没有写入
+仓库、普通日志或本文。
+
+| Endpoint | Responses API | 延迟 | 返回模型匹配 | 文本/usage |
+| --- | ---: | ---: | --- | --- |
+| `gpt-5.6-luna` | HTTP 200 | 2.212 秒 | 是 | 有 |
+| `gpt-5.6-terra` | HTTP 200 | 2.816 秒 | 是 | 有 |
+| `gpt-5.6-sol` | HTTP 200 | 2.698 秒 | 是 | 有 |
+
+AstrBot 实际使用的 Chat Completions 路径也完成了普通请求和
+`reasoning_effort=low` 各一次抽样：Luna、Terra、Sol 均为 HTTP 200、返回模型 ID 匹配并包含
+usage，单次延迟约 2.2--2.3 秒。这只证明两种协议的单次可达、模型绑定和基本输出，不是
+Endpoint Conformance、持续健康、质量、成本或生产可用性证据。
+
+当前运行中的 AstrBot 只注册了 `deepseek/deepseek-v4-pro`、
+`deepseek_1/deepseek-v4-flash` 和 `openai/gpt-5.5`，三个 GPT-5.6 Endpoint 尚未成为 AstrBot
+Provider。现有 AstrBot OpenAI Provider 虽接受额外参数，但组装 Chat Completions payload 时
+没有透传它们，因此 Dududa 请求级输出上限和动态思考深度目前不会生效；Provider
+`custom_extra_body` 只能提供每个 Provider 的静态初值。Dududa Adapter 也仍只声明
+`ReasoningDepth.OFF`，当前硬编码的 Conformance/健康初值不能作为 Preflight 证据。
+
+进入真实 Shadow 前的最短接入顺序固定为：注册三个 AstrBot Provider 并取得实际 Provider ID，
+修复或升级请求参数透传，完成 AstrBot Provider Contract/Conformance，接入可刷新健康观测，
+再配置 Luna -> Haiku、Terra -> Sonnet、Sol -> Opus。全过程保持 `runtime_enabled=false`、
+`rollout_mode=off`，直到 Preflight 证据闭合。
+
+### 1.2 4--5 小时离线抽样预算
+
+已有 1,402 文件流水线、600 条 Terra Silver、137,026 条 Student 预测和私有 Demo 不再重跑。
+若后续为多模型校准重新发起结构化抽样，使用以下五小时硬时间盒，而不是把约 410 MB 原文全部
+提交给 LLM：
+
+| 累计时间 | 工作 | 硬上限 |
+| --- | --- | ---: |
+| 0--60 分钟 | 全量本地索引、过滤、去重和 past-only 窗口构建 | 只做本地处理 |
+| 60--85 分钟 | 分层抽取窗口测量实际吞吐 | 20--24 次请求 |
+| 85--210 分钟 | Luna 生成主结构化样本 | 默认 250，最多 350 |
+| 并行复核 | Terra 只处理低置信度和 Schema 边界 | 最多 50 |
+| 并行抽查 | Sol 只处理高歧义样本 | 最多 15 |
+| 210--255 分钟 | 按群隔离训练/评估 | 不扩大样本 |
+| 255--285 分钟 | 固定样本 Demo 与指标 | 不扩大样本 |
+| 285--300 分钟 | 文档、结果归档和缓冲 | 五小时硬停止 |
+
+首批吞吐的 P95 小于 15 秒时，Luna 主样本最多扩到 350；P95 为 15--30 秒时固定为 250；
+P95 超过 30 秒时降到 120--150。T+3.5 小时停止发起新请求，每个窗口最多重试一次。单群占比
+不超过总样本的 5%--8%，train/dev/test 按群隔离，避免同一群表达习惯泄漏。时间不足时保留
+已完成样本并明确标记部分完成，不通过压缩 Demo、指标或文档时间来追求全量调用。
+
 ## 2. 固定验证阶梯
 
 同一个授权群按下列顺序逐级执行。每一级使用新的 manifest 和 Grant，只有操作员审核上一阶段的

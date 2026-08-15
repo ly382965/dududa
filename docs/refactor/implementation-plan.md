@@ -41,6 +41,13 @@ Dududa Bot 实时流量。完整结果见
 通过。以上仅证明 repository production shape，不证明真实 Endpoint、运行容器、实时群或
 QQ 发送已经就绪。
 
+2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 分别完成 Responses API
+和 AstrBot 实际使用的 Chat Completions 最小真实请求抽样；两种协议均成功返回、模型 ID 匹配
+并包含 usage。这不是 AstrBot Conformance：当前 AstrBot 尚未注册三个模型，现有 OpenAI
+Provider 也没有把 Dududa 请求级输出上限和动态思考深度透传到 payload。工程接入必须先完成
+Provider 注册/ID 绑定、参数透传、Contract/Conformance 和可刷新健康观测，再配置
+Luna -> Haiku、Terra -> Sonnet、Sol -> Opus；在此之前 Runtime 和 rollout 继续关闭。
+
 ## 交付规则
 
 每个 PR 必须说明：
@@ -69,6 +76,27 @@ Docker、插件导入、MCP、Memory 隔离、集成、Eval 和 smoke 测试门�
 可独立验证和回滚的步骤，完成退出门禁后再进入下一步。不要把原工期机械乘除；Memory 数据
 质量、外部服务稳定性和真实群测试窗口会主导实际周期，时间不能替代退出门禁。
 
+### S23 多模型结构化抽样的五小时预算
+
+已有 S23A--S23E 的 600 条 Terra Silver、137,026 条 Student 预测和私有 Demo 直接复用，不因
+新增 Luna/Sol Endpoint 而重跑。只有需要新的多模型校准样本时，才执行下表；总预算按单人
+4--5 小时设计，第五小时为硬停止：
+
+| 累计时间 | 任务 | 调用/规模上限 |
+| --- | --- | ---: |
+| 0--60 分钟 | 全量文件本地索引、过滤、去重、窗口构建 | 不调用 LLM |
+| 60--85 分钟 | 20--24 个分层窗口吞吐实测 | 最多 24 次 |
+| 85--210 分钟 | Luna 主样本结构化 | 默认 250，最多 350 |
+| 与主样本并行 | Terra 低置信度/Schema 复核；Sol 高歧义抽查 | Terra <= 50；Sol <= 15 |
+| 210--255 分钟 | 按群隔离训练/评估 | 固定已得样本 |
+| 255--285 分钟 | Demo 与指标 | 固定已得样本 |
+| 285--300 分钟 | 文档与缓冲 | 不再发请求 |
+
+首批 P95 < 15 秒时 Luna 上限为 350，P95 为 15--30 秒时固定 250，P95 > 30 秒时降为
+120--150。T+3.5 小时停止发起新请求，每个窗口最多重试一次；单群样本占比不超过 5%--8%，
+train/dev/test 必须按群隔离。五小时内无法完成的样本进入 Review，不延长任务、不把全量
+410 MB 文本提交给模型，也不以减少 Demo/指标收尾时间换取更多调用。
+
 ### 当前模块完成度
 
 下表按 2026-08-14 的 TreeWork 分支现实和 Dududa 2.0 统一完成定义判断。S08-S13 已补齐静态
@@ -95,7 +123,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
 | WebUI / Bot Control Plane | S21 已完成（离线） | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；command ID 与 deadline 语义已审计，Agent Draft/permission/config 不发送、不改状态、不伪成功 | 生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁 |
-| 大规模真实群测试与 Debug | S23 部分完成（离线 Demo 与入站 production shape 完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成；Builder 的 `off/shadow/fallback` 已用 Fake Provider 聚焦验证 | 先补 150–300 条类别均衡人工 Gold；实时阶段仍需真实 Endpoint evidence/Conformance、部署绑定、Source/Projection/Output 环境适配和逐行为授权，再执行单群 Shadow/Canary、分层放量、SLO 与复盘 |
+| 大规模真实群测试与 Debug | S23 部分完成（离线 Demo 与入站 production shape 完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成；Builder 的 `off/shadow/fallback` 已用 Fake Provider 聚焦验证；Luna/Terra/Sol 两种协议最小探测成功 | 先补 150–300 条类别均衡人工 Gold；在 AstrBot 注册三模型、修复动态参数透传并完成 Endpoint Contract/健康观测；再做部署绑定、Source/Projection/Output 环境适配和逐行为授权，执行单群 Shadow/Canary、分层放量、SLO 与复盘 |
 
 ### 实施步骤完成度
 
