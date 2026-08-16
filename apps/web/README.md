@@ -100,6 +100,19 @@ npm run dev
 打开 `http://127.0.0.1:5173/#/internal-test`。未设置有效的数据根时，页面会明确显示不可用，不会回退到
 仓库内演示数据。
 
+如果本机已有连接 NapCat 的正式 Web Gateway，可让人工内测页复用它的 QQ 工作区，同时保留本地
+`no-send` 内测 API。例如正式 Gateway 在 `5173`、本地开发 Gateway 在 `8000` 时：
+
+```bash
+export VITE_PORT=5174
+export DUDUDA_API_TARGET=http://127.0.0.1:5173
+export DUDUDA_INTERNAL_TEST_API_TARGET=http://127.0.0.1:8000
+npm run dev
+```
+
+这样普通 `/api` 请求使用已经完成 OneBot 认证的 Gateway，`/api/internal-test` 仍只进入本地内测
+Gateway，无需复制 Token 到浏览器，也无需为开发进程新增 NapCat 连接。
+
 真实 Provider 为可选配置：
 
 ```text
