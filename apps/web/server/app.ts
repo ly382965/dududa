@@ -384,6 +384,18 @@ export function createDududaServer(options: DududaServerOptions) {
         json(response, 200, await internalTest.progress())
         return
       }
+      if (method === 'GET' && url.pathname === '/api/internal-test/agent/status') {
+        json(response, 200, await internalTest.agentStatus())
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/internal-test/agent/respond') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源内测页面生成 Agent 候选回答' })
+          return
+        }
+        json(response, 200, await internalTest.respond(await readJson(request, maxRequestBytes)))
+        return
+      }
       if (method === 'POST' && url.pathname === '/api/internal-test/generate') {
         if (!sameOrigin(request)) {
           json(response, 403, { error: '只允许同源内测页面生成候选回答' })

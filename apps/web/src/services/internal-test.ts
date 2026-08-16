@@ -1,4 +1,7 @@
 import type {
+  InternalTestAgentRequest,
+  InternalTestAgentResponse,
+  InternalTestAgentStatus,
   InternalTestCandidate,
   InternalTestFeedback,
   InternalTestFeedbackResult,
@@ -16,11 +19,24 @@ export interface InternalTestAdapter {
   feedback(payload: InternalTestFeedback): Promise<InternalTestFeedbackResult>
 }
 
+export interface InternalTestAgentAdapter {
+  agentStatus(): Promise<InternalTestAgentStatus>
+  respond(payload: InternalTestAgentRequest): Promise<InternalTestAgentResponse>
+}
+
 export class HttpInternalTestAdapter implements InternalTestAdapter {
   constructor(private readonly baseUrl = '') {}
 
   status(): Promise<InternalTestStatus> {
     return this.request('/api/internal-test/status')
+  }
+
+  agentStatus(): Promise<InternalTestAgentStatus> {
+    return this.request('/api/internal-test/agent/status')
+  }
+
+  respond(payload: InternalTestAgentRequest): Promise<InternalTestAgentResponse> {
+    return this.request('/api/internal-test/agent/respond', payload)
   }
 
   samples(query: InternalTestSamplesQuery = {}): Promise<InternalTestSamplesPage> {

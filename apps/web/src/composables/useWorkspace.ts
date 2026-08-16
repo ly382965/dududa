@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { ComposerContentSegment } from '../services/composer-content'
+import { internalTestAdapter, type InternalTestAgentAdapter } from '../services/internal-test'
 import {
   clearUncertainGroupUpload,
   groupUploadFingerprint,
@@ -13,6 +14,7 @@ import type {
   AgentConfig,
   AgentMessage,
   AgentPart,
+  AgentRun,
   AgentSession,
   AgentTab,
   ChatMessage,
@@ -27,6 +29,7 @@ import type {
   WorkspaceEvent,
   WorkspaceSnapshot,
 } from '../types/workspace'
+import type { InternalTestAgentStatus } from '../types/internal-test'
 
 const defaultConfig = (): AgentConfig => ({
   enabled: false,
@@ -65,7 +68,11 @@ function messageIdentity(message: ChatMessage): string {
   return message.id
 }
 
-export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initialConversationId = '') {
+export function useWorkspace(
+  adapter: WorkspaceAdapter = workspaceAdapter,
+  initialConversationId = '',
+  agentAdapter: InternalTestAgentAdapter = internalTestAdapter,
+) {
   const snapshot = ref<WorkspaceSnapshot>(emptySnapshot())
   const loading = ref(true)
   const connectionError = ref('')
@@ -84,6 +91,12 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   const toast = ref('')
   const selectedMessageId = ref('')
   const replyToMessage = ref<ChatMessage | null>(null)
+  const agentRuntimeStatus = ref<InternalTestAgentStatus | null>(null)
+  const agentRuntimeError = ref('')
+  const agentPromptSending = ref(false)
+  const localAgentSessions = ref<AgentSession[]>([])
+  const localAgentMessages = ref<Record<string, AgentMessage[]>>({})
+  const localAgentRuns = ref<AgentRun[]>([])
   const drafts = ref<Record<string, string>>({})
   const unreadTargets = ref<Record<string, { messageId: string; count: number }>>({})
   const historyStates = ref<
@@ -156,27 +169,45 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
       return [{ userId: message.senderId, name: message.senderName }]
     })
   })
+  const agentAvailable = computed(
+    () => agentRuntimeStatus.value?.available === true && agentRuntimeStatus.value.providerConfigured,
+  )
+  const allAgentSessions = computed(() => [...localAgentSessions.value, ...snapshot.value.sessions])
   const conversationSessions = computed<AgentSession[]>(() =>
-    snapshot.value.sessions.filter((item) => item.conversationId === selectedConversationId.value),
+    allAgentSessions.value.filter((item) => item.conversationId === selectedConversationId.value),
   )
   const selectedSession = computed<AgentSession | undefined>(() =>
-    snapshot.value.sessions.find((item) => item.id === selectedSessionId.value),
+    allAgentSessions.value.find((item) => item.id === selectedSessionId.value),
   )
-  const agentMessages = computed<AgentMessage[]>(() => snapshot.value.agentMessages[selectedSessionId.value] ?? [])
+  const agentMessages = computed<AgentMessage[]>(
+    () => localAgentMessages.value[selectedSessionId.value] ?? snapshot.value.agentMessages[selectedSessionId.value] ?? [],
+  )
   const selectedRun = computed(() =>
-    snapshot.value.runs.find(
+    localAgentRuns.value.find(
+      (item) => item.conversationId === selectedConversationId.value && item.sessionId === selectedSessionId.value,
+    ) ?? snapshot.value.runs.find(
       (item) => item.conversationId === selectedConversationId.value && item.sessionId === selectedSessionId.value,
     ),
   )
   const selectedConfig = computed<AgentConfig>(() => {
     const conversationId = selectedConversationId.value
-    if (!conversationId) return fallbackConfig.value
-    if (!snapshot.value.configs[conversationId]) snapshot.value.configs[conversationId] = defaultConfig()
-    return snapshot.value.configs[conversationId]
+    const config = conversationId
+      ? (snapshot.value.configs[conversationId] ??= defaultConfig())
+      : fallbackConfig.value
+    if (!agentAvailable.value) return config
+    return {
+      ...config,
+      enabled: true,
+      agent: '内测 Runtime',
+      model: agentRuntimeStatus.value?.modelMapping?.sonnet ?? '静态三档路由',
+      longTermMemory: false,
+      tools: { course: false, web: false, groupFiles: false, shell: false },
+      sendPermission: 'deny',
+      toolPermission: 'deny',
+    }
   })
   const totalUnread = computed(() => conversations.value.reduce((total, item) => total + item.unread, 0))
   const onlineCount = computed(() => accounts.value.filter((item) => item.status === 'online').length)
-  const agentAvailable = computed(() => snapshot.value.sessions.length > 0)
 
   function requireCapability(conversation: Conversation, name: CapabilityName): void {
     const account = accounts.value.find((item) => item.id === conversation.accountId)
@@ -195,6 +226,52 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     toastTimer = setTimeout(() => {
       toast.value = ''
     }, 2600)
+  }
+
+  async function loadAgentRuntimeStatus(): Promise<void> {
+    try {
+      agentRuntimeStatus.value = await agentAdapter.agentStatus()
+      agentRuntimeError.value = ''
+    } catch (error) {
+      agentRuntimeStatus.value = null
+      agentRuntimeError.value = error instanceof Error ? error.message : '内测 Agent Runtime 不可用'
+    }
+  }
+
+  function clock(value = new Date()): string {
+    return value.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  }
+
+  function createAgentSession(): AgentSession | undefined {
+    const conversation = selectedConversation.value
+    if (!conversation) {
+      notify('请先选择一个 QQ 会话')
+      return undefined
+    }
+    if (!agentAvailable.value) {
+      notify(agentRuntimeError.value || '内测 Agent Runtime 尚未就绪')
+      return undefined
+    }
+    const session: AgentSession = {
+      id: `internal-session-${crypto.randomUUID()}`,
+      conversationId: conversation.id,
+      title: '新建内测对话',
+      updatedAt: clock(),
+      status: 'idle',
+      agent: '内测 Runtime',
+      model: agentRuntimeStatus.value?.modelMapping?.sonnet ?? '静态三档路由',
+    }
+    localAgentSessions.value.unshift(session)
+    localAgentMessages.value[session.id] = []
+    selectedSessionId.value = session.id
+    return session
+  }
+
+  function activeAgentSession(): AgentSession | undefined {
+    const current = localAgentSessions.value.find((item) => item.id === selectedSessionId.value)
+    if (current?.conversationId === selectedConversationId.value) return current
+    return localAgentSessions.value.find((item) => item.conversationId === selectedConversationId.value)
+      ?? createAgentSession()
   }
 
   function mergeMessages(conversationId: string, incoming: ChatMessage[], direction: 'before' | 'latest' = 'latest'): void {
@@ -379,7 +456,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     replyToMessage.value = null
     conversation.unread = 0
     selectedMessageId.value = ''
-    const session = snapshot.value.sessions.find((item) => item.conversationId === conversationId)
+    const session = allAgentSessions.value.find((item) => item.conversationId === conversationId)
     selectedSessionId.value = session?.id ?? ''
     void loadConversationMessages(conversation)
     void loadConversationDraft(conversation)
@@ -404,7 +481,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   }
 
   function selectSession(sessionId: string): void {
-    if (snapshot.value.sessions.some((item) => item.id === sessionId)) selectedSessionId.value = sessionId
+    if (allAgentSessions.value.some((item) => item.id === sessionId)) selectedSessionId.value = sessionId
   }
 
   function openAgent(tab: AgentTab = 'conversation'): void {
@@ -686,14 +763,131 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     delete unreadTargets.value[conversationId]
   }
 
-  function sendAgentPrompt(): void {
-    notify('Agent Runtime 尚未接入，未生成本地模拟结果')
+  async function sendAgentPrompt(content: string): Promise<void> {
+    const prompt = content.trim()
+    const conversation = selectedConversation.value
+    if (!prompt || !conversation || agentPromptSending.value) return
+    const session = activeAgentSession()
+    if (!session) return
+
+    const now = new Date()
+    const operatorMessage: AgentMessage = {
+      id: `internal-message-${crypto.randomUUID()}`,
+      sessionId: session.id,
+      role: 'operator',
+      author: '操作员',
+      timestamp: clock(now),
+      parts: [{ type: 'text', text: prompt }],
+    }
+    const messages = (localAgentMessages.value[session.id] ??= [])
+    messages.push(operatorMessage)
+    session.status = 'running'
+    session.updatedAt = clock(now)
+    if (session.title === '新建内测对话') session.title = prompt.length > 18 ? `${prompt.slice(0, 18)}…` : prompt
+
+    const context = chatMessages.value
+      .filter((message) => message.content.trim())
+      .slice(-Math.min(selectedConfig.value.contextMessages, 30))
+      .map((message) => ({
+        senderName: message.senderName,
+        content: message.content,
+        mine: message.mine,
+      }))
+    const run: AgentRun = {
+      id: `pending-${crypto.randomUUID()}`,
+      conversationId: conversation.id,
+      sessionId: session.id,
+      status: 'running',
+      triggerSender: '操作员',
+      triggerAvatar: selectedAccount.value?.avatar ?? '',
+      triggerContent: prompt,
+      startedAt: clock(now),
+      duration: '运行中',
+      tokens: '—',
+      cost: '—',
+      contextMessages: context.length,
+      model: session.model,
+      steps: [
+        {
+          id: 'context',
+          label: '读取群聊上下文',
+          detail: `已选取最近 ${context.length} 条消息`,
+          status: 'completed',
+        },
+        {
+          id: 'candidate',
+          label: '生成内测候选',
+          detail: '不调用工具、不写 Memory、不发送 QQ 消息',
+          status: 'running',
+        },
+      ],
+    }
+    localAgentRuns.value.unshift(run)
+    agentPromptSending.value = true
+    try {
+      const result = await agentAdapter.respond({
+        conversationId: conversation.id,
+        conversationName: conversation.name,
+        prompt,
+        messages: context,
+      })
+      run.id = result.runId
+      run.status = 'completed'
+      run.duration = `${result.latencyMs} ms`
+      run.model = result.model
+      run.steps[1] = {
+        ...run.steps[1],
+        detail: `${result.answerProfile.toUpperCase()} · ${result.tier} · ${result.model}`,
+        status: 'completed',
+        duration: `${result.latencyMs} ms`,
+      }
+      session.status = 'idle'
+      session.model = result.model
+      session.updatedAt = clock(new Date(result.generatedAt))
+      messages.push({
+        id: `internal-message-${crypto.randomUUID()}`,
+        sessionId: session.id,
+        role: 'assistant',
+        author: 'Dududa Agent',
+        timestamp: session.updatedAt,
+        parts: [
+          { type: 'text', text: result.candidate },
+          {
+            type: 'status',
+            label: `${result.tier} · ${result.model} · ${result.latencyMs} ms · 仅候选，未发送`,
+            tone: 'success',
+          },
+        ],
+      })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : '生成候选回答失败'
+      session.status = 'idle'
+      run.status = 'completed'
+      run.duration = '失败'
+      run.steps[1] = {
+        ...run.steps[1],
+        label: '候选生成失败',
+        detail,
+        status: 'completed',
+      }
+      messages.push({
+        id: `internal-message-${crypto.randomUUID()}`,
+        sessionId: session.id,
+        role: 'system',
+        author: '内测 Runtime',
+        timestamp: clock(),
+        parts: [{ type: 'status', label: detail, tone: 'warning' }],
+      })
+      notify(detail)
+    } finally {
+      agentPromptSending.value = false
+    }
   }
 
   function sendMessageToAgent(message: ChatMessage): void {
     selectedMessageId.value = message.id
     openAgent('conversation')
-    notify('Agent Runtime 尚未接入，未生成本地模拟结果')
+    void sendAgentPrompt(`请结合当前群聊上下文分析这条消息：\n${message.senderName}：${message.content}`)
   }
 
   function updateDraft(draft: ReplyDraftPart, content: string): void {
@@ -717,7 +911,7 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
   }
 
   function newSession(): void {
-    notify('Agent Runtime 尚未接入，未创建本地会话')
+    if (createAgentSession()) openAgent('conversation')
   }
 
   function saveSettings(): void {
@@ -788,7 +982,10 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
 
   async function load(): Promise<void> {
     loading.value = true
-    const selectionLoaded = await refreshWorkspace(true)
+    const [selectionLoaded] = await Promise.all([
+      refreshWorkspace(true),
+      loadAgentRuntimeStatus(),
+    ])
     loading.value = false
     if (selectedConversation.value && !selectionLoaded) {
       await loadConversationMessages(selectedConversation.value)
@@ -849,6 +1046,9 @@ export function useWorkspace(adapter: WorkspaceAdapter = workspaceAdapter, initi
     totalUnread,
     onlineCount,
     agentAvailable,
+    agentRuntimeStatus,
+    agentRuntimeError,
+    agentPromptSending,
     runtime: computed(() => snapshot.value.runtime),
     selectAccount,
     selectConversation,

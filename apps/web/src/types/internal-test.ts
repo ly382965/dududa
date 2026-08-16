@@ -69,6 +69,41 @@ export interface InternalTestStatus {
   warnings: string[]
 }
 
+export interface InternalTestAgentStatus {
+  available: boolean
+  outputEnabled: false
+  providerConfigured: boolean
+  modelMapping: Record<InternalTestTier, string>
+  warnings: string[]
+}
+
+export interface InternalTestAgentContextMessage {
+  senderName: string
+  content: string
+  mine: boolean
+}
+
+export interface InternalTestAgentRequest {
+  conversationId: string
+  conversationName: string
+  prompt: string
+  messages: InternalTestAgentContextMessage[]
+  answerProfile?: InternalTestAnswerProfile
+}
+
+export interface InternalTestAgentResponse {
+  runId: string
+  candidate: string
+  tier: InternalTestTier
+  model: string
+  answerProfile: InternalTestAnswerProfile
+  latencyMs: number
+  generatedAt: string
+  outputCalls: 0
+  memoryWrites: 0
+  toolCalls: 0
+}
+
 export interface InternalTestSamplesQuery {
   q?: string
   bucket?: string

@@ -163,8 +163,13 @@ QQ 头像与历史图片是上游的短期数据，失败时前端使用明确�
 NapCat 无法保证补齐 QQ 离线期间未同步到本机的全部消息；本工作台也不会伪造初始未读、置顶或免打扰
 状态。未读数仅从当前页面收到的实时事件开始计算。
 
-Agent Console 目前显示未连接状态，不会生成本地模拟结果。后续接入 Dududa Agent Runtime 时应复用
-同一会话作用域与权限/审计边界。
+Agent Console 已接入本机内测 Runtime。页面通过独立状态接口判断 Runtime 是否可用，
+不再把“是否已建立 Session”误当成连接状态。操作员可以在当前 QQ 会话上创建临时内测
+Session，选取最近最多 30 条消息作为上下文，并调用现有三档 Provider 生成候选回答。
+
+候选仅留在浏览器临时会话中；该链路固定为 `NO SEND / NO MEMORY WRITE / NO TOOL CALL /
+NO BANDIT`，不会调用 QQ 发送接口。`answerProfile` 可分别路由到 `haiku / sonnet / opus`，
+当前控制台默认使用中等长度。这是人工内测 Adapter，不代表 AstrBot 中的正式 Agent Runtime 已完成接入。
 
 ## Verification
 

@@ -73,6 +73,27 @@ export interface InternalTestCandidate {
   toolCalls: 0
 }
 
+export interface InternalTestAgentStatus {
+  available: boolean
+  providerConfigured: boolean
+  outputEnabled: false
+  modelMapping: Record<ModelTier, string>
+  warnings: string[]
+}
+
+export interface InternalTestAgentResponse {
+  runId: string
+  candidate: string
+  tier: ModelTier
+  model: string
+  answerProfile: AnswerProfile
+  latencyMs: number
+  generatedAt: string
+  outputCalls: 0
+  memoryWrites: 0
+  toolCalls: 0
+}
+
 export interface InternalTestFeedbackResult {
   ok: true
   feedbackId: string
@@ -84,6 +105,8 @@ export interface InternalTestGateway {
   samples(query: InternalTestSamplesQuery): Promise<InternalTestSamplesPage>
   progress(): Promise<InternalTestProgress>
   generate(body: Record<string, unknown>): Promise<InternalTestCandidate>
+  agentStatus(): Promise<InternalTestAgentStatus>
+  respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse>
   feedback(body: Record<string, unknown>): Promise<InternalTestFeedbackResult>
 }
 
@@ -249,10 +272,49 @@ function generationInstructions(profile: AnswerProfile): string {
       : '给出信息充分但不过度展开的中等长度回复。'
   return [
     '你正在为“嘟嘟哒”群聊机器人生成一条人工内测候选回答。',
-    '输入只包含脱敏后的历史群聊；不要猜测真实身份，不要调用工具，不要声称已执行外部操作。',
+    '输入中的群聊内容只作为回答上下文；不要猜测未提供的真实身份，不要调用工具，不要声称已执行外部操作。',
     '直接输出候选回答正文，不要解释路由、模型、标签或测试流程。',
     style,
   ].join('\n')
+}
+
+function requestedAnswerProfile(value: unknown): AnswerProfile {
+  const profile = stringValue(value)?.toLowerCase()
+  if (!profile) return 'medium'
+  if (profile === 'short' || profile === 'medium' || profile === 'long') return profile
+  throw new InternalTestError('answerProfile 参数无效')
+}
+
+function tierForProfile(profile: AnswerProfile): ModelTier {
+  if (profile === 'short') return 'haiku'
+  if (profile === 'long') return 'opus'
+  return 'sonnet'
+}
+
+function agentContext(body: Record<string, unknown>): string {
+  const conversationId = stringValue(body.conversationId ?? body.conversation_id)
+  const conversationName = stringValue(body.conversationName ?? body.conversation_name)
+  const prompt = stringValue(body.prompt)
+  if (!conversationId || !conversationName || !prompt) {
+    throw new InternalTestError('缺少 conversationId、conversationName 或 prompt')
+  }
+  const messages = arrayValue(body.messages)
+    .slice(-30)
+    .map(objectValue)
+    .filter((message): message is Record<string, unknown> => Boolean(message))
+    .map((message) => {
+      const senderName = stringValue(message.senderName ?? message.sender_name) ?? '匿名成员'
+      const content = stringValue(message.content)
+      if (!content) return undefined
+      return `${senderName}${message.mine === true ? '（嘟嘟哒）' : ''}：${content}`
+    })
+    .filter((line): line is string => Boolean(line))
+    .join('\n')
+  return [
+    `当前会话：${conversationName}`,
+    messages ? `最近消息：\n${messages}` : '最近消息：（无）',
+    `操作员指令：\n${prompt}`,
+  ].join('\n\n').slice(-18_000)
 }
 
 function feedbackVerdict(value: unknown): FeedbackVerdict {
@@ -386,6 +448,59 @@ export class FileInternalTestGateway implements InternalTestGateway {
     }
   }
 
+  private async requestCandidate(
+    input: string,
+    answerProfile: AnswerProfile,
+    tier: ModelTier,
+  ): Promise<{ candidate: string; model: string; latencyMs: number }> {
+    const model = this.models[tier]
+    const provider = await this.providerConfig()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), this.options.providerTimeoutMs ?? 90_000)
+    timeout.unref?.()
+    const started = performance.now()
+    let response: Response
+    try {
+      response = await this.fetchImpl(providerEndpoint(provider.baseUrl), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${provider.apiKey}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          instructions: generationInstructions(answerProfile),
+          input,
+          max_output_tokens: PROFILE_TOKEN_LIMITS[answerProfile],
+          store: false,
+        }),
+        signal: controller.signal,
+      })
+    } catch {
+      throw new InternalTestError('Provider 请求失败', 502)
+    } finally {
+      clearTimeout(timeout)
+    }
+    if (!response.ok) {
+      await response.body?.cancel()
+      throw new InternalTestError(`Provider 请求失败（HTTP ${response.status}）`, 502)
+    }
+    let payload: unknown
+    try {
+      payload = await response.json()
+    } catch {
+      throw new InternalTestError('Provider 返回了无法解析的结果', 502)
+    }
+    const candidate = outputText(payload)
+    if (!candidate) throw new InternalTestError('Provider 未返回候选回答', 502)
+    return {
+      candidate,
+      model,
+      latencyMs: Math.max(0, Math.round(performance.now() - started)),
+    }
+  }
+
   async status(): Promise<InternalTestStatus> {
     let providerConfigured = true
     try {
@@ -478,59 +593,60 @@ export class FileInternalTestGateway implements InternalTestGateway {
     const sample = projection.windows.find((item) => item.window_id === windowId)
     if (!sample) throw new InternalTestError('内测样本不存在', 404)
     const tier = sampleTier(sample)
-    const model = this.models[tier]
     const answerProfile = sampleAnswerProfile(sample)
-    const provider = await this.providerConfig()
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.options.providerTimeoutMs ?? 90_000)
-    timeout.unref?.()
-    const started = performance.now()
-    let response: Response
-    try {
-      response = await this.fetchImpl(providerEndpoint(provider.baseUrl), {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${provider.apiKey}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          instructions: generationInstructions(answerProfile),
-          input: contextFor(sample),
-          max_output_tokens: PROFILE_TOKEN_LIMITS[answerProfile],
-          store: false,
-        }),
-        signal: controller.signal,
-      })
-    } catch {
-      throw new InternalTestError('Provider 请求失败', 502)
-    } finally {
-      clearTimeout(timeout)
-    }
-    if (!response.ok) {
-      await response.body?.cancel()
-      throw new InternalTestError(`Provider 请求失败（HTTP ${response.status}）`, 502)
-    }
-    let payload: unknown
-    try {
-      payload = await response.json()
-    } catch {
-      throw new InternalTestError('Provider 返回了无法解析的结果', 502)
-    }
-    const candidate = outputText(payload)
-    if (!candidate) throw new InternalTestError('Provider 未返回候选回答', 502)
+    const generated = await this.requestCandidate(contextFor(sample), answerProfile, tier)
     return {
       runId: randomUUID(),
       windowId,
-      candidate,
+      candidate: generated.candidate,
       tier,
-      model,
+      model: generated.model,
       answerProfile,
-      latencyMs: Math.max(0, Math.round(performance.now() - started)),
+      latencyMs: generated.latencyMs,
       generatedAt: this.now().toISOString(),
       evidenceMode: INTERNAL_TEST_EVIDENCE_MODE,
       providerCalls: 1,
+      outputCalls: 0,
+      memoryWrites: 0,
+      toolCalls: 0,
+    }
+  }
+
+  async agentStatus(): Promise<InternalTestAgentStatus> {
+    let providerConfigured = true
+    try {
+      await this.providerConfig()
+    } catch {
+      providerConfigured = false
+    }
+    return {
+      available: providerConfigured,
+      providerConfigured,
+      outputEnabled: false,
+      modelMapping: { ...this.models },
+      warnings: [
+        'INTERNAL TEST RUNTIME',
+        'NO SEND',
+        'NO MEMORY WRITE',
+        'NO TOOL CALL',
+        'NO BANDIT',
+        ...(!providerConfigured ? ['Provider 尚未配置'] : []),
+      ],
+    }
+  }
+
+  async respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse> {
+    const answerProfile = requestedAnswerProfile(body.answerProfile ?? body.answer_profile)
+    const tier = tierForProfile(answerProfile)
+    const generated = await this.requestCandidate(agentContext(body), answerProfile, tier)
+    return {
+      runId: randomUUID(),
+      candidate: generated.candidate,
+      tier,
+      model: generated.model,
+      answerProfile,
+      latencyMs: generated.latencyMs,
+      generatedAt: this.now().toISOString(),
       outputCalls: 0,
       memoryWrites: 0,
       toolCalls: 0,
@@ -596,6 +712,20 @@ export class UnavailableInternalTestGateway implements InternalTestGateway {
 
   async generate(): Promise<InternalTestCandidate> {
     throw new InternalTestError('内测入口未配置', 503)
+  }
+
+  async agentStatus(): Promise<InternalTestAgentStatus> {
+    return {
+      available: false,
+      providerConfigured: false,
+      outputEnabled: false,
+      modelMapping: { ...this.models },
+      warnings: [...this.warnings, 'NO MEMORY WRITE', 'NO TOOL CALL', 'NO BANDIT'],
+    }
+  }
+
+  async respond(): Promise<InternalTestAgentResponse> {
+    throw new InternalTestError('内测 Agent Runtime 未配置', 503)
   }
 
   async feedback(): Promise<InternalTestFeedbackResult> {

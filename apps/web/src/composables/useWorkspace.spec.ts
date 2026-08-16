@@ -5,6 +5,7 @@ import { defineComponent, h } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { WorkspaceCache, WorkspaceDatabase } from '../services/database'
+import type { InternalTestAgentAdapter } from '../services/internal-test'
 import type { WorkspaceAdapter } from '../services/workspace-adapter'
 import type {
   Account,
@@ -549,6 +550,90 @@ describe('useWorkspace account-scoped state', () => {
     workspace.respondPermission(permission, true)
     expect(permission.state).toBe('pending')
     expect(workspace.toast.value).toContain('状态未变更')
+    wrapper.unmount()
+  })
+
+  it('uses explicit internal Runtime status and keeps generated candidates in a local no-send session', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const contextMessage = message(target)
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const sendMessage = vi.fn()
+    const adapter = {
+      load: async () => snapshot,
+      loadCachedMessages: async () => [],
+      loadHistory: async () => ({ messages: [contextMessage], hasMoreBefore: false, hasMoreAfter: false }),
+      loadDraft: async () => undefined,
+      markRead: async () => undefined,
+      sendMessage,
+      subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    const respond = vi.fn(async () => ({
+      runId: 'run-internal-1',
+      candidate: '这是只保留在控制台中的候选回答。',
+      tier: 'sonnet' as const,
+      model: 'gpt-5.6-terra',
+      answerProfile: 'medium' as const,
+      latencyMs: 321,
+      generatedAt: '2026-08-16T12:00:00.000Z',
+      outputCalls: 0 as const,
+      memoryWrites: 0 as const,
+      toolCalls: 0 as const,
+    }))
+    const agentAdapter: InternalTestAgentAdapter = {
+      agentStatus: vi.fn(async () => ({
+        available: true,
+        outputEnabled: false as const,
+        providerConfigured: true,
+        modelMapping: {
+          haiku: 'gpt-5.6-luna',
+          sonnet: 'gpt-5.6-terra',
+          opus: 'gpt-5.6-sol',
+        },
+        warnings: [],
+      })),
+      respond,
+    }
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter, '', agentAdapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await flushPromises()
+
+    expect(workspace.agentAvailable.value).toBe(true)
+    expect(snapshot.sessions).toEqual([])
+    await workspace.sendAgentPrompt('总结当前讨论')
+
+    expect(respond).toHaveBeenCalledWith({
+      conversationId: target.id,
+      conversationName: target.name,
+      prompt: '总结当前讨论',
+      messages: [{ senderName: contextMessage.senderName, content: contextMessage.content, mine: false }],
+    })
+    expect(workspace.conversationSessions.value).toHaveLength(1)
+    expect(workspace.agentMessages.value.map((item) => item.role)).toEqual(['operator', 'assistant'])
+    expect(workspace.agentMessages.value[1]?.parts).toContainEqual(
+      expect.objectContaining({ type: 'text', text: '这是只保留在控制台中的候选回答。' }),
+    )
+    expect(workspace.selectedRun.value).toMatchObject({
+      id: 'run-internal-1',
+      status: 'completed',
+      model: 'gpt-5.6-terra',
+    })
+    expect(sendMessage).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

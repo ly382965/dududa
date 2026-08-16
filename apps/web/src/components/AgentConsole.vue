@@ -125,8 +125,8 @@ watch(
       </button>
       <span class="agent-logo"><Sparkles :size="17" /></span>
       <div class="agent-heading">
-        <div><strong>Dududa Agent</strong><span class="runtime-dot" :class="{ online: available }" /> <small>{{ available ? '已连接' : '未连接' }}</small></div>
-        <p>{{ conversation?.name ?? '未选择会话' }}</p>
+        <div><strong>Dududa Agent</strong><span class="runtime-dot" :class="{ online: available }" /> <small>{{ available ? '内测已连接' : '未连接' }}</small></div>
+        <p>{{ available ? `内测 Runtime · 不会发送 · ${conversation?.name ?? '未选择会话'}` : (conversation?.name ?? '未选择会话') }}</p>
       </div>
       <button class="icon-button desktop-collapse" type="button" title="收起 Agent Console" aria-label="收起 Agent Console" @click="emit('collapse')">
         <X :size="17" />
@@ -159,10 +159,7 @@ watch(
       <label class="model-picker">
         <span>MODEL</span>
         <select :value="config.model" aria-label="选择模型" disabled>
-          <option>GPT-5</option>
-          <option>Claude Sonnet 4</option>
-          <option>DeepSeek V3</option>
-          <option>Qwen3 235B</option>
+          <option :value="config.model">{{ config.model }}</option>
         </select>
       </label>
       <button class="icon-button" type="button" title="新建 Agent 对话" aria-label="新建 Agent 对话" :disabled="!available" @click="emit('newSession')">
@@ -183,6 +180,11 @@ watch(
         <div class="scope-line">
           <span><Hash :size="12" />{{ conversation?.name }}</span>
           <span>{{ config.contextMessages }} 条上下文</span>
+        </div>
+
+        <div v-if="available" class="runtime-mode-note">
+          <ShieldCheck :size="13" />
+          <span><strong>内测 Runtime</strong>只生成候选，不会发送 QQ 消息、写入 Memory 或调用工具</span>
         </div>
 
         <div v-if="!available" class="runtime-unavailable">
@@ -302,7 +304,7 @@ watch(
             <div><dt>模型</dt><dd>{{ run.model }}</dd></div>
             <div><dt>开始于</dt><dd>{{ run.startedAt }}</dd></div>
             <div><dt>回复账号</dt><dd>{{ account?.name }}</dd></div>
-            <div><dt>发送权限</dt><dd>人工审核</dd></div>
+            <div><dt>发送权限</dt><dd>禁止发送（内测）</dd></div>
           </dl>
         </section>
 
@@ -331,8 +333,8 @@ watch(
 
       <section class="settings-section">
         <div class="section-heading"><Bot :size="15" /><span><strong>Agent 与模型</strong><small>CONVERSATION DEFAULT</small></span></div>
-        <label class="form-row"><span>Agent</span><select :value="config.agent" disabled><option>群聊助手 v2</option><option>课程信息助手</option><option>回复审校</option></select></label>
-        <label class="form-row"><span>模型</span><select :value="config.model" disabled><option>GPT-5</option><option>Claude Sonnet 4</option><option>DeepSeek V3</option><option>Qwen3 235B</option></select></label>
+        <label class="form-row"><span>Agent</span><select :value="config.agent" disabled><option :value="config.agent">{{ config.agent }}</option></select></label>
+        <label class="form-row"><span>模型</span><select :value="config.model" disabled><option :value="config.model">{{ config.model }}</option></select></label>
         <div class="form-row"><span>推理强度</span><div class="segmented-control"><button v-for="level in (['low', 'medium', 'high'] as const)" :key="level" type="button" :class="{ active: config.reasoning === level }" disabled>{{ { low: '低', medium: '中', high: '高' }[level] }}</button></div></div>
       </section>
 
@@ -674,6 +676,24 @@ watch(
   display: flex;
   align-items: center;
   gap: 3px;
+}
+
+.runtime-mode-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 2px;
+  border: 1px solid var(--success-border);
+  border-radius: 7px;
+  color: var(--success-strong);
+  background: var(--success-soft);
+  padding: 7px 9px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.runtime-mode-note strong {
+  margin-right: 5px;
 }
 
 .runtime-unavailable {

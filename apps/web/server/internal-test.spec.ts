@@ -55,6 +55,61 @@ afterEach(async () => {
 })
 
 describe('internal-test gateway', () => {
+  it('exposes a no-send agent runtime and returns a routed candidate for live workspace context', async () => {
+    const root = await fixtureRoot()
+    const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+      expect(body).toMatchObject({
+        model: 'custom-sol',
+        max_output_tokens: 1_200,
+        store: false,
+      })
+      expect(String(body.input)).toContain('群成员：下午把接口联调一下')
+      expect(String(body.input)).toContain('操作员指令：\n给出一个完整的讨论建议')
+      expect(String(body.instructions)).toContain('不要调用工具')
+      return new Response(JSON.stringify({ output_text: '建议先确认接口契约，再按主链路完成一次联调。' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      models: { opus: 'custom-sol' },
+      fetchImpl: providerRequest as typeof fetch,
+      now: () => new Date('2026-08-16T10:00:00.000Z'),
+    })
+
+    await expect(gateway.agentStatus()).resolves.toMatchObject({
+      available: true,
+      providerConfigured: true,
+      outputEnabled: false,
+      modelMapping: { opus: 'custom-sol' },
+      warnings: expect.arrayContaining(['NO SEND', 'NO MEMORY WRITE', 'NO TOOL CALL', 'NO BANDIT']),
+    })
+    await expect(gateway.respond({
+      conversationId: 'group-1',
+      conversationName: '项目讨论群',
+      prompt: '给出一个完整的讨论建议',
+      answerProfile: 'long',
+      messages: [
+        { senderName: '群成员', content: '下午把接口联调一下', mine: false },
+        { senderName: '嘟嘟哒', content: '收到', mine: true },
+      ],
+    })).resolves.toMatchObject({
+      candidate: '建议先确认接口契约，再按主链路完成一次联调。',
+      tier: 'opus',
+      model: 'custom-sol',
+      answerProfile: 'long',
+      generatedAt: '2026-08-16T10:00:00.000Z',
+      outputCalls: 0,
+      memoryWrites: 0,
+      toolCalls: 0,
+    })
+    expect(providerRequest).toHaveBeenCalledOnce()
+  })
+
   it('loads the de-identified projection, generates a no-send candidate and records human feedback', async () => {
     const root = await fixtureRoot()
     const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
