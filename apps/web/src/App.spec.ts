@@ -184,6 +184,15 @@ describe('Dududa NapCat workspace', () => {
     expect(wrapper.text()).toContain('/onebot/v11/ws')
   })
 
+  it('opens the internal test surface without a NapCat account', async () => {
+    mockApi(workspace([]))
+    const wrapper = await mountApp('/internal-test')
+
+    expect(router.currentRoute.value.fullPath).toBe('/internal-test')
+    expect(wrapper.find('.connection-screen').exists()).toBe(false)
+    expect(wrapper.find('.workspace-shell').exists()).toBe(true)
+  })
+
   it('renders accounts and conversations returned by the real API adapter', async () => {
     mockApi()
     const wrapper = await mountApp()

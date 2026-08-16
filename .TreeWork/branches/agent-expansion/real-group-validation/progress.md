@@ -44,6 +44,16 @@ Last sync: unix:1786706085
   该 runner 直接调用 Responses API，未经过 AstrBot Provider、Dududa Runtime、
   Connector 或 Rollout Bridge，不能称为 AstrBot Runtime Shadow、真实单群
   Shadow 或 Provider Conformance。
+- WebUI 内测第一版已经完成：即使没有 NapCat 账号，操作员也可通过现有 Bot
+  Control Plane 浏览、搜索和筛选 300 个既有脱敏窗口，查看 Silver、Student、
+  AnswerProfile、Static Tier 以及 Luna/Terra/Sol 映射，并跟踪人工评价进度。
+  该页面是 Evaluation Adapter，不是第二套 Runtime 控制面。
+- 浏览器纵切由操作员显式触发一次 `gpt-5.6-terra` 的真实 Provider
+  `no_send` 候选，记录 `providerCalls=1`、`outputCalls=0`、
+  `memoryWrites=0`、`toolCalls=0` 和 3059 ms 延迟；随后追加一条仓库外
+  JSONL 反馈。仓库文档与提交不记录候选正文、Key、Base URL、QQ 标识或
+  反馈内容。该证据不等于 AstrBot Runtime Shadow、Provider Conformance
+  或真实群验证。
 - S23 整体仍为 `paused/partial`。当前缺少的不是入站 Builder 本身，而是
   真实 Endpoint 的 Conformance、健康与部署绑定，以及主动来源所需的 live
   Source/Projection/Output 组合；`s23_ready=false` 继续有效。
@@ -93,6 +103,10 @@ Last sync: unix:1786706085
 - 默认关闭的健康刷新工程实现已覆盖成功刷新为 `HEALTHY`、失败/超时保持
   `UNKNOWN`、Evidence TTL 到期恢复 `UNKNOWN`，以及插件 terminate 取消刷新
   任务。运行中的 AstrBot 未启用该配置，未产生连续生产观测。
+- 完成 WebUI 内测第一版的纵切抽样：页面装载 300 个脱敏窗口，完成一次
+  `gpt-5.6-terra` no-send 生成和一次仓库外反馈追加；聚焦前后端测试、
+  TypeScript 类型检查与 Web 构建均通过。该工作没有 QQ Output、Memory
+  写入、Tool 调用或 Bandit 学习。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有

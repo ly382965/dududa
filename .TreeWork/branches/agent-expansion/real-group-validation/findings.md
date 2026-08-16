@@ -17,6 +17,14 @@ Branch: real-group-validation
   calibration run uses a 20--24 window throughput probe, adaptive Luna cap of
   120--350, Terra review cap of 50, Sol ambiguity cap of 15, no new calls after
   T+3.5 hours and a hard stop at five hours.
+- WebUI 内测页属于现有 Bot Control Plane 的 Evaluation Adapter：它消费既有
+  脱敏、browser-safe Demo projection，为人工浏览、候选生成和评价提供入口，
+  不拥有 Router、权限、Output、Memory、Tool 或 Bandit 决策，因此不是第二套
+  Runtime 控制面。
+- 操作员显式生成一条真实 Provider 候选，只证明 Web Gateway 的 `no_send`
+  纵切可用。该请求没有经过 AstrBot Provider、Dududa Runtime、Connector 或
+  Rollout Bridge，不能称为 AstrBot Runtime Shadow、Provider Conformance
+  或真实群验证。
 - A direct HTTP 200 is reachability evidence, not Runtime readiness. Both
   Responses and Chat Completions work for Luna/Terra/Sol. The fixed-version
   candidate image now carries the approved request overrides, but the running
@@ -57,6 +65,9 @@ Branch: real-group-validation
 - The Demo projects Student `semantic_complexity` and confidence through the
   existing `DeterministicModelTierPolicy`. It does not define a second router
   and labels Haiku/Sonnet/Opus as an offline non-production preview.
+- `#/internal-test` 在没有 NapCat 账号时也可打开，只读取既有脱敏 Demo
+  projection。候选响应报告 tier、model、AnswerProfile、延迟和零副作用计数；
+  人工反馈追加到配置的仓库外 JSONL，且不持久化候选正文。
 - The planned readiness artifact contains references/digests only. Real account,
   group and test-user mappings remain in a private local binding store.
 - The offline checker intentionally distinguishes structural completeness from

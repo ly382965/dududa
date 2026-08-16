@@ -32,12 +32,18 @@ import {
   UnavailableControlPlaneClient,
   type ControlPlaneClient,
 } from './control-plane'
+import {
+  createInternalTestGateway,
+  InternalTestError,
+  type InternalTestGateway,
+} from './internal-test'
 import { readBrowserUpload } from './uploads'
 
 export interface DududaServerOptions {
   hub: OneBotHub
   publicDir: string
   controlPlane?: ControlPlaneClient
+  internalTest?: InternalTestGateway
   maxRequestBytes?: number
 }
 
@@ -71,6 +77,10 @@ function json(response: ServerResponse, status: number, payload: unknown): void 
 
 function routeError(response: ServerResponse, error: unknown): void {
   if (error instanceof ControlPlaneClientError) {
+    json(response, error.status, { error: error.message })
+    return
+  }
+  if (error instanceof InternalTestError) {
     json(response, error.status, { error: error.message })
     return
   }
@@ -337,6 +347,7 @@ async function serveStatic(response: ServerResponse, pathname: string, publicDir
 export function createDududaServer(options: DududaServerOptions) {
   const maxRequestBytes = options.maxRequestBytes ?? 64 * 1024
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
+  const internalTest = options.internalTest ?? createInternalTestGateway()
   const eventClients = new Set<ServerResponse>()
   const onWorkspaceEvent = (event: WorkspaceEvent) => {
     const frame = `event: workspace\ndata: ${JSON.stringify(event)}\n\n`
@@ -359,6 +370,34 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       if (method === 'GET' && url.pathname === '/api/health') {
         json(response, 200, options.hub.runtimeStatus())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/internal-test/status') {
+        json(response, 200, await internalTest.status())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/internal-test/samples') {
+        json(response, 200, await internalTest.samples(Object.fromEntries(url.searchParams.entries())))
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/internal-test/progress') {
+        json(response, 200, await internalTest.progress())
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/internal-test/generate') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源内测页面生成候选回答' })
+          return
+        }
+        json(response, 200, await internalTest.generate(await readJson(request, maxRequestBytes)))
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/internal-test/feedback') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源内测页面提交反馈' })
+          return
+        }
+        json(response, 200, await internalTest.feedback(await readJson(request, maxRequestBytes)))
         return
       }
       if (method === 'GET' && url.pathname === '/api/control-plane/status') {

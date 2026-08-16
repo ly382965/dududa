@@ -9,6 +9,9 @@ Title: S23 Authorized Real-Group Validation
 - Complete S23A--S23E as an offline historical-corpus pipeline: deterministic
   intake, Conversation Windows, real Semantic v2 Silver labeling, local Student
   training/evaluation and a private no-send HTML Demo.
+- Deliver a localhost Web internal-test surface that reuses the de-identified
+  S23E projection for sample browsing, explicit no-send candidate generation
+  and repository-external human feedback.
 - Freeze and validate one low-sensitivity S23 readiness manifest and operator
   runbook without resolving credentials or touching live systems.
 - The configuration-driven inbound Runtime production shape is now closed
@@ -58,6 +61,12 @@ Title: S23 Authorized Real-Group Validation
   `max_tokens=8`、`request_max_retries=0`，成功发布 `HEALTHY`，失败、超时
   或 TTL 到期保持/恢复 `UNKNOWN`，插件终止时取消刷新任务。脱敏失败样本
   不保存 Key、Base URL、Prompt、回答、QQ 标识或 Provider 错误正文。
+- [x] Web 内测页可在没有 NapCat 账号时打开，浏览和筛选既有脱敏窗口，展示
+  Student、AnswerProfile、Static Tier 和 Luna/Terra/Sol 映射，并显示人工
+  评价进度。
+- [x] 操作员可显式触发一次服务端 `no_send` 候选生成并提交人工评价；响应
+  明确记录 tier/model/answer profile、延迟和 `output_calls=0`，反馈只写入
+  配置的仓库外 JSONL，浏览器与日志均不包含 Provider Secret。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -108,6 +117,9 @@ Title: S23 Authorized Real-Group Validation
 - [x] Implement the default-off periodic model-health refresher and sample its
   success, failure/timeout, Evidence TTL expiry and terminate-time cancellation
   paths without enabling it in the running AstrBot.
+- [x] Implement the internal-test Gateway and Vue page over the existing S23E
+  projection; run one sample load, one no-send generation and one feedback
+  append, then stop Web expansion after focused type/build checks pass.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,
@@ -135,8 +147,8 @@ Title: S23 Authorized Real-Group Validation
   permission, Tool or Memory; S20 is not connected in S23.
 - Fabricating campus/arXiv/industry MCP Servers or treating fixtures/iCourse as
   live news sources.
-- Redesigning S01–S20 contracts, expanding WebUI or changing running containers
-  before an approved deployment window.
+- Redesigning S01–S20 contracts, expanding WebUI beyond the bounded internal-test
+  surface or changing running containers before an approved deployment window.
 - Automatic expansion to 3–5 groups; that requires a new grant after bounded
   single-group completion.
 

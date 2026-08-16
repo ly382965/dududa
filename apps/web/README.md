@@ -85,6 +85,47 @@ npm run dev
 `DUDUDA_WEB_BIND=0.0.0.0`；Compose 部署使用上面的 `dududa-web-api` 网络别名，同时宿主发布端口仍默认
 绑定 `127.0.0.1`。
 
+## S23 Web 人工内测页
+
+该页面用于浏览既有脱敏样本、生成一次真实 Provider 的候选回答并追加人工评价，不要求连接 NapCat
+或登录 QQ。启动前配置数据根和仓库外的反馈文件绝对路径：
+
+```bash
+cd apps/web
+export DUDUDA_INTERNAL_TEST_DATA_ROOT=/绝对路径/脱敏测试数据根
+export DUDUDA_INTERNAL_TEST_FEEDBACK_PATH=/绝对路径/internal-test-feedback.jsonl
+npm run dev
+```
+
+打开 `http://127.0.0.1:5173/#/internal-test`。未设置有效的数据根时，页面会明确显示不可用，不会回退到
+仓库内演示数据。
+
+真实 Provider 为可选配置：
+
+```text
+DUDUDA_INTERNAL_TEST_BASE_URL
+DUDUDA_INTERNAL_TEST_API_KEY
+DUDUDA_INTERNAL_TEST_PROVIDER
+DUDUDA_INTERNAL_TEST_CODEX_CONFIG
+DUDUDA_INTERNAL_TEST_AUTH_FILE
+DUDUDA_INTERNAL_TEST_HAIKU_MODEL
+DUDUDA_INTERNAL_TEST_SONNET_MODEL
+DUDUDA_INTERNAL_TEST_OPUS_MODEL
+```
+
+三级默认模型映射为 `haiku -> gpt-5.6-luna`、`sonnet -> gpt-5.6-terra`、
+`opus -> gpt-5.6-sol`，可通过上述变量覆盖。页面仅执行操作员显式触发的候选生成：不发送 QQ、
+不写 Memory、不调用 Tool、不连接 Bandit；它是人工评价入口，不构成 AstrBot Runtime Shadow 或真实群验证。
+
+本入口已运行的聚焦验证命令：
+
+```bash
+npm run typecheck
+npx vitest run src/views/InternalTestView.spec.ts src/App.spec.ts
+npx vitest run --config vitest.server.config.ts server/internal-test.spec.ts
+npm run build
+```
+
 ## Supported QQ Surface
 
 - `get_login_info`、`get_status`、`get_version_info`；

@@ -4,6 +4,26 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `npm run typecheck`
+- Result: passed.
+- Command: `npx vitest run src/views/InternalTestView.spec.ts src/App.spec.ts`
+- Result: 2 files / 10 tests passed.
+- Command: `npx vitest run --config vitest.server.config.ts server/internal-test.spec.ts`
+- Result: 1 file / 2 tests passed.
+- Command: `npm run build`
+- Result: passed; only the existing large-chunk warning remained.
+- Browser vertical slice: `#/internal-test` loaded 300 de-identified windows
+  without a NapCat account. One operator-triggered `gpt-5.6-terra` candidate
+  completed in 3059 ms with `providerCalls=1`, `outputCalls=0`,
+  `memoryWrites=0` and `toolCalls=0`; one feedback row was appended to the
+  configured repository-external JSONL file.
+- Evidence boundary: no candidate text, API Key, Base URL, QQ identifier or
+  feedback content is recorded here or committed. The slice proves the Web
+  Evaluation Adapter only; it is not AstrBot Runtime Shadow, Provider
+  Conformance, live-group validation or authorization to send.
+- Verification remains `partial`; S23 remains `paused`.
+- Recorded: 2026-08-16
+
 - Command: `PYTHONPATH=packages/dududa-agent/src:apps/astrbot-plugins .venv/bin/python -m unittest tests.test_provider_no_send_shadow tests.test_render_astrbot_candidate`
 - Result: 4 focused tests passed in 0.166 seconds.
 - Command: `.venv/bin/ruff check --select E,F,I ops/cli/run_provider_no_send_shadow.py tests/test_provider_no_send_shadow.py ops/cli/render_astrbot_candidate.py tests/test_render_astrbot_candidate.py`

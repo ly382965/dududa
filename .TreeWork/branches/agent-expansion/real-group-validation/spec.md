@@ -62,6 +62,25 @@ remote resource or media content is executed or fetched. Focused synthetic
 tests plus staged 5/50/target Teacher runs are sufficient for this development
 artifact; the stage does not add a new release gate.
 
+### Internal-Test Web Surface
+
+Before live S23 authorization is available, the existing Bot Control Plane may
+host a repository-code, localhost-only internal-test surface over the private
+S23E projection. It is an evaluation Adapter, not another Runtime control
+plane. It may browse already de-identified windows, show Student predictions,
+Static TierPolicy preview and AnswerProfile, request an explicit server-side
+Provider candidate in `no_send` mode, and append human feedback to a configured
+repository-external JSONL file.
+
+The surface does not read `windows/all.jsonl` on page load, expose Provider
+credentials, call QQ Output, write Memory, invoke tools or connect Bandit. The
+browser receives only the existing de-identified, browser-safe Demo projection.
+Candidate generation is operator-triggered, reports the selected tier/model and
+always returns `output_calls=0`; unavailable data or Provider configuration
+remains an honest empty/unavailable state. Normal window/run IDs and focused
+boundary validation are sufficient for this reversible development workflow;
+no additional hash, contract freeze or release gate is introduced.
+
 ### Offline Runtime Budget And Sampling
 
 The S23A--S23E product Demo is a time-boxed development run. It targets four
@@ -180,7 +199,10 @@ stage is authorized. Fixtures cannot be presented as live evidence.
 The current goal completes when S23A--S23E have reproducible private artifacts,
 real Silver labels, group-isolated Student metrics, full eligible-window offline
 predictions, an openable no-send Demo, synchronized documents and local commits.
-That milestone must remain explicitly distinct from live S23 completion.
+The internal-test Web surface may extend that milestone with browser-based
+sample review, no-send candidate generation and repository-external human
+feedback. That milestone must remain explicitly distinct from live S23
+completion.
 
 Later live completion still requires the exact single-group ladder receipts,
 frozen SLO report, zero safety counters, behavior-specific grants, source

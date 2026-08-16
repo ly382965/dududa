@@ -17,6 +17,7 @@ export const router = createRouter({
     { path: '/contacts', name: 'contacts', component: RouteMarker, meta: { section: 'contacts' } },
     { path: '/notifications', name: 'notifications', component: RouteMarker, meta: { section: 'notifications' } },
     { path: '/control-plane', name: 'control-plane', component: RouteMarker, meta: { section: 'control-plane' } },
+    { path: '/internal-test', name: 'internal-test', component: RouteMarker, meta: { section: 'internal-test' } },
     { path: '/settings', name: 'settings', component: RouteMarker, meta: { section: 'settings' } },
     { path: '/:pathMatch(.*)*', redirect: '/chat' },
   ],

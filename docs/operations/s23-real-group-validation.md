@@ -4,8 +4,8 @@
 
 S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和既定 WebUI 回归已经完成本地范围；
 S23 分支也已补齐配置驱动的入站生产 Runtime 纵切和固定 AstrBot 4.26.2 候选镜像；
-Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过。它仍只能执行
-离线 readiness 与 no-send 验证：
+Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过，并完成 Bot Control Plane 内的 Web
+人工内测第一版。它仍只能执行离线 readiness、人工评价与 no-send 验证：
 
 - `configs/release/s19-pilot-slo-v1.json` 仍为 `s23_ready=false`；
 - 没有完成 conformance 的真实模型 Endpoint；
@@ -117,6 +117,50 @@ Sol -> Opus/deep。进入真实 Shadow 前的最短顺序为：在部署窗口�
 P95 超过 30 秒时降到 120--150。T+3.5 小时停止发起新请求，每个窗口最多重试一次。单群占比
 不超过总样本的 5%--8%，train/dev/test 按群隔离，避免同一群表达习惯泄漏。时间不足时保留
 已完成样本并明确标记部分完成，不通过压缩 Demo、指标或文档时间来追求全量调用。
+
+### 1.3 Web 人工内测页（非 Live S23）
+
+2026-08-16 已完成 `#/internal-test` 第一版。该页面属于既有 Bot Control Plane 的 Evaluation
+Adapter，不建立第二套 Runtime：没有 NapCat 账号也可以进入，浏览和筛选 300 个既有脱敏窗口，
+查看 Silver、Student、AnswerProfile、Static Tier 与 Luna/Terra/Sol 映射，并由操作员显式请求
+一次服务端 `no_send` 候选和提交人工评价。
+
+已完成的真实浏览器纵切使用 Terra，结果为：
+
+| 样本数 | 模型 | 延迟 | Provider | QQ Output | Memory 写入 | Tool 调用 |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 300 | `gpt-5.6-terra` | 3059 ms | 1 | 0 | 0 | 0 |
+
+反馈只追加到配置的仓库外 JSONL，文件权限为 `0600`。服务端不持久化候选回答正文，也不把
+Provider Key、Base URL 或 Provider 错误正文写入反馈。启动时必须显式指定脱敏 S23E 投影和
+反馈文件；没有数据根时页面显示 unavailable，不回退到固定私有目录：
+
+```bash
+cd apps/web
+export DUDUDA_INTERNAL_TEST_DATA_ROOT=/absolute/path/to/deidentified-s23e-projection
+export DUDUDA_INTERNAL_TEST_FEEDBACK_PATH=/absolute/path/to/internal-test-feedback.jsonl
+npm run dev
+```
+
+浏览器打开终端输出的 loopback 地址并追加 `/#/internal-test`。如需真实候选生成，可通过以下
+环境变量或既有本机 Codex 配置/认证文件提供 Provider 配置；真实值只留在本机，不写入 Git、
+Runbook、截图或反馈文件：
+
+```text
+DUDUDA_INTERNAL_TEST_BASE_URL
+DUDUDA_INTERNAL_TEST_API_KEY
+DUDUDA_INTERNAL_TEST_PROVIDER
+DUDUDA_INTERNAL_TEST_CODEX_CONFIG
+DUDUDA_INTERNAL_TEST_AUTH_FILE
+DUDUDA_INTERNAL_TEST_HAIKU_MODEL
+DUDUDA_INTERNAL_TEST_SONNET_MODEL
+DUDUDA_INTERNAL_TEST_OPUS_MODEL
+```
+
+未覆盖模型变量时，默认映射为 Haiku -> `gpt-5.6-luna`、Sonnet -> `gpt-5.6-terra`、Opus ->
+`gpt-5.6-sol`。候选生成只在操作员点击后发生；页面没有 QQ 发送、Memory 写入、Tool 调用或
+Bandit 学习。上述浏览器证据不构成 AstrBot Runtime Shadow、Provider Conformance、真实群验证
+或正式上线，S23 继续保持 `partial/paused`。
 
 ## 2. 固定验证阶梯
 

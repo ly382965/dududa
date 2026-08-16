@@ -15,6 +15,7 @@ import { groupMemberDirectoryKey, useQqDirectoryStore } from './stores/qq-direct
 import type { MobilePanel } from './types/workspace'
 import ContactsView from './views/ContactsView.vue'
 import ControlPlaneView from './views/ControlPlaneView.vue'
+import InternalTestView from './views/InternalTestView.vue'
 import NotificationsView from './views/NotificationsView.vue'
 import SettingsView from './views/SettingsView.vue'
 
@@ -28,8 +29,9 @@ const directoryStore = useQqDirectoryStore()
 const actingAccountId = ref('')
 const managedGroupId = ref('')
 const managedGroupAccountId = ref('')
-const activeRoute = computed<'chat' | 'contacts' | 'notifications' | 'control-plane' | 'settings'>(() =>
-  route.meta.section === 'contacts' || route.meta.section === 'notifications' || route.meta.section === 'control-plane' || route.meta.section === 'settings'
+type WorkspaceRoute = 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'settings'
+const activeRoute = computed<WorkspaceRoute>(() =>
+  route.meta.section === 'contacts' || route.meta.section === 'notifications' || route.meta.section === 'control-plane' || route.meta.section === 'internal-test' || route.meta.section === 'settings'
     ? route.meta.section
     : 'chat',
 )
@@ -95,8 +97,8 @@ function resolveActingAccount(): void {
     ''
 }
 
-function navigate(target: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'settings'): void {
-  if (target !== 'chat') resolveActingAccount()
+function navigate(target: WorkspaceRoute): void {
+  if (target !== 'chat' && target !== 'internal-test') resolveActingAccount()
   if (target === 'chat') workspace.mobilePanel.value = 'inbox'
   void router.push({ name: target })
 }
@@ -280,19 +282,20 @@ watch(
 </script>
 
 <template>
-  <div v-if="workspace.loading.value" class="startup-screen">
+  <div v-if="workspace.loading.value && activeRoute !== 'internal-test'" class="startup-screen">
     <span class="startup-logo"><Bot :size="25" /></span>
     <LoaderCircle class="startup-spinner" :size="18" />
     <strong>嘟嘟哒工作台</strong>
   </div>
 
   <ConnectionScreen
-    v-else-if="workspace.connectionError.value || !workspace.accounts.value.length"
+    v-else-if="activeRoute !== 'internal-test' && (workspace.connectionError.value || !workspace.accounts.value.length)"
     :runtime="workspace.runtime.value"
     :error="workspace.connectionError.value"
     :theme="workspace.resolvedTheme.value"
     @retry="workspace.load"
     @toggle-theme="workspace.toggleTheme"
+    @open-internal-test="navigate('internal-test')"
   />
 
   <div
@@ -384,12 +387,16 @@ watch(
 
     <section v-else class="management-panel">
       <ManagementAccountBar
+        v-if="activeRoute !== 'internal-test'"
         :accounts="workspace.accounts.value"
         :account-id="actingAccountId"
         @select="selectManagementAccount"
       />
+      <InternalTestView
+        v-if="activeRoute === 'internal-test'"
+      />
       <ContactsView
-        v-if="activeRoute === 'contacts'"
+        v-else-if="activeRoute === 'contacts'"
         :account="managementAccount"
         @open-conversation="openConversation"
         @open-group="openGroup"

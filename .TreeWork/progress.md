@@ -105,6 +105,15 @@ Last sync: unix:1786717871
   Silver, and local group-isolated Students predicted every window. A private
   localhost no-send Demo now exposes the results and existing Static TierPolicy
   as a clearly non-production preview.
+- On 2026-08-16 the existing Bot Control Plane gained its bounded Web internal-
+  test v1 at `#/internal-test`. It opens without a NapCat account, browses and
+  filters 300 already de-identified windows, and displays Silver, Student,
+  AnswerProfile, Static Tier and Luna/Terra/Sol mapping. One explicit Terra
+  `no_send` candidate completed in 3059 ms with `providerCalls=1`,
+  `outputCalls=0`, `memoryWrites=0` and `toolCalls=0`; one human rating was
+  appended to a repository-external JSONL file with mode `0600`, without the
+  candidate text, Provider Key or Base URL. This is a Control Plane evaluation
+  Adapter, not a second Runtime or live S23 evidence.
 - The completed corpus artifacts are not being rerun. Any later multi-model
   calibration is capped at five hours: 20--24 throughput probes, 120--350 Luna
   primary samples, at most 50 Terra reviews and 15 Sol ambiguity checks, no new
@@ -116,11 +125,13 @@ Last sync: unix:1786717871
   authorization and credentials. All accepted local predecessors are complete;
   S23 is paused/partial after completing its offline S23A--S23E milestone and
   the configuration-driven inbound Runtime shape, isolated candidate startup,
-  three-tier Provider no-send sampling and default-off health-refresh
-  implementation. It still needs formal Endpoint Conformance, running AstrBot
-  registration/deployment, enabled continuous health and the live
-  Source/Projection/Output composition required by each separately authorized
-  proactive stage.
+  three-tier Provider no-send sampling, default-off health-refresh
+  implementation and the Web internal-test evaluation Adapter. It still needs
+  formal Endpoint Conformance, running AstrBot registration/deployment, enabled
+  continuous health and the live Source/Projection/Output composition required
+  by each separately authorized proactive stage. The Web result is not AstrBot
+  Runtime Shadow, Provider Conformance, real-group validation or a production
+  launch.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
 - Real public-source/group-projection providers and proactive rollout evidence
@@ -176,6 +187,13 @@ Last sync: unix:1786717871
   current Dududa traffic, real Endpoint/deployment binding, live sources,
   container change or send; `live_execution_authorized=false` remains
   authoritative.
+- The same S23 branch now provides the first bounded Web human-evaluation slice
+  inside the existing Bot Control Plane: 300 de-identified windows are
+  searchable without NapCat, one operator-triggered Terra candidate proved
+  `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0`, and feedback is
+  written only to a mode-`0600` repository-external JSONL file. Candidate text
+  and Provider credentials are not persisted. This does not promote S23 beyond
+  `paused/partial`.
 - The current S23 branch also closes the repository-side inbound production
   vertical slice: one to three configured model tiers are assembled through
   AstrBot Provider Adapters, the existing Static Router and DirectChat Runtime;

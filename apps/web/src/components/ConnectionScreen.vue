@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bot, ExternalLink, KeyRound, Moon, RefreshCw, Server, Sun, Unplug } from '@lucide/vue'
+import { Bot, ExternalLink, FlaskConical, KeyRound, Moon, RefreshCw, Server, Sun, Unplug } from '@lucide/vue'
 
 import type { ThemeMode, WorkspaceSnapshot } from '../types/workspace'
 
@@ -12,6 +12,7 @@ defineProps<{
 const emit = defineEmits<{
   retry: []
   toggleTheme: []
+  openInternalTest: []
 }>()
 </script>
 
@@ -51,7 +52,10 @@ const emit = defineEmits<{
         <a href="http://localhost:6099/webui" target="_blank" rel="noreferrer">
           打开 NapCat WebUI <ExternalLink :size="13" />
         </a>
-        <button type="button" @click="emit('retry')"><RefreshCw :size="14" />重新检测</button>
+        <span class="connection-actions">
+          <button class="secondary" type="button" @click="emit('openInternalTest')"><FlaskConical :size="14" />进入人工内测</button>
+          <button type="button" @click="emit('retry')"><RefreshCw :size="14" />重新检测</button>
+        </span>
       </footer>
     </section>
   </main>
@@ -235,6 +239,12 @@ const emit = defineEmits<{
   text-decoration: none;
 }
 
+.connection-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .connection-panel a {
   color: var(--brand-strong);
 }
@@ -244,6 +254,12 @@ const emit = defineEmits<{
   border: 1px solid var(--brand);
   color: #ffffff;
   background: var(--brand);
+}
+
+.connection-panel button.secondary {
+  border-color: var(--border-strong);
+  color: var(--brand-strong);
+  background: var(--surface);
 }
 
 @media (max-width: 560px) {
@@ -259,8 +275,18 @@ const emit = defineEmits<{
   }
 
   .connection-panel footer {
+    flex-wrap: wrap;
     padding-right: 12px;
     padding-left: 12px;
+  }
+
+  .connection-actions {
+    width: 100%;
+  }
+
+  .connection-actions button {
+    flex: 1;
+    justify-content: center;
   }
 }
 </style>
