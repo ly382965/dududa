@@ -33,12 +33,9 @@ def user_help() -> str:
 /help plugins
 
 娱乐：
-/meme [关键词]
 /image <描述>
 /fortune
 /draw <主题>
-/poke
-/reread
 
 管理员发送 /help admin 查看管理指令。"""
 
@@ -50,7 +47,6 @@ def admin_help() -> str:
 /admin plugins
 /admin group mode <quiet|normal|active>
 /admin group reply-rate <0-100>
-/admin group meme-rate <0-100>
 /admin memory summary
 /admin memory clear-short
 /admin user mute <QQ>
@@ -104,17 +100,19 @@ def module_help(module: str) -> str:
 /memory off
 /style <简洁|详细|可爱|认真>"""
     if key in {"plugins", "插件"}:
-        return """已有插件能力
+        return """Dududa 2.0 插件状态
 
-Iris Chat Memory：群聊记忆、用户画像、群隔离
-Better Reminder：提醒
-ChatSummary v2：群聊总结
-PokePro：戳一戳
-Reread：复读
-Target Talk：低频主动参与
-Reply Polish：回复口吻润色
-Sub2API Readonly：白名单群内查询 Token、排名和账号状态
-Meme Manager：表情包
+当前路径：
+Dududa Core：AstrBot Adapter
+Sub2API Readonly：显式只读查询
 
-统一入口已保留；原插件命令不改名。"""
+过渡期兼容：
+Iris Chat Memory、Better Reminder、ChatSummary v2：保留数据与兼容入口
+Reply Polish：Dududa 1.0 LONG-only 输出兼容层，默认关闭
+
+已退出默认路径：
+Meme Manager：不再默认安装，不再自动发表情
+PokePro：不再默认安装，不再自动戳一戳
+Reread：不再默认安装，不再概率复读
+Target Talk：不再默认挂载，由受治理的 Probe/主动 Runtime 方向取代"""
     return user_help()

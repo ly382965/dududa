@@ -60,6 +60,25 @@ const contentTypes: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
+const workspaceEventReplayLimit = 512
+
+interface ReplayableWorkspaceEvent {
+  id: number
+  event: WorkspaceEvent
+}
+
+function workspaceEventFrame(event: WorkspaceEvent, id?: number): string {
+  return `${id === undefined ? '' : `id: ${id}\n`}event: workspace\ndata: ${JSON.stringify(event)}\n\n`
+}
+
+function lastWorkspaceEventId(request: IncomingMessage): number | undefined {
+  const header = request.headers['last-event-id']
+  const value = Array.isArray(header) ? header[0] : header
+  if (!value || !/^\d+$/.test(value)) return undefined
+  const id = Number(value)
+  return Number.isSafeInteger(id) ? id : undefined
+}
+
 function securityHeaders(response: ServerResponse): void {
   response.setHeader('X-Content-Type-Options', 'nosniff')
   response.setHeader('X-Frame-Options', 'DENY')
@@ -349,8 +368,14 @@ export function createDududaServer(options: DududaServerOptions) {
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const internalTest = options.internalTest ?? createInternalTestGateway()
   const eventClients = new Set<ServerResponse>()
+  const eventReplay: ReplayableWorkspaceEvent[] = []
+  let nextWorkspaceEventId = 1
   const onWorkspaceEvent = (event: WorkspaceEvent) => {
-    const frame = `event: workspace\ndata: ${JSON.stringify(event)}\n\n`
+    const replayable = { id: nextWorkspaceEventId, event }
+    nextWorkspaceEventId += 1
+    eventReplay.push(replayable)
+    if (eventReplay.length > workspaceEventReplayLimit) eventReplay.splice(0, eventReplay.length - workspaceEventReplayLimit)
+    const frame = workspaceEventFrame(event, replayable.id)
     for (const client of eventClients) client.write(frame)
   }
   options.hub.on('workspace-event', onWorkspaceEvent)
@@ -491,10 +516,24 @@ export function createDududaServer(options: DududaServerOptions) {
         response.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
         response.setHeader('Cache-Control', 'no-cache, no-transform')
         response.setHeader('Connection', 'keep-alive')
+        response.setHeader('X-Accel-Buffering', 'no')
         response.flushHeaders()
         eventClients.add(response)
-        response.write(`event: workspace\ndata: ${JSON.stringify({ type: 'runtime.status', status: options.hub.runtimeStatus() })}\n\n`)
-        response.write(`event: workspace\ndata: ${JSON.stringify({ type: 'workspace.refresh' })}\n\n`)
+        response.write(workspaceEventFrame({ type: 'runtime.status', status: options.hub.runtimeStatus() }))
+        const lastEventId = lastWorkspaceEventId(request)
+        if (lastEventId === undefined) {
+          response.write(workspaceEventFrame({ type: 'workspace.refresh' }))
+        } else {
+          const latestEventId = nextWorkspaceEventId - 1
+          const oldestReplayableId = eventReplay[0]?.id ?? nextWorkspaceEventId
+          if (lastEventId > latestEventId || lastEventId < oldestReplayableId - 1) {
+            response.write(workspaceEventFrame({ type: 'workspace.refresh' }))
+          } else {
+            for (const replayable of eventReplay) {
+              if (replayable.id > lastEventId) response.write(workspaceEventFrame(replayable.event, replayable.id))
+            }
+          }
+        }
         request.once('close', () => eventClients.delete(response))
         return
       }

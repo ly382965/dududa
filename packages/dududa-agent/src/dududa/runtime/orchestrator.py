@@ -522,17 +522,19 @@ class OfflineRuntimeOrchestrator:
             response_profiles_enabled = state.invocation_options.feature_flags.get(
                 "response_profiles", False
             )
-            if response_profiles_enabled and social.action in {
+            visible_action = social.action in {
                 SocialAction.DIRECT_REPLY,
                 SocialAction.ASK_CLARIFICATION,
-            }:
+            }
+            if visible_action:
+                persona_resolution = self._resolve_persona(state)
+            if response_profiles_enabled and visible_action:
                 response_profile_request, response_plan = self._select_response_plan(
                     state,
                     context,
                     assessment,
                     social,
                 )
-                persona_resolution = self._resolve_persona(state)
                 response_reservation = project_response_reservation(
                     response_reservation,
                     response_plan,
@@ -742,6 +744,7 @@ class OfflineRuntimeOrchestrator:
                 response_reservation = (
                     self._config.model_budget_plan.direct_chat_reservation
                 )
+                persona_resolution = self._resolve_persona(checkpoint.state)
                 if response_profiles_enabled:
                     (
                         response_profile_request,
@@ -752,7 +755,6 @@ class OfflineRuntimeOrchestrator:
                         assessment,
                         social,
                     )
-                    persona_resolution = self._resolve_persona(checkpoint.state)
                     response_reservation = project_response_reservation(
                         response_reservation,
                         response_plan,
@@ -804,7 +806,7 @@ class OfflineRuntimeOrchestrator:
                 )
             elif response_profiles_enabled:
                 raise validation_error("runtime_visible_response_plan_missing")
-            if (response_plan is None) != (persona_resolution is None):
+            if persona_resolution is None:
                 raise validation_error("runtime_visible_persona_resolution_missing")
 
             direct = None
@@ -821,6 +823,7 @@ class OfflineRuntimeOrchestrator:
                         tier,
                         response_reservation,
                         response_plan=response_plan,
+                        persona_resolution=persona_resolution,
                         route_hint=checkpoint.state.invocation_options.route_hint,
                         capability_receipt=capability_receipt,
                         call=self._call_with_budget(
@@ -873,31 +876,20 @@ class OfflineRuntimeOrchestrator:
                 budget=budget,
             )
 
-            if response_plan is None:
-                rendered = self._renderer.render(draft, response_plan)
-                final = await self._final_validator.validate(
-                    draft,
-                    rendered,
-                    checkpoint.state.actor,
-                    checkpoint.state.conversation_scope,
-                    response_plan=response_plan,
-                    call=self._call_with_budget(call, checkpoint.state.budget),
-                )
-            else:
-                rendered = self._renderer.render(
-                    draft,
-                    response_plan,
-                    persona_resolution=persona_resolution,
-                )
-                final = await self._final_validator.validate(
-                    draft,
-                    rendered,
-                    checkpoint.state.actor,
-                    checkpoint.state.conversation_scope,
-                    response_plan=response_plan,
-                    persona_resolution=persona_resolution,
-                    call=self._call_with_budget(call, checkpoint.state.budget),
-                )
+            rendered = self._renderer.render(
+                draft,
+                response_plan,
+                persona_resolution=persona_resolution,
+            )
+            final = await self._final_validator.validate(
+                draft,
+                rendered,
+                checkpoint.state.actor,
+                checkpoint.state.conversation_scope,
+                response_plan=response_plan,
+                persona_resolution=persona_resolution,
+                call=self._call_with_budget(call, checkpoint.state.budget),
+            )
             checkpoint = await self._commit_transition(
                 checkpoint,
                 RuntimePhase.RENDERED,

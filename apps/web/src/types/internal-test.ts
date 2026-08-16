@@ -86,6 +86,7 @@ export interface InternalTestAgentContextMessage {
 export interface InternalTestAgentRequest {
   conversationId: string
   conversationName: string
+  conversationType: 'group' | 'private'
   prompt: string
   messages: InternalTestAgentContextMessage[]
   answerProfile?: InternalTestAnswerProfile

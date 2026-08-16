@@ -3,6 +3,27 @@ from __future__ import annotations
 import re
 
 
+ANSWER_PROFILE_EVENT_KEY = "dududa.answer_profile"
+
+
+def should_merge_forward(
+    answer_profile: object,
+    text_length: int,
+    min_chars: int,
+) -> bool:
+    """Return whether the legacy hook may turn a reply into merged forwarding.
+
+    AnswerProfile is authoritative. Character count only decides whether an
+    explicitly LONG answer is large enough to benefit from merged forwarding.
+    """
+
+    if type(text_length) is not int or type(min_chars) is not int:
+        return False
+    if text_length <= min_chars:
+        return False
+    return isinstance(answer_profile, str) and answer_profile.strip().lower() == "long"
+
+
 def split_text(text: str, chunk_chars: int, max_nodes: int) -> list[str]:
     paragraphs = [part.strip() for part in re.split(r"\n\s*\n", text) if part.strip()]
     if not paragraphs:

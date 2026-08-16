@@ -36,6 +36,10 @@ class ComponentFactory(Protocol):
 
     def reply(self, message_id: str) -> object: ...
 
+    def node(self, text: str, *, name: str, uin: str) -> object: ...
+
+    def nodes(self, nodes: list[object]) -> object: ...
+
     def chain(self, components: list[object]) -> object: ...
 
 
@@ -45,10 +49,12 @@ class DeliverySendGuard(Protocol):
 
 class _AstrBotComponentFactory:
     def __init__(self, event: object) -> None:
-        from astrbot.api.message_components import At, Plain, Reply
+        from astrbot.api.message_components import At, Node, Nodes, Plain, Reply
 
         self._event = event
         self._at = At
+        self._node = Node
+        self._nodes = Nodes
         self._plain = Plain
         self._reply = Reply
 
@@ -60,6 +66,16 @@ class _AstrBotComponentFactory:
 
     def reply(self, message_id: str) -> object:
         return self._reply(id=message_id)
+
+    def node(self, text: str, *, name: str, uin: str) -> object:
+        return self._node(
+            content=[self._plain(text)],
+            name=name,
+            uin=uin,
+        )
+
+    def nodes(self, nodes: list[object]) -> object:
+        return self._nodes(nodes)
 
     def chain(self, components: list[object]) -> object:
         return self._event.chain_result(components)
@@ -202,8 +218,6 @@ class AstrBotOutputAdapter:
             raise _output_error("delivery_event_scope_mismatch")
         if request.attachment_access:
             raise _output_error("delivery_attachments_not_enabled")
-        if request.constraints.allow_forward_bundle:
-            raise _output_error("delivery_forward_bundle_not_supported")
 
     def _validate_fresh_authorization(
         self,
@@ -238,6 +252,8 @@ class AstrBotOutputAdapter:
             return self._receipt(
                 request, DeliveryStatus.FAILED, (part,), now, "reaction_not_supported"
             )
+        if self._can_send_forward_bundle(request):
+            return await self._send_forward_bundle(request, call)
         receipts: list[DeliveryPartReceipt] = []
         for index, intent in enumerate(request.part_intents, start=1):
             if intent.text is None:
@@ -386,6 +402,113 @@ class AstrBotOutputAdapter:
             request,
             DeliveryStatus.SUCCEEDED,
             tuple(receipts),
+            self._clock(),
+            None,
+        )
+
+    def _can_send_forward_bundle(self, request: DeliveryRequest) -> bool:
+        response = request.response
+        profile_validation = (
+            response.profile_validation if response is not None else None
+        )
+        return (
+            request.constraints.allow_forward_bundle
+            and request.scope.conversation_type.value == "group"
+            and len(request.part_intents) >= 2
+            and all(intent.text is not None for intent in request.part_intents)
+            and response is not None
+            and profile_validation is not None
+            and profile_validation.valid
+            and profile_validation.selected_profile == "long"
+            and not response.response.target_users
+            and not response.response.attachments
+            and not request.attachment_access
+        )
+
+    async def _send_forward_bundle(
+        self,
+        request: DeliveryRequest,
+        call: PortCallContext,
+    ) -> DeliveryReceipt:
+        def parts(
+            status: DeliveryPartStatus,
+            error_code: str | None,
+        ) -> tuple[DeliveryPartReceipt, ...]:
+            return tuple(
+                DeliveryPartReceipt(
+                    1,
+                    intent.part_id,
+                    intent.content_digest,
+                    status,
+                    None,
+                    error_code,
+                )
+                for intent in request.part_intents
+            )
+
+        if call.cancellation.is_cancelled or call.deadline <= self._clock():
+            error_code = "delivery_cancelled_before_part"
+            return self._receipt(
+                request,
+                DeliveryStatus.FAILED,
+                parts(DeliveryPartStatus.FAILED, error_code),
+                self._clock(),
+                error_code,
+            )
+
+        send_started = False
+        try:
+            bot_id = _safe_call(self._event, "get_self_id") or "0"
+            nodes = [
+                self._factory.node(intent.text or "", name=bot_id, uin=bot_id)
+                for intent in request.part_intents
+            ]
+            chain = self._factory.chain([self._factory.nodes(nodes)])
+            guard_reason = self._check_send_guard(request, 1)
+            if guard_reason is not None:
+                return self._receipt(
+                    request,
+                    DeliveryStatus.FAILED,
+                    parts(DeliveryPartStatus.FAILED, guard_reason),
+                    self._clock(),
+                    guard_reason,
+                )
+            send_started = True
+            await self._event.send(chain)
+        except asyncio.CancelledError:
+            error_code = "platform_send_outcome_unknown"
+            receipt = self._receipt(
+                request,
+                DeliveryStatus.UNKNOWN,
+                parts(DeliveryPartStatus.UNKNOWN, error_code),
+                self._clock(),
+                error_code,
+            )
+            self._ledger.store(receipt)
+            raise
+        except Exception:  # noqa: BLE001 - normalize platform boundary failures
+            part_status = (
+                DeliveryPartStatus.UNKNOWN
+                if send_started
+                else DeliveryPartStatus.FAILED
+            )
+            error_code = (
+                "platform_send_outcome_unknown"
+                if send_started
+                else "delivery_component_build_failed"
+            )
+            status = DeliveryStatus.UNKNOWN if send_started else DeliveryStatus.FAILED
+            return self._receipt(
+                request,
+                status,
+                parts(part_status, error_code),
+                self._clock(),
+                error_code,
+            )
+        return self._receipt(
+            request,
+            DeliveryStatus.SUCCEEDED,
+            parts(DeliveryPartStatus.SUCCEEDED, None),
             self._clock(),
             None,
         )

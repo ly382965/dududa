@@ -10,6 +10,11 @@
 
 Persona 定义“嘟嘟哒如何表达”，不定义“事实是什么、用户能做什么、是否调用工具、记忆能否读取”。确定性代码负责流程、权限、隐私和事实约束；模型负责受限的语言表达；Persona 不是控制权威，不能绕过安全策略。
 
+Persona 是稳定身份、价值观和表达倾向；群聊风格是系统对当前群体情境的语气、用词、长度和
+节奏适应。当前 DirectChat 在一次模型生成中共同消费 Persona resolution、channel rule 与
+ResponsePlan，让人格通过措辞、回应节奏、关注点和信息取舍自然出现，而不是在生成后追加固定
+话术、概率表情或另一轮“人格润色”。表达可以适应，事实、权限、人格身份和任务要求不变。
+
 Bot 管理员可在群入驻时通过 `GroupServiceProfile` 选择初始 Persona 引用。该引用只确定身份与
 表达基线；Group Context、用户偏好、模型和 Bandit 不能替换 Persona identity，也不能借风格
 适应改变服务、Capability、Memory、主动行为或发送权限。
@@ -346,6 +351,7 @@ Registry 加载后执行 Schema 校验、digest 计算和版本检查。一次 R
 
 - 语序、句式和口语程度；
 - 适量称呼、语气词和表情；
+- 结合当前群体情境调整措辞、节奏、关注点和信息取舍；
 - 在长度预算内压缩重复说明；
 - 技术问题使用清晰条理，闲聊使用更自然短句；
 - 按用户已授权的 style preference 在“简洁、详细、可爱、认真”等范围内微调；
@@ -364,21 +370,21 @@ Renderer 只能执行 `ResponsePlan.selected_profile` 和其可见长度/分片�
 - 声称调用了未调用的模型或工具；
 - 改变回复目标、@ 对象、会话或附件；
 - 暴露系统提示、Persona 原文、记忆原文或内部 Trace；
+- 复述角色档案、无关自我介绍或套用固定口号；
+- 每条机械卖萌，或为了证明人格而随机追加表情；
+- 模仿某个具体群成员的身份、隐私、口头禅或敏感信息；
 - 因角色关系设定给予某用户额外权限；
 - 让角色设定中的年龄、关系或情绪覆盖现实安全边界。
 
 ### 7.3 渲染模式
 
-第一阶段建议 `hybrid`：
+当前阶段使用确定性的 Persona resolution/projection，不增加第二次 Persona 模型调用：
 
-1. 对错误、拒绝、权限和短命令结果使用确定性模板；
-2. 对普通聊天和较长说明可调用 Model Router 的 `PERSONA_RENDERING` 角色；该角色与
-   `RESPONSE_COMPOSITION` 独立配置 Schema、隐私、温度、预算和 Eval；
-3. 模型输入包含结构化 Draft、VoiceRules 和限制，不包含原始工具输出；
-4. Render Validator 对锚点、引用、拒绝和目标做检查；
-5. 校验失败时最多重试一次，仍失败则由 `DeterministicDraftFinalizer` 把 Draft 转成
-   `FinalResponse`；该候选仍必须经过 Render Validator 和最终 Content Safety，不能把裸
-   Draft 当成可投递类型。
+1. Runtime 先解析版本化 Persona 与群聊/私聊 channel rule；
+2. DirectChat 将可信 Persona style 与 `ResponsePlan` 一起交给同一次回答生成；
+3. 模型只负责在预算内自然表达，不得改变事实、权限、工具观察或不可变约束；
+4. 确定性 Finalizer、Validator、Content Safety 与 Output Adapter 继续拥有最终边界；
+5. `model` 或 `hybrid` Renderer 仅作为未来扩展点，只有真实群聊 Eval 证明第二次改写有净收益时再启用。
 
 不为 Persona 新设一个可访问工具的 Agent。Renderer 的模型调用没有 Tool 权限。
 
@@ -491,19 +497,19 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 
 ### 10.2 `astrbot_plugin_target_talk`
 
-- 目标级 `reply_style` 映射为受限的 `RenderContext` override；
-- 旧 `system_prompt`、`prompt_template` 在兼容期由 Legacy Adapter 使用，不进入通用 PersonaDefinition；
-- override 不能改变 Persona 身份、权限、安全规则或工具结果；
-- 保留字数、@ 和 fallback 行为，直到新 Renderer 契约测试等价。
+- 已退出默认 Compose 和 Dududa 2.0 入站路径，源码与旧配置只作为迁移、回滚材料保留；
+- 主动探测职责由 S15E Governed Probe / 主动 Runtime 接替，默认关闭；
+- 旧 `reply_style`、`system_prompt` 和 `prompt_template` 不进入通用 PersonaDefinition；
+- 主动参与不能改变 Persona 身份、权限、安全规则、工具结果或群级服务选择。
 
 ### 10.3 `astrbot_plugin_reply_polish`
 
-- 它负责长纯文本切分和 QQ 合并转发，不负责语气或 OC；
-- 继续位于 `ValidatedFinalResponse` 之后的 Output Adapter/装饰阶段；
-- 分段不能改事实，但当前可能静默截断尾部，迁移时需用测试固定或显式修正；
-- `Plain`、`Nodes` 和 Bot UIN 始终留在 AstrBot 兼容层。
+- 它是默认关闭的 Dududa 1.0 LONG-only 输出兼容层，不负责语气或 OC；
+- SHORT、MEDIUM 和缺失/未知 Profile 永远不进入合并转发；
+- 2.0 Core Delivery 也只让显式 LONG 保留合并资格，且 Output Adapter 仍要求群聊、至少两个纯文本 part、无定向用户和附件；
+- LONG 单段继续普通发送；`Plain`、`Nodes` 和 Bot UIN 始终留在 AstrBot 兼容层。
 
-三插件的 `@register` ID 和配置路径在兼容层移除条件满足前保持不变。
+旧插件源码、`@register` ID、配置和持久数据不会因退出默认路径而自动删除；本轮也不修改运行中的 AstrBot/NapCat。
 
 ## 11. 错误与降级
 
@@ -564,13 +570,13 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 - Fact/Citation/Refusal/Target/Attachment 改变、跨 Scope 泄漏、内容安全违规和危险 URL
   都是独立零容忍门禁，不能被风格分抵消；
 - 当前 `dududa.md` 的关键表达习惯建立少量稳定 Golden，避免逐字快照锁死语言；
-- TargetTalk 目标级风格与主 Persona 冲突时，安全和 Persona 身份优先。
+- 若显式运行旧 Target Talk 迁移 fixture，其目标级风格不得覆盖 Persona 身份和安全边界。
 
 ### Integration
 
 - Persona seed 幂等且版本可回滚；
 - Runtime Draft -> Renderer -> AstrBot Output；
-- ReplyPolish 处理后事实仍完整；
+- 若操作员显式启用 Dududa 1.0 ReplyPolish 兼容层，处理后事实仍必须完整；
 - `/style` 的写入、读取、关闭和删除；
 - 不同群、用户和 Persona 的偏好不串联。
 
@@ -578,13 +584,14 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 
 | 项目 | 当前事实 | 目标差距 |
 | --- | --- | --- |
-| Persona 存储 | JSON 元数据 + Markdown Prompt | 缺少 typed definition、版本和 digest |
-| 注入 | seed 到 AstrBot 默认 Persona | Core Runtime 无 Registry/Renderer |
-| 风格 | Prompt 统一控制 | 事实、安全、权限与风格混在一层 |
+| Persona 存储 | typed/versioned Registry 与 `dududa` 配置已存在 | 多 Persona 产品资产仍待扩展 |
+| 注入 | Persona resolution、channel rule、AnswerProfile 已进入同一次 DirectChat 生成 | 真实中文群聊自然度仍待人工校准 |
+| 风格 | 人格通过措辞、节奏、关注点和信息取舍自然融入 | 长期群体情境输入尚未进入生产 Context Builder |
 | `/style` | 只写 JSON并显示 | 未进入实际回复渲染 |
-| TargetTalk 风格 | 独立 system/prompt template | 未受统一 Persona 和事实约束 |
-| ReplyPolish | 结果分段 | 文档称“口吻润色”，实际不是 Persona 功能 |
-| 安全边界 | Prompt 中已有较完整说明 | 仍需提升为代码 Policy 和 Validator |
+| TargetTalk | 已退出默认 Compose 和入站路径 | 旧源码和配置作为迁移、回滚材料保留；是否物理清理是独立决策 |
+| ReplyPolish | 默认关闭的 1.0 LONG-only 兼容层 | 正式 2.0 输出不依赖它 |
+| 发送形态 | SHORT/MEDIUM 普通发送；LONG 仅实际多段时合并 | 真实 QQ 体验仍待 S23 人工验证 |
+| 安全边界 | Policy、Validator 与 Output 边界独立于 Persona | 继续用真实场景验证，不把风格分当安全证据 |
 
 ## 15. 扩展点与移除条件
 
@@ -594,4 +601,4 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 - 增加轻量本地 Renderer，不改变 Protocol；
 - 增加 Persona A/B Eval，但必须固定事实 Draft；
 - 兼容 Prompt 只有在新 Registry 已被生产入口使用、style 迁移完成、Invariant/Eval 通过且存在回滚版本后才能移除；
-- ReplyPolish 和 TargetTalk 的兼容配置只有在新 Output Adapter、Social Decision 和 Persona override 覆盖其行为后才能弃用。
+- ReplyPolish 和 TargetTalk 已退出 2.0 默认执行路径；是否物理删除源码、配置和历史数据是独立迁移决策。

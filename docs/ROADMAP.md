@@ -4,6 +4,15 @@
 > [重构进度](refactor/PROGRESS.md)，当前 Sxx 顺序与外部门禁见
 > [实施计划](refactor/implementation-plan.md)。
 
+Dududa 2.0 当前补充（2026-08-16）：
+
+- 下方 P0-P3 勾选项和旧插件清单只记录 Dududa 1.0 历史，不应继续作为默认能力设计。
+- Persona、群聊 channel rule 与 AnswerProfile 在同一次生成中自然融合；不复述人设、自我介绍、套固定口号、机械卖萌或随机追加表情。
+- SHORT、MEDIUM 始终普通发送；LONG 单段仍普通发送，只有群聊中实际拆成至少两个纯文本 part、且无定向用户和附件时才合并转发。
+- Meme Manager、Reread、PokePro 和旧 Target Talk 已退出 2.0 默认安装或 Compose 路径；`/image` 作为显式图像生成能力继续保留。
+- WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
+- S23 仍为 `paused / partial`；本轮没有修改或重启正在运行的 AstrBot/NapCat，真实中文群聊风格仍需人工校准。
+
 - 来源：`DUDUDA.md` v0.4
 - 工作目录：`.`
 - 当前目标：先把嘟嘟哒做成稳定可用的 QQ 群聊助手，再逐步扩展校园能力。
@@ -35,15 +44,15 @@ Agent 开工前必须遵守：
 - [x] `manage.sh` 已作为栈管理入口。
 - [x] AstrBot WebUI：`http://127.0.0.1:6185`
 - [x] NapCat WebUI：`http://127.0.0.1:6099`
-- [x] 已安装插件：
+- [x] Dududa 1.0 审计时已安装插件（历史清单；不代表当前私有运行态，也不代表 2.0 默认集合）：
   - `astrbot_plugin_iris_chat_memory`
   - `astrbot_plugin_better_reminder`
   - `astrbot_plugin_chatsummary_v2`
-  - `astrbot_plugin_pokepro`
-  - `astrbot_plugin_reread`
-  - `astrbot_plugin_target_talk`
-  - `astrbot_plugin_reply_polish`
-  - `meme_manager`
+  - `astrbot_plugin_pokepro`（1.0 legacy/deprecated；2.0 不再默认安装）
+  - `astrbot_plugin_reread`（1.0 legacy/deprecated；2.0 不再默认安装）
+  - `astrbot_plugin_target_talk`（1.0 legacy；2.0 已退出默认 Compose 和入站路径）
+  - `astrbot_plugin_reply_polish`（1.0 LONG-only 兼容层；2.0 默认关闭）
+  - `meme_manager`（1.0 legacy/deprecated；2.0 不再默认安装或自动发表情）
 - [x] `services/mcp/icourse/` 已挂载到 `/AstrBot/data/icourse-mcp`。
 - [x] `data/astrbot/mcp_server.json` 已接入 `icourse` MCP。
 - [x] `icourse` MCP 使用 AstrBot 容器统一 Python：`/usr/local/bin/python`。
@@ -165,26 +174,26 @@ data/astrbot/plugins/astrbot_plugin_dududa_core/
 - [x] 管理员发送 `/help admin` 显示管理员菜单。
 - [x] `/status` 不返回密钥、模型 token、Cookie、登录态、完整日志。
 
-### 4.3 统一帮助菜单接入已有插件
+### 4.3 Dududa 1.0 统一帮助菜单接入（历史）
 
 - [x] 将现有插件能力映射到统一帮助菜单。
 - [x] 标注哪些命令已可用，哪些是 TODO。
 - [x] 保留原插件命令，不做破坏性改名。
 
-需要纳入：
+当时纳入项及其 2.0 处置：
 
 - [x] Iris Chat Memory
 - [x] Better Reminder
 - [x] ChatSummary v2
-- [x] PokePro
-- [x] Reread
-- [x] Target Talk
-- [x] Reply Polish
-- [x] Meme Manager
+- [x] PokePro（1.0 legacy/deprecated；已退出 2.0 默认安装）
+- [x] Reread（1.0 legacy/deprecated；已退出 2.0 默认安装）
+- [x] Target Talk（1.0 legacy；已退出 2.0 默认 Compose 和入站路径）
+- [x] Reply Polish（1.0 LONG-only 兼容层；2.0 默认关闭）
+- [x] Meme Manager（1.0 legacy/deprecated；已退出 2.0 默认安装）
 
 验收：
 
-- [x] 用户能通过 `/help` 找到当前真正可用的能力。
+- [x] Dududa 1.0 用户能通过 `/help` 找到当时可用的能力；2.0 `/help` 不再宣传上述 legacy 自动行为。
 - [x] TODO 项不会伪装成已完成能力。
 
 ## 5. P1 权限与确认机制
@@ -303,7 +312,7 @@ data/astrbot/plugins/astrbot_plugin_dududa_core/
 - [x] `/admin plugins`
 - [x] `/admin group mode <quiet|normal|active>`
 - [x] `/admin group reply-rate <0-100>`
-- [x] `/admin group meme-rate <0-100>`
+- [x] `/admin group meme-rate <0-100>`（1.0 历史配置；2.0 不据此自动发表情）
 - [x] `/admin memory summary`
 - [x] `/admin memory clear-short`
 - [x] `/admin user mute <QQ>`
@@ -380,21 +389,21 @@ owner only：
 
 ### 9.2 娱乐能力
 
-统一入口：
+Dududa 1.0 历史入口及其 2.0 处置：
 
-- [x] `/meme [关键词]`（统一入口提示，深度桥接 TODO）
-- [ ] `/meme random`
+- [x] `/meme [关键词]`（1.0 历史入口；2.0 仅返回停用提示，未来只能显式调用 Meme Capability）
+- [ ] `/meme random`（1.0 未完成项；2.0 不再规划随机自动表情）
 - [x] `/fortune`
 - [x] `/draw <主题>`
-- [x] `/poke`
-- [x] `/reread`
+- [x] `/poke`（1.0 legacy；2.0 仅返回停用提示）
+- [x] `/reread`（1.0 legacy；2.0 仅返回停用提示，不再概率复读）
 
 策略：
 
-- [x] 群内娱乐功能默认低频。
+- [x] Dududa 1.0 群内娱乐功能默认低频（历史策略，不作为 2.0 自动行为设计）。
 - [x] 每群支持 quiet、normal、active 三种模式。
-- [x] 不复读隐私、人身攻击或敏感内容。
-- [ ] 表情包概率按群配置。（配置入口已实现，深度联动 Meme Manager TODO）
+- [x] Dududa 2.0 默认不自动复读。
+- [x] Dududa 2.0 不恢复按概率自动发表情；未来 Meme 只能作为用户显式触发的 Capability。
 
 验收：
 
@@ -422,6 +431,8 @@ owner only：
 ## 11. P3 图片与多模态
 
 图片模型由 `gpt-image-2` 提供；`/image <描述>` 已接入 trusted/admin 入口。模型连接由 AstrBot 运行态中的外部 OpenAI 兼容 Provider 私有配置提供；插件侧默认等待超时为 420 秒，运行时限制在 60-900 秒之间。
+
+`/image` 是保留的显式图片生成能力，与 Meme Manager 的随机自动表情行为无关。
 后续能力：
 
 - [ ] 截图识别。

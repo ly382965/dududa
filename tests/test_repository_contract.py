@@ -90,15 +90,11 @@ class RepositoryContractTests(unittest.TestCase):
                 "astrbot_plugin_better_reminder",
                 "astrbot_plugin_chatsummary_v2",
                 "astrbot_plugin_iris_chat_memory",
-                "astrbot_plugin_pokepro",
-                "astrbot_plugin_reread",
-                "meme_manager",
             },
         )
         for plugin in plugins.values():
             if plugin["source"] == "git":
                 self.assertRegex(plugin["commit"], re.compile(r"^[0-9a-f]{40}$"))
-        self.assertNotIn("memes", plugins["meme_manager"]["sparse_paths"])
 
     def test_iris_patch_keeps_both_privacy_guards(self) -> None:
         patch = (
@@ -178,6 +174,17 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(schema["runtime_response_profiles_enabled"]["type"], "bool")
         self.assertTrue(schema["runtime_response_profiles_enabled"]["default"])
 
+    def test_legacy_automatic_social_plugins_are_not_default_behavior(self) -> None:
+        plugin_root = (
+            ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core"
+        )
+        lifecycle = (plugin_root / "lifecycle.py").read_text(encoding="utf-8")
+        admin = (plugin_root / "commands" / "admin.py").read_text(encoding="utf-8")
+
+        self.assertNotIn('"meme_rate": 20', lifecycle)
+        self.assertNotIn('rec["meme_rate"] =', admin)
+        self.assertIn("已停用自动表情包概率配置", admin)
+
     def test_compose_keeps_owned_code_read_only(self) -> None:
         compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
             encoding="utf-8"
@@ -186,10 +193,13 @@ class RepositoryContractTests(unittest.TestCase):
         for name in (
             "astrbot_plugin_dududa_core",
             "astrbot_plugin_reply_polish",
-            "astrbot_plugin_target_talk",
             "astrbot_plugin_sub2api_readonly",
         ):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
+        self.assertNotIn(
+            "/AstrBot/data/plugins/astrbot_plugin_target_talk",
+            compose,
+        )
 
     def test_astrbot_image_keeps_mcp_v1_and_v2_isolated(self) -> None:
         dockerfile = (

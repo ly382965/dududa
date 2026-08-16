@@ -6,6 +6,11 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+from astrbot_plugin_dududa_core.adapters.output import (
+    ASTRBOT_OUTPUT_REVISION,
+    AstrBotOutputAdapter,
+    InMemoryDeliveryLedger,
+)
 from dududa.contracts.binding import NegotiatedBindingReceipt
 from dududa.contracts.canonical import canonical_digest
 from dududa.contracts.delivery import (
@@ -17,20 +22,28 @@ from dududa.contracts.delivery import (
 from dududa.domain.content import (
     ContentSafetyDecision,
     FinalResponse,
+    GeneratedAssetRef,
     RenderedBlock,
     RenderedContent,
     RenderMetadata,
     RenderValidationResult,
+    ResponseProfileValidationResult,
     SafetyStage,
     ValidatedFinalResponse,
 )
 from dududa.domain.delivery import (
     DeliveryConstraints,
+    DeliveryPartStatus,
     DeliveryRequest,
     DeliveryStatus,
     plan_delivery_parts,
 )
-from dududa.domain.identity import Actor, ConversationScope
+from dududa.domain.identity import (
+    Actor,
+    ActorRef,
+    ConversationScope,
+    ResolvedIdentityRef,
+)
 from dududa.domain.message import MessageReference
 from dududa.domain.primitives import (
     ActionId,
@@ -42,6 +55,7 @@ from dududa.domain.primitives import (
     RiskLevel,
     RoleId,
     RuntimeBudget,
+    Sensitivity,
     TraceContext,
 )
 from dududa.errors import DududaError
@@ -54,12 +68,6 @@ from dududa.security.digests import (
 )
 from dududa.security.models import AuthorizationDecision, AuthorizationEffect
 
-from astrbot_plugin_dududa_core.adapters.output import (
-    ASTRBOT_OUTPUT_REVISION,
-    AstrBotOutputAdapter,
-    InMemoryDeliveryLedger,
-)
-
 
 class FakeFactory:
     def plain(self, text: str):
@@ -71,16 +79,27 @@ class FakeFactory:
     def reply(self, message_id: str):
         return ("reply", message_id)
 
+    def node(self, text: str, *, name: str, uin: str):
+        return ("node", name, uin, text)
+
+    def nodes(self, nodes: list[object]):
+        return ("nodes", tuple(nodes))
+
     def chain(self, components: list[object]):
         return tuple(components)
 
 
 class FakeEvent:
     def __init__(
-        self, *, fail_on_call: int | None = None, cancel: bool = False
+        self,
+        *,
+        fail_on_call: int | None = None,
+        cancel: bool = False,
+        group_id: str | None = "g-1",
     ) -> None:
         self.fail_on_call = fail_on_call
         self.cancel = cancel
+        self.group_id = group_id
         self.sent: list[object] = []
 
     def get_platform_id(self):
@@ -90,7 +109,7 @@ class FakeEvent:
         return "bot-1"
 
     def get_group_id(self):
-        return "g-1"
+        return self.group_id
 
     def get_sender_id(self):
         return "u-1"
@@ -122,8 +141,22 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             "policy-v1",
         )
 
-    def response(self, text: str = "hello") -> ValidatedFinalResponse:
+    def response(
+        self,
+        text: str = "hello",
+        *,
+        scope: ConversationScope | None = None,
+        target_users: tuple[ResolvedIdentityRef, ...] = (),
+        attachments: tuple[GeneratedAssetRef, ...] = (),
+        answer_profile: str | None = None,
+    ) -> ValidatedFinalResponse:
+        selected_scope = scope or self.scope
         draft_digest = DigestString("draft")
+        response_plan_digest = (
+            DigestString(f"plan-{answer_profile}")
+            if answer_profile is not None
+            else None
+        )
         final = FinalResponse(
             1,
             "response-1",
@@ -135,9 +168,15 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             (),
             None,
             ResponseConstraints(),
-            (),
-            (),
-            RenderMetadata("dududa", "1", self.revision, draft_digest),
+            target_users,
+            attachments,
+            RenderMetadata(
+                "dududa",
+                "1",
+                self.revision,
+                draft_digest,
+                response_plan_digest,
+            ),
         )
         rendered_digest = canonical_digest(final, domain="response:final:v1")
         validation = RenderValidationResult(
@@ -150,7 +189,7 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             DigestString("safety-request"),
             rendered_digest,
             actor_digest(self.actor),
-            scope_digest(self.scope),
+            scope_digest(selected_scope),
             True,
             ResponseConstraints(),
             (),
@@ -158,7 +197,32 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             self.revision,
             self.now,
         )
-        return ValidatedFinalResponse(1, final, validation, safety)
+        profile_validation = (
+            ResponseProfileValidationResult(
+                1,
+                True,
+                response_plan_digest,
+                rendered_digest,
+                answer_profile,
+                len(text.split()),
+                len(text),
+                (),
+                (),
+                (),
+                ("response_profile_validation_passed",),
+                self.revision,
+                self.revision,
+            )
+            if response_plan_digest is not None and answer_profile is not None
+            else None
+        )
+        return ValidatedFinalResponse(
+            1,
+            final,
+            validation,
+            safety,
+            profile_validation,
+        )
 
     def request(
         self,
@@ -167,15 +231,27 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         delivery_id: str = "delivery-1",
         idempotency_key: str = "delivery-key-1",
         reply_to: MessageReference | None = None,
+        allow_forward_bundle: bool = False,
+        scope: ConversationScope | None = None,
+        target_users: tuple[ResolvedIdentityRef, ...] = (),
+        attachments: tuple[GeneratedAssetRef, ...] = (),
+        answer_profile: str | None = None,
     ) -> DeliveryRequest:
-        response = self.response(text)
+        selected_scope = scope or self.scope
+        response = self.response(
+            text,
+            scope=selected_scope,
+            target_users=target_users,
+            attachments=attachments,
+            answer_profile=answer_profile,
+        )
         authorization = AuthorizationDecision(
             1,
             "decision-1",
             AuthorizationEffect.ALLOW,
             DigestString("authorization-request"),
             actor_digest(self.actor),
-            scope_digest(self.scope),
+            scope_digest(selected_scope),
             ActionId("message.send"),
             DigestString("pending-resource"),
             None,
@@ -199,8 +275,11 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             1,
             4,
             5,
-            False,
-            frozenset(),
+            allow_forward_bundle,
+            frozenset(
+                attachment.content_ref.partition(":")[0]
+                for attachment in attachments
+            ),
             timedelta(minutes=5),
         )
         payload_digest = delivery_payload_digest(response)
@@ -215,7 +294,7 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             Outcome.RESPONSE,
             response,
             None,
-            self.scope,
+            selected_scope,
             reply_to,
             constraints,
             plan_delivery_parts(
@@ -259,6 +338,78 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(event.sent), 3)
         self.assertTrue(all(part.platform_message_ref is None for part in first.parts))
 
+    async def test_forward_bundle_sends_all_parts_once(self) -> None:
+        event = FakeEvent()
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                allow_forward_bundle=True,
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertTrue(
+            all(part.status is DeliveryPartStatus.SUCCEEDED for part in receipt.parts)
+        )
+        self.assertEqual(len(event.sent), 1)
+        self.assertEqual(event.sent[0][0][0], "nodes")
+        self.assertEqual(len(event.sent[0][0][1]), len(receipt.parts))
+
+    async def test_forward_bundle_requires_at_least_two_parts(self) -> None:
+        event = FakeEvent()
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+
+        receipt = await adapter.deliver(
+            self.request(
+                text="短",
+                allow_forward_bundle=True,
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(receipt.parts), 1)
+        self.assertEqual(event.sent, [(('plain', '短'),)])
+
+    async def test_forward_bundle_failure_marks_every_part_unknown(self) -> None:
+        event = FakeEvent(fail_on_call=1)
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                allow_forward_bundle=True,
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+
+        self.assertIs(receipt.status, DeliveryStatus.UNKNOWN)
+        self.assertTrue(
+            all(part.status is DeliveryPartStatus.UNKNOWN for part in receipt.parts)
+        )
+        self.assertEqual(len(event.sent), 1)
+
     async def test_send_exception_is_unknown_and_is_not_retried(self) -> None:
         event = FakeEvent(fail_on_call=1)
         adapter = AstrBotOutputAdapter(
@@ -292,7 +443,7 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             await adapter.deliver(conflict, call=self.call)
         self.assertEqual(len(event.sent), 1)
 
-    async def test_reply_is_preserved_in_first_part(self) -> None:
+    async def test_forward_bundle_is_not_blocked_by_direct_chat_reply(self) -> None:
         event = FakeEvent()
         adapter = AstrBotOutputAdapter(
             event,
@@ -301,8 +452,135 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
             clock=lambda: self.now,
         )
         reply = MessageReference("qq-adapter-1", "bot-1", "g-1", "m-0")
-        await adapter.deliver(self.request(reply_to=reply), call=self.call)
-        self.assertEqual(event.sent[0][0], ("reply", "m-0"))
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                reply_to=reply,
+                allow_forward_bundle=True,
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(event.sent), 1)
+        self.assertEqual(event.sent[0][0][0], "nodes")
+
+    async def test_forward_bundle_is_not_used_for_private_chat(self) -> None:
+        event = FakeEvent(group_id=None)
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+        private_scope = ConversationScope(
+            "qq-adapter-1",
+            "bot-1",
+            ConversationType.PRIVATE,
+            "private:u-1",
+            None,
+            "dududa",
+        )
+
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                allow_forward_bundle=True,
+                scope=private_scope,
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(event.sent), 3)
+        self.assertTrue(all(chain[0][0] != "nodes" for chain in event.sent))
+
+    async def test_forward_bundle_is_not_used_for_targeted_response(self) -> None:
+        event = FakeEvent()
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+        target = ResolvedIdentityRef(
+            "identity-u-2",
+            ActorRef("qq-adapter-1", "bot-1", "u-2"),
+        )
+
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                allow_forward_bundle=True,
+                target_users=(target,),
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(event.sent), 3)
+        self.assertEqual(event.sent[0][0], ("at", "u-2"))
+        self.assertTrue(all(chain[0][0] != "nodes" for chain in event.sent))
+
+    async def test_forward_bundle_is_not_used_for_response_with_attachment(
+        self,
+    ) -> None:
+        event = FakeEvent()
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+        attachment = GeneratedAssetRef(
+            "asset-1",
+            "asset:1",
+            DigestString("asset-digest"),
+            "image/png",
+            Sensitivity.PUBLIC,
+        )
+
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                allow_forward_bundle=True,
+                attachments=(attachment,),
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(event.sent), 3)
+        self.assertTrue(all(chain[0][0] != "nodes" for chain in event.sent))
+
+    async def test_forward_bundle_requires_validated_long_profile(self) -> None:
+        for answer_profile in (None, "short", "medium"):
+            with self.subTest(answer_profile=answer_profile):
+                event = FakeEvent()
+                adapter = AstrBotOutputAdapter(
+                    event,
+                    InMemoryDeliveryLedger(),
+                    component_factory=FakeFactory(),
+                    clock=lambda: self.now,
+                )
+
+                receipt = await adapter.deliver(
+                    self.request(
+                        text="hello world",
+                        allow_forward_bundle=True,
+                        answer_profile=answer_profile,
+                    ),
+                    call=self.call,
+                )
+
+                self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+                self.assertEqual(len(event.sent), 3)
+                self.assertTrue(
+                    all(chain[0][0] != "nodes" for chain in event.sent)
+                )
 
     async def test_cancellation_after_send_records_unknown_tombstone(self) -> None:
         event = FakeEvent(cancel=True)

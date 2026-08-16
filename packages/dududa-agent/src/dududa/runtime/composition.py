@@ -189,8 +189,6 @@ class DeterministicPersonaRenderer:
             raise validation_error("invalid_persona_render_draft")
         if response_plan is not None and not isinstance(response_plan, ResponsePlan):
             raise validation_error("invalid_persona_response_plan")
-        if (response_plan is None) != (persona_resolution is None):
-            raise validation_error("incomplete_persona_render_evidence")
         if persona_resolution is not None:
             _validate_runtime_persona_resolution(
                 persona_resolution,
@@ -388,8 +386,6 @@ class FinalResponseSafetyValidator:
             raise validation_error("invalid_final_response_security_identity")
         if response_plan is not None and not isinstance(response_plan, ResponsePlan):
             raise validation_error("invalid_final_response_plan")
-        if (response_plan is None) != (persona_resolution is None):
-            raise validation_error("incomplete_final_persona_evidence")
         expected_plan_digest = (
             response_plan_digest(response_plan) if response_plan is not None else None
         )

@@ -67,6 +67,14 @@ describe('internal-test gateway', () => {
       expect(String(body.input)).toContain('群成员：下午把接口联调一下')
       expect(String(body.input)).toContain('操作员指令：\n给出一个完整的讨论建议')
       expect(String(body.instructions)).toContain('不要调用工具')
+      expect(String(body.instructions)).toContain('不要宣告、复述或刻意表演人设')
+      expect(String(body.instructions)).toContain('默认简洁，不抢话，不逐条复述已有聊天')
+      expect(String(body.instructions)).toContain('技术问题先给结论，再补足真正有用的步骤')
+      expect(String(body.instructions)).toContain('不要在回答中谈论或罗列人格规则')
+      expect(String(body.instructions)).toContain('不要模仿某个具体群成员')
+      expect(String(body.instructions)).toContain('不得改变事实、权限、任务要求或安全边界')
+      expect(String(body.instructions)).not.toContain('warm、cute、clear')
+      expect(String(body.instructions)).not.toContain('避免模式')
       return new Response(JSON.stringify({ output_text: '建议先确认接口契约，再按主链路完成一次联调。' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -91,6 +99,7 @@ describe('internal-test gateway', () => {
     await expect(gateway.respond({
       conversationId: 'group-1',
       conversationName: '项目讨论群',
+      conversationType: 'group',
       prompt: '给出一个完整的讨论建议',
       answerProfile: 'long',
       messages: [

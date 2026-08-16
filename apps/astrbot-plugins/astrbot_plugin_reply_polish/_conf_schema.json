@@ -1,8 +1,8 @@
 {
   "min_chars": {
-    "description": "转换为合并转发的最短字符数",
+    "description": "显式 LONG 回答转换为合并转发的最短字符数",
     "type": "int",
-    "default": 50
+    "default": 600
   },
   "chunk_chars": {
     "description": "每个转发节点的目标字符数",
@@ -25,8 +25,8 @@
     "default": "0"
   },
   "enable_forward": {
-    "description": "启用长回复合并转发",
+    "description": "启用 Dududa 1.0 兼容 Hook；Dududa 2.0 默认关闭",
     "type": "bool",
-    "default": true
+    "default": false
   }
 }

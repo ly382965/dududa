@@ -79,10 +79,16 @@ class CoreAdminCommands:
     async def admin_group(
         self, event: AstrMessageEvent, action: str, value: str | None = None
     ):
-        """设置群模式和概率"""
+        """设置 Dududa 2.0 群模式和回复概率。"""
         err = self._require_admin(event)
         if err:
             yield event.plain_result(err)
+            event.stop_event()
+            return
+        if action == "meme-rate":
+            yield event.plain_result(
+                "Dududa 2.0 已停用自动表情包概率配置；现有旧配置保留但不再修改。"
+            )
             event.stop_event()
             return
         rec = self._group_record(event)
@@ -90,11 +96,9 @@ class CoreAdminCommands:
             rec["mode"] = value
         elif action == "reply-rate" and value and value.isdigit():
             rec["reply_rate"] = max(0, min(100, int(value)))
-        elif action == "meme-rate" and value and value.isdigit():
-            rec["meme_rate"] = max(0, min(100, int(value)))
         else:
             yield event.plain_result(
-                "用法：/admin group mode <quiet|normal|active> 或 reply-rate/meme-rate <0-100>"
+                "用法：/admin group mode <quiet|normal|active> 或 reply-rate <0-100>"
             )
             event.stop_event()
             return

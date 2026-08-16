@@ -21,6 +21,41 @@ At the audit baseline the repository contained 75 tracked files. The worktree
 was clean, `main` tracked `origin/main`, and no business code was modified by
 Phase 0.
 
+## Post-Audit Dududa 2.0 Disposition
+
+以下正文的 Runtime 图、插件清单和风险描述仍保留为“重构前基线证据”，不是 2026-08-16 的
+默认运行设计。当前 S23 分支仍为 `paused / partial`，真实中文群聊风格尚未完成人工校准。
+
+Dududa 2.0 的 WebUI 承载唯一 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始
+`GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制
+Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和
+Receipt 生效。Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效：人格通过措辞、节奏、关注点和信息取舍
+自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情表现人格。
+
+| AnswerProfile | QQ 发送形态 |
+| --- | --- |
+| SHORT | 始终普通消息，即使文本较长 |
+| MEDIUM | 始终普通消息，即使文本较长 |
+| LONG | 单段仍为普通消息；仅群聊且实际拆成至少两个纯文本 part、无定向用户和附件时合并转发 |
+
+| 插件 | Dududa 2.0 默认状态 | 资产处理 | 未来归属 |
+| --- | --- | --- | --- |
+| Meme Manager | deprecated，不再默认安装，不自动发表情 | 本轮不主动清理；若私有运行目录中存在图库、配置或源码则原状保留 | 用户显式触发的 Meme Capability |
+| Reread | deprecated，不再默认安装，不概率复读 | 本轮不主动清理私有运行目录中的既有配置或数据 | 默认不提供自动复读 |
+| PokePro | deprecated，不再默认安装，不自动戳一戳 | 本轮不主动清理私有运行目录中的既有配置或数据 | 可选显式交互 Capability |
+| Target Talk | 退出默认 Compose 和入站路径 | 源码、配置保留 | S15E Governed Probe / 主动 Runtime |
+| ReplyPolish | 1.0 LONG-only 兼容层，默认关闭 | 源码保留 | LONG-only legacy output |
+| Iris Memory | 不拥有 2.0 Core Memory 控制面 | 既有数据保留 | S14 Memory 迁移或只读来源 |
+| ChatSummary | 自动循环不进入 2.0 默认能力 | 历史数据保留 | 显式 Summary Capability |
+| Better Reminder | 不拥有 2.0 Scheduler | 历史提醒数据保留 | S15B Scheduler / Capability |
+| Dududa Core | 保留 | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
+| Sub2API Readonly | 保留 | 源码、配置保留 | 显式只读 Capability |
+
+`third_party/plugins.lock.json` 当前只保留 Iris、Better Reminder 和 ChatSummary v2；默认 Compose
+不再挂载 Target Talk。退出默认安装、默认挂载或默认执行链，不等于删除源码、配置或持久数据。
+本轮也没有修改或重启正在运行的 AstrBot/NapCat，因此以下历史运行态描述仍可能与私有数据目录
+中实际已安装的旧插件并存。
+
 ## Repository Topology
 
 | Area | Current responsibility | Important constraint |
@@ -38,7 +73,11 @@ Phase 0.
 | `.github/` | CI, Dependabot, ownership | CI does not build the image or import AstrBot plugins |
 | `docs/` | Product, operation, and architecture notes | Several documents overlap and some statements have drifted |
 
-## Current Runtime
+## Dududa 1.0 Runtime At The Audit Baseline
+
+The following diagram records the pre-refactor runtime. It does not describe the
+Dududa 2.0 default code or deployment path, and it does not assert that a private
+running AstrBot/NapCat instance has already unloaded legacy plugins.
 
 ```text
 QQ user or group
@@ -57,21 +96,21 @@ AstrBot container
             `-- private SQLite cache
 ```
 
-The three first-party plugins do not import one another. Their interaction is
-implicit through AstrBot's event pipeline:
+At the audit baseline, the three first-party plugins did not import one another.
+Their interaction was implicit through AstrBot's event pipeline:
 
-1. `DududaCorePlugin` registers commands and an all-message course interceptor.
-2. `TargetTalkPlugin` independently observes AIOCQHTTP group events and may send
+1. `DududaCorePlugin` registered commands and an all-message course interceptor.
+2. `TargetTalkPlugin` independently observed AIOCQHTTP group events and could send
    a generated reply directly.
-3. `ReplyPolishPlugin` decorates group-message results produced by all plugins,
+3. `ReplyPolishPlugin` decorated group-message results produced by all plugins,
    not only Dududa responses.
 
-This ordering and the use of `event.stop_event()` are observable compatibility
-contracts even though they are not expressed as internal interfaces.
+This ordering and the use of `event.stop_event()` were observable Dududa 1.0
+compatibility behavior even though they were not expressed as internal interfaces.
 
-## Startup And Upgrade
+## Dududa 1.0 Startup And Upgrade At The Audit Baseline
 
-`./manage.sh up` currently performs:
+At the audit baseline, `./manage.sh up` performed:
 
 ```text
 init
@@ -85,14 +124,14 @@ seed Persona into AstrBot SQLite and select it in cmd_config.json
 restart AstrBot
 ```
 
-`./manage.sh upgrade` performs `plugins -> sync -> network -> pull -> up --build
+At the audit baseline, `./manage.sh upgrade` performed `plugins -> sync -> network -> pull -> up --build
 -> seed`. It has no backup, health check, explicit rollback, or post-seed
 restart. A changed lock marker also causes `install_plugins.py` to refuse an
 existing plugin unless `--force` is supplied, but `manage.sh upgrade` exposes no
-force path. Therefore the current upgrade command cannot reliably apply a
+force path. Therefore the audited upgrade command could not reliably apply a
 third-party plugin version change.
 
-## First-Party Plugin Inventory
+## Dududa 1.0 First-Party Plugin Inventory At The Audit Baseline
 
 ### Dududa Core
 
@@ -125,23 +164,31 @@ Registered command families include:
 - Compatibility and entertainment: `/remind`, `/reminders`, `/summary`, `/meme`,
   `/image`, `/fortune`, `/draw`, `/poke`, `/reread`.
 
-Several compatibility commands only tell the user which third-party plugin to
-use; they do not invoke that capability.
+Several Dududa 1.0 compatibility commands only told the user which third-party
+plugin to use; they did not invoke that capability. In the Dududa 2.0 default
+path, `/meme`, `/poke` and `/reread` only return legacy stop notices and are not
+advertised by `/help`; `/image` remains an explicit image-generation capability.
 
 ### Reply Polish
 
-Despite its name, `astrbot_plugin_reply_polish` does not perform semantic or
-Persona rewriting. It splits long QQ group plain-text results and converts them
-to merged-forward nodes. It is an output-adapter concern. It can affect results
-from unrelated plugins and can truncate content when the node limit is reached.
+At the audit baseline, `astrbot_plugin_reply_polish` did not perform semantic or
+Persona rewriting. Its global hook split long QQ group plain-text results into
+merged-forward nodes, could affect unrelated plugins, and could truncate content
+at the node limit. Dududa 2.0 keeps its source only as a default-off, LONG-only
+compatibility layer; the formal Runtime does not depend on it.
 
 ### Target Talk
 
-`astrbot_plugin_target_talk` is the only current approximation of Social
-Decision. It records recent group messages and applies target matching,
+At the audit baseline, `astrbot_plugin_target_talk` was the only approximation of
+Social Decision. It recorded recent group messages and applied target matching,
 allow/deny lists, keywords, probability, and cooldowns before asking an AstrBot
-Provider for a short reply. It has no explicit action enum, confidence,
+Provider for a short reply. It had no explicit action enum, confidence,
 permission policy, tool path, or structured trace.
+
+Its source and configuration remain as migration material, but old Target Talk
+has exited the Dududa 2.0 default Compose and inbound paths. This repository
+disposition does not claim that a running private AstrBot/NapCat instance has
+already unloaded it.
 
 ## State And Privacy Inventory
 

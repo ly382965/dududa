@@ -1,8 +1,9 @@
 {
   "enabled": {
-    "description": "启用插件",
+    "description": "启用历史兼容插件",
     "type": "bool",
-    "default": true
+    "default": false,
+    "hint": "Dududa 2.0 默认停用；仅在明确需要兼容旧行为时手动开启"
   },
   "target_users": {
     "description": "特定人列表",

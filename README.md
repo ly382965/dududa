@@ -16,8 +16,7 @@ QQ / QQ Group
     AstrBot ---------------- External OpenAI-compatible provider
       |
       +-- Dududa Core
-      +-- Reply Polish
-      +-- Target Talk
+      +-- Reply Polish ------- default-off LONG compatibility layer
       +-- Sub2API Readonly ---- Sub2API admin UI read-only JSON endpoints
       +-- locked third-party plugins
       +-- icourse MCP -------- icourse.club public pages
@@ -92,7 +91,8 @@ chmod 600 .env
 `up` performs the complete clean-clone bootstrap:
 
 1. Creates private runtime directories under `data/`.
-2. Mounts the four owned plugins read-only from the repository.
+2. Mounts the three default owned plugins read-only from the repository:
+   Dududa Core, Reply Polish and Sub2API Readonly.
 3. Installs third-party plugins at the commits in `third_party/plugins.lock.json`.
 4. Builds AstrBot with the `icourse-mcp` Python dependencies.
 5. Starts AstrBot and NapCat.
@@ -107,9 +107,9 @@ Local management URLs:
 NapCat requires an interactive QQ login. Its login state remains under
 `data/napcat/` and is ignored by Git.
 
-Meme Manager is installed without its large upstream sample gallery. Add or
-sync meme images through the plugin after startup; those files stay in private
-runtime data.
+Dududa 1.0 的 Meme Manager、Reread、PokePro 和 Target Talk 不再进入 2.0
+默认安装路径；其历史源码或已有运行数据仅用于兼容、迁移和回滚。显式 `/image`
+图片生成能力仍保留。
 
 ## Operations
 

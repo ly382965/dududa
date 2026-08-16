@@ -22,8 +22,10 @@ class CoreCompatibilityCommands:
         event.stop_event()
 
     async def meme(self, event: AstrMessageEvent, keyword: str | None = None):
-        """表情包入口"""
-        yield event.plain_result("表情包能力由 Meme Manager 提供。可继续使用现有表情包命令；/meme 统一入口已预留。")
+        """旧版自动表情包兼容入口（已停用）"""
+        yield event.plain_result(
+            "Dududa 2.0 已停用旧版自动表情包行为；/image <描述> 仍可用于显式生成图片。"
+        )
         event.stop_event()
 
     async def fortune(self, event: AstrMessageEvent):
@@ -39,11 +41,11 @@ class CoreCompatibilityCommands:
         event.stop_event()
 
     async def poke(self, event: AstrMessageEvent):
-        """戳一戳入口"""
-        yield event.plain_result("戳一戳能力由 PokePro 提供，统一入口已预留。")
+        """旧版自动戳一戳兼容入口（已停用）"""
+        yield event.plain_result("Dududa 2.0 已停用旧版自动戳一戳行为。")
         event.stop_event()
 
     async def reread(self, event: AstrMessageEvent):
-        """复读入口"""
-        yield event.plain_result("复读能力由 Reread 提供，统一入口已预留。")
+        """旧版概率复读兼容入口（已停用）"""
+        yield event.plain_result("Dududa 2.0 已停用旧版概率复读行为。")
         event.stop_event()

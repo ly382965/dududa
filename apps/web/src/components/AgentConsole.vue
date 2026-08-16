@@ -59,6 +59,7 @@ const emit = defineEmits<{
   selectSession: [id: string]
   newSession: []
   sendPrompt: [content: string]
+  setAnswerProfile: [profile: AgentConfig['answerProfile']]
   approveDraft: [part: ReplyDraftPart]
   discardDraft: [part: ReplyDraftPart]
   updateDraft: [part: ReplyDraftPart, content: string]
@@ -77,6 +78,12 @@ const tabs = [
   { id: 'conversation', label: '对话', icon: MessageSquareText },
   { id: 'run', label: '运行', icon: Activity },
   { id: 'settings', label: '配置', icon: Settings2 },
+] as const
+
+const answerProfiles = [
+  { id: 'short', label: '短', tier: 'Luna' },
+  { id: 'medium', label: '中', tier: 'Terra' },
+  { id: 'long', label: '长', tier: 'Sol' },
 ] as const
 
 function send(): void {
@@ -253,6 +260,20 @@ watch(
             <button class="icon-button" type="button" title="更多指令" aria-label="更多指令" @click="emit('notify', '指令菜单已打开')">
               <MoreHorizontal :size="16" />
             </button>
+            <div class="answer-profile-picker" role="group" aria-label="回答长度">
+              <button
+                v-for="profile in answerProfiles"
+                :key="profile.id"
+                type="button"
+                :class="{ active: config.answerProfile === profile.id }"
+                :title="`${profile.label}回答 · ${profile.tier}`"
+                :aria-pressed="config.answerProfile === profile.id"
+                :disabled="!available || selectedSession?.status === 'running'"
+                @click="emit('setAnswerProfile', profile.id)"
+              >
+                {{ profile.label }}
+              </button>
+            </div>
           </div>
           <button
             v-if="selectedSession?.status === 'running'"
@@ -905,7 +926,44 @@ textarea:disabled {
 
 .agent-composer-footer > div {
   display: flex;
+  align-items: center;
   gap: 2px;
+}
+
+.answer-profile-picker {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  gap: 1px;
+  margin-left: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  padding: 2px;
+}
+
+.answer-profile-picker button {
+  min-width: 25px;
+  height: 18px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 8px;
+}
+
+.answer-profile-picker button.active {
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  font-weight: 700;
+}
+
+.answer-profile-picker button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .prompt-send,

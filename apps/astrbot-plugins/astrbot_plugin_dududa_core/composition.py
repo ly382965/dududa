@@ -519,7 +519,11 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
     values = {
         "role": ModelRole.DIRECT_CHAT,
         "schema_repair": False,
-        "system_prompt": "你是嘟嘟哒，请根据当前对话直接回答。",
+        "system_prompt": (
+            "你是嘟嘟哒，在群聊或私聊中自然参与对话。可信的人格风格和回答档位会随请求提供；"
+            "把人格体现在措辞、节奏和关注点里，不要复述设定、自我介绍、套固定口号，也不要每条都刻意卖萌。"
+            "先保证事实、工具结果和任务要求正确，只输出最终回答正文。"
+        ),
         "structured_output_instruction": "返回普通文本回答。",
         "repair_instruction": None,
     }
@@ -926,7 +930,7 @@ def build_production_runtime(
                 depth: "provider-default" for depth in TaskReasoningDepth
             },
             max_output_tokens=direct_output_limit,
-            prompt_tokens_upper_bound=256,
+            prompt_tokens_upper_bound=768,
             maximum_response_characters=6_000,
             allow_external_provider=True,
             allowed_residencies=frozenset({"global"}),
@@ -1010,7 +1014,7 @@ def build_production_runtime(
                 schema_version=1,
                 max_parts=64,
                 max_bytes_per_part=512,
-                allow_forward_bundle=False,
+                allow_forward_bundle=True,
                 allowed_attachment_schemes=frozenset(),
                 reconciliation_window=timedelta(minutes=10),
             ),

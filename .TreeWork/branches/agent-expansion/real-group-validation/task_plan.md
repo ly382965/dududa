@@ -12,6 +12,9 @@ Title: S23 Authorized Real-Group Validation
 - Deliver a localhost Web internal-test surface that reuses the de-identified
   S23E projection for sample browsing, explicit no-send candidate generation
   and repository-external human feedback.
+- Keep the internal-test live workspace usable under reconnect and initial-load
+  races, and expose Persona-aware SHORT/MEDIUM/LONG candidate generation for
+  bounded human evaluation.
 - Freeze and validate one low-sensitivity S23 readiness manifest and operator
   runbook without resolving credentials or touching live systems.
 - The configuration-driven inbound Runtime production shape is now closed
@@ -67,6 +70,23 @@ Title: S23 Authorized Real-Group Validation
 - [x] 操作员可显式触发一次服务端 `no_send` 候选生成并提交人工评价；响应
   明确记录 tier/model/answer profile、延迟和 `output_calls=0`，反馈只写入
   配置的仓库外 JSONL，浏览器与日志均不包含 Provider Secret。
+- [x] Workspace SSE 使用单调事件 ID 和最近 512 条有界内存重放；浏览器重连
+  可通过 `Last-Event-ID` 按序补放，ID 无效、过旧或服务重启时回退到
+  `workspace.refresh`。前端按 `timestampMs`、无损十进制 sequence、消息 ID
+  稳定排序，并重放初始快照期间收到的实时事件。
+- [x] Web Agent 可选择 SHORT/MEDIUM/LONG，分别映射 Luna/Terra/Sol；生成指令
+  复用 `configs/personas/registry-v1/dududa.json`，按群聊/私聊规则调整表达，
+  同时保持 NO SEND、NO MEMORY WRITE、NO TOOL CALL、NO BANDIT。
+- [x] Persona 不再依赖 `response_profiles` 开关：关闭回答档位时仍进入同一次
+  模型生成；开启时 Persona、群聊情境与 AnswerProfile 在同一请求中自然融合，
+  不复述人设、不自我介绍、不套固定口号、不机械追加表情，也不模仿具体群成员。
+- [x] SHORT/MEDIUM 始终按普通 QQ 消息投递；LONG 单段同样普通投递。只有
+  `profile_validation.valid=true` 的显式 LONG，且目标为群聊、至少两个纯文本
+  part、无定向用户、无附件时，Output Adapter 才允许合并转发。
+- [x] Dududa 1.0 自动行为已退出 2.0 仓库默认路径：Meme Manager、Reread、
+  PokePro 不在默认插件集合，Target Talk 不再由默认 Compose 挂载；ReplyPolish
+  默认关闭且仅作为 LONG-only 兼容层。新群不再生成 `meme_rate`，管理命令不再
+  写入该字段；显式 `/image` 图片生成能力继续保留。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -120,6 +140,18 @@ Title: S23 Authorized Real-Group Validation
 - [x] Implement the internal-test Gateway and Vue page over the existing S23E
   projection; run one sample load, one no-send generation and one feedback
   append, then stop Web expansion after focused type/build checks pass.
+- [x] Repair the internal-test live message path with bounded SSE reconnect
+  replay, stable client ordering, initial-snapshot event replay and stale
+  conversation fallback; wire Persona plus SHORT/MEDIUM/LONG selection without
+  changing Runtime ownership or enabling side effects.
+- [x] Tighten Runtime delivery and generation composition so Persona survives a
+  disabled AnswerProfile flag, Persona/Profile share one model request, and
+  merged forwarding is independently restricted to eligible validated LONG
+  group responses.
+- [x] Remove Dududa 1.0 automatic social behavior from repository defaults,
+  stop new `meme_rate` initialization/writes, keep ReplyPolish default-off and
+  retain explicit `/image`; preserve historical source/config/data for rollback
+  and do not mutate the running AstrBot/NapCat instance.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,

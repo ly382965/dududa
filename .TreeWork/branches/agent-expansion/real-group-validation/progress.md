@@ -48,6 +48,26 @@ Last sync: unix:1786706085
   Control Plane 浏览、搜索和筛选 300 个既有脱敏窗口，查看 Silver、Student、
   AnswerProfile、Static Tier 以及 Luna/Terra/Sol 映射，并跟踪人工评价进度。
   该页面是 Evaluation Adapter，不是第二套 Runtime 控制面。
+- WebUI 实时消息链路已完成两处可观察修复：服务端为 Workspace SSE 分配
+  单调事件 ID，保留最近 512 条事件，并按 `Last-Event-ID` 补放断线期间事件；
+  ID 无效、过旧或跨服务重启时发送 `workspace.refresh`。前端以
+  `timestampMs -> 无损十进制 sequence -> message.id` 建立稳定全序，在初始
+  Snapshot 加载期间缓存并重放实时事件；刷新移除当前会话时切换到首个有效会话。
+- “嘟嘟哒”Persona 已从 `configs/personas/registry-v1/dududa.json` 接入生成
+  链路，并与 `response_profiles` 开关解耦：关闭档位功能时 Persona 仍进入模型
+  请求；开启时 Persona、群聊情境和 AnswerProfile 在同一次生成中消费，通过
+  措辞、节奏、关注点和信息取舍自然体现，不复述人设、不自我介绍、不套固定
+  口号、不机械追加表情，也不模仿具体群成员。Web Agent 可选择
+  SHORT/MEDIUM/LONG 并映射 Luna/Terra/Sol；真实中文群聊风格仍需人工校准。
+- Runtime 投递语义已收紧：SHORT/MEDIUM 始终发送普通 QQ 消息，LONG 单段也
+  发送普通消息。只有经过独立档位校验的显式 LONG，且处于群聊、至少两个纯文本
+  part、没有 target、没有附件时才合并转发；`allow_forward_bundle=true` 本身
+  不能绕过 AnswerProfile 校验。
+- Dududa 1.0 的 Meme Manager 自动表情、Reread 概率复读、PokePro 自动戳一戳
+  和旧 Target Talk 已退出 2.0 仓库默认路径；ReplyPolish 保留为默认关闭的
+  LONG-only 兼容层，`/image` 作为显式图片生成能力继续保留。新群默认记录不再
+  生成 `meme_rate`，`/admin group meme-rate` 不再写入状态；既有磁盘数据不迁移、
+  不删除。
 - 浏览器纵切由操作员显式触发一次 `gpt-5.6-terra` 的真实 Provider
   `no_send` 候选，记录 `providerCalls=1`、`outputCalls=0`、
   `memoryWrites=0`、`toolCalls=0` 和 3059 ms 延迟；随后追加一条仓库外
@@ -56,10 +76,14 @@ Last sync: unix:1786706085
   或真实群验证。
 - S23 整体仍为 `paused/partial`。当前缺少的不是入站 Builder 本身，而是
   真实 Endpoint 的 Conformance、健康与部署绑定，以及主动来源所需的 live
-  Source/Projection/Output 组合；`s23_ready=false` 继续有效。
+  Source/Projection/Output 组合；Production `CurrentMessageContextBuilder`
+  目前仍主要提供当前消息，长期群体情境投影尚未接入，`s23_ready=false`
+  继续有效。
 - No authorization packet, private SecretRef binding or deployment window has
-  been supplied. No container or QQ state was changed; no QQ send, Tool call,
-  Memory write or online Bandit exploration occurred.
+  been supplied. The running AstrBot/NapCat instance and QQ state were not
+  modified; no QQ send, Tool call, Memory write or online Bandit exploration
+  occurred. Repository-default retirement does not claim already-installed
+  legacy plugins in a running instance were disabled.
 - The canonical S23 template, manifest-only checker and Chinese operator
   Runbook are implemented. A complete synthetic manifest can only produce
   `manifest_ready=true`; the report always keeps
@@ -107,6 +131,17 @@ Last sync: unix:1786706085
   `gpt-5.6-terra` no-send 生成和一次仓库外反馈追加；聚焦前后端测试、
   TypeScript 类型检查与 Web 构建均通过。该工作没有 QQ Output、Memory
   写入、Tool 调用或 Bandit 学习。
+- 修复内测聊天的重连丢消息、初始快照覆盖实时消息、超大 sequence 精度丢失、
+  会话刷新失效和显示乱序问题；同时将 Persona、群聊/私聊规则与短/中/长回答
+  选择接入现有 no-send Agent 纵切。聚焦测试覆盖重连补放、稳定排序、加载竞态、
+  会话切换和 Persona 指令，未新增持久消息队列或第二套控制面。
+- 收紧生成与投递契约：Persona 不再被 `response_profiles=false` 一并关闭，
+  Persona 与 AnswerProfile 在一次模型调用内融合；SHORT/MEDIUM 和单段 LONG
+  保持普通消息，仅合法多段群聊 LONG 可合并转发。相关 Runtime、Output Adapter
+  与兼容层聚焦测试通过。
+- 清理 2.0 仓库默认路径中的 1.0 自动社交行为，停止新 `meme_rate` 默认值与
+  写入口，默认关闭 ReplyPolish 并保留显式 `/image`。该变更只作用于仓库候选，
+  未修改或重启运行中的 AstrBot/NapCat，也未清理既有用户配置和历史数据。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
@@ -130,6 +165,10 @@ Last sync: unix:1786706085
   周期健康刷新器，取得持续健康证据。随后仍需完成候选镜像部署切换和单群
   no-send Shadow。当前思考深度是每个 Endpoint 的固定配置，不是同 Endpoint
   动态切换。
+- 用人工内测校准真实中文群聊中的自然度、措辞节奏和 SHORT/MEDIUM/LONG 边界；
+  当前测试只证明结构接线，不能证明风格质量。
+- 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
+  投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 

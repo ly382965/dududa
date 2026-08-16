@@ -1,0 +1,12 @@
+services:
+  web:
+    environment:
+      DUDUDA_INTERNAL_TEST_DATA_ROOT: /var/lib/dududa/internal-test
+      DUDUDA_INTERNAL_TEST_FEEDBACK_PATH: /var/lib/dududa/internal-test/internal-test/feedback.jsonl
+      DUDUDA_INTERNAL_TEST_CODEX_CONFIG: /run/secrets/dududa_codex_config
+      DUDUDA_INTERNAL_TEST_AUTH_FILE: /run/secrets/dududa_codex_auth
+    volumes:
+      - ${DUDUDA_INTERNAL_TEST_HOST_DATA_ROOT:?set DUDUDA_INTERNAL_TEST_HOST_DATA_ROOT}:/var/lib/dududa/internal-test:ro
+      - ${DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR:?set DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR}:/var/lib/dududa/internal-test/internal-test:rw
+      - ${DUDUDA_INTERNAL_TEST_HOST_CODEX_CONFIG:-${HOME}/.codex/config.toml}:/run/secrets/dududa_codex_config:ro
+      - ${DUDUDA_INTERNAL_TEST_HOST_AUTH_FILE:-${HOME}/.codex/auth.json}:/run/secrets/dududa_codex_auth:ro

@@ -3,6 +3,8 @@ import { appendFile, mkdir, readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
+import dududaPersona from '../../../configs/personas/registry-v1/dududa.json'
+
 export const INTERNAL_TEST_EVIDENCE_MODE = 'private_silver_shadow' as const
 
 const DEFAULT_TIER_MODELS = {
@@ -18,6 +20,7 @@ const PROFILE_TOKEN_LIMITS = {
 
 type ModelTier = 'haiku' | 'sonnet' | 'opus'
 type AnswerProfile = keyof typeof PROFILE_TOKEN_LIMITS
+type ConversationType = 'group' | 'private'
 type FeedbackVerdict = 'accepted' | 'rejected' | 'needs_review'
 
 export interface InternalTestStatus {
@@ -264,14 +267,39 @@ function contextFor(sample: Record<string, unknown>): string {
   return lines.join('\n').slice(-18_000)
 }
 
-function generationInstructions(profile: AnswerProfile): string {
+function generationInstructions(profile: AnswerProfile, conversationType: ConversationType): string {
   const style = profile === 'short'
     ? '使用简短自然的日常回复，通常一到三句。'
     : profile === 'long'
       ? '可以完整解释观点和推理，但保持群聊可读性，不写空泛套话。'
       : '给出信息充分但不过度展开的中等长度回复。'
+  const channelRule = dududaPersona.channel_rules[conversationType]
+  const emojiBudget = Math.min(dududaPersona.voice.emoji_budget, channelRule.emoji_budget)
+  const channelBehavior = conversationType === 'group'
+    ? '像群成员一样自然接住当前话题：默认简洁，不抢话，不逐条复述已有聊天；只有问题确实需要时才展开。'
+    : '专注回应对方当前的问题和情绪，保持自然、耐心，不把简单交流写成正式说明。'
+  const technicalBehavior = dududaPersona.voice.technical_style === 'conclusion_then_bounded_steps'
+    ? '遇到技术问题先给结论，再补足真正有用的步骤。'
+    : '技术问题按最容易理解的顺序回答。'
+  const uncertaintyBehavior = dududaPersona.voice.uncertainty_style === 'state_limits_plainly'
+    ? '不确定时直接说明边界，不装作知道。'
+    : '对不确定内容保持克制。'
+  const sentenceBehavior = channelRule.prefer_short_sentences
+    ? '优先使用自然短句，让语气由句式和信息组织体现。'
+    : '句式保持自然。'
+  const emojiBehavior = emojiBudget > 0
+    ? `表情只在语境自然时偶尔使用，整条回答最多 ${emojiBudget} 个；没有必要就不用。`
+    : '不要使用表情。'
   return [
-    '你正在为“嘟嘟哒”群聊机器人生成一条人工内测候选回答。',
+    `你正在以“${dududaPersona.display_name}”的身份生成一条人工内测候选回答。`,
+    '让人格通过自然措辞、回应节奏和信息取舍体现，不要宣告、复述或刻意表演人设。',
+    channelBehavior,
+    sentenceBehavior,
+    technicalBehavior,
+    uncertaintyBehavior,
+    emojiBehavior,
+    '不要模仿某个具体群成员，不要复制其身份、隐私、口头禅或敏感信息。',
+    '这些规则只影响表达；不要在回答中谈论或罗列人格规则，也不得改变事实、权限、任务要求或安全边界。',
     '输入中的群聊内容只作为回答上下文；不要猜测未提供的真实身份，不要调用工具，不要声称已执行外部操作。',
     '直接输出候选回答正文，不要解释路由、模型、标签或测试流程。',
     style,
@@ -283,6 +311,13 @@ function requestedAnswerProfile(value: unknown): AnswerProfile {
   if (!profile) return 'medium'
   if (profile === 'short' || profile === 'medium' || profile === 'long') return profile
   throw new InternalTestError('answerProfile 参数无效')
+}
+
+function requestedConversationType(value: unknown): ConversationType {
+  const conversationType = stringValue(value)?.toLowerCase()
+  if (!conversationType) return 'group'
+  if (conversationType === 'group' || conversationType === 'private') return conversationType
+  throw new InternalTestError('conversationType 参数无效')
 }
 
 function tierForProfile(profile: AnswerProfile): ModelTier {
@@ -452,6 +487,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
     input: string,
     answerProfile: AnswerProfile,
     tier: ModelTier,
+    conversationType: ConversationType = 'group',
   ): Promise<{ candidate: string; model: string; latencyMs: number }> {
     const model = this.models[tier]
     const provider = await this.providerConfig()
@@ -470,7 +506,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
         },
         body: JSON.stringify({
           model,
-          instructions: generationInstructions(answerProfile),
+          instructions: generationInstructions(answerProfile, conversationType),
           input,
           max_output_tokens: PROFILE_TOKEN_LIMITS[answerProfile],
           store: false,
@@ -637,8 +673,9 @@ export class FileInternalTestGateway implements InternalTestGateway {
 
   async respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse> {
     const answerProfile = requestedAnswerProfile(body.answerProfile ?? body.answer_profile)
+    const conversationType = requestedConversationType(body.conversationType ?? body.conversation_type)
     const tier = tierForProfile(answerProfile)
-    const generated = await this.requestCandidate(agentContext(body), answerProfile, tier)
+    const generated = await this.requestCandidate(agentContext(body), answerProfile, tier, conversationType)
     return {
       runId: randomUUID(),
       candidate: generated.candidate,

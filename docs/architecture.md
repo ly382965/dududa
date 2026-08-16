@@ -7,8 +7,12 @@ site infrastructure.
 
 - AstrBot runtime image and configuration bootstrap.
 - NapCat QQ adapter and local persistent login directories.
-- Dududa Core, Reply Polish and Target Talk owned plugins.
-- Exact third-party plugin installation metadata.
+- Dududa Core and Sub2API Readonly owned plugins.
+- Reply Polish source as a default-off Dududa 1.0 LONG-only compatibility layer.
+- Target Talk source as historical migration/rollback material; it is not mounted by
+  the Dududa 2.0 default Compose path.
+- Exact third-party plugin installation metadata. Automatic Meme Manager, Reread and
+  PokePro behavior is not part of the Dududa 2.0 default installation.
 - The Iris user/group memory-isolation patch.
 - The `icourse-mcp` service and its local cache schema.
 - Persona and MCP templates that contain no account or provider credentials.

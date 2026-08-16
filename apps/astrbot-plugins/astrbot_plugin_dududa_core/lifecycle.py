@@ -143,7 +143,7 @@ class CoreLifecycleMixin:
         group_id = self._group(event) or "private"
         return self.group_state.setdefault(
             group_id,
-            {"mode": "normal", "reply_rate": 100, "meme_rate": 20},
+            {"mode": "normal", "reply_rate": 100},
         )
 
     def _new_confirmation(

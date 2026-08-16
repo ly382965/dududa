@@ -1,5 +1,5 @@
 name: astrbot_plugin_reply_polish
-desc: 把 QQ 群聊长纯文本回复转为合并转发，减少刷屏。
-version: v0.1.0
+desc: Dududa 1.0 长纯文本合并转发兼容层；2.0 默认关闭，只接受显式 LONG AnswerProfile。
+version: v0.2.0
 author: mmdustc
 repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_reply_polish

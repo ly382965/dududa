@@ -969,7 +969,6 @@ def _validate_disabled_fields(state: RuntimeState) -> None:
     if not response_profiles_enabled and (
         state.response_profile_request is not None
         or state.response_plan is not None
-        or state.persona_resolution is not None
     ):
         raise validation_error("response_profile_state_without_feature")
     tools_enabled = state.invocation_options.feature_flags.get("tools", False)
@@ -1409,9 +1408,11 @@ def _validate_response_profile_bindings(state: RuntimeState) -> None:
     social = state.social_decision
     assessment = state.complexity_assessment
     context = state.current_context
+    if persona_resolution is not None:
+        _validate_runtime_persona_resolution(state, persona_resolution)
     if not enabled:
         return
-    evidence = (request, plan, persona_resolution)
+    evidence = (request, plan)
     if any(item is None for item in evidence) and any(
         item is not None for item in evidence
     ):
@@ -1455,7 +1456,6 @@ def _validate_response_profile_bindings(state: RuntimeState) -> None:
         or context is None
     ):
         raise validation_error("runtime_response_profile_evidence_missing")
-    _validate_runtime_persona_resolution(state, persona_resolution)
     if (
         request.actor_digest != actor_digest(state.actor)
         or request.scope_digest != scope_digest(state.conversation_scope)

@@ -465,7 +465,7 @@ class OrchestratorFixture:
 
 
 class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
-    async def test_response_profile_flag_off_preserves_legacy_runtime_shape(
+    async def test_response_profile_flag_off_keeps_persona_in_model_generation(
         self,
     ) -> None:
         fixture = OrchestratorFixture()
@@ -478,8 +478,12 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         assert checkpoint is not None
         self.assertIsNone(checkpoint.state.response_profile_request)
         self.assertIsNone(checkpoint.state.response_plan)
-        self.assertIsNone(checkpoint.state.persona_resolution)
+        self.assertIsNotNone(checkpoint.state.persona_resolution)
         self.assertIsNone(fixture.router.requests[0].response_plan_digest)
+        self.assertIn(
+            '"persona_style"',
+            fixture.router.requests[0].input.parts[0].text,
+        )
 
     async def test_direct_reply_reaches_ready_through_real_static_router(self) -> None:
         fixture = OrchestratorFixture()

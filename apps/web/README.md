@@ -130,6 +130,18 @@ DUDUDA_INTERNAL_TEST_OPUS_MODEL
 `opus -> gpt-5.6-sol`，可通过上述变量覆盖。页面仅执行操作员显式触发的候选生成：不发送 QQ、
 不写 Memory、不调用 Tool、不连接 Bandit；它是人工评价入口，不构成 AstrBot Runtime Shadow 或真实群验证。
 
+若使用 Compose 部署 `5173` 上的正式 WebUI，需要同时启用内测覆盖文件，否则容器不会读取宿主机的
+私有样本与 Provider 配置：
+
+```bash
+export DUDUDA_INTERNAL_TEST_HOST_DATA_ROOT=/绝对路径/脱敏测试数据根
+export DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR="$DUDUDA_INTERNAL_TEST_HOST_DATA_ROOT/internal-test"
+docker compose -f compose.yml -f deploy/compose/compose.internal-test.yml up -d --build --no-deps web
+```
+
+覆盖文件只给 Web 容器挂载只读样本、可写反馈目录以及只读的 Codex 配置/认证文件，不会重启
+NapCat 或 AstrBot。重新构建后，普通聊天与 Agent Console 共用同一个 `5173` 入口。
+
 本入口已运行的聚焦验证命令：
 
 ```bash

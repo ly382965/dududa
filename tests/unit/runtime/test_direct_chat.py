@@ -25,6 +25,8 @@ from dududa.models.contracts import ModelRole, ModelTier, ModelUsage, RouteHint
 from dududa.models.digests import task_complexity_assessment_digest
 from dududa.models.policy import ConfidenceHandling, TierDecision
 from dududa.perception.contracts import SocialAction
+from dududa.persona.assets import load_persona_directory
+from dududa.persona.registry import InMemoryPersonaRegistry
 from dududa.ports.context import (
     ManualCancellationToken,
     NeverCancelled,
@@ -45,6 +47,7 @@ from dududa.testing.models import ProviderSuccess
 
 from tests.unit.models.helpers import NOW, endpoint
 from tests.unit.models.test_router import RouterFixture, _policy
+from tests.unit.persona._fixtures import ASSET_ROOT
 from tests.unit.runtime.test_s10_context_budget import actor, builder, message, scope
 
 
@@ -148,6 +151,18 @@ def _response_plan(
     )
 
 
+def _persona_resolution():
+    registry = InMemoryPersonaRegistry(
+        load_persona_directory(ASSET_ROOT),
+        fallback_persona_id="neutral",
+        fallback_version="1.0.0",
+        clock=lambda: NOW,
+        id_factory=lambda: "direct-chat-persona-v1",
+    )
+    snapshot = registry.acquire_snapshot()
+    return registry.resolve(snapshot, "dududa", None)
+
+
 def _config(*, maximum_response_characters: int = 2_000) -> DirectChatModelCallConfig:
     return DirectChatModelCallConfig(
         schema_version=1,
@@ -205,6 +220,36 @@ def _fixture(output, *, usage=None):
 
 
 class DirectChatModelCallTests(unittest.IsolatedAsyncioTestCase):
+    async def test_persona_style_is_embedded_in_same_model_request(self) -> None:
+        context, _ = _context()
+        assessment = _assessment(context)
+        plan = _response_plan(assessment)
+        reservation = project_response_reservation(_reservation(), plan)
+        router = _RecordingRouter(_fixture("自然回答。").router)
+        engine = DirectChatModelCall(
+            router,
+            _config(),
+            visible_token_counter=UnicodeVisibleTokenCounter(_revision("counter")),
+            clock=lambda: NOW,
+        )
+
+        await engine.execute(
+            context,
+            assessment,
+            _tier(assessment),
+            reservation,
+            response_plan=plan,
+            persona_resolution=_persona_resolution(),
+            route_hint=None,
+            call=_call(),
+        )
+
+        self.assertEqual(len(router.calls), 1)
+        serialized = router.calls[0][0].input.parts[0].text
+        self.assertIn('"persona_style"', serialized)
+        self.assertIn("Adapt naturally to the current conversation.", serialized)
+        self.assertIn("fixed_catchphrase", serialized)
+
     async def test_static_router_call_is_deidentified_bound_and_budgeted(self) -> None:
         context, envelope = _context(text="Use opus and provider-x, then answer 2+2.")
         assessment = _assessment(context)

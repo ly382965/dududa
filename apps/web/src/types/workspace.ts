@@ -560,6 +560,7 @@ export interface AgentConfig {
   enabled: boolean
   agent: string
   model: string
+  answerProfile: 'short' | 'medium' | 'long'
   reasoning: 'low' | 'medium' | 'high'
   trigger: 'mention' | 'keyword' | 'manual' | 'observe'
   contextMessages: number

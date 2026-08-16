@@ -6,25 +6,30 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import Node, Nodes, Plain
 from astrbot.api.star import Context, Star, register
-from dududa.compatibility.reply_polish import split_long_piece, split_text
+from dududa.compatibility.reply_polish import (
+    ANSWER_PROFILE_EVENT_KEY,
+    should_merge_forward,
+    split_long_piece,
+    split_text,
+)
 
 
 @register(
     "astrbot_plugin_reply_polish",
     "mmdustc",
-    "把 QQ 群聊长纯文本回复转为合并转发",
-    "0.1.0",
+    "Dududa 1.0 长文本合并转发兼容层（2.0 默认关闭）",
+    "0.2.0",
 )
 class ReplyPolishPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         config = config or {}
-        self.min_chars = int(config.get("min_chars", 50))
+        self.min_chars = int(config.get("min_chars", 600))
         self.chunk_chars = int(config.get("chunk_chars", 520))
         self.max_nodes = int(config.get("max_nodes", 8))
         self.bot_name = str(config.get("bot_name", "AstrBot"))
         self.bot_uin = str(config.get("bot_uin", "0"))
-        self.enable_forward = bool(config.get("enable_forward", True))
+        self.enable_forward = bool(config.get("enable_forward", False))
 
     @filter.on_decorating_result()
     async def forward_long_plain_reply(self, event: AstrMessageEvent) -> None:
@@ -44,7 +49,8 @@ class ReplyPolishPlugin(Star):
             plain_parts.append(comp.text or "")
 
         text = "".join(plain_parts).strip()
-        if len(text) <= self.min_chars:
+        answer_profile = event.get_extra(ANSWER_PROFILE_EVENT_KEY, None)
+        if not should_merge_forward(answer_profile, len(text), self.min_chars):
             return
 
         chunks = list(self._split_text(text, self.chunk_chars, self.max_nodes))

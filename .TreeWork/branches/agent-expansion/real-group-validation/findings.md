@@ -21,6 +21,24 @@ Branch: real-group-validation
   脱敏、browser-safe Demo projection，为人工浏览、候选生成和评价提供入口，
   不拥有 Router、权限、Output、Memory、Tool 或 Bandit 决策，因此不是第二套
   Runtime 控制面。
+- Workspace SSE 采用单调 ID 加最近 512 条内存事件的有限补放即可解决本轮
+  重连丢失；无需把内测 Web 扩展成持久消息队列。`Last-Event-ID` 可用时按序
+  补放，不可用时回到权威 Snapshot/History 的 `workspace.refresh`。
+- 客户端消息顺序由 `timestampMs`、无损十进制 sequence 和稳定消息 ID 共同
+  决定；sequence 不再转成 JavaScript `Number`，因此大于 `2^53` 的 NapCat
+  序号不会因精度丢失而乱序。初始 Snapshot 期间的实时事件必须在合并后重放。
+- Persona 与 AnswerProfile 保持正交且在同一次生成中自然融合：Persona 复用
+  版本化配置并按群聊/私聊调整措辞、节奏、关注点和信息取舍；AnswerProfile
+  约束回答形态，Web 内测映射再选择 Luna/Terra/Sol。`response_profiles` 关闭
+  时不得连带关闭 Persona。模型不得复述人设、自我介绍、套固定口号、机械追加
+  表情、模仿具体群成员，或改变事实、权限、任务要求和既有安全边界。
+- 合并转发是 Output Adapter 的呈现决策，不是 LONG 的默认同义词。SHORT、
+  MEDIUM 与单段 LONG 都是普通消息；只有独立校验通过的显式 LONG，同时满足
+  群聊、至少两个纯文本 part、无 target、无附件时才可合并转发。
+- Dududa 1.0 自动社交插件不再属于 2.0 默认行为：Meme Manager、Reread、
+  PokePro 从默认插件集合退出，Target Talk 从默认 Compose 退出，ReplyPolish
+  仅作为默认关闭的 LONG-only 兼容层保留。显式 `/image` 是图片生成能力，
+  不是自动表情包，应继续保留。
 - 操作员显式生成一条真实 Provider 候选，只证明 Web Gateway 的 `no_send`
   纵切可用。该请求没有经过 AstrBot Provider、Dududa Runtime、Connector 或
   Rollout Bridge，不能称为 AstrBot Runtime Shadow、Provider Conformance
@@ -68,6 +86,21 @@ Branch: real-group-validation
 - `#/internal-test` 在没有 NapCat 账号时也可打开，只读取既有脱敏 Demo
   projection。候选响应报告 tier、model、AnswerProfile、延迟和零副作用计数；
   人工反馈追加到配置的仓库外 JSONL，且不持久化候选正文。
+- `/api/workspace/events` SSE 帧现在携带事件 ID，支持基于
+  `Last-Event-ID` 的有界重连补放；缓存无法覆盖请求区间时发出
+  `workspace.refresh`，Snapshot/History 仍是完整状态的权威来源。
+- Web Agent 请求新增 `conversationType` 和显式 `answerProfile`；控制台提供
+  短/中/长选择，并把 Persona channel rule 与 Luna/Terra/Sol 映射交给既有
+  no-send Gateway 消费，不改变 Output、Memory、Tool 或 Bandit 契约。
+- Runtime 的 `DeliveryRequestBuilder` 只为合法显式 LONG 授予
+  `allow_forward_bundle`；AstrBot Output Adapter 再独立校验档位有效性、群聊、
+  多纯文本 part、无 target 和无附件，任一条件不满足都退回普通消息。
+- Persona 解析不再受 `response_profiles` feature flag 支配；DirectChat 在
+  同一个模型请求中携带可选 `response_plan` 与 `persona_style`，让表达风格与
+  回答形态共同生成，而不是由后处理机械拼接人格。
+- 默认 Compose/插件锁不再接入 Meme Manager、Reread、PokePro 或 Target Talk；
+  新群初始化不再生成 `meme_rate`，管理命令不再写入它。ReplyPolish 仍以
+  默认关闭的兼容插件存在，`/image` 命令仍由 Core 显式提供。
 - The planned readiness artifact contains references/digests only. Real account,
   group and test-user mappings remain in a private local binding store.
 - The offline checker intentionally distinguishes structural completeness from
@@ -106,6 +139,17 @@ Branch: real-group-validation
 - The running AstrBot/NapCat stack is not the S19 derived candidate and has not
   been authorized for replacement. S23 needs an explicit deployment window and
   a rollback owner before mutation.
+- 512 条 SSE 重放是断线恢复窗口而非持久日志；服务进程重启或客户端落后超过
+  窗口时只能刷新 Snapshot/History。当前修复减少可观察丢失，不构成跨进程
+  exactly-once 保证。
+- Persona 接线只证明配置、channel rule 和回答档位进入生成链路；真实中文群聊
+  的自然度、群体情境适应和长短回答边界仍需人工内测反馈，不能声明已充分校准。
+- Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
+  上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
+  尚未完成。
+- 本轮只改变仓库候选的默认安装与代码路径，没有修改或重启运行中的
+  AstrBot/NapCat。旧运行目录若已安装旧插件，仍可能保留其历史配置或行为；
+  需要正式部署/迁移窗口后才能确认实例状态。
 - 可解析的 Evidence JSON 只证明工程契约成立，不证明字段来自真实
   Conformance 执行。当前聚焦测试仍使用 Fake AstrBot Provider 和固定
   Evidence fixture；健康刷新实现已经存在，但运行中 AstrBot 未启用，正式

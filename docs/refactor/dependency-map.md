@@ -101,7 +101,7 @@ main.py
 Policy and persistence code therefore depend upward on AstrBot types. This is
 the opposite of the intended adapter-to-core dependency direction.
 
-### Target Talk
+### Target Talk（Dududa 1.0 历史审计基线）
 
 ```text
 target_talk/main.py
@@ -110,9 +110,10 @@ target_talk/main.py
   -> process-local history and cooldown dictionaries
 ```
 
-The direct internal import creates an AstrBot upgrade risk. Deterministic
-filters and Social Decision rules cannot currently be tested without replacing
-AstrBot modules.
+The direct internal import created an AstrBot upgrade risk. The plugin source is
+retained as migration material, but Target Talk no longer belongs to the Dududa
+2.0 default Compose or inbound path; governed Probe/Proactive Runtime owns the
+future behavior.
 
 ### Reply Polish
 

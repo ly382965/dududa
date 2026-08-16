@@ -7,6 +7,7 @@ import { WebSocket } from 'ws'
 import { createDududaServer } from './app'
 import type { ControlPlaneClient } from './control-plane'
 import { OneBotHub, type HubOptions } from './onebot-hub'
+import type { WorkspaceEvent } from '../src/types/workspace'
 
 const token = 'test-only-onebot-token-32-characters'
 const selfId = '123456789'
@@ -92,6 +93,66 @@ async function waitFor(predicate: () => Promise<boolean>, timeoutMs = 2_000): Pr
     await new Promise((resolve) => setTimeout(resolve, 20))
   }
   throw new Error('condition timed out')
+}
+
+async function readSseUntil(
+  url: string,
+  headers: Record<string, string>,
+  predicate: (body: string) => boolean,
+): Promise<string> {
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout(2_000) })
+  expect(response.status).toBe(200)
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('SSE response body is unavailable')
+  const decoder = new TextDecoder()
+  let body = ''
+  try {
+    while (!predicate(body)) {
+      const { done, value } = await reader.read()
+      if (done) break
+      body += decoder.decode(value, { stream: true })
+    }
+    return body
+  } finally {
+    await reader.cancel().catch(() => undefined)
+  }
+}
+
+function workspaceMessageEvent(messageId: number): WorkspaceEvent {
+  const accountId = `qq-${selfId}`
+  const conversationId = `${accountId}:group:345678901`
+  return {
+    type: 'message.created',
+    conversation: {
+      id: conversationId,
+      accountId,
+      type: 'group',
+      peerId: '345678901',
+      name: '真实测试群',
+      avatar: '',
+      lastMessage: `消息 ${messageId}`,
+      lastMessageAt: '10:00',
+      unread: 0,
+      pinned: false,
+      muted: false,
+      updatedAt: messageId,
+    },
+    message: {
+      id: `${accountId}:${conversationId}:${messageId}`,
+      accountId,
+      conversationId,
+      messageId: String(messageId),
+      messageSeq: String(messageId),
+      senderId: '234567890',
+      senderName: '测试成员',
+      senderAvatar: '',
+      timestamp: '10:00',
+      timestampMs: messageId,
+      content: `消息 ${messageId}`,
+      segments: [{ type: 'text', text: `消息 ${messageId}` }],
+      mine: false,
+    },
+  }
 }
 
 function deferred<T>() {
@@ -502,6 +563,32 @@ describe('Dududa NapCat gateway', () => {
     const response = await fetch(`${baseUrl}/api/workspace`)
 
     expect(response.status).toBe(200)
+  })
+
+  it('replays missed workspace events in order after an SSE reconnect', async () => {
+    const { hub, server, baseUrl } = await startTestServer()
+    servers.push(server)
+
+    hub.emit('workspace-event', workspaceMessageEvent(1))
+    const first = await readSseUntil(
+      `${baseUrl}/api/events`,
+      { 'Last-Event-ID': '0' },
+      (body) => body.includes('"messageId":"1"'),
+    )
+    expect(first).toContain('id: 1')
+    expect(first).not.toContain('"type":"workspace.refresh"')
+
+    hub.emit('workspace-event', workspaceMessageEvent(2))
+    hub.emit('workspace-event', workspaceMessageEvent(3))
+    const replayed = await readSseUntil(
+      `${baseUrl}/api/events`,
+      { 'Last-Event-ID': '1' },
+      (body) => body.includes('"messageId":"3"'),
+    )
+    expect(replayed).not.toContain('"messageId":"1"')
+    expect(replayed).toContain('"messageId":"2"')
+    expect(replayed).toContain('"messageId":"3"')
+    expect(replayed.indexOf('id: 2')).toBeLessThan(replayed.indexOf('id: 3'))
   })
 
   it('maps account identity and proxies typed control-plane queries and commands', async () => {

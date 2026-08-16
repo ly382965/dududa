@@ -27,8 +27,8 @@ S23；它仍缺环境集成工程和外部输入。下一次 revision 将先加�
 | Current path | Target path | Migration mode | Compatibility requirement |
 | --- | --- | --- | --- |
 | `plugins/astrbot_plugin_dududa_core/` | `apps/astrbot-plugins/astrbot_plugin_dududa_core/` | S17 moved；S22 alias removed | Container target and plugin ID remain unchanged |
-| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 moved；S22 alias removed | Keep global result hook until output contracts cut over |
-| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 moved；S22 alias removed | Keep plugin ID, config path, and event behavior |
+| `plugins/astrbot_plugin_reply_polish/` | `apps/astrbot-plugins/astrbot_plugin_reply_polish/` | S17 moved；S22 alias removed | Source remains; default-off LONG-only compatibility hook is not the 2.0 output path |
+| `plugins/astrbot_plugin_target_talk/` | `apps/astrbot-plugins/astrbot_plugin_target_talk/` | S17 moved；S22 alias removed | Source/config remain for migration; Target Talk no longer participates in the default Compose or Dududa 2.0 inbound execution path |
 | New core | `packages/dududa-agent/` | Additive | Install in CI and image before any adapter import |
 | `services/icourse-mcp/` | `services/mcp/icourse/` | S17 moved；S22 alias removed | Keep package and CLI names; update every path consumer together |
 | `services/unified-mcp-worker/` | `services/mcp/unified-worker/` | S17 moved；S22 alias removed | Keep distribution/import name and isolated worker contract |
@@ -148,11 +148,14 @@ behavior without exposing credentials.
 | --- | --- | --- |
 | Plain-text split functions | Pure output formatting utility | Extract with property/golden tests |
 | QQ Node/Nodes creation | AstrBot/QQ Output Adapter | Keep framework types outside core |
-| Global decoration hook | Compatibility plugin | Remains until all affected plugins are understood |
+| Global decoration hook | Compatibility plugin | Default disabled; only explicit LONG may use the legacy hook |
 | Threshold/config parsing | Typed adapter config | Preserve existing schema keys |
 
-The final design may still keep ReplyPolish as a separate plugin if operators
-want global QQ behavior. It is not automatically merged into OC Renderer.
+ReplyPolish is a Dududa 1.0 output compatibility layer, not an OC Renderer. SHORT,
+MEDIUM and missing/unknown Profile always use ordinary messages. LONG also remains
+ordinary when it has one part; the 2.0 AstrBot Output Adapter only builds merged-forward
+nodes for a group LONG response that actually has at least two pure-text parts and no
+target user or attachment.
 
 ## Target Talk Mapping
 
@@ -165,9 +168,10 @@ want global QQ behavior. It is not automatically merged into OC Renderer.
 | Provider selection and prompt | Model Router `DIRECT_CHAT` role | Inject gateway and structured context |
 | Direct `event.send()` | Runtime response -> Output Adapter | Preserve timing/order in selective cutover |
 
-The plugin remains separately loadable until its global event contract and
-rollback flag are proven. Its current behavior is not the complete Social
-Decision implementation.
+The source and old configuration remain available as migration and rollback
+material, but the plugin no longer enters the default Compose or Dududa 2.0 inbound
+path. S15E Governed Probe / proactive Runtime owns the future exploration role and
+stays default-off; old Target Talk behavior is not the Social Decision authority.
 
 ## iCourse Service Mapping
 
@@ -215,6 +219,12 @@ third-party backend; its code and uncertain license are not copied into the MIT
 core package. Missing Iris license evidence is a v2 cutover blocker, not a fact
 that S17 may invent.
 
+The current v1 lock no longer installs Meme Manager, Reread or PokePro. Iris,
+ChatSummary and Better Reminder remain only as migration sources or explicit
+Capabilities; they do not own the Dududa 2.0 Memory, Scheduler, Social Decision or
+Output control plane. Removing an item from the lock does not uninstall an already
+running private AstrBot instance or delete its data.
+
 ## Data Migration Map
 
 | Current data | Future handling | Rule |
@@ -228,6 +238,9 @@ that S17 may invent.
 | NapCat login/config | Remains operator-private | Never migrate through Agent package |
 
 ## Legacy Removal Checklist
+
+退出默认安装、默认 Compose 或默认执行链，与物理删除源码、配置和持久数据是两个独立动作；
+本轮只完成前者，并且没有修改或重启运行中的 AstrBot/NapCat。
 
 A legacy module or path may be removed only when all are true:
 

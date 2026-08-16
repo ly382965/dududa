@@ -5,7 +5,13 @@ from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
+from astrbot_plugin_dududa_core.adapters.output import ASTRBOT_OUTPUT_REVISION
 from dududa.contracts.binding import NegotiatedBindingReceipt
+from dududa.contracts.canonical import canonical_digest
+from dududa.domain.content import (
+    ResponseProfileValidationResult,
+    ValidatedFinalResponse,
+)
 from dududa.domain.delivery import (
     DeliveryConstraints,
     DeliveryPartReceipt,
@@ -33,7 +39,6 @@ from dududa.security.authorization import (
 )
 from dududa.security.content_safety import DefaultContentSafetyPolicy
 
-from astrbot_plugin_dududa_core.adapters.output import ASTRBOT_OUTPUT_REVISION
 from tests.unit.models.helpers import NOW
 from tests.unit.runtime.test_composition import (
     _composer,
@@ -143,6 +148,70 @@ class DeliveryTests(unittest.IsolatedAsyncioTestCase):
         decision = await self.policy.decide(plan.authorization_request, call=_call())
         return self.builder.finalize(plan, decision), plan, decision
 
+    def _profiled_final(
+        self,
+        selected_profile: str,
+        *,
+        text: str | None = None,
+    ) -> ValidatedFinalResponse:
+        response = self.final.response
+        if text is not None:
+            first = response.blocks[0]
+            response = replace(
+                response,
+                blocks=(
+                    replace(first, content=replace(first.content, text=text)),
+                    *response.blocks[1:],
+                ),
+            )
+        plan_digest = DigestString(f"plan:{selected_profile}")
+        response = replace(
+            response,
+            render_metadata=replace(
+                response.render_metadata,
+                response_plan_digest=plan_digest,
+            ),
+        )
+        rendered_digest = canonical_digest(response, domain="response:final:v1")
+        visible_characters = len(text or "你好，abcdef")
+        profile_validation = ResponseProfileValidationResult(
+            1,
+            True,
+            plan_digest,
+            rendered_digest,
+            selected_profile,
+            visible_characters,
+            visible_characters,
+            (),
+            (),
+            (),
+            ("response_profile_validation_passed",),
+            _revision("visible-token-counter"),
+            _revision("profile-validator"),
+        )
+        return ValidatedFinalResponse(
+            1,
+            response,
+            replace(self.final.render_validation, rendered_digest=rendered_digest),
+            replace(self.final.content_safety, content_digest=rendered_digest),
+            profile_validation,
+        )
+
+    def _forward_capable_builder(self) -> DeliveryRequestBuilder:
+        return DeliveryRequestBuilder(
+            replace(
+                self.builder.config,
+                constraints=replace(
+                    self.builder.config.constraints,
+                    max_parts=16,
+                    max_bytes_per_part=4_096,
+                    allow_forward_bundle=True,
+                ),
+            ),
+            self.policy,
+            clock=lambda: NOW,
+        )
+
     async def test_builder_binds_authorization_and_utf8_part_plan(self) -> None:
         request, plan, _ = await self._request()
 
@@ -170,6 +239,35 @@ class DeliveryTests(unittest.IsolatedAsyncioTestCase):
             policy_snapshot_id="policy-v1",
         )
         self.assertEqual(repeated.intent, plan.intent)
+
+    async def test_only_validated_long_profile_gets_forward_bundle_eligibility(
+        self,
+    ) -> None:
+        builder = self._forward_capable_builder()
+        cases = (
+            (self._profiled_final("short", text="短回答" * 200), False),
+            (self._profiled_final("medium", text="中回答" * 200), False),
+            (self._profiled_final("long", text="长回答" * 200), True),
+            (self.final, False),
+        )
+
+        for response, expected in cases:
+            with self.subTest(
+                profile=(
+                    response.profile_validation.selected_profile
+                    if response.profile_validation is not None
+                    else "legacy"
+                )
+            ):
+                plan = builder.plan(
+                    run_id="run-1",
+                    response=response,
+                    actor=self.actor,
+                    scope=self.scope,
+                    reply_to=self.context.current_message_reference,
+                    policy_snapshot_id="policy-v1",
+                )
+                self.assertIs(plan.intent.constraints.allow_forward_bundle, expected)
 
     async def test_unissued_or_changed_authorization_is_rejected(self) -> None:
         _, plan, decision = await self._request()

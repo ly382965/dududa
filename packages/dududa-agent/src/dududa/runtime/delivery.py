@@ -147,6 +147,15 @@ class DeliveryRequestBuilder:
             raise validation_error("invalid_delivery_plan_response")
         if not isinstance(actor, Actor) or not isinstance(scope, ConversationScope):
             raise validation_error("invalid_delivery_plan_identity")
+        constraints = replace(
+            self._config.constraints,
+            allow_forward_bundle=(
+                self._config.constraints.allow_forward_bundle
+                and response.profile_validation is not None
+                and response.profile_validation.valid
+                and response.profile_validation.selected_profile == "long"
+            ),
+        )
         payload_digest = delivery_payload_digest(response)
         delivery_id = str(
             canonical_digest(
@@ -165,7 +174,7 @@ class DeliveryRequestBuilder:
                 {
                     "delivery_id": delivery_id,
                     "payload_digest": payload_digest,
-                    "constraints": self._config.constraints,
+                    "constraints": constraints,
                     "adapter_binding": self._config.adapter_binding,
                 },
                 domain="delivery:request-plan:v1",
@@ -176,7 +185,7 @@ class DeliveryRequestBuilder:
             response,
             None,
             reply_to=reply_to,
-            constraints=self._config.constraints,
+            constraints=constraints,
             payload_digest=payload_digest,
         )
         intent = DeliveryAuthorizationIntent(
@@ -189,7 +198,7 @@ class DeliveryRequestBuilder:
             outcome=Outcome.RESPONSE,
             scope=scope,
             reply_to=reply_to,
-            constraints=self._config.constraints,
+            constraints=constraints,
             part_intents=parts,
             attachment_access=(),
             adapter_binding=self._config.adapter_binding,

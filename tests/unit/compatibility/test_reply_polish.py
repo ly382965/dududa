@@ -4,10 +4,22 @@ import random
 import string
 import unittest
 
-from dududa.compatibility.reply_polish import split_long_piece, split_text
+from dududa.compatibility.reply_polish import (
+    should_merge_forward,
+    split_long_piece,
+    split_text,
+)
 
 
 class ReplyPolishCompatibilityTests(unittest.TestCase):
+    def test_only_explicit_long_above_threshold_uses_merged_forward(self) -> None:
+        self.assertTrue(should_merge_forward("long", 601, 600))
+        self.assertFalse(should_merge_forward("long", 600, 600))
+        self.assertFalse(should_merge_forward("short", 2_000, 600))
+        self.assertFalse(should_merge_forward("medium", 2_000, 600))
+        self.assertFalse(should_merge_forward(None, 2_000, 600))
+        self.assertFalse(should_merge_forward("unknown", 2_000, 600))
+
     def test_paragraph_sentence_and_tail_golden(self) -> None:
         text = "第一段很短。\n\n第二段也不长！\n\n" + "尾" * 30
         self.assertEqual(

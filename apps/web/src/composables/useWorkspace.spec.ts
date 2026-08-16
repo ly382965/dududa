@@ -173,6 +173,189 @@ describe('useWorkspace account-scoped state', () => {
     wrapper.unmount()
   })
 
+  it('orders cached and history messages by timestamp, full-precision sequence, and identity', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      capabilities: {},
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const newerWithoutSequence = {
+      ...message(target),
+      id: `${target.id}:newer-without-sequence`,
+      messageId: 'newer-without-sequence',
+      messageSeq: undefined,
+      sequence: undefined,
+      timestampMs: 20_000,
+    }
+    const olderWithoutSequence = {
+      ...message(target),
+      id: `${target.id}:older-without-sequence`,
+      messageId: 'older-without-sequence',
+      messageSeq: undefined,
+      sequence: undefined,
+      timestampMs: 5_000,
+    }
+    const lowerLargeSequence = {
+      ...message(target),
+      id: `${target.id}:large-sequence-low`,
+      messageId: '9007199254740992',
+      messageSeq: '9007199254740992',
+      sequence: '9007199254740992',
+      timestampMs: 10_000,
+    }
+    const higherLargeSequence = {
+      ...message(target),
+      id: `${target.id}:large-sequence-high`,
+      messageId: '9007199254740993',
+      messageSeq: '9007199254740993',
+      sequence: '9007199254740993',
+      timestampMs: 10_000,
+    }
+    const adapter = {
+      load: vi.fn(async () => snapshot),
+      loadCachedMessages: vi.fn(async () => [newerWithoutSequence, higherLargeSequence]),
+      loadHistory: vi.fn(async () => ({
+        messages: [olderWithoutSequence, lowerLargeSequence, { ...higherLargeSequence }],
+        hasMoreBefore: false,
+        hasMoreAfter: false,
+      })),
+      loadDraft: vi.fn(async () => undefined),
+      markRead: vi.fn(async () => undefined),
+      cacheMessages: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await flushPromises()
+
+    expect(workspace.chatMessages.value.map((item) => item.id)).toEqual([
+      olderWithoutSequence.id,
+      lowerLargeSequence.id,
+      higherLargeSequence.id,
+      newerWithoutSequence.id,
+    ])
+    wrapper.unmount()
+  })
+
+  it('replays realtime messages received while the initial workspace snapshot is loading', async () => {
+    const owner = account('qq-111111111')
+    const existingConversation = conversation(owner, '345678901')
+    const realtimeConversation = conversation(owner, '456789012')
+    realtimeConversation.lastMessage = 'Snapshot 在途时收到的新消息'
+    const realtimeMessage = {
+      ...message(realtimeConversation),
+      id: `${realtimeConversation.id}:202`,
+      messageId: '202',
+      messageSeq: '202',
+      sequence: '202',
+      timestampMs: 20_000,
+      content: 'Snapshot 在途时收到的新消息',
+    }
+    const initialSnapshot = deferred<WorkspaceSnapshot>()
+    let eventHandler: ((event: WorkspaceEvent) => void) | undefined
+    const adapter = {
+      load: vi.fn(() => initialSnapshot.promise),
+      loadCachedMessages: vi.fn(async () => []),
+      loadHistory: vi.fn(async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false })),
+      loadDraft: vi.fn(async () => undefined),
+      markRead: vi.fn(async () => undefined),
+      cacheMessages: vi.fn(async () => undefined),
+      subscribe: vi.fn((handler: (event: WorkspaceEvent) => void) => {
+        eventHandler = handler
+        return () => undefined
+      }),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+
+    eventHandler?.({ type: 'message.created', conversation: realtimeConversation, message: realtimeMessage })
+    initialSnapshot.resolve({
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      capabilities: {},
+      conversations: [existingConversation],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    })
+    await flushPromises()
+    await flushPromises()
+
+    expect(workspace.conversations.value.map((item) => item.id)).toContain(realtimeConversation.id)
+    workspace.selectConversation(realtimeConversation.id)
+    expect(workspace.chatMessages.value).toContainEqual(realtimeMessage)
+    wrapper.unmount()
+  })
+
+  it('selects and loads the first valid conversation when a refresh removes the active one', async () => {
+    const owner = account('qq-111111111')
+    const removedConversation = conversation(owner, '345678901')
+    const remainingConversation = conversation(owner, '456789012')
+    const firstSnapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      capabilities: {},
+      conversations: [removedConversation],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const secondSnapshot: WorkspaceSnapshot = {
+      ...firstSnapshot,
+      conversations: [remainingConversation],
+      messages: {},
+    }
+    const adapter = {
+      load: vi.fn()
+        .mockResolvedValueOnce(firstSnapshot)
+        .mockResolvedValueOnce(secondSnapshot),
+      loadCachedMessages: vi.fn(async () => []),
+      loadHistory: vi.fn(async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false })),
+      loadDraft: vi.fn(async () => undefined),
+      markRead: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter, removedConversation.id)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await flushPromises()
+
+    await workspace.load()
+
+    expect(workspace.selectedConversationId.value).toBe(remainingConversation.id)
+    expect(workspace.selectedConversation.value).toEqual(expect.objectContaining({ id: remainingConversation.id }))
+    expect(adapter.loadHistory).toHaveBeenLastCalledWith(remainingConversation, { limit: 50 })
+    wrapper.unmount()
+  })
+
   it('loads and sends only opaque custom-face handles for the selected conversation', async () => {
     const owner = account('qq-111111111')
     const target = conversation(owner, '345678901')
@@ -580,9 +763,9 @@ describe('useWorkspace account-scoped state', () => {
     const respond = vi.fn(async () => ({
       runId: 'run-internal-1',
       candidate: '这是只保留在控制台中的候选回答。',
-      tier: 'sonnet' as const,
-      model: 'gpt-5.6-terra',
-      answerProfile: 'medium' as const,
+      tier: 'haiku' as const,
+      model: 'gpt-5.6-luna',
+      answerProfile: 'short' as const,
       latencyMs: 321,
       generatedAt: '2026-08-16T12:00:00.000Z',
       outputCalls: 0 as const,
@@ -614,14 +797,21 @@ describe('useWorkspace account-scoped state', () => {
     await flushPromises()
 
     expect(workspace.agentAvailable.value).toBe(true)
+    expect(workspace.selectedConfig.value).toMatchObject({ answerProfile: 'medium', model: 'gpt-5.6-terra' })
+    workspace.setAnswerProfile('long')
+    expect(workspace.selectedConfig.value).toMatchObject({ answerProfile: 'long', model: 'gpt-5.6-sol' })
+    workspace.setAnswerProfile('short')
+    expect(workspace.selectedConfig.value).toMatchObject({ answerProfile: 'short', model: 'gpt-5.6-luna' })
     expect(snapshot.sessions).toEqual([])
     await workspace.sendAgentPrompt('总结当前讨论')
 
     expect(respond).toHaveBeenCalledWith({
       conversationId: target.id,
       conversationName: target.name,
+      conversationType: 'group',
       prompt: '总结当前讨论',
       messages: [{ senderName: contextMessage.senderName, content: contextMessage.content, mine: false }],
+      answerProfile: 'short',
     })
     expect(workspace.conversationSessions.value).toHaveLength(1)
     expect(workspace.agentMessages.value.map((item) => item.role)).toEqual(['operator', 'assistant'])
@@ -631,7 +821,7 @@ describe('useWorkspace account-scoped state', () => {
     expect(workspace.selectedRun.value).toMatchObject({
       id: 'run-internal-1',
       status: 'completed',
-      model: 'gpt-5.6-terra',
+      model: 'gpt-5.6-luna',
     })
     expect(sendMessage).not.toHaveBeenCalled()
     wrapper.unmount()

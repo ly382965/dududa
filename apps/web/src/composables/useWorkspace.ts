@@ -35,6 +35,7 @@ const defaultConfig = (): AgentConfig => ({
   enabled: false,
   agent: '未连接',
   model: '未连接',
+  answerProfile: 'medium',
   reasoning: 'medium',
   trigger: 'manual',
   contextMessages: 30,
@@ -66,6 +67,35 @@ function emptySnapshot(): WorkspaceSnapshot {
 
 function messageIdentity(message: ChatMessage): string {
   return message.id
+}
+
+function normalizedMessageSequence(message: ChatMessage): string | undefined {
+  const value = [message.messageSeq, message.sequence].find((candidate) => /^\d{1,24}$/.test(candidate ?? ''))
+  return value?.replace(/^0+(?=\d)/, '')
+}
+
+function compareMessageSequence(left: string | undefined, right: string | undefined): number {
+  if (left === right) return 0
+  if (left === undefined) return -1
+  if (right === undefined) return 1
+  if (left.length !== right.length) return left.length - right.length
+  return left < right ? -1 : 1
+}
+
+function compareMessages(left: ChatMessage, right: ChatMessage): number {
+  const leftTimestamp = Number.isFinite(left.timestampMs) ? left.timestampMs as number : 0
+  const rightTimestamp = Number.isFinite(right.timestampMs) ? right.timestampMs as number : 0
+  if (leftTimestamp !== rightTimestamp) return leftTimestamp - rightTimestamp
+
+  const sequenceOrder = compareMessageSequence(
+    normalizedMessageSequence(left),
+    normalizedMessageSequence(right),
+  )
+  if (sequenceOrder !== 0) return sequenceOrder
+
+  const leftId = messageIdentity(left)
+  const rightId = messageIdentity(right)
+  return leftId === rightId ? 0 : leftId < rightId ? -1 : 1
 }
 
 export function useWorkspace(
@@ -125,6 +155,8 @@ export function useWorkspace(
   let unsubscribe: (() => void) | undefined
   let colorSchemeQuery: MediaQueryList | undefined
   let messageLoadVersion = 0
+  let initialLoadComplete = false
+  const initialWorkspaceEvents: WorkspaceEvent[] = []
   const draftRevisions = new Map<string, number>()
   const updateSystemTheme = (event: MediaQueryListEvent | MediaQueryList) => (systemDark.value = event.matches)
 
@@ -194,12 +226,13 @@ export function useWorkspace(
     const config = conversationId
       ? (snapshot.value.configs[conversationId] ??= defaultConfig())
       : fallbackConfig.value
+    config.answerProfile ??= 'medium'
     if (!agentAvailable.value) return config
     return {
       ...config,
       enabled: true,
       agent: '内测 Runtime',
-      model: agentRuntimeStatus.value?.modelMapping?.sonnet ?? '静态三档路由',
+      model: modelForAnswerProfile(config.answerProfile),
       longTermMemory: false,
       tools: { course: false, web: false, groupFiles: false, shell: false },
       sendPermission: 'deny',
@@ -242,6 +275,11 @@ export function useWorkspace(
     return value.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
   }
 
+  function modelForAnswerProfile(answerProfile: AgentConfig['answerProfile']): string {
+    const tier = answerProfile === 'short' ? 'haiku' : answerProfile === 'long' ? 'opus' : 'sonnet'
+    return agentRuntimeStatus.value?.modelMapping?.[tier] ?? '静态三档路由'
+  }
+
   function createAgentSession(): AgentSession | undefined {
     const conversation = selectedConversation.value
     if (!conversation) {
@@ -259,7 +297,7 @@ export function useWorkspace(
       updatedAt: clock(),
       status: 'idle',
       agent: '内测 Runtime',
-      model: agentRuntimeStatus.value?.modelMapping?.sonnet ?? '静态三档路由',
+      model: selectedConfig.value.model,
     }
     localAgentSessions.value.unshift(session)
     localAgentMessages.value[session.id] = []
@@ -284,11 +322,7 @@ export function useWorkspace(
         merged.set(messageIdentity(message), message)
       }
     }
-    let messages = [...merged.values()].sort((left, right) => {
-      const leftSequence = Number(left.messageSeq ?? left.sequence)
-      const rightSequence = Number(right.messageSeq ?? right.sequence)
-      return Number.isFinite(leftSequence) && Number.isFinite(rightSequence) ? leftSequence - rightSequence : 0
-    })
+    let messages = [...merged.values()].sort(compareMessages)
     if (messages.length > 5_000) {
       messages = direction === 'before' ? messages.slice(0, 5_000) : messages.slice(-5_000)
       const history = historyStates.value[conversationId]
@@ -352,7 +386,7 @@ export function useWorkspace(
     }
     snapshot.value = next
     const stillSelected = next.conversations.some((item) => item.id === selectedConversationId.value)
-    if (!stillSelected && !selectedConversationId.value) selectedConversationId.value = next.conversations[0]?.id ?? ''
+    if (!stillSelected) selectedConversationId.value = next.conversations[0]?.id ?? ''
     if (selectedAccountId.value !== 'all' && !next.accounts.some((item) => item.id === selectedAccountId.value)) {
       selectedAccountId.value = 'all'
     }
@@ -482,6 +516,18 @@ export function useWorkspace(
 
   function selectSession(sessionId: string): void {
     if (allAgentSessions.value.some((item) => item.id === sessionId)) selectedSessionId.value = sessionId
+  }
+
+  function setAnswerProfile(answerProfile: AgentConfig['answerProfile']): void {
+    const conversationId = selectedConversationId.value
+    const config = conversationId
+      ? (snapshot.value.configs[conversationId] ??= defaultConfig())
+      : fallbackConfig.value
+    config.answerProfile = answerProfile
+    if (!agentAvailable.value) return
+    config.model = modelForAnswerProfile(answerProfile)
+    const session = localAgentSessions.value.find((item) => item.id === selectedSessionId.value)
+    if (session) session.model = config.model
   }
 
   function openAgent(tab: AgentTab = 'conversation'): void {
@@ -828,8 +874,10 @@ export function useWorkspace(
       const result = await agentAdapter.respond({
         conversationId: conversation.id,
         conversationName: conversation.name,
+        conversationType: conversation.type,
         prompt,
         messages: context,
+        answerProfile: selectedConfig.value.answerProfile,
       })
       run.id = result.runId
       run.status = 'completed'
@@ -996,8 +1044,19 @@ export function useWorkspace(
   onMounted(async () => {
     colorSchemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)')
     colorSchemeQuery?.addEventListener('change', updateSystemTheme)
-    unsubscribe = adapter.subscribe((event) => void handleWorkspaceEvent(event))
+    unsubscribe = adapter.subscribe((event) => {
+      if (!initialLoadComplete) {
+        initialWorkspaceEvents.push(event)
+        return
+      }
+      void handleWorkspaceEvent(event)
+    })
     await load()
+    while (initialWorkspaceEvents.length > 0) {
+      const event = initialWorkspaceEvents.shift()
+      if (event) await handleWorkspaceEvent(event)
+    }
+    initialLoadComplete = true
   })
   onBeforeUnmount(() => {
     unsubscribe?.()
@@ -1055,6 +1114,7 @@ export function useWorkspace(
     selectDefaultConversation,
     openConversation,
     selectSession,
+    setAnswerProfile,
     openAgent,
     toggleAgent,
     sendChat,

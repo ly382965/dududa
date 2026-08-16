@@ -41,7 +41,7 @@ class TargetTalkPlugin(Star):
         super().__init__(context)
         self.config = config or {}
 
-        self.enabled = self._bool(self.config.get("enabled", True), True)
+        self.enabled = self._bool(self.config.get("enabled", False), False)
         self.group_whitelist = self._str_set(self.config.get("group_whitelist", []))
         self.probability = self._clamp_float(
             self.config.get("probability", 0.35), 0.35, 0.0, 1.0

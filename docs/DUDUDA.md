@@ -1,10 +1,19 @@
 # 嘟嘟哒 DUDUDA 项目文档
 
-- 版本：v0.5
+- 版本：v0.6
 - 范围：`.`
-- 状态：MVP 核心插件已落地；评课社区 `icourse` MCP 已接入 AstrBot 统一运行环境，默认模型为 `openai/gpt-5.5`，教务系统仍列为 TODO。
+- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；评课社区 `icourse` 是当前唯一真实 MCP，真实群聊风格仍待人工校准。
 
-本轮工程状态（2026-07-06）：
+Dududa 2.0 当前说明（2026-08-16）：
+
+- 系统定位为“受治理的群体情境适应 Runtime”：最小治理内核持有身份、Scope、权限和副作用，Persona 与群体情境只在这些事实不变的前提下适应表达。
+- WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
+- Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效。人格通过措辞、节奏、关注点和信息取舍自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情证明人格。
+- SHORT、MEDIUM 始终作为普通 QQ 消息发送；LONG 单段仍是普通消息，只有群聊中实际拆成至少两个纯文本 part、且没有定向用户和附件时才使用合并转发。
+- Meme Manager、Reread、PokePro 和旧 Target Talk 已退出 Dududa 2.0 的默认安装或默认 Compose 路径；源码、配置和历史数据不会因此删除。
+- 本轮没有修改或重启正在运行的 AstrBot/NapCat，因此“仓库默认退场”不等于“现有运行实例已在线停用旧插件”。
+
+以下为 Dududa 1.0 工程状态快照（2026-07-06）：
 
 - `astrbot_plugin_dududa_core` 已创建并加载成功。
 - AstrBot 默认 persona 为 `dududa`，并已补充行为边界与隐私边界。
@@ -82,32 +91,30 @@ cd .
 - `attachments/`、`temp/`：附件与临时文件目录。
 - 本地生成的历史备份。
 
-`./manage.sh plugins` 会按 `third_party/plugins.lock.json` 安装以下第三方插件：
+`./manage.sh plugins` 当前会按 `third_party/plugins.lock.json` 安装以下第三方插件：
 
 - `astrbot_plugin_iris_chat_memory`
 - `astrbot_plugin_better_reminder`
 - `astrbot_plugin_chatsummary_v2`
-- `astrbot_plugin_pokepro`
-- `astrbot_plugin_reread`
-- `astrbot_plugin_target_talk`
-- `astrbot_plugin_reply_polish`
-- `meme_manager`
+
+默认 Compose 另外只读挂载 Dududa Core、ReplyPolish 和 Sub2API Readonly。Meme Manager、
+Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Compose 挂载。私有运行目录中
+可能仍保留旧插件及数据；本轮不进行在线卸载或清理。
 
 ### 2.3 已有插件能力整合
 
-| 模块 | 当前资源 | 状态 | 用途 |
+| 插件/模块 | Dududa 2.0 默认状态 | 资产处理 | 未来归属 |
 | --- | --- | --- | --- |
-| 长短期记忆 | `astrbot_plugin_iris_chat_memory` | 已安装，配置可读 | 群聊记忆、用户画像、L1/L2/L3 记忆与知识图谱 |
-| 群隔离 | Iris 配置 | 已启用 | 防止 A 群记忆串到 B 群 |
-| 本地向量 | `BAAI/bge-small-zh-v1.5` | 已配置 | 本地 embedding，降低外部依赖 |
-| 聊天总结 | `astrbot_plugin_chatsummary_v2` | 已安装 | 群聊阶段总结、长上下文压缩 |
-| 提醒 | `astrbot_plugin_better_reminder` | 已安装 | DDL、日程、复习提醒 |
-| 戳一戳 | `astrbot_plugin_pokepro` | 已安装 | 轻量互动 |
-| 复读 | `astrbot_plugin_reread` | 已安装 | 群聊娱乐、氛围参与 |
-| 主动发言 | `astrbot_plugin_target_talk` | 已安装 | 低频主动参与或定向对话 |
-| 回复润色 | `astrbot_plugin_reply_polish` | 已安装 | 统一嘟嘟哒口吻 |
-| Sub2API 统计 | `astrbot_plugin_sub2api_readonly` | 已实现 | 白名单群内查询 Token、排名、区间和账号状态 |
-| 表情包 | `meme_manager` | 已安装 | 表情包管理、随机图、关键词图 |
+| Meme Manager | deprecated，不再默认安装，不自动发表情 | 本轮不主动清理；若私有运行目录中存在图库、配置或源码则原状保留 | 用户显式触发的 Meme Capability |
+| Reread | deprecated，不再默认安装，不概率复读 | 本轮不主动清理私有运行目录中的既有配置或数据 | 默认不提供自动复读 |
+| PokePro | deprecated，不再默认安装，不自动戳一戳 | 本轮不主动清理私有运行目录中的既有配置或数据 | 可选显式交互 Capability |
+| Target Talk | 退出默认 Compose 和入站路径 | 源码、配置保留 | S15E Governed Probe / 主动 Runtime |
+| ReplyPolish | 1.0 LONG-only 兼容层，默认关闭 | 源码保留 | LONG-only legacy output |
+| Iris Memory | 不拥有 2.0 Core Memory 控制面 | 既有数据保留 | S14 Memory 迁移或只读来源 |
+| ChatSummary | 自动循环不进入 2.0 默认能力 | 历史数据保留 | 显式 Summary Capability |
+| Better Reminder | 不拥有 2.0 Scheduler | 历史提醒数据保留 | S15B Scheduler / Capability |
+| Dududa Core | 保留 | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
+| Sub2API Readonly | 保留 | 源码、配置保留 | 显式只读 Capability |
 
 ### 2.4 pksq / icourse MCP 资源
 
@@ -178,7 +185,9 @@ AstrBot
     ├── 记忆系统：Iris Chat Memory
     ├── 群聊总结：ChatSummary v2
     ├── 提醒系统：Better Reminder
-    ├── 娱乐互动：Reread / PokePro / Target Talk / Meme Manager
+    ├── 显式能力：图片、课程、提醒、总结及后续 Capability
+    ├── 受治理主动参与：S15E Probe / 主动 Runtime（默认关闭）
+    ├── 旧插件兼容资产：保留迁移与回滚材料，不进入 2.0 默认执行链
     ├── 课程查询：pksq icourse MCP
     ├── 后续校园 MCP：通知、教学日历、考试、课表
     ├── 后续管理插件：权限、配置、日志、插件开关
@@ -187,8 +196,8 @@ AstrBot
 
 设计原则：
 
-1. 先复用已有插件，避免重复造轮子。
-2. 记忆、提醒、表情、复读等能力优先用现有插件配置统一起来。
+1. 外部框架和旧插件只实现 Port 或提供迁移资产，不形成第二套控制面。
+2. 自动表情、概率复读、自动戳一戳等 1.0 行为不再作为默认群聊风格机制。
 3. pksq 评课 MCP 是课程查询第一阶段，不直接做全站高频抓取。
 4. 管理命令单独设计权限层，不混入普通用户命令。
 5. 高风险操作一律二次确认。
@@ -237,6 +246,16 @@ AstrBot
 
 嘟嘟哒在 QQ 中默认不使用大段 Markdown，不刷屏，不写小作文。群聊回答应短、软、像群友；私聊和技术场景可以更完整。
 
+Persona 是稳定身份、价值观和表达倾向；群聊风格是随群体情境变化的语气、长度、用词和节奏。
+两者与 AnswerProfile 在生成前形成一次表达指导，不在生成后追加固定人设话术、概率表情或随机
+Prompt。表达可以适应当前群，但事实、权限、人格身份和任务要求保持不变。
+
+| AnswerProfile | QQ 发送形态 |
+| --- | --- |
+| SHORT | 始终普通消息，即使文本较长 |
+| MEDIUM | 始终普通消息，即使文本较长 |
+| LONG | 单段仍为普通消息；仅群聊且实际拆成至少两个纯文本 part、无定向用户和附件时合并转发 |
+
 总体风格：
 
 - 亲切、可爱、轻松。
@@ -244,6 +263,9 @@ AstrBot
 - 技术问题认真可靠。
 - 情绪问题温柔但不说教。
 - 不强行把话题拉回人设。
+- 不复述角色档案、不无关自我介绍、不套固定口号。
+- 不每条刻意卖萌，不为证明人格随机追加表情。
+- 不模仿某个具体群成员的身份、隐私或口头禅。
 - 不在群里公开处理私人信息。
 
 普通群聊示例：
@@ -456,24 +478,13 @@ AstrBot
 4. 不恶搞真实同学照片，除非本人明确同意且内容安全。
 5. 涉及身份证、学生证、成绩单、聊天记录等敏感图片时，不保存，不传播。
 
-## 10. 娱乐与群聊互动
+## 10. 显式能力与旧自动行为退场
 
-当前已有资源可支撑：
-
-- `astrbot_plugin_reread`：复读。
-- `astrbot_plugin_pokepro`：戳一戳互动。
-- `astrbot_plugin_target_talk`：主动搭话。
-- `meme_manager`：表情包管理。
-- `astrbot_plugin_better_reminder`：提醒。
-
-目标策略：
-
-1. 娱乐功能默认低频。
-2. 每个群可以设置安静、普通、活跃三种模式。
-3. 不复读隐私、人身攻击或敏感内容。
-4. 表情包按群配置风格和概率。
-5. 主动发言必须有限流，不能刷屏。
-6. 群小游戏只做轻量玩法。
+- `/image <描述>` 是用户显式调用的图像生成 Capability，继续保留；它与自动发表情包无关。
+- 未来若恢复 Meme，应作为用户显式触发、可授权、可关闭的 Capability，而不是用概率向普通回复随机插图。
+- 概率复读、自动戳一戳和 Meme Manager Prompt 注入不进入 Dududa 2.0 默认执行链。
+- 旧 Target Talk 不再默认挂载；主动探测由 S15E Governed Probe 和主动 Runtime 承担，默认关闭并受群级服务配置约束。
+- Better Reminder、ChatSummary 和 Iris 可以作为迁移来源或显式 Capability，但不拥有 2.0 的 Scheduler、Memory 或决策控制面。
 
 可选小游戏：
 
@@ -571,7 +582,7 @@ AstrBot
 /summary [数量]     总结最近聊天
 /remind <时间> <内容>
 /reminders          查看我的提醒
-/meme [关键词]      来一张表情包
+/image <描述>       显式生成图片
 
 管理员可发送 /help admin 查看管理指令
 ```
@@ -635,13 +646,11 @@ AstrBot
 
 | 指令 | 权限 | 场景 | 说明 |
 | --- | --- | --- | --- |
-| `/meme [关键词]` | 全员 | 群/私聊 | 发一张表情包 |
-| `/meme random` | 全员 | 群/私聊 | 随机表情包，TODO |
 | `/image <描述>` | trusted/admin | 群/私聊 | 使用 gpt-image-2 生成图片；默认等待超时 420 秒 |
 | `/fortune` | 全员 | 群/私聊 | 今日运势 |
 | `/draw <主题>` | 全员 | 群/私聊 | 抽签 |
-| `/poke` | 全员 | 群 | 戳一戳互动 |
-| `/reread` | 全员 | 群 | 查看复读状态 |
+
+`/meme`、`/poke`、`/reread` 只保留 Dududa 1.0 停用兼容提示，不调用旧插件，也不在普通帮助菜单中宣传。
 
 ### 12.8 管理员指令
 
@@ -656,7 +665,6 @@ AstrBot
 | `/admin plugin reload <插件>` | admin | 私聊 | TODO，重载插件，需确认 |
 | `/admin group mode <quiet|normal|active>` | admin | 群/私聊 | 设置本群模式 |
 | `/admin group reply-rate <0-100>` | admin | 群/私聊 | 设置回复频率 |
-| `/admin group meme-rate <0-100>` | admin | 群/私聊 | 设置表情包概率 |
 | `/admin memory summary` | admin | 群/私聊 | 查看本群长期记忆摘要 |
 | `/admin memory clear-short` | admin | 群/私聊 | 清理短期记忆 |
 | `/admin memory delete <ID>` | admin | 私聊 | TODO，删除指定记忆 |
@@ -806,10 +814,9 @@ AstrBot
 
 ### 15.6 娱乐与多模态阶段
 
-- [x] 表情包命令统一到 `/meme`。
-- [x] 复读命令统一到 `/reread`。
-- [x] 戳一戳命令统一到 `/poke`。
-- [ ] 每群娱乐概率独立配置。
+- [x] Meme Manager、概率复读和自动戳一戳退出 Dududa 2.0 默认安装路径。
+- [x] 旧 Target Talk 退出默认 Compose；主动参与迁移到受治理的 Probe/主动 Runtime。
+- [x] `/meme`、`/poke`、`/reread` 降级为停用兼容提示。
 - [ ] 图片理解能力接入。
 - [x] 表情包生成能力接入。（`/image` 入口已实现，gpt-image-2 已通过最小请求验证，默认等待超时 420 秒）
 - [x] 真实人物图片安全策略落地。

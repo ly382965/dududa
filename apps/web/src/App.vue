@@ -448,6 +448,7 @@ watch(
       @select-session="workspace.selectSession"
       @new-session="workspace.newSession"
       @send-prompt="workspace.sendAgentPrompt"
+      @set-answer-profile="workspace.setAnswerProfile"
       @approve-draft="workspace.approveDraft"
       @discard-draft="workspace.discardDraft"
       @update-draft="workspace.updateDraft"

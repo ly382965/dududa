@@ -7,14 +7,19 @@
   产品接入和主动投递尚未完成。
 - 目标代码位置：`packages/dududa-agent/src/dududa/runtime/`。
 - 适用入口：AstrBot、后续 Web/测试入口以及不依赖具体平台的离线 Eval。
-- 兼容约束：迁移期间保留 `astrbot_plugin_dududa_core`、`astrbot_plugin_target_talk`、`astrbot_plugin_reply_polish` 三个插件 ID、配置和事件语义。
+- 兼容约束：`astrbot_plugin_dududa_core` 保持正式 AstrBot Adapter；
+  `astrbot_plugin_reply_polish` 仅保留为默认关闭的 Dududa 1.0 LONG-only 兼容层；
+  `astrbot_plugin_target_talk` 源码和配置仅作迁移/回滚材料，不进入 Dududa 2.0
+  默认 Compose 或入站路径。
 
 本文定义一次嘟嘟哒 Agent 执行的边界、状态、端口和失败语义。它不规定某个模型供应商、MCP 进程或 AstrBot Event 的具体实现。
 
-未来 S21 Bot Control Plane 会为每个群发布不可变 `GroupServiceAssignment`。群聊 Runtime 只有在
+S21 Bot Control Plane 已提供群服务初始化和版本化 Assignment 基础。群聊 Runtime 只有在
 Assignment 为 `ACTIVE` 且当前 revision/Scope/授权仍有效时才可取得执行所有权；缺 Profile、
 pending、paused、revoked 或 snapshot 不一致均在模型/Memory/Tool 前停止。Group Context 只作为
-Assignment 允许范围内的弱先验，不能改变服务、Capability、预算或发送权。该前置尚未实现。
+Assignment 允许范围内的弱先验，不能改变服务、Capability、预算或发送权。
+当前尚未落地的是生产 Runtime 对完整 Assignment 投影的 live 消费与执行接入，
+不是 S21 的初始化、版本化和管理端合约。
 
 ## 2. 目标与非目标
 
@@ -1477,7 +1482,7 @@ Registry snapshot 和评测代码引用；无法解析任一 revision 的运行�
 
 ## 9. AstrBot 兼容层
 
-迁移期间保留三个现有插件：
+AstrBot 兼容面按 Dududa 2.0 默认路径与历史迁移材料区分：
 
 ### 9.1 `astrbot_plugin_dududa_core`
 
@@ -1488,15 +1493,16 @@ Registry snapshot 和评测代码引用；无法解析任一 revision 的运行�
 
 ### 9.2 `astrbot_plugin_target_talk`
 
-- 第一阶段保留现有白名单、目标配置、概率、冷却、Provider override 和 `stop_event`；
-- 将确定性规则包装为 `LegacyTargetTalkPolicy`，再逐步接入 Social Decision；
-- 用消息幂等键避免它与通用 Runtime 对同一 Event 重复回复。
+- 已退出默认 Compose 和 Dududa 2.0 入站路径；
+- 旧白名单、目标配置、概率、冷却和 Prompt 只作为迁移/回滚材料保留；
+- 主动参与由 S15E Governed Probe / 主动 Runtime 承担，不能通过旧插件绕过群级服务、授权、预算和发送边界。
 
 ### 9.3 `astrbot_plugin_reply_polish`
 
-- 保留结果装饰钩子和配置；
-- 纯分段函数可先抽入 Package，`Nodes` 等 AstrBot 类型仍留在 Adapter；
-- 它是输出格式兼容层，不是 Persona Renderer。
+- 默认关闭，仅作为 Dududa 1.0 LONG-only 输出兼容层保留；
+- SHORT、MEDIUM、缺失或未知 AnswerProfile 始终普通发送；
+- LONG 单段仍普通发送，只有群聊、多纯文本 part、无定向用户和附件时才允许合并转发；
+- 它不是 Persona Renderer，正式 Dududa 2.0 Runtime 不依赖它。
 
 新 Package 必须在 AstrBot 派生镜像中安装；不得通过让 Domain import 相对插件路径来规避打包。
 

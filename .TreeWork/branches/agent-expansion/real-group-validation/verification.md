@@ -4,6 +4,50 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `uv run --with pytest --project packages/dududa-agent python -m pytest tests/unit/compatibility/test_reply_polish.py tests/unit/compatibility/test_target_talk.py tests/unit/runtime/test_delivery.py tests/contracts/test_astrbot_output.py tests/unit/runtime/test_direct_chat.py tests/unit/runtime/test_orchestrator.py tests/test_repository_contract.py -q`
+- Result: 58 tests and 12 subtests passed in 2.15 seconds.
+- Evidence: SHORT/MEDIUM do not receive merged-forward eligibility; a LONG
+  response still uses ordinary delivery unless it is explicitly validated and
+  has at least two plain-text parts in a group with no target or attachment.
+  AstrBot Output independently rejects `allow_forward_bundle=true` when the
+  validated profile is absent, SHORT or MEDIUM.
+- Evidence: Persona remains in model generation when `response_profiles` is
+  disabled, and Persona plus ResponsePlan are serialized into the same model
+  request when enabled. Repository contract checks confirm new group records no
+  longer initialize `meme_rate`, the admin path no longer writes it, and default
+  Compose does not mount Target Talk.
+- Focused source review: Meme Manager, Reread and PokePro are absent from the
+  default plugin lock; ReplyPolish is default-off and LONG-only; `/image` remains
+  an explicit Core command. No running AstrBot/NapCat instance was changed or
+  restarted by this work.
+- Command: `npm run typecheck`
+- Result: passed.
+- Command: `npm run build`
+- Result: passed; only the existing large-chunk warning remained.
+- Evidence boundary: these checks prove repository defaults, generation wiring
+  and delivery conditions, not natural real-group Chinese style or complete
+  Production group context. S23 therefore remains `paused/partial`.
+- Recorded: 2026-08-16
+
+- Command: `npm exec vitest run -- src/composables/useWorkspace.spec.ts`
+- Result: 1 file / 11 tests passed. Focused cases cover stable ordering with
+  full-precision decimal sequence values, initial-Snapshot realtime replay and
+  fallback when refresh removes the selected conversation.
+- Command: `npx vitest run --config vitest.server.config.ts server/internal-test.spec.ts`
+- Result: 1 file / 3 tests passed. The Provider request includes Dududa Persona,
+  group channel rules, explicit non-imitation and unchanged fact/permission/task
+  boundaries; candidate generation remains no-send.
+- Command: `npx vitest run --config vitest.server.config.ts server/app.spec.ts -t "replays missed workspace events in order after an SSE reconnect"`
+- Result: 1 focused test passed / 35 skipped. It verifies monotonic SSE IDs and
+  ordered `Last-Event-ID` replay after reconnect.
+- Evidence boundary: these checks prove message-path recovery and structural
+  style wiring only. They do not prove durable cross-process delivery or
+  sufficiently calibrated real Chinese group-chat style. NO SEND, NO MEMORY
+  WRITE, NO TOOL CALL and NO BANDIT remain in force.
+- Verification remains `partial`; S23 remains `paused` pending human style
+  evaluation and the existing external gates.
+- Recorded: 2026-08-16
+
 - Command: `npm run typecheck`
 - Result: passed.
 - Command: `npx vitest run src/views/InternalTestView.spec.ts src/App.spec.ts`
