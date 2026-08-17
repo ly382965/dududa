@@ -7,15 +7,12 @@ import {
   ChevronDown,
   CircleStop,
   Clock3,
-  FileSearch,
   Gauge,
   Hash,
   MessageSquareText,
-  MoreHorizontal,
-  Paperclip,
   Plus,
+  RefreshCw,
   Save,
-  Search,
   SendHorizontal,
   Settings2,
   ShieldCheck,
@@ -24,11 +21,21 @@ import {
   Unplug,
   X,
 } from '@lucide/vue'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import type {
+  InternalTestAdaptiveSetting,
+  InternalTestAgentCatalog,
+  InternalTestAgentPolicy,
+  InternalTestAnswerProfile,
+  InternalTestEffectiveSelection,
+  InternalTestPluginMode,
+  InternalTestReasoningLevel,
+  InternalTestSelectionMode,
+  InternalTestTier,
+} from '../types/internal-test'
+import type {
   Account,
-  AgentConfig,
   AgentMessage,
   AgentPart,
   AgentRun,
@@ -41,6 +48,17 @@ import type {
 import AgentPartView from './AgentPartView.vue'
 import AppAvatar from './AppAvatar.vue'
 
+type AdaptiveAxis = 'modelTier' | 'reasoning' | 'answerProfile'
+
+type AgentRunWithSelection = AgentRun & {
+  modelTier?: InternalTestTier
+  reasoning?: InternalTestReasoningLevel
+  answerProfile?: InternalTestAnswerProfile
+  plugins?: string[]
+  reasonCodes?: string[]
+  effectiveSelection?: InternalTestEffectiveSelection
+}
+
 const props = defineProps<{
   conversation?: Conversation
   account?: Account
@@ -48,10 +66,19 @@ const props = defineProps<{
   sessions: AgentSession[]
   selectedSession?: AgentSession
   messages: AgentMessage[]
-  run?: AgentRun
-  config: AgentConfig
+  run?: AgentRunWithSelection
+  catalog?: InternalTestAgentCatalog
+  policy?: InternalTestAgentPolicy
+  policyLoading: boolean
+  policySaving: boolean
+  policyError: string
+  contextMessages: number
+  answerProfileHint?: InternalTestAnswerProfile
   tab: AgentTab
   available: boolean
+  runtimeLoading: boolean
+  runtimeError: string
+  runtimeWarning: string
 }>()
 
 const emit = defineEmits<{
@@ -59,7 +86,8 @@ const emit = defineEmits<{
   selectSession: [id: string]
   newSession: []
   sendPrompt: [content: string]
-  setAnswerProfile: [profile: AgentConfig['answerProfile']]
+  setAnswerProfile: [profile: InternalTestAnswerProfile | undefined]
+  updatePolicy: [policy: InternalTestAgentPolicy]
   approveDraft: [part: ReplyDraftPart]
   discardDraft: [part: ReplyDraftPart]
   updateDraft: [part: ReplyDraftPart, content: string]
@@ -67,12 +95,47 @@ const emit = defineEmits<{
   saveSettings: []
   back: []
   collapse: []
+  reconnect: []
   notify: [message: string]
 }>()
 
 const prompt = ref('')
 const sessionMenuOpen = ref(false)
 const stream = ref<HTMLElement>()
+const runtimeLabel = computed(() => props.available ? '内测已连接' : props.runtimeLoading ? '正在连接' : '未连接')
+const runtimeDetail = computed(() => props.runtimeError || props.runtimeWarning || 'QQ 消息与历史仍由 NapCat 实时提供')
+const policyEditable = computed(() => Boolean(props.policy) && !props.policyLoading && !props.policySaving)
+
+const selectionModeLabels: Record<InternalTestSelectionMode, string> = {
+  adaptive: '自适应',
+  preferred: '优先',
+  locked: '锁定',
+}
+
+const pluginModeLabels: Record<InternalTestPluginMode, string> = {
+  off: '关闭',
+  auto: '自动',
+  on: '偏好启用',
+  locked: '锁定可用',
+}
+
+const tierLabels: Record<InternalTestTier, string> = {
+  haiku: '轻量 / Haiku',
+  sonnet: '中等 / Sonnet',
+  opus: '专业 / Opus',
+}
+
+const reasoningLabels: Record<InternalTestReasoningLevel, string> = {
+  low: '低',
+  medium: '中',
+  high: '高',
+}
+
+const answerProfileLabels: Record<InternalTestAnswerProfile, string> = {
+  short: '短回答',
+  medium: '中回答',
+  long: '长回答',
+}
 
 const tabs = [
   { id: 'conversation', label: '对话', icon: MessageSquareText },
@@ -80,11 +143,138 @@ const tabs = [
   { id: 'settings', label: '配置', icon: Settings2 },
 ] as const
 
-const answerProfiles = [
-  { id: 'short', label: '短', tier: 'Luna' },
-  { id: 'medium', label: '中', tier: 'Terra' },
-  { id: 'long', label: '长', tier: 'Sol' },
-] as const
+const answerProfiles: Array<{ id: InternalTestAnswerProfile | undefined; label: string }> = [
+  { id: undefined, label: '自动' },
+  { id: 'short', label: '短' },
+  { id: 'medium', label: '中' },
+  { id: 'long', label: '长' },
+]
+
+const tierOptions = computed(() => {
+  const grouped = new Map<InternalTestTier, { id: InternalTestTier; label: string; available: boolean; reason?: string }>()
+  for (const model of props.catalog?.models ?? []) {
+    const current = grouped.get(model.tier)
+    const modelLabel = model.displayName || model.id
+    if (!current) {
+      grouped.set(model.tier, {
+        id: model.tier,
+        label: `${tierLabels[model.tier]} · ${modelLabel}`,
+        available: model.available,
+        reason: model.unavailableReason,
+      })
+      continue
+    }
+    current.label += ` / ${modelLabel}`
+    current.available ||= model.available
+    if (model.available) current.reason = undefined
+  }
+  return [...grouped.values()]
+})
+
+const modelOptions = computed(() => props.catalog?.models ?? [])
+const selectedTopModelId = computed(() => {
+  const preferredTier = props.policy?.modelTier.preferred
+  return modelOptions.value.find(model => model.tier === preferredTier && model.available)?.id
+    ?? modelOptions.value.find(model => model.tier === preferredTier)?.id
+    ?? ''
+})
+
+const reasoningOptions = computed(() => (props.catalog?.reasoningLevels ?? []).map(id => ({
+  id,
+  label: reasoningLabels[id],
+  available: true,
+  reason: undefined as string | undefined,
+})))
+
+const profileOptions = computed(() => (props.catalog?.answerProfiles ?? []).map(id => ({
+  id,
+  label: answerProfileLabels[id],
+  available: true,
+  reason: undefined as string | undefined,
+})))
+
+const selectionModes = computed<InternalTestSelectionMode[]>(() => props.catalog?.selectionModes ?? ['adaptive', 'preferred', 'locked'])
+const pluginModes = computed<InternalTestPluginMode[]>(() => props.catalog?.pluginModes ?? ['off', 'auto', 'on', 'locked'])
+const adaptiveAxes = computed(() => [
+  {
+    key: 'modelTier' as const,
+    title: '模型档位',
+    detail: '先按合法档位选路由，再由 Runtime 选择具体模型',
+    setting: props.policy?.modelTier,
+    options: tierOptions.value,
+  },
+  {
+    key: 'reasoning' as const,
+    title: '推理强度',
+    detail: '与模型档位、回答长度独立判断',
+    setting: props.policy?.reasoning,
+    options: reasoningOptions.value,
+  },
+  {
+    key: 'answerProfile' as const,
+    title: '回答长度',
+    detail: '短、中、长只是表达计划，不绑定模型',
+    setting: props.policy?.answerProfile,
+    options: profileOptions.value,
+  },
+])
+
+const runTier = computed(() => props.run?.effectiveSelection?.modelTier ?? props.run?.modelTier)
+const runReasoning = computed(() => props.run?.effectiveSelection?.reasoning ?? props.run?.reasoning)
+const runAnswerProfile = computed(() => props.run?.effectiveSelection?.answerProfile ?? props.run?.answerProfile)
+const runPlugins = computed(() => {
+  if (props.run?.plugins?.length) return props.run.plugins
+  const plugins = props.run?.effectiveSelection?.plugins
+  if (!plugins) return []
+  return Object.entries(plugins).filter(([, value]) => value.selectedForRun).map(([id]) => id)
+})
+const runReasonCodes = computed(() => props.run?.reasonCodes ?? [])
+
+function emitPolicy(patch: Partial<InternalTestAgentPolicy>): void {
+  if (!props.policy) return
+  emit('updatePolicy', {
+    ...props.policy,
+    ...patch,
+    plugins: patch.plugins ?? { ...props.policy.plugins },
+  })
+}
+
+function updateAdaptiveMode(axis: AdaptiveAxis, mode: InternalTestSelectionMode): void {
+  const setting = props.policy?.[axis]
+  if (!setting) return
+  emitPolicy({ [axis]: { ...setting, allowed: [...setting.allowed], mode } } as Partial<InternalTestAgentPolicy>)
+}
+
+function updateAdaptivePreferred(axis: AdaptiveAxis, preferred: string): void {
+  const setting = props.policy?.[axis] as InternalTestAdaptiveSetting<string> | undefined
+  if (!setting) return
+  const allowed = setting.allowed.includes(preferred) ? [...setting.allowed] : [...setting.allowed, preferred]
+  emitPolicy({ [axis]: { ...setting, preferred, allowed } } as Partial<InternalTestAgentPolicy>)
+}
+
+function toggleAdaptiveAllowed(axis: AdaptiveAxis, value: string): void {
+  const setting = props.policy?.[axis] as InternalTestAdaptiveSetting<string> | undefined
+  if (!setting) return
+  const selected = setting.allowed.includes(value)
+  if (selected && setting.allowed.length === 1) return
+  const allowed = selected ? setting.allowed.filter(item => item !== value) : [...setting.allowed, value]
+  const preferred = allowed.includes(setting.preferred) ? setting.preferred : allowed[0]
+  emitPolicy({ [axis]: { ...setting, preferred, allowed } } as Partial<InternalTestAgentPolicy>)
+}
+
+function isAdaptiveAllowed(setting: { allowed: readonly string[] } | undefined, value: string): boolean {
+  return setting?.allowed.includes(value) ?? false
+}
+
+function selectTopModel(modelId: string): void {
+  const model = modelOptions.value.find(item => item.id === modelId)
+  if (model) updateAdaptivePreferred('modelTier', model.tier)
+}
+
+function updatePluginMode(pluginId: string, mode: InternalTestPluginMode): void {
+  if (!props.policy) return
+  emitPolicy({ plugins: { ...props.policy.plugins, [pluginId]: mode } })
+}
 
 function send(): void {
   const value = prompt.value.trim()
@@ -132,7 +322,7 @@ watch(
       </button>
       <span class="agent-logo"><Sparkles :size="17" /></span>
       <div class="agent-heading">
-        <div><strong>Dududa Agent</strong><span class="runtime-dot" :class="{ online: available }" /> <small>{{ available ? '内测已连接' : '未连接' }}</small></div>
+        <div><strong>Dududa Agent</strong><span class="runtime-dot" :class="{ online: available }" /> <small>{{ runtimeLabel }}</small></div>
         <p>{{ available ? `内测 Runtime · 不会发送 · ${conversation?.name ?? '未选择会话'}` : (conversation?.name ?? '未选择会话') }}</p>
       </div>
       <button class="icon-button desktop-collapse" type="button" title="收起 Agent Console" aria-label="收起 Agent Console" @click="emit('collapse')">
@@ -165,8 +355,21 @@ watch(
       </div>
       <label class="model-picker">
         <span>MODEL</span>
-        <select :value="config.model" aria-label="选择模型" disabled>
-          <option :value="config.model">{{ config.model }}</option>
+        <select
+          :value="selectedTopModelId"
+          aria-label="选择首选模型"
+          :disabled="!policyEditable || !modelOptions.length"
+          @change="selectTopModel(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-if="!modelOptions.length" value="">暂无模型</option>
+          <option
+            v-for="model in modelOptions"
+            :key="model.id"
+            :value="model.id"
+            :disabled="!model.available"
+          >
+            {{ model.displayName }} · {{ tierLabels[model.tier] }}{{ model.available ? '' : '（不可用）' }}
+          </option>
         </select>
       </label>
       <button class="icon-button" type="button" title="新建 Agent 对话" aria-label="新建 Agent 对话" :disabled="!available" @click="emit('newSession')">
@@ -175,7 +378,7 @@ watch(
     </div>
 
     <nav class="agent-tabs" aria-label="Agent Console 视图">
-      <button v-for="item in tabs" :key="item.id" :class="{ active: tab === item.id }" type="button" :disabled="!available && item.id !== 'conversation'" @click="emit('setTab', item.id)">
+      <button v-for="item in tabs" :key="item.id" :class="{ active: tab === item.id }" type="button" :disabled="!available && item.id === 'run'" @click="emit('setTab', item.id)">
         <component :is="item.icon" :size="14" />
         <span>{{ item.label }}</span>
         <b v-if="item.id === 'run' && run?.status === 'waiting_approval'">1</b>
@@ -186,7 +389,7 @@ watch(
       <section ref="stream" class="agent-stream" aria-label="Agent 对话消息">
         <div class="scope-line">
           <span><Hash :size="12" />{{ conversation?.name }}</span>
-          <span>{{ config.contextMessages }} 条上下文</span>
+          <span>{{ contextMessages }} 条上下文</span>
         </div>
 
         <div v-if="available" class="runtime-mode-note">
@@ -196,7 +399,11 @@ watch(
 
         <div v-if="!available" class="runtime-unavailable">
           <span><Unplug :size="18" /></span>
-          <div><strong>Agent Runtime 未连接</strong><small>QQ 消息与历史已由 NapCat 实时提供</small></div>
+          <div><strong>{{ runtimeLoading ? '正在连接 Agent Runtime' : 'Agent Runtime 未连接' }}</strong><small>{{ runtimeDetail }}</small></div>
+          <button type="button" :disabled="runtimeLoading" @click="emit('reconnect')">
+            <RefreshCw :size="13" :class="{ spinning: runtimeLoading }" />
+            {{ runtimeLoading ? '连接中' : '重新连接' }}
+          </button>
         </div>
 
         <article v-for="message in messages" :key="message.id" class="agent-message" :class="`agent-message--${message.role}`">
@@ -236,14 +443,14 @@ watch(
           <Sparkles :size="27" />
           <strong>{{ selectedSession?.title ?? '新对话' }}</strong>
           <div class="quick-prompts">
-            <button type="button" @click="selectQuickPrompt('总结这个群今天的讨论')">生成今日摘要</button>
-            <button type="button" @click="selectQuickPrompt('检查 Bot 上一条回复是否准确')">检查上一条回复</button>
+            <button type="button" :disabled="!available" @click="selectQuickPrompt('总结这个群今天的讨论')">生成今日摘要</button>
+            <button type="button" :disabled="!available" @click="selectQuickPrompt('检查 Bot 上一条回复是否准确')">检查上一条回复</button>
           </div>
         </div>
       </section>
 
       <footer class="agent-composer">
-        <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>最近 {{ config.contextMessages }} 条</span></div>
+        <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>最近 {{ contextMessages }} 条</span></div>
         <textarea
           v-model="prompt"
           rows="3"
@@ -254,20 +461,14 @@ watch(
         />
         <div class="agent-composer-footer">
           <div>
-            <button class="icon-button" type="button" title="添加附件" aria-label="添加附件" @click="emit('notify', '请选择附件')">
-              <Paperclip :size="16" />
-            </button>
-            <button class="icon-button" type="button" title="更多指令" aria-label="更多指令" @click="emit('notify', '指令菜单已打开')">
-              <MoreHorizontal :size="16" />
-            </button>
             <div class="answer-profile-picker" role="group" aria-label="回答长度">
               <button
                 v-for="profile in answerProfiles"
-                :key="profile.id"
+                :key="profile.id ?? 'auto'"
                 type="button"
-                :class="{ active: config.answerProfile === profile.id }"
-                :title="`${profile.label}回答 · ${profile.tier}`"
-                :aria-pressed="config.answerProfile === profile.id"
+                :class="{ active: answerProfileHint === profile.id }"
+                :title="profile.id ? `${profile.label}回答（仅本轮提示）` : '由 Agent 自动判断本轮回答长度'"
+                :aria-pressed="answerProfileHint === profile.id"
                 :disabled="!available || selectedSession?.status === 'running'"
                 @click="emit('setAnswerProfile', profile.id)"
               >
@@ -323,10 +524,18 @@ watch(
           <div class="section-label">运行信息</div>
           <dl>
             <div><dt>模型</dt><dd>{{ run.model }}</dd></div>
+            <div><dt>模型档位</dt><dd>{{ runTier ? tierLabels[runTier] : '未记录' }}</dd></div>
+            <div><dt>推理强度</dt><dd>{{ runReasoning ? reasoningLabels[runReasoning] : '未记录' }}</dd></div>
+            <div><dt>回答长度</dt><dd>{{ runAnswerProfile ? answerProfileLabels[runAnswerProfile] : '未记录' }}</dd></div>
+            <div><dt>实际插件</dt><dd>{{ runPlugins.length ? runPlugins.join('、') : '本轮未调用' }}</dd></div>
             <div><dt>开始于</dt><dd>{{ run.startedAt }}</dd></div>
             <div><dt>回复账号</dt><dd>{{ account?.name }}</dd></div>
             <div><dt>发送权限</dt><dd>禁止发送（内测）</dd></div>
           </dl>
+          <div v-if="runReasonCodes.length" class="selection-reasons">
+            <span>选择原因</span>
+            <code v-for="reason in runReasonCodes" :key="reason">{{ reason }}</code>
+          </div>
         </section>
 
         <section class="run-section">
@@ -347,46 +556,120 @@ watch(
       <div class="settings-intro">
         <div><span>会话配置</span><h3>{{ conversation?.name }}</h3></div>
         <label class="switch-control">
-          <input :checked="config.enabled" type="checkbox" disabled />
+          <input
+            :checked="policy?.enabled ?? false"
+            type="checkbox"
+            :disabled="!policyEditable"
+            @change="emitPolicy({ enabled: ($event.target as HTMLInputElement).checked })"
+          />
           <span />
         </label>
       </div>
 
-      <section class="settings-section">
-        <div class="section-heading"><Bot :size="15" /><span><strong>Agent 与模型</strong><small>CONVERSATION DEFAULT</small></span></div>
-        <label class="form-row"><span>Agent</span><select :value="config.agent" disabled><option :value="config.agent">{{ config.agent }}</option></select></label>
-        <label class="form-row"><span>模型</span><select :value="config.model" disabled><option :value="config.model">{{ config.model }}</option></select></label>
-        <div class="form-row"><span>推理强度</span><div class="segmented-control"><button v-for="level in (['low', 'medium', 'high'] as const)" :key="level" type="button" :class="{ active: config.reasoning === level }" disabled>{{ { low: '低', medium: '中', high: '高' }[level] }}</button></div></div>
-      </section>
+      <div v-if="policyLoading" class="settings-state"><RefreshCw :size="16" class="spinning" />正在读取会话策略</div>
+      <div v-else-if="!policy" class="settings-state settings-state--error">
+        <Unplug :size="16" />{{ policyError || '当前账号与会话还没有可编辑策略' }}
+      </div>
 
-      <section class="settings-section">
-        <div class="section-heading"><Activity :size="15" /><span><strong>触发与上下文</strong><small>SOCIAL POLICY</small></span></div>
-        <label class="form-row"><span>触发策略</span><select :value="config.trigger" disabled><option value="mention">被 @ 时</option><option value="keyword">关键词触发</option><option value="manual">仅手动</option><option value="observe">Shadow Mode</option></select></label>
-        <label class="range-row"><span><span>上下文消息</span><strong>{{ config.contextMessages }} 条</strong></span><input :value="config.contextMessages" type="range" min="10" max="100" step="10" disabled /></label>
-        <label class="toggle-row"><span><strong>包含回复链</strong><small>读取引用消息的关联上下文</small></span><input :checked="config.includeReplyChain" type="checkbox" disabled /></label>
-        <label class="toggle-row"><span><strong>包含图片摘要</strong><small>只传递经过处理的图片描述</small></span><input :checked="config.includeImages" type="checkbox" disabled /></label>
-        <label class="toggle-row"><span><strong>长期群记忆</strong><small>按账号与群聊作用域隔离</small></span><input :checked="config.longTermMemory" type="checkbox" disabled /></label>
-      </section>
+      <template v-else>
+        <div v-if="policyError" class="settings-error">{{ policyError }}</div>
 
-      <section class="settings-section">
-        <div class="section-heading"><Wrench :size="15" /><span><strong>工具</strong><small>CAPABILITY SCOPE</small></span></div>
-        <div class="tool-grid">
-          <button type="button" disabled :class="{ active: config.tools.course }"><FileSearch :size="15" /><span><strong>校园课程</strong><small>iCourse MCP</small></span><Check v-if="config.tools.course" :size="13" /></button>
-          <button type="button" disabled :class="{ active: config.tools.web }"><Search :size="15" /><span><strong>网络搜索</strong><small>受限域名</small></span><Check v-if="config.tools.web" :size="13" /></button>
-          <button type="button" disabled :class="{ active: config.tools.groupFiles }"><FileSearch :size="15" /><span><strong>群文件</strong><small>只读</small></span><Check v-if="config.tools.groupFiles" :size="13" /></button>
-          <button type="button" disabled :class="{ active: config.tools.shell }"><Bot :size="15" /><span><strong>Shell</strong><small>默认禁止</small></span><Check v-if="config.tools.shell" :size="13" /></button>
-        </div>
-      </section>
+        <section class="settings-section">
+          <div class="section-heading"><Bot :size="15" /><span><strong>自适应选择</strong><small>INITIAL VALUE + ALLOWED RANGE</small></span></div>
+          <p class="settings-help">普通设置提供初值和合法范围，Agent 可以根据本轮任务改选；只有“锁定”不可覆盖。</p>
 
-      <section class="settings-section permission-settings">
-        <div class="section-heading"><ShieldCheck :size="15" /><span><strong>权限</strong><small>FAIL CLOSED</small></span></div>
-        <label class="form-row"><span>工具调用</span><select :value="config.toolPermission" disabled><option value="ask">需要审核</option><option value="allow">自动允许</option><option value="deny">全部拒绝</option></select></label>
-        <label class="form-row"><span>发送 QQ 消息</span><select :value="config.sendPermission" disabled><option value="ask">需要审核</option><option value="allow">自动允许</option><option value="deny">禁止发送</option></select></label>
-      </section>
+          <article v-for="axis in adaptiveAxes" :key="axis.key" class="adaptive-setting">
+            <header><span><strong>{{ axis.title }}</strong><small>{{ axis.detail }}</small></span></header>
+            <div class="adaptive-controls">
+              <label>
+                <span>模式</span>
+                <select
+                  :value="axis.setting?.mode"
+                  :disabled="!policyEditable"
+                  @change="updateAdaptiveMode(axis.key, ($event.target as HTMLSelectElement).value as InternalTestSelectionMode)"
+                >
+                  <option v-for="mode in selectionModes" :key="mode" :value="mode">{{ selectionModeLabels[mode] }}</option>
+                </select>
+              </label>
+              <label>
+                <span>初值</span>
+                <select
+                  :value="axis.setting?.preferred"
+                  :disabled="!policyEditable || !axis.options.length"
+                  @change="updateAdaptivePreferred(axis.key, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option
+                    v-for="option in axis.options"
+                    :key="option.id"
+                    :value="option.id"
+                    :disabled="!option.available"
+                  >
+                    {{ option.label }}{{ option.available ? '' : '（不可用）' }}
+                  </option>
+                </select>
+              </label>
+            </div>
+            <div class="allowed-options">
+              <span>Agent 可选范围</span>
+              <label v-for="option in axis.options" :key="option.id" :title="option.reason">
+                <input
+                  type="checkbox"
+                  :checked="isAdaptiveAllowed(axis.setting, option.id)"
+                  :disabled="!policyEditable || !option.available"
+                  @change="toggleAdaptiveAllowed(axis.key, option.id)"
+                />
+                <span>{{ option.label }}</span>
+              </label>
+            </div>
+          </article>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-heading"><Wrench :size="15" /><span><strong>插件与能力</strong><small>DYNAMIC CATALOG</small></span></div>
+          <p class="settings-help">“偏好启用”不要求每轮调用；“锁定可用”只保证能力留在合法候选中。</p>
+          <div v-if="catalog?.plugins.length" class="plugin-list">
+            <article v-for="plugin in catalog.plugins" :key="plugin.id" class="plugin-row" :class="{ unavailable: !plugin.available }">
+              <div>
+                <span class="plugin-title">
+                  <strong>{{ plugin.displayName }}</strong>
+                  <small :class="plugin.available ? 'available' : 'unavailable'">{{ plugin.available ? '可用' : '不可用' }}</small>
+                </span>
+                <p>{{ plugin.description }}</p>
+                <em v-if="!plugin.available">{{ plugin.unavailableReason || '当前 Runtime 未接通该能力' }}</em>
+              </div>
+              <select
+                :value="policy.plugins[plugin.id] ?? 'off'"
+                :disabled="!policyEditable"
+                :aria-label="`${plugin.displayName} 使用模式`"
+                @change="updatePluginMode(plugin.id, ($event.target as HTMLSelectElement).value as InternalTestPluginMode)"
+              >
+                <option
+                  v-for="mode in pluginModes"
+                  :key="mode"
+                  :value="mode"
+                  :disabled="!plugin.available && mode !== 'off'"
+                >
+                  {{ pluginModeLabels[mode] }}
+                </option>
+              </select>
+            </article>
+          </div>
+          <div v-else class="empty-catalog">当前 Catalog 没有已登记插件</div>
+        </section>
+      </template>
 
       <footer class="settings-footer">
-        <span><ShieldCheck :size="13" />等待专用 Core Command</span>
-        <button type="button" class="save-button" disabled><Save :size="14" />不可用</button>
+        <span><ShieldCheck :size="13" />按账号 + 会话保存；普通偏好可由 Agent 本轮改选</span>
+        <button
+          type="button"
+          class="save-button"
+          :disabled="policyLoading || policySaving || !policy"
+          @click="emit('saveSettings')"
+        >
+          <RefreshCw v-if="policySaving" :size="14" class="spinning" />
+          <Save v-else :size="14" />
+          {{ policySaving ? '保存中' : '保存配置' }}
+        </button>
       </footer>
     </section>
   </aside>
@@ -726,6 +1009,39 @@ watch(
   border-radius: 7px;
   background: var(--warning-soft);
   padding: 9px;
+}
+
+.runtime-unavailable > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.runtime-unavailable > button {
+  display: inline-flex;
+  height: 27px;
+  flex: 0 0 auto;
+  cursor: pointer;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--warning-border);
+  border-radius: 6px;
+  color: var(--warning-strong);
+  background: var(--surface);
+  padding: 0 7px;
+  font: inherit;
+  font-size: 8px;
+}
+
+.runtime-unavailable > button:disabled {
+  cursor: wait;
+}
+
+.spinning {
+  animation: runtime-spin 0.9s linear infinite;
+}
+
+@keyframes runtime-spin {
+  to { transform: rotate(360deg); }
 }
 
 .runtime-unavailable > span {
@@ -1154,6 +1470,30 @@ textarea:disabled {
   white-space: nowrap;
 }
 
+.selection-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 9px;
+}
+
+.selection-reasons > span {
+  margin-right: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.selection-reasons code {
+  border-radius: 4px;
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  padding: 3px 5px;
+  font-size: 7px;
+}
+
 .run-timeline {
   margin: 0;
   padding: 0;
@@ -1289,6 +1629,200 @@ textarea:disabled {
   color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 7px;
+}
+
+.settings-state {
+  display: flex;
+  min-height: 150px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.settings-state--error {
+  color: var(--warning-strong);
+}
+
+.settings-error {
+  margin: 10px 15px 0;
+  border: 1px solid var(--warning-border);
+  border-radius: 6px;
+  color: var(--warning-strong);
+  background: var(--warning-soft);
+  padding: 7px 9px;
+  font-size: 8px;
+}
+
+.settings-help {
+  margin: -2px 0 10px;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.adaptive-setting {
+  border-top: 1px solid var(--border-soft);
+  padding: 10px 0 11px;
+}
+
+.adaptive-setting > header strong,
+.adaptive-setting > header small {
+  display: block;
+}
+
+.adaptive-setting > header strong {
+  color: var(--text);
+  font-size: 10px;
+}
+
+.adaptive-setting > header small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.adaptive-controls {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.8fr) minmax(130px, 1.2fr);
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.adaptive-controls label > span,
+.allowed-options > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 7px;
+}
+
+.adaptive-controls select,
+.plugin-row select {
+  width: 100%;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  padding: 0 6px;
+  font: inherit;
+  font-size: 8px;
+}
+
+.allowed-options {
+  margin-top: 8px;
+}
+
+.allowed-options label {
+  display: inline-flex;
+  max-width: 100%;
+  cursor: pointer;
+  align-items: center;
+  gap: 4px;
+  margin: 0 5px 5px 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  padding: 4px 6px;
+  font-size: 8px;
+}
+
+.allowed-options label:has(input:checked) {
+  color: var(--brand-strong);
+  border-color: var(--brand-border);
+  background: var(--brand-soft);
+}
+
+.allowed-options input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: var(--brand);
+}
+
+.plugin-list {
+  display: grid;
+  gap: 6px;
+}
+
+.plugin-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.plugin-row > div {
+  min-width: 0;
+}
+
+.plugin-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.plugin-title strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-title small {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 7px;
+}
+
+.plugin-title small.available {
+  color: var(--success-strong);
+  background: var(--success-soft);
+}
+
+.plugin-title small.unavailable {
+  color: var(--warning-strong);
+  background: var(--warning-soft);
+}
+
+.plugin-row p,
+.plugin-row em {
+  overflow: hidden;
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 7px;
+  font-style: normal;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugin-row em {
+  display: block;
+  color: var(--warning-strong);
+}
+
+.plugin-row.unavailable {
+  background: var(--surface-subtle);
+}
+
+.empty-catalog {
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-muted);
+  padding: 14px;
+  font-size: 8px;
+  text-align: center;
 }
 
 .form-row,
@@ -1438,23 +1972,34 @@ textarea:disabled {
 
 .settings-footer {
   display: flex;
-  height: 48px;
+  min-height: 48px;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   color: var(--text-muted);
   padding: 0 15px;
   font-size: 8px;
 }
 
-.settings-footer span,
+.settings-footer > span,
 .save-button {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
+.settings-footer > span {
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.settings-footer > span svg {
+  flex: 0 0 auto;
+}
+
 .save-button {
   height: 29px;
+  flex: 0 0 auto;
   cursor: pointer;
   border: 0;
   border-radius: 5px;

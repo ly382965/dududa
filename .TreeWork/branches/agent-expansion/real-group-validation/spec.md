@@ -62,24 +62,91 @@ remote resource or media content is executed or fetched. Focused synthetic
 tests plus staged 5/50/target Teacher runs are sufficient for this development
 artifact; the stage does not add a new release gate.
 
-### Internal-Test Web Surface
+### Historical-Corpus Evaluation Adapter
 
 Before live S23 authorization is available, the existing Bot Control Plane may
-host a repository-code, localhost-only internal-test surface over the private
-S23E projection. It is an evaluation Adapter, not another Runtime control
-plane. It may browse already de-identified windows, show Student predictions,
-Static TierPolicy preview and AnswerProfile, request an explicit server-side
-Provider candidate in `no_send` mode, and append human feedback to a configured
+host a repository-code, localhost-only historical-corpus surface over the
+private S23E projection. This historical surface is a no-send Evaluation
+Adapter, not another Runtime or a source of live Runtime authority. It may
+browse already de-identified windows, show Student predictions, Static
+TierPolicy preview and AnswerProfile, request an explicit server-side Provider
+candidate in `no_send` mode, and append human feedback to a configured
 repository-external JSONL file.
 
-The surface does not read `windows/all.jsonl` on page load, expose Provider
-credentials, call QQ Output, write Memory, invoke tools or connect Bandit. The
-browser receives only the existing de-identified, browser-safe Demo projection.
-Candidate generation is operator-triggered, reports the selected tier/model and
-always returns `output_calls=0`; unavailable data or Provider configuration
-remains an honest empty/unavailable state. Normal window/run IDs and focused
-boundary validation are sufficient for this reversible development workflow;
-no additional hash, contract freeze or release gate is introduced.
+The historical surface does not read `windows/all.jsonl` on page load, expose
+Provider credentials, call QQ Output, write Memory, invoke tools or connect
+Bandit. The browser receives only the existing de-identified, browser-safe Demo
+projection. Candidate generation is operator-triggered, reports the selected
+tier/model and always returns `output_calls=0`; unavailable data or Provider
+configuration remains an honest empty/unavailable state. Normal window/run IDs
+and focused boundary validation are sufficient for this reversible development
+workflow; no additional hash, contract freeze or release gate is introduced.
+
+### Live Agent Console As Bot Control Plane
+
+The live Agent Console in the same Web application is a formal Bot Control
+Plane and administrator super-workbench. It is not limited to observation and
+is not another Agent Runtime. Its configuration expresses three distinct
+inputs to the deterministic Runtime for one
+`accountId + conversationId` Scope:
+
+1. the administrator's initial or preferred value;
+2. the legal set from which the Agent may choose for each Run; and
+3. an explicit lock when the administrator intends to prohibit adaptation.
+
+Server-side configuration uses the following shared selection meaning for
+model or Tier, reasoning depth, AnswerProfile, context policy and later
+adaptive settings:
+
+```ts
+type SelectionMode = 'adaptive' | 'preferred' | 'locked'
+
+interface AdaptiveSetting<T> {
+  mode: SelectionMode
+  preferred: T
+  allowed: T[]
+}
+```
+
+- `adaptive` lets the Runtime choose any eligible value in `allowed` for every
+  Run.
+- `preferred` supplies the administrator's initial preference while permitting
+  a reasoned per-Run change inside `allowed`.
+- `locked` requires the configured value until an administrator changes the
+  lock, but it does not create availability, grant a Capability, or override a
+  Core policy rejection.
+
+An ordinary administrator adjustment is therefore not a permanent model
+decision. AnswerProfile (`SHORT/MEDIUM/LONG`), model/Tier and reasoning depth
+remain orthogonal. Luna/Terra/Sol or Haiku/Sonnet/Opus associations may be
+defaults or preferences, but the Runtime must not encode
+`SHORT = Luna`, `MEDIUM = Terra`, or `LONG = Sol` as a control invariant.
+
+Plugin and Capability presentation uses four administrator modes after Core
+eligibility filtering:
+
+- `off`: exclude the plugin from the legal candidate set;
+- `auto`: let the Agent select it when the task needs it;
+- `on`: prefer it as available, without requiring a call in every Run;
+- `locked`: keep it in the legal set, without turning availability into a
+  mandatory invocation or a permission grant.
+
+The authoritative Catalog is returned dynamically by the server rather than
+hard-coded in Vue. It reports model/Tier, supported reasoning levels,
+modalities, AnswerProfiles, plugins and Capabilities together with installation,
+availability and a truthful unavailable reason. iCourse is currently the only
+real MCP Server. If its execution path is not connected to the current Web
+Runtime, it is reported as installed but unavailable. Campus news, arXiv,
+industry news, Web search and any other absent integration remain unavailable;
+fixtures and reserved interfaces must not be presented as installed services.
+
+Every Run records the administrator preference, legal values, effective model
+or Tier, effective reasoning depth, effective AnswerProfile, reason codes for
+any change and the plugins actually called. Control Plane configuration is
+persisted server-side outside the repository; browser memory is not authority.
+The Web may set initial values, bounds and explicit locks through dedicated
+server commands, but Core remains the sole owner of identity, Scope,
+authorization, budgets, Capability eligibility and every external side effect.
 
 ### Offline Runtime Budget And Sampling
 

@@ -62,10 +62,11 @@ describe('internal-test gateway', () => {
       expect(body).toMatchObject({
         model: 'custom-sol',
         max_output_tokens: 1_200,
+        reasoning: { effort: 'high' },
         store: false,
       })
       expect(String(body.input)).toContain('群成员：下午把接口联调一下')
-      expect(String(body.input)).toContain('操作员指令：\n给出一个完整的讨论建议')
+      expect(String(body.input)).toContain('操作员指令：\n完整分析当前架构并给出讨论建议')
       expect(String(body.instructions)).toContain('不要调用工具')
       expect(String(body.instructions)).toContain('不要宣告、复述或刻意表演人设')
       expect(String(body.instructions)).toContain('默认简洁，不抢话，不逐条复述已有聊天')
@@ -100,7 +101,7 @@ describe('internal-test gateway', () => {
       conversationId: 'group-1',
       conversationName: '项目讨论群',
       conversationType: 'group',
-      prompt: '给出一个完整的讨论建议',
+      prompt: '完整分析当前架构并给出讨论建议',
       answerProfile: 'long',
       messages: [
         { senderName: '群成员', content: '下午把接口联调一下', mine: false },
@@ -110,6 +111,7 @@ describe('internal-test gateway', () => {
       candidate: '建议先确认接口契约，再按主链路完成一次联调。',
       tier: 'opus',
       model: 'custom-sol',
+      reasoning: 'high',
       answerProfile: 'long',
       generatedAt: '2026-08-16T10:00:00.000Z',
       outputCalls: 0,
@@ -119,12 +121,106 @@ describe('internal-test gateway', () => {
     expect(providerRequest).toHaveBeenCalledOnce()
   })
 
+  it('persists scoped policy and keeps locked, preferred and adaptive selections distinct', async () => {
+    const root = await fixtureRoot()
+    const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+      expect(body).toMatchObject({
+        model: 'custom-luna',
+        reasoning: { effort: 'high' },
+        max_output_tokens: 1_200,
+      })
+      return new Response(JSON.stringify({ output_text: '先把现象和约束列清楚，再逐项排查。' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    const options = {
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      models: { haiku: 'custom-luna' },
+      fetchImpl: providerRequest as typeof fetch,
+      now: () => new Date('2026-08-17T08:00:00.000Z'),
+    }
+    const gateway = new FileInternalTestGateway(options)
+
+    const catalog = await gateway.agentCatalog()
+    expect(catalog.models).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'custom-luna', tier: 'haiku', available: true, modalities: ['text'] }),
+    ]))
+    expect(catalog.plugins).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'icourse.read', available: false, kind: 'mcp' }),
+      expect.objectContaining({
+        id: 'image.generate.gpt-image-2',
+        available: false,
+        kind: 'image_generation',
+        model: 'gpt-image-2',
+      }),
+    ]))
+
+    await gateway.saveAgentConfig({
+      scope: { accountId: 'bot-1', conversationId: 'group-42' },
+      policy: {
+        enabled: true,
+        modelTier: { mode: 'locked', preferred: 'haiku', allowed: ['haiku', 'opus'] },
+        reasoning: { mode: 'preferred', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
+        answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        plugins: {
+          'icourse.read': 'locked',
+          'image.generate.gpt-image-2': 'off',
+        },
+      },
+    })
+
+    const reloaded = new FileInternalTestGateway(options)
+    await expect(reloaded.agentConfig({ accountId: 'bot-1', conversationId: 'group-42' })).resolves.toMatchObject({
+      scope: { accountId: 'bot-1', conversationId: 'group-42' },
+      modelTier: { mode: 'locked', preferred: 'haiku' },
+      reasoning: { mode: 'preferred', preferred: 'medium' },
+      plugins: { 'icourse.read': 'locked' },
+      updatedAt: '2026-08-17T08:00:00.000Z',
+    })
+
+    await expect(reloaded.respond({
+      accountId: 'bot-1',
+      conversationId: 'group-42',
+      conversationName: '开发群',
+      conversationType: 'group',
+      prompt: '请完整分析这个架构问题并给出迁移方案',
+      answerProfile: 'long',
+      messages: [],
+    })).resolves.toMatchObject({
+      tier: 'haiku',
+      model: 'custom-luna',
+      reasoning: 'high',
+      answerProfile: 'long',
+      effectiveSelection: {
+        scope: { accountId: 'bot-1', conversationId: 'group-42' },
+        policySource: 'saved',
+        modelTier: 'haiku',
+        reasoning: 'high',
+        answerProfile: 'long',
+        plugins: {
+          'icourse.read': { mode: 'locked', available: false, eligible: false, selectedForRun: false },
+        },
+      },
+      reasonCodes: expect.arrayContaining([
+        'model.locked_by_admin',
+        'reasoning.preferred_overridden',
+        'answer_profile.adaptive',
+        'plugin.icourse.read.unavailable',
+      ]),
+    })
+    expect(providerRequest).toHaveBeenCalledOnce()
+  })
+
   it('loads the de-identified projection, generates a no-send candidate and records human feedback', async () => {
     const root = await fixtureRoot()
     const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
       expect(String(init?.headers && (init.headers as Record<string, string>).Authorization)).toContain('test-key')
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>
-      expect(body).toMatchObject({ model: 'custom-terra', store: false })
+      expect(body).toMatchObject({ model: 'custom-terra', reasoning: { effort: 'medium' }, store: false })
       expect(String(body.input)).toContain('identity-2：下午一起讨论项目。')
       return new Response(JSON.stringify({
         output: [{ content: [{ type: 'output_text', text: '好呀，下午一起把项目思路捋一遍。' }] }],

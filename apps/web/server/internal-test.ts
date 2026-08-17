@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { appendFile, mkdir, readFile, stat } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
@@ -17,11 +17,93 @@ const PROFILE_TOKEN_LIMITS = {
   medium: 600,
   long: 1_200,
 } as const
+const SELECTION_MODES = ['adaptive', 'preferred', 'locked'] as const
+const REASONING_LEVELS = ['low', 'medium', 'high'] as const
+const PLUGIN_MODES = ['off', 'auto', 'on', 'locked'] as const
 
-type ModelTier = 'haiku' | 'sonnet' | 'opus'
-type AnswerProfile = keyof typeof PROFILE_TOKEN_LIMITS
+export type ModelTier = 'haiku' | 'sonnet' | 'opus'
+export type AnswerProfile = keyof typeof PROFILE_TOKEN_LIMITS
+export type SelectionMode = typeof SELECTION_MODES[number]
+export type ReasoningLevel = typeof REASONING_LEVELS[number]
+export type PluginMode = typeof PLUGIN_MODES[number]
 type ConversationType = 'group' | 'private'
 type FeedbackVerdict = 'accepted' | 'rejected' | 'needs_review'
+
+export interface AdaptiveSetting<T extends string> {
+  mode: SelectionMode
+  preferred: T
+  allowed: T[]
+}
+
+export interface InternalTestAgentScope {
+  accountId: string
+  conversationId: string
+}
+
+export interface InternalTestAgentPolicyDefaults {
+  enabled: boolean
+  modelTier: AdaptiveSetting<ModelTier>
+  reasoning: AdaptiveSetting<ReasoningLevel>
+  answerProfile: AdaptiveSetting<AnswerProfile>
+  plugins: Record<string, PluginMode>
+}
+
+export interface InternalTestAgentPolicy extends InternalTestAgentPolicyDefaults {
+  schemaVersion: 1
+  scope: InternalTestAgentScope
+  updatedAt?: string
+}
+
+export interface InternalTestCatalogModel {
+  id: string
+  tier: ModelTier
+  displayName: string
+  available: boolean
+  modalities: Array<'text'>
+  reasoningLevels: ReasoningLevel[]
+  unavailableReason?: string
+}
+
+export interface InternalTestCatalogPlugin {
+  id: string
+  displayName: string
+  kind: 'mcp' | 'image_generation'
+  available: boolean
+  description: string
+  unavailableReason?: string
+  model?: string
+}
+
+export interface InternalTestAgentCatalog {
+  agent: {
+    id: 'dududa'
+    displayName: string
+  }
+  selectionModes: SelectionMode[]
+  pluginModes: PluginMode[]
+  models: InternalTestCatalogModel[]
+  reasoningLevels: ReasoningLevel[]
+  answerProfiles: AnswerProfile[]
+  plugins: InternalTestCatalogPlugin[]
+  policyDefaults: InternalTestAgentPolicyDefaults
+}
+
+export interface InternalTestEffectivePlugin {
+  mode: PluginMode
+  available: boolean
+  eligible: boolean
+  selectedForRun: boolean
+}
+
+export interface InternalTestEffectiveSelection {
+  scope: InternalTestAgentScope
+  policySource: 'default' | 'saved'
+  modelTier: ModelTier
+  model: string
+  reasoning: ReasoningLevel
+  answerProfile: AnswerProfile
+  plugins: Record<string, InternalTestEffectivePlugin>
+}
 
 export interface InternalTestStatus {
   available: boolean
@@ -89,7 +171,10 @@ export interface InternalTestAgentResponse {
   candidate: string
   tier: ModelTier
   model: string
+  reasoning: ReasoningLevel
   answerProfile: AnswerProfile
+  effectiveSelection: InternalTestEffectiveSelection
+  reasonCodes: string[]
   latencyMs: number
   generatedAt: string
   outputCalls: 0
@@ -109,6 +194,9 @@ export interface InternalTestGateway {
   progress(): Promise<InternalTestProgress>
   generate(body: Record<string, unknown>): Promise<InternalTestCandidate>
   agentStatus(): Promise<InternalTestAgentStatus>
+  agentCatalog(): Promise<InternalTestAgentCatalog>
+  agentConfig(query: Record<string, unknown>): Promise<InternalTestAgentPolicy>
+  saveAgentConfig(body: Record<string, unknown>): Promise<InternalTestAgentPolicy>
   respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse>
   feedback(body: Record<string, unknown>): Promise<InternalTestFeedbackResult>
 }
@@ -139,6 +227,7 @@ interface PrivateProviderConfig {
 export interface FileInternalTestGatewayOptions {
   dataRoot: string
   feedbackPath?: string
+  policyPath?: string
   codexConfigPath?: string
   authPath?: string
   providerName?: string
@@ -306,13 +395,6 @@ function generationInstructions(profile: AnswerProfile, conversationType: Conver
   ].join('\n')
 }
 
-function requestedAnswerProfile(value: unknown): AnswerProfile {
-  const profile = stringValue(value)?.toLowerCase()
-  if (!profile) return 'medium'
-  if (profile === 'short' || profile === 'medium' || profile === 'long') return profile
-  throw new InternalTestError('answerProfile 参数无效')
-}
-
 function requestedConversationType(value: unknown): ConversationType {
   const conversationType = stringValue(value)?.toLowerCase()
   if (!conversationType) return 'group'
@@ -320,10 +402,11 @@ function requestedConversationType(value: unknown): ConversationType {
   throw new InternalTestError('conversationType 参数无效')
 }
 
-function tierForProfile(profile: AnswerProfile): ModelTier {
-  if (profile === 'short') return 'haiku'
-  if (profile === 'long') return 'opus'
-  return 'sonnet'
+function optionalAnswerProfile(value: unknown): AnswerProfile | undefined {
+  const profile = stringValue(value)?.toLowerCase()
+  if (!profile) return undefined
+  if (profile === 'short' || profile === 'medium' || profile === 'long') return profile
+  throw new InternalTestError('answerProfile 参数无效')
 }
 
 function agentContext(body: Record<string, unknown>): string {
@@ -350,6 +433,261 @@ function agentContext(body: Record<string, unknown>): string {
     messages ? `最近消息：\n${messages}` : '最近消息：（无）',
     `操作员指令：\n${prompt}`,
   ].join('\n\n').slice(-18_000)
+}
+
+function agentScope(value: Record<string, unknown>, requireAccount = true): InternalTestAgentScope {
+  const nested = objectValue(value.scope)
+  const accountId = stringValue(nested?.accountId ?? nested?.account_id ?? value.accountId ?? value.account_id)
+  const conversationId = stringValue(
+    nested?.conversationId ?? nested?.conversation_id ?? value.conversationId ?? value.conversation_id,
+  )
+  if ((!accountId && requireAccount) || !conversationId) {
+    throw new InternalTestError('缺少 accountId 或 conversationId')
+  }
+  if ((accountId?.length ?? 0) > 256 || conversationId.length > 256) {
+    throw new InternalTestError('accountId 或 conversationId 过长')
+  }
+  return { accountId: accountId ?? 'default', conversationId }
+}
+
+function policyKey(scope: InternalTestAgentScope): string {
+  return `${encodeURIComponent(scope.accountId)}::${encodeURIComponent(scope.conversationId)}`
+}
+
+function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
+  return {
+    enabled: true,
+    modelTier: {
+      mode: 'adaptive',
+      preferred: 'sonnet',
+      allowed: ['haiku', 'sonnet', 'opus'],
+    },
+    reasoning: {
+      mode: 'adaptive',
+      preferred: 'medium',
+      allowed: ['low', 'medium', 'high'],
+    },
+    answerProfile: {
+      mode: 'adaptive',
+      preferred: 'medium',
+      allowed: ['short', 'medium', 'long'],
+    },
+    plugins: {
+      'icourse.read': 'off',
+      'image.generate.gpt-image-2': 'off',
+    },
+  }
+}
+
+function catalogPlugins(): InternalTestCatalogPlugin[] {
+  return [
+    {
+      id: 'icourse.read',
+      displayName: 'iCourse 评课社区',
+      kind: 'mcp',
+      available: false,
+      description: '查询课程与公开评价。',
+      unavailableReason: '当前 Web Agent Runtime 尚未绑定 iCourse Capability 执行链。',
+    },
+    {
+      id: 'image.generate.gpt-image-2',
+      displayName: 'GPT Image 2 图片生成',
+      kind: 'image_generation',
+      available: false,
+      description: '独立的图片生成与编辑能力，不用于图片理解。',
+      unavailableReason: 'gpt-image-2 图片生成执行链尚未接入当前 Runtime。',
+      model: 'gpt-image-2',
+    },
+  ]
+}
+
+function buildAgentCatalog(
+  models: Record<ModelTier, string>,
+  providerConfigured: boolean,
+): InternalTestAgentCatalog {
+  const modelDetails: Array<{ tier: ModelTier; label: string }> = [
+    { tier: 'haiku', label: '轻量' },
+    { tier: 'sonnet', label: '中等' },
+    { tier: 'opus', label: '专业' },
+  ]
+  return {
+    agent: { id: 'dududa', displayName: dududaPersona.display_name },
+    selectionModes: [...SELECTION_MODES],
+    pluginModes: [...PLUGIN_MODES],
+    models: modelDetails.map(({ tier, label }) => ({
+      id: models[tier],
+      tier,
+      displayName: `${label} · ${models[tier]}`,
+      available: providerConfigured,
+      modalities: ['text'],
+      reasoningLevels: [...REASONING_LEVELS],
+      ...(!providerConfigured ? { unavailableReason: 'Provider 尚未配置。' } : {}),
+    })),
+    reasoningLevels: [...REASONING_LEVELS],
+    answerProfiles: ['short', 'medium', 'long'],
+    plugins: catalogPlugins(),
+    policyDefaults: defaultPolicyDefaults(),
+  }
+}
+
+function selectionMode(value: unknown, fallback: SelectionMode): SelectionMode {
+  const mode = stringValue(value)?.toLowerCase()
+  if (!mode) return fallback
+  if (SELECTION_MODES.includes(mode as SelectionMode)) return mode as SelectionMode
+  throw new InternalTestError('SelectionMode 参数无效')
+}
+
+function adaptiveSetting<T extends string>(
+  value: unknown,
+  fallback: AdaptiveSetting<T>,
+  domain: readonly T[],
+  label: string,
+): AdaptiveSetting<T> {
+  if (value === undefined) return { ...fallback, allowed: [...fallback.allowed] }
+  const object = objectValue(value)
+  if (!object) throw new InternalTestError(`${label} 必须包含 mode、preferred 和 allowed`)
+  const preferred = stringValue(object.preferred) as T | undefined
+  const allowed = arrayValue(object.allowed)
+    .map(stringValue)
+    .filter((item): item is string => Boolean(item)) as T[]
+  if (!preferred || !domain.includes(preferred)) throw new InternalTestError(`${label}.preferred 参数无效`)
+  if (!allowed.length || allowed.some((item) => !domain.includes(item))) {
+    throw new InternalTestError(`${label}.allowed 参数无效`)
+  }
+  const uniqueAllowed = [...new Set(allowed)]
+  if (!uniqueAllowed.includes(preferred)) throw new InternalTestError(`${label}.allowed 必须包含 preferred`)
+  return {
+    mode: selectionMode(object.mode, fallback.mode),
+    preferred,
+    allowed: uniqueAllowed,
+  }
+}
+
+function pluginMode(value: unknown): PluginMode {
+  const mode = stringValue(value)?.toLowerCase()
+  if (mode && PLUGIN_MODES.includes(mode as PluginMode)) return mode as PluginMode
+  throw new InternalTestError('插件 mode 参数无效')
+}
+
+interface TaskChoice<T extends string> {
+  value: T
+  strong: boolean
+  reasonCode: string
+}
+
+interface TaskSignals {
+  modelTier: TaskChoice<ModelTier>
+  reasoning: TaskChoice<ReasoningLevel>
+  answerProfile: TaskChoice<AnswerProfile>
+}
+
+function taskSignals(body: Record<string, unknown>): TaskSignals {
+  const prompt = stringValue(body.prompt) ?? ''
+  const recent = arrayValue(body.messages)
+    .slice(-12)
+    .map(objectValue)
+    .filter((message): message is Record<string, unknown> => Boolean(message))
+    .map((message) => stringValue(message.content) ?? '')
+    .join('\n')
+  const text = `${recent}\n${prompt}`.trim()
+  const complex = /```|架构|设计|调试|排查|代码|实现|证明|推导|论文|研究|评估|权衡|迁移|重构|方案|深入分析|详细分析|完整分析/i.test(text)
+    || text.length > 420
+    || (text.match(/[？?]/g)?.length ?? 0) >= 3
+  const casual = text.length <= 80
+    && /^(?:你好|嗨|哈喽|在吗|谢谢|收到|好的|好呀|晚安|早安|哈哈|嘿|嗯+|哦+|行|可以)[呀啊哦呢嘛吗！!。.～~\s]*$/u.test(text)
+  const explicitProfile = optionalAnswerProfile(body.answerProfile ?? body.answer_profile)
+  const longRequested = /详细|完整|深入|展开|长回答|多讲|逐步|系统地/u.test(prompt)
+  const shortRequested = /简短|一句话|短回答|简单说/u.test(prompt)
+
+  const answerProfile: TaskChoice<AnswerProfile> = explicitProfile
+    ? { value: explicitProfile, strong: true, reasonCode: 'answer_profile.request_hint' }
+    : longRequested
+      ? { value: 'long', strong: true, reasonCode: 'answer_profile.explicit_long_request' }
+      : shortRequested || casual
+        ? { value: 'short', strong: true, reasonCode: shortRequested ? 'answer_profile.explicit_short_request' : 'answer_profile.casual_exchange' }
+        : { value: 'medium', strong: false, reasonCode: 'answer_profile.ordinary_task' }
+
+  if (complex) {
+    return {
+      modelTier: { value: 'opus', strong: true, reasonCode: 'model.task_complexity_high' },
+      reasoning: { value: 'high', strong: true, reasonCode: 'reasoning.task_complexity_high' },
+      answerProfile,
+    }
+  }
+  if (casual) {
+    return {
+      modelTier: { value: 'haiku', strong: true, reasonCode: 'model.casual_exchange' },
+      reasoning: { value: 'low', strong: true, reasonCode: 'reasoning.casual_exchange' },
+      answerProfile,
+    }
+  }
+  return {
+    modelTier: { value: 'sonnet', strong: false, reasonCode: 'model.ordinary_task' },
+    reasoning: { value: 'medium', strong: false, reasonCode: 'reasoning.ordinary_task' },
+    answerProfile,
+  }
+}
+
+function effectiveValue<T extends string>(
+  axis: string,
+  setting: AdaptiveSetting<T>,
+  inferred: TaskChoice<T>,
+): { value: T; reasonCodes: string[] } {
+  if (setting.mode === 'locked') {
+    return { value: setting.preferred, reasonCodes: [`${axis}.locked_by_admin`] }
+  }
+  const canUseInferred = setting.allowed.includes(inferred.value)
+  if (setting.mode === 'adaptive' && canUseInferred) {
+    return { value: inferred.value, reasonCodes: [`${axis}.adaptive`, inferred.reasonCode] }
+  }
+  if (setting.mode === 'preferred' && inferred.strong && canUseInferred) {
+    return { value: inferred.value, reasonCodes: [`${axis}.preferred_overridden`, inferred.reasonCode] }
+  }
+  if (!canUseInferred) {
+    return {
+      value: setting.preferred,
+      reasonCodes: [`${axis}.inferred_not_allowed`, `${axis}.preferred_fallback`],
+    }
+  }
+  return { value: setting.preferred, reasonCodes: [`${axis}.preferred_initial`] }
+}
+
+function normalizeAgentPolicy(
+  value: unknown,
+  current: InternalTestAgentPolicy,
+  scope: InternalTestAgentScope,
+  updatedAt?: string,
+): InternalTestAgentPolicy {
+  const policy = objectValue(value) ?? {}
+  const knownPlugins = new Set(catalogPlugins().map((plugin) => plugin.id))
+  const plugins = { ...current.plugins }
+  const requestedPlugins = objectValue(policy.plugins)
+  if (requestedPlugins) {
+    for (const [id, mode] of Object.entries(requestedPlugins)) {
+      if (!knownPlugins.has(id)) throw new InternalTestError(`未知插件: ${id}`)
+      plugins[id] = pluginMode(mode)
+    }
+  }
+  return {
+    schemaVersion: 1,
+    scope,
+    enabled: typeof policy.enabled === 'boolean' ? policy.enabled : current.enabled,
+    modelTier: adaptiveSetting(
+      policy.modelTier ?? policy.model_tier ?? policy.tier,
+      current.modelTier,
+      ['haiku', 'sonnet', 'opus'],
+      'modelTier',
+    ),
+    reasoning: adaptiveSetting(policy.reasoning, current.reasoning, REASONING_LEVELS, 'reasoning'),
+    answerProfile: adaptiveSetting(
+      policy.answerProfile ?? policy.answer_profile,
+      current.answerProfile,
+      ['short', 'medium', 'long'],
+      'answerProfile',
+    ),
+    plugins,
+    ...(updatedAt ? { updatedAt } : {}),
+  }
 }
 
 function feedbackVerdict(value: unknown): FeedbackVerdict {
@@ -406,6 +744,7 @@ function feedbackCorrections(value: unknown): Record<string, string> | undefined
 export class FileInternalTestGateway implements InternalTestGateway {
   private readonly demoPath: string
   private readonly feedbackPath: string
+  private readonly policyPath: string
   private readonly codexConfigPath: string
   private readonly authPath: string
   private readonly fetchImpl: typeof fetch
@@ -422,8 +761,13 @@ export class FileInternalTestGateway implements InternalTestGateway {
     if (!isAbsolute(feedbackPath)) {
       throw new InternalTestError('DUDUDA_INTERNAL_TEST_FEEDBACK_PATH 必须是绝对路径', 503)
     }
+    const policyPath = stringValue(options.policyPath) ?? resolve(dataRoot, 'internal-test/agent-policies.json')
+    if (!isAbsolute(policyPath)) {
+      throw new InternalTestError('DUDUDA_INTERNAL_TEST_POLICY_PATH 必须是绝对路径', 503)
+    }
     this.demoPath = resolve(dataRoot, 'demo/index.html')
     this.feedbackPath = feedbackPath
+    this.policyPath = policyPath
     this.codexConfigPath = resolve(options.codexConfigPath ?? resolve(homedir(), '.codex/config.toml'))
     this.authPath = resolve(options.authPath ?? resolve(homedir(), '.codex/auth.json'))
     this.fetchImpl = options.fetchImpl ?? fetch
@@ -432,6 +776,33 @@ export class FileInternalTestGateway implements InternalTestGateway {
       haiku: stringValue(options.models?.haiku) ?? DEFAULT_TIER_MODELS.haiku,
       sonnet: stringValue(options.models?.sonnet) ?? DEFAULT_TIER_MODELS.sonnet,
       opus: stringValue(options.models?.opus) ?? DEFAULT_TIER_MODELS.opus,
+    }
+  }
+
+  private defaultPolicy(scope: InternalTestAgentScope): InternalTestAgentPolicy {
+    return { schemaVersion: 1, scope, ...defaultPolicyDefaults() }
+  }
+
+  private async policyRecords(): Promise<Record<string, unknown>> {
+    try {
+      const parsed = JSON.parse(await readFile(this.policyPath, 'utf8')) as unknown
+      const root = objectValue(parsed)
+      return objectValue(root?.policies) ?? {}
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+      throw new InternalTestError('Agent 配置文件无法读取', 503)
+    }
+  }
+
+  private async resolvedPolicy(
+    scope: InternalTestAgentScope,
+  ): Promise<{ policy: InternalTestAgentPolicy; source: 'default' | 'saved' }> {
+    const stored = (await this.policyRecords())[policyKey(scope)]
+    if (!stored) return { policy: this.defaultPolicy(scope), source: 'default' }
+    const updatedAt = stringValue(objectValue(stored)?.updatedAt)
+    return {
+      policy: normalizeAgentPolicy(stored, this.defaultPolicy(scope), scope, updatedAt),
+      source: 'saved',
     }
   }
 
@@ -487,6 +858,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
     input: string,
     answerProfile: AnswerProfile,
     tier: ModelTier,
+    reasoning: ReasoningLevel,
     conversationType: ConversationType = 'group',
   ): Promise<{ candidate: string; model: string; latencyMs: number }> {
     const model = this.models[tier]
@@ -509,6 +881,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
           instructions: generationInstructions(answerProfile, conversationType),
           input,
           max_output_tokens: PROFILE_TOKEN_LIMITS[answerProfile],
+          reasoning: { effort: reasoning },
           store: false,
         }),
         signal: controller.signal,
@@ -630,7 +1003,8 @@ export class FileInternalTestGateway implements InternalTestGateway {
     if (!sample) throw new InternalTestError('内测样本不存在', 404)
     const tier = sampleTier(sample)
     const answerProfile = sampleAnswerProfile(sample)
-    const generated = await this.requestCandidate(contextFor(sample), answerProfile, tier)
+    const reasoning: ReasoningLevel = tier === 'opus' ? 'high' : tier === 'haiku' ? 'low' : 'medium'
+    const generated = await this.requestCandidate(contextFor(sample), answerProfile, tier, reasoning)
     return {
       runId: randomUUID(),
       windowId,
@@ -671,17 +1045,93 @@ export class FileInternalTestGateway implements InternalTestGateway {
     }
   }
 
+  async agentCatalog(): Promise<InternalTestAgentCatalog> {
+    let providerConfigured = true
+    try {
+      await this.providerConfig()
+    } catch {
+      providerConfigured = false
+    }
+    return buildAgentCatalog(this.models, providerConfigured)
+  }
+
+  async agentConfig(query: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
+    return (await this.resolvedPolicy(agentScope(query))).policy
+  }
+
+  async saveAgentConfig(body: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
+    const scope = agentScope(body)
+    const records = await this.policyRecords()
+    const current = await this.resolvedPolicy(scope)
+    const updatedAt = this.now().toISOString()
+    const policy = normalizeAgentPolicy(objectValue(body.policy) ?? body, current.policy, scope, updatedAt)
+    records[policyKey(scope)] = policy
+    await mkdir(dirname(this.policyPath), { recursive: true })
+    await writeFile(this.policyPath, `${JSON.stringify({ schemaVersion: 1, policies: records }, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600,
+    })
+    return policy
+  }
+
   async respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse> {
-    const answerProfile = requestedAnswerProfile(body.answerProfile ?? body.answer_profile)
+    const scope = agentScope(body, false)
+    const resolved = await this.resolvedPolicy(scope)
+    if (!resolved.policy.enabled) throw new InternalTestError('当前会话的 Agent 已关闭', 409)
     const conversationType = requestedConversationType(body.conversationType ?? body.conversation_type)
-    const tier = tierForProfile(answerProfile)
-    const generated = await this.requestCandidate(agentContext(body), answerProfile, tier, conversationType)
+    const signals = taskSignals(body)
+    const modelTier = effectiveValue('model', resolved.policy.modelTier, signals.modelTier)
+    const reasoning = effectiveValue('reasoning', resolved.policy.reasoning, signals.reasoning)
+    const answerProfile = effectiveValue('answer_profile', resolved.policy.answerProfile, signals.answerProfile)
+    const catalog = await this.agentCatalog()
+    const plugins: Record<string, InternalTestEffectivePlugin> = {}
+    const pluginReasonCodes: string[] = []
+    for (const plugin of catalog.plugins) {
+      const mode = resolved.policy.plugins[plugin.id] ?? 'off'
+      const eligible = plugin.available && mode !== 'off'
+      plugins[plugin.id] = {
+        mode,
+        available: plugin.available,
+        eligible,
+        selectedForRun: false,
+      }
+      if (!plugin.available) pluginReasonCodes.push(`plugin.${plugin.id}.unavailable`)
+      else if (mode === 'off') pluginReasonCodes.push(`plugin.${plugin.id}.off_by_admin`)
+      else pluginReasonCodes.push(`plugin.${plugin.id}.eligible_${mode}`)
+    }
+    const generated = await this.requestCandidate(
+      agentContext(body),
+      answerProfile.value,
+      modelTier.value,
+      reasoning.value,
+      conversationType,
+    )
+    const reasonCodes = [
+      `policy.${resolved.source}`,
+      ...modelTier.reasonCodes,
+      ...reasoning.reasonCodes,
+      ...answerProfile.reasonCodes,
+      ...pluginReasonCodes,
+      'plugins.no_tool_execution',
+    ]
+    const effectiveSelection: InternalTestEffectiveSelection = {
+      scope,
+      policySource: resolved.source,
+      modelTier: modelTier.value,
+      model: generated.model,
+      reasoning: reasoning.value,
+      answerProfile: answerProfile.value,
+      plugins,
+    }
     return {
       runId: randomUUID(),
       candidate: generated.candidate,
-      tier,
+      tier: modelTier.value,
       model: generated.model,
-      answerProfile,
+      reasoning: reasoning.value,
+      answerProfile: answerProfile.value,
+      effectiveSelection,
+      reasonCodes,
       latencyMs: generated.latencyMs,
       generatedAt: this.now().toISOString(),
       outputCalls: 0,
@@ -761,6 +1211,18 @@ export class UnavailableInternalTestGateway implements InternalTestGateway {
     }
   }
 
+  async agentCatalog(): Promise<InternalTestAgentCatalog> {
+    return buildAgentCatalog(this.models, false)
+  }
+
+  async agentConfig(): Promise<InternalTestAgentPolicy> {
+    throw new InternalTestError('内测 Agent Runtime 未配置', 503)
+  }
+
+  async saveAgentConfig(): Promise<InternalTestAgentPolicy> {
+    throw new InternalTestError('内测 Agent Runtime 未配置', 503)
+  }
+
   async respond(): Promise<InternalTestAgentResponse> {
     throw new InternalTestError('内测 Agent Runtime 未配置', 503)
   }
@@ -773,12 +1235,13 @@ export class UnavailableInternalTestGateway implements InternalTestGateway {
 export function createInternalTestGateway(environment: NodeJS.ProcessEnv = process.env): InternalTestGateway {
   const dataRoot = stringValue(environment.DUDUDA_INTERNAL_TEST_DATA_ROOT)
   const feedbackPath = stringValue(environment.DUDUDA_INTERNAL_TEST_FEEDBACK_PATH)
+  const policyPath = stringValue(environment.DUDUDA_INTERNAL_TEST_POLICY_PATH)
   const models = {
     haiku: stringValue(environment.DUDUDA_INTERNAL_TEST_HAIKU_MODEL) ?? DEFAULT_TIER_MODELS.haiku,
     sonnet: stringValue(environment.DUDUDA_INTERNAL_TEST_SONNET_MODEL) ?? DEFAULT_TIER_MODELS.sonnet,
     opus: stringValue(environment.DUDUDA_INTERNAL_TEST_OPUS_MODEL) ?? DEFAULT_TIER_MODELS.opus,
   }
-  if (!dataRoot || !isAbsolute(dataRoot) || (feedbackPath && !isAbsolute(feedbackPath))) {
+  if (!dataRoot || !isAbsolute(dataRoot) || (feedbackPath && !isAbsolute(feedbackPath)) || (policyPath && !isAbsolute(policyPath))) {
     return new UnavailableInternalTestGateway([
       'PRIVATE DEVELOPMENT DATA',
       'NO SEND',
@@ -789,6 +1252,7 @@ export function createInternalTestGateway(environment: NodeJS.ProcessEnv = proce
   return new FileInternalTestGateway({
     dataRoot,
     feedbackPath,
+    policyPath,
     providerName: environment.DUDUDA_INTERNAL_TEST_PROVIDER,
     providerBaseUrl: environment.DUDUDA_INTERNAL_TEST_API_BASE ?? environment.DUDUDA_INTERNAL_TEST_BASE_URL,
     providerApiKey: environment.DUDUDA_INTERNAL_TEST_API_KEY,

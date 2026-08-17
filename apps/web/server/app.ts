@@ -413,6 +413,22 @@ export function createDududaServer(options: DududaServerOptions) {
         json(response, 200, await internalTest.agentStatus())
         return
       }
+      if (method === 'GET' && url.pathname === '/api/internal-test/agent/catalog') {
+        json(response, 200, await internalTest.agentCatalog())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/internal-test/agent/config') {
+        json(response, 200, await internalTest.agentConfig(Object.fromEntries(url.searchParams.entries())))
+        return
+      }
+      if (method === 'PUT' && url.pathname === '/api/internal-test/agent/config') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源管理员页面修改 Agent 配置' })
+          return
+        }
+        json(response, 200, await internalTest.saveAgentConfig(await readJson(request, maxRequestBytes)))
+        return
+      }
       if (method === 'POST' && url.pathname === '/api/internal-test/agent/respond') {
         if (!sameOrigin(request)) {
           json(response, 403, { error: '只允许同源内测页面生成 Agent 候选回答' })

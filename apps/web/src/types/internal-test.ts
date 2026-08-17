@@ -1,6 +1,82 @@
 export type InternalTestTier = 'haiku' | 'sonnet' | 'opus'
 export type InternalTestAnswerProfile = 'short' | 'medium' | 'long'
+export type InternalTestSelectionMode = 'adaptive' | 'preferred' | 'locked'
+export type InternalTestReasoningLevel = 'low' | 'medium' | 'high'
+export type InternalTestPluginMode = 'off' | 'auto' | 'on' | 'locked'
 export type InternalTestVerdict = 'accepted' | 'rejected' | 'needs_review'
+
+export interface InternalTestAdaptiveSetting<T extends string> {
+  mode: InternalTestSelectionMode
+  preferred: T
+  allowed: T[]
+}
+
+export interface InternalTestAgentScope {
+  accountId: string
+  conversationId: string
+}
+
+export interface InternalTestAgentPolicyDefaults {
+  enabled: boolean
+  modelTier: InternalTestAdaptiveSetting<InternalTestTier>
+  reasoning: InternalTestAdaptiveSetting<InternalTestReasoningLevel>
+  answerProfile: InternalTestAdaptiveSetting<InternalTestAnswerProfile>
+  plugins: Record<string, InternalTestPluginMode>
+}
+
+export interface InternalTestAgentPolicy extends InternalTestAgentPolicyDefaults {
+  schemaVersion: 1
+  scope: InternalTestAgentScope
+  updatedAt?: string
+}
+
+export interface InternalTestCatalogModel {
+  id: string
+  tier: InternalTestTier
+  displayName: string
+  available: boolean
+  modalities: Array<'text'>
+  reasoningLevels: InternalTestReasoningLevel[]
+  unavailableReason?: string
+}
+
+export interface InternalTestCatalogPlugin {
+  id: string
+  displayName: string
+  kind: 'mcp' | 'image_generation'
+  available: boolean
+  description: string
+  unavailableReason?: string
+  model?: string
+}
+
+export interface InternalTestAgentCatalog {
+  agent: { id: 'dududa'; displayName: string }
+  selectionModes: InternalTestSelectionMode[]
+  pluginModes: InternalTestPluginMode[]
+  models: InternalTestCatalogModel[]
+  reasoningLevels: InternalTestReasoningLevel[]
+  answerProfiles: InternalTestAnswerProfile[]
+  plugins: InternalTestCatalogPlugin[]
+  policyDefaults: InternalTestAgentPolicyDefaults
+}
+
+export interface InternalTestEffectivePlugin {
+  mode: InternalTestPluginMode
+  available: boolean
+  eligible: boolean
+  selectedForRun: boolean
+}
+
+export interface InternalTestEffectiveSelection {
+  scope: InternalTestAgentScope
+  policySource: 'default' | 'saved'
+  modelTier: InternalTestTier
+  model: string
+  reasoning: InternalTestReasoningLevel
+  answerProfile: InternalTestAnswerProfile
+  plugins: Record<string, InternalTestEffectivePlugin>
+}
 
 export interface InternalTestPrediction<T> {
   label: T
@@ -84,6 +160,8 @@ export interface InternalTestAgentContextMessage {
 }
 
 export interface InternalTestAgentRequest {
+  accountId?: string
+  scope?: InternalTestAgentScope
   conversationId: string
   conversationName: string
   conversationType: 'group' | 'private'
@@ -97,7 +175,10 @@ export interface InternalTestAgentResponse {
   candidate: string
   tier: InternalTestTier
   model: string
+  reasoning: InternalTestReasoningLevel
   answerProfile: InternalTestAnswerProfile
+  effectiveSelection: InternalTestEffectiveSelection
+  reasonCodes: string[]
   latencyMs: number
   generatedAt: string
   outputCalls: 0

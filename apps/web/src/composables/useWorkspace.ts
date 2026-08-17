@@ -11,7 +11,6 @@ import {
 import { workspaceAdapter, type WorkspaceAdapter } from '../services/workspace-adapter'
 import type {
   Account,
-  AgentConfig,
   AgentMessage,
   AgentPart,
   AgentRun,
@@ -29,23 +28,15 @@ import type {
   WorkspaceEvent,
   WorkspaceSnapshot,
 } from '../types/workspace'
-import type { InternalTestAgentStatus } from '../types/internal-test'
+import type {
+  InternalTestAgentCatalog,
+  InternalTestAgentPolicy,
+  InternalTestAgentScope,
+  InternalTestAgentStatus,
+  InternalTestAnswerProfile,
+} from '../types/internal-test'
 
-const defaultConfig = (): AgentConfig => ({
-  enabled: false,
-  agent: '未连接',
-  model: '未连接',
-  answerProfile: 'medium',
-  reasoning: 'medium',
-  trigger: 'manual',
-  contextMessages: 30,
-  includeReplyChain: true,
-  includeImages: false,
-  longTermMemory: false,
-  tools: { course: false, web: false, groupFiles: false, shell: false },
-  sendPermission: 'ask',
-  toolPermission: 'ask',
-})
+const agentContextMessages = 30
 
 function emptySnapshot(): WorkspaceSnapshot {
   return {
@@ -123,7 +114,15 @@ export function useWorkspace(
   const replyToMessage = ref<ChatMessage | null>(null)
   const agentRuntimeStatus = ref<InternalTestAgentStatus | null>(null)
   const agentRuntimeError = ref('')
+  const agentRuntimeLoading = ref(false)
   const agentPromptSending = ref(false)
+  const agentCatalog = ref<InternalTestAgentCatalog>()
+  const agentCatalogError = ref('')
+  const agentPolicy = ref<InternalTestAgentPolicy>()
+  const agentPolicyLoading = ref(false)
+  const agentPolicySaving = ref(false)
+  const agentPolicyError = ref('')
+  const answerProfileHint = ref<InternalTestAnswerProfile>()
   const localAgentSessions = ref<AgentSession[]>([])
   const localAgentMessages = ref<Record<string, AgentMessage[]>>({})
   const localAgentRuns = ref<AgentRun[]>([])
@@ -142,7 +141,6 @@ export function useWorkspace(
       }
     >
   >({})
-  const fallbackConfig = ref(defaultConfig())
   const storedTheme = typeof window !== 'undefined' ? window.localStorage.getItem('dududa-theme') : null
   const theme = ref<ThemeMode>(storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system' ? storedTheme : 'system')
   const systemDark = ref(
@@ -154,6 +152,8 @@ export function useWorkspace(
   let toastTimer: ReturnType<typeof setTimeout> | undefined
   let unsubscribe: (() => void) | undefined
   let colorSchemeQuery: MediaQueryList | undefined
+  let agentStatusTimer: ReturnType<typeof setInterval> | undefined
+  let agentPolicyGeneration = 0
   let messageLoadVersion = 0
   let initialLoadComplete = false
   const initialWorkspaceEvents: WorkspaceEvent[] = []
@@ -221,23 +221,17 @@ export function useWorkspace(
       (item) => item.conversationId === selectedConversationId.value && item.sessionId === selectedSessionId.value,
     ),
   )
-  const selectedConfig = computed<AgentConfig>(() => {
-    const conversationId = selectedConversationId.value
-    const config = conversationId
-      ? (snapshot.value.configs[conversationId] ??= defaultConfig())
-      : fallbackConfig.value
-    config.answerProfile ??= 'medium'
-    if (!agentAvailable.value) return config
-    return {
-      ...config,
-      enabled: true,
-      agent: '内测 Runtime',
-      model: modelForAnswerProfile(config.answerProfile),
-      longTermMemory: false,
-      tools: { course: false, web: false, groupFiles: false, shell: false },
-      sendPermission: 'deny',
-      toolPermission: 'deny',
-    }
+  const selectedAgentScope = computed<InternalTestAgentScope | undefined>(() => {
+    const conversation = selectedConversation.value
+    if (!conversation) return undefined
+    return { accountId: conversation.accountId, conversationId: conversation.id }
+  })
+  const preferredAgentModel = computed(() => {
+    const tier = agentPolicy.value?.modelTier.preferred
+    if (!tier) return '动态路由'
+    return agentCatalog.value?.models.find((model) => model.tier === tier && model.available)?.displayName
+      ?? agentCatalog.value?.models.find((model) => model.tier === tier)?.displayName
+      ?? tier
   })
   const totalUnread = computed(() => conversations.value.reduce((total, item) => total + item.unread, 0))
   const onlineCount = computed(() => accounts.value.filter((item) => item.status === 'online').length)
@@ -262,22 +256,96 @@ export function useWorkspace(
   }
 
   async function loadAgentRuntimeStatus(): Promise<void> {
+    if (agentRuntimeLoading.value) return
+    agentRuntimeLoading.value = true
     try {
       agentRuntimeStatus.value = await agentAdapter.agentStatus()
       agentRuntimeError.value = ''
     } catch (error) {
       agentRuntimeStatus.value = null
       agentRuntimeError.value = error instanceof Error ? error.message : '内测 Agent Runtime 不可用'
+    } finally {
+      agentRuntimeLoading.value = false
+    }
+  }
+
+  function refreshAgentRuntimeWhenVisible(): void {
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      void Promise.all([loadAgentRuntimeStatus(), loadAgentCatalog()])
+    }
+  }
+
+  async function loadAgentCatalog(): Promise<void> {
+    try {
+      agentCatalog.value = await agentAdapter.agentCatalog()
+      agentCatalogError.value = ''
+    } catch (error) {
+      agentCatalog.value = undefined
+      agentCatalogError.value = error instanceof Error ? error.message : 'Agent Catalog 读取失败'
+    }
+  }
+
+  async function loadAgentPolicy(scope = selectedAgentScope.value): Promise<void> {
+    const generation = ++agentPolicyGeneration
+    agentPolicy.value = undefined
+    agentPolicyError.value = ''
+    answerProfileHint.value = undefined
+    if (!scope) {
+      agentPolicyLoading.value = false
+      return
+    }
+    agentPolicyLoading.value = true
+    try {
+      const policy = await agentAdapter.agentConfig(scope)
+      if (generation !== agentPolicyGeneration) return
+      if (policy.scope.accountId !== scope.accountId || policy.scope.conversationId !== scope.conversationId) {
+        throw new Error('Agent 配置响应与当前会话不匹配')
+      }
+      agentPolicy.value = policy
+    } catch (error) {
+      if (generation !== agentPolicyGeneration) return
+      agentPolicyError.value = error instanceof Error ? error.message : 'Agent 配置读取失败'
+    } finally {
+      if (generation === agentPolicyGeneration) agentPolicyLoading.value = false
+    }
+  }
+
+  function updateAgentPolicy(policy: InternalTestAgentPolicy): void {
+    const scope = selectedAgentScope.value
+    if (!scope || policy.scope.accountId !== scope.accountId || policy.scope.conversationId !== scope.conversationId) return
+    agentPolicy.value = {
+      ...policy,
+      scope: { ...policy.scope },
+      modelTier: { ...policy.modelTier, allowed: [...policy.modelTier.allowed] },
+      reasoning: { ...policy.reasoning, allowed: [...policy.reasoning.allowed] },
+      answerProfile: { ...policy.answerProfile, allowed: [...policy.answerProfile.allowed] },
+      plugins: { ...policy.plugins },
+    }
+    agentPolicyError.value = ''
+  }
+
+  async function saveAgentPolicy(): Promise<void> {
+    const scope = selectedAgentScope.value
+    const policy = agentPolicy.value
+    if (!scope || !policy || agentPolicySaving.value) return
+    agentPolicySaving.value = true
+    agentPolicyError.value = ''
+    try {
+      const saved = await agentAdapter.saveAgentConfig(scope, policy)
+      if (selectedAgentScope.value?.accountId !== scope.accountId || selectedAgentScope.value?.conversationId !== scope.conversationId) return
+      agentPolicy.value = saved
+      notify('Agent 会话配置已保存；未锁定项仍可由 Agent 每轮调整')
+    } catch (error) {
+      if (selectedAgentScope.value?.accountId === scope.accountId && selectedAgentScope.value?.conversationId === scope.conversationId) {
+        agentPolicyError.value = error instanceof Error ? error.message : 'Agent 配置保存失败'
+      }
+    } finally {
+      agentPolicySaving.value = false
     }
   }
 
   function clock(value = new Date()): string {
     return value.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
-  }
-
-  function modelForAnswerProfile(answerProfile: AgentConfig['answerProfile']): string {
-    const tier = answerProfile === 'short' ? 'haiku' : answerProfile === 'long' ? 'opus' : 'sonnet'
-    return agentRuntimeStatus.value?.modelMapping?.[tier] ?? '静态三档路由'
   }
 
   function createAgentSession(): AgentSession | undefined {
@@ -297,7 +365,7 @@ export function useWorkspace(
       updatedAt: clock(),
       status: 'idle',
       agent: '内测 Runtime',
-      model: selectedConfig.value.model,
+      model: preferredAgentModel.value,
     }
     localAgentSessions.value.unshift(session)
     localAgentMessages.value[session.id] = []
@@ -518,16 +586,8 @@ export function useWorkspace(
     if (allAgentSessions.value.some((item) => item.id === sessionId)) selectedSessionId.value = sessionId
   }
 
-  function setAnswerProfile(answerProfile: AgentConfig['answerProfile']): void {
-    const conversationId = selectedConversationId.value
-    const config = conversationId
-      ? (snapshot.value.configs[conversationId] ??= defaultConfig())
-      : fallbackConfig.value
-    config.answerProfile = answerProfile
-    if (!agentAvailable.value) return
-    config.model = modelForAnswerProfile(answerProfile)
-    const session = localAgentSessions.value.find((item) => item.id === selectedSessionId.value)
-    if (session) session.model = config.model
+  function setAnswerProfile(answerProfile: InternalTestAnswerProfile | undefined): void {
+    answerProfileHint.value = answerProfile
   }
 
   function openAgent(tab: AgentTab = 'conversation'): void {
@@ -833,12 +893,14 @@ export function useWorkspace(
 
     const context = chatMessages.value
       .filter((message) => message.content.trim())
-      .slice(-Math.min(selectedConfig.value.contextMessages, 30))
+      .slice(-agentContextMessages)
       .map((message) => ({
         senderName: message.senderName,
         content: message.content,
         mine: message.mine,
       }))
+    const requestedAnswerProfile = answerProfileHint.value
+    answerProfileHint.value = undefined
     const run: AgentRun = {
       id: `pending-${crypto.randomUUID()}`,
       conversationId: conversation.id,
@@ -872,20 +934,29 @@ export function useWorkspace(
     agentPromptSending.value = true
     try {
       const result = await agentAdapter.respond({
+        accountId: conversation.accountId,
         conversationId: conversation.id,
         conversationName: conversation.name,
         conversationType: conversation.type,
         prompt,
         messages: context,
-        answerProfile: selectedConfig.value.answerProfile,
+        answerProfile: requestedAnswerProfile,
       })
       run.id = result.runId
       run.status = 'completed'
       run.duration = `${result.latencyMs} ms`
       run.model = result.model
+      run.modelTier = result.tier
+      run.reasoning = result.reasoning
+      run.answerProfile = result.answerProfile
+      run.plugins = Object.entries(result.effectiveSelection.plugins)
+        .filter(([, plugin]) => plugin.selectedForRun)
+        .map(([id]) => id)
+      run.reasonCodes = [...result.reasonCodes]
+      run.effectiveSelection = result.effectiveSelection
       run.steps[1] = {
         ...run.steps[1],
-        detail: `${result.answerProfile.toUpperCase()} · ${result.tier} · ${result.model}`,
+        detail: `${result.tier} · ${result.model} · ${result.reasoning} · ${result.answerProfile.toUpperCase()}`,
         status: 'completed',
         duration: `${result.latencyMs} ms`,
       }
@@ -962,10 +1033,6 @@ export function useWorkspace(
     if (createAgentSession()) openAgent('conversation')
   }
 
-  function saveSettings(): void {
-    notify('Agent Runtime 尚未接入，配置未提交')
-  }
-
   function toggleTheme(): void {
     theme.value = resolvedTheme.value === 'light' ? 'dark' : 'light'
   }
@@ -1033,6 +1100,7 @@ export function useWorkspace(
     const [selectionLoaded] = await Promise.all([
       refreshWorkspace(true),
       loadAgentRuntimeStatus(),
+      loadAgentCatalog(),
     ])
     loading.value = false
     if (selectedConversation.value && !selectionLoaded) {
@@ -1041,9 +1109,22 @@ export function useWorkspace(
   }
 
   watch([theme, resolvedTheme], applyTheme, { immediate: true })
+  watch(
+    [
+      () => selectedAgentScope.value?.accountId,
+      () => selectedAgentScope.value?.conversationId,
+    ],
+    ([accountId, conversationId]) => void loadAgentPolicy(
+      accountId && conversationId ? { accountId, conversationId } : undefined,
+    ),
+    { immediate: true },
+  )
   onMounted(async () => {
     colorSchemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)')
     colorSchemeQuery?.addEventListener('change', updateSystemTheme)
+    window.addEventListener('focus', refreshAgentRuntimeWhenVisible)
+    document.addEventListener('visibilitychange', refreshAgentRuntimeWhenVisible)
+    agentStatusTimer = setInterval(refreshAgentRuntimeWhenVisible, 12_000)
     unsubscribe = adapter.subscribe((event) => {
       if (!initialLoadComplete) {
         initialWorkspaceEvents.push(event)
@@ -1060,6 +1141,9 @@ export function useWorkspace(
   })
   onBeforeUnmount(() => {
     unsubscribe?.()
+    window.removeEventListener('focus', refreshAgentRuntimeWhenVisible)
+    document.removeEventListener('visibilitychange', refreshAgentRuntimeWhenVisible)
+    if (agentStatusTimer) clearInterval(agentStatusTimer)
     if (colorSchemeQuery) {
       colorSchemeQuery.removeEventListener('change', updateSystemTheme)
     }
@@ -1090,7 +1174,14 @@ export function useWorkspace(
     selectedSessionId,
     agentMessages,
     selectedRun,
-    selectedConfig,
+    agentCatalog,
+    agentCatalogError,
+    agentPolicy,
+    agentPolicyLoading,
+    agentPolicySaving,
+    agentPolicyError,
+    answerProfileHint,
+    agentContextMessages,
     selectedAccountId,
     selectedConversationId,
     selectedMessageId,
@@ -1107,6 +1198,7 @@ export function useWorkspace(
     agentAvailable,
     agentRuntimeStatus,
     agentRuntimeError,
+    agentRuntimeLoading,
     agentPromptSending,
     runtime: computed(() => snapshot.value.runtime),
     selectAccount,
@@ -1115,6 +1207,7 @@ export function useWorkspace(
     openConversation,
     selectSession,
     setAnswerProfile,
+    updateAgentPolicy,
     openAgent,
     toggleAgent,
     sendChat,
@@ -1142,10 +1235,11 @@ export function useWorkspace(
     discardDraft,
     respondPermission,
     newSession,
-    saveSettings,
+    saveAgentPolicy,
     toggleTheme,
     setTheme,
     load,
+    refreshAgentRuntimeStatus: loadAgentRuntimeStatus,
     notify,
   }
 }

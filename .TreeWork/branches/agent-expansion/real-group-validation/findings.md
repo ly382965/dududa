@@ -21,6 +21,14 @@ Branch: real-group-validation
   脱敏、browser-safe Demo projection，为人工浏览、候选生成和评价提供入口，
   不拥有 Router、权限、Output、Memory、Tool 或 Bandit 决策，因此不是第二套
   Runtime 控制面。
+- 实时 Agent Console 是 Bot Control Plane 的管理员超级工作台，而不是只读面板。
+  管理员设置的是 Scope 初值、合法候选范围和可选硬锁；`adaptive` 与
+  `preferred` 都允许 Agent 依据本轮任务在 `allowed` 内改选，只有显式
+  `locked` 阻止改选。服务端仓库外 Policy 是权威，浏览器状态不是权威。
+- 模型 Tier、reasoning 和 AnswerProfile 必须正交。SHORT/MEDIUM/LONG 只描述
+  回答形态，不能永久绑定 Luna/Terra/Sol；一次性回答长度 Hint 只影响当前 Run，
+  不写回长期模型偏好。插件 `off/auto/on/locked` 只影响合法候选或偏好，不能
+  授予 Capability，也不意味着每轮必须调用。
 - Workspace SSE 采用单调 ID 加最近 512 条内存事件的有限补放即可解决本轮
   重连丢失；无需把内测 Web 扩展成持久消息队列。`Last-Event-ID` 可用时按序
   补放，不可用时回到权威 Snapshot/History 的 `workspace.refresh`。
@@ -29,7 +37,8 @@ Branch: real-group-validation
   序号不会因精度丢失而乱序。初始 Snapshot 期间的实时事件必须在合并后重放。
 - Persona 与 AnswerProfile 保持正交且在同一次生成中自然融合：Persona 复用
   版本化配置并按群聊/私聊调整措辞、节奏、关注点和信息取舍；AnswerProfile
-  约束回答形态，Web 内测映射再选择 Luna/Terra/Sol。`response_profiles` 关闭
+  约束回答形态，历史评测面的 Luna/Terra/Sol 映射只保留为旧默认，实时 Console
+  由独立 Tier Policy 决定模型。`response_profiles` 关闭
   时不得连带关闭 Persona。模型不得复述人设、自我介绍、套固定口号、机械追加
   表情、模仿具体群成员，或改变事实、权限、任务要求和既有安全边界。
 - 合并转发是 Output Adapter 的呈现决策，不是 LONG 的默认同义词。SHORT、
@@ -90,8 +99,18 @@ Branch: real-group-validation
   `Last-Event-ID` 的有界重连补放；缓存无法覆盖请求区间时发出
   `workspace.refresh`，Snapshot/History 仍是完整状态的权威来源。
 - Web Agent 请求新增 `conversationType` 和显式 `answerProfile`；控制台提供
-  短/中/长选择，并把 Persona channel rule 与 Luna/Terra/Sol 映射交给既有
-  no-send Gateway 消费，不改变 Output、Memory、Tool 或 Bandit 契约。
+  短/中/长一次性 Run Hint，并把 Persona channel rule 交给既有 no-send Gateway
+  消费；模型 Tier 和 reasoning 由独立 Policy 选择，不改变 Output、Memory、Tool
+  或 Bandit 契约。
+- Agent Console 新增 `GET /api/internal-test/agent/catalog`、
+  `GET /api/internal-test/agent/config`、`PUT /api/internal-test/agent/config` 和既有
+  `POST /api/internal-test/agent/respond` 的 Scope-aware 语义。配置按
+  `accountId + conversationId` 保存到仓库外数据根，每次响应返回
+  `effectiveSelection` 与 `reasonCodes`。
+- Catalog 由服务端动态返回模型、推理档位、AnswerProfile 和插件事实。iCourse 是
+  唯一真实 MCP，但当前 Console Runtime 未接通，因而显示“已安装但不可调用”；
+  `gpt-image-2` 同样未接入当前执行链。校园、arXiv、行业和搜索能力继续显示不可用，
+  不把 fixture 或接口预留冒充真实插件。
 - Runtime 的 `DeliveryRequestBuilder` 只为合法显式 LONG 授予
   `allow_forward_bundle`；AstrBot Output Adapter 再独立校验档位有效性、群聊、
   多纯文本 part、无 target 和无附件，任一条件不满足都退回普通消息。
@@ -144,6 +163,9 @@ Branch: real-group-validation
   exactly-once 保证。
 - Persona 接线只证明配置、channel rule 和回答档位进入生成链路；真实中文群聊
   的自然度、群体情境适应和长短回答边界仍需人工内测反馈，不能声明已充分校准。
+- Agent Console 的动态 Catalog、Policy 持久化和有效选择解释只证明超级工作台
+  纵切闭合；当前插件仍未进入候选执行链，所有 `selectedForRun` 为 `false`，且
+  no-send Gateway 不等于生产 AstrBot Runtime 或真实群权限。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。

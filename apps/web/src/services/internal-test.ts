@@ -1,6 +1,9 @@
 import type {
   InternalTestAgentRequest,
   InternalTestAgentResponse,
+  InternalTestAgentCatalog,
+  InternalTestAgentPolicy,
+  InternalTestAgentScope,
   InternalTestAgentStatus,
   InternalTestCandidate,
   InternalTestFeedback,
@@ -21,6 +24,9 @@ export interface InternalTestAdapter {
 
 export interface InternalTestAgentAdapter {
   agentStatus(): Promise<InternalTestAgentStatus>
+  agentCatalog(): Promise<InternalTestAgentCatalog>
+  agentConfig(scope: InternalTestAgentScope): Promise<InternalTestAgentPolicy>
+  saveAgentConfig(scope: InternalTestAgentScope, policy: InternalTestAgentPolicy): Promise<InternalTestAgentPolicy>
   respond(payload: InternalTestAgentRequest): Promise<InternalTestAgentResponse>
 }
 
@@ -33,6 +39,22 @@ export class HttpInternalTestAdapter implements InternalTestAdapter {
 
   agentStatus(): Promise<InternalTestAgentStatus> {
     return this.request('/api/internal-test/agent/status')
+  }
+
+  agentCatalog(): Promise<InternalTestAgentCatalog> {
+    return this.request('/api/internal-test/agent/catalog')
+  }
+
+  agentConfig(scope: InternalTestAgentScope): Promise<InternalTestAgentPolicy> {
+    const search = new URLSearchParams({ accountId: scope.accountId, conversationId: scope.conversationId })
+    return this.request(`/api/internal-test/agent/config?${search}`)
+  }
+
+  saveAgentConfig(
+    scope: InternalTestAgentScope,
+    policy: InternalTestAgentPolicy,
+  ): Promise<InternalTestAgentPolicy> {
+    return this.request('/api/internal-test/agent/config', { scope, policy }, 'PUT')
   }
 
   respond(payload: InternalTestAgentRequest): Promise<InternalTestAgentResponse> {
@@ -60,9 +82,9 @@ export class HttpInternalTestAdapter implements InternalTestAdapter {
     return this.request('/api/internal-test/feedback', payload)
   }
 
-  private async request<T>(path: string, payload?: object): Promise<T> {
+  private async request<T>(path: string, payload?: object, method = payload ? 'POST' : 'GET'): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
-      method: payload ? 'POST' : 'GET',
+      method,
       headers: {
         Accept: 'application/json',
         ...(payload ? { 'Content-Type': 'application/json' } : {}),

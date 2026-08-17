@@ -19,7 +19,18 @@ describe('internal-test agent routes', () => {
       candidate: '候选回答',
       tier: 'sonnet' as const,
       model: 'gpt-5.6-terra',
+      reasoning: 'medium' as const,
       answerProfile: 'medium' as const,
+      effectiveSelection: {
+        scope: { accountId: 'default', conversationId: 'group-1' },
+        policySource: 'default' as const,
+        modelTier: 'sonnet' as const,
+        model: 'gpt-5.6-terra',
+        reasoning: 'medium' as const,
+        answerProfile: 'medium' as const,
+        plugins: {},
+      },
+      reasonCodes: ['policy.default'],
       latencyMs: 12,
       generatedAt: '2026-08-16T10:00:00.000Z',
       outputCalls: 0 as const,
@@ -47,6 +58,40 @@ describe('internal-test agent routes', () => {
         modelMapping: { haiku: 'luna', sonnet: 'terra', opus: 'sol' },
         warnings: ['NO SEND'],
       }),
+      agentCatalog: async () => ({
+        agent: { id: 'dududa', displayName: '嘟嘟哒' },
+        selectionModes: ['adaptive', 'preferred', 'locked'],
+        pluginModes: ['off', 'auto', 'on', 'locked'],
+        models: [],
+        reasoningLevels: ['low', 'medium', 'high'],
+        answerProfiles: ['short', 'medium', 'long'],
+        plugins: [],
+        policyDefaults: {
+          enabled: true,
+          modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
+          reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
+          answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+          plugins: {},
+        },
+      }),
+      agentConfig: async () => ({
+        schemaVersion: 1,
+        scope: { accountId: 'account-1', conversationId: 'group-1' },
+        enabled: true,
+        modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
+        reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
+        answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        plugins: {},
+      }),
+      saveAgentConfig: async (body) => ({
+        schemaVersion: 1,
+        scope: body.scope as { accountId: string; conversationId: string },
+        enabled: true,
+        modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
+        reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
+        answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        plugins: {},
+      }),
       respond,
     }
     const hub = new OneBotHub({ token: 'test-only-onebot-token-32-characters' })
@@ -58,6 +103,28 @@ describe('internal-test agent routes', () => {
     const status = await fetch(`${baseUrl}/api/internal-test/agent/status`)
     expect(status.status).toBe(200)
     await expect(status.json()).resolves.toMatchObject({ available: true, outputEnabled: false })
+
+    const catalog = await fetch(`${baseUrl}/api/internal-test/agent/catalog`)
+    expect(catalog.status).toBe(200)
+    await expect(catalog.json()).resolves.toMatchObject({ agent: { id: 'dududa' } })
+
+    const config = await fetch(`${baseUrl}/api/internal-test/agent/config?accountId=account-1&conversationId=group-1`)
+    expect(config.status).toBe(200)
+    await expect(config.json()).resolves.toMatchObject({ scope: { accountId: 'account-1', conversationId: 'group-1' } })
+
+    const configForbidden = await fetch(`${baseUrl}/api/internal-test/agent/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope: { accountId: 'account-1', conversationId: 'group-1' } }),
+    })
+    expect(configForbidden.status).toBe(403)
+
+    const configSaved = await fetch(`${baseUrl}/api/internal-test/agent/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ scope: { accountId: 'account-1', conversationId: 'group-1' } }),
+    })
+    expect(configSaved.status).toBe(200)
 
     const requestBody = {
       conversationId: 'group-1',

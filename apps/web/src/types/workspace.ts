@@ -1,3 +1,10 @@
+import type {
+  InternalTestAnswerProfile,
+  InternalTestEffectiveSelection,
+  InternalTestReasoningLevel,
+  InternalTestTier,
+} from './internal-test'
+
 export type AccountStatus = 'online' | 'degraded' | 'offline'
 export type ConversationType = 'group' | 'private'
 export type AgentTab = 'conversation' | 'run' | 'settings'
@@ -553,6 +560,12 @@ export interface AgentRun {
   cost: string
   contextMessages: number
   model: string
+  modelTier?: InternalTestTier
+  reasoning?: InternalTestReasoningLevel
+  answerProfile?: InternalTestAnswerProfile
+  plugins?: string[]
+  reasonCodes?: string[]
+  effectiveSelection?: InternalTestEffectiveSelection
   steps: AgentRunStep[]
 }
 
@@ -567,9 +580,20 @@ export interface AgentConfig {
   includeReplyChain: boolean
   includeImages: boolean
   longTermMemory: boolean
-  tools: Record<'course' | 'web' | 'groupFiles' | 'shell', boolean>
+  tools: Record<string, boolean>
   sendPermission: 'ask' | 'allow' | 'deny'
   toolPermission: 'ask' | 'allow' | 'deny'
+}
+
+export interface AgentServicePlugin {
+  id: string
+  displayName: string
+  kind: 'mcp' | 'capability'
+  status: 'ready' | 'degraded' | 'off' | 'shadow' | 'unavailable'
+  enabled: boolean
+  revision: string
+  detail: string
+  reasonCodes: string[]
 }
 
 export interface WorkspaceSnapshot {

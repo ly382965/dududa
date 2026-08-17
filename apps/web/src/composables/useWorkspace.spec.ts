@@ -8,6 +8,12 @@ import { WorkspaceCache, WorkspaceDatabase } from '../services/database'
 import type { InternalTestAgentAdapter } from '../services/internal-test'
 import type { WorkspaceAdapter } from '../services/workspace-adapter'
 import type {
+  InternalTestAgentCatalog,
+  InternalTestAgentPolicy,
+  InternalTestAgentResponse,
+  InternalTestAgentScope,
+} from '../types/internal-test'
+import type {
   Account,
   ChatMessage,
   Conversation,
@@ -760,17 +766,72 @@ describe('useWorkspace account-scoped state', () => {
       sendMessage,
       subscribe: () => () => undefined,
     } as unknown as WorkspaceAdapter
-    const respond = vi.fn(async () => ({
+    const scope: InternalTestAgentScope = { accountId: owner.id, conversationId: target.id }
+    const catalog: InternalTestAgentCatalog = {
+      agent: { id: 'dududa', displayName: 'Dududa Agent' },
+      selectionModes: ['adaptive', 'preferred', 'locked'],
+      pluginModes: ['off', 'auto', 'on', 'locked'],
+      models: [
+        { id: 'gpt-5.6-luna', tier: 'haiku', displayName: 'Luna', available: true, modalities: ['text'], reasoningLevels: ['low', 'medium'] },
+        { id: 'gpt-5.6-terra', tier: 'sonnet', displayName: 'Terra', available: true, modalities: ['text'], reasoningLevels: ['low', 'medium', 'high'] },
+        { id: 'gpt-5.6-sol', tier: 'opus', displayName: 'Sol', available: true, modalities: ['text'], reasoningLevels: ['medium', 'high'] },
+      ],
+      reasoningLevels: ['low', 'medium', 'high'],
+      answerProfiles: ['short', 'medium', 'long'],
+      plugins: [{
+        id: 'icourse',
+        displayName: '评课社区',
+        kind: 'mcp',
+        available: false,
+        description: '当前唯一真实 MCP Server',
+        unavailableReason: '尚未接入 Web Agent 执行链',
+      }],
+      policyDefaults: {
+        enabled: true,
+        modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
+        reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
+        answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        plugins: { icourse: 'off' },
+      },
+    }
+    const policy: InternalTestAgentPolicy = {
+      schemaVersion: 1,
+      scope,
+      enabled: true,
+      modelTier: { mode: 'preferred', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
+      reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
+      answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+      plugins: { icourse: 'auto' },
+    }
+    const response: InternalTestAgentResponse = {
       runId: 'run-internal-1',
       candidate: '这是只保留在控制台中的候选回答。',
-      tier: 'haiku' as const,
+      tier: 'haiku',
       model: 'gpt-5.6-luna',
-      answerProfile: 'short' as const,
+      reasoning: 'high',
+      answerProfile: 'short',
+      effectiveSelection: {
+        scope,
+        policySource: 'saved',
+        modelTier: 'haiku',
+        model: 'gpt-5.6-luna',
+        reasoning: 'high',
+        answerProfile: 'short',
+        plugins: {
+          icourse: { mode: 'auto', available: false, eligible: false, selectedForRun: false },
+        },
+      },
+      reasonCodes: ['policy.saved', 'model.preferred_overridden', 'answer_profile.request_hint'],
       latencyMs: 321,
       generatedAt: '2026-08-16T12:00:00.000Z',
-      outputCalls: 0 as const,
-      memoryWrites: 0 as const,
-      toolCalls: 0 as const,
+      outputCalls: 0,
+      memoryWrites: 0,
+      toolCalls: 0,
+    }
+    const respond = vi.fn(async () => response)
+    const saveAgentConfig = vi.fn(async (_scope: InternalTestAgentScope, next: InternalTestAgentPolicy) => ({
+      ...next,
+      updatedAt: '2026-08-17T08:00:00.000Z',
     }))
     const agentAdapter: InternalTestAgentAdapter = {
       agentStatus: vi.fn(async () => ({
@@ -784,6 +845,9 @@ describe('useWorkspace account-scoped state', () => {
         },
         warnings: [],
       })),
+      agentCatalog: vi.fn(async () => catalog),
+      agentConfig: vi.fn(async () => policy),
+      saveAgentConfig,
       respond,
     }
     let workspace!: ReturnType<typeof useWorkspace>
@@ -797,15 +861,20 @@ describe('useWorkspace account-scoped state', () => {
     await flushPromises()
 
     expect(workspace.agentAvailable.value).toBe(true)
-    expect(workspace.selectedConfig.value).toMatchObject({ answerProfile: 'medium', model: 'gpt-5.6-terra' })
-    workspace.setAnswerProfile('long')
-    expect(workspace.selectedConfig.value).toMatchObject({ answerProfile: 'long', model: 'gpt-5.6-sol' })
+    expect(agentAdapter.agentConfig).toHaveBeenCalledWith(scope)
+    expect(workspace.agentPolicy.value).toMatchObject({
+      scope,
+      modelTier: { mode: 'preferred', preferred: 'sonnet' },
+      answerProfile: { mode: 'adaptive', preferred: 'medium' },
+    })
     workspace.setAnswerProfile('short')
-    expect(workspace.selectedConfig.value).toMatchObject({ answerProfile: 'short', model: 'gpt-5.6-luna' })
+    expect(workspace.answerProfileHint.value).toBe('short')
+    expect(workspace.agentPolicy.value?.modelTier.preferred).toBe('sonnet')
     expect(snapshot.sessions).toEqual([])
     await workspace.sendAgentPrompt('总结当前讨论')
 
     expect(respond).toHaveBeenCalledWith({
+      accountId: owner.id,
       conversationId: target.id,
       conversationName: target.name,
       conversationType: 'group',
@@ -813,6 +882,7 @@ describe('useWorkspace account-scoped state', () => {
       messages: [{ senderName: contextMessage.senderName, content: contextMessage.content, mine: false }],
       answerProfile: 'short',
     })
+    expect(workspace.answerProfileHint.value).toBeUndefined()
     expect(workspace.conversationSessions.value).toHaveLength(1)
     expect(workspace.agentMessages.value.map((item) => item.role)).toEqual(['operator', 'assistant'])
     expect(workspace.agentMessages.value[1]?.parts).toContainEqual(
@@ -822,8 +892,82 @@ describe('useWorkspace account-scoped state', () => {
       id: 'run-internal-1',
       status: 'completed',
       model: 'gpt-5.6-luna',
+      modelTier: 'haiku',
+      reasoning: 'high',
+      answerProfile: 'short',
+      plugins: [],
+      reasonCodes: ['policy.saved', 'model.preferred_overridden', 'answer_profile.request_hint'],
+      effectiveSelection: response.effectiveSelection,
     })
+    const nextPolicy: InternalTestAgentPolicy = {
+      ...policy,
+      reasoning: { mode: 'locked', preferred: 'high', allowed: ['high'] },
+    }
+    workspace.updateAgentPolicy(nextPolicy)
+    await workspace.saveAgentPolicy()
+    expect(saveAgentConfig).toHaveBeenCalledWith(scope, nextPolicy)
+    expect(workspace.agentPolicy.value?.reasoning).toEqual({ mode: 'locked', preferred: 'high', allowed: ['high'] })
     expect(sendMessage).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('rechecks Agent Runtime on focus and recovers after an initial connection failure', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const adapter = {
+      load: async () => snapshot,
+      loadCachedMessages: async () => [],
+      loadHistory: async () => ({ messages: [], hasMoreBefore: false, hasMoreAfter: false }),
+      loadDraft: async () => undefined,
+      markRead: async () => undefined,
+      subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    const agentStatus = vi.fn()
+      .mockRejectedValueOnce(new Error('Agent API 尚未启动'))
+      .mockResolvedValue({
+        available: true,
+        outputEnabled: false as const,
+        providerConfigured: true,
+        modelMapping: {
+          haiku: 'gpt-5.6-luna',
+          sonnet: 'gpt-5.6-terra',
+          opus: 'gpt-5.6-sol',
+        },
+        warnings: [],
+      })
+    const agentAdapter = {
+      agentStatus,
+      respond: vi.fn(),
+    } as unknown as InternalTestAgentAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter, '', agentAdapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+    await flushPromises()
+
+    expect(workspace.agentAvailable.value).toBe(false)
+    expect(workspace.agentRuntimeError.value).toBe('Agent API 尚未启动')
+
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+
+    expect(agentStatus).toHaveBeenCalledTimes(2)
+    expect(workspace.agentAvailable.value).toBe(true)
+    expect(workspace.agentRuntimeError.value).toBe('')
     wrapper.unmount()
   })
 })

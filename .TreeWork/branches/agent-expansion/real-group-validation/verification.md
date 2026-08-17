@@ -4,6 +4,32 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `npm exec vitest run -- src/composables/useWorkspace.spec.ts`
+- Result: 1 file / 12 tests passed.
+- Command: `npx vitest run --config vitest.server.config.ts server/internal-test.spec.ts server/internal-test-routes.spec.ts`
+- Result: 2 files / 5 tests passed.
+- Command: `npm run typecheck`
+- Result: passed.
+- Command: `npm run build`
+- Result: passed; only the existing large-chunk warning remained.
+- Evidence: the live Agent Console loads a dynamic server Catalog, reads and
+  saves the authoritative `accountId + conversationId` Policy, keeps model
+  Tier/reasoning/AnswerProfile independent, supports
+  `adaptive/preferred/locked` and plugin `off/auto/on/locked`, consumes an
+  AnswerProfile Hint for one Run, and records effective selection plus reason
+  codes. Focused cases prove `preferred` may change for a strong task signal,
+  `locked` does not change, and saving or generating a candidate never calls the
+  Workspace QQ `sendMessage()` path.
+- Evidence boundary: iCourse and `gpt-image-2` are truthfully unavailable in
+  the current Console execution path; every plugin reports
+  `selectedForRun=false`. The candidate still reports `outputCalls=0`,
+  `memoryWrites=0` and `toolCalls=0`. This proves the adaptive administrator
+  workbench slice, not production AstrBot Runtime, live Capability execution,
+  Provider Conformance or real-group authorization.
+- Verification remains `partial`; S23 remains `paused` pending the existing
+  environment and authorization gates.
+- Recorded: 2026-08-17
+
 - Command: `uv run --with pytest --project packages/dududa-agent python -m pytest tests/unit/compatibility/test_reply_polish.py tests/unit/compatibility/test_target_talk.py tests/unit/runtime/test_delivery.py tests/contracts/test_astrbot_output.py tests/unit/runtime/test_direct_chat.py tests/unit/runtime/test_orchestrator.py tests/test_repository_contract.py -q`
 - Result: 58 tests and 12 subtests passed in 2.15 seconds.
 - Evidence: SHORT/MEDIUM do not receive merged-forward eligibility; a LONG

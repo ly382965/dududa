@@ -12,6 +12,12 @@ Title: S23 Authorized Real-Group Validation
 - Deliver a localhost Web internal-test surface that reuses the de-identified
   S23E projection for sample browsing, explicit no-send candidate generation
   and repository-external human feedback.
+- Keep that historical-corpus surface a no-send Evaluation Adapter while making
+  the live Agent Console in the same application the formal Bot Control Plane
+  and administrator super-workbench.
+- Let an administrator set per-account/conversation initial preferences, legal
+  ranges and explicit locks while the Runtime adapts each Run inside those
+  ranges without surrendering Core authority.
 - Keep the internal-test live workspace usable under reconnect and initial-load
   races, and expose Persona-aware SHORT/MEDIUM/LONG candidate generation for
   bounded human evaluation.
@@ -74,9 +80,10 @@ Title: S23 Authorized Real-Group Validation
   可通过 `Last-Event-ID` 按序补放，ID 无效、过旧或服务重启时回退到
   `workspace.refresh`。前端按 `timestampMs`、无损十进制 sequence、消息 ID
   稳定排序，并重放初始快照期间收到的实时事件。
-- [x] Web Agent 可选择 SHORT/MEDIUM/LONG，分别映射 Luna/Terra/Sol；生成指令
-  复用 `configs/personas/registry-v1/dududa.json`，按群聊/私聊规则调整表达，
-  同时保持 NO SEND、NO MEMORY WRITE、NO TOOL CALL、NO BANDIT。
+- [x] Web Agent 的首版候选生成可显式选择 SHORT/MEDIUM/LONG；生成指令复用
+  `configs/personas/registry-v1/dududa.json`，按群聊/私聊规则调整表达，同时保持
+  NO SEND、NO MEMORY WRITE、NO TOOL CALL、NO BANDIT。首版 Luna/Terra/Sol 映射
+  只作为历史默认，不再作为永久控制契约。
 - [x] Persona 不再依赖 `response_profiles` 开关：关闭回答档位时仍进入同一次
   模型生成；开启时 Persona、群聊情境与 AnswerProfile 在同一请求中自然融合，
   不复述人设、不自我介绍、不套固定口号、不机械追加表情，也不模仿具体群成员。
@@ -87,6 +94,22 @@ Title: S23 Authorized Real-Group Validation
   PokePro 不在默认插件集合，Target Talk 不再由默认 Compose 挂载；ReplyPolish
   默认关闭且仅作为 LONG-only 兼容层。新群不再生成 `meme_rate`，管理命令不再
   写入该字段；显式 `/image` 图片生成能力继续保留。
+- [x] 实时 Agent Console 以 `accountId + conversationId` 为 Scope，从服务端动态
+  Catalog 加载模型/Tier、推理档位、modality、AnswerProfile、插件/Capability、
+  安装状态、可用状态和不可用原因，不在前端写死模型或插件。
+- [x] 模型/Tier、推理深度、AnswerProfile 和其他自适应设置统一支持
+  `adaptive/preferred/locked`；管理员普通修改给出初值和 `allowed`，不会永久固定
+  Agent，只有显式 `locked` 才禁止本轮改选。
+- [x] 插件统一支持 `off/auto/on/locked`；状态只改变通过 Core 资格过滤后的候选
+  集合或偏好，不授予 Capability，也不要求每轮调用。
+- [x] AnswerProfile、模型/Tier 和 reasoning 保持正交；每次 Run 返回管理员初值、
+  `allowed`、实际选择、改选 reason codes 和实际调用插件，且 `preferred` 可改选、
+  `locked` 不可被 Agent 覆盖。
+- [x] Agent Console 配置经专用服务端 API 持久化到仓库外数据根，页面重载后仍按
+  同一 Scope 恢复；浏览器 localStorage 只可作为非权威草稿或缓存。
+- [x] Catalog 事实边界准确：iCourse 是唯一真实 MCP；当前 Runtime 未接通时显示
+  “已安装但不可调用”。校园资讯、arXiv、行业资讯、网络搜索及其他未接能力显示
+  `unavailable + reason`，不得把 fixture 或预留接口伪装成真实服务。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -102,8 +125,12 @@ Title: S23 Authorized Real-Group Validation
 - [ ] All canaries end disabled, retention/deletion actions are recorded, and a
   sanitized S23 report contains no raw message, prompt, answer, real QQ/group/
   user ID, credential or Provider error body.
-- [x] Progress, Findings and Verification are synchronized and all changes are
-  locally committed without push.
+- [x] The previously completed S23A--S23E and first Web internal-test slices
+  synchronized Progress, Findings and Verification and were locally committed
+  without push.
+- [x] After the adaptive Agent Console slice is implemented and sampled,
+  synchronize its Progress, Findings and Verification and create one local
+  commit without push.
 
 ## Local Steps
 
@@ -152,6 +179,17 @@ Title: S23 Authorized Real-Group Validation
   stop new `meme_rate` initialization/writes, keep ReplyPolish default-off and
   retain explicit `/image`; preserve historical source/config/data for rollback
   and do not mutate the running AstrBot/NapCat instance.
+- [x] Split the historical Evaluation Adapter from the live Agent Console in
+  product behavior, then add scoped server-side Catalog/config/respond APIs for
+  the Console without creating a second Runtime.
+- [x] Replace disabled and hard-coded Console controls with dynamic model,
+  reasoning, AnswerProfile and plugin settings; save and reload the authoritative
+  `accountId + conversationId` configuration from the repository-external data
+  root.
+- [x] Resolve every candidate through independent adaptive settings and return
+  the effective selection plus reason codes and actual plugin calls; sample
+  `preferred`, `locked`, plugin four-state, persistence and no-send behavior with
+  focused tests, one typecheck and one Web build.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,
@@ -179,8 +217,10 @@ Title: S23 Authorized Real-Group Validation
   permission, Tool or Memory; S20 is not connected in S23.
 - Fabricating campus/arXiv/industry MCP Servers or treating fixtures/iCourse as
   live news sources.
-- Redesigning S01–S20 contracts, expanding WebUI beyond the bounded internal-test
-  surface or changing running containers before an approved deployment window.
+- Redesigning S01–S20 contracts, turning WebUI into a second Runtime, bypassing
+  Core permission/budget/side-effect ownership, adding a universal raw config
+  write API, or changing running containers before an approved deployment
+  window.
 - Automatic expansion to 3–5 groups; that requires a new grant after bounded
   single-group completion.
 

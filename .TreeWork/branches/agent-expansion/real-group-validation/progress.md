@@ -48,6 +48,18 @@ Last sync: unix:1786706085
   Control Plane 浏览、搜索和筛选 300 个既有脱敏窗口，查看 Silver、Student、
   AnswerProfile、Static Tier 以及 Luna/Terra/Sol 映射，并跟踪人工评价进度。
   该页面是 Evaluation Adapter，不是第二套 Runtime 控制面。
+- 实时 Agent Console 的自适应超级工作台纵切已经完成。服务端按
+  `accountId + conversationId` 从仓库外数据根保存和恢复权威 Policy，并动态
+  返回模型、推理深度、AnswerProfile 与插件 Catalog；前端不再使用灰色占位控件
+  或写死插件。模型 Tier、reasoning、回答长度各自支持
+  `adaptive/preferred/locked`：管理员普通修改只提供初值和 `allowed`，Agent 每轮
+  仍可在合法范围内改选，只有显式 `locked` 才禁止改选。插件使用
+  `off/auto/on/locked`，不因此获得 Capability 或强制每轮调用。
+- 每次 Console Run 现在返回实际 Tier、模型、推理深度、AnswerProfile、reason
+  codes 和插件选择。回答长度按钮是一次性 Run Hint，不修改长期模型策略；服务端
+  Policy 是权威，浏览器不是权威。iCourse 与 `gpt-image-2` 均如实显示为已知但
+  当前 Console 执行链不可调用，未接的校园、arXiv、行业或搜索能力没有被伪装为
+  已安装插件。
 - WebUI 实时消息链路已完成两处可观察修复：服务端为 Workspace SSE 分配
   单调事件 ID，保留最近 512 条事件，并按 `Last-Event-ID` 补放断线期间事件；
   ID 无效、过旧或跨服务重启时发送 `workspace.refresh`。前端以
@@ -131,6 +143,11 @@ Last sync: unix:1786706085
   `gpt-5.6-terra` no-send 生成和一次仓库外反馈追加；聚焦前后端测试、
   TypeScript 类型检查与 Web 构建均通过。该工作没有 QQ Output、Memory
   写入、Tool 调用或 Bandit 学习。
+- 完成实时 Agent Console 超级工作台纵切：新增动态 Catalog、Scope Policy 的
+  读取/保存、三轴独立自适应、插件四态和每轮有效选择解释；Workspace 聚焦测试
+  12 项、服务端聚焦测试 5 项、TypeScript 类型检查和 Web production build 均
+  通过。候选链继续报告 `outputCalls=0`、`memoryWrites=0`、`toolCalls=0`，未向
+  QQ 发送消息。
 - 修复内测聊天的重连丢消息、初始快照覆盖实时消息、超大 sequence 精度丢失、
   会话刷新失效和显示乱序问题；同时将 Persona、群聊/私聊规则与短/中/长回答
   选择接入现有 no-send Agent 纵切。聚焦测试覆盖重连补放、稳定排序、加载竞态、
@@ -169,6 +186,8 @@ Last sync: unix:1786706085
   当前测试只证明结构接线，不能证明风格质量。
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
+- 将 iCourse 和 `gpt-image-2` 接入正式 Console Capability 执行链；当前 Catalog
+  只准确呈现其安装/预留事实，所有本轮插件的 `selectedForRun` 仍为 `false`。
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
@@ -176,6 +195,10 @@ Last sync: unix:1786706085
   external data root. Resume S23 only for human Gold curation or after the
   authorization, Endpoint, SLO, SecretRef and deployment packet arrives; the
   first live action remains evidence-resolving Preflight, not QQ send.
+- The live Agent Console now persists administrator preferences and legal
+  ranges server-side. Treat `adaptive` and `preferred` as revisable per-Run
+  inputs; only `locked` is a hard administrator selection, and no Web setting
+  grants Capability, Output or Memory authority.
 - Reuse the completed corpus artifacts. Any later multi-model calibration run
   must follow the documented five-hour timebox and group-isolated sampling;
   do not submit the full 410 MB corpus to an LLM or extend the run to chase

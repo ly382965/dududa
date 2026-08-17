@@ -7,7 +7,9 @@ paused/partial，实时 Shadow/Canary 尚未开始。真实 Provider、Source、
 环境适配/Conformance 和外部授权输入均未闭合。S23 分支已补齐配置驱动的入站生产 Runtime
 最短纵切，并完成固定 AstrBot 4.26.2 候选镜像的受控参数透传和隔离候选启动；Runtime 契约
 仍只由 Fake AstrBot Provider 证明。Luna/Terra/Sol 已各完成一次真实 Provider-level no-send，
-WebUI 内测第一版也已作为既有 Bot Control Plane 的 Evaluation Adapter 完成。上述结果都不是
+WebUI 的历史语料内测第一版也已作为既有 Bot Control Plane 中的 no-send Evaluation Adapter
+完成；实时 Agent Console 的动态 Catalog、Scope Policy、自适应三轴、插件四态和有效选择解释
+纵切也已闭合。实时 Console 是正式 Bot 超级工作台，不应与历史评测面混为一谈。上述结果都不是
 Runtime Shadow、AstrBot Conformance、真实群证据或正式上线。旧 AstrBot Handler 在 `off/shadow`
 模式下仍是权威入口；白名单 Canary 只在持久 claim 后取得单一发送所有权。真实群聊场景测试
 所需的本地模块、既定 WebUI 测试和集成审计已经完成，但 S23 仍须先闭合环境适配和外部授权；
@@ -56,13 +58,28 @@ Luna/Haiku、Terra/Sonnet、Sol/Opus 样板，并已在固定 AstrBot 4.26.2 隔
 到期和 `terminate()` 取消的聚焦路径，但尚未在运行中部署启用，也不能替代正式 Conformance。
 当前不是同一 Endpoint 按请求动态切换思考深度。
 
-2026-08-16，WebUI 内测第一版已完成：即使没有 NapCat 账号也可进入 `#/internal-test`，浏览和
+2026-08-16，WebUI 历史语料内测第一版已完成：即使没有 NapCat 账号也可进入 `#/internal-test`，浏览和
 筛选 300 个既有脱敏窗口，查看 Silver、Student、AnswerProfile、Static Tier 与
 Luna/Terra/Sol 映射。一次由操作员显式触发的 Terra `no_send` 候选耗时 3059 ms，记录为
 `providerCalls=1`、`outputCalls=0`、`memoryWrites=0`、`toolCalls=0`；人工评价追加到仓库外
-权限 `0600` 的 JSONL，且不保存候选正文、Provider Key 或 Base URL。该页面属于控制后台的
-Evaluation Adapter，不是第二套 Runtime，也不构成 AstrBot Runtime Shadow、Provider
-Conformance、真实群验证或正式上线证据。
+权限 `0600` 的 JSONL，且不保存候选正文、Provider Key 或 Base URL。该历史面板属于控制后台的
+no-send Evaluation Adapter，不是第二套 Runtime，也不构成 AstrBot Runtime Shadow、Provider
+Conformance、真实群验证或正式上线证据。实时 Agent Console 的产品定位不同：它是正式 Bot
+Control Plane/超级工作台，负责管理员初值、合法范围和显式锁定，但不替代 Core Runtime。
+
+2026-08-17 已完成 Agent Console 的自适应配置纵切。配置按
+`accountId + conversationId` 持久化到服务端仓库外数据根；模型/Tier、推理深度、
+AnswerProfile 和上下文策略统一支持 `adaptive/preferred/locked`。`preferred` 只是管理员初值，
+Agent 可在 `allowed` 内按本轮任务改选；只有显式 `locked` 才禁止改选。插件使用
+`off/auto/on/locked`，但任何模式都不能越过 Core 的 Capability 资格、权限、预算和副作用控制。
+AnswerProfile、模型/Tier 与 reasoning 保持正交，Luna/Terra/Sol 只能作为默认偏好，不能固化为
+SHORT/MEDIUM/LONG 的一一映射。每次 Run 已返回初值、合法范围、实际选择、改选原因和实际调用
+插件；回答长度按钮只作为一次性 Run Hint，不写回长期模型策略。Catalog 由服务端动态提供并准确
+标记安装/可用状态：iCourse 是唯一真实 MCP，但当前 Console 执行链尚未接通，显示已安装但不可
+调用；`gpt-image-2` 同样尚未接入。校园资讯、arXiv、行业资讯、网络搜索等未接能力均显示
+`unavailable + reason`，不得用 fixture 或预留接口冒充真实服务。该纵切的 12 项 Workspace、
+5 项服务端聚焦测试、TypeScript 类型检查和 Web production build 已通过；候选继续保持
+`outputCalls=0`、`memoryWrites=0`、`toolCalls=0`。
 
 ## 交付规则
 
@@ -138,7 +155,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 的能力插件”方向，并给出 Descriptor/Lifecycle/Generation/Disposer 边界 | 尚无 Sxx 分支、Plugin Runtime、迁移或故障恢复证据；不得据此宣称已有插件生态 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI / Bot Control Plane | S21 已完成（离线）；人工内测第一版已完成 | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；`#/internal-test` 无 NapCat 也可进入，支持 300 个既有脱敏窗口的浏览/筛选、Silver/Student/AnswerProfile/Static Tier/三模型映射查看、显式 `no_send` 候选和仓库外人工反馈 | 生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁；内测页只是 Evaluation Adapter，不拥有 Runtime 决策或发送权 |
+| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测与 Agent Console 自适应超级工作台纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；历史语料面板支持 300 个脱敏窗口浏览/筛选、显式 `no_send` 候选和仓库外人工反馈；实时 Console 已实现动态 Catalog、`accountId + conversationId` 服务端 Policy、`adaptive/preferred/locked`、插件四态、三轴正交和每轮有效选择解释 | iCourse、`gpt-image-2` 尚未接入当前 Console 执行链；生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁。历史面板是 Evaluation Adapter；实时 Console 是 Control Plane，但两者都不替代 Core 权限、预算或发送权 |
 | 大规模真实群测试与 Debug | S23 暂停、部分完成（离线 Demo、Web 人工内测与候选模型接入工程完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成；Web 内测页完成 300 窗口浏览/筛选及一次 Terra 人工触发候选，调用计数为 `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0`；固定 AstrBot 4.26.2 隔离候选启动、三模型 Provider-level no-send 和默认关闭健康刷新器聚焦证据均已通过 | 150–300 条类别均衡人工 Gold 是推荐的质量校准分支，不阻塞 no-send Shadow；先在隔离候选中正式注册三模型并完成真实 Endpoint Conformance，再启用运行中的候选 Runtime 与持续健康刷新。Projection/Connector 是 Shadow 前置，Output 是 Inbound Canary 前置，真实 Source 是 Manual Digest 前置；随后才按授权分层放量、冻结 SLO 并复盘 |
 
 ### 实施步骤完成度
@@ -173,7 +190,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | **已完成、已验证（离线）** | Foundation、Group Onboarding、Governed Operations 与 Completion Audit 均通过；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影，Agent 路径不直发 NapCat | 生产 HTTP/身份、真实健康、真实 Provider/Source/Projection/Output、人工质量和真实 QQ 操作仍属于 S23 外部门禁 |
-| S23 | **暂停、部分完成；离线 Demo、Web 人工内测与候选模型接入工程已完成** | manifest-only readiness、历史语料 Demo、配置驱动 Builder、固定 AstrBot 4.26.2 隔离候选启动、Luna/Terra/Sol 各一次真实 Provider-level no-send、默认关闭健康刷新器聚焦证据，以及无 NapCat 的 `#/internal-test` 300 样本人工评价纵切已完成；Web 纵切的一次 Terra 调用为 `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0`，反馈只追加到仓库外 `0600` JSONL | 分支尚未合并；内测页不构成 Runtime Shadow、Conformance 或真实群证据；运行中 AstrBot 尚未正式注册三模型，候选部署、真实单群 no-send Shadow、实时 Canary、来源、发送、环境 Adapter 和逐行为授权继续关闭 |
+| S23 | **暂停、部分完成；离线 Demo、Web 人工内测、Agent 超级工作台与候选模型接入工程已完成** | manifest-only readiness、历史语料 Demo、配置驱动 Builder、固定 AstrBot 4.26.2 隔离候选启动、Luna/Terra/Sol 各一次真实 Provider-level no-send、默认关闭健康刷新器、无 NapCat 的 `#/internal-test` 300 样本人工评价，以及动态 Catalog/Scope Policy/自适应配置纵切均已完成；历史 Web 候选的一次 Terra 调用为 `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0`，Console 候选保持 `outputCalls/memoryWrites/toolCalls=0/0/0` | 分支尚未合并；两个 Web 面均不构成 Runtime Shadow、Conformance 或真实群证据；iCourse、`gpt-image-2` 尚未接入 Console 执行链，运行中 AstrBot 尚未正式注册三模型，候选部署、真实单群 no-send Shadow、实时 Canary、来源、发送、环境 Adapter 和逐行为授权继续关闭 |
 
 ### 公共开工门禁
 
@@ -268,7 +285,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | S18 | 9 | 汇总 Trace、Eval 与 CI：版本化 fixture、固定 runner/catalog、低敏 receipt、模型/ResponsePlan/MCP/Memory/OC/Proactive 维度和可复现 CI 命令 | 双 Python 风险样本、bundle/Contract、Trace 隐私、锁/构建/Compose/secret 门禁通过；完整全仓、Web、镜像/容器和故障矩阵明确交给 S19 | 通过删除安全测试恢复绿色状态，或把合成证据写成真实质量 |
 | S19 | 本地总集成 | 汇总所有当前发布必需模块，执行全仓回归、离线回放、30 日调度/Probe no-send 仿真、故障注入、SLO 预注册和发布候选审计 | 发布必需模块完成定义、本地安全门禁、镜像/配置/插件回滚包与冻结 SLO 全部通过 | 真实群发送或用线上流量补本地测试缺口 |
 | S22 | 10 | 按 `migration-map.md` 删除十个路径别名和插件专用 iCourse Client；保留仍有消费者的 Handler、Role、Memory、Audit、worker protocol 与根操作入口 | canonical 入口、Unified-only Client、完整 Python 3.12、Python 3.10 抽样、镜像/Compose/package/secret 和精确 S19 归档通过 | 无消费者证据的删除、重设计核心模块或删除明确 retain surface |
-| S21 | Bot Control Plane | Tree revision 4 已拆分 S21A Foundation、S21B Group Onboarding、S21C Governed Operations 与 Audit；Bot 入群后管理员选择初始服务 Profile | 新群 pending 零服务；Profile 不授予 Capability；Desired/Effective 可解释；激活/更新/暂停/回滚具备 auth、Scope、CAS、幂等、Audit、Receipt、LKG 和跨账号/群隔离 | 浏览器本地配置、万能写 API、Agent 直发 NapCat、让模型/Group Context/Plugin/Bandit 开服务或扩权 |
+| S21 | Bot Control Plane | Tree revision 4 已拆分 S21A Foundation、S21B Group Onboarding、S21C Governed Operations 与 Audit；Bot 入群后管理员选择初始服务 Profile，后续 Console 配置提供初值、合法范围与显式锁定 | 新群 pending 零服务；Profile 不授予 Capability；Desired/Effective 可解释；激活/更新/暂停/回滚具备 auth、Scope、CAS、幂等、Audit、Receipt、LKG 和跨账号/群隔离；Agent 只能在合法范围内自适应 | 浏览器本地权威配置、万能写 API、Agent 直发 NapCat、让模型/Group Context/Plugin/Bandit 开服务或扩权，或把普通管理员偏好误作永久锁定 |
 | S23 | 最终真实场景 | S21、本地审计、既定 WebUI 测试和 300 个脱敏窗口的 Web 人工内测纵切完成后，先在隔离环境复用外部长期语料的历史 no-send 结果与人工评测；再在同一授权单群依次执行实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe；每类独立授权/熔断，最后考虑 3–5 群分层放量 | 历史回放无链路异常且质量结论只来自标注样本；Web 候选保持 `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0` 的已测边界且不冒充 Runtime Shadow；重复回复/推送、错误目标、quiet-hour/退订后/未授权发送或 Tool、无引用/过期内容、跨 Scope Memory 和敏感 Trace 为 0；冻结分行为 SLO、kill switch、回滚与复盘全部通过 | 提前上线、把原始历史或 Web 内测反馈直接当质量 Gold/Memory/Bandit reward、一次打开全部主动行为、无指标放量，或在任一发布前置模块未完成时进入真实群 |
 
 S20 不属于上述严格发布主线，已经单独批准并完成离线范围：
@@ -292,12 +309,24 @@ Router 与 Admission，默认关闭的刷新器已聚焦证明成功、超时失
 注册、AstrBot Conformance、运行中部署启用和真实单群 Shadow 仍未完成，因此 S23 继续保持
 暂停、部分完成。
 
-截至 2026-08-16，既有 Bot Control Plane 又完成 Web 人工内测第一版：无需 NapCat 账号即可
+截至 2026-08-16，既有 Bot Control Plane 又完成历史语料 Web 人工内测第一版：无需 NapCat 账号即可
 进入 `#/internal-test`，在 300 个既有脱敏窗口上检查 Silver、Student、AnswerProfile、Static
 Tier 和 Luna/Terra/Sol 映射，并由操作员显式生成一次 Terra `no_send` 候选和追加一次仓库外
 人工评价。该纵切实测 `providerCalls=1`、`outputCalls=0`、`memoryWrites=0`、`toolCalls=0`，
-反馈文件权限为 `0600`，不保存候选正文、Key 或 Base URL。它只扩展控制后台的 Evaluation
-Adapter，不改变 Runtime 权威，也不提升 S23 的 `paused/partial` 状态。
+反馈文件权限为 `0600`，不保存候选正文、Key 或 Base URL。历史面板只扩展控制后台的
+Evaluation Adapter，不改变 Runtime 权威，也不提升 S23 的 `paused/partial` 状态。实时 Agent
+Console 则是控制后台的正式配置与观测面；其配置必须由服务端持久化并由 Runtime 在 Core 边界
+内解释，不能退化为浏览器本地状态或前端写死选项。
+
+截至 2026-08-17，Agent Console 的 S23 自适应工程纵切已完成：前端从服务端动态 Catalog
+加载模型/Tier、推理档位、AnswerProfile 与插件事实，并按 `accountId + conversationId`
+保存和恢复 Scope Policy。模型/Tier、reasoning 和 AnswerProfile 三轴正交，均支持
+`adaptive/preferred/locked`；管理员的普通调整只是初值和合法范围，Agent 每轮仍可以
+根据任务信号在范围内改选，只有显式 `locked` 才固定。插件支持 `off/auto/on/locked`，
+每次 Run 返回初值、合法范围、有效选择、reason codes 和实际插件状态。旧灰色控件、
+前端硬编码插件和 SHORT/MEDIUM/LONG 到 Luna/Terra/Sol 的永久映射已移除。当前
+iCourse 与 `gpt-image-2` 尚未接入 Console 执行链，所有候选仍为本地 no-send；因此该纵切
+完成不改变 S23 整体 `paused/partial` 状态。
 
 单人阶段主动暂停以下范围：第二聊天平台、通用高风险 Tool、自动 Memory 写入、Graph Memory、
 主动私聊/个人目标、私人校园 Feed、自动 LONG 推送、模型微调、neural bandit、多 Persona 市场
@@ -760,7 +789,7 @@ Tracing 可以独立关闭。不得为了恢复绿色状态而移除必需的安
 
 ## 已完成的 Tree 变更
 
-标题：**S21 Bot Control Plane 已完成，S23 离线 Demo、Web 人工内测与候选模型工程纵切已完成**
+标题：**S21 Bot Control Plane 已完成，S23 离线 Demo、Web 人工内测、候选模型与 Agent 超级工作台工程纵切已完成**
 
 Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S23 的 manifest-only readiness、
 模板和 [单群验证 Runbook](../operations/s23-real-group-validation.md) 已完成；获授权静态历史
@@ -778,16 +807,23 @@ Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S2
    bounded health publisher 向 Router/Admission 发布有 TTL 的健康状态；固定 AstrBot 4.26.2
    隔离候选已启动，三模型各一次 Provider-level no-send 通过，默认关闭的刷新器已有聚焦证据，
    但正式注册、Conformance、运行中启用和真实单群 Shadow 尚未完成；
-8. Web 人工内测第一版在既有 Bot Control Plane 内完成：无 NapCat 也可浏览/筛选 300 个脱敏
+8. 历史语料 Web 人工内测第一版在既有 Bot Control Plane 内完成：无 NapCat 也可浏览/筛选 300 个脱敏
    窗口，展示 Silver/Student/AnswerProfile/Static Tier/三模型映射，显式 Terra 候选保持
    `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0`，反馈只追加到仓库外 `0600`
-   JSONL；它是 Evaluation Adapter，不是第二套 Runtime 或 Live S23 证据；
-9. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
-10. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
+   JSONL；该历史面板是 Evaluation Adapter，不是第二套 Runtime 或 Live S23 证据；实时 Agent
+   Console 是正式 Control Plane，管理员配置初值、合法范围和锁定，Runtime 决定每轮有效选择；
+9. Agent 超级工作台自适应纵切已完成：动态 Catalog、Scope Policy、模型/Tier、
+   reasoning 和 AnswerProfile 三轴正交、`adaptive/preferred/locked`、插件
+   `off/auto/on/locked` 以及每轮有效选择解释已接入前后端。普通管理员调整
+   不会永久锁死 Agent，只有显式 `locked` 才禁止改选；当前 iCourse 和
+   `gpt-image-2` 仍未接入 Console 执行链，候选仍不发送 QQ；
+10. 历史 Shadow 通过后，冻结授权群、测试用户、发送窗口、SLO 和回滚包；
+11. S23 依次执行单群实时 no-send Shadow、明确 @ Canary、手动日报、定时日报、低频 Probe，最后
    才考虑 3–5 群和长时间 Debug。
 
 Bandit 不作为主动出站、群服务 Profile 或 S23 的前置，且禁止探索 send/skip、目标、日程、频率
-和 Answer Profile。Web 可以执行写操作，但只能通过专用 Core Command，不能提供万能配置写 API。
+和 Answer Profile。Web 可以执行写操作，但只能通过专用服务端配置/命令 API；浏览器不能成为
+权威存储，也不能提供绕过 Core 权限、Scope、预算和副作用控制的万能配置写 API。
 
 ## Phase 验收矩阵
 
