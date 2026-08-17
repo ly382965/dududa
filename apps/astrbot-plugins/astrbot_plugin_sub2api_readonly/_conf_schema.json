@@ -2,7 +2,8 @@
   "enabled": {
     "description": "启用插件",
     "type": "bool",
-    "default": true
+    "default": false,
+    "hint": "默认关闭；由 WebUI 超级管理员按会话设置期望模式，接通 Policy Adapter 后再由 AstrBot 消费。"
   },
   "base_url": {
     "description": "Sub2API 站点地址",

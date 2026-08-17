@@ -213,10 +213,17 @@ kill switch active；主动参与仅实现 S15E Probe Shadow，并保持 **NO SE
 
 - iCourse 是当前唯一真实 MCP Server，但 Console Runtime 尚不可调用；
 - `gpt-image-2` 是已知图片能力，但 Console Runtime 尚不可调用；
-- 自动复读仅是已登记的 Dududa 1.0 历史资产，当前关闭且不可用，不恢复旧概率复读链路；
-- `/sub2api 自动查询` 是仅超级管理员可用的确定性只读命令，不受普通会话 Policy 管理，当前
-  Console 执行链尚未接通；
+- 自动复读和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
+  `accountId + conversationId` 由会话 Policy 配置；WebUI 配置身份为 `super_admin`，声明的
+  Bot 执行身份为 `admin`；
+- 两者源码、动态 Catalog/配置面和 Compose 装配已完成，但当前没有在线 AstrBot 消费 Web
+  Policy，Policy Adapter 和实际执行链尚未接通；`installed/configured` 不表示 Runtime online，
+  也不表示本轮实际调用；
 - 校园资讯、arXiv、行业资讯等目前只有预留接口或测试 fixture，不是已经存在的真实服务。
+
+当前 Web candidate 只评估确定性触发条件：`triggerMatched=true` 表示条件适用，不表示插件已
+选择或执行；自动复读与 `/sub2api 自动查询` 仍返回 `selectedForRun=false`，且
+`toolCalls=0`。Meme Manager、PokePro 和 Target Talk 保持移除。
 
 候选仅留在浏览器临时会话中；该链路固定为 `NO SEND / NO MEMORY WRITE / NO TOOL CALL /
 NO BANDIT`，不会调用 QQ 发送接口。模型档位与 `SHORT / MEDIUM / LONG` 回答长度独立选择，

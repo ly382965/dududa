@@ -1,0 +1,62 @@
+{
+  "enabled": {
+    "description": "启用自动复读",
+    "type": "bool",
+    "hint": "默认关闭；在 WebUI 会话策略接入 AstrBot 前不要全局开启",
+    "default": false
+  },
+  "group_whitelist": {
+    "description": "复读群聊白名单",
+    "type": "list",
+    "hint": "仅在这些群里启用复读功能，留空表示全部群聊启用",
+    "default": []
+  },
+  "need_different": {
+    "description": "是否要求消息来自不同人才复读",
+    "type": "bool",
+    "hint": "可防止单个人恶意引导复读",
+    "default": true
+  },
+  "thresholds": {
+    "description": "复读阈值设置",
+    "type": "object",
+    "hint": "仅支持文本、图片和 QQ 表情",
+    "items": {
+      "Plain": {
+        "description": "文本复读阈值",
+        "hint": "重复发同一句话多少次后复读",
+        "type": "int",
+        "slider": { "min": 2, "max": 5, "step": 1 },
+        "default": 4
+      },
+      "Image": {
+        "description": "图片复读阈值",
+        "hint": "重复发同一张图片多少次后复读",
+        "type": "int",
+        "slider": { "min": 2, "max": 5, "step": 1 },
+        "default": 3
+      },
+      "Face": {
+        "description": "表情复读阈值",
+        "hint": "重复发同一个 QQ 表情多少次后复读",
+        "type": "int",
+        "slider": { "min": 2, "max": 5, "step": 1 },
+        "default": 2
+      }
+    }
+  },
+  "reread_prob": {
+    "description": "复读概率",
+    "hint": "到达复读阈值后进行复读的概率",
+    "type": "float",
+    "slider": { "min": 0, "max": 1, "step": 0.01 },
+    "default": 0.8
+  },
+  "interrupt_prob": {
+    "description": "打断复读概率",
+    "hint": "将复读内容替换成“打断！”的概率",
+    "type": "float",
+    "slider": { "min": 0, "max": 1, "step": 0.01 },
+    "default": 0.1
+  }
+}

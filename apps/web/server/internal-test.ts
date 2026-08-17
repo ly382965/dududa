@@ -87,6 +87,9 @@ export interface InternalTestCatalogPlugin {
   builtIn?: boolean
   policyManaged: boolean
   requiredRole?: 'super_admin' | 'admin'
+  executionRole?: 'admin'
+  runtimeTarget: 'web_agent' | 'astrbot'
+  runtimeReadiness: 'configured' | 'unavailable'
   executionKind: 'agent_capability' | 'command_auto_reply' | 'passive_behavior'
   description: string
   unavailableReason?: string
@@ -97,6 +100,8 @@ export interface InternalTestAgentCatalog {
   agent: {
     id: 'dududa'
     displayName: string
+    consoleRole?: 'super_admin'
+    executionRole?: 'admin'
   }
   selectionModes: SelectionMode[]
   pluginModes: PluginMode[]
@@ -120,6 +125,11 @@ export interface InternalTestEffectivePlugin {
   available: boolean
   eligible: boolean
   selectedForRun: boolean
+  applicable: boolean
+  triggerMatched: boolean
+  runtimeTarget: InternalTestCatalogPlugin['runtimeTarget']
+  runtimeReadiness: InternalTestCatalogPlugin['runtimeReadiness']
+  selectionReason: 'unavailable' | 'off' | 'not_applicable' | 'trigger_matched'
 }
 
 export interface InternalTestEffectiveSelection {
@@ -603,6 +613,8 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       available: false,
       builtIn: true,
       policyManaged: true,
+      runtimeTarget: 'web_agent',
+      runtimeReadiness: 'unavailable',
       executionKind: 'agent_capability',
       description: '查询课程与公开评价。',
       unavailableReason: '当前 Web Agent Runtime 尚未绑定 iCourse Capability 执行链。',
@@ -615,6 +627,8 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       available: false,
       builtIn: true,
       policyManaged: true,
+      runtimeTarget: 'web_agent',
+      runtimeReadiness: 'unavailable',
       executionKind: 'agent_capability',
       description: '独立的图片生成与编辑能力，不用于图片理解。',
       unavailableReason: 'gpt-image-2 图片生成执行链尚未接入当前 Runtime。',
@@ -625,24 +639,29 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       displayName: '自动复读',
       kind: 'social_automation',
       installed: true,
-      available: false,
+      available: true,
       policyManaged: true,
+      requiredRole: 'super_admin',
+      executionRole: 'admin',
+      runtimeTarget: 'astrbot',
+      runtimeReadiness: 'configured',
       executionKind: 'passive_behavior',
-      description: '登记 Dududa 1.0 的历史安装资产；2.0 不恢复常驻概率复读。',
-      unavailableReason: 'Dududa 2.0 当前没有自动复读执行链，旧 /reread 仅保留停用提示。',
+      description: '复用 Dududa 1.0 的确定性群消息复读；WebUI 设置 Scope 初值，Bot 以普通管理员身份执行。',
     },
     {
       id: 'sub2api.auto_query',
       displayName: '/sub2api 自动查询',
       kind: 'readonly_query',
       installed: true,
-      available: false,
+      available: true,
       builtIn: true,
-      policyManaged: false,
+      policyManaged: true,
       requiredRole: 'super_admin',
+      executionRole: 'admin',
+      runtimeTarget: 'astrbot',
+      runtimeReadiness: 'configured',
       executionKind: 'command_auto_reply',
-      description: '确定性的 /sub2api 只读命令查询；不是 MCP 或普通 Agent Capability。',
-      unavailableReason: '真实只读服务与插件存在，但当前 Console owner session 和执行链尚未接通。',
+      description: '复用 Dududa 1.0 的确定性 /sub2api 只读查询；WebUI 设置 Scope 初值，Bot 以普通管理员身份执行。',
     },
   ]
 }
@@ -677,7 +696,12 @@ function buildAgentCatalog(
     { tier: 'opus', label: '专业' },
   ]
   return {
-    agent: { id: 'dududa', displayName: dududaPersona.display_name },
+    agent: {
+      id: 'dududa',
+      displayName: dududaPersona.display_name,
+      consoleRole: 'super_admin',
+      executionRole: 'admin',
+    },
     selectionModes: [...SELECTION_MODES],
     pluginModes: [...PLUGIN_MODES],
     models: modelDetails.map(({ tier, label }) => ({
@@ -737,6 +761,87 @@ function pluginMode(value: unknown): PluginMode {
   const mode = stringValue(value)?.toLowerCase()
   if (mode && PLUGIN_MODES.includes(mode as PluginMode)) return mode as PluginMode
   throw new InternalTestError('插件 mode 参数无效')
+}
+
+function isSub2ApiCommand(value: unknown): boolean {
+  const command = stringValue(value)
+  return Boolean(command && /^\/(?:sub2api|sub2|用量)(?:\s|$)/iu.test(command))
+}
+
+function hasConsecutiveGroupRepeat(body: Record<string, unknown>): boolean {
+  const messages = arrayValue(body.messages)
+    .map(objectValue)
+    .filter((message): message is Record<string, unknown> => Boolean(message))
+    .filter((message) => message.mine !== true && message.selfAuthored !== true && message.self_authored !== true)
+    .map((message) => stringValue(message.content ?? message.text))
+    .filter((content): content is string => Boolean(content))
+  if (messages.length < 2) return false
+  return messages.at(-1) === messages.at(-2)
+}
+
+function pluginRunSelection(
+  plugin: InternalTestCatalogPlugin,
+  mode: PluginMode,
+  body: Record<string, unknown>,
+  conversationType: ConversationType,
+): Pick<
+  InternalTestEffectivePlugin,
+  'eligible' | 'selectedForRun' | 'applicable' | 'triggerMatched' | 'selectionReason'
+> & { reasonCode: string } {
+  if (!plugin.available) {
+    return {
+      eligible: false,
+      selectedForRun: false,
+      applicable: false,
+      triggerMatched: false,
+      selectionReason: 'unavailable',
+      reasonCode: `plugin.${plugin.id}.unavailable`,
+    }
+  }
+  if (mode === 'off') {
+    return {
+      eligible: false,
+      selectedForRun: false,
+      applicable: false,
+      triggerMatched: false,
+      selectionReason: 'off',
+      reasonCode: `plugin.${plugin.id}.off_by_admin`,
+    }
+  }
+  if (plugin.executionKind === 'command_auto_reply') {
+    const matched = isSub2ApiCommand(body.prompt ?? body.command)
+    return {
+      eligible: true,
+      selectedForRun: false,
+      applicable: matched,
+      triggerMatched: matched,
+      selectionReason: matched ? 'trigger_matched' : 'not_applicable',
+      reasonCode: matched
+        ? `plugin.${plugin.id}.exact_command_trigger_matched_not_executed`
+        : `plugin.${plugin.id}.waiting_for_exact_command`,
+    }
+  }
+  if (plugin.executionKind === 'passive_behavior') {
+    const matched = conversationType === 'group' && hasConsecutiveGroupRepeat(body)
+    return {
+      eligible: true,
+      selectedForRun: false,
+      applicable: matched,
+      triggerMatched: matched,
+      selectionReason: matched ? 'trigger_matched' : 'not_applicable',
+      reasonCode: matched
+        ? `plugin.${plugin.id}.group_repeat_trigger_matched_not_executed`
+        : `plugin.${plugin.id}.waiting_for_group_repeat`,
+    }
+  }
+  return {
+    eligible: true,
+    selectedForRun: false,
+    applicable: false,
+    triggerMatched: false,
+    selectionReason: 'not_applicable',
+    reasonCode: `plugin.${plugin.id}.eligible_${mode}`,
+  }
 }
 
 interface TaskChoice<T extends string> {
@@ -1312,16 +1417,19 @@ export class FileInternalTestGateway implements InternalTestGateway {
     const pluginReasonCodes: string[] = []
     for (const plugin of catalog.plugins) {
       const mode = resolved.policy.plugins[plugin.id] ?? 'off'
-      const eligible = plugin.available && mode !== 'off'
+      const selection = pluginRunSelection(plugin, mode, body, conversationType)
       plugins[plugin.id] = {
         mode,
         available: plugin.available,
-        eligible,
-        selectedForRun: false,
+        eligible: selection.eligible,
+        selectedForRun: selection.selectedForRun,
+        applicable: selection.applicable,
+        triggerMatched: selection.triggerMatched,
+        runtimeTarget: plugin.runtimeTarget,
+        runtimeReadiness: plugin.runtimeReadiness,
+        selectionReason: selection.selectionReason,
       }
-      if (!plugin.available) pluginReasonCodes.push(`plugin.${plugin.id}.unavailable`)
-      else if (mode === 'off') pluginReasonCodes.push(`plugin.${plugin.id}.off_by_admin`)
-      else pluginReasonCodes.push(`plugin.${plugin.id}.eligible_${mode}`)
+      pluginReasonCodes.push(selection.reasonCode)
     }
     const context = agentContext(body, contextLength.value)
     const generated = await this.requestCandidate(
@@ -1341,7 +1449,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
       ...contextLength.reasonCodes,
       ...groupChatStyle.reasonCodes,
       ...pluginReasonCodes,
-      'plugins.no_tool_execution',
+      'tools.none_called_by_candidate_runtime',
     ]
     const effectiveSelection: InternalTestEffectiveSelection = {
       scope,

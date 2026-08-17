@@ -49,10 +49,11 @@ Branch: real-group-validation
 - 合并转发是 Output Adapter 的呈现决策，不是 LONG 的默认同义词。SHORT、
   MEDIUM 与单段 LONG 都是普通消息；只有独立校验通过的显式 LONG，同时满足
   群聊、至少两个纯文本 part、无 target、无附件时才可合并转发。
-- Dududa 1.0 自动社交插件不再属于 2.0 默认行为：Meme Manager、Reread、
-  PokePro 从默认插件集合退出，Target Talk 从默认 Compose 退出，ReplyPolish
-  仅作为默认关闭的 LONG-only 兼容层保留。显式 `/image` 是图片生成能力，
-  不是自动表情包，应继续保留。
+- Dududa 1.0 自动社交行为不再整体继承：Meme Manager、PokePro 从默认插件集合
+  退出，Target Talk 从默认 Compose 退出，ReplyPolish 仅作为默认关闭的
+  LONG-only 兼容层保留。自动复读则恢复为独立、默认关闭、受 Scope Policy
+  管理的 AstrBot 插件；显式 `/image` 是图片生成能力，不是自动表情包，应继续
+  保留。
 - 操作员显式生成一条真实 Provider 候选，只证明 Web Gateway 的 `no_send`
   纵切可用。该请求没有经过 AstrBot Provider、Dududa Runtime、Connector 或
   Rollout Bridge，不能称为 AstrBot Runtime Shadow、Provider Conformance
@@ -112,11 +113,14 @@ Branch: real-group-validation
   `POST /api/internal-test/agent/respond` 的 Scope-aware 语义。配置按
   `accountId + conversationId` 保存到仓库外数据根，每次响应返回
   `effectiveSelection`、`reasonCodes` 与 `contextUsage`。
-- Catalog 由服务端动态返回六项正交配置和插件事实。iCourse 是唯一真实 MCP，
-  `gpt-image-2` 是已知图片能力，但当前 Console Runtime 均未接通；自动复读只登记
-  为 Dududa 1.0 历史资产并保持不可用；`/sub2api 自动查询` 是仅超级管理员的
-  确定性只读命令，不由普通 Scope Policy 管理，当前 Console 也未接通。校园、
-  arXiv、行业和搜索能力继续显示不可用，不把 fixture 或接口预留冒充真实插件。
+- Catalog 由服务端动态返回六项正交配置和插件事实，并区分源码已安装、配置/
+  Compose 已装配、AstrBot Runtime online 与本轮实际调用。iCourse 是唯一真实
+  MCP，`gpt-image-2` 是已知图片能力，但当前 Console Runtime 均未接通；自动复读
+  和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
+  `accountId + conversationId` 由 Scope Policy 配置。两者要求 WebUI
+  `super_admin` 配置，声明 Bot `admin` 执行身份；当前没有在线 AstrBot 消费该
+  Policy，Policy Adapter 与实际执行仍未接通。校园、arXiv、行业和搜索能力继续
+  显示不可用，不把 fixture 或接口预留冒充真实插件。
 - Agent 状态接口把 Policy 期望与实际行为分开：被动自动回复为关闭状态，
   `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅为
   `probe_shadow`，并明确 `NO SEND`。候选保持 `outputCalls=0`、
@@ -127,9 +131,10 @@ Branch: real-group-validation
 - Persona 解析不再受 `response_profiles` feature flag 支配；DirectChat 在
   同一个模型请求中携带可选 `response_plan` 与 `persona_style`，让表达风格与
   回答形态共同生成，而不是由后处理机械拼接人格。
-- 默认 Compose/插件锁不再接入 Meme Manager、Reread、PokePro 或 Target Talk；
-  新群初始化不再生成 `meme_rate`，管理命令不再写入它。ReplyPolish 仍以
-  默认关闭的兼容插件存在，`/image` 命令仍由 Core 显式提供。
+- 默认 Compose/插件锁不再接入 Meme Manager、PokePro 或 Target Talk；自动复读
+  已重新以只读 Compose mount 装配，并保持全局开关默认关闭。新群初始化不再生成
+  `meme_rate`，管理命令不再写入它。ReplyPolish 仍以默认关闭的兼容插件存在，
+  `/image` 命令仍由 Core 显式提供。
 - The planned readiness artifact contains references/digests only. Real account,
   group and test-user mappings remain in a private local binding store.
 - The offline checker intentionally distinguishes structural completeness from
@@ -174,9 +179,10 @@ Branch: real-group-validation
 - Persona 接线只证明配置、channel rule 和回答档位进入生成链路；真实中文群聊
   的自然度、群体情境适应和长短回答边界仍需人工内测反馈，不能声明已充分校准。
 - Agent Console 的动态 Catalog、Policy 持久化和有效选择解释只证明超级工作台
-  纵切闭合；六项配置中的回复强度也不能替代真实发送授权。当前插件仍未进入候选
-  执行链，所有 `selectedForRun` 为 `false`，且 no-send Gateway 不等于生产
-  AstrBot Runtime 或真实群权限。
+  纵切闭合；六项配置中的回复强度也不能替代真实发送授权。自动复读和
+  `/sub2api 自动查询` 的 `triggerMatched` 只表达确定性触发条件适用，当前仍为
+  `selectedForRun=false`、`toolCalls=0`；已安装/已配置不等于 Runtime online，
+  且 no-send Gateway 不等于生产 AstrBot Runtime 或真实群权限。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。

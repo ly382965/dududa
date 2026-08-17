@@ -173,6 +173,10 @@ describe('internal-test gateway', () => {
     const gateway = new FileInternalTestGateway(options)
 
     const catalog = await gateway.agentCatalog()
+    expect(catalog.agent).toMatchObject({
+      consoleRole: 'super_admin',
+      executionRole: 'admin',
+    })
     expect(catalog.models).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'custom-luna', tier: 'haiku', available: true, modalities: ['text'] }),
     ]))
@@ -182,6 +186,8 @@ describe('internal-test gateway', () => {
         available: false,
         installed: true,
         policyManaged: true,
+        runtimeTarget: 'web_agent',
+        runtimeReadiness: 'unavailable',
         executionKind: 'agent_capability',
         kind: 'mcp',
       }),
@@ -190,6 +196,8 @@ describe('internal-test gateway', () => {
         available: false,
         installed: true,
         policyManaged: true,
+        runtimeTarget: 'web_agent',
+        runtimeReadiness: 'unavailable',
         executionKind: 'agent_capability',
         kind: 'image_generation',
         model: 'gpt-image-2',
@@ -199,8 +207,12 @@ describe('internal-test gateway', () => {
         displayName: '自动复读',
         kind: 'social_automation',
         installed: true,
-        available: false,
+        available: true,
         policyManaged: true,
+        requiredRole: 'super_admin',
+        executionRole: 'admin',
+        runtimeTarget: 'astrbot',
+        runtimeReadiness: 'configured',
         executionKind: 'passive_behavior',
       }),
       expect.objectContaining({
@@ -208,10 +220,13 @@ describe('internal-test gateway', () => {
         displayName: '/sub2api 自动查询',
         kind: 'readonly_query',
         installed: true,
-        available: false,
+        available: true,
         builtIn: true,
-        policyManaged: false,
+        policyManaged: true,
         requiredRole: 'super_admin',
+        executionRole: 'admin',
+        runtimeTarget: 'astrbot',
+        runtimeReadiness: 'configured',
         executionKind: 'command_auto_reply',
       }),
     ]))
@@ -235,17 +250,17 @@ describe('internal-test gateway', () => {
 
     await expect(gateway.saveAgentConfig({
       scope: { accountId: 'bot-1', conversationId: 'group-42' },
-      policy: { plugins: { 'sub2api.auto_query': 'on' } },
-    })).rejects.toMatchObject({
-      status: 400,
-      message: expect.stringContaining('不允许通过普通 Scope Policy 启用'),
-    })
-    await expect(gateway.saveAgentConfig({
-      scope: { accountId: 'bot-1', conversationId: 'group-42' },
-      policy: { plugins: { 'social.reread.auto': 'auto' } },
-    })).rejects.toMatchObject({
-      status: 400,
-      message: expect.stringContaining('当前不可用'),
+      policy: {
+        plugins: {
+          'social.reread.auto': 'auto',
+          'sub2api.auto_query': 'on',
+        },
+      },
+    })).resolves.toMatchObject({
+      plugins: {
+        'social.reread.auto': 'auto',
+        'sub2api.auto_query': 'on',
+      },
     })
 
     await gateway.saveAgentConfig({
@@ -261,8 +276,8 @@ describe('internal-test gateway', () => {
         plugins: {
           'icourse.read': 'off',
           'image.generate.gpt-image-2': 'off',
-          'social.reread.auto': 'off',
-          'sub2api.auto_query': 'off',
+          'social.reread.auto': 'auto',
+          'sub2api.auto_query': 'on',
         },
       },
     })
@@ -277,8 +292,8 @@ describe('internal-test gateway', () => {
       groupChatStyle: { mode: 'locked', preferred: 'restrained' },
       plugins: {
         'icourse.read': 'off',
-        'social.reread.auto': 'off',
-        'sub2api.auto_query': 'off',
+        'social.reread.auto': 'auto',
+        'sub2api.auto_query': 'on',
       },
       updatedAt: '2026-08-17T08:00:00.000Z',
     })
@@ -325,7 +340,28 @@ describe('internal-test gateway', () => {
         },
         plugins: {
           'icourse.read': { mode: 'off', available: false, eligible: false, selectedForRun: false },
-          'sub2api.auto_query': { mode: 'off', available: false, eligible: false, selectedForRun: false },
+          'social.reread.auto': {
+            mode: 'auto',
+            available: true,
+            eligible: true,
+            selectedForRun: false,
+            applicable: false,
+            triggerMatched: false,
+            runtimeTarget: 'astrbot',
+            runtimeReadiness: 'configured',
+            selectionReason: 'not_applicable',
+          },
+          'sub2api.auto_query': {
+            mode: 'on',
+            available: true,
+            eligible: true,
+            selectedForRun: false,
+            applicable: false,
+            triggerMatched: false,
+            runtimeTarget: 'astrbot',
+            runtimeReadiness: 'configured',
+            selectionReason: 'not_applicable',
+          },
         },
       },
       reasonCodes: expect.arrayContaining([
@@ -336,9 +372,75 @@ describe('internal-test gateway', () => {
         'context_length.locked_by_admin',
         'group_chat_style.locked_by_admin',
         'plugin.icourse.read.unavailable',
+        'plugin.social.reread.auto.waiting_for_group_repeat',
+        'plugin.sub2api.auto_query.waiting_for_exact_command',
+        'tools.none_called_by_candidate_runtime',
       ]),
     })
     expect(providerRequest).toHaveBeenCalledOnce()
+  })
+
+  it('reports deterministic plugin triggers without claiming the Web candidate runtime executed them', async () => {
+    const root = await fixtureRoot()
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ output_text: '候选预览' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })) as typeof fetch,
+    })
+    await gateway.saveAgentConfig({
+      scope: { accountId: 'bot-1', conversationId: 'group-plugins' },
+      policy: {
+        plugins: {
+          'social.reread.auto': 'auto',
+          'sub2api.auto_query': 'on',
+        },
+      },
+    })
+
+    await expect(gateway.respond({
+      accountId: 'bot-1',
+      conversationId: 'group-plugins',
+      conversationName: '插件测试群',
+      conversationType: 'group',
+      prompt: '/sub2api status',
+      messages: [
+        { senderName: '成员甲', content: '确实如此' },
+        { senderName: '成员乙', content: '确实如此' },
+      ],
+    })).resolves.toMatchObject({
+      effectiveSelection: {
+        plugins: {
+          'social.reread.auto': {
+            eligible: true,
+            selectedForRun: false,
+            applicable: true,
+            triggerMatched: true,
+            runtimeTarget: 'astrbot',
+            runtimeReadiness: 'configured',
+            selectionReason: 'trigger_matched',
+          },
+          'sub2api.auto_query': {
+            eligible: true,
+            selectedForRun: false,
+            applicable: true,
+            triggerMatched: true,
+            runtimeTarget: 'astrbot',
+            runtimeReadiness: 'configured',
+            selectionReason: 'trigger_matched',
+          },
+        },
+      },
+      reasonCodes: expect.arrayContaining([
+        'plugin.social.reread.auto.group_repeat_trigger_matched_not_executed',
+        'plugin.sub2api.auto_query.exact_command_trigger_matched_not_executed',
+        'tools.none_called_by_candidate_runtime',
+      ]),
+      toolCalls: 0,
+    })
   })
 
   it('loads the de-identified projection, generates a no-send candidate and records human feedback', async () => {

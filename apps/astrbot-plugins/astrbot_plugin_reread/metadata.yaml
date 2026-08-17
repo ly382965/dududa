@@ -1,0 +1,7 @@
+name: astrbot_plugin_reread
+display_name: 复读姬
+desc: 轻量群聊自动复读，可分别配置文本、图片和表情阈值
+help: 请在插件配置面板调整阈值、概率和群白名单
+version: v2.0.0
+author: Zhalslar
+repo: https://github.com/Zhalslar/astrbot_plugin_reread

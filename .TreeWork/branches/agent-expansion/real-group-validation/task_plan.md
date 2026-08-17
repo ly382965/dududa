@@ -18,6 +18,9 @@ Title: S23 Authorized Real-Group Validation
 - Let an administrator set per-account/conversation initial preferences, legal
   ranges and explicit locks while the Runtime adapts each Run inside those
   ranges without surrendering Core authority.
+- Treat the WebUI operator as `super_admin` for configuration and the Bot
+  Runtime as `admin` for execution. Keep `installed`, configured/Compose-ready,
+  AstrBot online and actually selected/called as four distinct states.
 - Expose six orthogonal settings in that Scope: model Tier, reasoning depth,
   answer length, reply intensity, context length as a per-Run history budget,
   and group-chat style. Keep desired Policy distinct from actual reply or
@@ -94,10 +97,13 @@ Title: S23 Authorized Real-Group Validation
 - [x] SHORT/MEDIUM 始终按普通 QQ 消息投递；LONG 单段同样普通投递。只有
   `profile_validation.valid=true` 的显式 LONG，且目标为群聊、至少两个纯文本
   part、无定向用户、无附件时，Output Adapter 才允许合并转发。
-- [x] Dududa 1.0 自动行为已退出 2.0 仓库默认路径：Meme Manager、Reread、
-  PokePro 不在默认插件集合，Target Talk 不再由默认 Compose 挂载；ReplyPolish
-  默认关闭且仅作为 LONG-only 兼容层。新群不再生成 `meme_rate`，管理命令不再
-  写入该字段；显式 `/image` 图片生成能力继续保留。
+- [x] Dududa 1.0 的 Meme Manager、PokePro 和 Target Talk 继续退出 2.0 默认
+  路径；ReplyPolish 默认关闭且仅作为 LONG-only 兼容层。新群不再生成
+  `meme_rate`，管理命令不再写入该字段；显式 `/image` 图片生成能力继续保留。
+- [x] 自动复读和现有 `/sub2api 自动查询` 已恢复为独立、默认 `off`、按
+  `accountId + conversationId` 配置的 AstrBot 插件。WebUI 配置权限为
+  `requiredRole=super_admin`，声明的 Bot 执行身份为 `executionRole=admin`；插件
+  源码、动态 Catalog/配置面和 Compose 挂载均已装配。
 - [x] 实时 Agent Console 以 `accountId + conversationId` 为 Scope，从服务端动态
   Catalog 加载模型/Tier、推理档位、modality、AnswerProfile、回复强度、上下文
   长度、群聊风格、插件/Capability、安装状态、可用状态和不可用原因，不在前端
@@ -117,15 +123,21 @@ Title: S23 Authorized Real-Group Validation
 - [x] Agent Console 配置经专用服务端 API 持久化到仓库外数据根，页面重载后仍按
   同一 Scope 恢复；浏览器 localStorage 只可作为非权威草稿或缓存。
 - [x] Catalog 事实边界准确：iCourse 是唯一真实 MCP，`gpt-image-2` 是已知图片
-  能力，但二者当前 Runtime 均未接通并显示不可用；自动复读仅登记为 Dududa 1.0
-  历史资产，保持关闭且不可用；`/sub2api 自动查询` 仅超级管理员可用，不受普通
-  会话 Policy 管理，当前 Console 执行链也未接通。校园资讯、arXiv、行业资讯、
-  网络搜索及其他未接能力显示 `unavailable + reason`，不得把 fixture 或预留接口
-  伪装成真实服务。
+  能力，但二者当前 Web candidate Runtime 均未接通并显示不可用。自动复读与
+  `/sub2api 自动查询` 均由会话 Policy 管理，默认 `off`，并分别显示配置角色、
+  执行身份、Runtime target 和 configuration readiness。`installed/configured`
+  不得冒充 AstrBot online 或本轮实际执行。校园资讯、arXiv、行业资讯、网络搜索
+  及其他未接能力显示 `unavailable + reason`，不得把 fixture 或预留接口伪装成
+  真实服务。
 - [x] Console 同时显示管理员期望值和实际 Runtime 状态：被动自动回复保持
   `rollout=off`、delivery 关闭、kill switch 开启；主动参与仅为 S15E Probe
-  Shadow，并明确标记 `NO SEND`。候选继续保持 `outputCalls=0`、
+  Shadow，并明确标记 `NO SEND`。当前没有 AstrBot 容器在线消费 Web Policy；
+  Web candidate 即使命中复读或 `/sub2api` 的确定性触发条件，也只返回
+  `triggerMatched=true`，实际仍为 `selectedForRun=false`、`outputCalls=0`、
   `memoryWrites=0`、`toolCalls=0`。
+- [ ] 接通 Web Policy 到 AstrBot 插件配置的 Policy Adapter，并由实际在线的
+  AstrBot 容器加载和消费该 Scope Policy；在此之前不得声称自动复读或
+  `/sub2api 自动查询` 已由当前 Web candidate 执行。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -191,10 +203,13 @@ Title: S23 Authorized Real-Group Validation
   disabled AnswerProfile flag, Persona/Profile share one model request, and
   merged forwarding is independently restricted to eligible validated LONG
   group responses.
-- [x] Remove Dududa 1.0 automatic social behavior from repository defaults,
+- [x] Remove Meme Manager, PokePro and Target Talk from repository defaults,
   stop new `meme_rate` initialization/writes, keep ReplyPolish default-off and
-  retain explicit `/image`; preserve historical source/config/data for rollback
-  and do not mutate the running AstrBot/NapCat instance.
+  retain explicit `/image`; do not restore those removed automatic behaviors.
+- [x] Restore only automatic reread and the existing `/sub2api 自动查询` as
+  independent default-off AstrBot plugins; add their source/Catalog contracts,
+  per-Scope Web configuration and Compose mounts while keeping WebUI
+  `super_admin` configuration separate from Bot Runtime `admin` execution.
 - [x] Split the historical Evaluation Adapter from the live Agent Console in
   product behavior, then add scoped server-side Catalog/config/respond APIs for
   the Console without creating a second Runtime.
@@ -206,6 +221,9 @@ Title: S23 Authorized Real-Group Validation
   the effective six-setting selection, context usage, reason codes and actual
   plugin calls; sample `preferred`, `locked`, plugin four-state, persistence and
   no-send behavior with focused tests, one typecheck and one Web build.
+- [ ] Connect the Web Policy Adapter to an online AstrBot plugin runtime and
+  verify per-Scope execution separately; a matched Web trigger is not execution
+  evidence and current candidates remain `selectedForRun=false/toolCalls=0`.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,

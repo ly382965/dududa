@@ -138,8 +138,18 @@ const pluginExecutionLabels: Record<InternalTestCatalogPlugin['executionKind'], 
 }
 
 const pluginRoleLabels: Record<NonNullable<InternalTestCatalogPlugin['requiredRole']>, string> = {
-  super_admin: '仅超级管理员',
-  admin: '仅管理员',
+  super_admin: 'WebUI 超级管理员可配置',
+  admin: 'WebUI 管理员可配置',
+}
+
+const pluginRuntimeLabels: Record<InternalTestCatalogPlugin['runtimeTarget'], string> = {
+  web_agent: 'Web Agent',
+  astrbot: 'AstrBot',
+}
+
+const pluginReadinessLabels: Record<InternalTestCatalogPlugin['runtimeReadiness'], string> = {
+  configured: '已装配 · 待 Runtime 接管',
+  unavailable: '执行器未接通',
 }
 
 const tierLabels: Record<InternalTestTier, string> = {
@@ -786,6 +796,12 @@ watch(
         <section class="settings-section">
           <div class="section-heading"><Wrench :size="15" /><span><strong>插件与能力</strong><small>DYNAMIC CATALOG</small></span></div>
           <p class="settings-help">“偏好启用”不要求每轮调用；“锁定可用”只保证能力留在合法候选中。</p>
+          <p v-if="catalog" class="settings-help">
+            控制台身份：超级管理员；Bot 执行身份：普通管理员。这里设置每个群的初值，Agent 仍可在允许范围内自适应。
+          </p>
+          <p v-if="catalog" class="settings-help">
+            “已装配”表示源码和 Compose 已就绪，不代表执行器当前在线或本轮已经调用；实际调用结果单独显示。
+          </p>
           <div v-if="catalog?.plugins.length" class="plugin-list">
             <article v-for="plugin in catalog.plugins" :key="plugin.id" class="plugin-row" :class="{ unavailable: !plugin.available }">
               <div>
@@ -794,10 +810,15 @@ watch(
                 </span>
                 <span class="plugin-badges">
                   <small :class="plugin.installed ? 'available' : 'unavailable'">{{ plugin.installed ? '已安装' : '未安装' }}</small>
-                  <small :class="plugin.available ? 'available' : 'unavailable'">{{ plugin.available ? '可用' : '不可用' }}</small>
+                  <small :class="plugin.available ? 'available' : 'unavailable'">{{ plugin.available ? '本页可配置' : '当前不可配置' }}</small>
                   <small>{{ pluginExecutionLabels[plugin.executionKind] }}</small>
+                  <small>{{ pluginRuntimeLabels[plugin.runtimeTarget] }}</small>
+                  <small :class="plugin.runtimeReadiness === 'configured' ? 'available' : 'unavailable'">
+                    {{ pluginReadinessLabels[plugin.runtimeReadiness] }}
+                  </small>
                   <small v-if="plugin.builtIn">系统内建</small>
                   <small v-if="plugin.requiredRole">{{ pluginRoleLabels[plugin.requiredRole] }}</small>
+                  <small v-if="plugin.executionRole === 'admin'">Bot 普通管理员执行</small>
                 </span>
                 <p>{{ plugin.description }}</p>
                 <em v-if="!plugin.available">{{ plugin.unavailableReason || '当前 Runtime 未接通该能力' }}</em>
@@ -817,7 +838,7 @@ watch(
                   {{ pluginModeLabels[mode] }}
                 </option>
               </select>
-              <span v-else class="plugin-policy-note">不由普通会话策略管理</span>
+              <span v-else class="plugin-policy-note">只读状态，不可从本页修改</span>
             </article>
           </div>
           <div v-else class="empty-catalog">当前 Catalog 没有已登记插件</div>

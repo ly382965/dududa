@@ -55,6 +55,9 @@ export interface InternalTestCatalogPlugin {
   builtIn?: boolean
   policyManaged: boolean
   requiredRole?: 'super_admin' | 'admin'
+  executionRole?: 'admin'
+  runtimeTarget: 'web_agent' | 'astrbot'
+  runtimeReadiness: 'configured' | 'unavailable'
   executionKind: 'agent_capability' | 'command_auto_reply' | 'passive_behavior'
   description: string
   unavailableReason?: string
@@ -62,7 +65,12 @@ export interface InternalTestCatalogPlugin {
 }
 
 export interface InternalTestAgentCatalog {
-  agent: { id: 'dududa'; displayName: string }
+  agent: {
+    id: 'dududa'
+    displayName: string
+    consoleRole?: 'super_admin'
+    executionRole?: 'admin'
+  }
   selectionModes: InternalTestSelectionMode[]
   pluginModes: InternalTestPluginMode[]
   models: InternalTestCatalogModel[]
@@ -85,6 +93,11 @@ export interface InternalTestEffectivePlugin {
   available: boolean
   eligible: boolean
   selectedForRun: boolean
+  applicable: boolean
+  triggerMatched: boolean
+  runtimeTarget: InternalTestCatalogPlugin['runtimeTarget']
+  runtimeReadiness: InternalTestCatalogPlugin['runtimeReadiness']
+  selectionReason: 'unavailable' | 'off' | 'not_applicable' | 'trigger_matched'
 }
 
 export interface InternalTestEffectiveSelection {

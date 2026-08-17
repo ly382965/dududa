@@ -63,15 +63,19 @@ Last sync: unix:1786706085
 - 每次 Console Run 现在返回六项实际选择、reason codes、上下文使用量和插件
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
   候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
-- Catalog 已如实登记四类当前资产：iCourse 是唯一真实 MCP，`gpt-image-2` 是已知
-  图片能力，但二者当前 Console 执行链均不可调用；自动复读只是已登记的
-  Dududa 1.0 历史资产，在 2.0 中保持关闭且不可用；`/sub2api 自动查询` 是仅超级
-  管理员的确定性只读命令，不由普通会话 Policy 管理，当前 Console 执行链也未
-  接通。未接的校园、arXiv、行业或搜索能力没有被伪装为已安装插件。
+- Catalog 已如实区分 `installed`、`configured`、AstrBot Runtime online 和本轮
+  实际调用四层事实。iCourse 是唯一真实 MCP，`gpt-image-2` 是已知图片能力，
+  但二者当前 Console 执行链均不可调用。自动复读和现有 `/sub2api 自动查询` 已
+  恢复为独立 AstrBot 插件，默认 `off`，按 `accountId + conversationId` 由会话
+  Policy 配置；WebUI 配置身份为 `super_admin`，声明的 Bot 执行身份为 `admin`。
+  两者源码、动态 Catalog/配置面和 Compose 装配已完成，但当前没有在线 AstrBot
+  消费 Web Policy，Policy Adapter 和真实执行链尚未接通。未接的校园、arXiv、
+  行业或搜索能力没有被伪装为已安装插件。
 - Console 已分开呈现管理员期望与实际 Runtime 状态。被动自动回复实际保持
   `rollout_mode=off`、delivery 关闭、kill switch 开启；主动群聊参与只有 S15E
-  Probe Shadow，并明确为 `NO SEND`。所有当前候选仍报告 `outputCalls=0`、
-  `memoryWrites=0`、`toolCalls=0`。
+  Probe Shadow，并明确为 `NO SEND`。Web candidate 的 `triggerMatched=true` 只
+  表示确定性触发条件适用，不表示插件已选择或执行；所有当前候选仍报告
+  `selectedForRun=false`、`outputCalls=0`、`memoryWrites=0`、`toolCalls=0`。
 - WebUI 实时消息链路已完成两处可观察修复：服务端为 Workspace SSE 分配
   单调事件 ID，保留最近 512 条事件，并按 `Last-Event-ID` 补放断线期间事件；
   ID 无效、过旧或跨服务重启时发送 `workspace.refresh`。前端以
@@ -87,12 +91,12 @@ Last sync: unix:1786706085
   发送普通消息。只有经过独立档位校验的显式 LONG，且处于群聊、至少两个纯文本
   part、没有 target、没有附件时才合并转发；`allow_forward_bundle=true` 本身
   不能绕过 AnswerProfile 校验。
-- Dududa 1.0 的 Meme Manager 自动表情、Reread 概率复读、PokePro 自动戳一戳
-  和旧 Target Talk 已退出 2.0 仓库默认路径；ReplyPolish 保留为默认关闭的
-  LONG-only 兼容层，`/image` 作为显式图片生成能力继续保留。新群默认记录不再
-  生成 `meme_rate`，`/admin group meme-rate` 不再写入状态；既有磁盘数据不迁移、
-  不删除。Console 中的“自动复读”仅用于准确标识这一历史资产，不表示恢复旧的
-  常驻概率复读执行链。
+- Dududa 1.0 的 Meme Manager 自动表情、PokePro 自动戳一戳和旧 Target Talk 已
+  退出 2.0 仓库默认路径；ReplyPolish 保留为默认关闭的 LONG-only 兼容层，
+  `/image` 作为显式图片生成能力继续保留。自动复读已恢复为独立、默认关闭、受
+  Scope Policy 管理的 AstrBot 插件，不恢复无治理的全局默认行为。新群默认记录
+  不再生成 `meme_rate`，`/admin group meme-rate` 不再写入状态；既有磁盘数据
+  不迁移、不删除。
 - 浏览器纵切由操作员显式触发一次 `gpt-5.6-terra` 的真实 Provider
   `no_send` 候选，记录 `providerCalls=1`、`outputCalls=0`、
   `memoryWrites=0`、`toolCalls=0` 和 3059 ms 延迟；随后追加一条仓库外
@@ -170,9 +174,11 @@ Last sync: unix:1786706085
   Persona 与 AnswerProfile 在一次模型调用内融合；SHORT/MEDIUM 和单段 LONG
   保持普通消息，仅合法多段群聊 LONG 可合并转发。相关 Runtime、Output Adapter
   与兼容层聚焦测试通过。
-- 清理 2.0 仓库默认路径中的 1.0 自动社交行为，停止新 `meme_rate` 默认值与
-  写入口，默认关闭 ReplyPolish 并保留显式 `/image`。该变更只作用于仓库候选，
-  未修改或重启运行中的 AstrBot/NapCat，也未清理既有用户配置和历史数据。
+- 清理 2.0 仓库默认路径中的 Meme Manager、PokePro 和 Target Talk，停止新
+  `meme_rate` 默认值与写入口，默认关闭 ReplyPolish 并保留显式 `/image`；随后
+  仅恢复默认关闭、按 Scope 配置的自动复读和现有 `/sub2api 自动查询` 独立插件，
+  完成源码、动态 Catalog/配置面和 Compose 装配。该变更只作用于仓库候选，未
+  修改或重启运行中的 AstrBot/NapCat，也未清理既有用户配置和历史数据。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
@@ -202,6 +208,9 @@ Last sync: unix:1786706085
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
 - 将 iCourse 和 `gpt-image-2` 接入正式 Console Capability 执行链；当前 Catalog
   只准确呈现其安装/预留事实，所有本轮插件的 `selectedForRun` 仍为 `false`。
+- 接通 Web Policy 到自动复读与 `/sub2api 自动查询` AstrBot 插件的 Policy
+  Adapter，并由在线 AstrBot 加载和消费；在此之前只能声明已安装/已配置，不能
+  声明 Runtime online 或本轮实际执行。
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 

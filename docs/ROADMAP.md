@@ -9,7 +9,7 @@ Dududa 2.0 当前补充（2026-08-16）：
 - 下方 P0-P3 勾选项和旧插件清单只记录 Dududa 1.0 历史，不应继续作为默认能力设计。
 - Persona、群聊 channel rule 与 AnswerProfile 在同一次生成中自然融合；不复述人设、自我介绍、套固定口号、机械卖萌或随机追加表情。
 - SHORT、MEDIUM 始终普通发送；LONG 单段仍普通发送，只有群聊中实际拆成至少两个纯文本 part、且无定向用户和附件时才合并转发。
-- Meme Manager、Reread、PokePro 和旧 Target Talk 已退出 2.0 默认安装或 Compose 路径；`/image` 作为显式图像生成能力继续保留。
+- Meme Manager、PokePro 和旧 Target Talk 已退出 2.0 默认安装或 Compose 路径；自动复读已恢复为独立 AstrBot 插件，源码、动态 Catalog/配置面和 Compose 装配已完成，但默认关闭，仍等待 AstrBot Policy Adapter 与在线执行验证；`/image` 作为显式图像生成能力继续保留。
 - WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
 - S23 仍为 `paused / partial`；本轮没有修改或重启正在运行的 AstrBot/NapCat，真实中文群聊风格仍需人工校准。
 
@@ -49,7 +49,7 @@ Agent 开工前必须遵守：
   - `astrbot_plugin_better_reminder`
   - `astrbot_plugin_chatsummary_v2`
   - `astrbot_plugin_pokepro`（1.0 legacy/deprecated；2.0 不再默认安装）
-  - `astrbot_plugin_reread`（1.0 legacy/deprecated；2.0 不再默认安装）
+  - `astrbot_plugin_reread`（2.0 已恢复源码、动态 Catalog/配置面和 Compose 装配；默认关闭，等待 AstrBot Policy Adapter 与在线执行验证）
   - `astrbot_plugin_target_talk`（1.0 legacy；2.0 已退出默认 Compose 和入站路径）
   - `astrbot_plugin_reply_polish`（1.0 LONG-only 兼容层；2.0 默认关闭）
   - `meme_manager`（1.0 legacy/deprecated；2.0 不再默认安装或自动发表情）
@@ -186,7 +186,7 @@ data/astrbot/plugins/astrbot_plugin_dududa_core/
 - [x] Better Reminder
 - [x] ChatSummary v2
 - [x] PokePro（1.0 legacy/deprecated；已退出 2.0 默认安装）
-- [x] Reread（1.0 legacy/deprecated；已退出 2.0 默认安装）
+- [x] Reread（2.0 已恢复装配并进入按会话 Policy 的配置候选；默认关闭，当前尚无在线 AstrBot 消费 Web Policy）
 - [x] Target Talk（1.0 legacy；已退出 2.0 默认 Compose 和入站路径）
 - [x] Reply Polish（1.0 LONG-only 兼容层；2.0 默认关闭）
 - [x] Meme Manager（1.0 legacy/deprecated；已退出 2.0 默认安装）
@@ -396,13 +396,13 @@ Dududa 1.0 历史入口及其 2.0 处置：
 - [x] `/fortune`
 - [x] `/draw <主题>`
 - [x] `/poke`（1.0 legacy；2.0 仅返回停用提示）
-- [x] `/reread`（1.0 legacy；2.0 仅返回停用提示，不再概率复读）
+- [x] `/reread`（1.0 历史命令；2.0 恢复的是独立自动复读插件，不依赖该命令；当前已装配但默认关闭）
 
 策略：
 
 - [x] Dududa 1.0 群内娱乐功能默认低频（历史策略，不作为 2.0 自动行为设计）。
 - [x] 每群支持 quiet、normal、active 三种模式。
-- [x] Dududa 2.0 默认不自动复读。
+- [x] Dududa 2.0 自动复读默认关闭；管理员可按 `accountId + conversationId` 配置期望模式，但 AstrBot Policy Adapter 与在线执行仍未接通。
 - [x] Dududa 2.0 不恢复按概率自动发表情；未来 Meme 只能作为用户显式触发的 Capability。
 
 验收：

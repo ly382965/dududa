@@ -193,6 +193,7 @@ class RepositoryContractTests(unittest.TestCase):
         for name in (
             "astrbot_plugin_dududa_core",
             "astrbot_plugin_reply_polish",
+            "astrbot_plugin_reread",
             "astrbot_plugin_sub2api_readonly",
         ):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)

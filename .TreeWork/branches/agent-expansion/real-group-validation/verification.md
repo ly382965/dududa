@@ -7,11 +7,23 @@ Branch: real-group-validation
 - Command: `npm exec vitest run -- src/composables/useWorkspace.spec.ts`
 - Result: 1 file / 12 tests passed.
 - Command: `npx vitest run --config vitest.server.config.ts server/internal-test.spec.ts server/internal-test-routes.spec.ts`
-- Result: 2 files / 5 tests passed.
+- Result: 2 files / 6 tests passed.
+- Command: `uv run --locked python -m unittest tests.test_repository_contract`
+- Result: 13 tests passed; the repository contract includes the read-only
+  Compose mount for `astrbot_plugin_reread`.
+- Command: parse `_conf_schema.json` and compile every restored reread Python
+  source with Python 3's in-memory `compile()`.
+- Result: passed without writing bytecode artifacts.
 - Command: `npm run typecheck`
 - Result: passed.
 - Command: `npm run build`
 - Result: passed; only the existing large-chunk warning remained.
+- Runtime sample: `GET /api/health` on `http://127.0.0.1:5173` returned
+  `connected` with 1/1 NapCat account online. The live Agent Catalog returned
+  `consoleRole=super_admin`, `executionRole=admin`, and both
+  `social.reread.auto` and `sub2api.auto_query` as installed, configurable,
+  Scope-managed AstrBot targets. A fresh Scope config contained both keys with
+  mode `off`.
 - Evidence: the live Agent Console loads a dynamic server Catalog, reads and
   saves the authoritative `accountId + conversationId` Policy, and keeps model
   Tier, reasoning depth, answer length, reply intensity, context length and
@@ -28,11 +40,13 @@ Branch: real-group-validation
   behavior. Passive automatic reply remains disabled (`rollout_mode=off`,
   delivery disabled, kill switch active); proactive participation remains
   `probe_shadow` and `NO SEND`. The Catalog truthfully reports iCourse and
-  `gpt-image-2` unavailable in the current Console path, automatic reread as an
-  unavailable Dududa 1.0 historical asset, and `/sub2api 自动查询` as a
-  super-admin-only deterministic command outside ordinary Policy management and
-  not connected to the current Console. Every plugin reports
-  `selectedForRun=false`.
+  `gpt-image-2` unavailable in the current Console path. Automatic reread and
+  `/sub2api 自动查询` are independently installed/configured AstrBot plugins,
+  default `off` and managed per `accountId + conversationId`; WebUI configuration
+  requires `super_admin`, while the declared Bot execution identity is `admin`.
+  No online AstrBot currently consumes this Web Policy and the Policy Adapter is
+  not connected. `triggerMatched=true` only means a deterministic trigger is
+  applicable; both plugins still report `selectedForRun=false` and no Tool call.
 - Evidence boundary: reply intensity does not prove or control a live send
   probability. The candidate still reports `outputCalls=0`, `memoryWrites=0`
   and `toolCalls=0`. This proves the adaptive administrator workbench slice,
@@ -54,10 +68,11 @@ Branch: real-group-validation
   request when enabled. Repository contract checks confirm new group records no
   longer initialize `meme_rate`, the admin path no longer writes it, and default
   Compose does not mount Target Talk.
-- Focused source review: Meme Manager, Reread and PokePro are absent from the
-  default plugin lock; ReplyPolish is default-off and LONG-only; `/image` remains
-  an explicit Core command. No running AstrBot/NapCat instance was changed or
-  restarted by this work.
+- Focused source/Compose review: Meme Manager, PokePro and Target Talk remain
+  outside the 2.0 default path; automatic reread is mounted as an independent
+  plugin with `enabled=false`; ReplyPolish is default-off and LONG-only; `/image`
+  remains an explicit Core command. No running AstrBot/NapCat instance was
+  changed or restarted by this work.
 - Command: `npm run typecheck`
 - Result: passed.
 - Command: `npm run build`

@@ -66,7 +66,7 @@ class Sub2APIReadonlyPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         self.config = config or {}
-        self.enabled = self._bool(self.config.get("enabled", True), True)
+        self.enabled = self._bool(self.config.get("enabled", False), False)
         self.group_whitelist = self._str_set(self.config.get("group_whitelist", []))
         self.exclusive_groups = self._str_set(self.config.get("exclusive_groups", []))
         self.private_user_whitelist = self._str_set(

@@ -46,6 +46,9 @@ class CoreCompatibilityCommands:
         event.stop_event()
 
     async def reread(self, event: AstrMessageEvent):
-        """旧版概率复读兼容入口（已停用）"""
-        yield event.plain_result("Dududa 2.0 已停用旧版概率复读行为。")
+        """独立自动复读插件的兼容提示入口"""
+        yield event.plain_result(
+            "自动复读已由独立插件提供，默认关闭。请在 WebUI 超级工作台按群设置；"
+            "本命令不会绕过会话策略直接开启。"
+        )
         event.stop_event()

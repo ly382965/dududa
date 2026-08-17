@@ -58,6 +58,7 @@ services:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ./apps/astrbot-plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
       - ./apps/astrbot-plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
+      - ./apps/astrbot-plugins/astrbot_plugin_reread:/AstrBot/data/plugins/astrbot_plugin_reread:ro
       - ./apps/astrbot-plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
       - ./configs:/opt/dududa/config:ro

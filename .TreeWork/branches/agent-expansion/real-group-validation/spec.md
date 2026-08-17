@@ -86,8 +86,12 @@ workflow; no additional hash, contract freeze or release gate is introduced.
 
 The live Agent Console in the same Web application is a formal Bot Control
 Plane and administrator super-workbench. It is not limited to observation and
-is not another Agent Runtime. Its configuration expresses three distinct
-inputs to the deterministic Runtime for one
+is not another Agent Runtime. The WebUI operator has the `super_admin` role;
+the Bot Runtime executes approved plugin behavior with the separate `admin`
+identity. `requiredRole=super_admin` therefore describes who may configure a
+plugin, while `executionRole=admin` describes the intended Runtime identity and
+does not prove that an executor is online. Its configuration expresses three
+distinct inputs to the deterministic Runtime for one
 `accountId + conversationId` Scope:
 
 1. the administrator's initial or preferred value;
@@ -153,17 +157,28 @@ eligibility filtering:
 The authoritative Catalog is returned dynamically by the server rather than
 hard-coded in Vue. It reports model/Tier, supported reasoning levels,
 modalities, AnswerProfiles, the remaining adaptive-setting choices, plugins
-and Capabilities together with installation, availability, execution kind,
-policy-management status, role requirement and a truthful unavailable reason.
+and Capabilities together with installation, configuration readiness, Runtime
+target, execution kind, policy-management status, configuration role,
+execution role and a truthful unavailable reason. These are separate facts:
+`installed` means the plugin source is present, `configured` means its
+configuration and Compose mount are assembled, AstrBot online status means a
+running container has loaded it and consumes Web Policy, and per-Run selection
+or invocation is reported independently. Neither `installed` nor `configured`
+may be presented as an online executor or an actual call.
+
 iCourse is currently the only real MCP Server, but its execution path and
-`gpt-image-2` are not connected to the current Web Runtime and are reported as
-unavailable. Automatic reread is only a registered Dududa 1.0 historical asset;
-it remains unavailable and off in Dududa 2.0. `/sub2api 自动查询` is a built-in,
-deterministic read-only command reserved for the super administrator; it is not
-managed by an ordinary conversation Policy and the current Console execution
-path is not connected. Campus news, arXiv, industry news, Web search and any
-other absent integration remain unavailable; fixtures and reserved interfaces
-must not be presented as installed services.
+`gpt-image-2` are not connected to the current Web candidate Runtime and remain
+unavailable. Automatic reread and the existing deterministic read-only
+`/sub2api 自动查询` are restored as independent AstrBot plugins, default to
+`off`, and are configurable per `accountId + conversationId`. Both require a
+`super_admin` WebUI operator to configure and declare `admin` as their Bot
+Runtime execution identity. Their source, Catalog/configuration surface and
+Compose assembly are present, but no AstrBot container is currently online to
+consume this Web Policy and the Policy Adapter into the AstrBot plugin runtime
+is not connected. Meme Manager, PokePro and Target Talk remain excluded and
+must not be restored as part of this slice. Campus news, arXiv, industry news,
+Web search and any other absent integration remain unavailable; fixtures and
+reserved interfaces must not be presented as installed services.
 
 The Control Plane distinguishes administrator intent from actual Runtime
 behavior. Passive automatic reply currently remains disabled with rollout off,
@@ -173,12 +188,16 @@ mode in this Console may represent either behavior as live.
 
 Every Run records the administrator preferences and legal values for all six
 settings, their effective values, reason codes for any change, context budget
-usage and the plugins actually called. Current candidates keep
-`outputCalls=0`, `memoryWrites=0` and `toolCalls=0`. Control Plane configuration
-is persisted server-side outside the repository; browser memory is not
-authority. The Web may set initial values, bounds and explicit locks through
-dedicated server commands, but Core remains the sole owner of identity, Scope,
-authorization, budgets, Capability eligibility and every external side effect.
+usage and the plugins actually called. For the current Web candidate,
+`triggerMatched` only reports that an AstrBot plugin's deterministic trigger is
+applicable; it does not mean the plugin was selected or executed.
+`selectedForRun=false` and `toolCalls=0` remain the actual call evidence for
+automatic reread and `/sub2api`. Current candidates also keep `outputCalls=0`
+and `memoryWrites=0`. Control Plane configuration is persisted server-side
+outside the repository; browser memory is not authority. The Web may set
+initial values, bounds and explicit locks through dedicated server commands,
+but Core remains the sole owner of identity, Scope, authorization, budgets,
+Capability eligibility and every external side effect.
 
 ### Offline Runtime Budget And Sampling
 
