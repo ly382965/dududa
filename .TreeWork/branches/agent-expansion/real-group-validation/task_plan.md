@@ -131,13 +131,16 @@ Title: S23 Authorized Real-Group Validation
   真实服务。
 - [x] Console 同时显示管理员期望值和实际 Runtime 状态：被动自动回复保持
   `rollout=off`、delivery 关闭、kill switch 开启；主动参与仅为 S15E Probe
-  Shadow，并明确标记 `NO SEND`。当前没有 AstrBot 容器在线消费 Web Policy；
-  Web candidate 即使命中复读或 `/sub2api` 的确定性触发条件，也只返回
+  Shadow，并明确标记 `NO SEND`。Web candidate 即使命中复读或 `/sub2api`
+  的确定性触发条件，也只返回
   `triggerMatched=true`，实际仍为 `selectedForRun=false`、`outputCalls=0`、
   `memoryWrites=0`、`toolCalls=0`。
-- [ ] 接通 Web Policy 到 AstrBot 插件配置的 Policy Adapter，并由实际在线的
-  AstrBot 容器加载和消费该 Scope Policy；在此之前不得声称自动复读或
-  `/sub2api 自动查询` 已由当前 Web candidate 执行。
+- [x] `/sub2api 自动查询` 已接通精确 Scope Web Policy Adapter；当前 AstrBot
+  已加载插件，NapCat OneBot 反向 WebSocket 已连接，目标群的 Policy 已解析为
+  `locked`。方法级真实只读查询已成功，等待用户在重连后重新发送命令
+  以闭合 QQ 入站与回复的最终验收。
+- [ ] 自动复读仍需单独接通 Web Policy Adapter；不得因 `/sub2api` 已接通而
+  声称复读也已由在线 AstrBot 消费会话 Policy。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -221,9 +224,12 @@ Title: S23 Authorized Real-Group Validation
   the effective six-setting selection, context usage, reason codes and actual
   plugin calls; sample `preferred`, `locked`, plugin four-state, persistence and
   no-send behavior with focused tests, one typecheck and one Web build.
-- [ ] Connect the Web Policy Adapter to an online AstrBot plugin runtime and
-  verify per-Scope execution separately; a matched Web trigger is not execution
-  evidence and current candidates remain `selectedForRun=false/toolCalls=0`.
+- [x] Connect the exact-scope Web Policy Adapter for `/sub2api` to the online
+  AstrBot plugin runtime and verify policy resolution plus a real read-only
+  method smoke; final QQ end-to-end evidence still requires a user-issued
+  post-reconnect command.
+- [ ] Connect automatic reread to the Web Policy separately; a matched Web
+  trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,

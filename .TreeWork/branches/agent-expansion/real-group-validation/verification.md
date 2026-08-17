@@ -4,6 +4,36 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `uv run --locked python -m unittest tests.test_sub2api_plugin tests.test_repository_contract`
+- Result: 36 focused tests passed. The exact-scope Policy Reader enables
+  `auto/on/locked`, disables `off`, missing or malformed managed Scope, and
+  preserves the legacy static switch only when no Policy file is configured.
+- Command: Compose config validation with the internal-test host data and
+  feedback roots, followed by `git diff --check`.
+- Result: passed. AstrBot receives the repository-external Policy through a
+  read-only mount and the isolated plugin root contains only Dududa Core,
+  ReplyPolish, automatic reread and Sub2API.
+- Runtime evidence: the current Dududa AstrBot loaded
+  `astrbot_plugin_sub2api_readonly`, resolved the private target Scope with
+  `sub2api.auto_query=locked`, and NapCat
+  established the OneBot v11 reverse WebSocket. Subsequent unrelated inbound
+  events reached AstrBot, proving the transport is live.
+- Runtime method smoke: the plugin completed the real `overview` read path and
+  produced a normal response after all five read-only upstream requests
+  succeeded. No credential, token value or business response body is recorded
+  in this document.
+- Evidence boundary: every observed `/sub2api overview` in group history was
+  sent before the OneBot reconnection and will not be replayed. The Agent did
+  not send a test message to the real QQ group; final end-to-end evidence waits
+  for a user-issued post-reconnect command. Automatic reread still lacks its
+  Web Policy Adapter.
+- Verification remains `partial`; S23 remains `paused` for the broader live
+  ladder, while the `/sub2api` repair is implementation-complete pending that
+  single external command.
+- Recorded: 2026-08-17
+
+## Previous Verification
+
 - Command: `npm exec vitest run -- src/composables/useWorkspace.spec.ts`
 - Result: 1 file / 12 tests passed.
 - Command: `npx vitest run --config vitest.server.config.ts server/internal-test.spec.ts server/internal-test-routes.spec.ts`
@@ -44,9 +74,10 @@ Branch: real-group-validation
   `/sub2api 自动查询` are independently installed/configured AstrBot plugins,
   default `off` and managed per `accountId + conversationId`; WebUI configuration
   requires `super_admin`, while the declared Bot execution identity is `admin`.
-  No online AstrBot currently consumes this Web Policy and the Policy Adapter is
-  not connected. `triggerMatched=true` only means a deterministic trigger is
-  applicable; both plugins still report `selectedForRun=false` and no Tool call.
+  This was the pre-repair state: no online AstrBot consumed the Web Policy and
+  the Policy Adapter was not connected. `triggerMatched=true` only meant a
+  deterministic trigger was applicable; both plugins reported
+  `selectedForRun=false` and no Tool call.
 - Evidence boundary: reply intensity does not prove or control a live send
   probability. The candidate still reports `outputCalls=0`, `memoryWrites=0`
   and `toolCalls=0`. This proves the adaptive administrator workbench slice,

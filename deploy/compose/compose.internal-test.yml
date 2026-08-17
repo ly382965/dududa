@@ -10,3 +10,8 @@ services:
       - ${DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR:?set DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR}:/var/lib/dududa/internal-test/internal-test:rw
       - ${DUDUDA_INTERNAL_TEST_HOST_CODEX_CONFIG:-${HOME}/.codex/config.toml}:/run/secrets/dududa_codex_config:ro
       - ${DUDUDA_INTERNAL_TEST_HOST_AUTH_FILE:-${HOME}/.codex/auth.json}:/run/secrets/dududa_codex_auth:ro
+  astrbot:
+    environment:
+      DUDUDA_AGENT_POLICY_PATH: /var/lib/dududa/internal-test-policy/agent-policies.json
+    volumes:
+      - ${DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR:?set DUDUDA_INTERNAL_TEST_HOST_FEEDBACK_DIR}:/var/lib/dududa/internal-test-policy:ro

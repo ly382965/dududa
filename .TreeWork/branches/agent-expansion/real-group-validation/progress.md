@@ -68,9 +68,10 @@ Last sync: unix:1786706085
   但二者当前 Console 执行链均不可调用。自动复读和现有 `/sub2api 自动查询` 已
   恢复为独立 AstrBot 插件，默认 `off`，按 `accountId + conversationId` 由会话
   Policy 配置；WebUI 配置身份为 `super_admin`，声明的 Bot 执行身份为 `admin`。
-  两者源码、动态 Catalog/配置面和 Compose 装配已完成，但当前没有在线 AstrBot
-  消费 Web Policy，Policy Adapter 和真实执行链尚未接通。未接的校园、arXiv、
-  行业或搜索能力没有被伪装为已安装插件。
+  两者源码、动态 Catalog/配置面和 Compose 装配已完成。`/sub2api` 已新增精确
+  Scope Policy Reader，并由在线 AstrBot 加载；NapCat 已通过 OneBot 反向
+  WebSocket 连接该实例。自动复读尚未接入同一 Policy。未接的校园、arXiv、行业
+  或搜索能力没有被伪装为已安装插件。
 - Console 已分开呈现管理员期望与实际 Runtime 状态。被动自动回复实际保持
   `rollout_mode=off`、delivery 关闭、kill switch 开启；主动群聊参与只有 S15E
   Probe Shadow，并明确为 `NO SEND`。Web candidate 的 `triggerMatched=true` 只
@@ -108,11 +109,13 @@ Last sync: unix:1786706085
   Source/Projection/Output 组合；Production `CurrentMessageContextBuilder`
   目前仍主要提供当前消息，长期群体情境投影尚未接入，`s23_ready=false`
   继续有效。
-- No authorization packet, private SecretRef binding or deployment window has
-  been supplied. The running AstrBot/NapCat instance and QQ state were not
-  modified; no QQ send, Tool call, Memory write or online Bandit exploration
+- No authorization packet, private SecretRef binding or general deployment
+  window has been supplied. A bounded runtime repair did update the Dududa
+  NapCat reverse-WebSocket target and restart the current AstrBot/NapCat pair so
+  `/sub2api` could receive events and consume Web Policy. The Agent did not send
+  a QQ test message; no model Output, Memory write or online Bandit exploration
   occurred. Repository-default retirement does not claim already-installed
-  legacy plugins in a running instance were disabled.
+  legacy plugins outside the isolated plugin root were deleted.
 - The canonical S23 template, manifest-only checker and Chinese operator
   Runbook are implemented. A complete synthetic manifest can only produce
   `manifest_ready=true`; the report always keeps
@@ -179,6 +182,11 @@ Last sync: unix:1786706085
   仅恢复默认关闭、按 Scope 配置的自动复读和现有 `/sub2api 自动查询` 独立插件，
   完成源码、动态 Catalog/配置面和 Compose 装配。该变更只作用于仓库候选，未
   修改或重启运行中的 AstrBot/NapCat，也未清理既有用户配置和历史数据。
+- 修复目标群的 `/sub2api overview` 运行链路：插件按真实事件的
+  `self_id/group_id` 解析精确 Web Scope，Compose 只读挂载仓库外 Policy；NapCat
+  新增到当前 Dududa AstrBot 的 OneBot 反向 WebSocket 并完成重连。插件加载、
+  `locked` Policy 解析、真实只读 overview 方法级 Smoke 和上游五项请求均成功；
+  重连后的真实群命令尚待用户重新发送，旧命令不会重放。
 - 私有最小探测中，Responses API 的 Luna/Terra/Sol 延迟分别为
   2.212/2.816/2.698 秒；Chat Completions 普通请求和
   `reasoning_effort=low` 对三者均成功，约 2.2--2.3 秒。凭据和私有
@@ -208,9 +216,9 @@ Last sync: unix:1786706085
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
 - 将 iCourse 和 `gpt-image-2` 接入正式 Console Capability 执行链；当前 Catalog
   只准确呈现其安装/预留事实，所有本轮插件的 `selectedForRun` 仍为 `false`。
-- 接通 Web Policy 到自动复读与 `/sub2api 自动查询` AstrBot 插件的 Policy
-  Adapter，并由在线 AstrBot 加载和消费；在此之前只能声明已安装/已配置，不能
-  声明 Runtime online 或本轮实际执行。
+- 自动复读仍需接通 Web Policy Adapter。`/sub2api 自动查询` 已由在线 AstrBot
+  加载并解析指定群 Scope，但仍需用户在重连后重新发送一次命令，才能记录真实
+  QQ 入站与回复的端到端证据。
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 

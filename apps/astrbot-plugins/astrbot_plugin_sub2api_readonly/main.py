@@ -38,6 +38,9 @@ from .formatters import (
     format_total,
     format_user_ranking,
 )
+from .policy import resolve_plugin_policy
+
+PLUGIN_POLICY_ID = "sub2api.auto_query"
 
 HELP_TEXT = """Sub2API 只读查询
 /sub2api overview - 今日、7 月 13 日至今累计和上游账号状态
@@ -113,12 +116,13 @@ class Sub2APIReadonlyPlugin(Star):
             self.client_config_error = str(exc)
         logger.info(
             "Sub2APIReadonly loaded: enabled=%s groups=%d exclusive_groups=%d "
-            "private_users=%d configured=%s",
+            "private_users=%d configured=%s policy_managed=%s",
             self.enabled,
             len(self.group_whitelist),
             len(self.exclusive_groups),
             len(self.private_user_whitelist),
             self.client is not None,
+            bool(self._policy_path()),
         )
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=1000)
@@ -136,7 +140,8 @@ class Sub2APIReadonlyPlugin(Star):
             message_outline=outline,
         )
         group_id = event.get_group_id()
-        if should_block_exclusive_group(
+        policy_enabled = self._policy_enabled(event)
+        if policy_enabled and should_block_exclusive_group(
             group_id=group_id,
             message=text,
             exclusive_groups=self.exclusive_groups,
@@ -474,12 +479,29 @@ class Sub2APIReadonlyPlugin(Star):
 
     def _access_error(self, event: AstrMessageEvent) -> str | None:
         return access_error(
-            enabled=self.enabled,
+            enabled=self._policy_enabled(event),
             group_id=event.get_group_id(),
             sender_id=event.get_sender_id(),
             group_whitelist=self.group_whitelist,
             private_user_whitelist=self.private_user_whitelist,
         )
+
+    def _policy_enabled(self, event: AstrMessageEvent) -> bool:
+        self_id = str(event.get_self_id() or "").strip()
+        group_id = str(event.get_group_id() or "").strip()
+        account_id = f"qq-{self_id}" if self_id else ""
+        conversation_id = f"{account_id}:group:{group_id}" if group_id else ""
+        return resolve_plugin_policy(
+            policy_path=self._policy_path(),
+            account_id=account_id,
+            conversation_id=conversation_id,
+            plugin_id=PLUGIN_POLICY_ID,
+            fallback_enabled=self.enabled,
+        ).enabled
+
+    @staticmethod
+    def _policy_path() -> str:
+        return str(os.environ.get("DUDUDA_AGENT_POLICY_PATH") or "").strip()
 
     def _require_client(self) -> Sub2APIClient:
         if self.client is None:

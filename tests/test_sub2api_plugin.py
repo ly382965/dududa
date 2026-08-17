@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import json
 import math
+import tempfile
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
@@ -44,6 +46,7 @@ from astrbot_plugin_sub2api_readonly.formatters import (
     format_today,
     mask_identifier,
 )
+from astrbot_plugin_sub2api_readonly.policy import resolve_plugin_policy
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -321,6 +324,57 @@ class Sub2APIUtilityTests(unittest.TestCase):
                 private_user_whitelist={"42"},
             )
         )
+
+    def test_web_policy_controls_exact_sub2api_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "agent-policies.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "policies": {
+                            "scope": {
+                                "scope": {
+                                    "accountId": "qq-10001",
+                                    "conversationId": "qq-10001:group:20002",
+                                },
+                                "plugins": {"sub2api.auto_query": "locked"},
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            decision = resolve_plugin_policy(
+                policy_path=str(path),
+                account_id="qq-10001",
+                conversation_id="qq-10001:group:20002",
+                plugin_id="sub2api.auto_query",
+                fallback_enabled=False,
+            )
+            self.assertTrue(decision.managed)
+            self.assertEqual(decision.mode, "locked")
+            self.assertTrue(decision.enabled)
+
+            missing_scope = resolve_plugin_policy(
+                policy_path=str(path),
+                account_id="qq-10001",
+                conversation_id="qq-10001:group:99999",
+                plugin_id="sub2api.auto_query",
+                fallback_enabled=True,
+            )
+            self.assertTrue(missing_scope.managed)
+            self.assertFalse(missing_scope.enabled)
+
+        fallback = resolve_plugin_policy(
+            policy_path="",
+            account_id="",
+            conversation_id="",
+            plugin_id="sub2api.auto_query",
+            fallback_enabled=True,
+        )
+        self.assertFalse(fallback.managed)
+        self.assertTrue(fallback.enabled)
 
     def test_exclusive_group_only_allows_sub2api_commands(self) -> None:
         allowed_messages = (

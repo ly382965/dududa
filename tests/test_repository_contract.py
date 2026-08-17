@@ -190,6 +190,7 @@ class RepositoryContractTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("PYTHONDONTWRITEBYTECODE", compose)
+        self.assertIn("/AstrBot/data/plugins\n", compose)
         for name in (
             "astrbot_plugin_dududa_core",
             "astrbot_plugin_reply_polish",

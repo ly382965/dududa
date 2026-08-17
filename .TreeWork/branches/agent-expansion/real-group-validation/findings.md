@@ -118,9 +118,10 @@ Branch: real-group-validation
   MCP，`gpt-image-2` 是已知图片能力，但当前 Console Runtime 均未接通；自动复读
   和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
   `accountId + conversationId` 由 Scope Policy 配置。两者要求 WebUI
-  `super_admin` 配置，声明 Bot `admin` 执行身份；当前没有在线 AstrBot 消费该
-  Policy，Policy Adapter 与实际执行仍未接通。校园、arXiv、行业和搜索能力继续
-  显示不可用，不把 fixture 或接口预留冒充真实插件。
+  `super_admin` 配置，声明 Bot `admin` 执行身份。`/sub2api` 已在 AstrBot 事件
+  路径中接入精确 Scope Policy，在线实例已加载它并接收 NapCat OneBot 事件；
+  自动复读仍未消费 Web Policy。校园、arXiv、行业和搜索能力继续显示不可用，
+  不把 fixture 或接口预留冒充真实插件。
 - Agent 状态接口把 Policy 期望与实际行为分开：被动自动回复为关闭状态，
   `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅为
   `probe_shadow`，并明确 `NO SEND`。候选保持 `outputCalls=0`、
@@ -186,9 +187,10 @@ Branch: real-group-validation
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。
-- 本轮只改变仓库候选的默认安装与代码路径，没有修改或重启运行中的
-  AstrBot/NapCat。旧运行目录若已安装旧插件，仍可能保留其历史配置或行为；
-  需要正式部署/迁移窗口后才能确认实例状态。
+- 仓库默认插件隔离仍只装配 Dududa Core、ReplyPolish、自动复读和 Sub2API，
+  没有恢复 Meme Manager、PokePro 或 Target Talk。为修复 `/sub2api` 入站链路，
+  当前 AstrBot/NapCat 已执行一次有界重启；这不代表其他 Runtime、Provider、
+  iCourse 或主动发送能力已经部署完成。
 - 可解析的 Evidence JSON 只证明工程契约成立，不证明字段来自真实
   Conformance 执行。当前聚焦测试仍使用 Fake AstrBot Provider 和固定
   Evidence fixture；健康刷新实现已经存在，但运行中 AstrBot 未启用，正式

@@ -173,12 +173,14 @@ unavailable. Automatic reread and the existing deterministic read-only
 `off`, and are configurable per `accountId + conversationId`. Both require a
 `super_admin` WebUI operator to configure and declare `admin` as their Bot
 Runtime execution identity. Their source, Catalog/configuration surface and
-Compose assembly are present, but no AstrBot container is currently online to
-consume this Web Policy and the Policy Adapter into the AstrBot plugin runtime
-is not connected. Meme Manager, PokePro and Target Talk remain excluded and
-must not be restored as part of this slice. Campus news, arXiv, industry news,
-Web search and any other absent integration remain unavailable; fixtures and
-reserved interfaces must not be presented as installed services.
+Compose assembly are present. The `/sub2api` plugin additionally resolves the
+exact `accountId + conversationId` Web Policy inside the AstrBot event path;
+the current AstrBot instance loads that Adapter and receives NapCat OneBot
+events. Automatic reread still needs its own Policy Adapter and is not implied
+by the `/sub2api` repair. Meme Manager, PokePro and Target Talk remain excluded
+and must not be restored as part of this slice. Campus news, arXiv, industry
+news, Web search and any other absent integration remain unavailable; fixtures
+and reserved interfaces must not be presented as installed services.
 
 The Control Plane distinguishes administrator intent from actual Runtime
 behavior. Passive automatic reply currently remains disabled with rollout off,
