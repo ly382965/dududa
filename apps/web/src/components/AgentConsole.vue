@@ -27,10 +27,15 @@ import type {
   InternalTestAdaptiveSetting,
   InternalTestAgentCatalog,
   InternalTestAgentPolicy,
+  InternalTestAgentStatus,
   InternalTestAnswerProfile,
+  InternalTestCatalogPlugin,
+  InternalTestContextLength,
   InternalTestEffectiveSelection,
+  InternalTestGroupChatStyle,
   InternalTestPluginMode,
   InternalTestReasoningLevel,
+  InternalTestReplyIntensity,
   InternalTestSelectionMode,
   InternalTestTier,
 } from '../types/internal-test'
@@ -48,7 +53,13 @@ import type {
 import AgentPartView from './AgentPartView.vue'
 import AppAvatar from './AppAvatar.vue'
 
-type AdaptiveAxis = 'modelTier' | 'reasoning' | 'answerProfile'
+type AdaptiveAxis =
+  | 'modelTier'
+  | 'reasoning'
+  | 'answerProfile'
+  | 'replyIntensity'
+  | 'contextLength'
+  | 'groupChatStyle'
 
 type AgentRunWithSelection = AgentRun & {
   modelTier?: InternalTestTier
@@ -79,6 +90,7 @@ const props = defineProps<{
   runtimeLoading: boolean
   runtimeError: string
   runtimeWarning: string
+  runtimeControls?: InternalTestAgentStatus['runtimeControls']
 }>()
 
 const emit = defineEmits<{
@@ -119,6 +131,17 @@ const pluginModeLabels: Record<InternalTestPluginMode, string> = {
   locked: '锁定可用',
 }
 
+const pluginExecutionLabels: Record<InternalTestCatalogPlugin['executionKind'], string> = {
+  agent_capability: 'Agent 能力',
+  command_auto_reply: '命令自动回复',
+  passive_behavior: '被动行为',
+}
+
+const pluginRoleLabels: Record<NonNullable<InternalTestCatalogPlugin['requiredRole']>, string> = {
+  super_admin: '仅超级管理员',
+  admin: '仅管理员',
+}
+
 const tierLabels: Record<InternalTestTier, string> = {
   haiku: '轻量 / Haiku',
   sonnet: '中等 / Sonnet',
@@ -135,6 +158,25 @@ const answerProfileLabels: Record<InternalTestAnswerProfile, string> = {
   short: '短回答',
   medium: '中回答',
   long: '长回答',
+}
+
+const replyIntensityLabels: Record<InternalTestReplyIntensity, string> = {
+  quiet: '克制',
+  normal: '正常',
+  active: '积极',
+}
+
+const contextLengthLabels: Record<InternalTestContextLength, string> = {
+  compact: '紧凑',
+  standard: '标准',
+  extended: '扩展',
+}
+
+const groupChatStyleLabels: Record<InternalTestGroupChatStyle, string> = {
+  restrained: '克制',
+  natural: '自然',
+  lively: '活跃',
+  technical: '技术型',
 }
 
 const tabs = [
@@ -193,6 +235,27 @@ const profileOptions = computed(() => (props.catalog?.answerProfiles ?? []).map(
   reason: undefined as string | undefined,
 })))
 
+const replyIntensityOptions = computed(() => (props.catalog?.replyIntensities ?? []).map(id => ({
+  id,
+  label: replyIntensityLabels[id],
+  available: true,
+  reason: undefined as string | undefined,
+})))
+
+const contextLengthOptions = computed(() => (props.catalog?.contextLengths ?? []).map(item => ({
+  id: item.id,
+  label: `${contextLengthLabels[item.id]} · ${item.messageLimit} 条 / ${item.characterLimit.toLocaleString('zh-CN')} 字符`,
+  available: true,
+  reason: undefined as string | undefined,
+})))
+
+const groupChatStyleOptions = computed(() => (props.catalog?.groupChatStyles ?? []).map(id => ({
+  id,
+  label: groupChatStyleLabels[id],
+  available: true,
+  reason: undefined as string | undefined,
+})))
+
 const selectionModes = computed<InternalTestSelectionMode[]>(() => props.catalog?.selectionModes ?? ['adaptive', 'preferred', 'locked'])
 const pluginModes = computed<InternalTestPluginMode[]>(() => props.catalog?.pluginModes ?? ['off', 'auto', 'on', 'locked'])
 const adaptiveAxes = computed(() => [
@@ -217,11 +280,36 @@ const adaptiveAxes = computed(() => [
     setting: props.policy?.answerProfile,
     options: profileOptions.value,
   },
+  {
+    key: 'replyIntensity' as const,
+    title: '回复强度',
+    detail: props.catalog?.replyIntensityNotice ?? '候选决策初值；当前真实发送链未开启。',
+    setting: props.policy?.replyIntensity,
+    options: replyIntensityOptions.value,
+  },
+  {
+    key: 'contextLength' as const,
+    title: '上下文长度（运行预算）',
+    detail: '这是 Dududa 本轮读取历史的运行预算，不是模型厂商声明的最大 Context Window',
+    setting: props.policy?.contextLength,
+    options: contextLengthOptions.value,
+  },
+  {
+    key: 'groupChatStyle' as const,
+    title: '群聊风格',
+    detail: '作为本轮表达初值自然融入回答，不机械复述风格标签',
+    setting: props.policy?.groupChatStyle,
+    options: groupChatStyleOptions.value,
+  },
 ])
 
 const runTier = computed(() => props.run?.effectiveSelection?.modelTier ?? props.run?.modelTier)
 const runReasoning = computed(() => props.run?.effectiveSelection?.reasoning ?? props.run?.reasoning)
 const runAnswerProfile = computed(() => props.run?.effectiveSelection?.answerProfile ?? props.run?.answerProfile)
+const runReplyIntensity = computed(() => props.run?.effectiveSelection?.replyIntensity)
+const runContextLength = computed(() => props.run?.effectiveSelection?.contextLength)
+const runGroupChatStyle = computed(() => props.run?.effectiveSelection?.groupChatStyle)
+const runContextUsage = computed(() => props.run?.effectiveSelection?.contextUsage)
 const runPlugins = computed(() => {
   if (props.run?.plugins?.length) return props.run.plugins
   const plugins = props.run?.effectiveSelection?.plugins
@@ -274,6 +362,10 @@ function selectTopModel(modelId: string): void {
 function updatePluginMode(pluginId: string, mode: InternalTestPluginMode): void {
   if (!props.policy) return
   emitPolicy({ plugins: { ...props.policy.plugins, [pluginId]: mode } })
+}
+
+function pluginModeOptions(plugin: InternalTestCatalogPlugin): InternalTestPluginMode[] {
+  return plugin.available ? pluginModes.value : ['off']
 }
 
 function send(): void {
@@ -389,7 +481,7 @@ watch(
       <section ref="stream" class="agent-stream" aria-label="Agent 对话消息">
         <div class="scope-line">
           <span><Hash :size="12" />{{ conversation?.name }}</span>
-          <span>{{ contextMessages }} 条上下文</span>
+          <span>最多提交 {{ contextMessages }} 条历史 · Runtime 按本轮上下文长度截取</span>
         </div>
 
         <div v-if="available" class="runtime-mode-note">
@@ -450,7 +542,7 @@ watch(
       </section>
 
       <footer class="agent-composer">
-        <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>最近 {{ contextMessages }} 条</span></div>
+        <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>最多提交 {{ contextMessages }} 条历史 · Runtime 按本轮预算截取</span></div>
         <textarea
           v-model="prompt"
           rows="3"
@@ -508,7 +600,17 @@ watch(
         <div class="run-metrics">
           <div><Clock3 :size="14" /><span><small>耗时</small><strong>{{ run.duration }}</strong></span></div>
           <div><Gauge :size="14" /><span><small>Tokens</small><strong>{{ run.tokens }}</strong></span></div>
-          <div><MessageSquareText :size="14" /><span><small>上下文</small><strong>{{ run.contextMessages }} 条</strong></span></div>
+          <div>
+            <MessageSquareText :size="14" />
+            <span>
+              <small>实际上下文</small>
+              <strong>
+                {{ runContextUsage
+                  ? `${runContextUsage.messagesRead} 条 / ${runContextUsage.charactersRead.toLocaleString('zh-CN')} 字符`
+                  : `${run.contextMessages} 条` }}
+              </strong>
+            </span>
+          </div>
           <div><Activity :size="14" /><span><small>费用</small><strong>{{ run.cost }}</strong></span></div>
         </div>
 
@@ -527,6 +629,24 @@ watch(
             <div><dt>模型档位</dt><dd>{{ runTier ? tierLabels[runTier] : '未记录' }}</dd></div>
             <div><dt>推理强度</dt><dd>{{ runReasoning ? reasoningLabels[runReasoning] : '未记录' }}</dd></div>
             <div><dt>回答长度</dt><dd>{{ runAnswerProfile ? answerProfileLabels[runAnswerProfile] : '未记录' }}</dd></div>
+            <div><dt>回复强度</dt><dd>{{ runReplyIntensity ? replyIntensityLabels[runReplyIntensity] : '未记录' }}</dd></div>
+            <div>
+              <dt>上下文长度</dt>
+              <dd>
+                {{ runContextLength && runContextUsage
+                  ? `${contextLengthLabels[runContextLength]} · 上限 ${runContextUsage.messageLimit} 条 / ${runContextUsage.characterLimit.toLocaleString('zh-CN')} 字符`
+                  : '未记录' }}
+              </dd>
+            </div>
+            <div>
+              <dt>本轮实际读取</dt>
+              <dd>
+                {{ runContextUsage
+                  ? `${runContextUsage.messagesRead} 条 / ${runContextUsage.charactersRead.toLocaleString('zh-CN')} 字符`
+                  : '未记录' }}
+              </dd>
+            </div>
+            <div><dt>群聊风格</dt><dd>{{ runGroupChatStyle ? groupChatStyleLabels[runGroupChatStyle] : '未记录' }}</dd></div>
             <div><dt>实际插件</dt><dd>{{ runPlugins.length ? runPlugins.join('、') : '本轮未调用' }}</dd></div>
             <div><dt>开始于</dt><dd>{{ run.startedAt }}</dd></div>
             <div><dt>回复账号</dt><dd>{{ account?.name }}</dd></div>
@@ -554,7 +674,7 @@ watch(
 
     <section v-else class="settings-view">
       <div class="settings-intro">
-        <div><span>会话配置</span><h3>{{ conversation?.name }}</h3></div>
+        <div><span>管理员期望值</span><h3>{{ conversation?.name }}</h3></div>
         <label class="switch-control">
           <input
             :checked="policy?.enabled ?? false"
@@ -565,6 +685,45 @@ watch(
           <span />
         </label>
       </div>
+
+      <section class="settings-section runtime-controls-section">
+        <div class="section-heading"><Activity :size="15" /><span><strong>运行行为</strong><small>DESIRED POLICY VS ACTUAL RUNTIME</small></span></div>
+        <p class="settings-help">顶部开关只表达管理员对本会话的期望，不等于已经获得真实 QQ 发送授权；以下状态以 Runtime 实际回传为准。</p>
+        <div v-if="runtimeControls" class="runtime-control-list">
+          <article class="runtime-control-card">
+            <header>
+              <span><strong>被动自动回复</strong><small>PASSIVE AUTO REPLY</small></span>
+              <b :class="{ enabled: runtimeControls.passiveAutoReply.actualEnabled }">
+                {{ runtimeControls.passiveAutoReply.actualEnabled ? '实际开启' : '实际关闭' }}
+              </b>
+            </header>
+            <dl>
+              <div><dt>管理员期望</dt><dd>{{ policy ? (policy.enabled ? '启用会话 Agent（非发送授权）' : '停用会话 Agent') : '尚未读取' }}</dd></div>
+              <div><dt>Rollout</dt><dd>{{ runtimeControls.passiveAutoReply.rolloutMode.toUpperCase() }}</dd></div>
+              <div><dt>消息交付</dt><dd>{{ runtimeControls.passiveAutoReply.deliveryEnabled ? '已开启' : '关闭 / NO SEND' }}</dd></div>
+              <div><dt>Kill switch</dt><dd>{{ runtimeControls.passiveAutoReply.killSwitch ? '开启' : '关闭' }}</dd></div>
+            </dl>
+            <p>{{ runtimeControls.passiveAutoReply.summary }}</p>
+          </article>
+
+          <article class="runtime-control-card">
+            <header>
+              <span><strong>主动加入群聊</strong><small>PROACTIVE GROUP PARTICIPATION</small></span>
+              <b :class="{ enabled: runtimeControls.proactiveGroupParticipation.actualEnabled }">
+                {{ runtimeControls.proactiveGroupParticipation.actualEnabled ? '实际开启' : 'Shadow' }}
+              </b>
+            </header>
+            <dl>
+              <div><dt>管理员期望</dt><dd>{{ policy ? (policy.enabled ? '启用会话 Agent（非发送授权）' : '停用会话 Agent') : '尚未读取' }}</dd></div>
+              <div><dt>当前阶段</dt><dd>{{ runtimeControls.proactiveGroupParticipation.stage === 'probe_shadow' ? 'Probe Shadow' : runtimeControls.proactiveGroupParticipation.stage }}</dd></div>
+              <div><dt>消息交付</dt><dd>{{ runtimeControls.proactiveGroupParticipation.deliveryEnabled ? '已开启' : '关闭 / NO SEND' }}</dd></div>
+              <div><dt>真实主动发言</dt><dd>{{ runtimeControls.proactiveGroupParticipation.actualEnabled ? '已接通' : '未接通' }}</dd></div>
+            </dl>
+            <p>{{ runtimeControls.proactiveGroupParticipation.summary }}</p>
+          </article>
+        </div>
+        <div v-else class="settings-state"><RefreshCw v-if="runtimeLoading" :size="15" class="spinning" />运行状态尚未回传</div>
+      </section>
 
       <div v-if="policyLoading" class="settings-state"><RefreshCw :size="16" class="spinning" />正在读取会话策略</div>
       <div v-else-if="!policy" class="settings-state settings-state--error">
@@ -632,26 +791,33 @@ watch(
               <div>
                 <span class="plugin-title">
                   <strong>{{ plugin.displayName }}</strong>
+                </span>
+                <span class="plugin-badges">
+                  <small :class="plugin.installed ? 'available' : 'unavailable'">{{ plugin.installed ? '已安装' : '未安装' }}</small>
                   <small :class="plugin.available ? 'available' : 'unavailable'">{{ plugin.available ? '可用' : '不可用' }}</small>
+                  <small>{{ pluginExecutionLabels[plugin.executionKind] }}</small>
+                  <small v-if="plugin.builtIn">系统内建</small>
+                  <small v-if="plugin.requiredRole">{{ pluginRoleLabels[plugin.requiredRole] }}</small>
                 </span>
                 <p>{{ plugin.description }}</p>
                 <em v-if="!plugin.available">{{ plugin.unavailableReason || '当前 Runtime 未接通该能力' }}</em>
               </div>
               <select
-                :value="policy.plugins[plugin.id] ?? 'off'"
-                :disabled="!policyEditable"
+                v-if="plugin.policyManaged"
+                :value="plugin.available ? (policy.plugins[plugin.id] ?? 'off') : 'off'"
+                :disabled="!policyEditable || !plugin.available"
                 :aria-label="`${plugin.displayName} 使用模式`"
                 @change="updatePluginMode(plugin.id, ($event.target as HTMLSelectElement).value as InternalTestPluginMode)"
               >
                 <option
-                  v-for="mode in pluginModes"
+                  v-for="mode in pluginModeOptions(plugin)"
                   :key="mode"
                   :value="mode"
-                  :disabled="!plugin.available && mode !== 'off'"
                 >
                   {{ pluginModeLabels[mode] }}
                 </option>
               </select>
+              <span v-else class="plugin-policy-note">不由普通会话策略管理</span>
             </article>
           </div>
           <div v-else class="empty-catalog">当前 Catalog 没有已登记插件</div>
@@ -1662,6 +1828,96 @@ textarea:disabled {
   line-height: 1.5;
 }
 
+.runtime-control-list {
+  display: grid;
+  gap: 7px;
+}
+
+.runtime-control-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 9px;
+}
+
+.runtime-control-card > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.runtime-control-card > header strong,
+.runtime-control-card > header small {
+  display: block;
+}
+
+.runtime-control-card > header strong {
+  color: var(--text);
+  font-size: 9px;
+}
+
+.runtime-control-card > header small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 7px;
+}
+
+.runtime-control-card > header b {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  color: var(--warning-strong);
+  background: var(--warning-soft);
+  padding: 3px 5px;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.runtime-control-card > header b.enabled {
+  color: var(--success-strong);
+  background: var(--success-soft);
+}
+
+.runtime-control-card dl {
+  display: grid;
+  gap: 4px;
+  margin: 9px 0 0;
+}
+
+.runtime-control-card dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 4px;
+  font-size: 7px;
+}
+
+.runtime-control-card dt {
+  color: var(--text-muted);
+}
+
+.runtime-control-card dd {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.runtime-control-card > p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.runtime-controls-section .settings-state {
+  min-height: 64px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+}
+
 .adaptive-setting {
   border-top: 1px solid var(--border-soft);
   padding: 10px 0 11px;
@@ -1751,7 +2007,7 @@ textarea:disabled {
 .plugin-row {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) 92px;
+  grid-template-columns: minmax(0, 1fr) 108px;
   align-items: center;
   gap: 8px;
   border: 1px solid var(--border);
@@ -1778,21 +2034,37 @@ textarea:disabled {
   white-space: nowrap;
 }
 
-.plugin-title small {
+.plugin-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.plugin-badges small {
   flex: 0 0 auto;
   border-radius: 4px;
+  color: var(--text-muted);
+  background: var(--surface-subtle);
   padding: 2px 4px;
   font-size: 7px;
 }
 
-.plugin-title small.available {
+.plugin-badges small.available {
   color: var(--success-strong);
   background: var(--success-soft);
 }
 
-.plugin-title small.unavailable {
+.plugin-badges small.unavailable {
   color: var(--warning-strong);
   background: var(--warning-soft);
+}
+
+.plugin-policy-note {
+  color: var(--text-muted);
+  font-size: 7px;
+  line-height: 1.35;
+  text-align: right;
 }
 
 .plugin-row p,

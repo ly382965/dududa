@@ -176,12 +176,52 @@ NapCat 无法保证补齐 QQ 离线期间未同步到本机的全部消息；本
 状态。未读数仅从当前页面收到的实时事件开始计算。
 
 Agent Console 已接入本机内测 Runtime。页面通过独立状态接口判断 Runtime 是否可用，
-不再把“是否已建立 Session”误当成连接状态。操作员可以在当前 QQ 会话上创建临时内测
-Session，选取最近最多 30 条消息作为上下文，并调用现有三档 Provider 生成候选回答。
+不再把“是否已建立 Session”误当成连接状态。它是管理员 Bot 控制工作台，而不是第二套
+Agent Runtime；配置以 `accountId + conversationId` 为作用域，由服务端保存并交给现有 Runtime
+解析。
+
+工作台提供六项相互正交的配置：模型档位、推理强度、回答长度、回复强度、上下文长度和群聊风格。
+每项设置都包含管理员给出的初值 `preferred`、合法范围 `allowed[]` 和以下选择模式：
+
+- `adaptive`：Agent 可以在 `allowed[]` 中按每轮任务选择；
+- `preferred`：优先采用管理员初值，但 Agent 仍可在合法范围内调整；
+- `locked`：固定管理员配置值，直到管理员解除锁定。
+
+只有 `locked` 会禁止 Agent 改选。配置不会创建模型或插件的可用性，不会授予 Capability，也不能
+绕过 Core 对身份、Scope、权限、预算和副作用的判断。回复强度只是候选决策输入，不能解释为真实
+自动发送概率；模型档位、推理强度和回答长度也不会被绑定成固定组合。
+
+“上下文长度”在页面正式显示为 **上下文长度（运行预算）**，只限制本轮候选生成送入模型的近期
+群聊历史，不代表模型提供商声明的最大 Context Window。服务端同时应用消息数和字符数上限：
+
+| 档位 | 最近消息上限 | 字符上限 |
+| --- | ---: | ---: |
+| `compact` | 12 | 6,000 |
+| `standard` | 30 | 18,000 |
+| `extended` | 60 | 36,000 |
+
+页面同时展示所选档位的预算上限和本轮实际使用量：
+`contextUsage.messageLimit`、`contextUsage.characterLimit`、
+`contextUsage.messagesRead`、`contextUsage.charactersRead`。这些字段是单次运行测量，不代表长期群聊
+理解质量。
+
+管理员配置期望与实际 Runtime 状态分开展示。当前被动自动回复仍为 `rollout=off`、delivery disabled、
+kill switch active；主动参与仅实现 S15E Probe Shadow，并保持 **NO SEND**。当前候选始终记录
+`outputCalls=0`、`memoryWrites=0`、`toolCalls=0`。
+
+插件目录同样以服务端真实状态为准：
+
+- iCourse 是当前唯一真实 MCP Server，但 Console Runtime 尚不可调用；
+- `gpt-image-2` 是已知图片能力，但 Console Runtime 尚不可调用；
+- 自动复读仅是已登记的 Dududa 1.0 历史资产，当前关闭且不可用，不恢复旧概率复读链路；
+- `/sub2api 自动查询` 是仅超级管理员可用的确定性只读命令，不受普通会话 Policy 管理，当前
+  Console 执行链尚未接通；
+- 校园资讯、arXiv、行业资讯等目前只有预留接口或测试 fixture，不是已经存在的真实服务。
 
 候选仅留在浏览器临时会话中；该链路固定为 `NO SEND / NO MEMORY WRITE / NO TOOL CALL /
-NO BANDIT`，不会调用 QQ 发送接口。`answerProfile` 可分别路由到 `haiku / sonnet / opus`，
-当前控制台默认使用中等长度。这是人工内测 Adapter，不代表 AstrBot 中的正式 Agent Runtime 已完成接入。
+NO BANDIT`，不会调用 QQ 发送接口。模型档位与 `SHORT / MEDIUM / LONG` 回答长度独立选择，
+不会将特定回答长度永久绑定到 `haiku / sonnet / opus`。这是人工内测 Adapter，不代表生产 AstrBot
+Runtime、真实群自动回复或真实主动参与已经接通。
 
 ## Verification
 

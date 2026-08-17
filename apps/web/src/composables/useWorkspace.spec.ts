@@ -10,8 +10,10 @@ import type { WorkspaceAdapter } from '../services/workspace-adapter'
 import type {
   InternalTestAgentCatalog,
   InternalTestAgentPolicy,
+  InternalTestAgentRequest,
   InternalTestAgentResponse,
   InternalTestAgentScope,
+  InternalTestAgentStatus,
 } from '../types/internal-test'
 import type {
   Account,
@@ -745,7 +747,20 @@ describe('useWorkspace account-scoped state', () => {
   it('uses explicit internal Runtime status and keeps generated candidates in a local no-send session', async () => {
     const owner = account('qq-111111111')
     const target = conversation(owner, '345678901')
-    const contextMessage = message(target)
+    const contextMessages = Array.from({ length: 70 }, (_, index) => {
+      const item = message(target)
+      const sequence = String(index + 1)
+      const content = `真实消息 ${sequence}`
+      return {
+        ...item,
+        id: `${target.id}:${sequence}`,
+        messageId: sequence,
+        messageSeq: sequence,
+        timestampMs: index + 1,
+        content,
+        segments: [{ type: 'text' as const, text: content }],
+      }
+    })
     const snapshot: WorkspaceSnapshot = {
       runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
       accounts: [owner],
@@ -760,7 +775,7 @@ describe('useWorkspace account-scoped state', () => {
     const adapter = {
       load: async () => snapshot,
       loadCachedMessages: async () => [],
-      loadHistory: async () => ({ messages: [contextMessage], hasMoreBefore: false, hasMoreAfter: false }),
+      loadHistory: async () => ({ messages: contextMessages, hasMoreBefore: false, hasMoreAfter: false }),
       loadDraft: async () => undefined,
       markRead: async () => undefined,
       sendMessage,
@@ -778,11 +793,22 @@ describe('useWorkspace account-scoped state', () => {
       ],
       reasoningLevels: ['low', 'medium', 'high'],
       answerProfiles: ['short', 'medium', 'long'],
+      replyIntensities: ['quiet', 'normal', 'active'],
+      contextLengths: [
+        { id: 'compact', messageLimit: 12, characterLimit: 6_000 },
+        { id: 'standard', messageLimit: 30, characterLimit: 18_000 },
+        { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
+      ],
+      groupChatStyles: ['restrained', 'natural', 'lively', 'technical'],
+      replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
       plugins: [{
         id: 'icourse',
         displayName: '评课社区',
         kind: 'mcp',
+        installed: true,
         available: false,
+        policyManaged: true,
+        executionKind: 'agent_capability',
         description: '当前唯一真实 MCP Server',
         unavailableReason: '尚未接入 Web Agent 执行链',
       }],
@@ -791,6 +817,9 @@ describe('useWorkspace account-scoped state', () => {
         modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
         reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
         answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
+        contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
+        groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
         plugins: { icourse: 'off' },
       },
     }
@@ -801,6 +830,9 @@ describe('useWorkspace account-scoped state', () => {
       modelTier: { mode: 'preferred', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
       reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
       answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+      replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
+      contextLength: { mode: 'preferred', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
       plugins: { icourse: 'auto' },
     }
     const response: InternalTestAgentResponse = {
@@ -810,6 +842,15 @@ describe('useWorkspace account-scoped state', () => {
       model: 'gpt-5.6-luna',
       reasoning: 'high',
       answerProfile: 'short',
+      replyIntensity: 'active',
+      contextLength: 'extended',
+      groupChatStyle: 'technical',
+      contextUsage: {
+        messageLimit: 60,
+        characterLimit: 36_000,
+        messagesRead: 42,
+        charactersRead: 8_640,
+      },
       effectiveSelection: {
         scope,
         policySource: 'saved',
@@ -817,6 +858,15 @@ describe('useWorkspace account-scoped state', () => {
         model: 'gpt-5.6-luna',
         reasoning: 'high',
         answerProfile: 'short',
+        replyIntensity: 'active',
+        contextLength: 'extended',
+        groupChatStyle: 'technical',
+        contextUsage: {
+          messageLimit: 60,
+          characterLimit: 36_000,
+          messagesRead: 42,
+          charactersRead: 8_640,
+        },
         plugins: {
           icourse: { mode: 'auto', available: false, eligible: false, selectedForRun: false },
         },
@@ -828,13 +878,13 @@ describe('useWorkspace account-scoped state', () => {
       memoryWrites: 0,
       toolCalls: 0,
     }
-    const respond = vi.fn(async () => response)
+    const respond = vi.fn(async (_payload: InternalTestAgentRequest) => response)
     const saveAgentConfig = vi.fn(async (_scope: InternalTestAgentScope, next: InternalTestAgentPolicy) => ({
       ...next,
       updatedAt: '2026-08-17T08:00:00.000Z',
     }))
     const agentAdapter: InternalTestAgentAdapter = {
-      agentStatus: vi.fn(async () => ({
+      agentStatus: vi.fn(async (): Promise<InternalTestAgentStatus> => ({
         available: true,
         outputEnabled: false as const,
         providerConfigured: true,
@@ -842,6 +892,23 @@ describe('useWorkspace account-scoped state', () => {
           haiku: 'gpt-5.6-luna',
           sonnet: 'gpt-5.6-terra',
           opus: 'gpt-5.6-sol',
+        },
+        runtimeControls: {
+          passiveAutoReply: {
+            actualEnabled: false,
+            state: 'disabled',
+            rolloutMode: 'off',
+            deliveryEnabled: false,
+            killSwitch: true,
+            summary: '被动自动回复当前实际关闭。',
+          },
+          proactiveGroupParticipation: {
+            actualEnabled: false,
+            state: 'shadow',
+            stage: 'probe_shadow',
+            deliveryEnabled: false,
+            summary: '主动参与当前只有 Probe Shadow。',
+          },
         },
         warnings: [],
       })),
@@ -866,6 +933,9 @@ describe('useWorkspace account-scoped state', () => {
       scope,
       modelTier: { mode: 'preferred', preferred: 'sonnet' },
       answerProfile: { mode: 'adaptive', preferred: 'medium' },
+      replyIntensity: { mode: 'adaptive', preferred: 'normal' },
+      contextLength: { mode: 'preferred', preferred: 'standard' },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural' },
     })
     workspace.setAnswerProfile('short')
     expect(workspace.answerProfileHint.value).toBe('short')
@@ -873,15 +943,18 @@ describe('useWorkspace account-scoped state', () => {
     expect(snapshot.sessions).toEqual([])
     await workspace.sendAgentPrompt('总结当前讨论')
 
-    expect(respond).toHaveBeenCalledWith({
+    expect(respond).toHaveBeenCalledWith(expect.objectContaining({
       accountId: owner.id,
       conversationId: target.id,
       conversationName: target.name,
       conversationType: 'group',
       prompt: '总结当前讨论',
-      messages: [{ senderName: contextMessage.senderName, content: contextMessage.content, mine: false }],
       answerProfile: 'short',
-    })
+    }))
+    const request = respond.mock.calls[0]?.[0]
+    expect(request?.messages).toHaveLength(60)
+    expect(request?.messages[0]?.content).toBe('真实消息 11')
+    expect(request?.messages.at(-1)?.content).toBe('真实消息 70')
     expect(workspace.answerProfileHint.value).toBeUndefined()
     expect(workspace.conversationSessions.value).toHaveLength(1)
     expect(workspace.agentMessages.value.map((item) => item.role)).toEqual(['operator', 'assistant'])
@@ -895,6 +968,7 @@ describe('useWorkspace account-scoped state', () => {
       modelTier: 'haiku',
       reasoning: 'high',
       answerProfile: 'short',
+      contextMessages: 42,
       plugins: [],
       reasonCodes: ['policy.saved', 'model.preferred_overridden', 'answer_profile.request_hint'],
       effectiveSelection: response.effectiveSelection,
@@ -943,8 +1017,25 @@ describe('useWorkspace account-scoped state', () => {
           sonnet: 'gpt-5.6-terra',
           opus: 'gpt-5.6-sol',
         },
+        runtimeControls: {
+          passiveAutoReply: {
+            actualEnabled: false,
+            state: 'disabled',
+            rolloutMode: 'off',
+            deliveryEnabled: false,
+            killSwitch: true,
+            summary: '被动自动回复当前实际关闭。',
+          },
+          proactiveGroupParticipation: {
+            actualEnabled: false,
+            state: 'shadow',
+            stage: 'probe_shadow',
+            deliveryEnabled: false,
+            summary: '主动参与当前只有 Probe Shadow。',
+          },
+        },
         warnings: [],
-      })
+      } satisfies InternalTestAgentStatus)
     const agentAdapter = {
       agentStatus,
       respond: vi.fn(),

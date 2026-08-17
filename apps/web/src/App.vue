@@ -453,6 +453,7 @@ watch(
       :runtime-loading="workspace.agentRuntimeLoading.value"
       :runtime-error="workspace.agentRuntimeError.value"
       :runtime-warning="workspace.agentRuntimeStatus.value?.warnings.at(-1) ?? ''"
+      :runtime-controls="workspace.agentRuntimeStatus.value?.runtimeControls"
       @set-tab="workspace.agentTab.value = $event"
       @select-session="workspace.selectSession"
       @new-session="workspace.newSession"

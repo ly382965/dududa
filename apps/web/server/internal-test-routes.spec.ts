@@ -21,6 +21,10 @@ describe('internal-test agent routes', () => {
       model: 'gpt-5.6-terra',
       reasoning: 'medium' as const,
       answerProfile: 'medium' as const,
+      replyIntensity: 'normal' as const,
+      contextLength: 'standard' as const,
+      groupChatStyle: 'natural' as const,
+      contextUsage: { messageLimit: 30, characterLimit: 18_000, messagesRead: 0, charactersRead: 0 },
       effectiveSelection: {
         scope: { accountId: 'default', conversationId: 'group-1' },
         policySource: 'default' as const,
@@ -28,6 +32,10 @@ describe('internal-test agent routes', () => {
         model: 'gpt-5.6-terra',
         reasoning: 'medium' as const,
         answerProfile: 'medium' as const,
+        replyIntensity: 'normal' as const,
+        contextLength: 'standard' as const,
+        groupChatStyle: 'natural' as const,
+        contextUsage: { messageLimit: 30, characterLimit: 18_000, messagesRead: 0, charactersRead: 0 },
         plugins: {},
       },
       reasonCodes: ['policy.default'],
@@ -56,6 +64,23 @@ describe('internal-test agent routes', () => {
         providerConfigured: true,
         outputEnabled: false,
         modelMapping: { haiku: 'luna', sonnet: 'terra', opus: 'sol' },
+        runtimeControls: {
+          passiveAutoReply: {
+            actualEnabled: false,
+            state: 'disabled',
+            rolloutMode: 'off',
+            deliveryEnabled: false,
+            killSwitch: true,
+            summary: '被动自动回复当前实际关闭。',
+          },
+          proactiveGroupParticipation: {
+            actualEnabled: false,
+            state: 'shadow',
+            stage: 'probe_shadow',
+            deliveryEnabled: false,
+            summary: '主动参与当前只有 Probe Shadow。',
+          },
+        },
         warnings: ['NO SEND'],
       }),
       agentCatalog: async () => ({
@@ -65,12 +90,23 @@ describe('internal-test agent routes', () => {
         models: [],
         reasoningLevels: ['low', 'medium', 'high'],
         answerProfiles: ['short', 'medium', 'long'],
+        replyIntensities: ['quiet', 'normal', 'active'],
+        contextLengths: [
+          { id: 'compact', messageLimit: 12, characterLimit: 6_000 },
+          { id: 'standard', messageLimit: 30, characterLimit: 18_000 },
+          { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
+        ],
+        groupChatStyles: ['restrained', 'natural', 'lively', 'technical'],
+        replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
         plugins: [],
         policyDefaults: {
           enabled: true,
           modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
           reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
           answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+          replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
+          contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
+          groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
           plugins: {},
         },
       }),
@@ -81,6 +117,9 @@ describe('internal-test agent routes', () => {
         modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
         reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
         answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
+        contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
+        groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
         plugins: {},
       }),
       saveAgentConfig: async (body) => ({
@@ -90,6 +129,9 @@ describe('internal-test agent routes', () => {
         modelTier: { mode: 'adaptive', preferred: 'sonnet', allowed: ['haiku', 'sonnet', 'opus'] },
         reasoning: { mode: 'adaptive', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
         answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
+        contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
+        groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
         plugins: {},
       }),
       respond,
@@ -102,7 +144,23 @@ describe('internal-test agent routes', () => {
 
     const status = await fetch(`${baseUrl}/api/internal-test/agent/status`)
     expect(status.status).toBe(200)
-    await expect(status.json()).resolves.toMatchObject({ available: true, outputEnabled: false })
+    await expect(status.json()).resolves.toMatchObject({
+      available: true,
+      outputEnabled: false,
+      runtimeControls: {
+        passiveAutoReply: {
+          actualEnabled: false,
+          rolloutMode: 'off',
+          deliveryEnabled: false,
+          killSwitch: true,
+        },
+        proactiveGroupParticipation: {
+          actualEnabled: false,
+          stage: 'probe_shadow',
+          deliveryEnabled: false,
+        },
+      },
+    })
 
     const catalog = await fetch(`${baseUrl}/api/internal-test/agent/catalog`)
     expect(catalog.status).toBe(200)

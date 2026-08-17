@@ -50,16 +50,28 @@ Last sync: unix:1786706085
   该页面是 Evaluation Adapter，不是第二套 Runtime 控制面。
 - 实时 Agent Console 的自适应超级工作台纵切已经完成。服务端按
   `accountId + conversationId` 从仓库外数据根保存和恢复权威 Policy，并动态
-  返回模型、推理深度、AnswerProfile 与插件 Catalog；前端不再使用灰色占位控件
-  或写死插件。模型 Tier、reasoning、回答长度各自支持
+  返回模型、推理深度、AnswerProfile、回复强度、上下文长度、群聊风格与插件
+  Catalog；前端不再使用灰色占位控件或写死插件。模型 Tier、reasoning、回答
+  长度、回复强度、上下文长度（运行预算）和群聊风格六项设置各自支持
   `adaptive/preferred/locked`：管理员普通修改只提供初值和 `allowed`，Agent 每轮
   仍可在合法范围内改选，只有显式 `locked` 才禁止改选。插件使用
   `off/auto/on/locked`，不因此获得 Capability 或强制每轮调用。
-- 每次 Console Run 现在返回实际 Tier、模型、推理深度、AnswerProfile、reason
-  codes 和插件选择。回答长度按钮是一次性 Run Hint，不修改长期模型策略；服务端
-  Policy 是权威，浏览器不是权威。iCourse 与 `gpt-image-2` 均如实显示为已知但
-  当前 Console 执行链不可调用，未接的校园、arXiv、行业或搜索能力没有被伪装为
-  已安装插件。
+- “上下文长度（运行预算）”控制本轮近期群聊历史，而不是模型最大 Context
+  Window。`compact/standard/extended` 的消息/字符预算分别为
+  12/6,000、30/18,000 和 60/36,000；服务端同时返回 `messagesRead` 与
+  `charactersRead`，前端展示预算上限和实际读取量。
+- 每次 Console Run 现在返回六项实际选择、reason codes、上下文使用量和插件
+  选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
+  候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
+- Catalog 已如实登记四类当前资产：iCourse 是唯一真实 MCP，`gpt-image-2` 是已知
+  图片能力，但二者当前 Console 执行链均不可调用；自动复读只是已登记的
+  Dududa 1.0 历史资产，在 2.0 中保持关闭且不可用；`/sub2api 自动查询` 是仅超级
+  管理员的确定性只读命令，不由普通会话 Policy 管理，当前 Console 执行链也未
+  接通。未接的校园、arXiv、行业或搜索能力没有被伪装为已安装插件。
+- Console 已分开呈现管理员期望与实际 Runtime 状态。被动自动回复实际保持
+  `rollout_mode=off`、delivery 关闭、kill switch 开启；主动群聊参与只有 S15E
+  Probe Shadow，并明确为 `NO SEND`。所有当前候选仍报告 `outputCalls=0`、
+  `memoryWrites=0`、`toolCalls=0`。
 - WebUI 实时消息链路已完成两处可观察修复：服务端为 Workspace SSE 分配
   单调事件 ID，保留最近 512 条事件，并按 `Last-Event-ID` 补放断线期间事件；
   ID 无效、过旧或跨服务重启时发送 `workspace.refresh`。前端以
@@ -79,7 +91,8 @@ Last sync: unix:1786706085
   和旧 Target Talk 已退出 2.0 仓库默认路径；ReplyPolish 保留为默认关闭的
   LONG-only 兼容层，`/image` 作为显式图片生成能力继续保留。新群默认记录不再
   生成 `meme_rate`，`/admin group meme-rate` 不再写入状态；既有磁盘数据不迁移、
-  不删除。
+  不删除。Console 中的“自动复读”仅用于准确标识这一历史资产，不表示恢复旧的
+  常驻概率复读执行链。
 - 浏览器纵切由操作员显式触发一次 `gpt-5.6-terra` 的真实 Provider
   `no_send` 候选，记录 `providerCalls=1`、`outputCalls=0`、
   `memoryWrites=0`、`toolCalls=0` 和 3059 ms 延迟；随后追加一条仓库外
@@ -144,10 +157,11 @@ Last sync: unix:1786706085
   TypeScript 类型检查与 Web 构建均通过。该工作没有 QQ Output、Memory
   写入、Tool 调用或 Bandit 学习。
 - 完成实时 Agent Console 超级工作台纵切：新增动态 Catalog、Scope Policy 的
-  读取/保存、三轴独立自适应、插件四态和每轮有效选择解释；Workspace 聚焦测试
-  12 项、服务端聚焦测试 5 项、TypeScript 类型检查和 Web production build 均
-  通过。候选链继续报告 `outputCalls=0`、`memoryWrites=0`、`toolCalls=0`，未向
-  QQ 发送消息。
+  读取/保存、六项正交配置、插件四态、实际 Runtime 行为状态和每轮有效选择解释；
+  上下文预算按 12/6,000、30/18,000、60/36,000 三档裁剪并回传实际使用量。
+  Workspace 聚焦测试 12 项、服务端聚焦测试 5 项、TypeScript 类型检查和 Web
+  production build 均通过；build 仅保留既有 large-chunk warning。候选链继续
+  报告 `outputCalls=0`、`memoryWrites=0`、`toolCalls=0`，未向 QQ 发送消息。
 - 修复内测聊天的重连丢消息、初始快照覆盖实时消息、超大 sequence 精度丢失、
   会话刷新失效和显示乱序问题；同时将 Persona、群聊/私聊规则与短/中/长回答
   选择接入现有 no-send Agent 纵切。聚焦测试覆盖重连补放、稳定排序、加载竞态、

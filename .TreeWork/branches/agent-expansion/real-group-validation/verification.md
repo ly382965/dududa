@@ -13,19 +13,31 @@ Branch: real-group-validation
 - Command: `npm run build`
 - Result: passed; only the existing large-chunk warning remained.
 - Evidence: the live Agent Console loads a dynamic server Catalog, reads and
-  saves the authoritative `accountId + conversationId` Policy, keeps model
-  Tier/reasoning/AnswerProfile independent, supports
-  `adaptive/preferred/locked` and plugin `off/auto/on/locked`, consumes an
-  AnswerProfile Hint for one Run, and records effective selection plus reason
-  codes. Focused cases prove `preferred` may change for a strong task signal,
-  `locked` does not change, and saving or generating a candidate never calls the
+  saves the authoritative `accountId + conversationId` Policy, and keeps model
+  Tier, reasoning depth, answer length, reply intensity, context length and
+  group-chat style as six orthogonal `adaptive/preferred/locked` settings.
+  Focused cases prove `preferred` may change for a strong task signal, `locked`
+  does not change, and saving or generating a candidate never calls the
   Workspace QQ `sendMessage()` path.
-- Evidence boundary: iCourse and `gpt-image-2` are truthfully unavailable in
-  the current Console execution path; every plugin reports
-  `selectedForRun=false`. The candidate still reports `outputCalls=0`,
-  `memoryWrites=0` and `toolCalls=0`. This proves the adaptive administrator
-  workbench slice, not production AstrBot Runtime, live Capability execution,
-  Provider Conformance or real-group authorization.
+- Evidence: **上下文长度（运行预算）** applies the configured recent-history
+  limits: compact 12 messages/6,000 characters, standard 30/18,000 and extended
+  60/36,000. The response reports `messagesRead` and `charactersRead`, and the
+  Console renders both the selected limit and actual usage. This is a per-Run
+  history budget, not the Provider model's maximum Context Window.
+- Evidence: the Runtime status distinguishes administrator intent from actual
+  behavior. Passive automatic reply remains disabled (`rollout_mode=off`,
+  delivery disabled, kill switch active); proactive participation remains
+  `probe_shadow` and `NO SEND`. The Catalog truthfully reports iCourse and
+  `gpt-image-2` unavailable in the current Console path, automatic reread as an
+  unavailable Dududa 1.0 historical asset, and `/sub2api 自动查询` as a
+  super-admin-only deterministic command outside ordinary Policy management and
+  not connected to the current Console. Every plugin reports
+  `selectedForRun=false`.
+- Evidence boundary: reply intensity does not prove or control a live send
+  probability. The candidate still reports `outputCalls=0`, `memoryWrites=0`
+  and `toolCalls=0`. This proves the adaptive administrator workbench slice,
+  not production AstrBot Runtime, live Capability execution, Provider
+  Conformance or real-group authorization.
 - Verification remains `partial`; S23 remains `paused` pending the existing
   environment and authorization gates.
 - Recorded: 2026-08-17

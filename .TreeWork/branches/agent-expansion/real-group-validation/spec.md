@@ -94,9 +94,9 @@ inputs to the deterministic Runtime for one
 2. the legal set from which the Agent may choose for each Run; and
 3. an explicit lock when the administrator intends to prohibit adaptation.
 
-Server-side configuration uses the following shared selection meaning for
-model or Tier, reasoning depth, AnswerProfile, context policy and later
-adaptive settings:
+Server-side configuration uses the following shared selection meaning for six
+orthogonal settings: model or Tier, reasoning depth, AnswerProfile, reply
+intensity, context length and group-chat style:
 
 ```ts
 type SelectionMode = 'adaptive' | 'preferred' | 'locked'
@@ -117,10 +117,29 @@ interface AdaptiveSetting<T> {
   Core policy rejection.
 
 An ordinary administrator adjustment is therefore not a permanent model
-decision. AnswerProfile (`SHORT/MEDIUM/LONG`), model/Tier and reasoning depth
-remain orthogonal. Luna/Terra/Sol or Haiku/Sonnet/Opus associations may be
-defaults or preferences, but the Runtime must not encode
-`SHORT = Luna`, `MEDIUM = Terra`, or `LONG = Sol` as a control invariant.
+decision. Model/Tier, reasoning depth, AnswerProfile (`SHORT/MEDIUM/LONG`),
+reply intensity (`quiet/normal/active`), context length
+(`compact/standard/extended`) and group-chat style
+(`restrained/natural/lively/technical`) remain orthogonal. Luna/Terra/Sol or
+Haiku/Sonnet/Opus associations may be defaults or preferences, but the Runtime
+must not encode `SHORT = Luna`, `MEDIUM = Terra`, or `LONG = Sol` as a control
+invariant. Reply intensity is a per-Run decision preference, not proof that
+automatic delivery is enabled. Group-chat style changes expression inside the
+existing Persona and task boundaries; it does not repeat a style label, imitate
+a concrete group member, or alter facts, permission or task requirements.
+
+“Context length” is presented as **上下文长度（运行预算）**. It limits the
+recent group-chat history supplied to one candidate Run and is not a model
+provider's declared maximum Context Window. The initial budgets are:
+
+- `compact`: at most 12 recent messages and 6,000 characters;
+- `standard`: at most 30 recent messages and 18,000 characters;
+- `extended`: at most 60 recent messages and 36,000 characters.
+
+The server applies both limits, returns the selected budget and reports actual
+`messagesRead` and `charactersRead` usage. These values are operational
+measurements for the current Run, not a claim about production long-term group
+context quality.
 
 Plugin and Capability presentation uses four administrator modes after Core
 eligibility filtering:
@@ -133,19 +152,32 @@ eligibility filtering:
 
 The authoritative Catalog is returned dynamically by the server rather than
 hard-coded in Vue. It reports model/Tier, supported reasoning levels,
-modalities, AnswerProfiles, plugins and Capabilities together with installation,
-availability and a truthful unavailable reason. iCourse is currently the only
-real MCP Server. If its execution path is not connected to the current Web
-Runtime, it is reported as installed but unavailable. Campus news, arXiv,
-industry news, Web search and any other absent integration remain unavailable;
-fixtures and reserved interfaces must not be presented as installed services.
+modalities, AnswerProfiles, the remaining adaptive-setting choices, plugins
+and Capabilities together with installation, availability, execution kind,
+policy-management status, role requirement and a truthful unavailable reason.
+iCourse is currently the only real MCP Server, but its execution path and
+`gpt-image-2` are not connected to the current Web Runtime and are reported as
+unavailable. Automatic reread is only a registered Dududa 1.0 historical asset;
+it remains unavailable and off in Dududa 2.0. `/sub2api 自动查询` is a built-in,
+deterministic read-only command reserved for the super administrator; it is not
+managed by an ordinary conversation Policy and the current Console execution
+path is not connected. Campus news, arXiv, industry news, Web search and any
+other absent integration remain unavailable; fixtures and reserved interfaces
+must not be presented as installed services.
 
-Every Run records the administrator preference, legal values, effective model
-or Tier, effective reasoning depth, effective AnswerProfile, reason codes for
-any change and the plugins actually called. Control Plane configuration is
-persisted server-side outside the repository; browser memory is not authority.
-The Web may set initial values, bounds and explicit locks through dedicated
-server commands, but Core remains the sole owner of identity, Scope,
+The Control Plane distinguishes administrator intent from actual Runtime
+behavior. Passive automatic reply currently remains disabled with rollout off,
+delivery disabled and the kill switch active. Proactive group participation is
+only the S15E Probe Shadow and remains **NO SEND**. No preference, lock or plugin
+mode in this Console may represent either behavior as live.
+
+Every Run records the administrator preferences and legal values for all six
+settings, their effective values, reason codes for any change, context budget
+usage and the plugins actually called. Current candidates keep
+`outputCalls=0`, `memoryWrites=0` and `toolCalls=0`. Control Plane configuration
+is persisted server-side outside the repository; browser memory is not
+authority. The Web may set initial values, bounds and explicit locks through
+dedicated server commands, but Core remains the sole owner of identity, Scope,
 authorization, budgets, Capability eligibility and every external side effect.
 
 ### Offline Runtime Budget And Sampling

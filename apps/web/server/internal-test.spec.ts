@@ -71,6 +71,7 @@ describe('internal-test gateway', () => {
       expect(String(body.instructions)).toContain('不要宣告、复述或刻意表演人设')
       expect(String(body.instructions)).toContain('默认简洁，不抢话，不逐条复述已有聊天')
       expect(String(body.instructions)).toContain('技术问题先给结论，再补足真正有用的步骤')
+      expect(String(body.instructions)).toContain('技术讨论中优先使用准确术语和清晰结构')
       expect(String(body.instructions)).toContain('不要在回答中谈论或罗列人格规则')
       expect(String(body.instructions)).toContain('不要模仿某个具体群成员')
       expect(String(body.instructions)).toContain('不得改变事实、权限、任务要求或安全边界')
@@ -95,6 +96,21 @@ describe('internal-test gateway', () => {
       providerConfigured: true,
       outputEnabled: false,
       modelMapping: { opus: 'custom-sol' },
+      runtimeControls: {
+        passiveAutoReply: {
+          actualEnabled: false,
+          state: 'disabled',
+          rolloutMode: 'off',
+          deliveryEnabled: false,
+          killSwitch: true,
+        },
+        proactiveGroupParticipation: {
+          actualEnabled: false,
+          state: 'shadow',
+          stage: 'probe_shadow',
+          deliveryEnabled: false,
+        },
+      },
       warnings: expect.arrayContaining(['NO SEND', 'NO MEMORY WRITE', 'NO TOOL CALL', 'NO BANDIT']),
     })
     await expect(gateway.respond({
@@ -113,6 +129,14 @@ describe('internal-test gateway', () => {
       model: 'custom-sol',
       reasoning: 'high',
       answerProfile: 'long',
+      replyIntensity: 'active',
+      contextLength: 'extended',
+      groupChatStyle: 'technical',
+      contextUsage: {
+        messageLimit: 60,
+        characterLimit: 36_000,
+        messagesRead: 2,
+      },
       generatedAt: '2026-08-16T10:00:00.000Z',
       outputCalls: 0,
       memoryWrites: 0,
@@ -130,6 +154,9 @@ describe('internal-test gateway', () => {
         reasoning: { effort: 'high' },
         max_output_tokens: 1_200,
       })
+      expect(String(body.input)).not.toContain('[msg-10]')
+      expect(String(body.input)).toContain('[msg-19]')
+      expect(String(body.instructions)).toContain('在多人讨论中保持克制和留白')
       return new Response(JSON.stringify({ output_text: '先把现象和约束列清楚，再逐项排查。' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -150,14 +177,76 @@ describe('internal-test gateway', () => {
       expect.objectContaining({ id: 'custom-luna', tier: 'haiku', available: true, modalities: ['text'] }),
     ]))
     expect(catalog.plugins).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'icourse.read', available: false, kind: 'mcp' }),
+      expect.objectContaining({
+        id: 'icourse.read',
+        available: false,
+        installed: true,
+        policyManaged: true,
+        executionKind: 'agent_capability',
+        kind: 'mcp',
+      }),
       expect.objectContaining({
         id: 'image.generate.gpt-image-2',
         available: false,
+        installed: true,
+        policyManaged: true,
+        executionKind: 'agent_capability',
         kind: 'image_generation',
         model: 'gpt-image-2',
       }),
+      expect.objectContaining({
+        id: 'social.reread.auto',
+        displayName: '自动复读',
+        kind: 'social_automation',
+        installed: true,
+        available: false,
+        policyManaged: true,
+        executionKind: 'passive_behavior',
+      }),
+      expect.objectContaining({
+        id: 'sub2api.auto_query',
+        displayName: '/sub2api 自动查询',
+        kind: 'readonly_query',
+        installed: true,
+        available: false,
+        builtIn: true,
+        policyManaged: false,
+        requiredRole: 'super_admin',
+        executionKind: 'command_auto_reply',
+      }),
     ]))
+    expect(catalog.replyIntensities).toEqual(['quiet', 'normal', 'active'])
+    expect(catalog.contextLengths).toEqual([
+      { id: 'compact', messageLimit: 12, characterLimit: 6_000 },
+      { id: 'standard', messageLimit: 30, characterLimit: 18_000 },
+      { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
+    ])
+    expect(catalog.groupChatStyles).toEqual(['restrained', 'natural', 'lively', 'technical'])
+    expect(catalog.replyIntensityNotice).toContain('NO SEND')
+    expect(catalog.policyDefaults).toMatchObject({
+      replyIntensity: { mode: 'adaptive', preferred: 'normal' },
+      contextLength: { mode: 'adaptive', preferred: 'standard' },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural' },
+      plugins: {
+        'social.reread.auto': 'off',
+        'sub2api.auto_query': 'off',
+      },
+    })
+
+    await expect(gateway.saveAgentConfig({
+      scope: { accountId: 'bot-1', conversationId: 'group-42' },
+      policy: { plugins: { 'sub2api.auto_query': 'on' } },
+    })).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('不允许通过普通 Scope Policy 启用'),
+    })
+    await expect(gateway.saveAgentConfig({
+      scope: { accountId: 'bot-1', conversationId: 'group-42' },
+      policy: { plugins: { 'social.reread.auto': 'auto' } },
+    })).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('当前不可用'),
+    })
 
     await gateway.saveAgentConfig({
       scope: { accountId: 'bot-1', conversationId: 'group-42' },
@@ -166,9 +255,14 @@ describe('internal-test gateway', () => {
         modelTier: { mode: 'locked', preferred: 'haiku', allowed: ['haiku', 'opus'] },
         reasoning: { mode: 'preferred', preferred: 'medium', allowed: ['low', 'medium', 'high'] },
         answerProfile: { mode: 'adaptive', preferred: 'medium', allowed: ['short', 'medium', 'long'] },
+        replyIntensity: { mode: 'preferred', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
+        contextLength: { mode: 'locked', preferred: 'compact', allowed: ['compact', 'standard'] },
+        groupChatStyle: { mode: 'locked', preferred: 'restrained', allowed: ['restrained', 'natural'] },
         plugins: {
-          'icourse.read': 'locked',
+          'icourse.read': 'off',
           'image.generate.gpt-image-2': 'off',
+          'social.reread.auto': 'off',
+          'sub2api.auto_query': 'off',
         },
       },
     })
@@ -178,7 +272,14 @@ describe('internal-test gateway', () => {
       scope: { accountId: 'bot-1', conversationId: 'group-42' },
       modelTier: { mode: 'locked', preferred: 'haiku' },
       reasoning: { mode: 'preferred', preferred: 'medium' },
-      plugins: { 'icourse.read': 'locked' },
+      replyIntensity: { mode: 'preferred', preferred: 'normal' },
+      contextLength: { mode: 'locked', preferred: 'compact' },
+      groupChatStyle: { mode: 'locked', preferred: 'restrained' },
+      plugins: {
+        'icourse.read': 'off',
+        'social.reread.auto': 'off',
+        'sub2api.auto_query': 'off',
+      },
       updatedAt: '2026-08-17T08:00:00.000Z',
     })
 
@@ -189,26 +290,51 @@ describe('internal-test gateway', () => {
       conversationType: 'group',
       prompt: '请完整分析这个架构问题并给出迁移方案',
       answerProfile: 'long',
-      messages: [],
+      messages: Array.from({ length: 20 }, (_, index) => ({
+        senderName: `成员-${index}`,
+        content: `[msg-${String(index).padStart(2, '0')}]${'甲'.repeat(690)}`,
+      })),
     })).resolves.toMatchObject({
       tier: 'haiku',
       model: 'custom-luna',
       reasoning: 'high',
       answerProfile: 'long',
+      replyIntensity: 'active',
+      contextLength: 'compact',
+      groupChatStyle: 'restrained',
+      contextUsage: {
+        messageLimit: 12,
+        characterLimit: 6_000,
+        messagesRead: 9,
+        charactersRead: 6_000,
+      },
       effectiveSelection: {
         scope: { accountId: 'bot-1', conversationId: 'group-42' },
         policySource: 'saved',
         modelTier: 'haiku',
         reasoning: 'high',
         answerProfile: 'long',
+        replyIntensity: 'active',
+        contextLength: 'compact',
+        groupChatStyle: 'restrained',
+        contextUsage: {
+          messageLimit: 12,
+          characterLimit: 6_000,
+          messagesRead: 9,
+          charactersRead: 6_000,
+        },
         plugins: {
-          'icourse.read': { mode: 'locked', available: false, eligible: false, selectedForRun: false },
+          'icourse.read': { mode: 'off', available: false, eligible: false, selectedForRun: false },
+          'sub2api.auto_query': { mode: 'off', available: false, eligible: false, selectedForRun: false },
         },
       },
       reasonCodes: expect.arrayContaining([
         'model.locked_by_admin',
         'reasoning.preferred_overridden',
         'answer_profile.adaptive',
+        'reply_intensity.preferred_overridden',
+        'context_length.locked_by_admin',
+        'group_chat_style.locked_by_admin',
         'plugin.icourse.read.unavailable',
       ]),
     })

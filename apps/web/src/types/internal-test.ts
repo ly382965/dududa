@@ -3,6 +3,9 @@ export type InternalTestAnswerProfile = 'short' | 'medium' | 'long'
 export type InternalTestSelectionMode = 'adaptive' | 'preferred' | 'locked'
 export type InternalTestReasoningLevel = 'low' | 'medium' | 'high'
 export type InternalTestPluginMode = 'off' | 'auto' | 'on' | 'locked'
+export type InternalTestReplyIntensity = 'quiet' | 'normal' | 'active'
+export type InternalTestContextLength = 'compact' | 'standard' | 'extended'
+export type InternalTestGroupChatStyle = 'restrained' | 'natural' | 'lively' | 'technical'
 export type InternalTestVerdict = 'accepted' | 'rejected' | 'needs_review'
 
 export interface InternalTestAdaptiveSetting<T extends string> {
@@ -21,6 +24,9 @@ export interface InternalTestAgentPolicyDefaults {
   modelTier: InternalTestAdaptiveSetting<InternalTestTier>
   reasoning: InternalTestAdaptiveSetting<InternalTestReasoningLevel>
   answerProfile: InternalTestAdaptiveSetting<InternalTestAnswerProfile>
+  replyIntensity: InternalTestAdaptiveSetting<InternalTestReplyIntensity>
+  contextLength: InternalTestAdaptiveSetting<InternalTestContextLength>
+  groupChatStyle: InternalTestAdaptiveSetting<InternalTestGroupChatStyle>
   plugins: Record<string, InternalTestPluginMode>
 }
 
@@ -43,8 +49,13 @@ export interface InternalTestCatalogModel {
 export interface InternalTestCatalogPlugin {
   id: string
   displayName: string
-  kind: 'mcp' | 'image_generation'
+  kind: 'mcp' | 'image_generation' | 'readonly_query' | 'social_automation'
+  installed: boolean
   available: boolean
+  builtIn?: boolean
+  policyManaged: boolean
+  requiredRole?: 'super_admin' | 'admin'
+  executionKind: 'agent_capability' | 'command_auto_reply' | 'passive_behavior'
   description: string
   unavailableReason?: string
   model?: string
@@ -57,6 +68,14 @@ export interface InternalTestAgentCatalog {
   models: InternalTestCatalogModel[]
   reasoningLevels: InternalTestReasoningLevel[]
   answerProfiles: InternalTestAnswerProfile[]
+  replyIntensities: InternalTestReplyIntensity[]
+  contextLengths: Array<{
+    id: InternalTestContextLength
+    messageLimit: number
+    characterLimit: number
+  }>
+  groupChatStyles: InternalTestGroupChatStyle[]
+  replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults
 }
@@ -75,7 +94,18 @@ export interface InternalTestEffectiveSelection {
   model: string
   reasoning: InternalTestReasoningLevel
   answerProfile: InternalTestAnswerProfile
+  replyIntensity: InternalTestReplyIntensity
+  contextLength: InternalTestContextLength
+  groupChatStyle: InternalTestGroupChatStyle
+  contextUsage: InternalTestContextUsage
   plugins: Record<string, InternalTestEffectivePlugin>
+}
+
+export interface InternalTestContextUsage {
+  messageLimit: number
+  characterLimit: number
+  messagesRead: number
+  charactersRead: number
 }
 
 export interface InternalTestPrediction<T> {
@@ -150,6 +180,23 @@ export interface InternalTestAgentStatus {
   outputEnabled: false
   providerConfigured: boolean
   modelMapping: Record<InternalTestTier, string>
+  runtimeControls: {
+    passiveAutoReply: {
+      actualEnabled: false
+      state: 'disabled'
+      rolloutMode: 'off'
+      deliveryEnabled: false
+      killSwitch: true
+      summary: string
+    }
+    proactiveGroupParticipation: {
+      actualEnabled: false
+      state: 'shadow'
+      stage: 'probe_shadow'
+      deliveryEnabled: false
+      summary: string
+    }
+  }
   warnings: string[]
 }
 
@@ -177,6 +224,10 @@ export interface InternalTestAgentResponse {
   model: string
   reasoning: InternalTestReasoningLevel
   answerProfile: InternalTestAnswerProfile
+  replyIntensity: InternalTestReplyIntensity
+  contextLength: InternalTestContextLength
+  groupChatStyle: InternalTestGroupChatStyle
+  contextUsage: InternalTestContextUsage
   effectiveSelection: InternalTestEffectiveSelection
   reasonCodes: string[]
   latencyMs: number

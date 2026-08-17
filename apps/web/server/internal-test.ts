@@ -20,12 +20,23 @@ const PROFILE_TOKEN_LIMITS = {
 const SELECTION_MODES = ['adaptive', 'preferred', 'locked'] as const
 const REASONING_LEVELS = ['low', 'medium', 'high'] as const
 const PLUGIN_MODES = ['off', 'auto', 'on', 'locked'] as const
+const REPLY_INTENSITIES = ['quiet', 'normal', 'active'] as const
+const CONTEXT_LENGTHS = ['compact', 'standard', 'extended'] as const
+const GROUP_CHAT_STYLES = ['restrained', 'natural', 'lively', 'technical'] as const
+const CONTEXT_BUDGETS = {
+  compact: { messageLimit: 12, characterLimit: 6_000 },
+  standard: { messageLimit: 30, characterLimit: 18_000 },
+  extended: { messageLimit: 60, characterLimit: 36_000 },
+} as const satisfies Record<ContextLength, { messageLimit: number; characterLimit: number }>
 
 export type ModelTier = 'haiku' | 'sonnet' | 'opus'
 export type AnswerProfile = keyof typeof PROFILE_TOKEN_LIMITS
 export type SelectionMode = typeof SELECTION_MODES[number]
 export type ReasoningLevel = typeof REASONING_LEVELS[number]
 export type PluginMode = typeof PLUGIN_MODES[number]
+export type ReplyIntensity = typeof REPLY_INTENSITIES[number]
+export type ContextLength = typeof CONTEXT_LENGTHS[number]
+export type GroupChatStyle = typeof GROUP_CHAT_STYLES[number]
 type ConversationType = 'group' | 'private'
 type FeedbackVerdict = 'accepted' | 'rejected' | 'needs_review'
 
@@ -45,6 +56,9 @@ export interface InternalTestAgentPolicyDefaults {
   modelTier: AdaptiveSetting<ModelTier>
   reasoning: AdaptiveSetting<ReasoningLevel>
   answerProfile: AdaptiveSetting<AnswerProfile>
+  replyIntensity: AdaptiveSetting<ReplyIntensity>
+  contextLength: AdaptiveSetting<ContextLength>
+  groupChatStyle: AdaptiveSetting<GroupChatStyle>
   plugins: Record<string, PluginMode>
 }
 
@@ -67,8 +81,13 @@ export interface InternalTestCatalogModel {
 export interface InternalTestCatalogPlugin {
   id: string
   displayName: string
-  kind: 'mcp' | 'image_generation'
+  kind: 'mcp' | 'image_generation' | 'readonly_query' | 'social_automation'
+  installed: boolean
   available: boolean
+  builtIn?: boolean
+  policyManaged: boolean
+  requiredRole?: 'super_admin' | 'admin'
+  executionKind: 'agent_capability' | 'command_auto_reply' | 'passive_behavior'
   description: string
   unavailableReason?: string
   model?: string
@@ -84,6 +103,14 @@ export interface InternalTestAgentCatalog {
   models: InternalTestCatalogModel[]
   reasoningLevels: ReasoningLevel[]
   answerProfiles: AnswerProfile[]
+  replyIntensities: ReplyIntensity[]
+  contextLengths: Array<{
+    id: ContextLength
+    messageLimit: number
+    characterLimit: number
+  }>
+  groupChatStyles: GroupChatStyle[]
+  replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults
 }
@@ -102,7 +129,18 @@ export interface InternalTestEffectiveSelection {
   model: string
   reasoning: ReasoningLevel
   answerProfile: AnswerProfile
+  replyIntensity: ReplyIntensity
+  contextLength: ContextLength
+  groupChatStyle: GroupChatStyle
+  contextUsage: InternalTestContextUsage
   plugins: Record<string, InternalTestEffectivePlugin>
+}
+
+export interface InternalTestContextUsage {
+  messageLimit: number
+  characterLimit: number
+  messagesRead: number
+  charactersRead: number
 }
 
 export interface InternalTestStatus {
@@ -163,6 +201,23 @@ export interface InternalTestAgentStatus {
   providerConfigured: boolean
   outputEnabled: false
   modelMapping: Record<ModelTier, string>
+  runtimeControls: {
+    passiveAutoReply: {
+      actualEnabled: false
+      state: 'disabled'
+      rolloutMode: 'off'
+      deliveryEnabled: false
+      killSwitch: true
+      summary: string
+    }
+    proactiveGroupParticipation: {
+      actualEnabled: false
+      state: 'shadow'
+      stage: 'probe_shadow'
+      deliveryEnabled: false
+      summary: string
+    }
+  }
   warnings: string[]
 }
 
@@ -173,6 +228,10 @@ export interface InternalTestAgentResponse {
   model: string
   reasoning: ReasoningLevel
   answerProfile: AnswerProfile
+  replyIntensity: ReplyIntensity
+  contextLength: ContextLength
+  groupChatStyle: GroupChatStyle
+  contextUsage: InternalTestContextUsage
   effectiveSelection: InternalTestEffectiveSelection
   reasonCodes: string[]
   latencyMs: number
@@ -356,7 +415,11 @@ function contextFor(sample: Record<string, unknown>): string {
   return lines.join('\n').slice(-18_000)
 }
 
-function generationInstructions(profile: AnswerProfile, conversationType: ConversationType): string {
+function generationInstructions(
+  profile: AnswerProfile,
+  conversationType: ConversationType,
+  groupChatStyle: GroupChatStyle = 'natural',
+): string {
   const style = profile === 'short'
     ? '使用简短自然的日常回复，通常一到三句。'
     : profile === 'long'
@@ -367,6 +430,15 @@ function generationInstructions(profile: AnswerProfile, conversationType: Conver
   const channelBehavior = conversationType === 'group'
     ? '像群成员一样自然接住当前话题：默认简洁，不抢话，不逐条复述已有聊天；只有问题确实需要时才展开。'
     : '专注回应对方当前的问题和情绪，保持自然、耐心，不把简单交流写成正式说明。'
+  const groupStyleBehavior = conversationType === 'private'
+    ? '私聊中以对方当前需要为准，不照搬群聊气氛。'
+    : groupChatStyle === 'restrained'
+      ? '在多人讨论中保持克制和留白，先回应最相关的内容，避免为了活跃而抢话。'
+      : groupChatStyle === 'lively'
+        ? '群聊气氛轻松时可以更有活力地接话，但不要硬造梗、刷屏或打断正在进行的讨论。'
+        : groupChatStyle === 'technical'
+          ? '技术讨论中优先使用准确术语和清晰结构，同时保留正常群聊语气，不写成生硬报告。'
+          : '顺着当前群聊的语气自然回应，不刻意制造存在感，也不把普通聊天改写成正式答复。'
   const technicalBehavior = dududaPersona.voice.technical_style === 'conclusion_then_bounded_steps'
     ? '遇到技术问题先给结论，再补足真正有用的步骤。'
     : '技术问题按最容易理解的顺序回答。'
@@ -383,6 +455,7 @@ function generationInstructions(profile: AnswerProfile, conversationType: Conver
     `你正在以“${dududaPersona.display_name}”的身份生成一条人工内测候选回答。`,
     '让人格通过自然措辞、回应节奏和信息取舍体现，不要宣告、复述或刻意表演人设。',
     channelBehavior,
+    groupStyleBehavior,
     sentenceBehavior,
     technicalBehavior,
     uncertaintyBehavior,
@@ -409,15 +482,18 @@ function optionalAnswerProfile(value: unknown): AnswerProfile | undefined {
   throw new InternalTestError('answerProfile 参数无效')
 }
 
-function agentContext(body: Record<string, unknown>): string {
+function agentContext(body: Record<string, unknown>, contextLength: ContextLength): {
+  input: string
+  usage: InternalTestContextUsage
+} {
   const conversationId = stringValue(body.conversationId ?? body.conversation_id)
   const conversationName = stringValue(body.conversationName ?? body.conversation_name)
   const prompt = stringValue(body.prompt)
   if (!conversationId || !conversationName || !prompt) {
     throw new InternalTestError('缺少 conversationId、conversationName 或 prompt')
   }
-  const messages = arrayValue(body.messages)
-    .slice(-30)
+  const budget = CONTEXT_BUDGETS[contextLength]
+  const messageLines = arrayValue(body.messages)
     .map(objectValue)
     .filter((message): message is Record<string, unknown> => Boolean(message))
     .map((message) => {
@@ -427,12 +503,33 @@ function agentContext(body: Record<string, unknown>): string {
       return `${senderName}${message.mine === true ? '（嘟嘟哒）' : ''}：${content}`
     })
     .filter((line): line is string => Boolean(line))
-    .join('\n')
-  return [
-    `当前会话：${conversationName}`,
-    messages ? `最近消息：\n${messages}` : '最近消息：（无）',
-    `操作员指令：\n${prompt}`,
-  ].join('\n\n').slice(-18_000)
+    .slice(-budget.messageLimit)
+  const selectedLines: string[] = []
+  let remainingCharacters = budget.characterLimit
+  for (let index = messageLines.length - 1; index >= 0 && remainingCharacters > 0; index -= 1) {
+    const separatorLength = selectedLines.length ? 1 : 0
+    const available = remainingCharacters - separatorLength
+    if (available <= 0) break
+    const line = messageLines[index]!
+    const selected = line.length > available ? line.slice(-available) : line
+    selectedLines.unshift(selected)
+    remainingCharacters -= selected.length + separatorLength
+    if (selected.length < line.length) break
+  }
+  const messages = selectedLines.join('\n')
+  return {
+    input: [
+      `当前会话：${conversationName}`,
+      messages ? `最近消息：\n${messages}` : '最近消息：（无）',
+      `操作员指令：\n${prompt}`,
+    ].join('\n\n'),
+    usage: {
+      messageLimit: budget.messageLimit,
+      characterLimit: budget.characterLimit,
+      messagesRead: selectedLines.length,
+      charactersRead: messages.length,
+    },
+  }
 }
 
 function agentScope(value: Record<string, unknown>, requireAccount = true): InternalTestAgentScope {
@@ -472,9 +569,26 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
       preferred: 'medium',
       allowed: ['short', 'medium', 'long'],
     },
+    replyIntensity: {
+      mode: 'adaptive',
+      preferred: 'normal',
+      allowed: ['quiet', 'normal', 'active'],
+    },
+    contextLength: {
+      mode: 'adaptive',
+      preferred: 'standard',
+      allowed: ['compact', 'standard', 'extended'],
+    },
+    groupChatStyle: {
+      mode: 'adaptive',
+      preferred: 'natural',
+      allowed: ['restrained', 'natural', 'lively', 'technical'],
+    },
     plugins: {
       'icourse.read': 'off',
       'image.generate.gpt-image-2': 'off',
+      'social.reread.auto': 'off',
+      'sub2api.auto_query': 'off',
     },
   }
 }
@@ -485,7 +599,11 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       id: 'icourse.read',
       displayName: 'iCourse 评课社区',
       kind: 'mcp',
+      installed: true,
       available: false,
+      builtIn: true,
+      policyManaged: true,
+      executionKind: 'agent_capability',
       description: '查询课程与公开评价。',
       unavailableReason: '当前 Web Agent Runtime 尚未绑定 iCourse Capability 执行链。',
     },
@@ -493,12 +611,60 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       id: 'image.generate.gpt-image-2',
       displayName: 'GPT Image 2 图片生成',
       kind: 'image_generation',
+      installed: true,
       available: false,
+      builtIn: true,
+      policyManaged: true,
+      executionKind: 'agent_capability',
       description: '独立的图片生成与编辑能力，不用于图片理解。',
       unavailableReason: 'gpt-image-2 图片生成执行链尚未接入当前 Runtime。',
       model: 'gpt-image-2',
     },
+    {
+      id: 'social.reread.auto',
+      displayName: '自动复读',
+      kind: 'social_automation',
+      installed: true,
+      available: false,
+      policyManaged: true,
+      executionKind: 'passive_behavior',
+      description: '登记 Dududa 1.0 的历史安装资产；2.0 不恢复常驻概率复读。',
+      unavailableReason: 'Dududa 2.0 当前没有自动复读执行链，旧 /reread 仅保留停用提示。',
+    },
+    {
+      id: 'sub2api.auto_query',
+      displayName: '/sub2api 自动查询',
+      kind: 'readonly_query',
+      installed: true,
+      available: false,
+      builtIn: true,
+      policyManaged: false,
+      requiredRole: 'super_admin',
+      executionKind: 'command_auto_reply',
+      description: '确定性的 /sub2api 只读命令查询；不是 MCP 或普通 Agent Capability。',
+      unavailableReason: '真实只读服务与插件存在，但当前 Console owner session 和执行链尚未接通。',
+    },
   ]
+}
+
+function currentAgentRuntimeControls(): InternalTestAgentStatus['runtimeControls'] {
+  return {
+    passiveAutoReply: {
+      actualEnabled: false,
+      state: 'disabled',
+      rolloutMode: 'off',
+      deliveryEnabled: false,
+      killSwitch: true,
+      summary: '被动自动回复当前实际关闭：rollout_mode=off，交付关闭，kill switch 开启。',
+    },
+    proactiveGroupParticipation: {
+      actualEnabled: false,
+      state: 'shadow',
+      stage: 'probe_shadow',
+      deliveryEnabled: false,
+      summary: '主动参与当前只有 S15E Probe Shadow，只生成机会与候选，不发送消息。',
+    },
+  }
 }
 
 function buildAgentCatalog(
@@ -525,6 +691,10 @@ function buildAgentCatalog(
     })),
     reasoningLevels: [...REASONING_LEVELS],
     answerProfiles: ['short', 'medium', 'long'],
+    replyIntensities: [...REPLY_INTENSITIES],
+    contextLengths: CONTEXT_LENGTHS.map((id) => ({ id, ...CONTEXT_BUDGETS[id] })),
+    groupChatStyles: [...GROUP_CHAT_STYLES],
+    replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
     plugins: catalogPlugins(),
     policyDefaults: defaultPolicyDefaults(),
   }
@@ -579,6 +749,9 @@ interface TaskSignals {
   modelTier: TaskChoice<ModelTier>
   reasoning: TaskChoice<ReasoningLevel>
   answerProfile: TaskChoice<AnswerProfile>
+  replyIntensity: TaskChoice<ReplyIntensity>
+  contextLength: TaskChoice<ContextLength>
+  groupChatStyle: TaskChoice<GroupChatStyle>
 }
 
 function taskSignals(body: Record<string, unknown>): TaskSignals {
@@ -598,6 +771,7 @@ function taskSignals(body: Record<string, unknown>): TaskSignals {
   const explicitProfile = optionalAnswerProfile(body.answerProfile ?? body.answer_profile)
   const longRequested = /详细|完整|深入|展开|长回答|多讲|逐步|系统地/u.test(prompt)
   const shortRequested = /简短|一句话|短回答|简单说/u.test(prompt)
+  const lively = casual && /哈哈|笑死|好耶|太棒|冲[！!]|[！!]{2,}/u.test(text)
 
   const answerProfile: TaskChoice<AnswerProfile> = explicitProfile
     ? { value: explicitProfile, strong: true, reasonCode: 'answer_profile.request_hint' }
@@ -612,6 +786,9 @@ function taskSignals(body: Record<string, unknown>): TaskSignals {
       modelTier: { value: 'opus', strong: true, reasonCode: 'model.task_complexity_high' },
       reasoning: { value: 'high', strong: true, reasonCode: 'reasoning.task_complexity_high' },
       answerProfile,
+      replyIntensity: { value: 'active', strong: true, reasonCode: 'reply_intensity.deep_task' },
+      contextLength: { value: 'extended', strong: true, reasonCode: 'context_length.deep_task' },
+      groupChatStyle: { value: 'technical', strong: true, reasonCode: 'group_chat_style.technical_task' },
     }
   }
   if (casual) {
@@ -619,12 +796,20 @@ function taskSignals(body: Record<string, unknown>): TaskSignals {
       modelTier: { value: 'haiku', strong: true, reasonCode: 'model.casual_exchange' },
       reasoning: { value: 'low', strong: true, reasonCode: 'reasoning.casual_exchange' },
       answerProfile,
+      replyIntensity: { value: 'quiet', strong: true, reasonCode: 'reply_intensity.casual_exchange' },
+      contextLength: { value: 'compact', strong: true, reasonCode: 'context_length.casual_exchange' },
+      groupChatStyle: lively
+        ? { value: 'lively', strong: true, reasonCode: 'group_chat_style.lively_exchange' }
+        : { value: 'natural', strong: false, reasonCode: 'group_chat_style.casual_exchange' },
     }
   }
   return {
     modelTier: { value: 'sonnet', strong: false, reasonCode: 'model.ordinary_task' },
     reasoning: { value: 'medium', strong: false, reasonCode: 'reasoning.ordinary_task' },
     answerProfile,
+    replyIntensity: { value: 'normal', strong: false, reasonCode: 'reply_intensity.ordinary_task' },
+    contextLength: { value: 'standard', strong: false, reasonCode: 'context_length.ordinary_task' },
+    groupChatStyle: { value: 'natural', strong: false, reasonCode: 'group_chat_style.ordinary_task' },
   }
 }
 
@@ -659,13 +844,21 @@ function normalizeAgentPolicy(
   updatedAt?: string,
 ): InternalTestAgentPolicy {
   const policy = objectValue(value) ?? {}
-  const knownPlugins = new Set(catalogPlugins().map((plugin) => plugin.id))
+  const knownPlugins = new Map(catalogPlugins().map((plugin) => [plugin.id, plugin]))
   const plugins = { ...current.plugins }
   const requestedPlugins = objectValue(policy.plugins)
   if (requestedPlugins) {
     for (const [id, mode] of Object.entries(requestedPlugins)) {
-      if (!knownPlugins.has(id)) throw new InternalTestError(`未知插件: ${id}`)
-      plugins[id] = pluginMode(mode)
+      const plugin = knownPlugins.get(id)
+      if (!plugin) throw new InternalTestError(`未知插件: ${id}`)
+      const requestedMode = pluginMode(mode)
+      if (requestedMode !== 'off' && !plugin.policyManaged) {
+        throw new InternalTestError(`插件 ${id} 不允许通过普通 Scope Policy 启用`)
+      }
+      if (requestedMode !== 'off' && !plugin.available) {
+        throw new InternalTestError(`插件 ${id} 当前不可用，不能启用`)
+      }
+      plugins[id] = requestedMode
     }
   }
   return {
@@ -684,6 +877,24 @@ function normalizeAgentPolicy(
       current.answerProfile,
       ['short', 'medium', 'long'],
       'answerProfile',
+    ),
+    replyIntensity: adaptiveSetting(
+      policy.replyIntensity ?? policy.reply_intensity,
+      current.replyIntensity,
+      REPLY_INTENSITIES,
+      'replyIntensity',
+    ),
+    contextLength: adaptiveSetting(
+      policy.contextLength ?? policy.context_length,
+      current.contextLength,
+      CONTEXT_LENGTHS,
+      'contextLength',
+    ),
+    groupChatStyle: adaptiveSetting(
+      policy.groupChatStyle ?? policy.group_chat_style,
+      current.groupChatStyle,
+      GROUP_CHAT_STYLES,
+      'groupChatStyle',
     ),
     plugins,
     ...(updatedAt ? { updatedAt } : {}),
@@ -860,6 +1071,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
     tier: ModelTier,
     reasoning: ReasoningLevel,
     conversationType: ConversationType = 'group',
+    groupChatStyle: GroupChatStyle = 'natural',
   ): Promise<{ candidate: string; model: string; latencyMs: number }> {
     const model = this.models[tier]
     const provider = await this.providerConfig()
@@ -878,7 +1090,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
         },
         body: JSON.stringify({
           model,
-          instructions: generationInstructions(answerProfile, conversationType),
+          instructions: generationInstructions(answerProfile, conversationType, groupChatStyle),
           input,
           max_output_tokens: PROFILE_TOKEN_LIMITS[answerProfile],
           reasoning: { effort: reasoning },
@@ -1034,6 +1246,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
       providerConfigured,
       outputEnabled: false,
       modelMapping: { ...this.models },
+      runtimeControls: currentAgentRuntimeControls(),
       warnings: [
         'INTERNAL TEST RUNTIME',
         'NO SEND',
@@ -1083,6 +1296,17 @@ export class FileInternalTestGateway implements InternalTestGateway {
     const modelTier = effectiveValue('model', resolved.policy.modelTier, signals.modelTier)
     const reasoning = effectiveValue('reasoning', resolved.policy.reasoning, signals.reasoning)
     const answerProfile = effectiveValue('answer_profile', resolved.policy.answerProfile, signals.answerProfile)
+    const replyIntensity = effectiveValue(
+      'reply_intensity',
+      resolved.policy.replyIntensity,
+      signals.replyIntensity,
+    )
+    const contextLength = effectiveValue('context_length', resolved.policy.contextLength, signals.contextLength)
+    const groupChatStyle = effectiveValue(
+      'group_chat_style',
+      resolved.policy.groupChatStyle,
+      signals.groupChatStyle,
+    )
     const catalog = await this.agentCatalog()
     const plugins: Record<string, InternalTestEffectivePlugin> = {}
     const pluginReasonCodes: string[] = []
@@ -1099,18 +1323,23 @@ export class FileInternalTestGateway implements InternalTestGateway {
       else if (mode === 'off') pluginReasonCodes.push(`plugin.${plugin.id}.off_by_admin`)
       else pluginReasonCodes.push(`plugin.${plugin.id}.eligible_${mode}`)
     }
+    const context = agentContext(body, contextLength.value)
     const generated = await this.requestCandidate(
-      agentContext(body),
+      context.input,
       answerProfile.value,
       modelTier.value,
       reasoning.value,
       conversationType,
+      groupChatStyle.value,
     )
     const reasonCodes = [
       `policy.${resolved.source}`,
       ...modelTier.reasonCodes,
       ...reasoning.reasonCodes,
       ...answerProfile.reasonCodes,
+      ...replyIntensity.reasonCodes,
+      ...contextLength.reasonCodes,
+      ...groupChatStyle.reasonCodes,
       ...pluginReasonCodes,
       'plugins.no_tool_execution',
     ]
@@ -1121,6 +1350,10 @@ export class FileInternalTestGateway implements InternalTestGateway {
       model: generated.model,
       reasoning: reasoning.value,
       answerProfile: answerProfile.value,
+      replyIntensity: replyIntensity.value,
+      contextLength: contextLength.value,
+      groupChatStyle: groupChatStyle.value,
+      contextUsage: context.usage,
       plugins,
     }
     return {
@@ -1130,6 +1363,10 @@ export class FileInternalTestGateway implements InternalTestGateway {
       model: generated.model,
       reasoning: reasoning.value,
       answerProfile: answerProfile.value,
+      replyIntensity: replyIntensity.value,
+      contextLength: contextLength.value,
+      groupChatStyle: groupChatStyle.value,
+      contextUsage: context.usage,
       effectiveSelection,
       reasonCodes,
       latencyMs: generated.latencyMs,
@@ -1207,6 +1444,7 @@ export class UnavailableInternalTestGateway implements InternalTestGateway {
       providerConfigured: false,
       outputEnabled: false,
       modelMapping: { ...this.models },
+      runtimeControls: currentAgentRuntimeControls(),
       warnings: [...this.warnings, 'NO MEMORY WRITE', 'NO TOOL CALL', 'NO BANDIT'],
     }
   }

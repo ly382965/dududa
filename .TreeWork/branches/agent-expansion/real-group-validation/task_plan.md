@@ -18,6 +18,10 @@ Title: S23 Authorized Real-Group Validation
 - Let an administrator set per-account/conversation initial preferences, legal
   ranges and explicit locks while the Runtime adapts each Run inside those
   ranges without surrendering Core authority.
+- Expose six orthogonal settings in that Scope: model Tier, reasoning depth,
+  answer length, reply intensity, context length as a per-Run history budget,
+  and group-chat style. Keep desired Policy distinct from actual reply or
+  proactive-delivery state.
 - Keep the internal-test live workspace usable under reconnect and initial-load
   races, and expose Persona-aware SHORT/MEDIUM/LONG candidate generation for
   bounded human evaluation.
@@ -95,21 +99,33 @@ Title: S23 Authorized Real-Group Validation
   默认关闭且仅作为 LONG-only 兼容层。新群不再生成 `meme_rate`，管理命令不再
   写入该字段；显式 `/image` 图片生成能力继续保留。
 - [x] 实时 Agent Console 以 `accountId + conversationId` 为 Scope，从服务端动态
-  Catalog 加载模型/Tier、推理档位、modality、AnswerProfile、插件/Capability、
-  安装状态、可用状态和不可用原因，不在前端写死模型或插件。
-- [x] 模型/Tier、推理深度、AnswerProfile 和其他自适应设置统一支持
-  `adaptive/preferred/locked`；管理员普通修改给出初值和 `allowed`，不会永久固定
-  Agent，只有显式 `locked` 才禁止本轮改选。
+  Catalog 加载模型/Tier、推理档位、modality、AnswerProfile、回复强度、上下文
+  长度、群聊风格、插件/Capability、安装状态、可用状态和不可用原因，不在前端
+  写死模型或插件。
+- [x] 模型/Tier、推理深度、回答长度、回复强度、上下文长度（运行预算）和群聊
+  风格六项正交设置统一支持 `adaptive/preferred/locked`；管理员普通修改给出初值
+  和 `allowed`，不会永久固定 Agent，只有显式 `locked` 才禁止本轮改选。
+- [x] 上下文长度仅控制本轮送入模型的近期群聊历史预算，不表示模型最大 Context
+  Window；`compact/standard/extended` 分别限制为 12/6,000、30/18,000、
+  60/36,000 条消息/字符，并回传 `messagesRead` 与 `charactersRead`。
 - [x] 插件统一支持 `off/auto/on/locked`；状态只改变通过 Core 资格过滤后的候选
   集合或偏好，不授予 Capability，也不要求每轮调用。
-- [x] AnswerProfile、模型/Tier 和 reasoning 保持正交；每次 Run 返回管理员初值、
-  `allowed`、实际选择、改选 reason codes 和实际调用插件，且 `preferred` 可改选、
-  `locked` 不可被 Agent 覆盖。
+- [x] 六项设置保持正交；每次 Run 返回管理员初值、`allowed`、实际选择、上下文
+  实际读取量、改选 reason codes 和实际调用插件，且 `preferred` 可改选、
+  `locked` 不可被 Agent 覆盖。回复强度只是一项候选决策输入，不能被解释为真实
+  自动发送概率。
 - [x] Agent Console 配置经专用服务端 API 持久化到仓库外数据根，页面重载后仍按
   同一 Scope 恢复；浏览器 localStorage 只可作为非权威草稿或缓存。
-- [x] Catalog 事实边界准确：iCourse 是唯一真实 MCP；当前 Runtime 未接通时显示
-  “已安装但不可调用”。校园资讯、arXiv、行业资讯、网络搜索及其他未接能力显示
-  `unavailable + reason`，不得把 fixture 或预留接口伪装成真实服务。
+- [x] Catalog 事实边界准确：iCourse 是唯一真实 MCP，`gpt-image-2` 是已知图片
+  能力，但二者当前 Runtime 均未接通并显示不可用；自动复读仅登记为 Dududa 1.0
+  历史资产，保持关闭且不可用；`/sub2api 自动查询` 仅超级管理员可用，不受普通
+  会话 Policy 管理，当前 Console 执行链也未接通。校园资讯、arXiv、行业资讯、
+  网络搜索及其他未接能力显示 `unavailable + reason`，不得把 fixture 或预留接口
+  伪装成真实服务。
+- [x] Console 同时显示管理员期望值和实际 Runtime 状态：被动自动回复保持
+  `rollout=off`、delivery 关闭、kill switch 开启；主动参与仅为 S15E Probe
+  Shadow，并明确标记 `NO SEND`。候选继续保持 `outputCalls=0`、
+  `memoryWrites=0`、`toolCalls=0`。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
   write, Memory read/write, wrong-target and sensitive-Trace events.
 - [ ] Explicit-mention inbound Canary is limited to approved test users and
@@ -183,13 +199,13 @@ Title: S23 Authorized Real-Group Validation
   product behavior, then add scoped server-side Catalog/config/respond APIs for
   the Console without creating a second Runtime.
 - [x] Replace disabled and hard-coded Console controls with dynamic model,
-  reasoning, AnswerProfile and plugin settings; save and reload the authoritative
-  `accountId + conversationId` configuration from the repository-external data
-  root.
+  reasoning, AnswerProfile, reply-intensity, context-budget, group-style and
+  plugin settings; save and reload the authoritative `accountId +
+  conversationId` configuration from the repository-external data root.
 - [x] Resolve every candidate through independent adaptive settings and return
-  the effective selection plus reason codes and actual plugin calls; sample
-  `preferred`, `locked`, plugin four-state, persistence and no-send behavior with
-  focused tests, one typecheck and one Web build.
+  the effective six-setting selection, context usage, reason codes and actual
+  plugin calls; sample `preferred`, `locked`, plugin four-state, persistence and
+  no-send behavior with focused tests, one typecheck and one Web build.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
   SecretRef packet; do not commit identifiers or credential values.
 - [ ] Produce and privately bind real AstrBot Provider Conformance evidence,

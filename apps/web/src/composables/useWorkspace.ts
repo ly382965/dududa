@@ -36,7 +36,7 @@ import type {
   InternalTestAnswerProfile,
 } from '../types/internal-test'
 
-const agentContextMessages = 30
+const fallbackAgentContextMessages = 60
 
 function emptySnapshot(): WorkspaceSnapshot {
   return {
@@ -285,6 +285,11 @@ export function useWorkspace(
     }
   }
 
+  function maxAgentContextMessages(): number {
+    const limits = agentCatalog.value?.contextLengths.map((item) => item.messageLimit) ?? []
+    return limits.length ? Math.max(...limits) : fallbackAgentContextMessages
+  }
+
   async function loadAgentPolicy(scope = selectedAgentScope.value): Promise<void> {
     const generation = ++agentPolicyGeneration
     agentPolicy.value = undefined
@@ -319,6 +324,9 @@ export function useWorkspace(
       modelTier: { ...policy.modelTier, allowed: [...policy.modelTier.allowed] },
       reasoning: { ...policy.reasoning, allowed: [...policy.reasoning.allowed] },
       answerProfile: { ...policy.answerProfile, allowed: [...policy.answerProfile.allowed] },
+      replyIntensity: { ...policy.replyIntensity, allowed: [...policy.replyIntensity.allowed] },
+      contextLength: { ...policy.contextLength, allowed: [...policy.contextLength.allowed] },
+      groupChatStyle: { ...policy.groupChatStyle, allowed: [...policy.groupChatStyle.allowed] },
       plugins: { ...policy.plugins },
     }
     agentPolicyError.value = ''
@@ -893,7 +901,7 @@ export function useWorkspace(
 
     const context = chatMessages.value
       .filter((message) => message.content.trim())
-      .slice(-agentContextMessages)
+      .slice(-maxAgentContextMessages())
       .map((message) => ({
         senderName: message.senderName,
         content: message.content,
@@ -949,11 +957,16 @@ export function useWorkspace(
       run.modelTier = result.tier
       run.reasoning = result.reasoning
       run.answerProfile = result.answerProfile
+      run.contextMessages = result.contextUsage.messagesRead
       run.plugins = Object.entries(result.effectiveSelection.plugins)
         .filter(([, plugin]) => plugin.selectedForRun)
         .map(([id]) => id)
       run.reasonCodes = [...result.reasonCodes]
       run.effectiveSelection = result.effectiveSelection
+      run.steps[0] = {
+        ...run.steps[0],
+        detail: `实际读取 ${result.contextUsage.messagesRead} 条 / ${result.contextUsage.charactersRead.toLocaleString('zh-CN')} 字符（预算上限 ${result.contextUsage.messageLimit} 条 / ${result.contextUsage.characterLimit.toLocaleString('zh-CN')} 字符）`,
+      }
       run.steps[1] = {
         ...run.steps[1],
         detail: `${result.tier} · ${result.model} · ${result.reasoning} · ${result.answerProfile.toUpperCase()}`,
@@ -1181,7 +1194,9 @@ export function useWorkspace(
     agentPolicySaving,
     agentPolicyError,
     answerProfileHint,
-    agentContextMessages,
+    get agentContextMessages() {
+      return maxAgentContextMessages()
+    },
     selectedAccountId,
     selectedConversationId,
     selectedMessageId,

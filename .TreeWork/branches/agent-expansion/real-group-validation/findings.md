@@ -25,10 +25,15 @@ Branch: real-group-validation
   管理员设置的是 Scope 初值、合法候选范围和可选硬锁；`adaptive` 与
   `preferred` 都允许 Agent 依据本轮任务在 `allowed` 内改选，只有显式
   `locked` 阻止改选。服务端仓库外 Policy 是权威，浏览器状态不是权威。
-- 模型 Tier、reasoning 和 AnswerProfile 必须正交。SHORT/MEDIUM/LONG 只描述
-  回答形态，不能永久绑定 Luna/Terra/Sol；一次性回答长度 Hint 只影响当前 Run，
-  不写回长期模型偏好。插件 `off/auto/on/locked` 只影响合法候选或偏好，不能
-  授予 Capability，也不意味着每轮必须调用。
+- 模型 Tier、reasoning、AnswerProfile、回复强度、上下文长度和群聊风格必须
+  正交。SHORT/MEDIUM/LONG 只描述回答形态，不能永久绑定 Luna/Terra/Sol；
+  一次性回答长度 Hint 只影响当前 Run，不写回长期模型偏好。回复强度是当前
+  Run 的候选决策输入，不是实际自动发送概率。插件 `off/auto/on/locked` 只影响
+  合法候选或偏好，不能授予 Capability，也不意味着每轮必须调用。
+- 配置名统一为“上下文长度（运行预算）”。它只限制本轮送入模型的近期群聊历史，
+  不是模型最大 Context Window；`compact/standard/extended` 分别应用
+  12/6,000、30/18,000、60/36,000 条消息/字符双上限，并用
+  `messagesRead/charactersRead` 报告本轮实际读取量。
 - Workspace SSE 采用单调 ID 加最近 512 条内存事件的有限补放即可解决本轮
   重连丢失；无需把内测 Web 扩展成持久消息队列。`Last-Event-ID` 可用时按序
   补放，不可用时回到权威 Snapshot/History 的 `workspace.refresh`。
@@ -106,11 +111,16 @@ Branch: real-group-validation
   `GET /api/internal-test/agent/config`、`PUT /api/internal-test/agent/config` 和既有
   `POST /api/internal-test/agent/respond` 的 Scope-aware 语义。配置按
   `accountId + conversationId` 保存到仓库外数据根，每次响应返回
-  `effectiveSelection` 与 `reasonCodes`。
-- Catalog 由服务端动态返回模型、推理档位、AnswerProfile 和插件事实。iCourse 是
-  唯一真实 MCP，但当前 Console Runtime 未接通，因而显示“已安装但不可调用”；
-  `gpt-image-2` 同样未接入当前执行链。校园、arXiv、行业和搜索能力继续显示不可用，
-  不把 fixture 或接口预留冒充真实插件。
+  `effectiveSelection`、`reasonCodes` 与 `contextUsage`。
+- Catalog 由服务端动态返回六项正交配置和插件事实。iCourse 是唯一真实 MCP，
+  `gpt-image-2` 是已知图片能力，但当前 Console Runtime 均未接通；自动复读只登记
+  为 Dududa 1.0 历史资产并保持不可用；`/sub2api 自动查询` 是仅超级管理员的
+  确定性只读命令，不由普通 Scope Policy 管理，当前 Console 也未接通。校园、
+  arXiv、行业和搜索能力继续显示不可用，不把 fixture 或接口预留冒充真实插件。
+- Agent 状态接口把 Policy 期望与实际行为分开：被动自动回复为关闭状态，
+  `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅为
+  `probe_shadow`，并明确 `NO SEND`。候选保持 `outputCalls=0`、
+  `memoryWrites=0` 和 `toolCalls=0`。
 - Runtime 的 `DeliveryRequestBuilder` 只为合法显式 LONG 授予
   `allow_forward_bundle`；AstrBot Output Adapter 再独立校验档位有效性、群聊、
   多纯文本 part、无 target 和无附件，任一条件不满足都退回普通消息。
@@ -164,8 +174,9 @@ Branch: real-group-validation
 - Persona 接线只证明配置、channel rule 和回答档位进入生成链路；真实中文群聊
   的自然度、群体情境适应和长短回答边界仍需人工内测反馈，不能声明已充分校准。
 - Agent Console 的动态 Catalog、Policy 持久化和有效选择解释只证明超级工作台
-  纵切闭合；当前插件仍未进入候选执行链，所有 `selectedForRun` 为 `false`，且
-  no-send Gateway 不等于生产 AstrBot Runtime 或真实群权限。
+  纵切闭合；六项配置中的回复强度也不能替代真实发送授权。当前插件仍未进入候选
+  执行链，所有 `selectedForRun` 为 `false`，且 no-send Gateway 不等于生产
+  AstrBot Runtime 或真实群权限。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。
