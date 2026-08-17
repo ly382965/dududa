@@ -15,7 +15,12 @@ Last sync: unix:1786706085
   `client.py` 与其字节一致，全部原命令 handler 均保留。`overview` 继续复用原有
   今日、当前计费轮、2026-07-13 起历史累计和上游账号四段取数，只在成功输出端
   包装为四节点 QQ 合并转发；失败仍为普通文本。插件文档已同步 `/admin/usage`
-  只读路径和四节点行为。本轮没有重启、停止、热重载容器或发送 QQ 消息。
+  只读路径和四节点行为。当前运行实例已通过 AstrBot 单插件 API 热重载
+  `astrbot_plugin_sub2api_readonly v0.6.3`；`dududa-astrbot-1` 的启动时间未变、
+  重启计数仍为 0，且未发送额外 QQ 测试消息。
+- Dududa 1.0 AstrBot 已无运行或停止态容器，旧 Compose 中该服务仅保留在
+  `legacy-v1` profile，因此无需再次执行 stop。旧项目名下唯一剩余的 NapCat
+  是 2.0 当前复用的 QQ Connector，不属于可停止清单；Sub2API 查询栈也继续保留。
 - S23A--S23E 的离线历史语料里程碑已经完成：1,402 个输入文件被确定性
   分类，155,567 条唯一群消息形成 137,026 个 past-only 窗口；Terra 仅对
   600 条分层样本进行 Silver 预标注，本地 Student 随后完成全量预测并生成

@@ -9,6 +9,9 @@ Branch: real-group-validation
   上游账号、缓存与错误处理；本轮不重新设计这些逻辑。由于 2.0 ReplyPolish 默认
   关闭且只处理合法 LONG 回答，显式管理员命令 `overview` 在自身输出边界直接构造
   四节点合并转发，避免依赖普通回答风格链。
+- 旧 Compose 项目名不能直接等同于 Dududa 1.0：旧 AstrBot 容器已经不存在，
+  但同一项目名下的 NapCat 正被 Dududa 2.0 复用为唯一 QQ Connector。版本切换
+  只关闭明确识别出的 legacy AstrBot；不得对旧项目执行整体 `down/stop`。
 - S23 completion is the bounded single-group ladder plus closeout. Expansion to
   3–5 groups is a later authorization decision, not an inherited grant.
 - iCourse cannot satisfy digest-source readiness; it remains a course-review

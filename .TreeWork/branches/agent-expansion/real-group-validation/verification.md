@@ -11,10 +11,18 @@ Branch: real-group-validation
   current-cycle cutoff/aggregation, four requested formatters and four-node
   merged-forward construction without calling a real QQ Output.
 - Command: `git diff --check`.
-- Result: passed. A read-only container inspection still reported
-  `dududa-astrbot-1` running with restart count 0. This change did not restart,
-  stop, hot-reload or otherwise mutate a container and did not send a QQ
-  message; runtime activation remains a later operator-chosen action.
+- Result: passed.
+- Runtime activation: AstrBot's scoped plugin reload API returned HTTP 200 with
+  `重载成功。` for `astrbot_plugin_sub2api_readonly`. Runtime logs show only that
+  plugin's handlers being removed and the plugin loading again as v0.6.3.
+- Container boundary: `dududa-astrbot-1` retained
+  `StartedAt=2026-08-17T17:08:00.582712293Z`, `RestartCount=0` and `running`;
+  neither the AstrBot container nor its Compose project was restarted.
+- Legacy boundary: the old `mmdustc-bot-astrbot-qq` Compose project has no
+  AstrBot container to stop. Its sole remaining NapCat container is the active
+  Connector reused by Dududa 2.0 and stayed running. The Sub2API service and its
+  Postgres, Redis and proxy dependencies also stayed running. No QQ test message
+  was sent.
 - Recorded: 2026-08-17
 
 ## Previous Verification
