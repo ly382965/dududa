@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import math
 import re
 import time
 from collections.abc import Iterable, Mapping
@@ -19,6 +20,7 @@ READ_ONLY_PATHS = frozenset(
         "/admin/dashboard/stats",
         "/admin/dashboard/snapshot-v2",
         "/admin/dashboard/user-breakdown",
+        "/admin/usage",
         "/admin/usage/stats",
         "/admin/accounts",
         "/admin/system/version",
@@ -26,6 +28,8 @@ READ_ONLY_PATHS = frozenset(
 )
 ACCOUNT_TODAY_STATS_PATH = re.compile(r"^/admin/accounts/[1-9][0-9]*/today-stats$")
 OVERVIEW_HISTORY_START = date(2026, 7, 13)
+COST_OVERVIEW_URL = "https://mmdustc.top/api/projects/cost/overview"
+COST_OVERVIEW_TIMEOUT_SECONDS = 60.0
 SUB2API_COMMAND_RE = re.compile(
     r"^(?:(?:\[(?:At|at):[^\]]+\]|\[CQ:at,[^\]]+\]|@\S+)\s*)*"
     r"/(?:sub2api|sub2|用量)(?:\s|$)",
@@ -169,6 +173,41 @@ def overview_history_period(timezone: str) -> DateRange:
     if end < OVERVIEW_HISTORY_START:
         raise Sub2APIConfigError("概览累计开始日期不能晚于今天。")
     return DateRange(start=OVERVIEW_HISTORY_START, end=end)
+
+
+async def fetch_cost_overview(
+    *,
+    timeout_seconds: float = COST_OVERVIEW_TIMEOUT_SECONDS,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> dict[str, Any]:
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(max(3.0, min(float(timeout_seconds), 60.0))),
+            follow_redirects=False,
+            transport=transport,
+            headers={
+                "Accept": "application/json",
+                "Accept-Language": "zh-CN",
+                "User-Agent": "Dududa-Sub2API-Readonly/0.1",
+            },
+        ) as client:
+            response = await client.get(COST_OVERVIEW_URL)
+    except httpx.RequestError as exc:
+        raise Sub2APIRequestError("无法连接费用分摊网站的当前轮快照。") from exc
+
+    if response.is_redirect:
+        raise Sub2APIRequestError("费用分摊网站返回了重定向。")
+    if not 200 <= response.status_code < 300:
+        raise Sub2APIRequestError(
+            f"费用分摊网站返回 HTTP {response.status_code}。"
+        )
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise Sub2APIRequestError("费用分摊网站返回了非 JSON 响应。") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("members"), list):
+        raise Sub2APIRequestError("费用分摊网站的当前轮快照格式不兼容。")
+    return payload
 
 
 def access_error(
@@ -331,6 +370,132 @@ class Sub2APIClient:
         return self._expect_dict(
             await self._get("/admin/usage/stats", params=period.as_params())
         )
+
+    async def get_usage_ranking_since(
+        self,
+        period_start: str,
+        period_end: str,
+        *,
+        synced_at: str | None = None,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        cutoff = self._parse_timestamp(period_start)
+        upper_bound = self._parse_timestamp(synced_at) if synced_at else None
+        try:
+            end_date = date.fromisoformat(period_end.strip())
+        except (AttributeError, ValueError) as exc:
+            raise Sub2APIConfigError("当前轮结束日期格式不兼容。") from exc
+
+        safe_limit = max(1, min(int(limit), 100))
+        cache_key = (
+            "safe:/admin/usage/current-cycle",
+            (
+                ("period_start", cutoff.isoformat()),
+                ("period_end", end_date.isoformat()),
+                ("synced_at", upper_bound.isoformat() if upper_bound else ""),
+                ("limit", str(safe_limit)),
+            ),
+        )
+        cached = await self._get_cached(cache_key)
+        if isinstance(cached, dict):
+            return cached
+
+        users: dict[str, dict[str, Any]] = {}
+        totals = {
+            "total_tokens": 0,
+            "total_requests": 0,
+            "total_actual_cost": 0.0,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cache_creation_tokens": 0,
+            "total_cache_read_tokens": 0,
+        }
+        duration_sum = 0.0
+        duration_count = 0
+        for page in range(1, 101):
+            payload = self._expect_dict(
+                await self._get(
+                    "/admin/usage",
+                    params={
+                        "start_date": cutoff.date().isoformat(),
+                        "end_date": end_date.isoformat(),
+                        "page": page,
+                        "page_size": 1000,
+                        "sort_by": "created_at",
+                        "sort_order": "asc",
+                        "exact_total": False,
+                    },
+                    use_cache=False,
+                )
+            )
+            items = payload.get("items") or []
+            if not isinstance(items, list):
+                raise Sub2APIRequestError("Sub2API 用量明细响应格式不兼容。")
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                created_at = self._parse_timestamp(item.get("created_at"))
+                if created_at < cutoff or (upper_bound and created_at > upper_bound):
+                    continue
+                user = item.get("user") if isinstance(item.get("user"), dict) else {}
+                user_id = item.get("user_id") or user.get("id")
+                key = str(user_id or "").strip()
+                if not key:
+                    continue
+                token_fields = {
+                    "input_tokens": self._as_nonnegative_int(item.get("input_tokens")),
+                    "output_tokens": self._as_nonnegative_int(item.get("output_tokens")),
+                    "cache_creation_tokens": self._as_nonnegative_int(
+                        item.get("cache_creation_tokens")
+                    ),
+                    "cache_read_tokens": self._as_nonnegative_int(
+                        item.get("cache_read_tokens")
+                    ),
+                }
+                tokens = sum(token_fields.values())
+                actual_cost = self._as_nonnegative_float(item.get("actual_cost"))
+                row = users.setdefault(
+                    key,
+                    {
+                        "user_id": user_id,
+                        "email": str(user.get("email") or "").strip(),
+                        "username": str(user.get("username") or "").strip(),
+                        "total_tokens": 0,
+                        "requests": 0,
+                        "actual_cost": 0.0,
+                    },
+                )
+                row["total_tokens"] += tokens
+                row["requests"] += 1
+                row["actual_cost"] += actual_cost
+                totals["total_tokens"] += tokens
+                totals["total_requests"] += 1
+                totals["total_actual_cost"] += actual_cost
+                for field, value in token_fields.items():
+                    totals[f"total_{field}"] += value
+                duration = self._as_nonnegative_float(item.get("duration_ms"))
+                if duration > 0:
+                    duration_sum += duration
+                    duration_count += 1
+            if len(items) < 1000:
+                break
+        else:
+            raise Sub2APIRequestError("当前轮用量明细超过安全扫描上限。")
+
+        ranking = sorted(
+            users.values(),
+            key=lambda item: int(item["total_tokens"]),
+            reverse=True,
+        )[:safe_limit]
+        result = {
+            **totals,
+            "average_duration_ms": duration_sum / duration_count
+            if duration_count
+            else 0,
+            "users": ranking,
+        }
+        await self._put_cached(cache_key, result)
+        return result
 
     async def get_accounts(self, *, page_size: int = 100) -> list[dict[str, Any]]:
         size = max(1, min(int(page_size), 100))
@@ -528,6 +693,31 @@ class Sub2APIClient:
         except (TypeError, ValueError):
             return default
         return parsed if parsed > 0 else default
+
+    @staticmethod
+    def _as_nonnegative_int(value: Any) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _as_nonnegative_float(value: Any) -> float:
+        try:
+            parsed = float(value or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        return parsed if math.isfinite(parsed) and parsed >= 0 else 0.0
+
+    def _parse_timestamp(self, value: Any) -> datetime:
+        text = str(value or "").strip()
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise Sub2APIConfigError("当前轮用量时间格式不兼容。") from exc
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=ZoneInfo(self.timezone))
+        return parsed
 
     @staticmethod
     def _sanitize_account(value: dict[str, Any]) -> dict[str, Any]:

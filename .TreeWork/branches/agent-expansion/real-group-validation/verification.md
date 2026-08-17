@@ -4,6 +4,21 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Source parity: current `client.py` is byte-identical to the locally deployed
+  Sub2API v0.6.2 baseline; every original command handler remains present.
+- Command: `uv run --locked python -m unittest tests.test_sub2api_plugin`
+- Result: 27 focused tests passed in 0.592 seconds. The sample covers the exact
+  current-cycle cutoff/aggregation, four requested formatters and four-node
+  merged-forward construction without calling a real QQ Output.
+- Command: `git diff --check`.
+- Result: passed. A read-only container inspection still reported
+  `dududa-astrbot-1` running with restart count 0. This change did not restart,
+  stop, hot-reload or otherwise mutate a container and did not send a QQ
+  message; runtime activation remains a later operator-chosen action.
+- Recorded: 2026-08-17
+
+## Previous Verification
+
 - Command: `uv run --locked python -m unittest tests.test_sub2api_plugin tests.test_repository_contract`
 - Result: 36 focused tests passed. The exact-scope Policy Reader enables
   `auto/on/locked`, disables `off`, missing or malformed managed Scope, and
@@ -31,8 +46,6 @@ Branch: real-group-validation
   ladder, while the `/sub2api` repair is implementation-complete pending that
   single external command.
 - Recorded: 2026-08-17
-
-## Previous Verification
 
 - Command: `npm exec vitest run -- src/composables/useWorkspace.spec.ts`
 - Result: 1 file / 12 tests passed.

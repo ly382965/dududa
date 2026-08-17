@@ -11,6 +11,11 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- 本机运行数据目录中的 Sub2API v0.6.2 已作为原插件功能基线核对：当前工作树
+  `client.py` 与其字节一致，全部原命令 handler 均保留。`overview` 继续复用原有
+  今日、当前计费轮、2026-07-13 起历史累计和上游账号四段取数，只在成功输出端
+  包装为四节点 QQ 合并转发；失败仍为普通文本。插件文档已同步 `/admin/usage`
+  只读路径和四节点行为。本轮没有重启、停止、热重载容器或发送 QQ 消息。
 - S23A--S23E 的离线历史语料里程碑已经完成：1,402 个输入文件被确定性
   分类，155,567 条唯一群消息形成 137,026 个 past-only 窗口；Terra 仅对
   600 条分层样本进行 Silver 预标注，本地 Student 随后完成全量预测并生成

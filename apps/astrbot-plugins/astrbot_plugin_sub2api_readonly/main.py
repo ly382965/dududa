@@ -7,7 +7,7 @@ from typing import Any
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
-from astrbot.api.message_components import Image
+from astrbot.api.message_components import Image, Node, Nodes, Plain
 from astrbot.api.star import Context, Star, register
 
 from .charts import render_total_trend_chart, render_user_trend_chart
@@ -19,6 +19,7 @@ from .client import (
     Sub2APIError,
     Sub2APIRequestError,
     access_error,
+    fetch_cost_overview,
     is_sub2api_event_command,
     overview_history_period,
     parse_date_range,
@@ -30,6 +31,7 @@ from .client import (
 from .formatters import (
     format_account,
     format_accounts,
+    format_cost_overview_snapshot,
     format_models,
     format_overview_history,
     format_range,
@@ -43,7 +45,7 @@ from .policy import resolve_plugin_policy
 PLUGIN_POLICY_ID = "sub2api.auto_query"
 
 HELP_TEXT = """Sub2API 只读查询
-/sub2api overview - 今日、7 月 13 日至今累计和上游账号状态
+/sub2api overview - 今日、当前计费轮、7 月 13 日至今累计和上游账号状态
 /sub2api today - 今日 Token 与用户排名
 /sub2api total - 历史累计用量
 /sub2api range YYYY-MM-DD YYYY-MM-DD - 日期区间汇总
@@ -63,7 +65,7 @@ HELP_TEXT = """Sub2API 只读查询
     "astrbot_plugin_sub2api_readonly",
     "mmdustc",
     "通过管理网页同款只读接口查询 Sub2API 用量和账号状态",
-    "0.5.1",
+    "0.6.3",
 )
 class Sub2APIReadonlyPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -171,7 +173,7 @@ class Sub2APIReadonlyPlugin(Star):
 
     @sub2api.command("overview", alias={"概览", "汇总"})
     async def overview(self, event: AstrMessageEvent):
-        """查看今日、7 月 13 日至今累计和上游账号状态"""
+        """以合并转发查看今日、当前轮、历史排名和上游账号状态"""
         if error := self._access_error(event):
             yield event.plain_result(error)
             event.stop_event()
@@ -183,42 +185,69 @@ class Sub2APIReadonlyPlugin(Star):
             (
                 stats,
                 today_ranking,
+                cost_overview,
                 history_stats,
                 history_ranking,
                 accounts,
             ) = await asyncio.gather(
                 client.get_stats(),
                 client.get_user_ranking(today_period, limit=self.ranking_limit),
+                fetch_cost_overview(),
                 client.get_usage_stats(history_period),
                 client.get_user_ranking(history_period, limit=self.ranking_limit),
                 client.get_accounts(),
             )
-            reply = "\n\n".join(
-                (
-                    format_today(
-                        stats,
-                        today_ranking,
-                        reveal_users=self.reveal_user_identifiers,
-                        ranking_limit=self.ranking_limit,
-                    ),
-                    format_overview_history(
-                        history_stats,
-                        history_ranking,
-                        history_period,
-                        reveal_users=self.reveal_user_identifiers,
-                        ranking_limit=self.ranking_limit,
-                    ),
-                    format_accounts(
-                        accounts,
-                        show_account_names=self.show_account_names,
-                        reveal_identifiers=self.reveal_user_identifiers,
-                        max_rows=self.account_limit,
-                    ),
+            cycle_usage = await client.get_usage_ranking_since(
+                str(cost_overview.get("period_start") or ""),
+                str(cost_overview.get("period_end") or ""),
+                synced_at=str(cost_overview.get("synced_at") or "") or None,
+                limit=self.ranking_limit,
+            )
+            sections = (
+                format_today(
+                    stats,
+                    today_ranking,
+                    reveal_users=self.reveal_user_identifiers,
+                    ranking_limit=self.ranking_limit,
+                ),
+                format_cost_overview_snapshot(
+                    cost_overview,
+                    cycle_usage,
+                    ranking_limit=self.ranking_limit,
+                ),
+                format_overview_history(
+                    history_stats,
+                    history_ranking,
+                    history_period,
+                    reveal_users=self.reveal_user_identifiers,
+                    ranking_limit=self.ranking_limit,
+                ),
+                format_accounts(
+                    accounts,
+                    show_account_names=self.show_account_names,
+                    reveal_identifiers=self.reveal_user_identifiers,
+                    max_rows=self.account_limit,
+                ),
+            )
+            nodes = [
+                Node(
+                    name="Sub2API",
+                    uin=str(event.get_self_id() or "0"),
+                    content=[Plain(section)],
                 )
+                for section in sections
+            ]
+            result = event.chain_result([Nodes(nodes)])
+            result.use_t2i(False)
+            result.use_markdown(False)
+            logger.info(
+                "Sub2API overview prepared merged forward: nodes=%d",
+                len(nodes),
             )
         except Sub2APIError as exc:
-            reply = self._error_reply(exc)
-        yield event.plain_result(reply)
+            yield event.plain_result(self._error_reply(exc))
+        else:
+            yield result
         event.stop_event()
 
     @sub2api.command("today", alias={"今日", "今天"})

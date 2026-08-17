@@ -139,11 +139,12 @@ def format_today(
     return "\n".join(lines).strip()
 
 
-def format_overview_history(
+def _format_overview_usage(
     usage_stats: dict[str, Any],
     ranking: dict[str, Any],
-    period: DateRange,
     *,
+    title: str,
+    ranking_title: str,
     reveal_users: bool,
     ranking_limit: int,
 ) -> str:
@@ -152,7 +153,7 @@ def format_overview_history(
     ]
     total_tokens = _int(usage_stats.get("total_tokens"))
     lines = [
-        f"Sub2API 历史累计用量（{period.start} 至 {period.end}）",
+        title,
         f"Token：{number(total_tokens)}",
         f"请求：{number(usage_stats.get('total_requests'))}",
         f"费用：{money(usage_stats.get('total_actual_cost'))}",
@@ -163,7 +164,7 @@ def format_overview_history(
         f"缓存读取 {number(usage_stats.get('total_cache_read_tokens'))}",
         f"平均响应：{duration_ms(usage_stats.get('average_duration_ms'))}",
         "",
-        "历史累计 Token 用户排名",
+        ranking_title,
     ]
     if not rows:
         lines.append("暂无用量。")
@@ -179,6 +180,55 @@ def format_overview_history(
             f"{number(item.get('requests'))} 次，{money(item.get('actual_cost'))}"
         )
     return "\n".join(lines).strip()
+
+
+def format_overview_history(
+    usage_stats: dict[str, Any],
+    ranking: dict[str, Any],
+    period: DateRange,
+    *,
+    reveal_users: bool,
+    ranking_limit: int,
+) -> str:
+    return _format_overview_usage(
+        usage_stats,
+        ranking,
+        title=f"Sub2API 历史累计用量（{period.start} 至 {period.end}）",
+        ranking_title="历史累计 Token 用户排名",
+        reveal_users=reveal_users,
+        ranking_limit=ranking_limit,
+    )
+
+
+def format_cost_overview_snapshot(
+    snapshot: dict[str, Any],
+    usage: dict[str, Any],
+    *,
+    ranking_limit: int,
+) -> str:
+    period_start = _clean_text(snapshot.get("period_start"), 40) or "未知"
+    period_end = _clean_text(snapshot.get("period_end"), 40) or "未知"
+    text = _format_overview_usage(
+        usage,
+        usage,
+        title=f"Sub2API 当前计费轮累计（{period_start} 至 {period_end}）",
+        ranking_title="当前计费轮 Token 用户排名",
+        reveal_users=True,
+        ranking_limit=ranking_limit,
+    )
+
+    estimate = snapshot.get("pro_estimate")
+    if isinstance(estimate, dict):
+        text += "\n\n" + "\n".join(
+            (
+                "Pro 周额度观测",
+                f"已用：{_float(estimate.get('used_percent')):.1f}%",
+                f"本轮 actual_cost：{money(estimate.get('cycle_actual_cost'))}",
+                f"线性估算单次额度：{money(estimate.get('estimated_quota'))}",
+                f"重置时间：{_clean_text(estimate.get('resets_at'), 60) or '未知'}",
+            )
+        )
+    return text.strip()
 
 
 def format_total(stats: dict[str, Any]) -> str:

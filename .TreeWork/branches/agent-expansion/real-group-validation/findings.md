@@ -4,6 +4,11 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- `/sub2api overview` 的功能基线是本机可核验的原插件 v0.6.2，而不是仓库中较旧
+  的 v0.5.1 Git 基线。原版已经拥有当前计费轮快照、精确起点分页聚合、历史排名、
+  上游账号、缓存与错误处理；本轮不重新设计这些逻辑。由于 2.0 ReplyPolish 默认
+  关闭且只处理合法 LONG 回答，显式管理员命令 `overview` 在自身输出边界直接构造
+  四节点合并转发，避免依赖普通回答风格链。
 - S23 completion is the bounded single-group ladder plus closeout. Expansion to
   3–5 groups is a later authorization decision, not an inherited grant.
 - iCourse cannot satisfy digest-source readiness; it remains a course-review

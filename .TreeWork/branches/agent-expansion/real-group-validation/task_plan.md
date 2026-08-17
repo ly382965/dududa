@@ -139,6 +139,10 @@ Title: S23 Authorized Real-Group Validation
   已加载插件，NapCat OneBot 反向 WebSocket 已连接，目标群的 Policy 已解析为
   `locked`。方法级真实只读查询已成功，等待用户在重连后重新发送命令
   以闭合 QQ 入站与回复的最终验收。
+- [x] `/sub2api overview` 完整复用本机原插件 v0.6.2 的命令、权限、缓存、
+  Client、错误处理和四段取数逻辑；仅将成功结果包装为四节点 QQ 合并转发，
+  节点依次为今日、当前计费轮、2026-07-13 起历史累计和上游账号。错误仍返回
+  普通文本。本次只做聚焦验证，不重启、停止或热重载容器。
 - [ ] 自动复读仍需单独接通 Web Policy Adapter；不得因 `/sub2api` 已接通而
   声称复读也已由在线 AstrBot 消费会话 Policy。
 - [ ] One authorized group's no-send/no-write Shadow proves zero Output, Tool
@@ -228,6 +232,9 @@ Title: S23 Authorized Real-Group Validation
   AstrBot plugin runtime and verify policy resolution plus a real read-only
   method smoke; final QQ end-to-end evidence still requires a user-issued
   post-reconnect command.
+- [x] Preserve the original Sub2API v0.6.2 implementation and add only the
+  four-node merged-forward presentation for `overview`; run the focused
+  Sub2API tests and leave the running container lifecycle unchanged.
 - [ ] Connect automatic reread to the Web Policy separately; a matched Web
   trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and

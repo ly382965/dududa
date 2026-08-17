@@ -9,7 +9,7 @@ help: |
   /sub2api trenduser [天数d] 生成前 10 名用户 Token 趋势图。
   /sub2api trenduser sum [天数d] 生成前 10 名用户区间累计趋势图。
   /sub2api accounts 查看上游账号状态。
-version: v0.5.1
+version: v0.6.3
 author: mmdustc
 repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_sub2api_readonly
 support_platforms:

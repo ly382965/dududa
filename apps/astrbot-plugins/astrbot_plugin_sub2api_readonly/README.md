@@ -21,8 +21,17 @@
 /sub2api help
 ```
 
-`overview` 固定展示今日用量与排名、从 2026-07-13 至今的累计用量与排名，
-以及上游账号状态。`total` 仍展示服务记录的全历史累计数据。
+`overview` 固定生成一条 QQ 合并转发消息，包含四个节点：
+
+1. 今日用量与 Token 用户排名；
+2. 当前计费轮累计与 Token 用户排名；
+3. 从 2026-07-13 至今的历史累计与 Token 用户排名；
+4. 上游账号状态。
+
+当前计费轮的起止时间和 Pro 额度观测来自费用分摊网站的只读快照，成员
+明细继续使用原插件的 Sub2API 管理员只读用量接口，按照网站给出的精确
+起点聚合。`overview` 之外的命令、权限、缓存、客户端和错误处理保持原插件
+行为；`total` 仍展示服务记录的全历史累计数据。
 
 命令组别名为 `/sub2` 和 `/用量`，子命令也提供对应中文别名。日期范围包含首尾
 两天，默认单次最多查询 90 天。
@@ -63,6 +72,7 @@
 - `/api/v1/admin/dashboard/stats`
 - `/api/v1/admin/dashboard/snapshot-v2`
 - `/api/v1/admin/dashboard/user-breakdown`
+- `/api/v1/admin/usage`
 - `/api/v1/admin/usage/stats`
 - `/api/v1/admin/accounts`
 - `/api/v1/admin/accounts/{id}/today-stats`

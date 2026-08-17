@@ -24,11 +24,13 @@ from astrbot_plugin_sub2api_readonly.charts import (
     user_trend_series,
 )
 from astrbot_plugin_sub2api_readonly.client import (
+    COST_OVERVIEW_TIMEOUT_SECONDS,
     DateRange,
     Sub2APIClient,
     Sub2APIConfigError,
     Sub2APIRequestError,
     access_error,
+    fetch_cost_overview,
     is_sub2api_command,
     is_sub2api_event_command,
     normalize_base_url,
@@ -41,6 +43,7 @@ from astrbot_plugin_sub2api_readonly.client import (
 )
 from astrbot_plugin_sub2api_readonly.formatters import (
     format_accounts,
+    format_cost_overview_snapshot,
     format_overview_history,
     format_range,
     format_today,
@@ -534,6 +537,51 @@ class Sub2APIUtilityTests(unittest.TestCase):
             history_text.index("lo***@example.invalid"),
         )
 
+        cost_text = format_cost_overview_snapshot(
+            {
+                "period_start": "2026-08-13 14:00",
+                "period_end": "2026-08-14",
+                "pro_estimate": {
+                    "used_percent": 9,
+                    "cycle_actual_cost": 30,
+                    "estimated_quota": 333.3333,
+                    "resets_at": "2026-08-20T14:00:00+08:00",
+                },
+            },
+            {
+                "total_tokens": 300,
+                "total_requests": 3,
+                "total_actual_cost": 30,
+                "users": [
+                    {
+                        "email": "low@example.invalid",
+                        "total_tokens": 100,
+                        "requests": 2,
+                        "actual_cost": 10,
+                    },
+                    {
+                        "email": "high@example.invalid",
+                        "total_tokens": 200,
+                        "requests": 1,
+                        "actual_cost": 20,
+                    },
+                ],
+            },
+            ranking_limit=10,
+        )
+        self.assertIn(
+            "当前计费轮累计（2026-08-13 14:00 至 2026-08-14）",
+            cost_text,
+        )
+        self.assertIn("当前计费轮 Token 用户排名", cost_text)
+        self.assertIn("1. high@example.invalid - 200 (66.7%)，1 次，$20.0000", cost_text)
+        self.assertNotIn("hi***@example.invalid", cost_text)
+        self.assertLess(
+            cost_text.index("high@example.invalid"),
+            cost_text.index("low@example.invalid"),
+        )
+        self.assertIn("已用：9.0%", cost_text)
+
     def test_identifier_masking(self) -> None:
         self.assertEqual(mask_identifier("ab@example.com"), "ab***@example.com")
         self.assertEqual(
@@ -564,6 +612,25 @@ class Sub2APIUtilityTests(unittest.TestCase):
         self.assertFalse({"put", "patch", "delete"} & methods)
         self.assertEqual(len(post_calls), 1)
         self.assertIn("get", methods)
+
+    def test_overview_builds_four_section_merged_forward(self) -> None:
+        source_path = (
+            ROOT
+            / "apps"
+            / "astrbot-plugins"
+            / "astrbot_plugin_sub2api_readonly"
+            / "main.py"
+        )
+        source = source_path.read_text(encoding="utf-8")
+        for formatter in (
+            "format_today(",
+            "format_cost_overview_snapshot(",
+            "format_overview_history(",
+            "format_accounts(",
+        ):
+            self.assertIn(formatter, source)
+        self.assertIn("event.chain_result([Nodes(nodes)])", source)
+        self.assertIn("for section in sections", source)
 
     def test_api_error_does_not_echo_server_message(self) -> None:
         response = httpx.Response(
@@ -620,6 +687,109 @@ class Sub2APIUtilityTests(unittest.TestCase):
 
 
 class Sub2APIClientTests(unittest.IsolatedAsyncioTestCase):
+    def test_cost_overview_timeout_covers_website_sync_window(self) -> None:
+        self.assertEqual(COST_OVERVIEW_TIMEOUT_SECONDS, 60.0)
+
+    async def test_current_cycle_usage_is_aggregated_after_exact_cutoff(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "POST":
+                return login_response()
+            self.assertEqual(request.url.path, "/api/v1/admin/usage")
+            self.assertEqual(request.url.params["start_date"], "2026-08-13")
+            self.assertEqual(request.url.params["end_date"], "2026-08-14")
+            return response(
+                {
+                    "items": [
+                        {
+                            "user_id": 1,
+                            "created_at": "2026-08-13T13:59:59+08:00",
+                            "input_tokens": 999,
+                            "actual_cost": 999,
+                            "user": {
+                                "id": 1,
+                                "email": "before@example.invalid",
+                            },
+                        },
+                        {
+                            "user_id": 2,
+                            "created_at": "2026-08-13T14:00:00+08:00",
+                            "input_tokens": 100,
+                            "output_tokens": 20,
+                            "cache_creation_tokens": 5,
+                            "cache_read_tokens": 75,
+                            "actual_cost": 2.5,
+                            "duration_ms": 1000,
+                            "user": {
+                                "id": 2,
+                                "email": "full@example.invalid",
+                                "username": "full-user",
+                            },
+                        },
+                        {
+                            "user_id": 2,
+                            "created_at": "2026-08-14T10:00:00+08:00",
+                            "input_tokens": 50,
+                            "output_tokens": 10,
+                            "actual_cost": 1.5,
+                            "duration_ms": 500,
+                            "user": {
+                                "id": 2,
+                                "email": "full@example.invalid",
+                                "username": "full-user",
+                            },
+                        },
+                        {
+                            "user_id": 3,
+                            "created_at": "2026-08-14T12:00:01+08:00",
+                            "input_tokens": 999,
+                            "actual_cost": 999,
+                            "user": {
+                                "id": 3,
+                                "email": "after@example.invalid",
+                            },
+                        },
+                    ]
+                }
+            )
+
+        client = self._client(handler)
+        try:
+            usage = await client.get_usage_ranking_since(
+                "2026-08-13 14:00",
+                "2026-08-14",
+                synced_at="2026-08-14T12:00:00+08:00",
+                limit=10,
+            )
+        finally:
+            await client.close()
+        self.assertEqual(usage["total_tokens"], 260)
+        self.assertEqual(usage["total_requests"], 2)
+        self.assertEqual(usage["total_actual_cost"], 4.0)
+        self.assertEqual(usage["average_duration_ms"], 750)
+        self.assertEqual(usage["users"][0]["email"], "full@example.invalid")
+        self.assertEqual(usage["users"][0]["total_tokens"], 260)
+
+    async def test_cost_overview_uses_public_website_snapshot_without_auth(
+        self,
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(request.method, "GET")
+            self.assertEqual(request.url.host, "mmdustc.top")
+            self.assertEqual(request.url.path, "/api/projects/cost/overview")
+            self.assertNotIn("Authorization", request.headers)
+            return httpx.Response(
+                200,
+                json={
+                    "period_start": "2026-08-13 14:00",
+                    "period_end": "2026-08-14",
+                    "members": [],
+                    "total_actual_cost": 0,
+                },
+            )
+
+        payload = await fetch_cost_overview(transport=httpx.MockTransport(handler))
+        self.assertEqual(payload["period_start"], "2026-08-13 14:00")
+
     async def test_login_and_get_are_cached_and_include_ui_headers(self) -> None:
         requests: list[httpx.Request] = []
 
