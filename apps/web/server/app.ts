@@ -37,6 +37,11 @@ import {
   InternalTestError,
   type InternalTestGateway,
 } from './internal-test'
+import {
+  McpConsoleClientError,
+  UnavailableMcpConsoleClient,
+  type McpConsoleClient,
+} from './mcp-console'
 import { readBrowserUpload } from './uploads'
 
 export interface DududaServerOptions {
@@ -44,6 +49,7 @@ export interface DududaServerOptions {
   publicDir: string
   controlPlane?: ControlPlaneClient
   internalTest?: InternalTestGateway
+  mcpConsole?: McpConsoleClient
   maxRequestBytes?: number
 }
 
@@ -100,6 +106,10 @@ function routeError(response: ServerResponse, error: unknown): void {
     return
   }
   if (error instanceof InternalTestError) {
+    json(response, error.status, { error: error.message })
+    return
+  }
+  if (error instanceof McpConsoleClientError) {
     json(response, error.status, { error: error.message })
     return
   }
@@ -367,6 +377,7 @@ export function createDududaServer(options: DududaServerOptions) {
   const maxRequestBytes = options.maxRequestBytes ?? 64 * 1024
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const internalTest = options.internalTest ?? createInternalTestGateway()
+  const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
   const eventClients = new Set<ServerResponse>()
   const eventReplay: ReplayableWorkspaceEvent[] = []
   let nextWorkspaceEventId = 1
@@ -415,6 +426,23 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       if (method === 'GET' && url.pathname === '/api/internal-test/agent/catalog') {
         json(response, 200, await internalTest.agentCatalog())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/internal-test/mcp/catalog') {
+        json(response, 200, await mcpConsole.catalog())
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/internal-test/mcp/invoke') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源超级管理员页面调用 MCP Capability' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        if (typeof body.capabilityId !== 'string' || !body.arguments || typeof body.arguments !== 'object' || Array.isArray(body.arguments)) {
+          json(response, 400, { error: 'MCP Capability 调用参数无效' })
+          return
+        }
+        json(response, 200, await mcpConsole.invoke(body.capabilityId, body.arguments as Record<string, unknown>))
         return
       }
       if (method === 'GET' && url.pathname === '/api/internal-test/agent/config') {

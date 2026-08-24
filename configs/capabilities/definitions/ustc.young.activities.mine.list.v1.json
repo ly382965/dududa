@@ -1,0 +1,324 @@
+{
+  "allowed_contexts": [
+    "private"
+  ],
+  "capability_id": "ustc.young.activities.mine.list.v1",
+  "category": "campus.second-class",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:e033f27e0d94b967dddff894631fd4208ee5261be83debf07cb4a9460104fb4c",
+  "description": "List activities associated with the configured CAS service account.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activities.mine.list.v1.input:v1:sha-256:c688c4bfc4fd20b114dd9531401640550db2fad405400209807f799f1adfcb54",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "default": 20,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "title": "young_list_my_activitiesArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.activities.mine.list.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "List my USTC second-class activities",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activities.mine.list.v1.output:v1:sha-256:6191926d9e8bdefa19be488a1e5c0d0a19db54aa79a3b1130fcf83d5b0660e9d",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "account_scoped": {
+          "type": "boolean"
+        },
+        "authentication": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "error": {
+          "maxLength": 200,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "activity_id": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "apply_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "can_apply": {
+                "type": "boolean"
+              },
+              "capacity": {
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "registered": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "contact": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "department": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "description": {
+                "maxLength": 20000,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "event_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "is_registered": {
+                "type": "boolean"
+              },
+              "kind": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "labels": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "maxLength": 128,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "maxLength": 300,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              "module": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "maxLength": 100,
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "valid_hours": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "activity_id",
+              "status",
+              "kind",
+              "apply_window",
+              "event_window",
+              "capacity",
+              "is_registered",
+              "can_apply",
+              "module",
+              "department",
+              "labels"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "available",
+        "authentication",
+        "items",
+        "total",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.activities.mine.list.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "personal",
+  "provider": {
+    "provider_id": "mcp.ustc-young",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fbc6d4dfc1fd45747dd6fc54933e32b3407c4184822ff3aba62747dddbda4140",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-young-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.young.self.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "activity",
+    "personal",
+    "second-class",
+    "ustc"
+  ]
+}

@@ -183,14 +183,17 @@ describe('internal-test gateway', () => {
     expect(catalog.plugins).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'icourse.read',
-        available: false,
+        available: true,
         installed: true,
         policyManaged: true,
         runtimeTarget: 'web_agent',
-        runtimeReadiness: 'unavailable',
+        runtimeReadiness: 'configured',
         executionKind: 'agent_capability',
         kind: 'mcp',
       }),
+      expect.objectContaining({ id: 'ustc.young.read', available: true, kind: 'mcp' }),
+      expect.objectContaining({ id: 'ustc.academic.read', available: true, kind: 'mcp' }),
+      expect.objectContaining({ id: 'ustc.shuttle.read', available: true, kind: 'mcp' }),
       expect.objectContaining({
         id: 'image.generate.gpt-image-2',
         available: false,
@@ -339,7 +342,7 @@ describe('internal-test gateway', () => {
           charactersRead: 6_000,
         },
         plugins: {
-          'icourse.read': { mode: 'off', available: false, eligible: false, selectedForRun: false },
+          'icourse.read': { mode: 'off', available: true, eligible: false, selectedForRun: false },
           'social.reread.auto': {
             mode: 'auto',
             available: true,
@@ -371,7 +374,7 @@ describe('internal-test gateway', () => {
         'reply_intensity.preferred_overridden',
         'context_length.locked_by_admin',
         'group_chat_style.locked_by_admin',
-        'plugin.icourse.read.unavailable',
+        'plugin.icourse.read.off_by_admin',
         'plugin.social.reread.auto.waiting_for_group_repeat',
         'plugin.sub2api.auto_query.waiting_for_exact_command',
         'tools.none_called_by_candidate_runtime',

@@ -1,0 +1,177 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.shuttle.schedule.get.v1",
+  "category": "campus.shuttle",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:b5f1dcb5459b8bdfbe1ce06683041627027ce6c0f93f101e1048a985c5b0108a",
+  "description": "Read the current official shuttle notice, timetable image and revision-bound structured schedule.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.shuttle.schedule.get.v1.input:v1:sha-256:905a0387a5699164f9059e4f317ae90ff1b7b3ad6c03fb8a89b7cf463242fec1",
+    "document": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "shuttle_current_scheduleArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.shuttle.schedule.get.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read USTC shuttle schedule",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.shuttle.schedule.get.v1.output:v1:sha-256:b2f83eba6f8ca0b4bca3650779c9dd5efc80831c164d5a531009a33b25a08e73",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "image_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "notice": {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "routes": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "direction": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "stops": {
+                "items": {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "type": "array"
+              },
+              "trips": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "east": {
+                      "maxLength": 8,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "hightech": {
+                      "maxLength": 8,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "research": {
+                      "maxLength": 8,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "west": {
+                      "maxLength": 8,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 32,
+                "type": "array"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "structured": {
+          "type": "boolean"
+        },
+        "title": {
+          "maxLength": 300,
+          "type": "string"
+        },
+        "valid_from": {
+          "maxLength": 16,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "valid_to": {
+          "maxLength": 16,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "title",
+        "structured",
+        "routes",
+        "notice",
+        "image_url",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.shuttle.schedule.get.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.ustc-shuttle",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:1fdbd2acda171c07c68e26e22cb1216b8f01e4d08f3900a67c55c55b2f906e57",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-shuttle-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.shuttle.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "bus",
+    "schedule",
+    "shuttle",
+    "ustc"
+  ]
+}

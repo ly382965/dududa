@@ -8,6 +8,8 @@ RUN cd /AstrBot \
 
 COPY packages/dududa-agent /opt/dududa/dududa-agent
 COPY services/mcp/icourse /opt/dududa/icourse-mcp
+COPY services/mcp/ustc-campus /opt/dududa/ustc-campus-mcp
+COPY services/mcp/console /opt/dududa/mcp-console
 COPY services/mcp/unified-worker /opt/dududa/unified-mcp-worker
 COPY apps/astrbot-plugins/astrbot_plugin_dududa_core/requirements.txt /opt/dududa/dududa-core-requirements.txt
 RUN python -m pip install --no-cache-dir \
@@ -16,6 +18,8 @@ RUN python -m pip install --no-cache-dir \
     -r /opt/dududa/dududa-core-requirements.txt \
     /opt/dududa/dududa-agent \
     /opt/dududa/icourse-mcp \
+    /opt/dududa/ustc-campus-mcp \
+    /opt/dududa/mcp-console \
     && uv sync --project /opt/dududa/unified-mcp-worker \
         --locked --no-dev --python 3.12 \
     && python -c 'import importlib.metadata; assert importlib.metadata.version("mcp") == "1.29.0"' \

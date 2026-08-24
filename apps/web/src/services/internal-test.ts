@@ -12,6 +12,8 @@ import type {
   InternalTestSamplesPage,
   InternalTestSamplesQuery,
   InternalTestStatus,
+  McpConsoleCatalog,
+  McpConsoleInvocation,
 } from '../types/internal-test'
 
 export interface InternalTestAdapter {
@@ -59,6 +61,14 @@ export class HttpInternalTestAdapter implements InternalTestAdapter {
 
   respond(payload: InternalTestAgentRequest): Promise<InternalTestAgentResponse> {
     return this.request('/api/internal-test/agent/respond', payload)
+  }
+
+  mcpCatalog(): Promise<McpConsoleCatalog> {
+    return this.request('/api/internal-test/mcp/catalog')
+  }
+
+  invokeMcp(capabilityId: string, argumentsValue: Record<string, unknown>): Promise<McpConsoleInvocation> {
+    return this.request('/api/internal-test/mcp/invoke', { capabilityId, arguments: argumentsValue })
   }
 
   samples(query: InternalTestSamplesQuery = {}): Promise<InternalTestSamplesPage> {

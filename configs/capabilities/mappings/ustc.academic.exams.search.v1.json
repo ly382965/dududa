@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ecbdbf17c7f175f08619cb054c44070655ecd5de3a0cecc5f11c5f084a8a8d53",
+  "capability_id": "ustc.academic.exams.search.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-academic.catalog_search_exams.input:v1:sha-256:25cba812e824b41dd06e87b217432bd637dc444a1ab5911f8e38ba76e3c41139",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-academic.catalog_search_exams.output:v1:sha-256:3365804d0c5fd5a18fa89b95c2a506ff6762f017acd58be63f70ba764419bee9",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:8666c6e801c99d614927ec0af705ba7301c071daa479c592e078a59802cd5d76",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "ustc-academic",
+  "tool_name": "catalog_search_exams"
+}

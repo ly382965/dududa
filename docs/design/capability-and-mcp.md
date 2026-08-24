@@ -6,12 +6,13 @@
   S13 Capability Runtime 均已完成本地实现与验证；S15C 只批准 source-neutral Contract、Fake
   Provider 和本地固定 fixture，不包含真实主动日报来源 Adapter。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
-- 当前唯一真实 MCP Server：`services/mcp/icourse/`。
+- 当前真实 MCP Server：`icourse`、`ustc-young`、`ustc-academic`、`ustc-shuttle`；
+  后三者共享 `services/mcp/ustc-campus/` 实现包，但拥有独立 Registry 身份和 Session。
 - 当前配置目录：`configs/capabilities/`、`configs/mcp/servers/`；旧路径只保留一 Release
   兼容链接。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 iCourse service。
 
-本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现该离线闭环；生产 Rollout 仍拒绝 Tools，本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
+本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现该离线闭环；四个校园查询 Server 已接入超级管理员 Web Console，但生产 Agent Rollout 仍拒绝 Tools。本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
 
 接口权威以 `dududa/capabilities/contracts.py`、`dududa/ports/capabilities.py` 和严格 JSON
 配置为准；本文代码块用于展示稳定公共形状和所有权，不替代构造校验、摘要函数或 Contract

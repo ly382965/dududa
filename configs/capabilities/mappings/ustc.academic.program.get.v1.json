@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:316391a117d42584d7a5e5553522f245194ccf93b752bee28bfaa1c89c1c9147",
+  "capability_id": "ustc.academic.program.get.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-academic.catalog_get_program.input:v1:sha-256:07073478fb32cf9bf6ebb2deacc4e450e8c73f84cce2287cbfc745fb6b7a1124",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-academic.catalog_get_program.output:v1:sha-256:5ff41b8926e0fac5227d4c995097c243b53cd7dd476daa348e145f57756e82da",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:89d8ee1284d2f9bb536ecf39fc9039c6bcd15d584be6791128cb76430f1c3e28",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "ustc-academic",
+  "tool_name": "catalog_get_program"
+}

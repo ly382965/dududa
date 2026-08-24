@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:57b7cfc1f8b7c6c4a2da4f1f031dfc95b524436523fd0a8cff85d5036ec3407a",
+  "capability_id": "ustc.shuttle.trips.search.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-shuttle.shuttle_search_trips.input:v1:sha-256:1f2028811a72e55f647d36c2d0978889baa2f0075efc7f4b4ce2cd0cee2ce238",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-shuttle.shuttle_search_trips.output:v1:sha-256:bfa6e039868bcfe63e4b9aef773c50f830383a9feaba23624f69c0e59a0cefd3",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:009ae49476bea971fe5d37f878586b42d1732dfe6bdc4b7bbfad0bf6efb12f77",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "ustc-shuttle",
+  "tool_name": "shuttle_search_trips"
+}

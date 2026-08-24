@@ -73,15 +73,20 @@ Last sync: unix:1786706085
 - 每次 Console Run 现在返回六项实际选择、reason codes、上下文使用量和插件
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
   候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
-- Catalog 已如实区分 `installed`、`configured`、AstrBot Runtime online 和本轮
-  实际调用四层事实。iCourse 是唯一真实 MCP，`gpt-image-2` 是已知图片能力，
-  但二者当前 Console 执行链均不可调用。自动复读和现有 `/sub2api 自动查询` 已
+- Unified MCP 现已注册四个真实只读 Server：匿名 iCourse、认证二课、公开教务处
+  和校车，共映射 17 个受批准 Capability。Web 超级管理员工作台按 Capability ID
+  和 input schema 直接调用，浏览器不接受任意 `server/tool` 透传。现有本机 CAS
+  凭据文件以只读挂载复用，固定提交版 `pyustc` 已真实完成二课登录和查询；密码、
+  Cookie、TGC 与本机路径不进入 Git、Web 响应或普通日志。校园资讯、arXiv 和行业
+  资讯仍不是已实现的主动 Source Provider。
+- Catalog 继续如实区分 `installed`、`configured`、Runtime online 和本轮实际调用。
+  `gpt-image-2` 是已知图片能力但不属于 MCP。自动复读和现有 `/sub2api 自动查询` 已
   恢复为独立 AstrBot 插件，默认 `off`，按 `accountId + conversationId` 由会话
   Policy 配置；WebUI 配置身份为 `super_admin`，声明的 Bot 执行身份为 `admin`。
   两者源码、动态 Catalog/配置面和 Compose 装配已完成。`/sub2api` 已新增精确
   Scope Policy Reader，并由在线 AstrBot 加载；NapCat 已通过 OneBot 反向
-  WebSocket 连接该实例。自动复读尚未接入同一 Policy。未接的校园、arXiv、行业
-  或搜索能力没有被伪装为已安装插件。
+  WebSocket 连接该实例。自动复读尚未接入同一 Policy。未接的主动资讯与搜索能力
+  没有被伪装为已安装插件。
 - Console 已分开呈现管理员期望与实际 Runtime 状态。被动自动回复实际保持
   `rollout_mode=off`、delivery 关闭、kill switch 开启；主动群聊参与只有 S15E
   Probe Shadow，并明确为 `NO SEND`。Web candidate 的 `triggerMatched=true` 只
@@ -133,6 +138,10 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 完成 USTC 校园 MCP 纵切：新增二课、教务处和校车三个独立 Registry Server，
+  与 iCourse 共用 Unified Client/Capability 控制面；公开查询真实 Smoke、二课 CAS
+  登录与筛选项查询、Web schema 表单调用均成功。只重建了独立 `mcp-console`，
+  AstrBot 与 NapCat 的容器 ID 和启动时间未变。
 - Completed S23A--S23E: deterministic intake/deduplication, 3--12 message
   past-only windows, a time-boxed 600-window Terra Silver sample, 464 compiled
   Silver rows, group-isolated local Students, 137,026 predictions and a private
@@ -224,8 +233,8 @@ Last sync: unix:1786706085
   当前测试只证明结构接线，不能证明风格质量。
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
-- 将 iCourse 和 `gpt-image-2` 接入正式 Console Capability 执行链；当前 Catalog
-  只准确呈现其安装/预留事实，所有本轮插件的 `selectedForRun` 仍为 `false`。
+- `gpt-image-2` 仍需接入正式图片 Capability；四个校园 MCP 的 Web 直接调用已完成，
+  但 Agent 自动选择这些 Capability 仍受当前 Tool/Capability rollout 关闭状态约束。
 - 自动复读仍需接通 Web Policy Adapter。`/sub2api 自动查询` 已由在线 AstrBot
   加载并解析指定群 Scope，但仍需用户在重连后重新发送一次命令，才能记录真实
   QQ 入站与回复的端到端证据。

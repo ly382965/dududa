@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ustc-campus-mcp"
+version = "0.1.0"
+description = "Read-only MCP servers for USTC academic, second-class and shuttle services"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "httpx>=0.28.1,<0.29",
+    "mcp>=1.2.0,<2.0.0",
+    "pydantic-settings>=2.14.2,<2.15.0",
+    "pyustc @ https://github.com/USTC-XeF2/pyustc/archive/f16d9465fd572463cb1b239d310e02010593386c.zip",
+]
+
+[project.scripts]
+ustc-campus-mcp = "ustc_campus_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

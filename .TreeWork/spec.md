@@ -20,12 +20,13 @@ Agent projections and real Output remain external. Unrelated and isolated
 repositories are outside this workspace's development evidence and are never
 used as implementation inputs.
 
-iCourse is the sole real MCP Server currently present. Its dedicated plugin
-Client hard-codes the Server process and opens a new session per operation;
-the accepted Unified MCP ADR is design, not implementation. This expansion
-therefore treats iCourse as the compatibility Adapter and a local Fake as the
-extension proof. Campus, arXiv and industry fixtures establish source contracts
-without implying that their live MCP Servers or Adapters exist.
+At the start of the offline expansion, iCourse was the sole real MCP Server and
+its dedicated plugin Client opened a new session per operation. S12 therefore
+used iCourse as the compatibility Adapter and a local Fake as the extension
+proof. The 2026-08-24 S23 extension now adds real read-only second-class,
+academic and shuttle Servers through that completed boundary. Campus news,
+arXiv and industry fixtures still establish source contracts without implying
+that their live Source Servers or Adapters exist.
 
 ### Confirmed Long-Horizon Direction
 
@@ -318,12 +319,12 @@ canonical Schema snapshot atomically and retains last-known-good evidence;
 discovery changes facts but grants no Capability. Unknown write outcomes are
 not retried without business idempotency evidence.
 
-iCourse is the only real compatibility Adapter in this Goal. Its existing
-command behavior and cache path remain rollback-compatible while approved
-read-only tools migrate behind the unified Port. Crawl, refresh, robots and
-export stay outside model-visible Capability. One Fake Server must pass the
-same Client Contract and be addable through Registry plus Capability mapping
-without changing Domain, Runtime or the generic Client.
+S12 used iCourse as the only real compatibility Adapter in its original Goal.
+Its existing command behavior and cache path remain rollback-compatible while
+approved read-only tools migrate behind the unified Port. Crawl, refresh,
+robots and export stay outside model-visible Capability. The later S23 campus
+extension reuses the proven Registry/Capability path and does not change
+Domain, Runtime or the generic Client.
 
 S13 keeps the MCP Registry separate from the Capability Registry. Retrieval
 filters stable business definitions by actor permission, Scope, privacy, risk,

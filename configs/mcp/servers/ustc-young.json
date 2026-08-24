@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "server_id": "ustc-young",
+  "enabled": true,
+  "transport": "stdio",
+  "protocol_mode": "legacy",
+  "endpoint": {
+    "command": "/usr/local/bin/python",
+    "args": [
+      "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
+      "--service",
+      "young"
+    ],
+    "cwd": "/AstrBot/data/ustc-campus-mcp",
+    "env_allowlist": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "PYTHONPATH"
+    ]
+  },
+  "secret_refs": [
+    {
+      "secret_id": "ustc-cas-username",
+      "target": "env",
+      "target_name": "USTC_CAS_USR"
+    },
+    {
+      "secret_id": "ustc-cas-password",
+      "target": "env",
+      "target_name": "USTC_CAS_PWD"
+    }
+  ],
+  "allowed_tools": [
+    "young_connection_status",
+    "young_get_activity",
+    "young_list_facets",
+    "young_list_my_activities",
+    "young_search_activities"
+  ],
+  "denied_tools": [
+    "young_apply",
+    "young_cancel_apply",
+    "young_get_applicants"
+  ],
+  "timeouts_seconds": {
+    "connect": 20,
+    "discovery": 10,
+    "call": 45,
+    "maximum_call": 90,
+    "close": 5
+  },
+  "retry": {
+    "maximum_attempts": 1,
+    "base_delay_ms": 100
+  },
+  "circuit": {
+    "failure_threshold": 3,
+    "failure_window_seconds": 60,
+    "open_duration_seconds": 30
+  },
+  "maximum_concurrency": 1,
+  "schema_ttl_seconds": 300,
+  "config_revision": "ustc-young-pyustc-f16d9465"
+}

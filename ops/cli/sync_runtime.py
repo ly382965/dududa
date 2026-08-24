@@ -7,7 +7,6 @@ import os
 import tempfile
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 def merge_mcp_config(data_root: Path) -> None:
     template_path = REPO_ROOT / "configs" / "astrbot" / "mcp_server.json"
@@ -20,11 +19,15 @@ def merge_mcp_config(data_root: Path) -> None:
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"refusing to overwrite invalid JSON: {target_path}") from exc
     if not isinstance(current, dict):
-        raise RuntimeError(f"expected a JSON object in {target_path}")
+        raise TypeError(f"expected a JSON object in {target_path}")
     servers = current.setdefault("mcpServers", {})
     if not isinstance(servers, dict):
-        raise RuntimeError(f"expected mcpServers to be an object in {target_path}")
-    servers["icourse"] = template["mcpServers"]["icourse"]
+        raise TypeError(f"expected mcpServers to be an object in {target_path}")
+    template_servers = template.get("mcpServers", {})
+    if not isinstance(template_servers, dict):
+        raise TypeError(f"expected mcpServers to be an object in {template_path}")
+    for server_id, definition in template_servers.items():
+        servers[server_id] = definition
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=".mcp_server.", dir=target_path.parent)
@@ -42,12 +45,12 @@ def merge_mcp_config(data_root: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Merge safe Dududa templates into AstrBot runtime data.")
     parser.add_argument("--data-root", required=True, type=Path)
-    parser.add_argument("--force-config", action="store_true", help="Reserved for compatibility; icourse is always merged.")
+    parser.add_argument("--force-config", action="store_true", help="Reserved for compatibility; approved MCP servers are always merged.")
     args = parser.parse_args()
 
     data_root = args.data_root.expanduser().resolve()
     merge_mcp_config(data_root)
-    print("merged MCP server: icourse")
+    print("merged MCP servers: " + ", ".join(sorted(json.loads((REPO_ROOT / "configs" / "astrbot" / "mcp_server.json").read_text(encoding="utf-8"))["mcpServers"])))
     return 0
 
 

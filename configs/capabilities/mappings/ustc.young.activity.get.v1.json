@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:bb3608d3519788bd12d9460013a06500ae44d9b58164c49351d5c0653bdeda3f",
+  "capability_id": "ustc.young.activity.get.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-young.young_get_activity.input:v1:sha-256:072475acd4afbc78ca0ecb470e93d5517dcc0ad771276432e914de1594cbc1cc",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-young.young_get_activity.output:v1:sha-256:988a1182a9a0fd1b7606b114e61478f9dfaef9212ed939111ffc514d33d183b6",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:dd5bbde4fcb1cf7f107df707bd96b0e3bb026106ca9598ab0b85f623bef902da",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "ustc-young",
+  "tool_name": "young_get_activity"
+}

@@ -1,0 +1,149 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.academic.semesters.list.v1",
+  "category": "campus.academic",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:b989fdcda689f33b2a0e33832fa617e6566c5ba782f159bc2cbf92adac809285",
+  "description": "List official teaching semesters and stable integer semester IDs.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.semesters.list.v1.input:v1:sha-256:27f315d9960640916a811db088f65c308cf90a35834d66ec22267cfe8e1479b6",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "include_future": {
+          "default": true,
+          "title": "Include Future",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 20,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "catalog_list_semestersArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.semesters.list.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "List USTC semesters",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.semesters.list.v1.output:v1:sha-256:8fffc6f0a1b6c7c722227699b0c362843416267099135c8282b86a1f448dba78",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 32,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "end": {
+                "maxLength": 32,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "id": {
+                "type": "integer"
+              },
+              "is_last": {
+                "type": "boolean"
+              },
+              "name": {
+                "maxLength": 200,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "start": {
+                "maxLength": 32,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "items",
+        "total",
+        "offset",
+        "limit",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.semesters.list.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.ustc-academic",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fb36b432e7f4de39877be59d9ff035548b6968737c750e7ad6ec84837bf322ce",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-academic-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.academic.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "academic",
+    "semester",
+    "ustc"
+  ]
+}

@@ -1,10 +1,10 @@
 # 嘟嘟哒 DUDUDA 项目文档
 
-- 版本：v0.6
+- 版本：v0.7
 - 范围：`.`
-- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；评课社区 `icourse` 是当前唯一真实 MCP，真实群聊风格仍待人工校准。
+- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处和校车四个只读 MCP 已接入，真实群聊风格仍待人工校准。
 
-Dududa 2.0 当前说明（2026-08-16）：
+Dududa 2.0 当前说明（2026-08-24）：
 
 - 系统定位为“受治理的群体情境适应 Runtime”：最小治理内核持有身份、Scope、权限和副作用，Persona 与群体情境只在这些事实不变的前提下适应表达。
 - WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
@@ -116,39 +116,26 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
 | Dududa Core | 保留 | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
 | Sub2API Readonly | 保留 | 源码、配置保留 | 显式只读 Capability |
 
-### 2.4 pksq / icourse MCP 资源
+### 2.4 USTC 校园 MCP 资源
 
-`services/mcp/icourse/` 目录中已有面向 AstrBot 的 USTC 评课社区 MCP Server：
+当前通过同一个 `McpServerRegistry` 和 `UnifiedMcpClient` 管理四个独立只读 Server：
 
-- 数据源：`https://icourse.club/` 公开页面。
-- 数据库：运行时私有路径 `/AstrBot/data/icourse-cache/icourse.sqlite3`
-- MCP 启动脚本：`services/mcp/icourse/run_icourse_mcp.py`
-- 自检脚本：`services/mcp/icourse/scripts/check_mcp.py`
-- Linux 配置示例：`services/mcp/icourse/astrbot-mcp.example.linux.json`
-- Windows 配置示例：`services/mcp/icourse/astrbot-mcp.example.windows.json`
-- 工具能力：
-  - `icourse_stats`
-  - `search_courses`
-  - `get_course`
-  - `get_reviews`
-  - `crawl_course`
-  - `crawl_courses`
-  - `crawl_latest_reviews`
-  - `check_robots`
-  - `export_dataset`
+- `icourse`：匿名访问评课社区缓存，向 Capability 层开放统计、课程搜索、课程详情和评价 4 项公开读取。
+- `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索/详情、筛选项和本人活动 5 项读取。
+- `ustc-academic`：提供学期、培养方案、开课、考试和教学日历 6 项公开查询。
+- `ustc-shuttle`：提供当前官方时刻表和站点间班次 2 项公开查询。
 
 当前仓库状态：
 
-- MCP 项目源码已纳入仓库；缓存库在首次运行时写入私有数据目录。
-- AstrBot 已通过 Compose 将 `services/mcp/icourse/` 挂载到容器内 `/AstrBot/data/icourse-mcp`。
-- `configs/astrbot/mcp_server.json` 提供只包含 `icourse` 的脱敏模板，启动时合并到运行态配置。
-- MCP 使用 AstrBot 容器统一 Python：`/usr/local/bin/python`。
-- Python 依赖走 AstrBot 统一插件环境：`PYTHONPATH=/AstrBot/data/site-packages`。
-- 不再为该 MCP 维护单独的 Linux 虚拟环境。
-- 已验证工具：`icourse_stats`、`search_courses`、`get_course`、`get_reviews`。
-- AstrBot 重启后已成功连接 `icourse` MCP。
-- 嘟嘟哒核心插件已封装 `/course stats/search/review/compare/refresh`；`/course <自然语言评课需求>` 可由 LLM 抽取课程关键词，非 slash 自然语言仅保留“评课社区搜索 <关键词>”口令。
-- icourse MCP 已新增 `search_site_courses`：按需通过评课社区公开站内搜索扩展缓存，可抓取 top 课程详情；`refresh` 对 trusted/admin 开放并带冷却。
+- `services/mcp/icourse/` 保留既有评课实现；`services/mcp/ustc-campus/` 通过
+  `--service academic|shuttle|young` 启动三个独立逻辑 Server。
+- 二课依赖固定为 `pyustc@f16d9465fd572463cb1b239d310e02010593386c`，规避 1.1.1 的异步登录缺陷。
+- 本机既有 `credentials.toml` 以只读方式挂入独立 MCP Console，再由 SecretRef
+  仅向二课子进程注入；凭据、Cookie 和 TGC 不写入仓库或 Web 返回值。
+- WebUI 的 `MCP 工作台` 展示四个 Server 和 17 个 Capability，`super_admin`
+  只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
+- 已真实验证 iCourse、公开教务、校车和二课查询；本次只重建 MCP Console，未重启 AstrBot/NapCat。
+- 这些是按需查询能力，不等于校园资讯、arXiv 或行业日报 Source 已接入。
 
 ## 3. 项目文件树
 
@@ -164,7 +151,7 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
 ├── configs/                          # 脱敏人格与 MCP 模板
 ├── deploy/                           # Compose、镜像与环境模板
 ├── ops/                              # 管理入口和运维 CLI
-├── services/mcp/icourse/             # 评课 MCP 源码
+├── services/mcp/                     # iCourse、USTC Campus 与 Web MCP Console
 ├── third_party/                      # 精确 lock、Iris patch 与 vendor 源码
 └── data/                             # 私有运行态，Git 永久忽略
     ├── astrbot/                      # 配置、数据库、记忆与插件数据

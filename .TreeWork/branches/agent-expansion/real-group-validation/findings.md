@@ -14,8 +14,11 @@ Branch: real-group-validation
   只关闭明确识别出的 legacy AstrBot；不得对旧项目执行整体 `down/stop`。
 - S23 completion is the bounded single-group ladder plus closeout. Expansion to
   3–5 groups is a later authorization decision, not an inherited grant.
-- iCourse cannot satisfy digest-source readiness; it remains a course-review
-  MCP and no campus/arXiv/industry live source is currently implemented.
+- iCourse、二课、教务和校车都是查询型 MCP Capability，不能据此声称日报 Source
+  已接入。校园资讯、arXiv 与行业信息仍没有 live Source Provider。
+- 本机所谓“已登录工具”实际是 `0600` 的 CAS 凭据存储加临时会话导出器，不是
+  持久登录 daemon。直接只读挂载该 TOML，并由现有 SecretRef Resolver 在子进程
+  边界解析，比复制到 `.env` 或另建 Token 刷新服务更符合当前最小实现。
 - The five-hour budget is protected by labeling 600 stratified windows
   (0.44% of 137,026 eligible windows) with Terra and running a local Student
   over the full corpus. The remaining eight Teacher failures stay in Review;
@@ -121,15 +124,17 @@ Branch: real-group-validation
   `POST /api/internal-test/agent/respond` 的 Scope-aware 语义。配置按
   `accountId + conversationId` 保存到仓库外数据根，每次响应返回
   `effectiveSelection`、`reasonCodes` 与 `contextUsage`。
-- Catalog 由服务端动态返回六项正交配置和插件事实，并区分源码已安装、配置/
-  Compose 已装配、AstrBot Runtime online 与本轮实际调用。iCourse 是唯一真实
-  MCP，`gpt-image-2` 是已知图片能力，但当前 Console Runtime 均未接通；自动复读
+- Catalog 由服务端动态返回六项正交配置、插件和 MCP Capability 事实，并区分源码
+  已安装、配置/Compose 已装配、Runtime online 与本轮实际调用。Web MCP 工作台
+  只接受 17 个批准的 Capability ID：iCourse 4 项、教务 6 项、校车 2 项和二课
+  5 项；输入控件来自 Capability schema，返回值投影到 Capability output schema，
+  不开放任意 MCP Tool。`gpt-image-2` 仍是独立图片能力。自动复读
   和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
   `accountId + conversationId` 由 Scope Policy 配置。两者要求 WebUI
   `super_admin` 配置，声明 Bot `admin` 执行身份。`/sub2api` 已在 AstrBot 事件
   路径中接入精确 Scope Policy，在线实例已加载它并接收 NapCat OneBot 事件；
-  自动复读仍未消费 Web Policy。校园、arXiv、行业和搜索能力继续显示不可用，
-  不把 fixture 或接口预留冒充真实插件。
+  自动复读仍未消费 Web Policy。校园资讯、arXiv、行业和搜索来源继续显示不可用，
+  不把查询型校园 MCP、fixture 或接口预留冒充主动资讯插件。
 - Agent 状态接口把 Policy 期望与实际行为分开：被动自动回复为关闭状态，
   `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅为
   `probe_shadow`，并明确 `NO SEND`。候选保持 `outputCalls=0`、
@@ -195,10 +200,10 @@ Branch: real-group-validation
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。
-- 仓库默认插件隔离仍只装配 Dududa Core、ReplyPolish、自动复读和 Sub2API，
-  没有恢复 Meme Manager、PokePro 或 Target Talk。为修复 `/sub2api` 入站链路，
-  当前 AstrBot/NapCat 已执行一次有界重启；这不代表其他 Runtime、Provider、
-  iCourse 或主动发送能力已经部署完成。
+- 仓库默认 AstrBot 插件隔离仍只装配 Dududa Core、ReplyPolish、自动复读和
+  Sub2API，没有恢复 Meme Manager、PokePro 或 Target Talk。校园 MCP 由独立
+  `mcp-console` 运行并已供 Web 超级管理员只读调用；当前 AstrBot/NapCat 未因该
+  接入重启，因此不能把 Web 调用证据外推为 Agent 自动 Tool 选择或主动发送。
 - 可解析的 Evidence JSON 只证明工程契约成立，不证明字段来自真实
   Conformance 执行。当前聚焦测试仍使用 Fake AstrBot Provider 和固定
   Evidence fixture；健康刷新实现已经存在，但运行中 AstrBot 未启用，正式

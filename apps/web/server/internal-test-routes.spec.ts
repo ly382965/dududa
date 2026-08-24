@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createDududaServer } from './app'
 import type { InternalTestGateway } from './internal-test'
+import type { McpConsoleClient } from './mcp-console'
 import { OneBotHub } from './onebot-hub'
 
 const servers: Array<ReturnType<typeof createDududaServer>> = []
@@ -137,7 +138,52 @@ describe('internal-test agent routes', () => {
       respond,
     }
     const hub = new OneBotHub({ token: 'test-only-onebot-token-32-characters' })
-    const server = createDududaServer({ hub, publicDir: '/tmp/dududa-web-does-not-exist', internalTest })
+    const invokeMcp = vi.fn(async () => ({
+      ok: true,
+      capabilityId: 'ustc.academic.semesters.list.v1',
+      serverId: 'ustc-academic',
+      toolName: 'catalog_list_semesters',
+      data: { items: [{ id: 461, name: '2026年秋季学期' }] },
+      content: [],
+      sourceUrl: 'https://catalog.ustc.edu.cn/api/teach/semester/list',
+      fetchedAt: '2026-08-24T08:00:00Z',
+      generation: 1,
+    }))
+    const mcpConsole: McpConsoleClient = {
+      catalog: async () => ({
+        schemaVersion: 1,
+        available: true,
+        servers: [{
+          id: 'ustc-academic',
+          displayName: '教务处',
+          enabled: true,
+          available: true,
+          authentication: 'not_required',
+          health: 'healthy',
+          capabilityCount: 6,
+        }],
+        capabilities: [{
+          id: 'ustc.academic.semesters.list.v1',
+          serverId: 'ustc-academic',
+          toolName: 'catalog_list_semesters',
+          name: 'List USTC semesters',
+          description: 'List semesters.',
+          category: 'campus.academic',
+          privacy: 'public',
+          allowedContexts: ['group', 'private'],
+          inputSchema: { type: 'object', properties: {} },
+          available: true,
+          authentication: 'not_required',
+        }],
+      }),
+      invoke: invokeMcp,
+    }
+    const server = createDududaServer({
+      hub,
+      publicDir: '/tmp/dududa-web-does-not-exist',
+      internalTest,
+      mcpConsole,
+    })
     servers.push(server)
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
     const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
@@ -210,5 +256,32 @@ describe('internal-test agent routes', () => {
       toolCalls: 0,
     })
     expect(respond).toHaveBeenCalledWith(requestBody)
+
+    const mcpCatalog = await fetch(`${baseUrl}/api/internal-test/mcp/catalog`)
+    expect(mcpCatalog.status).toBe(200)
+    await expect(mcpCatalog.json()).resolves.toMatchObject({
+      available: true,
+      servers: [{ id: 'ustc-academic', available: true }],
+    })
+
+    const mcpForbidden = await fetch(`${baseUrl}/api/internal-test/mcp/invoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capabilityId: 'ustc.academic.semesters.list.v1', arguments: { limit: 2 } }),
+    })
+    expect(mcpForbidden.status).toBe(403)
+
+    const mcpResponse = await fetch(`${baseUrl}/api/internal-test/mcp/invoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ capabilityId: 'ustc.academic.semesters.list.v1', arguments: { limit: 2 } }),
+    })
+    expect(mcpResponse.status).toBe(200)
+    await expect(mcpResponse.json()).resolves.toMatchObject({
+      ok: true,
+      capabilityId: 'ustc.academic.semesters.list.v1',
+      generation: 1,
+    })
+    expect(invokeMcp).toHaveBeenCalledWith('ustc.academic.semesters.list.v1', { limit: 2 })
   })
 })

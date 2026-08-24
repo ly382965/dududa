@@ -53,6 +53,11 @@ Last sync: unix:1786717871
   is the only real MCP Server. S12 has returned the reusable multi-Server
   boundary with a Fake extension proof; S15C supplies source contracts and
   fixtures only, while live sources and S23 remain external.
+- On 2026-08-24 the user supplied a new integration scope. The Unified MCP
+  Registry now has four real read-only Servers: iCourse, USTC second-class,
+  academic catalog/calendar and shuttle. This supersedes the earlier
+  iCourse-only fact without turning those query Capabilities into proactive
+  campus/arXiv/industry Source Providers.
 - The locked root uv workspace, Node 22/npm environment, Playwright Chromium,
   clean sdist-to-wheel path and warning-free MCP v1 fallback are reproducible.
   The Web unit/server/type/build/E2E gates pass; the existing containers were

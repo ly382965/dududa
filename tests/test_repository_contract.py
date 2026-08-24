@@ -74,7 +74,7 @@ class RepositoryContractTests(unittest.TestCase):
             )
             if match:
                 services.add(match.group(1))
-        self.assertEqual(services, {"web", "astrbot", "napcat"})
+        self.assertEqual(services, {"web", "mcp-console", "astrbot", "napcat"})
 
         for component in ("sub2api", "postgres", "redis", "xray", "caddy", "authelia"):
             self.assertFalse((ROOT / component).exists(), component)
@@ -107,13 +107,16 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("search_nodes_detailed", patch)
         self.assertIn("group_id=group_id", patch)
 
-    def test_mcp_template_has_only_icourse(self) -> None:
+    def test_mcp_template_has_only_approved_campus_servers(self) -> None:
         config = json.loads(
             (ROOT / "configs" / "astrbot" / "mcp_server.json").read_text(
                 encoding="utf-8"
             )
         )
-        self.assertEqual(set(config["mcpServers"]), {"icourse"})
+        self.assertEqual(
+            set(config["mcpServers"]),
+            {"icourse", "ustc-academic", "ustc-shuttle", "ustc-young"},
+        )
         self.assertEqual(
             config["mcpServers"]["icourse"]["command"], "/usr/local/bin/python"
         )
@@ -122,6 +125,9 @@ class RepositoryContractTests(unittest.TestCase):
             "/AstrBot/data/icourse-cache/icourse.sqlite3",
             config["mcpServers"]["icourse"]["args"],
         )
+        for server_id in ("ustc-academic", "ustc-shuttle", "ustc-young"):
+            self.assertTrue(config["mcpServers"][server_id]["disabled"])
+            self.assertIn("/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py", config["mcpServers"][server_id]["args"])
         plugin_schema = json.loads(
             (
                 ROOT

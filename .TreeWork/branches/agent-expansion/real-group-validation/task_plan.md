@@ -122,8 +122,8 @@ Title: S23 Authorized Real-Group Validation
   自动发送概率。
 - [x] Agent Console 配置经专用服务端 API 持久化到仓库外数据根，页面重载后仍按
   同一 Scope 恢复；浏览器 localStorage 只可作为非权威草稿或缓存。
-- [x] Catalog 事实边界准确：iCourse 是唯一真实 MCP，`gpt-image-2` 是已知图片
-  能力，但二者当前 Web candidate Runtime 均未接通并显示不可用。自动复读与
+- [x] 旧 Catalog 事实边界准确记录了当时只有 iCourse；该事实由下面的校园 MCP
+  增量替代。`gpt-image-2` 是已知图片能力但不属于本次 MCP 工作。自动复读与
   `/sub2api 自动查询` 均由会话 Policy 管理，默认 `off`，并分别显示配置角色、
   执行身份、Runtime target 和 configuration readiness。`installed/configured`
   不得冒充 AstrBot online 或本轮实际执行。校园资讯、arXiv、行业资讯、网络搜索
@@ -166,6 +166,14 @@ Title: S23 Authorized Real-Group Validation
 - [x] After the adaptive Agent Console slice is implemented and sampled,
   synchronize its Progress, Findings and Verification and create one local
   commit without push.
+- [x] iCourse、二课、教务处与校车作为四个独立 Registry Server 接入现有 Unified
+  MCP；iCourse 继续匿名复用，二课通过 SecretRef 使用固定 pyustc 版本，首版全部
+  只读。
+- [x] 教务处实现培养方案、开课、考试和教学日历查询；校车实现当前时刻表和行程
+  查询，并对公开来源各完成一次真实只读 Smoke。
+- [x] WebUI 展示四个 MCP 的健康、认证和 Capability 状态，`super_admin` 可依据
+  Capability input schema 直接调用并查看结构化结果、来源与抓取时间；不开放任意
+  MCP tool 透传。
 
 ## Local Steps
 
@@ -235,6 +243,15 @@ Title: S23 Authorized Real-Group Validation
 - [x] Preserve the original Sub2API v0.6.2 implementation and add only the
   four-node merged-forward presentation for `overview`; run the focused
   Sub2API tests and leave the running container lifecycle unchanged.
+- [x] Implement the shared `ustc-campus` MCP package and independently register
+  `ustc-young`, `ustc-academic` and `ustc-shuttle`; retain the existing
+  `icourse` Server and compatibility path.
+- [x] Add read-only Capability definitions/mappings, deployment assembly and
+  runtime config sync for all four Servers. A missing CAS SecretRef must degrade
+  only the Young Server to an explicit unavailable state.
+- [x] Add the internal Capability Console API and schema-driven Agent Console
+  panel, then verify one iCourse/public-campus call path without enabling QQ
+  output or restarting the current NapCat/AstrBot containers.
 - [ ] Connect automatic reread to the Web Policy separately; a matched Web
   trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and
@@ -262,8 +279,8 @@ Title: S23 Authorized Real-Group Validation
   arbitrary Tool writes, automatic Memory writes or unbounded group history.
 - Bandit selection of send/skip, target, schedule, frequency, AnswerProfile,
   permission, Tool or Memory; S20 is not connected in S23.
-- Fabricating campus/arXiv/industry MCP Servers or treating fixtures/iCourse as
-  live news sources.
+- Fabricating arXiv/industry MCP Servers or treating campus query Capabilities
+  as an already-governed proactive news Source.
 - Redesigning S01–S20 contracts, turning WebUI into a second Runtime, bypassing
   Core permission/budget/side-effect ownership, adding a universal raw config
   write API, or changing running containers before an approved deployment

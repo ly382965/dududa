@@ -57,11 +57,11 @@ they never activate services, grant capabilities, or widen side effects.
   industry updates, and recent arXiv items in an IANA time zone. MCP-backed
   capabilities retrieve normalized public source items; Scheduler, policy,
   composition, authorization, delivery, and unsubscribe remain Dududa-owned.
-- iCourse is the only currently implemented real MCP Server. Dududa exposes one
-  framework-neutral MCP Client and Server Registry so later Servers require
-  configuration and explicit Capability mapping rather than Core changes or a
-  copied Client. Fixed Fake Servers prove this extension boundary without
-  pretending that other production MCPs already exist.
+- The original offline Goal began with iCourse as its only real MCP Server. The
+  2026-08-24 S23 extension adds real read-only second-class, academic and
+  shuttle Servers through the same framework-neutral Client, Registry and
+  explicit Capability mapping, without changing Core or copying the Client.
+  Campus news, arXiv and industry source Servers remain absent.
 - The first complete runtime handles explicit mentions, direct chat only, with
   tools and memory disabled. Shadow execution has no user-visible or persistent
   side effects.
@@ -295,9 +295,11 @@ substituted for the later external run.
 15. MCP is an optional infrastructure path for public source retrieval only.
     It never owns schedules, subscriptions, target selection, policy, message
     composition, or delivery.
-16. iCourse is the only real MCP Server in the current repository. S12 builds
-    the reusable Client/Registry/Capability boundary and uses a Fake as the
-    second conformance implementation; it does not invent other real Servers.
+16. S12 established the reusable Client/Registry/Capability boundary with
+    iCourse and a Fake. The later S23 extension must prove that boundary by
+    adding second-class, academic and shuttle read-only Servers through
+    configuration, Adapter and Capability mapping only; it must not invent
+    campus news, arXiv or industry source Servers.
 17. S15C completes source contracts and fixed fixtures only. Real campus,
     arXiv and industry Adapters remain external work until their sources and
     operator policies are supplied.

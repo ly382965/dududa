@@ -64,6 +64,54 @@ export interface InternalTestCatalogPlugin {
   model?: string
 }
 
+export type McpConsoleAuthentication = 'not_required' | 'configured' | 'missing_secret'
+
+export interface McpConsoleServer {
+  id: string
+  displayName: string
+  enabled: boolean
+  available: boolean
+  authentication: McpConsoleAuthentication
+  health: 'initializing' | 'healthy' | 'degraded' | 'stale' | 'unavailable' | 'circuit_open' | 'closed'
+  reason?: string
+  capabilityCount: number
+}
+
+export interface McpConsoleCapability {
+  id: string
+  serverId: string
+  toolName: string
+  name: string
+  description: string
+  category: string
+  privacy: string
+  allowedContexts: string[]
+  inputSchema: Record<string, unknown>
+  available: boolean
+  authentication: McpConsoleAuthentication
+  unavailableReason?: string
+}
+
+export interface McpConsoleCatalog {
+  schemaVersion: 1
+  available: boolean
+  servers: McpConsoleServer[]
+  capabilities: McpConsoleCapability[]
+  reason?: string
+}
+
+export interface McpConsoleInvocation {
+  ok: boolean
+  capabilityId: string
+  serverId: string
+  toolName: string
+  data?: unknown
+  content: string[]
+  sourceUrl?: string
+  fetchedAt?: string
+  generation: number
+}
+
 export interface InternalTestAgentCatalog {
   agent: {
     id: 'dududa'

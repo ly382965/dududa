@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "server_id": "ustc-academic",
+  "enabled": true,
+  "transport": "stdio",
+  "protocol_mode": "legacy",
+  "endpoint": {
+    "command": "/usr/local/bin/python",
+    "args": [
+      "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
+      "--service",
+      "academic"
+    ],
+    "cwd": "/AstrBot/data/ustc-campus-mcp",
+    "env_allowlist": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "PYTHONPATH",
+      "USTC_CATALOG_BASE_URL",
+      "USTC_TEACHING_CALENDAR_URL"
+    ]
+  },
+  "secret_refs": [],
+  "allowed_tools": [
+    "catalog_get_program",
+    "catalog_list_semesters",
+    "catalog_search_exams",
+    "catalog_search_lessons",
+    "catalog_search_programs",
+    "teaching_calendar_get"
+  ],
+  "denied_tools": [],
+  "timeouts_seconds": {
+    "connect": 10,
+    "discovery": 10,
+    "call": 45,
+    "maximum_call": 90,
+    "close": 5
+  },
+  "retry": {
+    "maximum_attempts": 2,
+    "base_delay_ms": 100
+  },
+  "circuit": {
+    "failure_threshold": 3,
+    "failure_window_seconds": 60,
+    "open_duration_seconds": 30
+  },
+  "maximum_concurrency": 2,
+  "schema_ttl_seconds": 300,
+  "config_revision": "ustc-academic-read-v1"
+}

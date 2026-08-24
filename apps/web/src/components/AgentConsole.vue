@@ -7,10 +7,13 @@ import {
   ChevronDown,
   CircleStop,
   Clock3,
+  Database,
+  ExternalLink,
   Gauge,
   Hash,
   MessageSquareText,
   Plus,
+  Play,
   RefreshCw,
   Save,
   SendHorizontal,
@@ -23,6 +26,7 @@ import {
 } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import { internalTestAdapter } from '../services/internal-test'
 import type {
   InternalTestAdaptiveSetting,
   InternalTestAgentCatalog,
@@ -38,6 +42,8 @@ import type {
   InternalTestReplyIntensity,
   InternalTestSelectionMode,
   InternalTestTier,
+  McpConsoleCatalog,
+  McpConsoleInvocation,
 } from '../types/internal-test'
 import type {
   Account,
@@ -117,6 +123,15 @@ const stream = ref<HTMLElement>()
 const runtimeLabel = computed(() => props.available ? '内测已连接' : props.runtimeLoading ? '正在连接' : '未连接')
 const runtimeDetail = computed(() => props.runtimeError || props.runtimeWarning || 'QQ 消息与历史仍由 NapCat 实时提供')
 const policyEditable = computed(() => Boolean(props.policy) && !props.policyLoading && !props.policySaving)
+const mcpCatalog = ref<McpConsoleCatalog>()
+const mcpCatalogLoading = ref(false)
+const mcpCatalogError = ref('')
+const selectedMcpCapabilityId = ref('')
+const mcpArguments = ref<Record<string, unknown>>({})
+const mcpJsonArguments = ref<Record<string, string>>({})
+const mcpInvoking = ref(false)
+const mcpInvocationError = ref('')
+const mcpInvocation = ref<McpConsoleInvocation>()
 
 const selectionModeLabels: Record<InternalTestSelectionMode, string> = {
   adaptive: '自适应',
@@ -313,6 +328,21 @@ const adaptiveAxes = computed(() => [
   },
 ])
 
+const selectedMcpCapability = computed(() =>
+  mcpCatalog.value?.capabilities.find(item => item.id === selectedMcpCapabilityId.value),
+)
+const mcpInputProperties = computed<Array<[string, Record<string, unknown>]>>(() => {
+  const properties = selectedMcpCapability.value?.inputSchema.properties
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return []
+  return Object.entries(properties as Record<string, unknown>)
+    .filter((item): item is [string, Record<string, unknown>] => Boolean(item[1]) && typeof item[1] === 'object' && !Array.isArray(item[1]))
+})
+const mcpRequired = computed(() => new Set(
+  Array.isArray(selectedMcpCapability.value?.inputSchema.required)
+    ? selectedMcpCapability.value?.inputSchema.required.filter((item): item is string => typeof item === 'string')
+    : [],
+))
+
 const runTier = computed(() => props.run?.effectiveSelection?.modelTier ?? props.run?.modelTier)
 const runReasoning = computed(() => props.run?.effectiveSelection?.reasoning ?? props.run?.reasoning)
 const runAnswerProfile = computed(() => props.run?.effectiveSelection?.answerProfile ?? props.run?.answerProfile)
@@ -378,6 +408,103 @@ function pluginModeOptions(plugin: InternalTestCatalogPlugin): InternalTestPlugi
   return plugin.available ? pluginModes.value : ['off']
 }
 
+function schemaKind(schema: Record<string, unknown>): string {
+  if (typeof schema.type === 'string') return schema.type
+  if (Array.isArray(schema.type)) return schema.type.find(item => item !== 'null') as string ?? 'string'
+  if (Array.isArray(schema.anyOf)) {
+    for (const candidate of schema.anyOf) {
+      if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+        const kind = schemaKind(candidate as Record<string, unknown>)
+        if (kind !== 'null') return kind
+      }
+    }
+  }
+  return 'string'
+}
+
+function schemaLabel(name: string, schema: Record<string, unknown>): string {
+  return typeof schema.title === 'string' ? schema.title : name
+}
+
+function selectMcpCapability(capabilityId: string): void {
+  selectedMcpCapabilityId.value = capabilityId
+  mcpArguments.value = {}
+  mcpJsonArguments.value = {}
+  mcpInvocation.value = undefined
+  mcpInvocationError.value = ''
+  const capability = mcpCatalog.value?.capabilities.find(item => item.id === capabilityId)
+  const properties = capability?.inputSchema.properties
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return
+  for (const [name, rawSchema] of Object.entries(properties)) {
+    if (!rawSchema || typeof rawSchema !== 'object' || Array.isArray(rawSchema)) continue
+    const schema = rawSchema as Record<string, unknown>
+    const initial = schema.const ?? schema.default
+    if (initial === undefined) continue
+    if (['array', 'object'].includes(schemaKind(schema))) {
+      mcpJsonArguments.value[name] = JSON.stringify(initial, null, 2)
+    } else {
+      mcpArguments.value[name] = initial
+    }
+  }
+}
+
+function updateMcpScalar(name: string, schema: Record<string, unknown>, event: Event): void {
+  const target = event.target as HTMLInputElement | HTMLSelectElement
+  const kind = schemaKind(schema)
+  if (kind === 'boolean') {
+    mcpArguments.value[name] = (target as HTMLInputElement).checked
+    return
+  }
+  if (!target.value && !mcpRequired.value.has(name)) {
+    delete mcpArguments.value[name]
+    return
+  }
+  mcpArguments.value[name] = ['integer', 'number'].includes(kind)
+    ? Number(target.value)
+    : target.value
+}
+
+async function loadMcpCatalog(force = false): Promise<void> {
+  if ((mcpCatalog.value && !force) || mcpCatalogLoading.value) return
+  mcpCatalogLoading.value = true
+  mcpCatalogError.value = ''
+  try {
+    mcpCatalog.value = await internalTestAdapter.mcpCatalog()
+    const selected = mcpCatalog.value.capabilities.find(item => item.id === selectedMcpCapabilityId.value)
+      ?? mcpCatalog.value.capabilities.find(item => item.available)
+      ?? mcpCatalog.value.capabilities[0]
+    if (selected) selectMcpCapability(selected.id)
+  } catch (error) {
+    mcpCatalogError.value = error instanceof Error ? error.message : 'MCP Catalog 加载失败'
+  } finally {
+    mcpCatalogLoading.value = false
+  }
+}
+
+async function invokeMcp(): Promise<void> {
+  const capability = selectedMcpCapability.value
+  if (!capability || !capability.available || mcpInvoking.value) return
+  mcpInvoking.value = true
+  mcpInvocation.value = undefined
+  mcpInvocationError.value = ''
+  try {
+    const argumentsValue = { ...mcpArguments.value }
+    for (const [name, value] of Object.entries(mcpJsonArguments.value)) {
+      if (!value.trim()) continue
+      argumentsValue[name] = JSON.parse(value) as unknown
+    }
+    mcpInvocation.value = await internalTestAdapter.invokeMcp(capability.id, argumentsValue)
+  } catch (error) {
+    mcpInvocationError.value = error instanceof Error ? error.message : 'MCP 调用失败'
+  } finally {
+    mcpInvoking.value = false
+  }
+}
+
+function invocationText(value: unknown): string {
+  return JSON.stringify(value, null, 2)
+}
+
 function send(): void {
   const value = prompt.value.trim()
   if (!value) return
@@ -413,6 +540,14 @@ watch(
       if (stream.value) stream.value.scrollTop = stream.value.scrollHeight
     })
   },
+)
+
+watch(
+  () => props.tab,
+  (tab) => {
+    if (tab === 'settings') void loadMcpCatalog()
+  },
+  { immediate: true },
 )
 </script>
 
@@ -842,6 +977,104 @@ watch(
             </article>
           </div>
           <div v-else class="empty-catalog">当前 Catalog 没有已登记插件</div>
+        </section>
+
+        <section class="settings-section mcp-workbench">
+          <div class="section-heading">
+            <Database :size="15" />
+            <span><strong>MCP 工作台</strong><small>SUPER ADMIN · READ ONLY</small></span>
+            <button type="button" class="section-action" title="刷新 MCP 状态" :disabled="mcpCatalogLoading" @click="loadMcpCatalog(true)">
+              <RefreshCw :size="13" :class="{ spinning: mcpCatalogLoading }" />
+            </button>
+          </div>
+
+          <div v-if="mcpCatalogLoading && !mcpCatalog" class="settings-state"><RefreshCw :size="15" class="spinning" />正在读取 MCP Catalog</div>
+          <div v-else-if="mcpCatalogError" class="settings-state settings-state--error"><Unplug :size="15" />{{ mcpCatalogError }}</div>
+          <template v-else-if="mcpCatalog">
+            <div class="mcp-server-grid">
+              <article v-for="server in mcpCatalog.servers" :key="server.id" :class="{ unavailable: !server.available }">
+                <header><strong>{{ server.displayName }}</strong><small>{{ server.id }}</small></header>
+                <span :class="server.available ? 'available' : 'unavailable'">
+                  {{ server.available ? '可调用' : server.reason || '不可用' }}
+                </span>
+                <p>{{ server.capabilityCount }} 项能力 · {{ server.health }}</p>
+              </article>
+            </div>
+
+            <div v-if="mcpCatalog.capabilities.length" class="mcp-invocation-panel">
+              <label class="mcp-capability-picker">
+                <span>Capability</span>
+                <select :value="selectedMcpCapabilityId" @change="selectMcpCapability(($event.target as HTMLSelectElement).value)">
+                  <option v-for="capability in mcpCatalog.capabilities" :key="capability.id" :value="capability.id" :disabled="!capability.available">
+                    {{ capability.name }}{{ capability.available ? '' : `（${capability.unavailableReason || '不可用'}）` }}
+                  </option>
+                </select>
+              </label>
+
+              <header v-if="selectedMcpCapability" class="mcp-capability-heading">
+                <div><strong>{{ selectedMcpCapability.name }}</strong><small>{{ selectedMcpCapability.serverId }} / {{ selectedMcpCapability.toolName }}</small></div>
+                <span>{{ selectedMcpCapability.privacy }}</span>
+              </header>
+              <p v-if="selectedMcpCapability" class="mcp-description">{{ selectedMcpCapability.description }}</p>
+
+              <div v-if="mcpInputProperties.length" class="mcp-fields">
+                <label v-for="[name, schema] in mcpInputProperties" :key="name">
+                  <span>{{ schemaLabel(name, schema) }}<b v-if="mcpRequired.has(name)">*</b><small>{{ name }}</small></span>
+                  <select
+                    v-if="Array.isArray(schema.enum)"
+                    :value="mcpArguments[name] ?? schema.default ?? ''"
+                    @change="updateMcpScalar(name, schema, $event)"
+                  >
+                    <option v-if="!mcpRequired.has(name)" value="">未设置</option>
+                    <option v-for="option in schema.enum" :key="String(option)" :value="String(option)">{{ option }}</option>
+                  </select>
+                  <input
+                    v-else-if="schemaKind(schema) === 'boolean'"
+                    type="checkbox"
+                    :checked="Boolean(mcpArguments[name] ?? schema.default ?? false)"
+                    @change="updateMcpScalar(name, schema, $event)"
+                  />
+                  <textarea
+                    v-else-if="['array', 'object'].includes(schemaKind(schema))"
+                    :value="mcpJsonArguments[name] ?? ''"
+                    rows="3"
+                    :placeholder="schemaKind(schema) === 'array' ? '[]' : '{}'"
+                    @input="mcpJsonArguments[name] = ($event.target as HTMLTextAreaElement).value"
+                  />
+                  <input
+                    v-else
+                    :type="['integer', 'number'].includes(schemaKind(schema)) ? 'number' : 'text'"
+                    :value="mcpArguments[name] ?? schema.default ?? ''"
+                    :min="typeof schema.minimum === 'number' ? schema.minimum : undefined"
+                    :max="typeof schema.maximum === 'number' ? schema.maximum : undefined"
+                    @input="updateMcpScalar(name, schema, $event)"
+                  />
+                </label>
+              </div>
+
+              <button
+                type="button"
+                class="mcp-invoke-button"
+                :disabled="!selectedMcpCapability?.available || mcpInvoking"
+                @click="invokeMcp"
+              >
+                <RefreshCw v-if="mcpInvoking" :size="14" class="spinning" />
+                <Play v-else :size="14" />
+                {{ mcpInvoking ? '调用中' : '调用' }}
+              </button>
+
+              <div v-if="mcpInvocationError" class="mcp-result mcp-result--error">{{ mcpInvocationError }}</div>
+              <div v-else-if="mcpInvocation" class="mcp-result">
+                <header>
+                  <span>{{ mcpInvocation.ok ? '调用成功' : '上游返回错误' }} · generation {{ mcpInvocation.generation }}</span>
+                  <a v-if="mcpInvocation.sourceUrl" :href="mcpInvocation.sourceUrl" target="_blank" rel="noreferrer" title="打开来源"><ExternalLink :size="13" /></a>
+                </header>
+                <small v-if="mcpInvocation.fetchedAt">{{ mcpInvocation.fetchedAt }}</small>
+                <pre>{{ invocationText(mcpInvocation.data ?? mcpInvocation.content) }}</pre>
+              </div>
+            </div>
+            <div v-else class="empty-catalog">当前没有可调用的 MCP Capability</div>
+          </template>
         </section>
       </template>
 
@@ -2303,6 +2536,276 @@ textarea:disabled {
   font-weight: 650;
 }
 
+.mcp-workbench .section-heading {
+  position: relative;
+}
+
+.section-action {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  margin-left: auto;
+  cursor: pointer;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.mcp-server-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mcp-server-grid article {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.mcp-server-grid article.unavailable {
+  opacity: 0.72;
+}
+
+.mcp-server-grid header,
+.mcp-server-grid header strong,
+.mcp-server-grid header small {
+  display: block;
+  min-width: 0;
+}
+
+.mcp-server-grid header strong {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-server-grid header small,
+.mcp-server-grid p {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-server-grid > article > span {
+  display: inline-flex;
+  margin-top: 6px;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 7px;
+}
+
+.mcp-server-grid > article > span.available {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+
+.mcp-server-grid > article > span.unavailable {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.mcp-invocation-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.mcp-capability-picker,
+.mcp-fields > label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.mcp-capability-picker > span,
+.mcp-fields > label > span {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.mcp-capability-picker select,
+.mcp-fields input:not([type='checkbox']),
+.mcp-fields select,
+.mcp-fields textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  padding: 6px 7px;
+  font: inherit;
+  font-size: 8px;
+  outline: 0;
+}
+
+.mcp-fields textarea {
+  resize: vertical;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+}
+
+.mcp-fields input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--brand);
+}
+
+.mcp-capability-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mcp-capability-heading div,
+.mcp-capability-heading strong,
+.mcp-capability-heading small {
+  display: block;
+  min-width: 0;
+}
+
+.mcp-capability-heading strong {
+  color: var(--text-primary);
+  font-size: 10px;
+}
+
+.mcp-capability-heading small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-capability-heading > span {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  padding: 2px 5px;
+  font-size: 7px;
+}
+
+.mcp-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.mcp-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mcp-fields > label > span b {
+  color: var(--danger);
+}
+
+.mcp-fields > label > span small {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-invoke-button {
+  display: inline-flex;
+  min-width: 76px;
+  min-height: 30px;
+  cursor: pointer;
+  align-items: center;
+  align-self: flex-end;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 5px;
+  color: #ffffff;
+  background: var(--brand);
+  padding: 0 11px;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.mcp-invoke-button:disabled,
+.section-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.mcp-result {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  padding: 8px;
+}
+
+.mcp-result--error {
+  color: var(--danger);
+  font-size: 8px;
+}
+
+.mcp-result header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--success);
+  font-size: 8px;
+}
+
+.mcp-result header a {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  color: var(--brand-strong);
+}
+
+.mcp-result > small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 7px;
+}
+
+.mcp-result pre {
+  max-height: 320px;
+  margin: 7px 0 0;
+  overflow: auto;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 @keyframes thinking {
   0%,
   100% {
@@ -2364,6 +2867,10 @@ textarea:disabled {
   .settings-view,
   .run-view {
     padding-bottom: 10px;
+  }
+
+  .mcp-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

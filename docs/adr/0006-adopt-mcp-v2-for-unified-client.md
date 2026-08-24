@@ -10,6 +10,10 @@
 compatibility facade。S22 在消费者迁移与精确 S19 Release 恢复证据齐全后删除插件专用直连
 Client；worker 继续以 `protocol_mode=legacy` 连接 iCourse v1 Server。
 
+后续状态（2026-08-24）：S23 在不修改本 ADR 所定义 Core/Client 边界的前提下，新增二课、
+教务处和校车三个真实只读 Server。下文“iCourse 唯一”描述的是 S12 决策时的 Spike 范围，
+不表示当前 Registry 事实；校园资讯、arXiv 和行业 Source Server 仍未实现。
+
 ## 背景
 
 ADR 0004 已决定由一个 Core Port 和一个受治理的基础设施实现统一 MCP

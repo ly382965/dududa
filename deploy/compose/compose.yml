@@ -15,6 +15,7 @@ services:
       DUDUDA_WEB_BIND: 0.0.0.0
       DUDUDA_WEB_INTERNAL_PORT: 8000
       DUDUDA_ONEBOT_TOKEN_FILE: /run/secrets/onebot_access_token
+      DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
     ports:
       - host_ip: ${DUDUDA_WEB_HOST:-127.0.0.1}
         published: "${DUDUDA_WEB_PORT:-5173}"
@@ -29,6 +30,41 @@ services:
       edge:
         aliases:
           - dududa-web-api
+    depends_on:
+      - mcp-console
+
+  mcp-console:
+    init: true
+    build:
+      context: .
+      dockerfile: deploy/docker/astrbot/Dockerfile
+      args:
+        ASTRBOT_BASE_IMAGE: ${ASTRBOT_BASE_IMAGE}
+    image: ${DUDUDA_ASTRBOT_IMAGE:-dududa/astrbot:local}
+    command:
+      - /usr/local/bin/python
+      - -m
+      - dududa_mcp_console
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      PYTHONDONTWRITEBYTECODE: "1"
+      USTC_CAS_USR: ${USTC_CAS_USR:-}
+      USTC_CAS_PWD: ${USTC_CAS_PWD:-}
+      USTC_CAS_CREDENTIALS_FILE: /run/secrets/ustc-cas.toml
+    volumes:
+      - ${STACK_DATA_ROOT:-./data}/astrbot/icourse-cache:/AstrBot/data/icourse-cache
+      - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
+      - ./services/mcp/ustc-campus:/AstrBot/data/ustc-campus-mcp:ro
+      - ./configs:/opt/dududa/config:ro
+      - ${USTC_CAS_CREDENTIALS_FILE_HOST:-${HOME}/Code/ustc-catalog-crawler/credentials.toml}:/run/secrets/ustc-cas.toml:ro
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    networks:
+      bot_net:
 
   astrbot:
     init: true
@@ -49,6 +85,8 @@ services:
       SUB2API_BASE_URL: ${SUB2API_BASE_URL:-}
       SUB2API_ADMIN_EMAIL: ${SUB2API_ADMIN_EMAIL:-}
       SUB2API_ADMIN_PASSWORD: ${SUB2API_ADMIN_PASSWORD:-}
+      USTC_CAS_USR: ${USTC_CAS_USR:-}
+      USTC_CAS_PWD: ${USTC_CAS_PWD:-}
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
@@ -62,6 +100,7 @@ services:
       - ./apps/astrbot-plugins/astrbot_plugin_reread:/AstrBot/data/plugins/astrbot_plugin_reread:ro
       - ./apps/astrbot-plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
+      - ./services/mcp/ustc-campus:/AstrBot/data/ustc-campus-mcp:ro
       - ./configs:/opt/dududa/config:ro
       - ./ops/cli:/opt/dududa/scripts:ro
       - /etc/localtime:/etc/localtime:ro

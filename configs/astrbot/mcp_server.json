@@ -10,6 +10,33 @@
         "1.0"
       ],
       "disabled": true
+    },
+    "ustc-academic": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
+        "--service",
+        "academic"
+      ],
+      "disabled": true
+    },
+    "ustc-shuttle": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
+        "--service",
+        "shuttle"
+      ],
+      "disabled": true
+    },
+    "ustc-young": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
+        "--service",
+        "young"
+      ],
+      "disabled": true
     }
   }
 }

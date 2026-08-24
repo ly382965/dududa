@@ -3,9 +3,10 @@
 ## 1. 适用范围
 
 本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。权威 Registry 路径是
-`configs/mcp/servers/*.json`；iCourse 是唯一真实 Server，位于 `services/mcp/icourse/`。
-S22 已移除旧 `config/` 与 `services/icourse-mcp/` 兼容链接；新增 Server 只使用 canonical
-路径。
+`configs/mcp/servers/*.json`。当前真实只读 Server 为 `icourse`、`ustc-young`、
+`ustc-academic` 和 `ustc-shuttle`；实现分别位于 `services/mcp/icourse/` 与共享实现包
+`services/mcp/ustc-campus/`。S22 已移除旧 `config/` 与 `services/icourse-mcp/` 兼容链接；
+新增 Server 只使用 canonical 路径。
 
 MCP Server 和 worker 是传输/集成边界，不是完整 Agent。它们负责清晰、原子、结构化的操作和协议生命周期；它们不负责理解整段群聊、决定是否回复、选择 Persona、授予 Capability、判断 Schema freshness、调度或发送。模型可见性由独立的 Capability Registry 决定。
 

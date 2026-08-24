@@ -1,0 +1,365 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.young.activities.search.v1",
+  "category": "campus.second-class",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ef46029f49fee06b59a07f15465453a7dba7a92a579a3751703ed7fda31c4582",
+  "description": "Search authenticated second-class activities through the pinned pyustc adapter.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activities.search.v1.input:v1:sha-256:ca1e5bd7ac2748ea816d6f92dc4257359ff0f820906ab7765bd807387f5fa5ff",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "department_id": {
+          "default": "",
+          "title": "Department Id",
+          "type": "string"
+        },
+        "end_time": {
+          "default": "",
+          "title": "End Time",
+          "type": "string"
+        },
+        "label_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label Ids"
+        },
+        "limit": {
+          "default": 20,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "module_id": {
+          "default": "",
+          "title": "Module Id",
+          "type": "string"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        },
+        "start_time": {
+          "default": "",
+          "title": "Start Time",
+          "type": "string"
+        },
+        "state": {
+          "default": "applying",
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "title": "young_search_activitiesArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.activities.search.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Search USTC second-class activities",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activities.search.v1.output:v1:sha-256:f02a2a8c06b6262b093aba2e7cca38c8f359b30d4ad589f6571b2c8ecbd9f22a",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "account_scoped": {
+          "type": "boolean"
+        },
+        "authentication": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "error": {
+          "maxLength": 200,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "activity_id": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "apply_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "can_apply": {
+                "type": "boolean"
+              },
+              "capacity": {
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "registered": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "contact": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "department": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "description": {
+                "maxLength": 20000,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "event_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "is_registered": {
+                "type": "boolean"
+              },
+              "kind": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "labels": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "maxLength": 128,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "maxLength": 300,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              "module": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "maxLength": 100,
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "valid_hours": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "activity_id",
+              "status",
+              "kind",
+              "apply_window",
+              "event_window",
+              "capacity",
+              "is_registered",
+              "can_apply",
+              "module",
+              "department",
+              "labels"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "available",
+        "authentication",
+        "items",
+        "total",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.activities.search.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "personal",
+  "provider": {
+    "provider_id": "mcp.ustc-young",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fbc6d4dfc1fd45747dd6fc54933e32b3407c4184822ff3aba62747dddbda4140",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-young-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.young.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "activity",
+    "search",
+    "second-class",
+    "ustc"
+  ]
+}

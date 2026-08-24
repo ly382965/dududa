@@ -18,7 +18,9 @@ external quality or production claim.
 - deterministic Core code owns identity, Scope, permissions, budgets, policy,
   scheduling, state transitions and every side effect;
 - model, MCP and learned components return proposals or bounded Observations;
-- iCourse is the only real MCP Server, while Fakes prove future extension;
+- the original S12 branch used iCourse as its only real MCP Server and Fakes as
+  extension proof; the later S23 child adds three campus query Servers without
+  changing that completed Core boundary;
 - source fixtures prove contracts but not live availability or content rights;
 - Shadow object graphs lack delivery and persistent-write capabilities;
 - every public contract is versioned, additive where possible, digest-bound and

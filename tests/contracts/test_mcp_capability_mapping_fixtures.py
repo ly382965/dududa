@@ -11,6 +11,9 @@ from dududa.errors import DududaError
 from dududa.mcp import ConfigMcpServerRegistry
 
 from ops.cli.generate_icourse_capability_config import rendered_documents
+from ops.cli.generate_ustc_campus_capability_config import (
+    rendered_documents as rendered_campus_documents,
+)
 from tests.unit.capabilities.test_contracts import NOW
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,8 +40,8 @@ def capability_snapshot(root: Path, suffix: str):
 
 
 class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
-    def test_icourse_config_matches_content_addressed_generator(self) -> None:
-        expected = rendered_documents()
+    def test_production_config_matches_content_addressed_generators(self) -> None:
+        expected = {**rendered_documents(), **rendered_campus_documents()}
         actual_paths = {
             path.relative_to(ROOT)
             for directory in (
@@ -51,7 +54,7 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
         for relative, content in expected.items():
             self.assertEqual((ROOT / relative).read_text(encoding="utf-8"), content)
 
-    def test_icourse_config_contains_only_public_read_only_capabilities(self) -> None:
+    def test_production_config_contains_only_approved_read_only_capabilities(self) -> None:
         registry = ConfigMcpServerRegistry(
             PRODUCTION_SERVERS,
             clock=lambda: NOW,
@@ -60,18 +63,37 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
         transport = registry.acquire_snapshot()
         self.assertEqual(
             tuple(item.server_id for item in transport.definitions),
-            ("icourse",),
+            ("icourse", "ustc-academic", "ustc-shuttle", "ustc-young"),
         )
-        server = registry.resolve_server(transport, "icourse")
         catalog = capability_snapshot(PRODUCTION_CAPABILITIES, "production")
-        self.assertEqual(len(catalog.definitions), 4)
+        self.assertEqual(len(catalog.definitions), 17)
         by_tool = {item.tool_name: item for item in catalog.mcp_mappings}
         self.assertEqual(
             set(by_tool),
-            {"icourse_stats", "search_courses", "get_course", "get_reviews"},
+            {
+                "icourse_stats",
+                "search_courses",
+                "get_course",
+                "get_reviews",
+                "catalog_list_semesters",
+                "catalog_search_programs",
+                "catalog_get_program",
+                "catalog_search_lessons",
+                "catalog_search_exams",
+                "teaching_calendar_get",
+                "shuttle_current_schedule",
+                "shuttle_search_trips",
+                "young_connection_status",
+                "young_search_activities",
+                "young_get_activity",
+                "young_list_facets",
+                "young_list_my_activities",
+            },
         )
-        self.assertTrue(set(by_tool) <= set(server.allowed_tools))
-        self.assertTrue(set(by_tool).isdisjoint(server.denied_tools))
+        for mapping in by_tool.values():
+            server = registry.resolve_server(transport, mapping.server_id)
+            self.assertIn(mapping.tool_name, server.allowed_tools)
+            self.assertNotIn(mapping.tool_name, server.denied_tools)
         self.assertTrue(
             set(by_tool).isdisjoint(
                 {
@@ -86,10 +108,11 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
         )
         self.assertEqual(by_tool["get_course"].fixed_arguments, {"refresh": False})
         for tool_name, mapping in by_tool.items():
-            self.assertEqual(mapping.server_id, "icourse")
             self.assertEqual(mapping.semantics.value, "read_only")
             self.assertEqual(mapping.result_mapping_revision, "schema-project-v1")
-            if tool_name != "get_course":
+            if tool_name == "get_course":
+                self.assertEqual(mapping.server_id, "icourse")
+            else:
                 self.assertEqual(mapping.fixed_arguments, {})
 
     def test_second_fake_is_configuration_and_permission_fixture_only(self) -> None:
@@ -113,10 +136,7 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
             servers.mkdir(parents=True)
             definitions.mkdir(parents=True)
             mappings.mkdir(parents=True)
-            for source in (
-                PRODUCTION_SERVERS / "icourse.json",
-                SERVER_FIXTURES / "fake-b.json",
-            ):
+            for source in (*PRODUCTION_SERVERS.iterdir(), SERVER_FIXTURES / "fake-b.json"):
                 shutil.copy2(source, servers / source.name)
             for source_root, target in (
                 (PRODUCTION_CAPABILITIES / "definitions", definitions),
@@ -140,18 +160,24 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
             )
             self.assertEqual(
                 tuple(item.server_id for item in transport.definitions),
-                ("fake-b", "icourse"),
+                ("fake-b", "icourse", "ustc-academic", "ustc-shuttle", "ustc-young"),
             )
             self.assertEqual(
                 tuple(
                     item.provider.provider_id for item in catalog.provider_descriptors
                 ),
-                ("mcp.fake-b", "mcp.icourse"),
+                (
+                    "mcp.fake-b",
+                    "mcp.icourse",
+                    "mcp.ustc-academic",
+                    "mcp.ustc-shuttle",
+                    "mcp.ustc-young",
+                ),
             )
-            self.assertEqual(len(catalog.definitions), 5)
+            self.assertEqual(len(catalog.definitions), 18)
 
         production = capability_snapshot(PRODUCTION_CAPABILITIES, "still-production")
-        self.assertEqual(len(production.definitions), 4)
+        self.assertEqual(len(production.definitions), 17)
         for relative in (
             "packages/dududa-agent/src/dududa/capabilities/mcp_provider.py",
             "packages/dududa-agent/src/dududa/capabilities/runtime.py",

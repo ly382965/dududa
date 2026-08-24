@@ -1,0 +1,102 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.young.connection.status.v1",
+  "category": "campus.second-class",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:77a48e6dd3b2a987404dfc614e3fe8bc91269b2ae06fd9a59d788006ec8d5015",
+  "description": "Report whether the second-class CAS SecretRefs are configured without exposing credentials.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.connection.status.v1.input:v1:sha-256:48a8958a894fe83c6813788aabbd2cc351219dc081c20e7a6a7674378a9882fb",
+    "document": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "young_connection_statusArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.connection.status.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read second-class connection status",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.connection.status.v1.output:v1:sha-256:5108ede90ab5e606ccf2ba8dc9da318a8e1e9fbf465785770f66a59e33932e85",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "authentication": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "provider": {
+          "maxLength": 100,
+          "type": "string"
+        },
+        "provider_revision": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "available",
+        "authentication",
+        "provider",
+        "provider_revision",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.connection.status.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "personal",
+  "provider": {
+    "provider_id": "mcp.ustc-young",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fbc6d4dfc1fd45747dd6fc54933e32b3407c4184822ff3aba62747dddbda4140",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-young-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.young.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "authentication",
+    "second-class",
+    "status",
+    "ustc"
+  ]
+}

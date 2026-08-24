@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -33,8 +32,10 @@ class RuntimeSyncTests(unittest.TestCase):
                 text=True,
             )
             merged = json.loads(config_path.read_text(encoding="utf-8"))
-            self.assertEqual(set(merged["mcpServers"]), {"existing", "icourse"})
-            self.assertTrue(merged["mcpServers"]["icourse"]["disabled"])
+            approved = {"icourse", "ustc-academic", "ustc-shuttle", "ustc-young"}
+            self.assertEqual(set(merged["mcpServers"]), {"existing", *approved})
+            for server_id in approved:
+                self.assertTrue(merged["mcpServers"][server_id]["disabled"])
             self.assertEqual(config_path.stat().st_mode & 0o777, 0o600)
 
 

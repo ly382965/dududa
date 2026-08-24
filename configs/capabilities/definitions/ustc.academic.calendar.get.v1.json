@@ -1,0 +1,165 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.academic.calendar.get.v1",
+  "category": "campus.academic",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:5cae65dc3a63813b0fadd11d3854106a906e50984e975d0d5d5591fa1ff05c3f",
+  "description": "Read the current official teaching-calendar article and its dated events.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.calendar.get.v1.input:v1:sha-256:78783290244b23fa391da6417f6c4cd065c5a50b309f2a5176f0f5cc1f85f2b2",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "end_date": {
+          "default": "",
+          "title": "End Date",
+          "type": "string"
+        },
+        "start_date": {
+          "default": "",
+          "title": "Start Date",
+          "type": "string"
+        }
+      },
+      "title": "teaching_calendar_getArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.calendar.get.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read USTC teaching calendar",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.calendar.get.v1.output:v1:sha-256:686ba178479b1e64e374e5aa2f26ebc0f7413763a9ad2fdc5f3aa152224753c0",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "date": {
+                "maxLength": 16,
+                "type": "string"
+              },
+              "event": {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              "week": {
+                "maxLength": 32,
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 400,
+          "type": "array"
+        },
+        "events": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "date": {
+                "maxLength": 16,
+                "type": "string"
+              },
+              "event": {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              "week": {
+                "maxLength": 32,
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 400,
+          "type": "array"
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "last_modified": {
+          "maxLength": 100,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "items": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "semester": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "source_note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "semester",
+        "days",
+        "events",
+        "notes",
+        "source_note",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.calendar.get.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.ustc-academic",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fb36b432e7f4de39877be59d9ff035548b6968737c750e7ad6ec84837bf322ce",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-academic-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.academic.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "academic",
+    "calendar",
+    "ustc"
+  ]
+}

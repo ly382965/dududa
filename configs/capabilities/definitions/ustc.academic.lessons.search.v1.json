@@ -1,0 +1,293 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.academic.lessons.search.v1",
+  "category": "campus.academic",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:9771e08d0a5b32459911499681c0b689fbb50899e5a2fc8b9ebf63f18e1a8e38",
+  "description": "Search the official semester lesson list with local filters and pagination.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.lessons.search.v1.input:v1:sha-256:1a2a0d754a299fd37ef7bef2a6dd0de214c382f529541824df353f53ef1dac90",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "campus": {
+          "default": "",
+          "title": "Campus",
+          "type": "string"
+        },
+        "class_type": {
+          "default": "",
+          "title": "Class Type",
+          "type": "string"
+        },
+        "course_classify": {
+          "default": "",
+          "title": "Course Classify",
+          "type": "string"
+        },
+        "department_code": {
+          "default": "",
+          "title": "Department Code",
+          "type": "string"
+        },
+        "education": {
+          "default": "",
+          "title": "Education",
+          "type": "string"
+        },
+        "limit": {
+          "default": 25,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "location": {
+          "default": "",
+          "title": "Location",
+          "type": "string"
+        },
+        "offset": {
+          "default": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        },
+        "semester_id": {
+          "title": "Semester Id",
+          "type": "integer"
+        },
+        "teacher": {
+          "default": "",
+          "title": "Teacher",
+          "type": "string"
+        },
+        "time_span": {
+          "default": "",
+          "title": "Time Span",
+          "type": "string"
+        }
+      },
+      "required": [
+        "semester_id"
+      ],
+      "title": "catalog_search_lessonsArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.lessons.search.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Search USTC lessons",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.lessons.search.v1.output:v1:sha-256:1c422b66eb1d544c08faf33ebd29238fcf628a8337b8dd168ff4d2b4ea0eefb3",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "freshness_notice": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "campus": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "class_type": {
+                "maxLength": 200,
+                "type": "string"
+              },
+              "course_classify": {
+                "maxLength": 200,
+                "type": "string"
+              },
+              "course_code": {
+                "maxLength": 64,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "course_name": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "course_name_en": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "course_type": {
+                "maxLength": 200,
+                "type": "string"
+              },
+              "credits": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "department": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "education": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "exam_mode": {
+                "maxLength": 200,
+                "type": "string"
+              },
+              "lesson_code": {
+                "maxLength": 64,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lesson_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "limit_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "period": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "schedule": {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              "student_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "teachers": {
+                "items": {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "maxItems": 32,
+                "type": "array"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "semester_id": {
+          "type": "integer"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "items",
+        "total",
+        "offset",
+        "limit",
+        "semester_id",
+        "freshness_notice",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.lessons.search.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.ustc-academic",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fb36b432e7f4de39877be59d9ff035548b6968737c750e7ad6ec84837bf322ce",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-academic-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.academic.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "academic",
+    "course",
+    "lesson",
+    "search",
+    "ustc"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:77a48e6dd3b2a987404dfc614e3fe8bc91269b2ae06fd9a59d788006ec8d5015",
+  "capability_id": "ustc.young.connection.status.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-young.young_connection_status.input:v1:sha-256:014af1a93eb0e4d1e70796e18a992d2179d51ffbb5f2ef65375a592e3f4e925a",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-young.young_connection_status.output:v1:sha-256:ac76f2bdc404e7cfe27232b1030f6deb800de1e47012c236da8ef73df8b6d7bf",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:3a54e8e4acfe648bce8900537b6191ccb010355d1481c54d376e20b2bb18de34",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "ustc-young",
+  "tool_name": "young_connection_status"
+}

@@ -1,0 +1,741 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.young.activity.get.v1",
+  "category": "campus.second-class",
+  "cost_hint_units": 2,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:bb3608d3519788bd12d9460013a06500ae44d9b58164c49351d5c0653bdeda3f",
+  "description": "Read one second-class activity and optional series children.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activity.get.v1.input:v1:sha-256:e7bd88d8a3dd88e29870c21e888899b606b0f8c40502fcbdae872b05eaebc790",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "activity_id": {
+          "title": "Activity Id",
+          "type": "string"
+        },
+        "include_children": {
+          "default": false,
+          "title": "Include Children",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "activity_id"
+      ],
+      "title": "young_get_activityArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.activity.get.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read USTC second-class activity",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activity.get.v1.output:v1:sha-256:6355920cf643723692e31bf94e247a83e48d3f15f2c424a5fa7f00a89461e6c5",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "additionalProperties": false,
+          "properties": {
+            "activity_id": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "apply_window": {
+              "additionalProperties": false,
+              "properties": {
+                "end": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "start": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "can_apply": {
+              "type": "boolean"
+            },
+            "capacity": {
+              "additionalProperties": false,
+              "properties": {
+                "limit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "registered": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "contact": {
+              "maxLength": 300,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "department": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "maxLength": 128,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "maxLength": 300,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "description": {
+              "maxLength": 20000,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_window": {
+              "additionalProperties": false,
+              "properties": {
+                "end": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "start": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "is_registered": {
+              "type": "boolean"
+            },
+            "kind": {
+              "maxLength": 32,
+              "type": "string"
+            },
+            "labels": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "module": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "maxLength": 128,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "maxLength": 300,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "name": {
+              "maxLength": 500,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "maxLength": 100,
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "valid_hours": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "activity_id",
+            "status",
+            "kind",
+            "apply_window",
+            "event_window",
+            "capacity",
+            "is_registered",
+            "can_apply",
+            "module",
+            "department",
+            "labels"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "authentication": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "children": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "activity_id": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "apply_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "can_apply": {
+                "type": "boolean"
+              },
+              "capacity": {
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "registered": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "contact": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "department": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "description": {
+                "maxLength": 20000,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "event_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "is_registered": {
+                "type": "boolean"
+              },
+              "kind": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "labels": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "maxLength": 128,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "maxLength": 300,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              "module": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "maxLength": 100,
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "valid_hours": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "activity_id",
+              "status",
+              "kind",
+              "apply_window",
+              "event_window",
+              "capacity",
+              "is_registered",
+              "can_apply",
+              "module",
+              "department",
+              "labels"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "error": {
+          "maxLength": 200,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "activity_id": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "apply_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "can_apply": {
+                "type": "boolean"
+              },
+              "capacity": {
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "registered": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "contact": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "department": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "description": {
+                "maxLength": 20000,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "event_window": {
+                "additionalProperties": false,
+                "properties": {
+                  "end": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "start": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "is_registered": {
+                "type": "boolean"
+              },
+              "kind": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "labels": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "maxLength": 128,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "maxLength": 300,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              "module": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 128,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "name": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "maxLength": 100,
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "valid_hours": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "activity_id",
+              "status",
+              "kind",
+              "apply_window",
+              "event_window",
+              "capacity",
+              "is_registered",
+              "can_apply",
+              "module",
+              "department",
+              "labels"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "available",
+        "authentication",
+        "items",
+        "total",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.activity.get.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "personal",
+  "provider": {
+    "provider_id": "mcp.ustc-young",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fbc6d4dfc1fd45747dd6fc54933e32b3407c4184822ff3aba62747dddbda4140",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-young-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.young.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "activity",
+    "detail",
+    "second-class",
+    "ustc"
+  ]
+}

@@ -13,6 +13,7 @@ MIT license applies only to original Dududa code and documentation.
 | PokePro | `d65909e135d3a0398f4413b9be5737da83931d93` | https://github.com/Zhalslar/astrbot_plugin_pokepro |
 | Reread | `6b4087a71cdf307558b0971e6b1e4e964ac4c332` | https://github.com/Zhalslar/astrbot_plugin_reread |
 | Meme Manager | `d67953e1af444baefcab67ab62eb96f0ad0001c8`, code-only sparse checkout | https://github.com/anka-afk/astrbot_plugin_meme_manager |
+| pyustc | `f16d9465fd572463cb1b239d310e02010593386c`, MIT | https://github.com/USTC-XeF2/pyustc |
 
 The vendored Better Reminder directory includes its upstream AGPL-3.0 license.
 Do not remove upstream copyright or license files installed by the lock script.

@@ -67,9 +67,11 @@ and directory slices and a joint audit.
 
 The local S08-S20/S22 engineering sequence and the independent Mew/NapCat Web
 parity epic are complete and verified in their declared local/offline scopes.
-iCourse is the only real MCP Server; later MCPs and proactive sources have
-framework-neutral Ports, Registry entries, Fakes and fixtures rather than
-invented production integrations. S23 now has a committed manifest-only
+Unified MCP now has four real read-only Registry Servers: anonymous iCourse,
+authenticated USTC second-class activities, public academic queries and the
+official shuttle schedule. These query services are not proactive digest
+sources; campus news, arXiv and industry feeds still have only source-neutral
+contracts, Fakes and fixtures. S23 now has a committed manifest-only
 readiness checker and operator Runbook, but its branch is paused: real Endpoint
 evidence, group authorization/SecretRefs, live sources, production Projection/
 Output composition, human quality data, online Bandit learning and every real

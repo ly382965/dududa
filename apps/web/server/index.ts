@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { createDududaServer } from './app'
 import { HttpControlPlaneClient, UnavailableControlPlaneClient } from './control-plane'
 import { OneBotHub } from './onebot-hub'
+import { HttpMcpConsoleClient, UnavailableMcpConsoleClient } from './mcp-console'
 
 function readToken(environmentName: string, fileEnvironmentName: string, defaultFile: string): string {
   const environmentToken = process.env[environmentName]?.trim()
@@ -21,11 +22,15 @@ const host = process.env.DUDUDA_WEB_BIND || '127.0.0.1'
 const port = Number(process.env.DUDUDA_WEB_INTERNAL_PORT || 8000)
 const oneBotToken = readToken('DUDUDA_ONEBOT_TOKEN', 'DUDUDA_ONEBOT_TOKEN_FILE', '/run/secrets/onebot_access_token')
 const controlPlaneUrl = process.env.DUDUDA_CONTROL_PLANE_URL?.trim()
+const mcpConsoleUrl = process.env.DUDUDA_MCP_CONSOLE_URL?.trim()
 const hub = new OneBotHub({ token: oneBotToken })
 const controlPlane = controlPlaneUrl
   ? new HttpControlPlaneClient(controlPlaneUrl)
   : new UnavailableControlPlaneClient()
-const server = createDududaServer({ hub, publicDir, controlPlane })
+const mcpConsole = mcpConsoleUrl
+  ? new HttpMcpConsoleClient(mcpConsoleUrl)
+  : new UnavailableMcpConsoleClient()
+const server = createDududaServer({ hub, publicDir, controlPlane, mcpConsole })
 
 server.listen(port, host, () => {
   const tokenState = hub.configured ? 'configured' : 'missing'

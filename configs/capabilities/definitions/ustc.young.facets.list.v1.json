@@ -1,0 +1,140 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.young.facets.list.v1",
+  "category": "campus.second-class",
+  "cost_hint_units": 2,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:a2b76e78c272b33f4d431c3bb75304a884e4f2a6e690033b23788723cccefce7",
+  "description": "List available module, department or label filters.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.facets.list.v1.input:v1:sha-256:8d5ff0b1869eed544641ea6fc728be949604ed7e702a32c90b3545bc99e9dc61",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "facet": {
+          "title": "Facet",
+          "type": "string"
+        }
+      },
+      "required": [
+        "facet"
+      ],
+      "title": "young_list_facetsArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.facets.list.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "List USTC second-class filters",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.facets.list.v1.output:v1:sha-256:b926c6493de737f80603a0db2eb146e327a9860f00dbf1834523387c3856ac51",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "authentication": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "error": {
+          "maxLength": 200,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 128,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "level": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "name": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "available",
+        "authentication",
+        "items",
+        "total",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.young.facets.list.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "personal",
+  "provider": {
+    "provider_id": "mcp.ustc-young",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fbc6d4dfc1fd45747dd6fc54933e32b3407c4184822ff3aba62747dddbda4140",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-young-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.young.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "filter",
+    "second-class",
+    "ustc"
+  ]
+}

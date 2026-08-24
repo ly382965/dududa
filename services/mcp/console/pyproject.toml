@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dududa-mcp-console"
+version = "0.1.0"
+description = "Internal Capability-ID console over Dududa Unified MCP"
+requires-python = ">=3.11"
+dependencies = [
+    "dududa-agent",
+    "jsonschema>=4.10,<5",
+]
+
+[project.scripts]
+dududa-mcp-console = "dududa_mcp_console.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

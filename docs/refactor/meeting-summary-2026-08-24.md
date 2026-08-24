@@ -3,7 +3,7 @@
 - 日期：2026-08-24
 - 当前工作分支：`treework/real-group-validation`
 - TreeWork 状态：`paused / partial`
-- 功能现场基线：`7c5b58b docs(runtime): record scoped sub2api reload`
+- 会前 Git 基线：`84ea4fb docs: add August project meeting summary`
 
 ## 一、30 秒结论
 
@@ -49,12 +49,12 @@ Memory、Tool、主动推送和在线 Bandit 都没有进入真实群运行链�
 | 静态 Model Router | 已完成（静态范围） | Haiku/Sonnet/Opus、Endpoint Registry、资格过滤、流量/容量、fallback | 真实多 Endpoint 质量/成本数据与动态优化 |
 | 语义理解与难度判断 | 部分完成 | Rule/Model/Merger、Intent/Entity/Reference、Complexity/TierPolicy、合成 Eval 和 Silver 样本 | 类别均衡人工 Gold、当前 Bot 流量校准、多轮和附件质量 |
 | Memory | 已完成（离线边界） | Scope、删除/tombstone、导出/恢复、M0/M1/M2、CJK BM25、合成 Eval | 生产 Context Builder 消费、真实 Iris/Hybrid 检索、人工质量和受控写入 |
-| MCP / Capability | 已完成（离线框架） | Unified Client、Server Registry、长 Session、Capability Runtime、Fake 扩展契约 | 唯一真实 MCP 仍是 iCourse；新真实 Server 和 Console 执行链接入未完成 |
+| MCP / Capability | 查询纵切已完成 | Unified Client、Server Registry、长 Session、Capability Runtime；iCourse、二课、教务处、校车四个真实只读 Server 与 17 个 Capability；Web 超级管理员可直接调用 | Agent 自动 Tool Rollout 仍关闭；校园资讯、arXiv、行业日报 Source 未实现 |
 | 回答档位与 Persona | 机制完成、体验待校准 | SHORT/MEDIUM/LONG、动态预算、Persona 同次生成、最终 Validator | 真实中文群聊风格、长度边界和 QQ 分片体验的人工校准 |
 | 主动消息与推送 | 部分完成（no-send） | 授权契约、Scheduler、Source Port、Digest/Probe Shadow 和固定 fixture | 真实校园/arXiv/行业来源、生产 Projection/Output、逐行为授权和发送 |
 | Bandit Learning | 离线基础完成 | Decision/Feedback、action support、propensity 校验、IPS/SNIPS/DR/ESS | 真实同档候选、before-action 日志、可归因反馈、Shadow/在线训练与探索 |
 | Bot Control Plane / WebUI | 工程纵切完成并运行 | 群服务初值、六项策略、插件四态、动态 Catalog、消息浏览、人工评价 | 多项配置尚未被生产 AstrBot Runtime 消费；不能把配置成功视为能力已执行 |
-| 插件 | 部分在线 | Sub2API 已在线；自动复读已恢复源码、配置面和 Compose 装配 | 自动复读仍缺 Web Policy Adapter；iCourse、图片能力尚未进入 Console Capability 链 |
+| 插件 | 部分在线 | Sub2API 已在线；自动复读已恢复源码、配置面和 Compose 装配；四个校园 MCP 已进入 Web Capability Console | 自动复读仍缺 Web Policy Adapter；图片能力尚未进入正式 Capability 链 |
 | 真实群测试 | 暂停、部分完成 | 历史语料离线 Demo、Provider no-send、内测 Console | 实时单群 Shadow、明确 @ Canary、日报、Probe 和分层放量均未开始 |
 
 ## 四、已经形成的可见成果

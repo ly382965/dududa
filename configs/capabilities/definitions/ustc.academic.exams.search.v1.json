@@ -1,0 +1,304 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.academic.exams.search.v1",
+  "category": "campus.academic",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ecbdbf17c7f175f08619cb054c44070655ecd5de3a0cecc5f11c5f084a8a8d53",
+  "description": "Search normalized official scheduled and general exam records.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.exams.search.v1.input:v1:sha-256:3800233837b4d0771fdd338b69f87fd667135146ee55dcafd7829413df3a54ce",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "admin_class": {
+          "default": "",
+          "title": "Admin Class",
+          "type": "string"
+        },
+        "department_code": {
+          "default": "",
+          "title": "Department Code",
+          "type": "string"
+        },
+        "education": {
+          "default": "",
+          "title": "Education",
+          "type": "string"
+        },
+        "exam_date": {
+          "default": "",
+          "title": "Exam Date",
+          "type": "string"
+        },
+        "exam_type": {
+          "default": "",
+          "title": "Exam Type",
+          "type": "string"
+        },
+        "grade": {
+          "default": "",
+          "title": "Grade",
+          "type": "string"
+        },
+        "limit": {
+          "default": 25,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "location": {
+          "default": "",
+          "title": "Location",
+          "type": "string"
+        },
+        "offset": {
+          "default": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        },
+        "semester_id": {
+          "title": "Semester Id",
+          "type": "integer"
+        },
+        "teacher": {
+          "default": "",
+          "title": "Teacher",
+          "type": "string"
+        }
+      },
+      "required": [
+        "semester_id"
+      ],
+      "title": "catalog_search_examsArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.exams.search.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Search USTC exams",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.exams.search.v1.output:v1:sha-256:fe2e3070dbe4e358f7de063e6240073f2fd5c225175857e104e8be9fe9c99c94",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "admin_classes": {
+                "maxLength": 2000,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "course_code": {
+                "maxLength": 64,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "course_name": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "course_name_en": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date": {
+                "maxLength": 64,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "department": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "education": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "end_time": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exam_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exam_mode": {
+                "maxLength": 200,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "grades": {
+                "maxLength": 500,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rooms": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "count": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "room": {
+                      "maxLength": 200,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 32,
+                "type": "array"
+              },
+              "source_kind": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "start_time": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "teachers": {
+                "items": {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "maxItems": 32,
+                "type": "array"
+              },
+              "type": {
+                "maxLength": 200,
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "semester_id": {
+          "type": "integer"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "items",
+        "total",
+        "offset",
+        "limit",
+        "semester_id",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.exams.search.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.ustc-academic",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fb36b432e7f4de39877be59d9ff035548b6968737c750e7ad6ec84837bf322ce",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-academic-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.academic.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "academic",
+    "exam",
+    "search",
+    "ustc"
+  ]
+}

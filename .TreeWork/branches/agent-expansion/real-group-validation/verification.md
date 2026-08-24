@@ -4,6 +4,29 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Commands: 19 MCP/repository contracts, three campus-service contracts, two
+  Console tests and six focused Web routes were rerun; the broader completed
+  slice also passed 42 Web server tests, TypeScript typecheck, Web production
+  build, Ruff and Compose config checks.
+- Result: all focused reruns passed and the generated production catalog has 17
+  mapped Capabilities. All static/build checks passed; only the existing Web
+  chunk-size warning remained.
+- Live read-only samples: all eight public campus Capabilities and one iCourse
+  Capability completed through the Unified Worker. The existing CAS helper
+  issued a session, pinned `pyustc` logged into the second-class service, and
+  the Web Capability path returned the five module facets 德/智/体/美/劳.
+- Browser evidence: the MCP workbench displayed four Servers and 17 approved
+  Capabilities; `ustc-young` showed `configured/healthy`, a schema-generated
+  form completed a real call, and Playwright observed no console/page errors.
+- Deployment boundary: only `dududa-mcp-console-1` was rebuilt/recreated.
+  `dududa-astrbot-1` and the active NapCat container retained their prior IDs
+  and `StartedAt` values. No QQ Output, Memory write or online Bandit action
+  occurred; credentials and session values were not printed or committed.
+- Evidence boundary: these checks prove the four query MCPs and super-admin Web
+  invocation, not Agent automatic Tool rollout or campus/arXiv/industry digest
+  sources. Branch verification therefore remains `partial` for S23.
+- Recorded: 2026-08-24
+
 - Source parity: current `client.py` is byte-identical to the locally deployed
   Sub2API v0.6.2 baseline; every original command handler remains present.
 - Command: `uv run --locked python -m unittest tests.test_sub2api_plugin`

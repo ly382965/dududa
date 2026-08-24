@@ -1,0 +1,591 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.academic.program.get.v1",
+  "category": "campus.academic",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:316391a117d42584d7a5e5553522f245194ccf93b752bee28bfaa1c89c1c9147",
+  "description": "Read one official training program with optional shared-module expansion.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.program.get.v1.input:v1:sha-256:05c106312f6266d03d06bb35befa3739466e69344c9cc002f2efeccc35b40cc4",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "expand_shared_modules": {
+          "default": false,
+          "title": "Expand Shared Modules",
+          "type": "boolean"
+        },
+        "include_introduction": {
+          "default": false,
+          "title": "Include Introduction",
+          "type": "boolean"
+        },
+        "program_id": {
+          "title": "Program Id",
+          "type": "integer"
+        },
+        "term": {
+          "default": "",
+          "title": "Term",
+          "type": "string"
+        }
+      },
+      "required": [
+        "program_id"
+      ],
+      "title": "catalog_get_programArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.program.get.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read USTC training program",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.program.get.v1.output:v1:sha-256:27b1f1a04a401d648af608cf14228f6467e345bbedc4331999b13fc0ebe4fe00",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "api_source": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "program": {
+          "additionalProperties": false,
+          "properties": {
+            "award_degree": {
+              "type": "boolean"
+            },
+            "begin_semester": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "department": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "maxLength": 300,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "education": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "grade": {
+              "maxLength": 16,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "major": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "maxLength": 300,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "major_direction": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "maxLength": 300,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [],
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "modules": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "courses": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "maxLength": 64,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "compulsory": {
+                          "type": "boolean"
+                        },
+                        "course_id": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "credits": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "department": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "code": {
+                              "maxLength": 64,
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "id": {
+                              "type": [
+                                "integer",
+                                "null"
+                              ]
+                            },
+                            "name": {
+                              "maxLength": 300,
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [],
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "exam_mode": {
+                          "maxLength": 200,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "introduction": {
+                          "maxLength": 20000,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 500,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name_en": {
+                          "maxLength": 500,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terms": {
+                          "items": {
+                            "maxLength": 32,
+                            "type": "string"
+                          },
+                          "maxItems": 32,
+                          "type": "array"
+                        }
+                      },
+                      "required": [],
+                      "type": "object"
+                    },
+                    "maxItems": 500,
+                    "type": "array"
+                  },
+                  "expanded_shared": {
+                    "type": "boolean"
+                  },
+                  "level": {
+                    "type": "integer"
+                  },
+                  "module_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name_en": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "parent_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "remark": {
+                    "maxLength": 2000,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "required_course_count": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "required_credits": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "shared_module_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 2000,
+              "type": "array"
+            },
+            "required_credits": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "student_type": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "train_type": {
+              "maxLength": 100,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "program_id": {
+          "type": "integer"
+        },
+        "requested_term": {
+          "maxLength": 32,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shared_modules": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "courses": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "maxLength": 64,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "compulsory": {
+                      "type": "boolean"
+                    },
+                    "course_id": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "credits": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "department": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "maxLength": 64,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "exam_mode": {
+                      "maxLength": 200,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "introduction": {
+                      "maxLength": 20000,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "name": {
+                      "maxLength": 500,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "name_en": {
+                      "maxLength": 500,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "terms": {
+                      "items": {
+                        "maxLength": 32,
+                        "type": "string"
+                      },
+                      "maxItems": 32,
+                      "type": "array"
+                    }
+                  },
+                  "required": [],
+                  "type": "object"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              "expanded_shared": {
+                "type": "boolean"
+              },
+              "level": {
+                "type": "integer"
+              },
+              "module_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "name": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name_en": {
+                "maxLength": 300,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parent_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "remark": {
+                "maxLength": 2000,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "required_course_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "required_credits": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "shared_module_id": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "maxItems": 2000,
+          "type": "array"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "program_id",
+        "requested_term",
+        "program",
+        "shared_modules",
+        "source_url",
+        "api_source",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.academic.program.get.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "public",
+  "provider": {
+    "provider_id": "mcp.ustc-academic",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:fb36b432e7f4de39877be59d9ff035548b6968737c750e7ad6ec84837bf322ce",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-academic-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.academic.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "academic",
+    "program",
+    "ustc"
+  ]
+}

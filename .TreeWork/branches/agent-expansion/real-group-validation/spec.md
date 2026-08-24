@@ -166,9 +166,27 @@ running container has loaded it and consumes Web Policy, and per-Run selection
 or invocation is reported independently. Neither `installed` nor `configured`
 may be presented as an online executor or an actual call.
 
-iCourse is currently the only real MCP Server, but its execution path and
-`gpt-image-2` are not connected to the current Web candidate Runtime and remain
-unavailable. Automatic reread and the existing deterministic read-only
+The campus MCP expansion keeps the existing Unified MCP and Capability control
+plane. Four independently registered Servers are exposed: `icourse` reuses the
+existing anonymous read-only implementation; `ustc-young` adapts the pinned
+`pyustc` implementation behind repository-external CAS SecretRefs;
+`ustc-academic` provides read-only program, lesson, exam and teaching-calendar
+queries; and `ustc-shuttle` provides the current official timetable and trip
+queries. The three new Servers share one implementation package but retain
+independent Registry identities, sessions, health and schema snapshots. All
+first-release tools are read-only. Missing CAS credentials make only
+`ustc-young` unavailable and never block the public campus sources.
+
+The WebUI exposes these Servers and their approved Capability mappings to the
+`super_admin` as a schema-driven direct-call workspace. Browser and Node code do
+not speak raw MCP or accept arbitrary `server/tool` pairs: an internal console
+Adapter invokes only configured Capability IDs through the existing Registry,
+Unified Client and mapping contracts, then returns structured results, source
+provenance, fetch time and an explicit availability/authentication state. This
+is a Control Plane client of Core authority, not a second MCP runtime.
+
+`gpt-image-2` remains outside this MCP slice. Automatic reread and the existing
+deterministic read-only
 `/sub2api 自动查询` are restored as independent AstrBot plugins, default to
 `off`, and are configurable per `accountId + conversationId`. Both require a
 `super_admin` WebUI operator to configure and declare `admin` as their Bot
@@ -306,9 +324,10 @@ The static historical export and one private Responses-compatible Teacher
 Endpoint are now authorized for the offline S23A--S23E stage only. This does not
 satisfy any live gate. S23 live execution still waits for an operator-supplied
 authorization packet and private SecretRefs. The current pilot SLO remains
-`s23_ready=false`; campus/arXiv/industry live Source Adapters and proactive
-production Projection/Output composition do not exist. iCourse remains the
-only real MCP Server and does not substitute for a news source.
+`s23_ready=false`; arXiv/industry live Source Adapters and proactive production
+Projection/Output composition do not exist. The campus MCPs are operator-query
+Capabilities and do not by themselves prove the governed digest Source Adapter
+or authorize proactive delivery.
 
 Any Adapter needed after real source/Provider facts arrive is implemented and
 contract-tested inside the existing Port boundary before the corresponding
