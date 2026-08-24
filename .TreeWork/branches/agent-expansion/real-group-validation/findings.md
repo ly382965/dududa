@@ -4,6 +4,13 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- AstrBot “已安装/已加载插件”与 Dududa “已授权 Capability”是两个独立事实。
+  Web 安装成功只更改 AstrBot Runtime，不写入会话 Policy、不创建 Capability
+  mapping，也不授予 Agent 调用权。浏览器不接触 AstrBot Key；当前写入信任
+  仍来自本机回环 + same-origin 的超级工作台，不可外推为已完成远程管理员认证。
+- AstrBot 4.26.2 的版本不兼容警告发生在 ZIP 解压之后，直接重试会因目录已存在失败。
+  Web 在首次安装前后只比较 AstrBot failed-plugin ID；仅当本次唯一新增失败项
+  可确定时回滚该目录并允许显式忽略版本检查重试，结果不唯一时不删除任何插件。
 - `/sub2api overview` 的功能基线是本机可核验的原插件 v0.6.2，而不是仓库中较旧
   的 v0.5.1 Git 基线。原版已经拥有当前计费轮快照、精确起点分页聚合、历史排名、
   上游账号、缓存与错误处理；本轮不重新设计这些逻辑。由于 2.0 ReplyPolish 默认

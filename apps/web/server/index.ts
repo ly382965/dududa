@@ -5,6 +5,7 @@ import { createDududaServer } from './app'
 import { HttpControlPlaneClient, UnavailableControlPlaneClient } from './control-plane'
 import { OneBotHub } from './onebot-hub'
 import { HttpMcpConsoleClient, UnavailableMcpConsoleClient } from './mcp-console'
+import { HttpAstrBotPluginManagerClient } from './plugin-manager'
 
 function readToken(environmentName: string, fileEnvironmentName: string, defaultFile: string): string {
   const environmentToken = process.env[environmentName]?.trim()
@@ -23,6 +24,12 @@ const port = Number(process.env.DUDUDA_WEB_INTERNAL_PORT || 8000)
 const oneBotToken = readToken('DUDUDA_ONEBOT_TOKEN', 'DUDUDA_ONEBOT_TOKEN_FILE', '/run/secrets/onebot_access_token')
 const controlPlaneUrl = process.env.DUDUDA_CONTROL_PLANE_URL?.trim()
 const mcpConsoleUrl = process.env.DUDUDA_MCP_CONSOLE_URL?.trim()
+const astrBotPluginApiUrl = process.env.DUDUDA_ASTRBOT_PLUGIN_API_URL?.trim() || 'http://astrbot:6185/api/v1'
+const astrBotPluginApiKey = () => readToken(
+  'DUDUDA_ASTRBOT_PLUGIN_API_KEY',
+  'DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE',
+  '/run/secrets/astrbot_plugin_api_key',
+)
 const hub = new OneBotHub({ token: oneBotToken })
 const controlPlane = controlPlaneUrl
   ? new HttpControlPlaneClient(controlPlaneUrl)
@@ -30,7 +37,8 @@ const controlPlane = controlPlaneUrl
 const mcpConsole = mcpConsoleUrl
   ? new HttpMcpConsoleClient(mcpConsoleUrl)
   : new UnavailableMcpConsoleClient()
-const server = createDududaServer({ hub, publicDir, controlPlane, mcpConsole })
+const pluginManager = new HttpAstrBotPluginManagerClient(astrBotPluginApiUrl, astrBotPluginApiKey)
+const server = createDududaServer({ hub, publicDir, controlPlane, mcpConsole, pluginManager })
 
 server.listen(port, host, () => {
   const tokenState = hub.configured ? 'configured' : 'missing'

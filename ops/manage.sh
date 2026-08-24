@@ -39,7 +39,7 @@ web_data_root() {
 }
 
 ensure_web_secrets() {
-  local root token_file
+  local root token_file plugin_key_file
   root="$(web_data_root)"
   mkdir -p "$root/secrets"
   chmod 700 "$root" "$root/secrets" 2>/dev/null || true
@@ -52,6 +52,11 @@ ensure_web_secrets() {
     fi
   fi
   chmod 600 "$token_file"
+  plugin_key_file="$root/secrets/astrbot_plugin_api_key"
+  if [[ ! -e "$plugin_key_file" ]]; then
+    : >"$plugin_key_file"
+  fi
+  chmod 600 "$plugin_key_file"
 }
 
 project_name() {
@@ -109,6 +114,7 @@ usage() {
     '  rollback    Roll back through an explicit operations driver plan' \
     '  init        Create private runtime directories and merge safe templates' \
     '  plugins     Install locked third-party plugins into runtime data' \
+    '  plugin-access  Provision the Web plugin-scope AstrBot API key' \
     '  sync        Merge the icourse MCP template into runtime config' \
     '  seed        Install the Dududa persona and MCP config into AstrBot' \
     '  up          Build and start the complete AstrBot + NapCat + Web stack' \
@@ -144,6 +150,29 @@ case "$cmd" in
     mkdir -p "$runtime_root/astrbot/plugins"
     "$PYTHON" ops/cli/install_plugins.py --data-root "$runtime_root"
     ;;
+  plugin-access)
+    setup_docker
+    ensure_web_secrets
+    plugin_key_file="$(web_data_root)/secrets/astrbot_plugin_api_key"
+    if [[ -s "$plugin_key_file" && "${2:-}" != "--force" ]]; then
+      printf '%s\n' 'AstrBot plugin access is already configured.'
+      exit 0
+    fi
+    plugin_key_tmp="$(mktemp "$(web_data_root)/secrets/.astrbot_plugin_api_key.XXXXXX")"
+    trap 'rm -f "$plugin_key_tmp"' EXIT
+    "${COMPOSE[@]}" exec -T astrbot python \
+      /opt/dududa/scripts/provision_astrbot_plugin_key.py >"$plugin_key_tmp"
+    if [[ ! -s "$plugin_key_tmp" ]]; then
+      printf '%s\n' 'AstrBot returned an empty plugin API key.' >&2
+      exit 1
+    fi
+    chmod 600 "$plugin_key_tmp"
+    cp "$plugin_key_tmp" "$plugin_key_file"
+    rm -f "$plugin_key_tmp"
+    chmod 600 "$plugin_key_file"
+    trap - EXIT
+    printf '%s\n' 'AstrBot plugin access configured.'
+    ;;
   sync)
     "$PYTHON" ops/cli/sync_runtime.py --data-root "$(data_root)" --force-config
     ;;
@@ -160,6 +189,7 @@ case "$cmd" in
     "$0" plugins
     ensure_edge_network
     "${COMPOSE[@]}" up -d --build
+    "$0" plugin-access
     "$0" seed
     "${COMPOSE[@]}" restart astrbot
     ;;
@@ -229,6 +259,7 @@ case "$cmd" in
       ensure_edge_network
       "${COMPOSE[@]}" pull --ignore-buildable
       "${COMPOSE[@]}" up -d --build
+      "$0" plugin-access
       "$0" seed
     fi
     ;;

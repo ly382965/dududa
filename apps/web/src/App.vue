@@ -105,8 +105,7 @@ function navigate(target: WorkspaceRoute): void {
 
 function setMobilePanel(panel: MobilePanel): void {
   if (panel === 'agent') {
-    void router.push(chatLocation())
-    workspace.openAgent()
+    void router.push(chatLocation()).then(() => workspace.openAgent())
     return
   }
   void router.push(panel === 'inbox' ? { name: 'chat' } : chatLocation())

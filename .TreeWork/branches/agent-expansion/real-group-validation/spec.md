@@ -185,6 +185,29 @@ Unified Client and mapping contracts, then returns structured results, source
 provenance, fetch time and an explicit availability/authentication state. This
 is a Control Plane client of Core authority, not a second MCP runtime.
 
+### Runtime Plugin Installation
+
+The Bot Control Plane exposes AstrBot's actual runtime plugin inventory beside,
+but not inside, Dududa's governed Capability Catalog. A `super_admin` may install
+one plugin from an HTTPS GitHub repository or a local ZIP. The Web Server proxies
+only AstrBot's list and install operations with a repository-external API key
+limited to the `plugin` scope; the browser never receives that key. AstrBot owns
+dependency installation and immediate plugin loading, so no container restart or
+second plugin loader is introduced.
+
+Runtime installation proves only that AstrBot loaded an extension. It does not
+create a Dududa Capability, add a Scope policy entry, grant permissions, or make
+the plugin eligible for Agent planning. Those effects still require the existing
+Capability definition/mapping and deterministic policy path. Built-in read-only
+mounts cannot be replaced through this workflow.
+
+The first Web release accepts only canonical `https://github.com/<owner>/<repo>`
+URLs and ZIP uploads no larger than 16 MiB. It does not proxy arbitrary remote
+URLs. A versioned Chinese plugin-development specification is downloadable from
+the same panel and defines AstrBot 4.26.2 structure, metadata/config templates,
+Dududa authority boundaries, output rules, lifecycle, tests and an AI generation
+output contract.
+
 `gpt-image-2` remains outside this MCP slice. Automatic reread and the existing
 deterministic read-only
 `/sub2api 自动查询` are restored as independent AstrBot plugins, default to

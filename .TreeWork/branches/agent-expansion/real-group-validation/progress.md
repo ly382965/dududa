@@ -138,6 +138,14 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 完成 Web Runtime 插件管理纵切：超级工作台动态展示 AstrBot 已加载
+  插件，通过仅 `plugin` scope 的服务端 Key 代理 GitHub/ZIP 安装和
+  热加载，并提供 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文规范下载。安装与
+  Capability/Scope Policy 授权分层，新插件不自动进入 Agent 候选集。版本
+  不兼容警告只回滚本次唯一新增失败目录，再允许管理员显式忽略重试。
+  聚焦测试、类型检查和构建通过；桌面/移动 Playwright 均看到 4 个在线插件、
+  安装弹窗与下载入口。本次只替换 `dududa-web-1`，AstrBot/NapCat 未重启，
+  也未安装任意第三方插件。
 - 完成 USTC 校园 MCP 纵切：新增二课、教务处和校车三个独立 Registry Server，
   与 iCourse 共用 Unified Client/Capability 控制面；公开查询真实 Smoke、二课 CAS
   登录与筛选项查询、Web schema 表单调用均成功。只重建了独立 `mcp-console`，

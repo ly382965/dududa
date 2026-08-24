@@ -42,6 +42,11 @@ import {
   UnavailableMcpConsoleClient,
   type McpConsoleClient,
 } from './mcp-console'
+import {
+  PluginManagerClientError,
+  UnavailablePluginManagerClient,
+  type PluginManagerClient,
+} from './plugin-manager'
 import { readBrowserUpload } from './uploads'
 
 export interface DududaServerOptions {
@@ -50,6 +55,7 @@ export interface DududaServerOptions {
   controlPlane?: ControlPlaneClient
   internalTest?: InternalTestGateway
   mcpConsole?: McpConsoleClient
+  pluginManager?: PluginManagerClient
   maxRequestBytes?: number
 }
 
@@ -61,6 +67,7 @@ const contentTypes: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
@@ -110,6 +117,10 @@ function routeError(response: ServerResponse, error: unknown): void {
     return
   }
   if (error instanceof McpConsoleClientError) {
+    json(response, error.status, { error: error.message })
+    return
+  }
+  if (error instanceof PluginManagerClientError) {
     json(response, error.status, { error: error.message })
     return
   }
@@ -369,7 +380,10 @@ async function serveStatic(response: ServerResponse, pathname: string, publicDir
   securityHeaders(response)
   response.statusCode = 200
   response.setHeader('Content-Type', contentTypes[extname(target).toLowerCase()] ?? 'application/octet-stream')
-  response.setHeader('Cache-Control', target.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable')
+  response.setHeader(
+    'Cache-Control',
+    target.endsWith('index.html') || target.endsWith('.md') ? 'no-cache' : 'public, max-age=31536000, immutable',
+  )
   createReadStream(target).pipe(response)
 }
 
@@ -378,6 +392,7 @@ export function createDududaServer(options: DududaServerOptions) {
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const internalTest = options.internalTest ?? createInternalTestGateway()
   const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
+  const pluginManager = options.pluginManager ?? new UnavailablePluginManagerClient()
   const eventClients = new Set<ServerResponse>()
   const eventReplay: ReplayableWorkspaceEvent[] = []
   let nextWorkspaceEventId = 1
@@ -443,6 +458,37 @@ export function createDududaServer(options: DududaServerOptions) {
           return
         }
         json(response, 200, await mcpConsole.invoke(body.capabilityId, body.arguments as Record<string, unknown>))
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/plugins/runtime') {
+        json(response, 200, await pluginManager.catalog())
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/plugins/install/github') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源超级管理员页面安装插件' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        if (typeof body.repository !== 'string' || !body.repository.trim()) {
+          json(response, 400, { error: '缺少 GitHub 仓库地址' })
+          return
+        }
+        json(
+          response,
+          200,
+          await pluginManager.installGithub(body.repository, body.ignoreVersionCheck === true),
+        )
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/plugins/install/upload') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源超级管理员页面安装插件' })
+          return
+        }
+        const upload = await readBrowserUpload(request, 16 * 1024 * 1024)
+        const ignoreVersionCheck = url.searchParams.get('ignoreVersionCheck') === 'true'
+        json(response, 200, await pluginManager.installUpload(upload, ignoreVersionCheck))
         return
       }
       if (method === 'GET' && url.pathname === '/api/internal-test/agent/config') {

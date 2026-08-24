@@ -273,6 +273,13 @@ describe('Dududa NapCat workspace', () => {
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/chat')
     expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--inbox')
+
+    const mobileAgent = wrapper.findAll('.mobile-nav button').find((button) => button.text().trim() === 'Agent')
+    expect(mobileAgent).toBeDefined()
+    await mobileAgent!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/chat/qq-123456789/group/345678901')
+    expect(wrapper.get('.workspace-shell').classes()).toContain('mobile-panel--agent')
   })
 
   it('returns account filters from a deep link to the bare chat inbox route', async () => {

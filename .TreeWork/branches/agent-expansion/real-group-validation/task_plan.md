@@ -174,6 +174,10 @@ Title: S23 Authorized Real-Group Validation
 - [x] WebUI 展示四个 MCP 的健康、认证和 Capability 状态，`super_admin` 可依据
   Capability input schema 直接调用并查看结构化结果、来源与抓取时间；不开放任意
   MCP tool 透传。
+- [x] WebUI 新增 Runtime 插件管理区，动态列出 AstrBot 已加载插件，通过服务端
+  `plugin` scope API Key 支持 GitHub/ZIP 热安装；安装结果不写入 Scope Policy。
+- [x] 发布 `dududa-plugin-development-spec.md` 中文规范并在插件区提供下载链接，
+  让人或 AI 生成的插件按同一目录、metadata、配置、权限和测试格式交付。
 
 ## Local Steps
 
@@ -252,6 +256,9 @@ Title: S23 Authorized Real-Group Validation
 - [x] Add the internal Capability Console API and schema-driven Agent Console
   panel, then verify one iCourse/public-campus call path without enabling QQ
   output or restarting the current NapCat/AstrBot containers.
+- [x] Add the runtime plugin inventory/install proxy and downloadable AI-facing
+  plugin specification; prove one Fake install flow and one live list without
+  installing an arbitrary production plugin during verification.
 - [ ] Connect automatic reread to the Web Policy separately; a matched Web
   trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and

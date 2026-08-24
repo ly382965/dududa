@@ -89,9 +89,16 @@ online 和本轮实际调用。iCourse、二课、教务处和校车现已作为
 `gpt-image-2` 仍是独立待接图片能力。自动复读和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot
 插件，默认 `off`，按 `accountId + conversationId` 由会话 Policy 配置；WebUI 配置身份为
 `super_admin`，声明的 Bot 执行身份为 `admin`。两者源码、动态 Catalog/配置面和 Compose 装配
-已完成，但当前没有在线 AstrBot 消费 Web Policy，Policy Adapter 与真实执行链尚未接通。
+已完成；`/sub2api` 已由在线 AstrBot 消费精确 Scope Policy，自动复读仍待接入同一 Policy Adapter。
 校园资讯、arXiv、行业资讯、网络搜索等未接能力均显示 `unavailable + reason`，不得用 fixture
 或预留接口冒充真实服务。
+
+2026-08-24，超级工作台新增 AstrBot Runtime 插件管理纵切：动态展示已加载插件，
+支持从 `https://github.com/<owner>/<repo>` 或最大 16 MiB 的本地 ZIP 安装并由 AstrBot 热加载，
+不重启 AstrBot/NapCat。浏览器不持有 AstrBot Key；Web 仅使用 `plugin` scope 的仓库外 Key。
+安装状态与 Dududa Capability/Scope Policy 授权保持分离，新插件不会自动获得 Agent 调用权。
+同页可下载 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文规范，供人或 AI 按统一目录、metadata、配置、
+权限、输出和测试格式生成插件。当前信任边界仍是本机回环超级工作台，不声称已具备远程管理员认证。
 
 Console 同时区分管理员期望与实际 Runtime 状态：被动自动回复保持 `rollout_mode=off`、
 delivery disabled、kill switch active；主动参与仅为 S15E Probe Shadow，并明确标记 `NO SEND`。
@@ -164,17 +171,18 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现；S23 Builder 可从 AstrBot Provider 装配模型 Adapter | 真实 Attachment Source、第二平台、真实 Endpoint 绑定与授权真实群 delivery 证据 |
 | 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
 | Memory | 部分完成 | S14 已闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 重启证据、M0/M1/M2、纯 Python CJK BM25 和固定合成 Eval；Scope/Write Gate 与 fail-closed Iris 边界保持不变 | 旧命令与 Context Builder 消费者迁移、真实 Iris SDK Backend、授权数据/人工质量评测、Embedding/Hybrid 证据、shadow 和生产切流 |
-| MCP 集成 | 已完成（S12/S22 离线范围） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker、Fake/iCourse 共享 Contract；S22 已删除插件专用直连 Client，缺失时 fail closed | 真实新 Server、凭据和在线来源仍是外部门禁 |
-| Capability 与 Tool Runtime | 已完成（S13 离线范围） | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator、通用 MCP Provider、四个 iCourse 公开缓存映射、配置式 Fake 扩展及默认关闭的 Offline Runtime 工具链均有测试 | 无真实 Tool Planning Endpoint、真实语言质量、生产 Tools Rollout、高风险/写能力或新真实 Server 证据 |
+| MCP 集成 | 已完成（S12/S22 基础设施，四个查询 Server 已接入） | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker和共享 Contract 已完成；匿名 iCourse、认证二课、公开教务处与校车四个只读 Server 已真实查询 | 真实校园资讯/arXiv/行业 Source、Agent Tool Rollout 和新 Server 仍按各自门禁接入 |
+| Capability 与 Tool Runtime | 已完成（S13 基础设施，17 个只读映射已接入） | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator 和通用 MCP Provider 均有测试；四个 Server 共映射 17 个 Capability，超级管理员可按 schema 直接调用 | 无真实 Tool Planning Endpoint、真实语言质量、生产 Tools Rollout 或高风险/写能力证据 |
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现；S23 又对 600 条分层历史窗口生成 Terra Silver，并以 464 条编译样本训练群隔离 Student | Silver 类别严重不均衡；仍缺人工 Gold、阈值校准、当前 Bot 实时流量和多轮/附件语义质量证据 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定 | 模型 Renderer、多 Persona 产品资产、用户偏好存储和人工风格 Eval |
 | 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录；S16-S22 本地发布闭环已完成 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送和人工相关性/打扰度仍是 S23 的环境集成与外部门禁 |
 | 在线学习 / Bandit | 离线基础已完成（S20） | Framework-neutral decision/execution/feedback DTO、Router-planned baseline、完整 action support、propensity validator、Decimal IPS/SNIPS/DR/ESS 和固定合成 bundle 已通过；生产路径无 Bandit import/hook | 真实同档 Endpoint、before-action 日志、可归因反馈、Shadow/在线训练和探索仍未开始；禁止学习主动发送和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 的能力插件”方向，并给出 Descriptor/Lifecycle/Generation/Disposer 边界 | 尚无 Sxx 分支、Plugin Runtime、迁移或故障恢复证据；不得据此宣称已有插件生态 |
+| AstrBot Runtime 插件管理 | 已完成（Web 安装纵切） | 已部署动态插件列表、GitHub/ZIP 热安装、`plugin` scope Key 服务端代理、版本警告回滚/显式重试，以及 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文下载；真实 Web 列表返回 4 个已启用插件 | 安装不自动授予 Dududa Capability；可组合治理 Plugin Runtime、远程管理员认证、市场/卸载/升级不在本纵切范围 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测与 Agent Console 自适应超级工作台纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、六面运维投影和 Python→Node→Vue 查询链；历史语料面板支持 300 个脱敏窗口浏览/筛选、显式 `no_send` 候选和仓库外人工反馈；实时 Console 已实现动态 Catalog、`accountId + conversationId` 服务端 Policy，以及模型档位、推理强度、回答长度、回复强度、上下文长度（运行预算）、群聊风格六项正交配置。管理员设置初值、`allowed[]` 和 mode，只有 `locked` 固定；上下文三档预算为 12/6,000、30/18,000、60/36,000 条消息/字符，并返回预算和实际读取量；自动复读与 `/sub2api 自动查询` 已完成默认关闭的配置面、源码和 Compose 装配，配置者为 `super_admin`、Bot 执行身份为 `admin` | 被动自动回复仍为 `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅 S15E Probe Shadow/`NO SEND`。iCourse、`gpt-image-2` 尚未接入当前 Console 执行链；自动复读与 `/sub2api 自动查询` 尚缺 Web Policy Adapter 和在线 AstrBot 消费，`installed/configured` 不等于 Runtime online 或本轮调用。生产 HTTP/身份绑定、真实运行健康、Provider/Source/Projection/Output 和授权真实 QQ 仍是 S23 外部门禁。历史面板是 Evaluation Adapter；实时 Console 是 Control Plane，但两者都不替代 Core 权限、预算或发送权 |
+| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测、Agent Console 自适应超级工作台与 Runtime 插件安装纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、SQLite LKG/重启恢复和六面运维投影；历史语料面板支持 300 个脱敏窗口和 `no_send` 候选；实时 Console 按 `accountId + conversationId` 提供六项正交自适应配置、插件四态、四个校园 MCP 直接调用、AstrBot 已加载插件列表、GitHub/ZIP 热安装和中文插件规范下载；自动复读与 `/sub2api 自动查询` 都以 `super_admin` 配置、Bot `admin` 执行 | 被动自动回复仍为 `rollout_mode=off`，主动参与仅 S15E Probe Shadow/`NO SEND`；自动复读尚缺 Web Policy Adapter，`/sub2api` 已在线解析指定 Scope 但仍待用户命令闭合 QQ 端到端证据。插件安装不等于 Capability 授权；远程管理员认证、`gpt-image-2`、真实 Provider/Source/Projection/Output 和授权 QQ 仍是后续门禁 |
 | 大规模真实群测试与 Debug | S23 暂停、部分完成（离线 Demo、Web 人工内测与候选模型接入工程完成，实时未开始） | 1,402 个静态文件形成 155,567 条唯一群消息和 137,026 个 past-only 窗口；600 条 Terra Silver 抽样、464 条编译样本、全量 Student 预测及私有 localhost Demo 已完成；Web 内测页完成 300 窗口浏览/筛选及一次 Terra 人工触发候选，调用计数为 `providerCalls/outputCalls/memoryWrites/toolCalls=1/0/0/0`；固定 AstrBot 4.26.2 隔离候选启动、三模型 Provider-level no-send 和默认关闭健康刷新器聚焦证据均已通过 | 150–300 条类别均衡人工 Gold 是推荐的质量校准分支，不阻塞 no-send Shadow；先在隔离候选中正式注册三模型并完成真实 Endpoint Conformance，再启用运行中的候选 Runtime 与持续健康刷新。Projection/Connector 是 Shadow 前置，Output 是 Inbound Canary 前置，真实 Source 是 Manual Digest 前置；随后才按授权分层放量、冻结 SLO 并复盘 |
 
 ### 实施步骤完成度

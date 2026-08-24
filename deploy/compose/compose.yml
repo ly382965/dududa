@@ -16,6 +16,8 @@ services:
       DUDUDA_WEB_INTERNAL_PORT: 8000
       DUDUDA_ONEBOT_TOKEN_FILE: /run/secrets/onebot_access_token
       DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
+      DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1
+      DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE: /run/secrets/astrbot_plugin_api_key
     ports:
       - host_ip: ${DUDUDA_WEB_HOST:-127.0.0.1}
         published: "${DUDUDA_WEB_PORT:-5173}"
@@ -23,6 +25,7 @@ services:
         protocol: tcp
     volumes:
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/onebot_access_token:/run/secrets/onebot_access_token:ro
+      - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/astrbot_plugin_api_key:/run/secrets/astrbot_plugin_api_key:ro
     tmpfs:
       - /tmp:size=16m,mode=1777
     networks:

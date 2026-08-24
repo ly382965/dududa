@@ -4,6 +4,32 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Commands: `npx vitest run --config vitest.server.config.ts server/plugin-manager.spec.ts
+  server/plugin-manager-routes.spec.ts` passed 5/5; `npx vitest run src/App.spec.ts`
+  passed 9/9; `npm run typecheck`, production Web build, Python compile, `bash -n`,
+  Compose config and `git diff --check` passed. The build retained only the existing
+  large-chunk warning.
+- Specification sample: all five fenced Python templates compile and the JSON
+  Schema parses. The template matches AstrBot 4.26.2 runtime annotations, optional
+  no-Schema config construction and its actual supported Schema value types.
+- Live Web evidence: `GET /api/plugins/runtime` returned HTTP 200, `available=true`
+  and four activated plugins. The downloadable specification returned HTTP 200,
+  `text/markdown`, `no-cache`, 32,730 bytes and marker
+  `DUDUDA-PLUGIN-SPEC 1.0.0`.
+- Browser evidence: desktop 1440x1000 and mobile 390x844 both displayed the four
+  Runtime plugins, `安装插件`, `下载规范`, GitHub/ZIP source tabs and a fitting
+  install dialog with zero console/page errors. The real download completed as
+  `dududa-plugin-development-spec.md`. The mobile inbox-to-Agent route
+  regression is covered and the real mobile entry reaches the configuration tab.
+- Deployment boundary: only `dududa-web-1` was rebuilt/recreated. The existing
+  AstrBot and active NapCat retained their exact container IDs, start times and
+  `RestartCount=0`; OneBot remained `connected`. No arbitrary third-party plugin
+  was installed during live verification and no QQ message was sent.
+- Evidence boundary: the live Web remains a loopback-trusted super-admin workbench;
+  installation does not grant a Dududa Capability or prove remote administrator
+  authentication. S23 therefore remains `partial` for its separate real-group gates.
+- Recorded: 2026-08-24
+
 - Commands: 19 MCP/repository contracts, three campus-service contracts, two
   Console tests and six focused Web routes were rerun; the broader completed
   slice also passed 42 Web server tests, TypeScript typecheck, Web production

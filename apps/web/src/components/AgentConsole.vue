@@ -58,6 +58,7 @@ import type {
 } from '../types/workspace'
 import AgentPartView from './AgentPartView.vue'
 import AppAvatar from './AppAvatar.vue'
+import PluginManagerPanel from './PluginManagerPanel.vue'
 
 type AdaptiveAxis =
   | 'modelTier'
@@ -1077,6 +1078,8 @@ watch(
           </template>
         </section>
       </template>
+
+      <PluginManagerPanel />
 
       <footer class="settings-footer">
         <span><ShieldCheck :size="13" />按账号 + 会话保存；普通偏好可由 Agent 本轮改选</span>
