@@ -259,6 +259,11 @@ Title: S23 Authorized Real-Group Validation
 - [x] Add the runtime plugin inventory/install proxy and downloadable AI-facing
   plugin specification; prove one Fake install flow and one live list without
   installing an arbitrary production plugin during verification.
+- [x] Add the structured Runtime MCP registration form and same-origin proxy for
+  stdio/Streamable HTTP Definition v1; persist to a repository-external overlay,
+  reload/discover through Unified MCP and return `capabilityGranted=false`.
+- [x] Publish `dududa-mcp-development-spec.md` with SecretRef-only authentication,
+  Tool semantics, minimum Contract Tests and the separate Capability-mapping step.
 - [ ] Connect automatic reread to the Web Policy separately; a matched Web
   trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and

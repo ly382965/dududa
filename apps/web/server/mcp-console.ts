@@ -2,10 +2,15 @@ import type {
   McpConsoleCatalog,
   McpConsoleInvocation,
 } from '../src/types/internal-test'
+import type {
+  McpServerInstallRequest,
+  McpServerInstallResult,
+} from '../src/types/mcp-management'
 
 export interface McpConsoleClient {
   catalog(): Promise<McpConsoleCatalog>
   invoke(capabilityId: string, argumentsValue: Record<string, unknown>): Promise<McpConsoleInvocation>
+  installServer(definition: McpServerInstallRequest): Promise<McpServerInstallResult>
 }
 
 export class McpConsoleClientError extends Error {
@@ -23,6 +28,10 @@ export class UnavailableMcpConsoleClient implements McpConsoleClient {
   }
 
   async invoke(): Promise<McpConsoleInvocation> {
+    throw new McpConsoleClientError(this.reason, 503)
+  }
+
+  async installServer(): Promise<McpServerInstallResult> {
     throw new McpConsoleClientError(this.reason, 503)
   }
 }
@@ -43,6 +52,10 @@ export class HttpMcpConsoleClient implements McpConsoleClient {
 
   invoke(capabilityId: string, argumentsValue: Record<string, unknown>): Promise<McpConsoleInvocation> {
     return this.request('/v1/invoke', { capabilityId, arguments: argumentsValue })
+  }
+
+  installServer(definition: McpServerInstallRequest): Promise<McpServerInstallResult> {
+    return this.request('/v1/servers/install', definition)
   }
 
   private async request<T>(path: string, payload?: object): Promise<T> {

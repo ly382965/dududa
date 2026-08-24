@@ -211,6 +211,10 @@ Branch: real-group-validation
   Sub2API，没有恢复 Meme Manager、PokePro 或 Target Talk。校园 MCP 由独立
   `mcp-console` 运行并已供 Web 超级管理员只读调用；当前 AstrBot/NapCat 未因该
   接入重启，因此不能把 Web 调用证据外推为 Agent 自动 Tool 选择或主动发送。
+- Runtime MCP 接入现在能保存连接定义并发现 Tool，但 Discovery 只更新外部事实。
+  新 Server 默认有零项 Capability；要让 Agent 使用，仍需主仓独立的 Definition、
+  Schema、MCP mapping 和 Scope Policy。当前 Web 信任边界仍是本机回环地址加
+  同源管理页面，不能据此声明已经具备远程管理员认证。
 - 可解析的 Evidence JSON 只证明工程契约成立，不证明字段来自真实
   Conformance 执行。当前聚焦测试仍使用 Fake AstrBot Provider 和固定
   Evidence fixture；健康刷新实现已经存在，但运行中 AstrBot 未启用，正式

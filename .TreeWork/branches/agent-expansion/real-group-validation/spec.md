@@ -185,6 +185,23 @@ Unified Client and mapping contracts, then returns structured results, source
 provenance, fetch time and an explicit availability/authentication state. This
 is a Control Plane client of Core authority, not a second MCP runtime.
 
+### Runtime MCP Server Registration
+
+The Bot Control Plane exposes a structured `super_admin` workflow for registering
+a new MCP Server. It accepts `stdio` or Streamable HTTP connection data, explicit
+Tool allow/deny lists, SecretRef identities and the existing connection budgets.
+It never accepts a plaintext Secret. Repository Servers remain read-only;
+runtime definitions and display metadata are persisted in a repository-external
+overlay, projected into one strict Core Registry, then reloaded and discovered
+through the existing Unified Client.
+
+Registration and Discovery are facts, not grants. A newly registered Server has
+`capabilityGranted=false`, cannot replace an embedded Server, creates no
+Capability mapping or Scope Policy, and cannot be invoked through an arbitrary
+`server/tool` Web route. A downloadable Chinese specification defines Definition
+v1, both transports, SecretRef use, Tool semantics, lifecycle, minimum Contract
+Tests and an AI generation prompt.
+
 ### Runtime Plugin Installation
 
 The Bot Control Plane exposes AstrBot's actual runtime plugin inventory beside,

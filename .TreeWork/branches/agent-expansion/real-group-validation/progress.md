@@ -221,6 +221,11 @@ Last sync: unix:1786706085
 - 已决定不重跑现有历史语料 Demo。若需要新的多模型结构化样本，先用
   20--24 个窗口测吞吐，Luna 主样本为 120--350，Terra 复核最多 50，
   Sol 抽查最多 15；T+3.5 小时停止新请求，T+5 小时硬停止。
+- 完成 Runtime MCP 接入纵切：Web 超级工作台新增 stdio/Streamable HTTP
+  结构化表单与中文规范下载；Node 只做同源代理；MCP Console 将定义写入仓库外
+  overlay，合并内建 Registry 后热 reload 和 Discovery。Fake v2 Server 实际发现
+  `echo`，返回 `capabilityGranted=false`；未创建 Capability mapping、raw Tool
+  入口或真实 Secret 写入口，也未重启 AstrBot/NapCat。
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 

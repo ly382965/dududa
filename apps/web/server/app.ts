@@ -6,6 +6,7 @@ import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 import type { WorkspaceEvent } from '../src/types/workspace'
+import type { McpServerInstallRequest } from '../src/types/mcp-management'
 import {
   groupServiceCommandSchema,
   previewGroupServiceSchema,
@@ -458,6 +459,19 @@ export function createDududaServer(options: DududaServerOptions) {
           return
         }
         json(response, 200, await mcpConsole.invoke(body.capabilityId, body.arguments as Record<string, unknown>))
+        return
+      }
+      if (method === 'POST' && url.pathname === '/api/mcp/install') {
+        if (!sameOrigin(request)) {
+          json(response, 403, { error: '只允许同源超级管理员页面接入 MCP Server' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        if (typeof body.serverId !== 'string' || !body.serverId.trim()) {
+          json(response, 400, { error: '缺少 MCP Server ID' })
+          return
+        }
+        json(response, 200, await mcpConsole.installServer(body as unknown as McpServerInstallRequest))
         return
       }
       if (method === 'GET' && url.pathname === '/api/plugins/runtime') {

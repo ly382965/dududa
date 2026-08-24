@@ -149,6 +149,14 @@ describe('internal-test agent routes', () => {
       fetchedAt: '2026-08-24T08:00:00Z',
       generation: 1,
     }))
+    const installMcp = vi.fn(async () => ({
+      schemaVersion: 1 as const,
+      status: 'ok' as const,
+      server: { id: 'campus-news', displayName: '校园资讯' },
+      discovery: { status: 'ok' as const, tools: [{ name: 'news_list' }] },
+      capabilityGranted: false as const,
+      message: 'MCP Server 已登记',
+    }))
     const mcpConsole: McpConsoleClient = {
       catalog: async () => ({
         schemaVersion: 1,
@@ -177,6 +185,7 @@ describe('internal-test agent routes', () => {
         }],
       }),
       invoke: invokeMcp,
+      installServer: installMcp,
     }
     const server = createDududaServer({
       hub,
@@ -283,5 +292,41 @@ describe('internal-test agent routes', () => {
       generation: 1,
     })
     expect(invokeMcp).toHaveBeenCalledWith('ustc.academic.semesters.list.v1', { limit: 2 })
+
+    const installDefinition = {
+      serverId: 'campus-news',
+      displayName: '校园资讯',
+      enabled: true,
+      transport: 'streamable_http',
+      protocolMode: 'auto',
+      endpoint: { url: 'https://mcp.example.edu/mcp', allowedHosts: ['mcp.example.edu'] },
+      secretRefs: [],
+      allowedTools: ['news_list'],
+      deniedTools: [],
+      timeoutsSeconds: { connect: 10, discovery: 10, call: 30, maximumCall: 120, close: 5 },
+      retry: { maximumAttempts: 1, baseDelayMs: 100 },
+      circuit: { failureThreshold: 3, failureWindowSeconds: 60, openDurationSeconds: 30 },
+      maximumConcurrency: 1,
+      schemaTtlSeconds: 300,
+      configRevision: 'webui-v1',
+    }
+    const mcpInstallForbidden = await fetch(`${baseUrl}/api/mcp/install`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(installDefinition),
+    })
+    expect(mcpInstallForbidden.status).toBe(403)
+
+    const mcpInstallResponse = await fetch(`${baseUrl}/api/mcp/install`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify(installDefinition),
+    })
+    expect(mcpInstallResponse.status).toBe(200)
+    await expect(mcpInstallResponse.json()).resolves.toMatchObject({
+      server: { id: 'campus-news' },
+      capabilityGranted: false,
+    })
+    expect(installMcp).toHaveBeenCalledWith(installDefinition)
   })
 })

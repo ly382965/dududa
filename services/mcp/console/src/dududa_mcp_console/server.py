@@ -16,16 +16,21 @@ import tomllib
 from dududa.capabilities import load_capability_catalog_snapshot
 from dududa.contracts.canonical import canonical_json_bytes, canonical_schema_digest
 from dududa.domain.primitives import RuntimeBudget, TraceContext
+from dududa.errors import DududaError
 from dududa.mcp import (
     ConfigMcpServerRegistry,
     ManagedUnifiedMcpClient,
     McpCallContext,
+    McpHttpEndpoint,
     McpOperationSemantics,
+    McpStdioEndpoint,
     SubprocessMcpV2SessionFactory,
     mcp_tool_request_digest,
 )
 from dududa.ports.context import NeverCancelled, ServiceCallContext, ServicePrincipal
 from jsonschema.validators import validator_for
+
+from .runtime_servers import RuntimeServerOverlay
 
 SERVER_NAMES = {
     "icourse": "评课社区",
@@ -97,8 +102,13 @@ class McpConsoleRuntime:
         definitions_directory: Path,
         mappings_directory: Path,
         worker_python: Path,
+        overlay_directory: Path,
     ) -> None:
-        self._registry = ConfigMcpServerRegistry(registry_directory)
+        self._server_overlay = RuntimeServerOverlay(
+            registry_directory,
+            overlay_directory,
+        )
+        self._registry = ConfigMcpServerRegistry(self._server_overlay.registry_directory)
         self._catalog = load_capability_catalog_snapshot(
             definitions_directory,
             mappings_directory,
@@ -118,6 +128,7 @@ class McpConsoleRuntime:
             (item.schema_ref.schema_id, item.schema_ref.schema_version): item
             for item in self._catalog.schema_documents
         }
+        self._install_lock = asyncio.Lock()
 
     async def close(self) -> None:
         await self._client.close()
@@ -133,12 +144,15 @@ class McpConsoleRuntime:
             servers.append(
                 {
                     "id": server_id,
-                    "displayName": SERVER_NAMES.get(server_id, server_id),
+                    "displayName": SERVER_NAMES.get(
+                        server_id,
+                        self._server_overlay.display_name(server_id),
+                    ),
                     "enabled": definition.enabled,
                     "available": definition.enabled and not missing,
                     "authentication": auth,
                     "health": health.status.value,
-                    "reason": "需要配置 USTC CAS" if missing else None,
+                    "reason": _missing_secret_reason(definition) if missing else None,
                     "capabilityCount": sum(1 for item in self._mappings.values() if item.server_id == server_id),
                 }
             )
@@ -163,10 +177,132 @@ class McpConsoleRuntime:
                     "inputSchema": _plain(input_document.document),
                     "available": server.enabled and not missing,
                     "authentication": "not_required" if not server.secret_refs else ("configured" if not missing else "missing_secret"),
-                    "unavailableReason": "需要配置 USTC CAS" if missing else None,
+                    "unavailableReason": _missing_secret_reason(server) if missing else None,
                 }
             )
         return {"schemaVersion": 1, "servers": servers, "capabilities": capabilities}
+
+    async def runtime_servers(self) -> dict[str, Any]:
+        snapshot = self._registry.acquire_snapshot()
+        servers = []
+        for definition in sorted(snapshot.definitions, key=lambda item: item.server_id):
+            servers.append(await self._runtime_server_projection(definition))
+        return {
+            "schemaVersion": 1,
+            "servers": servers,
+        }
+
+    async def install_server(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        async with self._install_lock:
+            document = self._server_overlay.install(request)
+            server_id = str(document["server_id"])
+            try:
+                snapshot = await self._registry.reload(
+                    call=self._service_call("runtime-server-reload")
+                )
+            except Exception:
+                self._server_overlay.rollback(server_id)
+                raise
+            definition = self._registry.resolve_server(snapshot, server_id)
+            projection = await self._runtime_server_projection(definition)
+            try:
+                schema = await self._client.discover(
+                    server_id,
+                    refresh=True,
+                    call=self._service_call("runtime-server-discovery"),
+                )
+            except DududaError as exc:  # Discovery failure leaves a visible, repairable config.
+                code = getattr(getattr(exc, "info", None), "code", "mcp_discovery_failed")
+                return {
+                    "schemaVersion": 1,
+                    "ok": True,
+                    "serverId": server_id,
+                    "displayName": projection["displayName"],
+                    "status": "warning",
+                    "message": "MCP Server 已接入，但工具发现暂不可用",
+                    "server": projection,
+                    "discovery": {"status": "unavailable", "error": code, "tools": []},
+                    "capabilityGranted": False,
+                }
+            return {
+                "schemaVersion": 1,
+                "ok": True,
+                "serverId": server_id,
+                "displayName": projection["displayName"],
+                "status": "ok",
+                "message": "MCP Server 已接入并完成工具发现",
+                "server": await self._runtime_server_projection(definition),
+                "discovery": {
+                    "status": "ok",
+                    "tools": [
+                        {"name": item.name, "description": item.description}
+                        for item in schema.tools
+                    ],
+                },
+                "capabilityGranted": False,
+            }
+
+    async def _runtime_server_projection(self, definition) -> dict[str, Any]:
+        missing = [
+            reference.target_name
+            for reference in definition.secret_refs
+            if not self._secrets.is_configured(reference)
+        ]
+        health = await self._client.health(
+            definition.server_id,
+            call=self._service_call("runtime-server-health"),
+        )
+        endpoint: dict[str, Any]
+        if isinstance(definition.endpoint, McpStdioEndpoint):
+            endpoint = {
+                "command": definition.endpoint.command,
+                "args": list(definition.endpoint.args),
+                "cwd": definition.endpoint.cwd,
+                "envAllowlist": sorted(definition.endpoint.env_allowlist),
+            }
+        elif isinstance(definition.endpoint, McpHttpEndpoint):
+            endpoint = {
+                "url": definition.endpoint.url,
+                "allowedHosts": sorted(definition.endpoint.allowed_hosts),
+            }
+        else:  # pragma: no cover - Core definition validation makes this unreachable.
+            raise TypeError("unsupported_mcp_endpoint")
+        return {
+            "id": definition.server_id,
+            "displayName": SERVER_NAMES.get(
+                definition.server_id,
+                self._server_overlay.display_name(definition.server_id),
+            ),
+            "origin": self._server_overlay.origin(definition.server_id),
+            "enabled": definition.enabled,
+            "transport": definition.transport.value,
+            "protocolMode": definition.protocol_mode.value,
+            "endpoint": endpoint,
+            "authentication": (
+                "not_required"
+                if not definition.secret_refs
+                else ("configured" if not missing else "missing_secret")
+            ),
+            "available": definition.enabled and not missing,
+            "reason": _missing_secret_reason(definition) if missing else None,
+            "health": health.status.value,
+            "configRevision": definition.config_revision,
+            "allowedTools": sorted(definition.allowed_tools),
+            "deniedTools": sorted(definition.denied_tools),
+            "secretRefs": [
+                {
+                    "secretId": item.secret_id,
+                    "target": item.target.value,
+                    "targetName": item.target_name,
+                    "configured": self._secrets.is_configured(item),
+                }
+                for item in definition.secret_refs
+            ],
+            "capabilityCount": sum(
+                1 for item in self._mappings.values() if item.server_id == definition.server_id
+            ),
+            "capabilityGranted": False,
+        }
 
     async def invoke(self, capability_id: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
         definition = self._definitions.get(capability_id)
@@ -279,6 +415,13 @@ def _plain(value: Any) -> Any:
     return value
 
 
+def _missing_secret_reason(definition) -> str:
+    secret_ids = {item.secret_id for item in definition.secret_refs}
+    if secret_ids and secret_ids <= {"ustc-cas-username", "ustc-cas-password"}:
+        return "需要配置 USTC CAS"
+    return "需要配置引用的 Secret"
+
+
 def _project_to_schema(value: Any, schema: Mapping[str, Any]) -> Any:
     kind = schema.get("type")
     kinds = {kind} if isinstance(kind, str) else set(kind) if isinstance(kind, (list, tuple)) else set()
@@ -330,12 +473,25 @@ async def _handle(runtime: McpConsoleRuntime, reader: asyncio.StreamReader, writ
             await _response(writer, 200, {"ok": True})
         elif method == "GET" and path == "/v1/catalog":
             await _response(writer, 200, await runtime.catalog())
+        elif method == "GET" and path == "/v1/servers/runtime":
+            await _response(writer, 200, await runtime.runtime_servers())
+        elif method == "POST" and path == "/v1/servers/install":
+            value = json.loads(body or b"{}")
+            if not isinstance(value, dict):
+                raise ValueError("invalid_mcp_server_install_request")
+            await _response(writer, 200, await runtime.install_server(value))
         elif method == "POST" and path == "/v1/invoke":
             value = json.loads(body or b"{}")
             if not isinstance(value, dict) or not isinstance(value.get("capabilityId"), str) or not isinstance(value.get("arguments", {}), dict):
                 raise ValueError("invalid_invoke_request")
             await _response(writer, 200, await runtime.invoke(value["capabilityId"], value.get("arguments", {})))
-        elif path in {"/health", "/v1/catalog", "/v1/invoke"}:
+        elif path in {
+            "/health",
+            "/v1/catalog",
+            "/v1/invoke",
+            "/v1/servers/runtime",
+            "/v1/servers/install",
+        }:
             await _response(writer, 405, {"error": "method_not_allowed"})
         else:
             await _response(writer, 404, {"error": "not_found"})
@@ -351,7 +507,13 @@ async def _handle(runtime: McpConsoleRuntime, reader: asyncio.StreamReader, writ
 
 
 async def serve(args: argparse.Namespace) -> None:
-    runtime = McpConsoleRuntime(args.registry, args.definitions, args.mappings, args.worker_python)
+    runtime = McpConsoleRuntime(
+        args.registry,
+        args.definitions,
+        args.mappings,
+        args.worker_python,
+        args.runtime_overlay,
+    )
     server = await asyncio.start_server(lambda reader, writer: _handle(runtime, reader, writer), args.host, args.port, limit=MAX_BODY_BYTES + 32_768)
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -369,6 +531,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--host", default=os.getenv("DUDUDA_MCP_CONSOLE_BIND", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.getenv("DUDUDA_MCP_CONSOLE_PORT", "8090")))
     parser.add_argument("--registry", type=Path, default=Path(os.getenv("DUDUDA_MCP_REGISTRY_DIR", "/opt/dududa/config/mcp/servers")))
+    parser.add_argument(
+        "--runtime-overlay",
+        type=Path,
+        default=Path(
+            os.getenv(
+                "DUDUDA_MCP_RUNTIME_OVERLAY_DIR",
+                "/var/lib/dududa/mcp/servers",
+            )
+        ),
+    )
     parser.add_argument("--definitions", type=Path, default=Path(os.getenv("DUDUDA_CAPABILITY_DEFINITIONS_DIR", "/opt/dududa/config/capabilities/definitions")))
     parser.add_argument("--mappings", type=Path, default=Path(os.getenv("DUDUDA_CAPABILITY_MAPPINGS_DIR", "/opt/dududa/config/capabilities/mappings")))
     parser.add_argument("--worker-python", type=Path, default=Path(os.getenv("DUDUDA_MCP_WORKER_PYTHON", "/opt/dududa/unified-mcp-worker/.venv/bin/python")))

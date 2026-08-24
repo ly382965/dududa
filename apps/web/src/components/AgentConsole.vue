@@ -58,6 +58,7 @@ import type {
 } from '../types/workspace'
 import AgentPartView from './AgentPartView.vue'
 import AppAvatar from './AppAvatar.vue'
+import McpServerInstaller from './McpServerInstaller.vue'
 import PluginManagerPanel from './PluginManagerPanel.vue'
 
 type AdaptiveAxis =
@@ -983,7 +984,8 @@ watch(
         <section class="settings-section mcp-workbench">
           <div class="section-heading">
             <Database :size="15" />
-            <span><strong>MCP 工作台</strong><small>SUPER ADMIN · READ ONLY</small></span>
+            <span><strong>MCP 工作台</strong><small>SUPER ADMIN · GOVERNED REGISTRY</small></span>
+            <McpServerInstaller @installed="loadMcpCatalog(true)" />
             <button type="button" class="section-action" title="刷新 MCP 状态" :disabled="mcpCatalogLoading" @click="loadMcpCatalog(true)">
               <RefreshCw :size="13" :class="{ spinning: mcpCatalogLoading }" />
             </button>

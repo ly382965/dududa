@@ -55,6 +55,7 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       PYTHONDONTWRITEBYTECODE: "1"
+      DUDUDA_MCP_RUNTIME_OVERLAY_DIR: /var/lib/dududa/mcp/servers
       USTC_CAS_USR: ${USTC_CAS_USR:-}
       USTC_CAS_PWD: ${USTC_CAS_PWD:-}
       USTC_CAS_CREDENTIALS_FILE: /run/secrets/ustc-cas.toml
@@ -63,6 +64,7 @@ services:
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
       - ./services/mcp/ustc-campus:/AstrBot/data/ustc-campus-mcp:ro
       - ./configs:/opt/dududa/config:ro
+      - ${DUDUDA_MCP_RUNTIME_ROOT:-./runtime/mcp}:/var/lib/dududa/mcp
       - ${USTC_CAS_CREDENTIALS_FILE_HOST:-${HOME}/Code/ustc-catalog-crawler/credentials.toml}:/run/secrets/ustc-cas.toml:ro
     tmpfs:
       - /tmp:size=32m,mode=1777

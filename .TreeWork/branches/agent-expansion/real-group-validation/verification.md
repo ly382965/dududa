@@ -4,6 +4,29 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Runtime MCP registration: MCP Console unittest 6/6 passed; the structured
+  Web Definition is persisted outside the repository, the strict Registry
+  reloads it, Discovery sees the Fake Tool, repository Servers cannot be
+  replaced, unknown/plaintext Secret fields are rejected and every result keeps
+  `capabilityGranted=false`.
+- Web registration: the focused Vue case and Node route case each passed;
+  `npm run build` completed Vue/Node type checks, the client production build
+  and server bundle. The existing large-chunk warning remains unchanged.
+- Compose config, Ruff and `git diff --check` passed. The real Unified worker plus
+  MCP v2 Fake stdio smoke completed install -> reload -> Discovery and found
+  `echo`; it did not create a Capability mapping or raw Tool route.
+- Live deployment: only `dududa-web-1` and `dududa-mcp-console-1` were rebuilt
+  and recreated. Runtime list returned the four repository Servers with
+  Capability counts `4/6/2/5`; Catalog and `DUDUDA-MCP-SPEC 1.0.0` download both
+  returned HTTP 200. Desktop 1440x1000 and mobile 390x844 displayed the MCP panel
+  and structured dialog without horizontal overflow or visible error state.
+- `dududa-astrbot-1` and the active NapCat retained exact container IDs/start
+  times and `RestartCount=0`; no QQ message was sent and no runtime Server was
+  added during live UI verification.
+- Evidence boundary: this proves registration, Discovery and downloadable format
+  guidance. It does not prove a new production MCP, Source quality, Agent Tool
+  selection or remote administrator authentication. AstrBot and NapCat were not
+  restarted. Recorded: 2026-08-24.
 - Commands: `npx vitest run --config vitest.server.config.ts server/plugin-manager.spec.ts
   server/plugin-manager-routes.spec.ts` passed 5/5; `npx vitest run src/App.spec.ts`
   passed 9/9; `npm run typecheck`, production Web build, Python compile, `bash -n`,
