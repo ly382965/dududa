@@ -3,7 +3,7 @@
 ## 1. 当前状态
 
 S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和既定 WebUI 回归已经完成本地范围；
-S23 分支也已补齐配置驱动的入站生产 Runtime 纵切和固定 AstrBot 4.26.2 候选镜像；
+S23 分支也已补齐配置驱动的入站 Runtime、第一条 Dududa 2.0 自然语言 iCourse 纵切和固定 AstrBot 4.26.2 候选镜像；
 Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过，并完成 Bot Control Plane 内的 Web
 人工内测第一版。它仍只能执行离线 readiness、人工评价与 no-send 验证：
 
@@ -23,8 +23,9 @@ QQ 消息。iCourse 是评课社区 MCP，不能作为资讯日报来源。
 - `runtime_models_json` 只声明实际接入的 1–3 个 Haiku/Sonnet/Opus Endpoint，API Key 仍由
   AstrBot Provider 管理；
 - Dududa Core 继续拥有 Tier、预算、Runtime 状态和 rollout 所有权；Provider 只实现模型调用 Port；
-- 首版使用 rule-only Perception，`off` 零 Provider 调用，`shadow` 每条消息只产生一次候选回答
-  Provider 调用，且不 claim、不调用 Output；
+- 2.0 主链使用 Luna/Haiku Hybrid Perception；规则感知只作降级组件。启用 Tool 的当前
+  成功路径依次执行一次 PERCEPTION、一次确定性 iCourse `query` MCP 调用和一次
+  DIRECT_CHAT；`off` 零 Provider 调用，`shadow` 不 claim、不调用 Output；
 - Builder 优先解析 AstrBot Context 提供的 Provider Evidence；resolver 不存在或返回 `None` 时，
   才读取 `runtime_provider_evidence_path` 指向的仓库外私有 JSON。路径为空、文件非法或
   Provider/model 绑定不匹配时，Runtime 保持 unavailable 并回退 legacy；

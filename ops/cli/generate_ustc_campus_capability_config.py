@@ -52,7 +52,8 @@ class CapabilitySpec:
     category: str
     permission: str
     tags: frozenset[str]
-    privacy: PrivacyLevel = PrivacyLevel.PUBLIC
+    # Public providers may accept a query projected from one conversation.
+    privacy: PrivacyLevel = PrivacyLevel.CONVERSATION
     private_only: bool = False
     cost: int = 1
     expected_ms: int = 800

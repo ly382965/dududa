@@ -12,7 +12,7 @@
   兼容链接。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 iCourse service。
 
-本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现该离线闭环；四个校园查询 Server 已接入超级管理员 Web Console，但生产 Agent Rollout 仍拒绝 Tools。本文不改变当前 `icourse` Server 名、SQLite 路径或现有 `/course` 命令。
+本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现通用闭环；四个校园查询 Server 已接入超级管理员 Web Console，Dududa 2.0 本地 Runtime 也已闭环一项 iCourse `query` 单步自然语言调用。其他 Schema Planner 与运行中 Agent Tool Rollout 仍未完成。本文不改变当前 `icourse` Server 名、SQLite 路径或作为兼容/诊断入口保留的 `/course` 命令。
 
 接口权威以 `dududa/capabilities/contracts.py`、`dududa/ports/capabilities.py` 和严格 JSON
 配置为准；本文代码块用于展示稳定公共形状和所有权，不替代构造校验、摘要函数或 Contract
@@ -1062,10 +1062,12 @@ iCourse MCP v1 Server，不是第二套插件 Client。
 
 ## 14. 当前状态与扩展点
 
-当前已有 iCourse stdio Server、SQLite、严格 JSON Registry、Unified MCP Client、隔离 v2 worker
-和经统一 Client 转发的 compatibility facade；Legacy 仍作为启动期显式回滚保留。S13 通用
-Capability Catalog/Registry、Retrieval、有限 Planner、Executor、Observation Validator 和默认关闭
-的离线 Tool Runtime 已实现；S12 discovery 仍不授予模型能力。真实 Planner Endpoint、真实后台
-来源 Provider 和生产 Tools Rollout 尚未实现。
+当前已有 iCourse、二课、教务和校车四个独立 Registry Server、严格 JSON Registry、统一
+Client 与隔离 v2 worker；`ICourseClient` 只作为借用共享 Client 的兼容 facade。S13 通用
+Catalog/Retrieval/Planner/Executor/Observation Validator 已实现，17 个映射可由 Web 超级管理员
+按 Schema 直调。2.0 Agent 目前只公布并自动规划 `icourse.courses.search.v1`；Discovery 仍不
+授予能力。其他 Schema Planner、可信失败用户答复、实时资讯 Source 和运行中 Tool Rollout
+尚未实现。
 
-后续新增教务、第二课堂、校园通知、开课查询和培养方案 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。
+后续新增校园通知或其他 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和
+存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。

@@ -385,7 +385,8 @@ def _definition(
         "input_schema": input_schema.schema_ref,
         "output_schema": output_schema.schema_ref,
         "risk_level": RiskLevel.LOW,
-        "privacy_level": PrivacyLevel.PUBLIC,
+        # Public results may still be queried with conversation-scoped input text.
+        "privacy_level": PrivacyLevel.CONVERSATION,
         "allowed_contexts": frozenset(
             {ConversationType.PRIVATE, ConversationType.GROUP}
         ),

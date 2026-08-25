@@ -6,7 +6,7 @@
   "capability_id": "ustc.academic.semesters.list.v1",
   "category": "campus.academic",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:b989fdcda689f33b2a0e33832fa617e6566c5ba782f159bc2cbf92adac809285",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:c3849ce7b3dad8b79c2a15ac8b8e181efc25be93526ac02d98bbfc94d843ef49",
   "description": "List official teaching semesters and stable integer semester IDs.",
   "enabled": true,
   "idempotency": "read_only",
@@ -122,7 +122,7 @@
     "schema_id": "capability.ustc.academic.semesters.list.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-academic",
     "revision": {

@@ -226,6 +226,23 @@ Last sync: unix:1786706085
   overlay，合并内建 Registry 后热 reload 和 Discovery。Fake v2 Server 实际发现
   `echo`，返回 `capabilityGranted=false`；未创建 Capability mapping、raw Tool
   入口或真实 Secret 写入口，也未重启 AstrBot/NapCat。
+- 完成 Dududa 2.0 自然语言 iCourse 成功纵切：Luna/Haiku Hybrid Perception 提取
+  category/entity，确定性单步 Planner 只投影 `{"query":"吴天"}`，一等 Unified
+  MCP 调用 `icourse/search_courses`，Observation 经 DirectChat、Persona、Final
+  Validator 后只发送一次。旧 `/course`/`natural_course_query`、
+  `search_site_courses` 与 Web search 均未参与。
+- Unified MCP 生命周期已从旧 iCourse facade 中解耦；兼容 facade 只借用共享 Client。
+  Perception 只公布当前 Planner 真能投影的 `campus.course-review`，不会把控制台可
+  直调的教务、校车和二课误报成 Agent 已可自然语言自动调用。
+- Production 初始化在共享 Unified Client 装配失败时直接保留 unavailable 兼容 facade，
+  不再让旧 facade 二次创建一个仅供 1.0 路径使用的独立 Client。
+- Luna/Terra/Sol 使用同一固定 Observation 和 Responses `reasoning.effort=low`
+  完成 3 个 no-send 答案，Luna 对每个答案各 Review 一次；6 次 Provider 调用、
+  0 次 QQ Output，三项 Review 均通过。该结果是质量抽样，不是生产 Runtime 第三次
+  模型调用或总体模型排名。
+- 最终聚焦验证共运行 42 项，40 项执行通过、2 项既有 AstrBot host-only skip；
+  两个 Capability generator `--check` 与 4 项生产 mapping Contract 通过，关键 Ruff
+  规则和 `git diff --check` 通过。未重跑全仓或再次调用真实模型。
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
@@ -247,7 +264,11 @@ Last sync: unix:1786706085
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
 - `gpt-image-2` 仍需接入正式图片 Capability；四个校园 MCP 的 Web 直接调用已完成，
-  但 Agent 自动选择这些 Capability 仍受当前 Tool/Capability rollout 关闭状态约束。
+  但 Agent 自然语言自动选择目前只闭环 iCourse `query` 单步，其他 Schema Planner
+  仍未实现，且在线 Tool/Capability rollout 继续关闭。
+- Capability/MCP 的可信失败 receipt 当前会在 Canary claim 后以 no-delivery 终止；
+  尚需在 2.0 Composer/Persona/Final Validator 内补用户可见失败回答，不能由旧 handler
+  或 Web search 接管。
 - 自动复读仍需接通 Web Policy Adapter。`/sub2api 自动查询` 已由在线 AstrBot
   加载并解析指定群 Scope，但仍需用户在重连后重新发送一次命令，才能记录真实
   QQ 入站与回复的端到端证据。

@@ -11,10 +11,11 @@ site infrastructure.
 - Reply Polish source as a default-off Dududa 1.0 LONG-only compatibility layer.
 - Target Talk source as historical migration/rollback material; it is not mounted by
   the Dududa 2.0 default Compose path.
-- Exact third-party plugin installation metadata. Automatic Meme Manager, Reread and
-  PokePro behavior is not part of the Dududa 2.0 default installation.
+- Exact third-party plugin installation metadata. Automatic Meme Manager and
+  PokePro behavior is not part of the Dududa 2.0 default installation; automatic
+  reread is restored as an independent default-off, Scope-configured plugin.
 - The Iris user/group memory-isolation patch.
-- The `icourse-mcp` service and its local cache schema.
+- Unified MCP infrastructure plus the iCourse and USTC campus query services.
 - Persona and MCP templates that contain no account or provider credentials.
 
 ## External

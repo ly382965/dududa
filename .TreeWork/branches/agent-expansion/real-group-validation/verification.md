@@ -4,6 +4,41 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Dududa 2.0 natural-language vertical slice: `@嘟嘟哒 查询评课社区吴天` produced
+  one Luna/Haiku PERCEPTION call, one deterministic
+  `icourse.courses.search.v1 -> icourse/search_courses({"query":"吴天"})` call
+  through the local Unified MCP worker, one DIRECT_CHAT call and one final
+  Delivery. Both model calls used `reasoning_effort=low`; no `/course`,
+  `search_site_courses`, Web search, process narration or second send occurred.
+- The scripted Perception deliberately returned both `评课社区` and `吴天` as
+  valid entities. The Planner ignored the service term and projected only
+  `吴天`. Production Perception advertised only `campus.course-review`; academic,
+  shuttle and second-class categories remained outside this Planner slice.
+- Commands: focused Production Composition, iCourse facade, Rollout, legacy
+  plugin split, iCourse parser/fixture and model-simulation suites ran 42 tests
+  with two existing AstrBot host-only skips; all executed tests passed.
+  Capability generators passed `--check`, followed by four passing production
+  mapping Contract tests.
+- First-class MCP ownership: Production Composition now reads
+  `plugin.unified_mcp_client`; the iCourse facade borrows it. A disabled iCourse
+  definition no longer prevents the Unified Client from being assembled, and
+  plugin termination closes the shared Client. If shared composition fails,
+  production initialization now leaves the compatibility facade unavailable
+  instead of retrying an independent legacy-only Client.
+- Real no-send model sample: Luna/Terra/Sol answered one fixed validated iCourse
+  Observation with Responses `reasoning.effort=low` in 3292/3346/3531 ms. Luna
+  reviewed each candidate once; all three Reviews passed with score 100. The
+  sample made six Provider calls and zero QQ Output calls. The full result is a
+  `0600` repository-external file and contains no API Key or Base URL.
+- Evidence boundary: this proves one 2.0 iCourse success path and one simple
+  answer-quality sample. It does not prove the 75-case benchmark, other campus
+  Schema planners, user-visible MCP failure, deployed AstrBot Conformance,
+  real-group Shadow or QQ delivery. S23 remains partial.
+- Recorded: 2026-08-26
+- Static checks: changed-file Ruff critical/import rules and `git diff --check`
+  passed. The broad all-rule Ruff profile was not used as a release gate because
+  it reports existing style debt outside this vertical slice.
+
 - Runtime MCP registration: MCP Console unittest 6/6 passed; the structured
   Web Definition is persisted outside the repository, the strict Registry
   reloads it, Discovery sees the Fake Tool, repository Servers cannot be
@@ -322,13 +357,15 @@ Branch: real-group-validation
 
 - Command: `uv run python -m unittest tests.contracts.test_production_composition tests.unit.runtime.test_perception tests.contracts.test_astrbot_rollout`
 - Result: partial
-- Evidence: 27 unique focused tests passed in 1.005 seconds. An earlier six-test
+- Historical checkpoint evidence: 27 unique focused tests passed in 1.005 seconds. An earlier six-test
   smoke passed in 0.196 seconds. The tests use a Fake AstrBot Provider and prove
   zero `text_chat()` calls during construction; `off` keeps legacy ownership
   with zero Provider calls and zero sends; `shadow` performs exactly one Fake
   Provider call while legacy keeps ownership and no send occurs; disabled or
   unresolved Providers fall back to unavailable/legacy; AnswerProfile flag
-  projection and rule-only Perception are wired without a second model call.
+  projection and the then-current rule-only Perception were wired without a
+  second model call. The 2026-08-26 evidence above supersedes that production
+  shape with Dududa 2.0 Hybrid Perception and a governed Capability path.
 - Historical-corpus evidence remains valid: 1,402 files / 155,567 unique group
   messages / 137,026 windows; 592 Teacher drafts + 8 request-stage reviews;
   464 compiled Silver rows; 23/6 train/test conversation groups; 137,026

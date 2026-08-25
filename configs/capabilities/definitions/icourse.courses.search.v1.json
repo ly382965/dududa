@@ -6,7 +6,7 @@
   "capability_id": "icourse.courses.search.v1",
   "category": "campus.course-review",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:8b8e1a564752cdf29e85261acdc314683630c19ee645f6ed31b5645d668d761c",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:7e250df3ed2f6fa35e8af4828a37dc4f08f537277213dddbf44bb409de967898",
   "description": "Search approved public course-review cache data; not personal records.",
   "enabled": true,
   "idempotency": "read_only",
@@ -281,7 +281,7 @@
     "schema_id": "capability.icourse.courses.search.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.icourse",
     "revision": {

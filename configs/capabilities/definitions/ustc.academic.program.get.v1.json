@@ -6,7 +6,7 @@
   "capability_id": "ustc.academic.program.get.v1",
   "category": "campus.academic",
   "cost_hint_units": 3,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:316391a117d42584d7a5e5553522f245194ccf93b752bee28bfaa1c89c1c9147",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:5e0af623025975465f478259a37976d80aeedc1cd2fdb6fc36e8d63c23c064de",
   "description": "Read one official training program with optional shared-module expansion.",
   "enabled": true,
   "idempotency": "read_only",
@@ -564,7 +564,7 @@
     "schema_id": "capability.ustc.academic.program.get.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-academic",
     "revision": {

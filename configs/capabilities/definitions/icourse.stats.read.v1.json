@@ -6,7 +6,7 @@
   "capability_id": "icourse.stats.read.v1",
   "category": "campus.course-review",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:e1093388362b430e3b8cfc883793c5699e7d8b1767afd21c6c9b07e0d1ff5a55",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:3f2bf50988235b30e032b734fd918fde0419e0298d34d5d2f33c67f3f2bd6ae1",
   "description": "Read public iCourse cache counts; never returns local storage paths.",
   "enabled": true,
   "idempotency": "read_only",
@@ -70,7 +70,7 @@
     "schema_id": "capability.icourse.stats.read.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.icourse",
     "revision": {

@@ -1,10 +1,10 @@
 # Dududa 2.0 Design Overview
 
-状态：S01–S20 与 S22 的既定本地/离线范围已实现并验证；S23 仅在暂停分支完成
-manifest-only readiness，真实验证尚未开始且分支未合并。生产完整切流、真实 Provider/来源、
-环境适配、人工质量、真实发送和在线 Bandit 尚未完成。2026-08-14 已确认“受治理的群体情境
-适应 Runtime + Web Bot Control Plane”长期方向；S21、插件 Runtime、群体情境学习和控制后台
-数据/命令链仍未实现。当前证据以 `../refactor/PROGRESS.md` 为准。
+状态：S01–S22 的既定本地/离线范围与 S21 Bot Control Plane 已实现并验证。暂停中的 S23
+已完成历史语料 no-send Demo、控制台内测、候选模型工程和第一条 Dududa 2.0 自然语言
+iCourse 本地纵切；真实 Endpoint Conformance、运行中部署、单群 Shadow/Canary、真实来源、
+人工质量、发送和在线 Bandit 尚未完成。插件 Runtime 与长期群体情境学习仍是设计方向。
+当前证据以 `../refactor/PROGRESS.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository
@@ -25,7 +25,7 @@ runtime, service, operation, and compatibility changes together.
 - Security, privacy, audit, and rate limits: `security.md`
 - Target repository layout: `repository-layout.md`
 - Migration summary: `migration-plan.md`
-- Full current-state evidence: `../refactor/current-state.md`
+- Phase 0 historical baseline: `../refactor/current-state.md`
 - Full target architecture: `../refactor/target-architecture.md`
 - Detailed old/new mapping: `../refactor/migration-map.md`
 - Reviewable phase plan: `../refactor/implementation-plan.md`

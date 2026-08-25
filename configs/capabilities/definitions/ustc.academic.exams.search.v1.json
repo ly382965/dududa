@@ -6,7 +6,7 @@
   "capability_id": "ustc.academic.exams.search.v1",
   "category": "campus.academic",
   "cost_hint_units": 3,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ecbdbf17c7f175f08619cb054c44070655ecd5de3a0cecc5f11c5f084a8a8d53",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:52fb5605ccaeb5aebdd31606aae63d0502d960e82f42ab0c850e7aa26aaa1542",
   "description": "Search normalized official scheduled and general exam records.",
   "enabled": true,
   "idempotency": "read_only",
@@ -276,7 +276,7 @@
     "schema_id": "capability.ustc.academic.exams.search.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-academic",
     "revision": {

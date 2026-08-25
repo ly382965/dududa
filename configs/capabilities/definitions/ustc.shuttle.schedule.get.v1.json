@@ -6,7 +6,7 @@
   "capability_id": "ustc.shuttle.schedule.get.v1",
   "category": "campus.shuttle",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:b5f1dcb5459b8bdfbe1ce06683041627027ce6c0f93f101e1048a985c5b0108a",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:f64c7627bf2af7745b8dd8a91637c2141aeae20a6d80236c03b3aaa1f3ce37ee",
   "description": "Read the current official shuttle notice, timetable image and revision-bound structured schedule.",
   "enabled": true,
   "idempotency": "read_only",
@@ -149,7 +149,7 @@
     "schema_id": "capability.ustc.shuttle.schedule.get.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-shuttle",
     "revision": {

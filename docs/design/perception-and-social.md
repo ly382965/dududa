@@ -449,12 +449,12 @@ paired bootstrap 95% 置信区间和预先冻结的最小效果量；未达到�
 
 | 项目 | 当前事实 | 目标差距 |
 | --- | --- | --- |
-| 通用 Perception | S09 Rule/Model/Merger/Validator 已实现并有合成策略回归 | 缺少真实脱敏数据、人工标注确认、多轮和附件效果证据 |
-| Structured Output | 版本化严格 Schema、整包校验和越界引用拒绝已实现 | 真实 Provider 输出与标签稳定性尚未验证 |
-| Social Decision | S09 六动作契约和确定性硬 Gate 已实现；Legacy TargetTalk 仍保留 | 生产 composition、回复价值真实 Eval 和主动机会策略未闭合 |
+| 通用 Perception | S09 Rule/Model/Merger/Validator 已实现；S23 Production 已用 Luna/Haiku Hybrid Perception 闭环一条 iCourse 路径 | 缺少人工 Gold、近期群聊、多轮和附件效果证据 |
+| Structured Output | 版本化严格 Schema、整包校验和越界引用拒绝已实现；本地纵切验证了实体与 Capability category 投影 | 真实部署中的长期标签稳定性尚未验证 |
+| Social Decision | S09 六动作契约和确定性硬 Gate 已实现；旧 TargetTalk 仅保留历史兼容源码 | 回复价值真实 Eval 和主动机会生产策略未闭合 |
 | Context | S09 有界去标识 Context 已实现 | 可信多轮回复链、附件摘要和生产 Memory 接入未完成 |
 | 群策略/限流/权限 | 已进入 S09 确定性决策输入和 S10/S11 受控路径 | 旧插件兼容入口、真实长期限流和跨实例主动预算仍需迁移 |
-| Answer Profile | 只有静态 `MAX_LENGTH`/字数约束 | 缺少独立 ResponsePlan、动态预算和最终长度/完整性校验 |
+| Answer Profile | S15 已实现独立 SHORT/MEDIUM/LONG ResponsePlan、动态预算和最终 Validator | 缺少真实中文体验与预算校准 |
 | 无入站主动消息 | 不属于当前 Perception/Social Runtime | 由 `proactive-messaging.md` 的独立 initiated-run 设计负责 |
 
 ## 13. 扩展点

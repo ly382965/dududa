@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "scenario_id": "icourse-v2-wu-tian",
+  "benchmark_case_ids": [7, 8],
+  "question": "查询评课社区吴天",
+  "capability_id": "icourse.courses.search.v1",
+  "mcp_server_id": "icourse",
+  "mcp_tool_name": "search_courses",
+  "mcp_arguments": {
+    "query": "吴天"
+  },
+  "observation": {
+    "total": 1,
+    "items": [
+      {
+        "id": 26560,
+        "name": "数学分析(B1)",
+        "url": "https://icourse.club/course/26560",
+        "teachers": [
+          {
+            "id": 1001,
+            "name": "吴天",
+            "dept": "数学科学学院"
+          }
+        ],
+        "term_text": "2025秋",
+        "courseries": null,
+        "dept": null,
+        "course_type": null,
+        "join_type": null,
+        "teaching_type": null,
+        "course_level": null,
+        "credit": null,
+        "rating_average": 9.6,
+        "review_count_site": 8,
+        "visible_review_count": 8,
+        "missing_review_count_estimate": 0,
+        "difficulty": null,
+        "homework": null,
+        "grading": null,
+        "gain": null
+      }
+    ]
+  }
+}

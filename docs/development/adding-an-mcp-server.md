@@ -385,7 +385,8 @@ Server README 至少包含：
 
 ## 13. iCourse 参考迁移
 
-iCourse 是当前唯一真实 Server，也是统一传输的兼容样板。S12 已保留其 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
+iCourse 是首个真实 Server 和统一传输兼容样板；当前 Registry 还包含二课、教务和校车三个
+只读查询 Server。S12 已保留 iCourse 的 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
 
 - `ICourseClient` 是 Unified MCP facade；S22 已删除专用直连 Client，并将 Unified 基础设施
   缺失收敛为 fail-closed unavailable facade；

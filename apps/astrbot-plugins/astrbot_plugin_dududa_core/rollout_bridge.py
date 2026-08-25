@@ -63,6 +63,8 @@ class RolloutRequestFactory(Protocol):
         *,
         control_revision: str,
         timeout_seconds: float,
+        tools_enabled: bool = False,
+        memory_enabled: bool = False,
     ) -> tuple[RuntimeStartRequest, PortCallContext]: ...
 
 
@@ -94,9 +96,13 @@ class AstrBotRuntimeRequestFactory:
         *,
         control_revision: str,
         timeout_seconds: float,
+        tools_enabled: bool = False,
+        memory_enabled: bool = False,
     ) -> tuple[RuntimeStartRequest, PortCallContext]:
         if timeout_seconds <= 0:
             raise ValueError("invalid rollout request timeout")
+        if type(tools_enabled) is not bool or type(memory_enabled) is not bool:
+            raise ValueError("invalid rollout feature flag")
         now = self._clock()
         deadline = now + timedelta(seconds=timeout_seconds)
         operation_token = uuid4().hex
@@ -115,7 +121,10 @@ class AstrBotRuntimeRequestFactory:
             policy_snapshot_id=self._policy_snapshot_id,
         )
         connector = await self._connector.convert(event, operation=connector_call)
-        requested_features = {"tools": False, "memory": False}
+        requested_features = {
+            "tools": tools_enabled,
+            "memory": memory_enabled,
+        }
         if self._response_profiles_enabled:
             requested_features["response_profiles"] = True
         options = RuntimeInvocationOptions(
@@ -214,6 +223,8 @@ class AstrBotRolloutBridge:
                 event,
                 control_revision=config.revision,
                 timeout_seconds=timeout.total_seconds(),
+                tools_enabled=config.tools_enabled,
+                memory_enabled=config.memory_enabled,
             )
             admission = decide_rollout_admission(request.connector_result, config)
         except Exception:  # noqa: BLE001 - unsupported Event stays on legacy path

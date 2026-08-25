@@ -1574,13 +1574,13 @@ AstrBot 兼容面按 Dududa 2.0 默认路径与历史迁移材料区分：
 | 能力 | 当前状态 | 首个迁移动作 |
 | --- | --- | --- |
 | Message Envelope/Connector | S01-S04 已实现版本化 Domain 类型和 AstrBot Adapter | 真实 Attachment Source 与第二平台仍未实现 |
-| Runtime State/Orchestrator | S10 已实现显式 @、Memory/Tool-off 的离线闭环与 CAS/single-flight | 生产 composition、Tool/Memory/Attachment 和主动出站未闭合 |
+| Runtime State/Orchestrator | S10 已实现显式 @ 闭环；S23 又闭合一条默认关闭的 iCourse 单步 Tool 路径 | 运行中部署、Memory/Attachment、其他 Tool Schema 和主动出站未闭合 |
 | Context Builder | S09/S10 有界当前消息 Context 已实现 | 可信多轮、附件与生产 Memory 接入未完成 |
-| Perception/Social Decision | S09 Rule/Model/Merger/Validator、Complexity、TierPolicy 和硬 Gate 已实现 | 真实数据校准、多轮/附件与生产装配仍缺 |
-| Tool Runtime | iCourse 是固定手工流程 | 抽为首个 Capability Provider |
-| Response Composer/Persona | S15 已实现 ResponsePlan、typed 资产、generation-bound Persona、确定性 Renderer 和机械 Eval | 模型 Renderer、多 Persona 产品资产和人工 Eval |
+| Perception/Social Decision | S09 契约与策略已实现；S23 Production 使用 Luna/Haiku Hybrid Perception | 真实数据校准、近期群聊、多轮和附件证据仍缺 |
+| Tool Runtime | iCourse 已作为首个自然语言 Capability 纵切，通过确定性单步 Planner 和 Unified MCP 执行 | 教务、校车、二课 Schema Planner、失败答复和运行中部署未完成 |
+| Response Composer/Persona | S15 已实现 ResponsePlan、typed 资产、generation-bound Persona 和 Validator；S23 Tool Observation 已进入 DirectChat/Persona 单次输出 | 多 Persona 产品资产和人工中文风格 Eval |
 | Trace/Rollout | S10 receipt 与 S11 脱敏指标/持久 claim 已实现 | 后续模块、真实 SLO 和最终授权证据 |
-| Proactive Orchestrator | 未实现 | 按 S15A-S15E 建立独立 initiated-run，不修改入站历史语义 |
+| Proactive Orchestrator | S15A-S15E 离线 no-send 链已实现 | 真实 Source/Projection/Output 与授权发送未实现 |
 
 后续顺序以 `../refactor/implementation-plan.md` 为准：S12-S15 -> S15A-S15E -> S16-S19 ->
 S22 -> 最终 S23。每一步保持原命令和部署可运行。

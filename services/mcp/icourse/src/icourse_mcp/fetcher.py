@@ -8,7 +8,6 @@ from urllib.parse import urljoin
 
 import httpx
 
-
 COURSE_ID_RE = re.compile(r"/course/(\d+)/")
 
 
@@ -67,27 +66,8 @@ class ICourseFetcher:
             params["sort_by"] = sort_by
         return self.fetch_path("/course/", params=params)
 
-    def fetch_search_token(self) -> str:
-        self._sleep_if_needed()
-        url = urljoin(self.base_url + "/", "/api/search/token".lstrip("/"))
-        response = self.client.post(
-            url,
-            headers={
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "X-Requested-With": "XMLHttpRequest",
-            },
-        )
-        self._last_request_at = time.monotonic()
-        response.raise_for_status()
-        data = response.json()
-        token = data.get("token")
-        if not data.get("ok") or not token:
-            raise RuntimeError("icourse search token unavailable")
-        return str(token)
-
     def fetch_course_search(self, query: str, page: int = 1) -> FetchedPage:
-        token = self.fetch_search_token()
-        return self.fetch_path("/search/", params={"q": query, "token": token, "page": page})
+        return self.fetch_path("/search/", params={"q": query, "page": page})
 
     def fetch_course_detail(self, course_id: int, sort_by: str = "upvote") -> FetchedPage:
         return self.fetch_path(f"/course/{course_id}/", params={"sort_by": sort_by})

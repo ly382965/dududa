@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import unittest
+from dataclasses import replace
 
 from dududa.domain.message import AttachmentKind, AttachmentRef
 from dududa.errors import DududaError
@@ -100,7 +100,7 @@ class RolloutConfigAndAdmissionTests(unittest.TestCase):
                 connector(attachments=(attachment,)),
                 RolloutAdmissionAction.LEGACY,
             ),
-            (control(tools_enabled=True), connector(), RolloutAdmissionAction.LEGACY),
+            (control(tools_enabled=True), connector(), RolloutAdmissionAction.CANARY),
             (
                 control(memory_enabled=True),
                 connector(),

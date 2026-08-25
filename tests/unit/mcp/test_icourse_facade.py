@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from astrbot_plugin_dududa_core.adapters.mcp_runtime import (
     AllowlistedEnvironmentProvider,
     build_icourse_client,
+    build_unified_mcp_client,
 )
 from astrbot_plugin_dududa_core.course import (
     ICOURSE_COMPAT_TOOL_ALLOWLIST,
@@ -244,6 +245,44 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
                 (mode, reason),
                 ("unavailable", "unified_composition_invalid"),
             )
+
+    async def test_unified_runtime_is_independent_of_icourse_compatibility(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            registry = root / "servers"
+            registry.mkdir()
+            source = ROOT / "configs" / "mcp" / "servers" / "icourse.json"
+            disabled_value = json.loads(source.read_text(encoding="utf-8"))
+            disabled_value["enabled"] = False
+            (registry / "icourse.json").write_text(
+                json.dumps(disabled_value),
+                encoding="utf-8",
+            )
+            worker = root / "python"
+            worker.write_text("fixture", encoding="utf-8")
+
+            unified, reason = build_unified_mcp_client(
+                {},
+                registry_directory=registry,
+                worker_python=worker,
+                environment_provider=AllowlistedEnvironmentProvider({}),
+            )
+            self.assertIsInstance(unified, ManagedUnifiedMcpClient)
+            self.assertEqual(reason, "unified_ready")
+
+            compatibility, mode, reason = build_icourse_client(
+                {},
+                registry_directory=registry,
+                worker_python=worker,
+                environment_provider=AllowlistedEnvironmentProvider({}),
+                unified_client=unified,
+            )
+            self.assertIsInstance(compatibility, UnavailableICourseClient)
+            self.assertEqual(
+                (mode, reason),
+                ("unavailable", "icourse_definition_disabled"),
+            )
+            await unified.close()
 
 
 if __name__ == "__main__":

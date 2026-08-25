@@ -22,6 +22,18 @@ MCP_WORKER_PYTHON = Path(
         "/opt/dududa/unified-mcp-worker/.venv/bin/python",
     )
 )
+CAPABILITY_DEFINITIONS_DIR = Path(
+    os.environ.get(
+        "DUDUDA_CAPABILITY_DEFINITIONS_DIR",
+        "/opt/dududa/config/capabilities/definitions",
+    )
+)
+CAPABILITY_MAPPINGS_DIR = Path(
+    os.environ.get(
+        "DUDUDA_CAPABILITY_MAPPINGS_DIR",
+        "/opt/dududa/config/capabilities/mappings",
+    )
+)
 ROLLOUT_LEDGER_PATH = PLUGIN_DATA_DIR / "rollout.sqlite3"
 
 

@@ -6,7 +6,7 @@
   "capability_id": "ustc.shuttle.trips.search.v1",
   "category": "campus.shuttle",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:57b7cfc1f8b7c6c4a2da4f1f031dfc95b524436523fd0a8cff85d5036ec3407a",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:5d40822a1fc5e8afa7618f76692fda79812c244be9a48dc64837bab439915a06",
   "description": "Search current trips between east, west, research and high-tech campuses.",
   "enabled": true,
   "idempotency": "read_only",
@@ -185,7 +185,7 @@
     "schema_id": "capability.ustc.shuttle.trips.search.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-shuttle",
     "revision": {

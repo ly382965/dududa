@@ -954,7 +954,11 @@ def _runtime_tool_usage(state: RuntimeState) -> ResourceUsage:
         return state.capability_unverified_usage
     if state.capability_run_receipt is not None:
         return state.capability_run_receipt.usage
-    usage = zero_usage_for_budget(state.initial_budget)
+    usage = zero_usage_for_budget(
+        reservation_budget(state.tool_budget_plan.reservation)
+        if state.tool_budget_plan is not None
+        else state.initial_budget
+    )
     for observation in state.tool_observations:
         usage = add_usage(usage, observation.usage)
     for attempt in state.tool_unobserved_attempts:

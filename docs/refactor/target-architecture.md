@@ -1,12 +1,11 @@
 # Dududa 2.0 Target Architecture
 
-Status: S01-S20/S22 accepted offline/local scopes are implemented and verified;
-S22 removed evidence-backed compatibility aliases and the dedicated iCourse
-Client. Real Endpoint, live Source, production proactive delivery, online
-Bandit and real S23 validation remain pending; the paused S23 branch currently
-contains manifest-only readiness assets, not a runnable live composition. The
-confirmed S21 Bot Control Plane/group-onboarding design is not implemented or
-present in Tree revision 3 yet.
+Status: S01-S22 accepted offline/local scopes and S21 Bot Control Plane are
+implemented and verified. The paused S23 branch contains historical no-send
+evaluation, candidate-model engineering and one local Dududa 2.0 natural-
+language iCourse vertical slice. Real Endpoint Conformance, running deployment,
+live Sources, proactive delivery, online Bandit and real-group validation remain
+pending.
 Baseline: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## Objectives
@@ -592,17 +591,17 @@ layer.
 | Target area | Current status |
 | --- | --- |
 | Core package and security contracts | S01-S03 local scope complete; legacy compatibility paths remain |
-| Message Envelope, Runtime State and delivery | S04/S10/S11 inbound explicit-mention local scope complete; production full composition remains |
-| Context Builder, Perception and SocialAction | S09/S10 bounded local scope complete; real data, multi-turn and attachment evidence remain |
+| Message Envelope, Runtime State and delivery | S04/S10/S11 inbound explicit-mention local scope complete; S23 adds one local 2.0 iCourse path; running deployment remains |
+| Context Builder, Perception and SocialAction | S09/S10 bounded scope plus S23 Hybrid Perception path complete; recent group context, real calibration and attachment evidence remain |
 | Scoped MemoryRepository and Write Gate | S06/S07 safety boundary complete; real Iris/runtime retrieval not implemented |
-| Capability Registry and Retrieval | S13 offline implementation complete; production Tools remain disabled |
-| Unified MCP Client and Registry | S12 complete; iCourse defaults to Unified facade with explicit Legacy rollback |
-| Tool Planner/Executor/Validator loop | S13 bounded deterministic loop complete; no real Planner Endpoint or production rollout |
+| Capability Registry and Retrieval | S13 infrastructure and 17 mappings complete; only iCourse `query` is auto-planned in the 2.0 local path |
+| Unified MCP Client and Registry | S12 complete; four read-only query Servers share one Client; iCourse facade is compatibility-only |
+| Tool Planner/Executor/Validator loop | S13 bounded loop complete; one iCourse natural-language slice works locally; other Schema planners and deployment remain |
 | Role-based Model Router | S08 static local core complete; real multi-Provider production composition remains |
-| Response Composer / OC Renderer split | S10 minimal deterministic path complete; S15 productization remains |
-| AnswerProfile / ResponsePlan | Not implemented; only static length/token primitives exist |
-| Proactive initiated runs, Scheduler and digests | Not implemented; design only |
-| Operation stages and rollback | Partially implemented by `manage.sh` |
+| Response Composer / OC Renderer split | S10 path and S15 Persona/ResponsePlan integration complete locally; human style quality remains |
+| AnswerProfile / ResponsePlan | S15 SHORT/MEDIUM/LONG mechanical contract complete; real calibration remains |
+| Proactive initiated runs, Scheduler and digests | S15A-S15E offline no-send chain complete; live Sources and sends remain |
+| Operation stages and rollback | S16-S19 local release, recovery and audit path complete; real deployment rehearsal remains |
 
 Detailed migration steps and removal gates are in `migration-map.md` and
 `implementation-plan.md`.

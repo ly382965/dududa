@@ -8,8 +8,9 @@
 - Structured perception and deterministic social/tier policy.
 - A production-reachable but default-off composition and additive semantic
   contract proven without real Provider traffic or human data.
-- One generic multi-Server MCP boundary with iCourse as the only real Adapter,
-  plus bounded Capability planning and execution.
+- One generic multi-Server MCP boundary with four real read-only campus query
+  Servers, plus bounded Capability planning and execution. The 2.0 Agent path
+  currently auto-plans only one iCourse `query` Capability.
 - Memory lifecycle, administration and lexical retrieval baselines.
 - Offline direct-chat runtime and side-effect-free shadow composition.
 - Controlled AstrBot shadow/canary boundary, kill switch, dedup, observability
@@ -72,8 +73,10 @@
 
 All S01-S22 and Web criteria in their accepted local/offline scopes are
 satisfied. Revision 4 completed S21A-S21C and S21 Audit before paused/partial
-S23. S23 still has manifest-only readiness; environment-specific integration
-and a separately authorized external run remain outside S21.
+S23. S23 has additionally completed its private historical Demo, Control Plane
+evaluation surface and one local 2.0 natural-language iCourse success slice;
+environment-specific integration and a separately authorized external run
+remain outside S21.
 
 ## Roadmap (ordered global milestones or integration outcomes; not every branch task)
 
@@ -98,8 +101,9 @@ and a separately authorized external run remain outside S21.
 12. Add the compatible semantic span/decision contract and complete its
     synthetic/Schema pilot without claiming real Chinese multi-turn quality.
 13. Run the MCP v2 Client/Server migration Spike, then implement Unified MCP
-    with iCourse as the only real Adapter and one Fake extension proof. Continue
-    through bounded Capability, Memory and deterministic Response Plan.
+    with iCourse as the original real Adapter and one Fake extension proof.
+    The later campus expansion adds second-class, academic and shuttle query
+    Servers without changing the Client control plane.
 14. Implement proactive outbound contracts and durable scheduling, then prove
     source-neutral contracts with fixed campus/arXiv/industry fixtures before
     digest Shadow and probe Shadow. Live Source Adapters remain external.
@@ -151,8 +155,9 @@ audit and cannot be entered merely because credentials arrive.
 8. Source rollout needs operator-frozen campus/publisher/category allowlists,
    arXiv revision policy, IANA zone, quiet hours, misfire window and item/rate
    limits. Public fixtures remain sufficient for Adapter contract development.
-9. The repository currently contains only the iCourse real MCP Server. New real
-   MCP Servers and live Source Adapters are not prerequisites for the generic
+9. The repository now contains four real read-only query MCP Servers: iCourse,
+   second-class, academic and shuttle. New live campus-news/arXiv/industry
+   Source Adapters are still absent and are not prerequisites for the generic
    S12/S13 or fixture-based S15C acceptance boundaries.
 10. The current local Dududa account history is approved for private
     development replay; the legacy local account is excluded and exact account

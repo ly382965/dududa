@@ -10,6 +10,7 @@ from dududa.mcp import (
     ManagedUnifiedMcpClient,
     SubprocessMcpV2SessionFactory,
 )
+from dududa.ports.mcp import UnifiedMcpClient
 
 from ..course import ICourseClient, UnavailableICourseClient
 from .mcp_schema import JsonSchemaMcpValidator
@@ -38,6 +39,7 @@ def build_icourse_client(
     worker_python: Path,
     environment_provider: AllowlistedEnvironmentProvider | None = None,
     secret_resolver: RejectingMcpSecretResolver | None = None,
+    unified_client: UnifiedMcpClient | None = None,
 ) -> tuple[ICourseClient | UnavailableICourseClient, str, str]:
     try:
         directory = Path(config.get("mcp_registry_dir", registry_directory))
@@ -51,19 +53,59 @@ def build_icourse_client(
         definition = registry.resolve_server(snapshot, "icourse")
         if not definition.enabled:
             return _unavailable("icourse_definition_disabled")
+        unified = unified_client
+        if unified is None:
+            unified, reason = build_unified_mcp_client(
+                config,
+                registry_directory=registry_directory,
+                worker_python=worker_python,
+                environment_provider=environment_provider,
+                secret_resolver=secret_resolver,
+            )
+            if unified is None:
+                return _unavailable(reason)
+        elif not isinstance(unified, UnifiedMcpClient):
+            return _unavailable("unified_composition_invalid")
+    except Exception:  # noqa: BLE001 - composition must not break unrelated commands
+        return _unavailable("unified_composition_invalid")
+    return (
+        ICourseClient(unified, owns_client=unified_client is None),
+        "unified",
+        "unified_ready",
+    )
+
+
+def build_unified_mcp_client(
+    config: Mapping[str, Any],
+    *,
+    registry_directory: Path,
+    worker_python: Path,
+    environment_provider: AllowlistedEnvironmentProvider | None = None,
+    secret_resolver: RejectingMcpSecretResolver | None = None,
+) -> tuple[UnifiedMcpClient | None, str]:
+    try:
+        directory = Path(config.get("mcp_registry_dir", registry_directory))
+        python = Path(config.get("mcp_worker_python", worker_python))
+        if not directory.is_absolute() or not python.is_absolute():
+            return None, "unified_path_not_absolute"
+        if not directory.is_dir() or not python.is_file():
+            return None, "unified_infrastructure_missing"
+        registry = ConfigMcpServerRegistry(directory)
         factory = SubprocessMcpV2SessionFactory(
             python,
             secret_resolver or RejectingMcpSecretResolver(),
             environment_provider or AllowlistedEnvironmentProvider(),
         )
-        unified = ManagedUnifiedMcpClient(
-            registry,
-            factory,
-            JsonSchemaMcpValidator(),
+        return (
+            ManagedUnifiedMcpClient(
+                registry,
+                factory,
+                JsonSchemaMcpValidator(),
+            ),
+            "unified_ready",
         )
     except Exception:  # noqa: BLE001 - composition must not break unrelated commands
-        return _unavailable("unified_composition_invalid")
-    return ICourseClient(unified), "unified", "unified_ready"
+        return None, "unified_composition_invalid"
 
 
 def _unavailable(

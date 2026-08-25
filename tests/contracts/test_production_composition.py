@@ -11,9 +11,11 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from astrbot_plugin_dududa_core import audit, composition, config
+from astrbot_plugin_dududa_core.adapters.mcp_schema import JsonSchemaMcpValidator
 from astrbot_plugin_dududa_core.adapters.model import (
     AstrBotProviderBindingEvidence,
 )
+from astrbot_plugin_dududa_core.adapters.output import AstrBotOutputAdapter
 from astrbot_plugin_dududa_core.composition import (
     ProductionRuntimeAssembly,
     install_production_runtime,
@@ -22,6 +24,7 @@ from astrbot_plugin_dududa_core.composition import (
 from astrbot_plugin_dududa_core.lifecycle import CoreLifecycleMixin
 from astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
 from dududa.domain.primitives import ComponentRevision, DigestString
+from dududa.mcp import ManagedUnifiedMcpClient, McpTimeoutPolicy
 from dududa.models.contracts import (
     EndpointHealthStatus,
     ModelEndpointHealth,
@@ -30,7 +33,18 @@ from dududa.models.contracts import (
 )
 from dududa.models.health import ModelHealthEvidence
 from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
+from icourse_mcp.models import Course, Teacher
+from icourse_mcp.storage import ICourseStore
 
+from tests.contracts.test_mcp_capability_provider import (
+    RecordingUnifiedClient,
+)
+from tests.contracts.test_unified_mcp_worker import (
+    _StaticRegistry,
+    factory,
+    icourse_definition,
+)
+from tests.unit.mcp.helpers import replace_server_definition
 from tests.unit.rollout.helpers import control, ledger
 from tests.unit.rollout.test_controlled_execution import (
     _MutableControls,
@@ -38,9 +52,57 @@ from tests.unit.rollout.test_controlled_execution import (
 )
 from tests.unit.runtime.test_orchestrator import OrchestratorFixture
 
+ROOT = Path(__file__).resolve().parents[2]
+
 
 class _Plugin(CoreLifecycleMixin):
     pass
+
+
+class _NoopUnifiedMcpClient:
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def discover(self, server_id, *, refresh=False, call):
+        raise AssertionError(f"unexpected MCP discovery: {server_id}")
+
+    async def call_tool(self, server_id, tool_name, arguments, *, call):
+        raise AssertionError(f"unexpected MCP call: {server_id}/{tool_name}")
+
+    async def health(self, server_id, *, call):
+        raise AssertionError(f"unexpected MCP health call: {server_id}")
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _ICourseFacade:
+    def __init__(self, client=None) -> None:
+        self.client = client or _NoopUnifiedMcpClient()
+        self.closed = False
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _ComponentFactory:
+    def plain(self, text: str) -> tuple[str, str]:
+        return ("plain", text)
+
+    def at(self, user_id: str) -> tuple[str, str]:
+        return ("at", user_id)
+
+    def reply(self, message_id: str) -> tuple[str, str]:
+        return ("reply", message_id)
+
+    def node(self, text: str, *, name: str, uin: str) -> tuple[object, ...]:
+        return ("node", text, name, uin)
+
+    def nodes(self, nodes: list[object]) -> tuple[str, list[object]]:
+        return ("nodes", nodes)
+
+    def chain(self, components: list[object]) -> list[object]:
+        return components
 
 
 class _ProviderContext:
@@ -113,6 +175,87 @@ class _AstrBotProvider:
         )
 
 
+class _ScriptedAstrBotProvider(_AstrBotProvider):
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        system_prompt = str(kwargs["system_prompt"])
+        prompt = str(kwargs["prompt"])
+        if "语义感知器" in system_prompt:
+            marker = "context_json:\n"
+            start = prompt.index(marker) + len(marker)
+            end = prompt.index("\n[/DUDUDA_USER_INPUT]", start)
+            context = json.loads(prompt[start:end])
+            current_ref = context["current_message_ref"]
+            current = next(
+                item
+                for item in context["messages"]
+                if item["message_ref"] == current_ref
+            )
+            completion = json.dumps(
+                {
+                    "schema_version": 1,
+                    "target_identity_refs": [current["author_identity_ref"]],
+                    "speech_acts": ["request"],
+                    "topics": [
+                        {
+                            "topic_id": "course-review",
+                            "label": "评课社区课程查询",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "intents": [
+                        {
+                            "intent_id": "icourse.lookup",
+                            "confidence": 0.99,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "entities": [
+                        {
+                            "entity_id": "icourse-site",
+                            "kind": "capability",
+                            "value": "评课社区",
+                            "confidence": 0.99,
+                            "evidence_refs": [current_ref],
+                        },
+                        {
+                            "entity_id": "teacher-wu-tian",
+                            "kind": "person",
+                            "value": "吴天",
+                            "confidence": 0.99,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "references": [],
+                    "ambiguities": [],
+                    "need_tools": True,
+                    "capability_categories": ["campus.course-review"],
+                    "task_kind": "direct_chat",
+                    "reasoning_depth": "shallow",
+                    "expected_tool_steps": 1,
+                    "verification_required": False,
+                    "complexity_signals": [
+                        {
+                            "code": "simple_retrieval",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "confidence": 0.98,
+                },
+                ensure_ascii=False,
+            )
+        else:
+            if "icourse.courses.search.v1" not in prompt or "吴天" not in prompt:
+                raise AssertionError("Direct Chat did not receive iCourse Observation")
+            completion = "吴天老师的公开评课记录里有《数学分析(B1)》，评分 9.6。"
+        return SimpleNamespace(
+            completion_text=completion,
+            usage=SimpleNamespace(input_other=32, input_cached=0, output=24),
+        )
+
+
 class _BlockingAstrBotProvider(_AstrBotProvider):
     def __init__(self, provider_id: str = "astrbot-luna") -> None:
         super().__init__(provider_id)
@@ -140,10 +283,12 @@ class _Event:
         *,
         group_id: str = "group-1",
         message_id: str = "message-1",
+        message_str: str = "@嘟嘟哒 你好",
     ) -> None:
         self.stop_calls = 0
         self.send_calls = 0
-        self.message_str = "@嘟嘟哒 你好"
+        self.sent_chains: list[object] = []
+        self.message_str = message_str
         self.message_obj = SimpleNamespace(
             message_id=message_id,
             timestamp=1_786_723_200,
@@ -181,6 +326,10 @@ class _Event:
 
     async def send(self, chain: object) -> None:
         self.send_calls += 1
+        self.sent_chains.append(chain)
+
+    def chain_result(self, components: list[object]) -> list[object]:
+        return components
 
 
 class _Closeable:
@@ -212,8 +361,24 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.path = Path(self.temp.name) / "rollout.sqlite3"
         self.fixture = OrchestratorFixture()
         _, self.call = self.fixture.start()
+        self.capability_patches = (
+            patch.object(
+                composition,
+                "CAPABILITY_DEFINITIONS_DIR",
+                ROOT / "configs" / "capabilities" / "definitions",
+            ),
+            patch.object(
+                composition,
+                "CAPABILITY_MAPPINGS_DIR",
+                ROOT / "configs" / "capabilities" / "mappings",
+            ),
+        )
+        for active_patch in self.capability_patches:
+            active_patch.start()
 
     def tearDown(self) -> None:
+        for active_patch in reversed(self.capability_patches):
+            active_patch.stop()
         self.temp.cleanup()
 
     async def _wait_until(self, predicate, *, timeout: float = 1.0) -> None:
@@ -245,6 +410,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             {provider.provider_id: provider} if provider is not None else {},
             evidence_enabled=evidence_enabled,
         )
+        plugin.icourse = _ICourseFacade()
+        plugin.unified_mcp_client = plugin.icourse.client
         return plugin
 
     def _runtime_config(
@@ -380,6 +547,16 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             patch.object(composition, "ROLLOUT_LEDGER_PATH", root / "rollout.sqlite3"),
             patch.object(composition, "MCP_REGISTRY_DIR", root / "missing-registry"),
             patch.object(composition, "MCP_WORKER_PYTHON", root / "missing-worker"),
+            patch.object(
+                composition,
+                "build_icourse_client",
+                return_value=(plugin.icourse, "unified", "unified_ready"),
+            ),
+            patch.object(
+                composition,
+                "build_unified_mcp_client",
+                return_value=(plugin.unified_mcp_client, "unified_ready"),
+            ),
             patch.object(audit, "PLUGIN_DATA_DIR", root),
         ):
             composition.initialize_plugin(
@@ -392,6 +569,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         provider = _AstrBotProvider()
         plugin = _Plugin()
         plugin.context = _ProviderRegistryContext({provider.provider_id: provider})
+        plugin.icourse = _ICourseFacade()
+        plugin.unified_mcp_client = plugin.icourse.client
         values = self._runtime_config()
         values["runtime_provider_evidence_path"] = str(self._provider_evidence_path())
 
@@ -418,6 +597,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         provider = _AstrBotProvider()
         plugin = _Plugin()
         plugin.context = _ProviderRegistryContext({provider.provider_id: provider})
+        plugin.icourse = _ICourseFacade()
+        plugin.unified_mcp_client = plugin.icourse.client
         values = self._runtime_config()
         values["runtime_provider_evidence_path"] = str(
             self._provider_evidence_path(model_id="gpt-5.6-terra")
@@ -553,6 +734,120 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.stop_calls, 0)
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
+
+    async def test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp(
+        self,
+    ) -> None:
+        database = Path(self.temp.name) / "icourse-runtime.sqlite3"
+        ICourseStore(database).upsert_course(
+            Course(
+                id=26_560,
+                name="数学分析(B1)",
+                url="https://icourse.club/course/26560",
+                teachers=[Teacher(id=1_001, name="吴天", dept="数学科学学院")],
+                term_text="2025秋",
+                rating_average=9.6,
+                review_count_site=8,
+                visible_review_count=8,
+            ),
+            source_hash="local-runtime-fixture",
+        )
+        server = replace_server_definition(
+            icourse_definition(database),
+            timeouts=McpTimeoutPolicy(
+                connect=timedelta(seconds=10),
+                discovery=timedelta(seconds=10),
+                call=timedelta(seconds=10),
+                maximum_call=timedelta(seconds=30),
+                close=timedelta(seconds=5),
+            ),
+        )
+        managed = ManagedUnifiedMcpClient(
+            _StaticRegistry(server),
+            factory(),
+            JsonSchemaMcpValidator(),
+        )
+        recording_mcp = RecordingUnifiedClient(managed)
+        provider = _ScriptedAstrBotProvider()
+        plugin = self._production_plugin(provider)
+        plugin.icourse = _ICourseFacade(recording_mcp)
+        plugin.unified_mcp_client = recording_mcp
+        values = self._runtime_config(rollout_mode="canary")
+        values.update(
+            {
+                "rollout_delivery_enabled": True,
+                "rollout_kill_switch": False,
+                "rollout_tools_enabled": True,
+            }
+        )
+        self._initialize(plugin, values, "production-icourse-natural-language")
+        plugin.rollout_bridge._output_factory = (
+            lambda event, ledger, guard: AstrBotOutputAdapter(
+                event,
+                ledger,
+                component_factory=_ComponentFactory(),
+                send_guard=guard,
+            )
+        )
+        observed_at = datetime.now(timezone.utc)
+        await plugin.runtime_assembly.publish_model_health(
+            (self._healthy_evidence(plugin.runtime_assembly, observed_at),),
+            call=replace(
+                self.call,
+                deadline=observed_at + timedelta(minutes=1),
+            ),
+        )
+        event = _Event(
+            message_id="natural-language-icourse",
+            message_str="@嘟嘟哒 查询评课社区吴天",
+        )
+
+        try:
+            result = await plugin.rollout_bridge.handle(event)
+
+            self.assertIs(result.action, AstrBotBridgeAction.CANARY_COMPLETED)
+            self.assertEqual(event.stop_calls, 1)
+            self.assertEqual(
+                event.send_calls,
+                1,
+                (result.canary, provider.calls, recording_mcp.tool_calls),
+            )
+            self.assertEqual(len(event.sent_chains), 1)
+            self.assertEqual(len(provider.calls), 2)
+            self.assertIn("语义感知器", provider.calls[0]["system_prompt"])
+            self.assertIn("自然参与对话", provider.calls[1]["system_prompt"])
+            self.assertIn("campus.course-review", provider.calls[0]["prompt"])
+            self.assertNotIn("campus.academic", provider.calls[0]["prompt"])
+            self.assertNotIn("campus.shuttle", provider.calls[0]["prompt"])
+            self.assertNotIn("campus.second-class", provider.calls[0]["prompt"])
+            self.assertEqual(
+                [item["reasoning_effort"] for item in provider.calls],
+                ["low", "low"],
+            )
+            self.assertEqual(
+                [
+                    (server_id, tool_name, arguments)
+                    for server_id, tool_name, arguments, _call in recording_mcp.tool_calls
+                ],
+                [("icourse", "search_courses", {"query": "吴天"})],
+            )
+            rendered = repr(
+                (provider.calls, recording_mcp.tool_calls, event.sent_chains)
+            )
+            self.assertIn("数学分析(B1)", rendered)
+            for forbidden in (
+                "web_search_baidu",
+                "search_site_courses",
+                "我先查找",
+                "我再检索",
+                "正在查询",
+                "ToolPlan",
+                "tool-plan:",
+            ):
+                self.assertNotIn(forbidden, rendered)
+        finally:
+            await plugin.terminate()
+        self.assertTrue(recording_mcp.closed)
 
     async def test_shadow_uses_endpoint_fixed_reasoning_after_healthy_evidence(
         self,
@@ -696,10 +991,12 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             patch.object(composition, "ROLLOUT_LEDGER_PATH", root / "rollout.sqlite3"),
             patch.object(composition, "MCP_REGISTRY_DIR", root / "missing-registry"),
             patch.object(composition, "MCP_WORKER_PYTHON", root / "missing-worker"),
+            patch.object(composition, "build_icourse_client") as build_compatibility,
             patch.object(audit, "PLUGIN_DATA_DIR", root),
         ):
             composition.initialize_plugin(plugin, {})
 
+        build_compatibility.assert_not_called()
         self.assertIsNotNone(plugin.rollout_bridge)
         self.assertIsNotNone(plugin.runtime_assembly)
         self.assertFalse(plugin.runtime_assembly.ready)

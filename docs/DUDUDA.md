@@ -4,13 +4,14 @@
 - 范围：`.`
 - 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处和校车四个只读 MCP 已接入，真实群聊风格仍待人工校准。
 
-Dududa 2.0 当前说明（2026-08-24）：
+Dududa 2.0 当前说明（2026-08-26）：
 
 - 系统定位为“受治理的群体情境适应 Runtime”：最小治理内核持有身份、Scope、权限和副作用，Persona 与群体情境只在这些事实不变的前提下适应表达。
 - WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
 - Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效。人格通过措辞、节奏、关注点和信息取舍自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情证明人格。
 - SHORT、MEDIUM 始终作为普通 QQ 消息发送；LONG 单段仍是普通消息，只有群聊中实际拆成至少两个纯文本 part、且没有定向用户和附件时才使用合并转发。
-- Meme Manager、Reread、PokePro 和旧 Target Talk 已退出 Dududa 2.0 的默认安装或默认 Compose 路径；源码、配置和历史数据不会因此删除。
+- Meme Manager、PokePro 和旧 Target Talk 已退出 Dududa 2.0 默认 Compose；自动复读仅以独立、默认关闭、按 Scope 配置的插件保留。
+- 第一条自然语言 iCourse 路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
 - 本轮没有修改或重启正在运行的 AstrBot/NapCat，因此“仓库默认退场”不等于“现有运行实例已在线停用旧插件”。
 
 以下为 Dududa 1.0 工程状态快照（2026-07-06）：

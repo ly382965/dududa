@@ -659,14 +659,14 @@ class AstrBotModelProviderAdapter:
             for part in request.input.parts
             if part.modality is ModelInputModality.TEXT and part.text is not None
         )
-        if len(text_parts) != 1 or len(request.input.parts) != 1:
+        if not text_parts or len(text_parts) != len(request.input.parts):
             raise _failure(
                 ModelFailureKind.CAPABILITY_MISMATCH,
                 "astrbot_requires_one_text_part",
             )
         sections = [
             "[DUDUDA_USER_INPUT]",
-            text_parts[0],
+            "\n\n".join(text_parts),
             "[/DUDUDA_USER_INPUT]",
         ]
         if request.output_schema is not None:

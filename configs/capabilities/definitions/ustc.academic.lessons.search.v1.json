@@ -6,7 +6,7 @@
   "capability_id": "ustc.academic.lessons.search.v1",
   "category": "campus.academic",
   "cost_hint_units": 3,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:9771e08d0a5b32459911499681c0b689fbb50899e5a2fc8b9ebf63f18e1a8e38",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:f2dab89f7c2fb3e832a5d5b2fe8e2380512550a98a11fefa42c1e7178399e912",
   "description": "Search the official semester lesson list with local filters and pagination.",
   "enabled": true,
   "idempotency": "read_only",
@@ -264,7 +264,7 @@
     "schema_id": "capability.ustc.academic.lessons.search.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-academic",
     "revision": {

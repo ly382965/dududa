@@ -54,8 +54,6 @@ def decide_rollout_admission(
         return _legacy(config, digest, "text_limit_exceeded")
     if message.attachments:
         return _legacy(config, digest, "attachments_not_supported")
-    if config.tools_enabled:
-        return _legacy(config, digest, "tools_must_be_disabled")
     if config.memory_enabled:
         return _legacy(config, digest, "memory_must_be_disabled")
     if config.mode is RolloutMode.SHADOW:

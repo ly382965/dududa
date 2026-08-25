@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "source": "USTC 评课社区 MCP 调用测试案例.md",
+  "assessed_at": "2026-08-26",
+  "scope": "current MCP data contract; no live LLM quality claim",
+  "summary": {
+    "total": 75,
+    "strict_runtime_complete": 0,
+    "mcp_data_complete": 14,
+    "mcp_data_partial": 33,
+    "mcp_data_missing": 28
+  },
+  "cases": [
+    {
+      "case_id": 1,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 2,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 3,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 4,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 5,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 6,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 7,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 8,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 9,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 10,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 11,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 12,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 13,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 14,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 15,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 16,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 17,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 18,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 19,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 20,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 21,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 22,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 23,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 24,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 25,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 26,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 27,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 28,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 29,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 30,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 31,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 32,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 33,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 34,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 35,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 36,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 37,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 38,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 39,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 40,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 41,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 42,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 43,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 44,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 45,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 46,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 47,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 48,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 49,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 50,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 51,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 52,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 53,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 54,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 55,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 56,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 57,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 58,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 59,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 60,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 61,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 62,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 63,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 64,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 65,
+      "mcp_data_support": "complete",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 66,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 67,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 68,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 69,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 70,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 71,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 72,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 73,
+      "mcp_data_support": "missing",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 74,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    },
+    {
+      "case_id": 75,
+      "mcp_data_support": "partial",
+      "strict_runtime_status": "not_complete"
+    }
+  ]
+}

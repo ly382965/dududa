@@ -96,8 +96,19 @@ Branch: real-group-validation
 - 入站 production shape 采用配置驱动装配，不建立第二套路由控制面；AstrBot
   Provider 只实现模型调用 Port，Tier、预算、Runtime 状态和 rollout 所有权
   仍由 Dududa Core 决定。
-- 首版生产装配使用 `RuleOnlyRuntimePerception`，不为未经校准的语义感知额外
-  调用模型；回答生成仍经过 Static Router 和 DirectChat Model Call。
+- 2.0 自然语言 Capability 入口使用现有 Hybrid Perception；PERCEPTION 固定由
+  Haiku/Luna 执行，DirectChat 仍由 Static Router 决定。旧 rule-only 只保留为
+  Hybrid 降级组件，不能继续描述成生产主入口。
+- Unified MCP 是 2.0 Production Composition 的一等资源；`ICourseClient` 只是借用
+  共享 Client 的兼容消费者。Runtime 不得再从旧 facade 反向取得 MCP 基础设施。
+- Production 共享 Client 装配失败时，兼容 facade 必须同步 unavailable；立即重试并
+  建立一个仅供旧入口使用的独立 Client 会重新制造第二条 MCP 所有权路径。
+- 控制台可直接调用 17 个 Capability，不等于自然语言 Planner 已支持 17 个。
+  首版只公布唯一必填字段为 `query` 的 `icourse.courses.search.v1`；公布范围必须与
+  Planner 实际投影能力一致。
+- 可信 Capability failure 目前在 Canary 已 claim 后 no-delivery；旧 handler 和 Web
+  search 不得接管。用户可见失败提示应沿 2.0 Composer、Persona、Final Validator
+  与授权 Delivery 的唯一输出路径实现。
 - `off`/`shadow` 始终保留 legacy 所有权；只有既有 Canary 协议完成持久
   claim 后，Runtime 才可能取得发送所有权。
 - 仓库外 Evidence 文件是环境 Adapter，不是新的控制面：AstrBot Context

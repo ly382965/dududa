@@ -1018,9 +1018,10 @@ fallback；三者分别受限并共享 `max_total_attempts`。`RouteAttemptKind`
 
 | 当前调用 | 目标角色 | 迁移方式 |
 | --- | --- | --- |
-| `/course <自然语言>` 关键词抽取 | `PERCEPTION` | 严格 Intent Schema + AstrBot Adapter |
-| 公开课程评论总结 | `RESPONSE_COMPOSITION` | 保留固定事实输入和来源，去掉手工 JSON 截取 |
-| TargetTalk 短回复 | `DIRECT_CHAT` | 保留旧 Provider hint 和字数约束 |
+| 普通自然语言 Runtime 输入 | `PERCEPTION` | Luna/Haiku 严格结构化感知；确定性代码拥有后续资格与执行 |
+| iCourse Observation 总结 | `DIRECT_CHAT` / `RESPONSE_COMPOSITION` | 保留验证后的事实和来源，通过 Persona/Final Validator 单次输出 |
+| `/course` 与旧自然语言课程 handler | 兼容/诊断面 | 不参与 Dududa 2.0 Capability 验收，后续按消费者证据迁移 |
+| TargetTalk 短回复 | 历史兼容面 | 不进入 Dududa 2.0 默认 Compose |
 | `/image` 原始 HTTP 调用 | `IMAGE_GENERATION` | Image Provider Adapter，不再由插件读 key |
 | AstrBot 默认聊天 | `DIRECT_CHAT` | 先由兼容 Adapter 透传，后接统一 Runtime |
 | `/admin model set default` | 路由配置管理 | 兼容期仍可写 AstrBot 配置，最终调用配置 Repository |

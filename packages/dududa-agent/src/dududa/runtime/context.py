@@ -37,6 +37,7 @@ class CurrentMessageContextBuilderConfig:
     private_data_classification: PrivacyLevel
     group_data_classification: PrivacyLevel
     component_revision: ComponentRevision
+    available_capability_categories: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
@@ -57,6 +58,18 @@ class CurrentMessageContextBuilderConfig:
                 raise validation_error("invalid_context_data_classification", name)
         if not isinstance(self.component_revision, ComponentRevision):
             raise validation_error("invalid_context_builder_revision")
+        categories = tuple(self.available_capability_categories)
+        if (
+            len(categories) > self.limits.max_capability_categories
+            or len(categories) != len(set(categories))
+            or any(not isinstance(value, str) or not value.strip() for value in categories)
+        ):
+            raise validation_error("invalid_context_capability_categories")
+        object.__setattr__(
+            self,
+            "available_capability_categories",
+            tuple(sorted(categories)),
+        )
 
 
 class CurrentMessageContextBuilder:
@@ -198,7 +211,9 @@ class CurrentMessageContextBuilder:
             current_message_ref=current_message_ref,
             bot_identity_ref=reference_by_raw[message.bot_id],
             limits=self._config.limits,
-            available_capability_categories=(),
+            available_capability_categories=(
+                self._config.available_capability_categories
+            ),
             degraded_components=(),
             content_input_tokens_upper_bound=1,
             data_classification=preprocess.data_classification,

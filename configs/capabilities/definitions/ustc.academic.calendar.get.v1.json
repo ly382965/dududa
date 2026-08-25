@@ -6,7 +6,7 @@
   "capability_id": "ustc.academic.calendar.get.v1",
   "category": "campus.academic",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:5cae65dc3a63813b0fadd11d3854106a906e50984e975d0d5d5591fa1ff05c3f",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:06f7e80ba2abed78df66c981db59c498e0b3868e68296d50eddc3513e1e55d4f",
   "description": "Read the current official teaching-calendar article and its dated events.",
   "enabled": true,
   "idempotency": "read_only",
@@ -138,7 +138,7 @@
     "schema_id": "capability.ustc.academic.calendar.get.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-academic",
     "revision": {

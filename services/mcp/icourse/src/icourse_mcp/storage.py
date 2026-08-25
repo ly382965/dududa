@@ -452,8 +452,11 @@ class ICourseStore:
         params: list[Any] = []
         if query:
             like = f"%{query}%"
-            clauses.append("(name LIKE ? OR courseries LIKE ? OR introduction_text LIKE ? OR summary_text LIKE ?)")
-            params.extend([like, like, like, like])
+            clauses.append(
+                "(name LIKE ? OR teachers_json LIKE ? OR courseries LIKE ? "
+                "OR introduction_text LIKE ? OR summary_text LIKE ?)"
+            )
+            params.extend([like, like, like, like, like])
         if teacher:
             clauses.append("teachers_json LIKE ?")
             params.append(f"%{teacher}%")

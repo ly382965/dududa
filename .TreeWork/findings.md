@@ -23,11 +23,12 @@
   Initial length numbers are pilot defaults and must not become enum semantics.
 - MCP transports approved capabilities but owns neither Schema freshness,
   scheduling nor delivery. Scheduler occurrence/CAS remains Dududa-owned.
-- iCourse remains the only real MCP Server. S12 now owns the Unified MCP Port,
-  Registry, shared lifecycle and compatibility facade; S13 maps only four
-  approved public cache-read Capabilities through the generic Provider. S22
-  removed the plugin-dedicated per-call Client; the isolated worker still
-  retains its evidenced legacy server-protocol compatibility mode.
+- iCourse was the original real MCP Server. The Registry now contains four
+  read-only query Servers and 17 Capability mappings: iCourse, second-class,
+  academic and shuttle. S12 still owns the single Unified MCP Port, Registry and
+  shared lifecycle; S22 removed the plugin-dedicated per-call Client. Natural-
+  language Agent planning currently closes only the iCourse `query` slice; the
+  other mappings are Control Plane-callable facts, not automatic Planner proof.
 - The current S09 Eval and Memory retrieval are narrower than their interface
   names imply: the former is synthetic policy gold, and the latter is exact
   Scope/TTL plus substring/recency rather than semantic retrieval.

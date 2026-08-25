@@ -1,9 +1,15 @@
-"""AstrBot-facing adapters. Legacy handlers remain authoritative in S04."""
+"""AstrBot-facing adapters for Dududa 2.0 and its compatibility surfaces."""
 
+from .capability_planner import EntityQueryToolPlanner
+from .capability_runtime import (
+    ProductionCapabilityAssembly,
+    build_production_capability_runtime,
+)
 from .mcp_runtime import (
     AllowlistedEnvironmentProvider,
     RejectingMcpSecretResolver,
     build_icourse_client,
+    build_unified_mcp_client,
 )
 from .mcp_schema import JsonSchemaMcpValidator
 from .message import AstrBotInputConnector
@@ -32,4 +38,8 @@ __all__ = [
     "RejectingMcpSecretResolver",
     "astrbot_prompt_artifact_digest",
     "build_icourse_client",
+    "build_unified_mcp_client",
+    "EntityQueryToolPlanner",
+    "ProductionCapabilityAssembly",
+    "build_production_capability_runtime",
 ]

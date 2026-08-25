@@ -607,8 +607,10 @@ requested profile services
 
 Profile selection never grants a Capability. Unknown, unhealthy, unauthorized
 or production-incomplete services remain inactive and are reported as such.
-iCourse is still the only real MCP Server; planned campus/arXiv/industry sources
-must appear unavailable until real Adapters and policy evidence exist.
+Four real read-only query MCP Servers now exist: iCourse, second-class,
+academic and shuttle. They are not proactive information feeds; planned campus
+news/arXiv/industry sources must remain unavailable until real Source Adapters
+and policy evidence exist.
 
 The onboarding state machine is:
 

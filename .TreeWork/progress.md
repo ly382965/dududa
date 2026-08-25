@@ -64,12 +64,14 @@ Last sync: unix:1786717871
   inspected read-only and were not restarted or switched.
 - The repository now has a configuration-driven inbound production Runtime
   shape: declared AstrBot Providers can be adapted into the existing Static
-  Router and DirectChat path, with Runtime default-off and legacy ownership in
-  `off/shadow`. Twenty-seven focused Fake-Provider tests passed in 1.005 seconds
-  after a six-test smoke passed in 0.196 seconds; construction made zero model
-  calls. The running AstrBot/NapCat stack was not changed and production remains
-  NOT READY until real Endpoint conformance, health, release binding and
-  authorization exist.
+  Router and DirectChat path, with Runtime default-off and legacy compatibility
+  ownership in `off/shadow`. The current Dududa 2.0 path uses Hybrid Perception,
+  a deterministic one-step Capability Planner and first-class Unified MCP. One
+  local iCourse success slice proved Luna/Haiku PERCEPTION, exactly one
+  `search_courses({"query":"吴天"})` invocation, DIRECT_CHAT synthesis and one
+  final Delivery without `/course`, Web search or process narration. The running
+  AstrBot/NapCat stack was not changed and production remains NOT READY until real
+  Endpoint conformance, health, release binding and authorization exist.
 - A fixed AstrBot 4.26.2 candidate has now started in a fully isolated
   `--network none` environment with temporary data, a read-only plugin mount,
   no NapCat and no port. AstrBot 4.26.2, plugin loading and `DududaCore loaded`
@@ -131,7 +133,8 @@ Last sync: unix:1786717871
   S23 is paused/partial after completing its offline S23A--S23E milestone and
   the configuration-driven inbound Runtime shape, isolated candidate startup,
   three-tier Provider no-send sampling, default-off health-refresh
-  implementation and the Web internal-test evaluation Adapter. It still needs
+  implementation, the Web internal-test evaluation Adapter and one local 2.0
+  natural-language iCourse success slice. It still needs
   formal Endpoint Conformance, running AstrBot registration/deployment, enabled
   continuous health and the live Source/Projection/Output composition required
   by each separately authorized proactive stage. The Web result is not AstrBot
@@ -199,13 +202,15 @@ Last sync: unix:1786717871
   written only to a mode-`0600` repository-external JSONL file. Candidate text
   and Provider credentials are not persisted. This does not promote S23 beyond
   `paused/partial`.
-- The current S23 branch also closes the repository-side inbound production
-  vertical slice: one to three configured model tiers are assembled through
-  AstrBot Provider Adapters, the existing Static Router and DirectChat Runtime;
-  answer profiles are feature-flagged, rule-only Perception avoids a second
-  model call, and disabled/unresolved configuration falls back to legacy. This
-  is focused Fake-Provider Contract evidence, not real Endpoint or deployment
-  conformance.
+- The current S23 branch also closes the first repository-side Dududa 2.0
+  natural-language iCourse vertical slice: one to three configured model tiers
+  are assembled through AstrBot Provider Adapters and the existing Static
+  Router; Haiku/Luna Hybrid Perception proposes a Capability category and
+  entities, deterministic code owns the one-step Plan and Unified MCP call, and
+  DirectChat/Persona/Final Validator own the single final response. Rule-only
+  Perception and `/course` remain compatibility/diagnostic surfaces and are not
+  completion evidence. This is focused local/Fake evidence, not real Endpoint
+  or deployment conformance.
 - The same branch now starts the fixed AstrBot 4.26.2 candidate in a fully
   isolated environment, samples Luna/Terra/Sol once each with zero Output, and
   implements a default-off periodic health refresher with failure, TTL and
@@ -238,11 +243,12 @@ Last sync: unix:1786717871
   clean package construction and the production-shape preflight without
   changing any running container or sending a message.
 - S12 returned a framework-neutral multi-Server MCP Client/Registry, isolated
-  v2 worker, iCourse compatibility facade and rollback path; iCourse remains the
-  only real Server and production Tools stay disabled.
+  v2 worker and iCourse compatibility facade. The later campus expansion now
+  registers four real read-only query Servers on the same infrastructure.
 - S13 returned a separate governed Capability Catalog/Retrieval/Planner/
-  Executor/Validator with iCourse read-only mappings and configuration-only
-  Fake extension evidence.
+  Executor/Validator. Seventeen read-only mappings are available to the Control
+  Plane; one local 2.0 iCourse `query` path is auto-planned, while running Agent
+  deployment and other Schema planners remain incomplete.
 - S14 now returns generation-bound Memory lifecycle and restore, M0/M1/M2
   bounded retrieval and a manifest-bound synthetic Eval. It did not migrate
   legacy commands, enable Runtime Memory, use real data or integrate Iris.

@@ -178,6 +178,11 @@ Title: S23 Authorized Real-Group Validation
   `plugin` scope API Key 支持 GitHub/ZIP 热安装；安装结果不写入 Scope Policy。
 - [x] 发布 `dududa-plugin-development-spec.md` 中文规范并在插件区提供下载链接，
   让人或 AI 生成的插件按同一目录、metadata、配置、权限和测试格式交付。
+- [x] Dududa 2.0 的自然语言 iCourse 纵切经 Haiku/Luna `PERCEPTION` 提取“吴天”
+  与 `campus.course-review`，由确定性单步 Planner 选择
+  `icourse.courses.search.v1`，通过 Unified MCP 返回 Observation，再由
+  `DIRECT_CHAT` 产生唯一最终回答；不得经过 `/course` handler 或 Web search，
+  不显示中间计划、Observation 原文或思维过程。
 
 ## Local Steps
 
@@ -198,9 +203,9 @@ Title: S23 Authorized Real-Group Validation
   Chinese development documents, and create no more than three local commits.
 - [x] Implement the offline readiness manifest/checker, template and runbook;
   record the current fail-closed external blockers.
-- [x] Implement the production Builder, automatic plugin wiring, AnswerProfile
-  feature flag and rule-only Runtime Perception; sample the production
-  composition, Perception and Rollout contracts.
+- [x] Implement the production Builder, automatic plugin wiring and AnswerProfile
+  feature flag; the initial rule-only checkpoint was later superseded by the
+  Hybrid Perception and governed iCourse Capability vertical slice below.
 - [x] Implement the repository-external Provider Evidence Store and wire the
   existing bounded health publisher through Production Assembly, Router and
   Admission; verify exact binding, `UNKNOWN -> HEALTHY` and TTL expiry with
@@ -264,6 +269,13 @@ Title: S23 Authorized Real-Group Validation
   reload/discover through Unified MCP and return `capabilityGranted=false`.
 - [x] Publish `dududa-mcp-development-spec.md` with SecretRef-only authentication,
   Tool semantics, minimum Contract Tests and the separate Capability-mapping step.
+- [x] Replace rule-only production Perception with the existing Hybrid Perception
+  path, assemble the existing Capability Runtime over the shared Unified MCP
+  client, enable one bounded read-only Tool step from Rollout Policy, and prove
+  the natural-language iCourse vertical slice with focused Fakes.
+- [ ] Route validated Capability failure through the governed Composer, Persona,
+  Final Validator and authorized Delivery path; do not fall back to the legacy
+  course handler, Web search or a Bridge-level second send path.
 - [ ] Connect automatic reread to the Web Policy separately; a matched Web
   trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and

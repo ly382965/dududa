@@ -6,7 +6,7 @@
   "capability_id": "ustc.academic.programs.search.v1",
   "category": "campus.academic",
   "cost_hint_units": 2,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:238c64e854bb845574a41cbd320a681ef72df48b99366129da9011e0def7074b",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:c5f8e9d1645423b0af8d68e09c4321f532d81f78309f758cebd36cf90017d452",
   "description": "Search official undergraduate training programs by major, grade and type.",
   "enabled": true,
   "idempotency": "read_only",
@@ -179,7 +179,7 @@
     "schema_id": "capability.ustc.academic.programs.search.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-academic",
     "revision": {

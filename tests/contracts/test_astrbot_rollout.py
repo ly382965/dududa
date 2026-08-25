@@ -35,7 +35,15 @@ class _PreparedRequests:
         self.call = call
         self.calls = 0
 
-    async def prepare(self, event, *, control_revision, timeout_seconds):
+    async def prepare(
+        self,
+        event,
+        *,
+        control_revision,
+        timeout_seconds,
+        tools_enabled=False,
+        memory_enabled=False,
+    ):
         self.calls += 1
         return self.request, self.call
 
@@ -122,6 +130,12 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
         enabled_request, _ = await enabled_factory.prepare(
             object(), control_revision="rollout-v1", timeout_seconds=10
         )
+        tools_request, _ = await default_factory.prepare(
+            object(),
+            control_revision="rollout-v1",
+            timeout_seconds=10,
+            tools_enabled=True,
+        )
 
         self.assertEqual(
             dict(default_request.options.feature_flags),
@@ -130,6 +144,10 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             dict(enabled_request.options.feature_flags),
             {"tools": False, "memory": False, "response_profiles": True},
+        )
+        self.assertEqual(
+            dict(tools_request.options.feature_flags),
+            {"tools": True, "memory": False},
         )
 
     async def test_off_and_shadow_leave_legacy_and_event_ownership_untouched(

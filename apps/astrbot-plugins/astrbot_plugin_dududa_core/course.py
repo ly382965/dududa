@@ -35,6 +35,7 @@ class ICourseClient:
         self,
         unified_client: UnifiedMcpClient,
         *,
+        owns_client: bool = True,
         timeout_hint: float = 30.0,
         clock: Callable[[], datetime] | None = None,
         id_factory: Callable[[], str] | None = None,
@@ -43,7 +44,10 @@ class ICourseClient:
             raise TypeError("unified_client must implement UnifiedMcpClient")
         if not isinstance(timeout_hint, (int, float)) or timeout_hint <= 0:
             raise ValueError("timeout_hint must be positive")
+        if type(owns_client) is not bool:
+            raise TypeError("owns_client must be bool")
         self._client = unified_client
+        self._owns_client = owns_client
         self.timeout_hint = float(timeout_hint)
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
@@ -89,8 +93,13 @@ class ICourseClient:
         discovered = {item.name for item in schema.tools}
         return sorted(discovered & ICOURSE_COMPAT_TOOL_ALLOWLIST)
 
+    @property
+    def unified_client(self) -> UnifiedMcpClient:
+        return self._client
+
     async def close(self) -> None:
-        await self._client.close()
+        if self._owns_client:
+            await self._client.close()
 
     def _call_context(self, operation: str, tool: str) -> ServiceCallContext:
         now = self._clock()

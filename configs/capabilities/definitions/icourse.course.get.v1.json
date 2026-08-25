@@ -6,7 +6,7 @@
   "capability_id": "icourse.course.get.v1",
   "category": "campus.course-review",
   "cost_hint_units": 2,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:c42bf5b290b2c219d3659dc460021ba7b51ff1225b6fa9ecfe6a38c2fbeb1dce",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:0633eec49950c7032c77522191da7be3fdc7ed2eccfbfeeea031089ddcfb7fdf",
   "description": "Read one public cached course with refresh permanently disabled.",
   "enabled": true,
   "idempotency": "read_only",
@@ -410,7 +410,7 @@
     "schema_id": "capability.icourse.course.get.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.icourse",
     "revision": {

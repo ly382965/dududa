@@ -66,6 +66,14 @@ class CoreLifecycleMixin:
                 first_error = first_error or exc
             else:
                 self.icourse = None
+        unified_mcp = getattr(self, "unified_mcp_client", None)
+        if unified_mcp is not None:
+            try:
+                await unified_mcp.close()
+            except BaseException as exc:
+                first_error = first_error or exc
+            else:
+                self.unified_mcp_client = None
         pending_cleanup = tuple(getattr(self, "_dududa_runtime_cleanup_assemblies", ()))
         failed_cleanup: list[object] = []
         for candidate in reversed(pending_cleanup):
@@ -79,6 +87,7 @@ class CoreLifecycleMixin:
             getattr(self, "rollout_bridge", None) is None
             and getattr(self, "runtime_assembly", None) is None
             and getattr(self, "icourse", None) is None
+            and getattr(self, "unified_mcp_client", None) is None
             and not self._dududa_runtime_cleanup_assemblies
         )
         if self._dududa_runtime_terminated:

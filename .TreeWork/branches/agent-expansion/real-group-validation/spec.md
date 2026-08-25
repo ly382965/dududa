@@ -185,6 +185,46 @@ Unified Client and mapping contracts, then returns structured results, source
 provenance, fetch time and an explicit availability/authentication state. This
 is a Control Plane client of Core authority, not a second MCP runtime.
 
+### Dududa 2.0 Natural-Language Capability Path
+
+The production Agent path is model-mediated natural language rather than a
+legacy command parser:
+
+```text
+natural-language input
+  -> Haiku/Luna PERCEPTION structured intent, entities and Capability category
+  -> deterministic eligibility, authorization and one-step Schema projection
+  -> Unified MCP
+  -> validated Observation
+  -> DIRECT_CHAT synthesis
+  -> Persona and Final Validator
+  -> one final user-visible response
+```
+
+The first production Planner is deliberately bounded. It projects a model-
+extracted entity into one retrieved read-only Capability whose input Schema has
+`query` as its only required field; existing Retrieval, authorization, Plan
+Validator, budgets, Executor and Observation Validator retain authority. It is
+an Adapter for the first iCourse vertical slice, not a general model Tool
+Planner. A future `ModelRole.TOOL_PLANNING` may replace it without changing the
+Capability or MCP control planes.
+
+Production Composition owns a first-class `UnifiedMcpClient`; the legacy
+`ICourseClient` borrows it as a compatibility consumer and does not provide or
+own the 2.0 Runtime connection. Perception advertises only categories backed by
+the current Planner's supported input Schemas. The initial advertised set is
+therefore only `campus.course-review`, even though the Control Plane can invoke
+other approved campus Capabilities directly.
+
+`/course` and the legacy natural-language course handler remain compatibility
+and diagnostics only. They do not establish 2.0 Agent Tool selection evidence,
+must not intercept the Runtime-owned path, and are excluded from the 2.0
+acceptance test. The path never falls back to Web search. The current success
+slice renders only the post-Observation synthesis. A validated MCP failure still
+terminates fail closed with no Delivery after Canary ownership; a user-visible
+Capability-unavailable response must later be implemented inside the governed
+Composer/Persona/Final Validator path, never in the legacy handler or Bridge.
+
 ### Runtime MCP Server Registration
 
 The Bot Control Plane exposes a structured `super_admin` workflow for registering

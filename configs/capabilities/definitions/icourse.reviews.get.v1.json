@@ -6,7 +6,7 @@
   "capability_id": "icourse.reviews.get.v1",
   "category": "campus.course-review",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:32f61b83f866c5b6789c724bb6a35e95ca65904a18ff73dae9f13acdd9a82f14",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:412da4c2c0b0454a6732abfbac80b09a3c8262078e97e936e29dc499d9b7905d",
   "description": "Read public cached reviews for one course without online refresh.",
   "enabled": true,
   "idempotency": "read_only",
@@ -220,7 +220,7 @@
     "schema_id": "capability.icourse.reviews.get.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "public",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.icourse",
     "revision": {
