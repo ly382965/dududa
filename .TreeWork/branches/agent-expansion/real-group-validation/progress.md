@@ -104,8 +104,8 @@ Last sync: unix:1786706085
   口号、不机械追加表情，也不模仿具体群成员。Web Agent 可选择
   SHORT/MEDIUM/LONG 并映射 Luna/Terra/Sol；真实中文群聊风格仍需人工校准。
 - Runtime 投递语义已收紧：SHORT/MEDIUM 始终发送普通 QQ 消息，LONG 单段也
-  发送普通消息。只有经过独立档位校验的显式 LONG，且处于群聊、至少两个纯文本
-  part、没有 target、没有附件时才合并转发；`allow_forward_bundle=true` 本身
+  发送普通消息。只有经过独立档位校验的 LONG，且处于群聊、至少两个纯文本
+  part、没有附件时才合并转发；定向目标不另发 `@`，`allow_forward_bundle=true` 本身
   不能绕过 AnswerProfile 校验。
 - Dududa 1.0 的 Meme Manager 自动表情、PokePro 自动戳一戳和旧 Target Talk 已
   退出 2.0 仓库默认路径；ReplyPolish 保留为默认关闭的 LONG-only 兼容层，
@@ -202,8 +202,8 @@ Last sync: unix:1786706085
   会话切换和 Persona 指令，未新增持久消息队列或第二套控制面。
 - 收紧生成与投递契约：Persona 不再被 `response_profiles=false` 一并关闭，
   Persona 与 AnswerProfile 在一次模型调用内融合；SHORT/MEDIUM 和单段 LONG
-  保持普通消息，仅合法多段群聊 LONG 可合并转发。相关 Runtime、Output Adapter
-  与兼容层聚焦测试通过。
+  保持普通消息，仅合法多段群聊 LONG 可合并转发。定向目标保留在 Runtime
+  契约中，转发呈现不另发 `@`。相关 Runtime、Output Adapter 与兼容层聚焦测试通过。
 - 清理 2.0 仓库默认路径中的 Meme Manager、PokePro 和 Target Talk，停止新
   `meme_rate` 默认值与写入口，默认关闭 ReplyPolish 并保留显式 `/image`；随后
   仅恢复默认关闭、按 Scope 配置的自动复读和现有 `/sub2api 自动查询` 独立插件，
@@ -231,6 +231,11 @@ Last sync: unix:1786706085
   MCP 调用 `icourse/search_courses`，Observation 经 DirectChat、Persona、Final
   Validator 后只发送一次。旧 `/course`/`natural_course_query`、
   `search_site_courses` 与 Web search 均未参与。
+- “评课社区”现在由 Production Rule 确定性补充 `campus.course-review`，不再让
+  显式站点词的 Tool 选择依赖模型概率；该规则仍受 Runtime 接管、Capability
+  availability、Tool 开关、授权、预算、流量和 MCP 健康约束。完整 75 条测试已经
+  真正执行到 Runtime/MCP dispatch，但严格语义完成仍为 0/75，不能把调用率写成
+  复杂能力完成率。
 - Unified MCP 生命周期已从旧 iCourse facade 中解耦；兼容 facade 只借用共享 Client。
   Perception 只公布当前 Planner 真能投影的 `campus.course-review`，不会把控制台可
   直调的教务、校车和二课误报成 Agent 已可自然语言自动调用。
@@ -240,9 +245,23 @@ Last sync: unix:1786706085
   完成 3 个 no-send 答案，Luna 对每个答案各 Review 一次；6 次 Provider 调用、
   0 次 QQ Output，三项 Review 均通过。该结果是质量抽样，不是生产 Runtime 第三次
   模型调用或总体模型排名。
-- 最终聚焦验证共运行 42 项，40 项执行通过、2 项既有 AstrBot host-only skip；
-  两个 Capability generator `--check` 与 4 项生产 mapping Contract 通过，关键 Ruff
-  规则和 `git diff --check` 通过。未重跑全仓或再次调用真实模型。
+- 显式“评课社区”已成为 2.0 Production Rule 的确定性
+  `campus.course-review` 信号。75 条原始案例均逐条经过 Canary Bridge 和本地
+  iCourse MCP worker，产生 75 次 Unified MCP 调用；19 条显式 marker 在 Fake
+  Model 故意漏报 Tool 时仍为 19/19。另加 3 条参数回归，实际投影分别为
+  `人工智能`、`萌萌哒mmd` 和 `线性代数B1`。
+- 真实 Luna `low` no-send Perception 已覆盖 75/75：Schema 75/75 有效，iCourse
+  category 74/75，显式 marker 19/19，零 QQ Output。唯一漏报 Case 67 没有站点词
+  或 iCourse 上下文，未增加会误伤普通聊天的宽泛规则。自动 Planner 仍只有
+  `search_courses(query)`，因此严格语义完成继续是 0/75；用户点评、排行榜、点评
+  全文/回复、统计时间序列和多步聚合未完成。
+- Tool 路径在没有显式详略要求时默认选择 LONG；Production 继续使用
+  `capability_maximum_attempts=1`，78 条模拟保持每条恰好一次 MCP 调用。超过
+  512-byte 分片阈值的群聊 LONG 由 Output Adapter 只发送一条 QQ 合并转发；
+  SHORT/MEDIUM 与单段 LONG 仍为普通消息。
+- 原 42 项聚焦证据仍有效；本轮完整 78 场景矩阵、2 项 fixture 和单例纵切通过，
+  `git diff --check` 通过。全规则 Ruff 仍只报告 `composition.py` 既存风格债务，
+  本轮未借机修改。未重跑全仓。
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 

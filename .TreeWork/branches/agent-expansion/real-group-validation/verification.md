@@ -4,6 +4,36 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- Command: `.venv/bin/python -m unittest tests.unit.responses.test_policy tests.unit.runtime.test_composition tests.contracts.test_astrbot_output tests.contracts.test_production_composition.ProductionCompositionContractTests.test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp`.
+  Result: 33 focused tests passed in 4.496 seconds. Evidence: Tool-assisted
+  responses default to LONG without overriding an explicit profile; the iCourse
+  vertical slice made one MCP call and one `nodes` send after real 512-byte
+  splitting; SHORT/MEDIUM, private, attachment and single-part cases retained
+  their ordinary delivery behavior.
+- Full iCourse Runtime matrix: all 75 benchmark questions plus three user
+  regressions entered the AstrBot Canary Bridge, Hybrid Perception, Capability
+  Runtime and a real local Managed Unified MCP/iCourse worker. The run recorded
+  78 MCP calls and 78 single Fake Deliveries. The 19 benchmark questions with
+  an explicit `评课社区` marker plus all three regressions deliberately received
+  `need_tools=false` from the scripted model; deterministic Rule/Merger evidence
+  still produced 22/22 Tool paths. The three regression arguments were exactly
+  `人工智能`, `萌萌哒mmd` and `线性代数B1`.
+- Command: `.venv/bin/python -m unittest tests.contracts.test_production_composition.ProductionCompositionContractTests.test_all_icourse_benchmark_messages_reach_2_0_mcp_dispatch`.
+  Result: one matrix test passed in 76.299 seconds. Test Endpoint RPM/TPM was
+  raised to isolate routing because the default 60 RPM correctly denies the
+  31st rapid request after 30 two-model-call runs; production limits are unchanged.
+- Real Luna Perception sample: 75/75 benchmark outputs passed the Production
+  JSON Schema with `reasoning.effort=low`; 74/75 proposed
+  `campus.course-review`, and explicit marker recall was 19/19. Case 67 was the
+  sole model-only miss and had neither a site marker nor iCourse context. The
+  sanitized per-case result is repository-external at
+  `/home/mmdustc/temp/dududa-icourse-perception-benchmark-2026-08-26.json` with
+  mode `0600`; the run made no QQ Output.
+- Focused follow-up: the two benchmark fixture tests and the original local
+  natural-language iCourse vertical slice passed (3 tests in 4.282 seconds).
+  `git diff --check` passed. All-rule Ruff reports 14 pre-existing
+  `composition.py` style findings; focused E/F/I checks are recorded separately
+  and this change does not broaden the cleanup scope.
 - Dududa 2.0 natural-language vertical slice: `@嘟嘟哒 查询评课社区吴天` produced
   one Luna/Haiku PERCEPTION call, one deterministic
   `icourse.courses.search.v1 -> icourse/search_courses({"query":"吴天"})` call
@@ -30,10 +60,12 @@ Branch: real-group-validation
   reviewed each candidate once; all three Reviews passed with score 100. The
   sample made six Provider calls and zero QQ Output calls. The full result is a
   `0600` repository-external file and contains no API Key or Base URL.
-- Evidence boundary: this proves one 2.0 iCourse success path and one simple
-  answer-quality sample. It does not prove the 75-case benchmark, other campus
-  Schema planners, user-visible MCP failure, deployed AstrBot Conformance,
-  real-group Shadow or QQ delivery. S23 remains partial.
+- Evidence boundary: this now proves the full 75-case dispatch matrix and real
+  Luna Perception coverage, but not strict semantic completion. The automatic
+  Planner still selects only `search_courses(query)`; user-review, ranking,
+  review text/reply, time-series and multi-step operations remain unavailable.
+  It also does not prove deployed AstrBot Conformance, real-group Shadow or QQ
+  delivery. S23 remains partial and `strict_runtime_complete=0/75` remains true.
 - Recorded: 2026-08-26
 - Static checks: changed-file Ruff critical/import rules and `git diff --check`
   passed. The broad all-rule Ruff profile was not used as a release gate because
@@ -219,7 +251,9 @@ Branch: real-group-validation
 - Result: 58 tests and 12 subtests passed in 2.15 seconds.
 - Evidence: SHORT/MEDIUM do not receive merged-forward eligibility; a LONG
   response still uses ordinary delivery unless it is explicitly validated and
-  has at least two plain-text parts in a group with no target or attachment.
+  has at least two plain-text parts in a group with no attachment. Target
+  metadata remains bound in Runtime, while merged-forward presentation omits a
+  separate `@` component.
   AstrBot Output independently rejects `allow_forward_bundle=true` when the
   validated profile is absent, SHORT or MEDIUM.
 - Evidence: Persona remains in model generation when `response_profiles` is

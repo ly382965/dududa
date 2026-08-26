@@ -420,7 +420,6 @@ class AstrBotOutputAdapter:
             and profile_validation is not None
             and profile_validation.valid
             and profile_validation.selected_profile == "long"
-            and not response.response.target_users
             and not response.response.attachments
             and not request.attachment_access
         )

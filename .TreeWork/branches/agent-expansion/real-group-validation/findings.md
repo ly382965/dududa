@@ -65,8 +65,9 @@ Branch: real-group-validation
   时不得连带关闭 Persona。模型不得复述人设、自我介绍、套固定口号、机械追加
   表情、模仿具体群成员，或改变事实、权限、任务要求和既有安全边界。
 - 合并转发是 Output Adapter 的呈现决策，不是 LONG 的默认同义词。SHORT、
-  MEDIUM 与单段 LONG 都是普通消息；只有独立校验通过的显式 LONG，同时满足
-  群聊、至少两个纯文本 part、无 target、无附件时才可合并转发。
+  MEDIUM 与单段 LONG 都是普通消息；只有独立校验通过的 LONG，同时满足
+  群聊、至少两个纯文本 part、无附件时才可合并转发。定向目标继续保留在
+  Runtime 契约中，但合并转发不额外发送 `@` 组件。
 - Dududa 1.0 自动社交行为不再整体继承：Meme Manager、PokePro 从默认插件集合
   退出，Target Talk 从默认 Compose 退出，ReplyPolish 仅作为默认关闭的
   LONG-only 兼容层保留。自动复读则恢复为独立、默认关闭、受 Scope Policy
@@ -157,9 +158,9 @@ Branch: real-group-validation
   `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅为
   `probe_shadow`，并明确 `NO SEND`。候选保持 `outputCalls=0`、
   `memoryWrites=0` 和 `toolCalls=0`。
-- Runtime 的 `DeliveryRequestBuilder` 只为合法显式 LONG 授予
+- Runtime 的 `DeliveryRequestBuilder` 只为合法、已验证的 LONG 授予
   `allow_forward_bundle`；AstrBot Output Adapter 再独立校验档位有效性、群聊、
-  多纯文本 part、无 target 和无附件，任一条件不满足都退回普通消息。
+  多纯文本 part 和无附件；定向目标保留在 Runtime 契约中，转发呈现不另发 `@`。
 - Persona 解析不再受 `response_profiles` feature flag 支配；DirectChat 在
   同一个模型请求中携带可选 `response_plan` 与 `persona_style`，让表达风格与
   回答形态共同生成，而不是由后处理机械拼接人格。
@@ -196,6 +197,21 @@ Branch: real-group-validation
 - 插件配置新增默认关闭的 `runtime_health_probe_enabled` 及刷新间隔、探测超时、
   Evidence TTL 参数。刷新任务随插件生命周期启动/取消，不改变 Capability、
   Rollout 或 Output 所有权。
+
+- 对具有明确产品语义的站点 marker，Rule Perception 应确定性提出 Capability
+  category，模型继续负责意图和实体；这比要求模型以概率方式重复识别显式事实更
+  稳定，也没有把 Tool、权限或发送权交给规则。确定性触发必须只作用于当前
+  Context 已公布的 category，并继续经过开关、授权、预算、流量与健康检查。
+- “测试集存在”与“测试集经过 Runtime”是两种证据。原 iCourse fixture 只证明
+  75 个 Case 被保存；本轮才形成 75 次真实本地 Unified MCP dispatch。类似地，
+  dispatch 通过仍不等于语义完成：当前 query-only Planner 保守只能表达少量单步
+  课程检索，support manifest 的 `strict_runtime_complete=0/75` 继续有效。
+- 真实 Luna 在三个用户回归中精确抽取 `人工智能`、`萌萌哒mmd`、`线性代数B1`；
+  75 条中 category 为 74/75。Case 67 是无站点词、无上文的泛化评分比较，对其
+  强制 iCourse 会造成普通聊天误调用，所以不扩张确定性关键词范围。
+- Tool 调用不应通过重试堆叠召回率：当前 `maximum_attempts=1` 已足以把显式
+  marker 约束为一次有界计划。`USE_TOOLS` 只在用户没有明确详略要求时默认 LONG；
+  输出形态仍由实际分片决定，单段结果不为追求形式而包装成单节点转发。
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 

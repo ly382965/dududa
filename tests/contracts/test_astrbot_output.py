@@ -496,7 +496,7 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(event.sent), 3)
         self.assertTrue(all(chain[0][0] != "nodes" for chain in event.sent))
 
-    async def test_forward_bundle_is_not_used_for_targeted_response(self) -> None:
+    async def test_forward_bundle_supports_targeted_long_response(self) -> None:
         event = FakeEvent()
         adapter = AstrBotOutputAdapter(
             event,
@@ -520,9 +520,9 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
-        self.assertEqual(len(event.sent), 3)
-        self.assertEqual(event.sent[0][0], ("at", "u-2"))
-        self.assertTrue(all(chain[0][0] != "nodes" for chain in event.sent))
+        self.assertEqual(len(event.sent), 1)
+        self.assertEqual(event.sent[0][0][0], "nodes")
+        self.assertEqual(len(event.sent[0][0][1]), len(receipt.parts))
 
     async def test_forward_bundle_is_not_used_for_response_with_attachment(
         self,

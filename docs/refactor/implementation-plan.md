@@ -51,6 +51,16 @@ Provider 调用，`shadow` 不 claim、不发送；配置关闭、无效或 Prov
 legacy。以上仅证明 repository production shape 和一条本地 MCP 成功纵切，不证明真实
 Endpoint Conformance、运行容器、实时群或 QQ 发送已经就绪。
 
+2026-08-26 的完整回归进一步将“评课社区”设为 Production Rule 的确定性 Capability 信号。
+模型仍负责意图和最小查询实体，规则只保证显式站点词不会因模型漏报而跳过 Tool；权限、开关、
+预算、流量和 MCP 健康仍由确定性 Runtime 拥有。75 条案例已逐条经过本地 2.0 Canary/MCP
+模拟，MCP dispatch 为 `75/75`，其中显式 marker 为 `19/19`；真实 Luna `low` Perception 的
+Schema 为 `75/75`、category 为 `74/75`、显式 marker 为 `19/19`。这些是路由证据，当前
+`strict_runtime_complete` 仍为 `0/75`，不能代替用户点评、排行榜、多步详情/点评和推荐聚合能力。
+Production Tool 计划继续限制为一次尝试，避免以重试制造调用率；没有显式详略要求时
+`USE_TOOLS` 默认选择 LONG，实际拆成多段的群聊 LONG 由 Output Adapter 打包为一条合并转发。
+SHORT/MEDIUM 与单段 LONG 保持普通消息。
+
 2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 分别完成 Responses API
 和 AstrBot 实际使用的 Chat Completions 最小真实请求抽样；两种协议均成功返回、模型 ID 匹配
 并包含 usage。此后又通过独立、无 QQ Connector/Output 的 Provider-level runner 对三模型各调用
@@ -183,9 +193,9 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 输入 Connector 与 Output Adapter | 部分完成 | AstrBot Connector/Output、结构化 @、Delivery、持久 rollout claim/tombstone、发送前控制复核和 Bridge 已实现；S23 Builder 可从 AstrBot Provider 装配模型 Adapter | 真实 Attachment Source、第二平台、真实 Endpoint 绑定与授权真实群 delivery 证据 |
 | 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
 | Memory | 部分完成 | S14 已闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 重启证据、M0/M1/M2、纯 Python CJK BM25 和固定合成 Eval；Scope/Write Gate 与 fail-closed Iris 边界保持不变 | 旧命令与 Context Builder 消费者迁移、真实 Iris SDK Backend、授权数据/人工质量评测、Embedding/Hybrid 证据、shadow 和生产切流 |
-| MCP 集成 | 已完成（S12/S22 基础设施与四个查询 Server）；Agent 接入部分完成 | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker 和共享 Contract 已完成；匿名 iCourse、认证二课、公开教务处与校车四个只读 Server 已真实查询；2.0 Production Composition 直接拥有 Unified Client，iCourse facade 只借用它 | 自然语言 Agent 仅闭环 iCourse `query` 单步；真实校园资讯/arXiv/行业 Source、其他 Schema Planner 和运行中部署仍未完成 |
-| Capability 与 Tool Runtime | 基础设施已完成（17 个只读映射）；自然语言规划部分完成 | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator 和通用 MCP Provider 均有测试；超级管理员可按 schema 直调 17 个 Capability，2.0 Runtime 已自动执行 iCourse 单步 | 教务、校车、二课多字段/零必填字段 Planner、可信失败用户答复、真实部署和高风险/写能力证据未完成 |
-| 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现；Production 已由 rule-only 切换到 Luna/Haiku Hybrid Perception，并证明“评课社区吴天”只投影实体“吴天”；另有 600 条 Terra Silver 与 464 条群隔离 Student 样本 | Silver 类别严重不均衡；仍缺人工 Gold、阈值校准、近期群聊 Context、当前 Bot 实时流量和多轮/附件语义质量证据 |
+| MCP 集成 | 已完成（S12/S22 基础设施与四个查询 Server）；Agent 接入部分完成 | Core MCP DTO/Port、严格 JSON Registry、长生命周期 Unified Client、隔离 MCP v2 worker 和共享 Contract 已完成；匿名 iCourse、认证二课、公开教务处与校车四个只读 Server 已真实查询；2.0 Production Composition 直接拥有 Unified Client，iCourse facade 只借用它；75 条本地模拟均实际经过 Unified MCP | 自然语言 Agent 仅闭环 iCourse `search_courses(query)` 单步；真实校园资讯/arXiv/行业 Source、用户/排行榜/点评检索、多字段/多步 Planner 和运行中部署仍未完成 |
+| Capability 与 Tool Runtime | 基础设施已完成（17 个只读映射）；自然语言规划部分完成 | 原子 Catalog/Health、授权感知 Retrieval、确定性有限 Planner、逐步重验 Executor、single-flight Ledger、Observation Validator 和通用 MCP Provider 均有测试；超级管理员可按 schema 直调 17 个 Capability；显式“评课社区”在合法条件下确定性进入 iCourse Tool 链，19 条 marker 回归为 `19/19` | 当前自动 Planner 对 75 条复杂任务的严格完成仍为 `0/75`；缺用户点评、排行榜、点评全文/回复、统计时间序列、多步聚合、可信失败用户答复和真实部署 |
+| 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现；Production 使用 Luna/Haiku Hybrid Perception；真实 Luna `low` 对 75 条得到 Schema `75/75`、iCourse category `74/75`、显式 marker `19/19`，三个重点查询实体为 `人工智能/萌萌哒mmd/线性代数B1` | Case 67 在无站点词/上下文时保持普通比较，避免宽泛误调用；仍缺人工 Gold、阈值校准、近期群聊 Context、当前 Bot 实时流量和多轮/附件语义质量证据 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过 | 真实 Provider tokenizer、人工回答质量、QQ 分片体验和最终预算校准仍是外部门禁 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定；S23 DirectChat 已在同一次模型生成中消费 Persona 与 AnswerProfile | 多 Persona 产品资产、用户偏好存储、近期群聊风格投影和人工风格 Eval |
 | 主动消息与订阅推送 | 部分完成（S15A-S15E 离线链完成） | S15A-S15D 契约/调度/来源/日报之上，S15E 已实现脱敏群投影、确定性 hard gates、短 TTL Opportunity、原子 Shadow cooldown、attribution-bound no-response 长冷却、固定 SHORT 候选和 digest-only no-send 记录；S16-S22 本地发布闭环已完成 | 生产 Projection Adapter、持久 Probe ledger、真实来源/模型/发送和人工相关性/打扰度仍是 S23 的环境集成与外部门禁 |

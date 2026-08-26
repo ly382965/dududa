@@ -8,7 +8,7 @@ Dududa 2.0 当前补充（2026-08-16）：
 
 - 下方 P0-P3 勾选项和旧插件清单只记录 Dududa 1.0 历史，不应继续作为默认能力设计。
 - Persona、群聊 channel rule 与 AnswerProfile 在同一次生成中自然融合；不复述人设、自我介绍、套固定口号、机械卖萌或随机追加表情。
-- SHORT、MEDIUM 始终普通发送；LONG 单段仍普通发送，只有群聊中实际拆成至少两个纯文本 part、且无定向用户和附件时才合并转发。
+- SHORT、MEDIUM 始终普通发送；LONG 单段仍普通发送，群聊中实际拆成至少两个纯文本 part 且无附件时合并转发。定向目标保留为 Runtime 语义，转发呈现不另发 `@`。
 - Meme Manager、PokePro 和旧 Target Talk 已退出 2.0 默认安装或 Compose 路径；自动复读已恢复为独立 AstrBot 插件，源码、动态 Catalog/配置面和 Compose 装配已完成，但默认关闭，仍等待 AstrBot Policy Adapter 与在线执行验证；`/image` 作为显式图像生成能力继续保留。
 - WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
 - S23 仍为 `paused / partial`；本轮没有修改或重启正在运行的 AstrBot/NapCat，真实中文群聊风格仍需人工校准。

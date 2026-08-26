@@ -1501,7 +1501,7 @@ AstrBot 兼容面按 Dududa 2.0 默认路径与历史迁移材料区分：
 
 - 默认关闭，仅作为 Dududa 1.0 LONG-only 输出兼容层保留；
 - SHORT、MEDIUM、缺失或未知 AnswerProfile 始终普通发送；
-- LONG 单段仍普通发送，只有群聊、多纯文本 part、无定向用户和附件时才允许合并转发；
+- LONG 单段仍普通发送，只有群聊、多纯文本 part 且无附件时才允许合并转发；定向目标保留在响应契约中，但转发呈现不另发 `@`；
 - 它不是 Persona Renderer，正式 Dududa 2.0 Runtime 不依赖它。
 
 新 Package 必须在 AstrBot 派生镜像中安装；不得通过让 Domain import 相对插件路径来规避打包。

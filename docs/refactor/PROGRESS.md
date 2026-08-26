@@ -17,7 +17,8 @@
   一等 Unified MCP 调用 `icourse/search_courses({"query":"吴天"})`，Observation 再经
   DirectChat、Persona、Final Validator 形成一次最终 Delivery。该证据不经过 `/course`、旧
   `natural_course_query` 或 Web search；运行中部署、真实 Endpoint Conformance 和真实群证据
-  仍未完成。
+  仍未完成。Tool 计划最多尝试一次；无显式详略要求时默认 LONG，实际多段群聊 LONG 只发送
+  一条 QQ 合并转发，SHORT/MEDIUM 与单段 LONG 仍为普通消息。
 - 2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 完成 Responses 与
   AstrBot 所用 Chat Completions 的最小真实请求抽样，均返回 HTTP 200、模型 ID 匹配和 usage；
   又使用无 QQ Connector/Output 的独立 runner 对三模型各调用一次，均成功且
@@ -151,11 +152,15 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 | --- | --- |
 | 2.0 主链 | 自然语言 -> Luna/Haiku Hybrid Perception -> 确定性资格/授权/预算/单步 Planner -> Unified MCP -> Observation -> DirectChat -> Persona/Final Validator -> 单次 Delivery |
 | 固定案例 | `@嘟嘟哒 查询评课社区吴天` 只产生 `icourse/search_courses({"query":"吴天"})` 一次调用；无 `/course`、旧 `natural_course_query`、Web search 或过程播报 |
+| 确定性 marker | Production Rule 将“评课社区”映射为 `campus.course-review`；在 Runtime 接管、Capability 可用、Tool 开启且授权/预算/流量合法时，不依赖模型概率进入 MCP 链 |
+| 75 条 Runtime 模拟 | Case 1--75 全部逐条经过 Canary Bridge 和真实本地 iCourse MCP worker，`75/75` 各调用一次；其中 19 条显式 marker 故意让 Fake Model 漏报 Tool，仍为 `19/19`。另加 3 条参数回归，`人工智能/萌萌哒mmd/线性代数B1` 为 `3/3` |
+| 75 条真实 Luna Perception | `reasoning.effort=low`、零 QQ Output；Schema `75/75`，iCourse category `74/75`，显式 marker `19/19`；唯一漏报 Case 67 没有站点词或 iCourse 上下文 |
 | 模型调用 | 生产验收恰好两次：PERCEPTION + DIRECT_CHAT，均为 `reasoning_effort=low`；Luna Review 只属于独立 no-send 测试流程，不是生产第三次调用 |
+| Tool 与输出边界 | `capability_maximum_attempts=1`；无显式档位时 `USE_TOOLS -> LONG`；超过 512-byte 后的群聊多段 LONG 为一条 `nodes` 合并转发，SHORT/MEDIUM 与单段 LONG 不压缩 |
 | 三模型抽样 | Luna/Terra/Sol 对同一已验证 Observation 各生成一次，由 Luna 各 Review 一次；6 次 Provider 调用、0 次 QQ Output，三项均通过 |
 | MCP 所有权 | Production Composition 直接拥有共享 Unified Client；iCourse facade 只借用，且共享装配失败时不再二次建立旧入口专用 Client |
-| 聚焦验证 | 42 项测试中 40 项执行通过、2 项既有 AstrBot host-only skip；两个 generator `--check` 与 4 项 mapping Contract 通过；关键 Ruff 规则和 `git diff --check` 通过 |
-| 明确未完成 | 可信 Capability 失败的用户答复、教务/校车/二课 Schema Planner、近期群聊 Context、运行中三模型注册/Conformance/部署与真实群 Shadow/Canary |
+| 聚焦验证 | 完整矩阵单测通过（78 个场景，78 次 MCP，78 次 Fake Delivery）；Response Policy、Runtime Composition、Output Adapter 和单例纵切共 33 项通过；`git diff --check` 通过 |
+| 明确未完成 | 75 条严格语义仍为 `0/75`：自动 Planner 只有课程 `query` 搜索，用户点评、排行榜、点评全文/回复、统计时间序列和多步聚合未实现；另缺可信失败答复、近期群聊 Context、运行中三模型部署与真实群 Shadow/Canary |
 
 详细边界见 [Dududa 2.0 自然语言 MCP 纵切验证报告](dududa-2.0-natural-language-mcp-validation-2026-08-26.md)。
 

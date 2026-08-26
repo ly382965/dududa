@@ -506,7 +506,7 @@ Persona 选择纳入 `ConversationScope.persona_id`。Memory Retrieval 和 Write
 
 - 它是默认关闭的 Dududa 1.0 LONG-only 输出兼容层，不负责语气或 OC；
 - SHORT、MEDIUM 和缺失/未知 Profile 永远不进入合并转发；
-- 2.0 Core Delivery 也只让显式 LONG 保留合并资格，且 Output Adapter 仍要求群聊、至少两个纯文本 part、无定向用户和附件；
+- 2.0 Core Delivery 也只让验证后的 LONG 保留合并资格，且 Output Adapter 仍要求群聊、至少两个纯文本 part 和无附件；定向目标保留为 Runtime 语义，但转发呈现不另发 `@`；
 - LONG 单段继续普通发送；`Plain`、`Nodes` 和 Bot UIN 始终留在 AstrBot 兼容层。
 
 旧插件源码、`@register` ID、配置和持久数据不会因退出默认路径而自动删除；本轮也不修改运行中的 AstrBot/NapCat。

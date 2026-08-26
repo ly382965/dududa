@@ -53,8 +53,12 @@ Capability Runtime、Memory 生命周期/检索、三档回答、默认关闭的
 S17 路径迁移已完成、验证并合并，canonical 目录现在是主仓权威；S18 已建立统一离线
 Eval catalog、低敏 receipt、Runtime phase Trace 和双锁 CI；S19 已完成完整候选审计，
 S22 已完成有证据的路径与专用 iCourse Client 清理。Dududa 2.0 已闭合第一条自然语言
-iCourse Capability 本地纵切；旧 AstrBot Handler 只在当前运行部署的 `off/shadow` 模式下作为
-兼容/回滚入口，不是 2.0 架构依据。Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
+iCourse Capability 本地纵切，并以确定性 Rule 保证显式“评课社区”在合法运行条件下进入
+Capability；75 条案例已完成 Runtime/MCP dispatch 验证，但复杂任务严格语义仍为 `0/75`。
+每条 Tool 计划最多调用一次；无显式档位时 Tool 回答默认 LONG，实际多段群聊 LONG 合并为一次转发投递，
+SHORT/MEDIUM 和单段 LONG 保持普通消息。
+旧 AstrBot Handler 只在当前运行部署的 `off/shadow` 模式下作为兼容/回滚入口，不是 2.0
+架构依据。Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
 残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 和
 [阶段报告](docs/refactor/checkpoint-report-2026-08-10.md) 为准；真实质量和生产阶段需要的资料
 见 [外部输入准备清单](docs/refactor/external-input-checklist.md)。S19 候选发布审计的本地命令、

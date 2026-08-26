@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -53,6 +54,16 @@ from tests.unit.rollout.test_controlled_execution import (
 from tests.unit.runtime.test_orchestrator import OrchestratorFixture
 
 ROOT = Path(__file__).resolve().parents[2]
+ICOURSE_BENCHMARK = (
+    ROOT / "tests" / "fixtures" / "mcp" / "USTC 评课社区 MCP 调用测试案例.md"
+)
+ICOURSE_ROUTING_REGRESSIONS = (
+    ROOT / "tests" / "fixtures" / "mcp" / "icourse-v2-routing-regressions.json"
+)
+ICOURSE_CASE_HEADING_RE = re.compile(
+    r"^### Case (\d+)(?:[：:].*)?$",
+    re.MULTILINE,
+)
 
 
 class _Plugin(CoreLifecycleMixin):
@@ -249,11 +260,121 @@ class _ScriptedAstrBotProvider(_AstrBotProvider):
         else:
             if "icourse.courses.search.v1" not in prompt or "吴天" not in prompt:
                 raise AssertionError("Direct Chat did not receive iCourse Observation")
-            completion = "吴天老师的公开评课记录里有《数学分析(B1)》，评分 9.6。"
+            completion = (
+                "评课社区的公开数据命中了吴天老师的《数学分析(B1)》，当前固定测试"
+                "数据中的课程评分是 9.6。下面只根据 MCP 返回的课程记录整理，不补入"
+                "网页搜索结果。课程名称、教师、学期和评分都来自同一次只读查询；如果"
+                "需要进一步比较不同教师或查看具体点评，应继续由对应的评课能力提供"
+                "数据，而不是凭空扩写。这个长回复测试还会验证群聊输出被拆成多个"
+                "文本分片后，只打包发送一条 QQ 合并转发消息。"
+            )
         return SimpleNamespace(
             completion_text=completion,
             usage=SimpleNamespace(input_other=32, input_cached=0, output=24),
         )
+
+
+class _ICourseBenchmarkAstrBotProvider(_AstrBotProvider):
+    """Script only model semantics; exercise the real 2.0 Runtime around it."""
+
+    def __init__(self, query_terms: dict[str, str]) -> None:
+        super().__init__()
+        self.query_terms = dict(query_terms)
+        self.perception_decisions: list[tuple[str, bool]] = []
+
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        system_prompt = str(kwargs["system_prompt"])
+        prompt = str(kwargs["prompt"])
+        if "语义感知器" in system_prompt:
+            marker = "context_json:\n"
+            start = prompt.index(marker) + len(marker)
+            end = prompt.index("\n[/DUDUDA_USER_INPUT]", start)
+            context = json.loads(prompt[start:end])
+            current_ref = context["current_message_ref"]
+            current = next(
+                item
+                for item in context["messages"]
+                if item["message_ref"] == current_ref
+            )
+            question = str(current["text"]).removeprefix("@嘟嘟哒").strip()
+            query = self.query_terms.get(question, question)
+            # The marker subset deliberately models a false negative. Production
+            # rules must still supply the Capability category after the merge.
+            model_requests_tools = "评课社区" not in question
+            self.perception_decisions.append((question, model_requests_tools))
+            completion = json.dumps(
+                {
+                    "schema_version": 1,
+                    "target_identity_refs": [current["author_identity_ref"]],
+                    "speech_acts": ["request"],
+                    "topics": [
+                        {
+                            "topic_id": "course-review",
+                            "label": "评课社区查询",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "intents": [
+                        {
+                            "intent_id": "icourse.lookup",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "entities": [
+                        {
+                            "entity_id": "icourse-query",
+                            "kind": "other",
+                            "value": query,
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "references": [],
+                    "ambiguities": [],
+                    "need_tools": model_requests_tools,
+                    "capability_categories": (
+                        ["campus.course-review"] if model_requests_tools else []
+                    ),
+                    "task_kind": "direct_chat",
+                    "reasoning_depth": "shallow",
+                    "expected_tool_steps": 1 if model_requests_tools else 0,
+                    "verification_required": False,
+                    "complexity_signals": [
+                        {
+                            "code": "simple_retrieval",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "confidence": 0.98,
+                },
+                ensure_ascii=False,
+            )
+        else:
+            completion = "评课社区 MCP 已返回结果；当前固定测试数据没有匹配记录。"
+        return SimpleNamespace(
+            completion_text=completion,
+            usage=SimpleNamespace(input_other=32, input_cached=0, output=24),
+        )
+
+
+def _icourse_benchmark_questions() -> tuple[tuple[int, str], ...]:
+    source = ICOURSE_BENCHMARK.read_text(encoding="utf-8")
+    headings = list(ICOURSE_CASE_HEADING_RE.finditer(source))
+    questions: list[tuple[int, str]] = []
+    for index, heading in enumerate(headings):
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(source)
+        block = source[heading.end() : end]
+        question = block.split("**Q：**", maxsplit=1)[1]
+        question = re.split(r"\n\*\*(?:预期|考察)：\*\*", question, maxsplit=1)[0]
+        normalized = " ".join(
+            line.strip() for line in question.splitlines() if line.strip()
+        )
+        questions.append((int(heading.group(1)), normalized))
+    return tuple(questions)
 
 
 class _BlockingAstrBotProvider(_AstrBotProvider):
@@ -813,6 +934,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 (result.canary, provider.calls, recording_mcp.tool_calls),
             )
             self.assertEqual(len(event.sent_chains), 1)
+            self.assertEqual(event.sent_chains[0][0][0], "nodes")
             self.assertEqual(len(provider.calls), 2)
             self.assertIn("语义感知器", provider.calls[0]["system_prompt"])
             self.assertIn("自然参与对话", provider.calls[1]["system_prompt"])
@@ -827,7 +949,9 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 [
                     (server_id, tool_name, arguments)
-                    for server_id, tool_name, arguments, _call in recording_mcp.tool_calls
+                    for server_id, tool_name, arguments, _call in (
+                        recording_mcp.tool_calls
+                    )
                 ],
                 [("icourse", "search_courses", {"query": "吴天"})],
             )
@@ -835,6 +959,156 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 (provider.calls, recording_mcp.tool_calls, event.sent_chains)
             )
             self.assertIn("数学分析(B1)", rendered)
+            for forbidden in (
+                "web_search_baidu",
+                "search_site_courses",
+                "我先查找",
+                "我再检索",
+                "正在查询",
+                "ToolPlan",
+                "tool-plan:",
+            ):
+                self.assertNotIn(forbidden, rendered)
+        finally:
+            await plugin.terminate()
+        self.assertTrue(recording_mcp.closed)
+
+    async def test_all_icourse_benchmark_messages_reach_2_0_mcp_dispatch(
+        self,
+    ) -> None:
+        benchmark = _icourse_benchmark_questions()
+        self.assertEqual([case_id for case_id, _ in benchmark], list(range(1, 76)))
+        explicit_marker_ids = {
+            case_id for case_id, question in benchmark if "评课社区" in question
+        }
+        self.assertEqual(
+            explicit_marker_ids,
+            {1, 7, 8, 16, 17, 20, 22, 28, 29, 30, 32, 33, 34, 35, 36, 37, 40, 72, 74},
+        )
+        regression_fixture = json.loads(
+            ICOURSE_ROUTING_REGRESSIONS.read_text(encoding="utf-8")
+        )
+        self.assertEqual(regression_fixture["schema_version"], 1)
+        regression_cases = regression_fixture["cases"]
+        self.assertEqual(
+            [item["strict_semantic_status"] for item in regression_cases],
+            ["partial", "unsupported", "partial"],
+        )
+        regression_queries = {
+            item["question"]: item["expected_query"] for item in regression_cases
+        }
+        provider = _ICourseBenchmarkAstrBotProvider(regression_queries)
+        database = Path(self.temp.name) / "icourse-runtime-benchmark.sqlite3"
+        ICourseStore(database).stats()
+        server = replace_server_definition(
+            icourse_definition(database),
+            timeouts=McpTimeoutPolicy(
+                connect=timedelta(seconds=10),
+                discovery=timedelta(seconds=10),
+                call=timedelta(seconds=10),
+                maximum_call=timedelta(seconds=30),
+                close=timedelta(seconds=5),
+            ),
+        )
+        managed = ManagedUnifiedMcpClient(
+            _StaticRegistry(server),
+            factory(),
+            JsonSchemaMcpValidator(),
+        )
+        recording_mcp = RecordingUnifiedClient(managed)
+        plugin = self._production_plugin(provider)
+        plugin.icourse = _ICourseFacade(recording_mcp)
+        plugin.unified_mcp_client = recording_mcp
+        values = self._runtime_config(rollout_mode="canary")
+        model_specs = json.loads(str(values["runtime_models_json"]))
+        model_specs[0]["rpm_limit"] = 1_000
+        model_specs[0]["tpm_limit"] = 10_000_000
+        values["runtime_models_json"] = json.dumps(model_specs)
+        values.update(
+            {
+                "rollout_delivery_enabled": True,
+                "rollout_kill_switch": False,
+                "rollout_tools_enabled": True,
+            }
+        )
+        self._initialize(plugin, values, "production-icourse-benchmark")
+        plugin.rollout_bridge._output_factory = (
+            lambda event, ledger, guard: AstrBotOutputAdapter(
+                event,
+                ledger,
+                component_factory=_ComponentFactory(),
+                send_guard=guard,
+            )
+        )
+        observed_at = datetime.now(timezone.utc)
+        await plugin.runtime_assembly.publish_model_health(
+            (
+                self._healthy_evidence(
+                    plugin.runtime_assembly,
+                    observed_at,
+                    ttl=timedelta(minutes=10),
+                ),
+            ),
+            call=replace(
+                self.call,
+                deadline=observed_at + timedelta(minutes=1),
+            ),
+        )
+        scenarios = [
+            (f"benchmark-{case_id:02d}", question)
+            for case_id, question in benchmark
+        ] + [
+            (str(item["case_id"]), str(item["question"]))
+            for item in regression_cases
+        ]
+        events: list[_Event] = []
+
+        try:
+            for scenario_id, question in scenarios:
+                event = _Event(
+                    message_id=scenario_id,
+                    message_str=f"@嘟嘟哒 {question}",
+                )
+                result = await plugin.rollout_bridge.handle(event)
+                events.append(event)
+                with self.subTest(scenario_id=scenario_id):
+                    self.assertIs(result.action, AstrBotBridgeAction.CANARY_COMPLETED)
+                    self.assertEqual(event.stop_calls, 1)
+                    self.assertEqual(
+                        event.send_calls,
+                        1,
+                        (scenario_id, result.canary, len(recording_mcp.tool_calls)),
+                    )
+                    self.assertEqual(len(event.sent_chains), 1)
+
+            calls = [
+                (server_id, tool_name, arguments)
+                for server_id, tool_name, arguments, _call in recording_mcp.tool_calls
+            ]
+            self.assertEqual(len(calls), 78)
+            self.assertTrue(
+                all(
+                    server_id == "icourse" and tool_name == "search_courses"
+                    for server_id, tool_name, _arguments in calls
+                )
+            )
+            self.assertEqual(
+                sum(
+                    not model_requests_tools
+                    for _question, model_requests_tools in provider.perception_decisions
+                ),
+                22,
+            )
+            self.assertEqual(
+                [arguments for _server, _tool, arguments in calls[-3:]],
+                [
+                    {"query": "人工智能"},
+                    {"query": "萌萌哒mmd"},
+                    {"query": "线性代数B1"},
+                ],
+            )
+            self.assertEqual(len(provider.calls), 156)
+            rendered = repr((provider.calls, recording_mcp.tool_calls, events))
             for forbidden in (
                 "web_search_baidu",
                 "search_site_courses",

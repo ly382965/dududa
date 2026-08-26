@@ -95,8 +95,9 @@ Title: S23 Authorized Real-Group Validation
   模型生成；开启时 Persona、群聊情境与 AnswerProfile 在同一请求中自然融合，
   不复述人设、不自我介绍、不套固定口号、不机械追加表情，也不模仿具体群成员。
 - [x] SHORT/MEDIUM 始终按普通 QQ 消息投递；LONG 单段同样普通投递。只有
-  `profile_validation.valid=true` 的显式 LONG，且目标为群聊、至少两个纯文本
-  part、无定向用户、无附件时，Output Adapter 才允许合并转发。
+  `profile_validation.valid=true` 的 LONG，且目标为群聊、至少两个纯文本 part、
+  无附件时，Output Adapter 才允许合并转发；定向目标保留在 Runtime 契约中，
+  转发不另发 `@`。
 - [x] Dududa 1.0 的 Meme Manager、PokePro 和 Target Talk 继续退出 2.0 默认
   路径；ReplyPolish 默认关闭且仅作为 LONG-only 兼容层。新群不再生成
   `meme_rate`，管理命令不再写入该字段；显式 `/image` 图片生成能力继续保留。
@@ -273,6 +274,13 @@ Title: S23 Authorized Real-Group Validation
   path, assemble the existing Capability Runtime over the shared Unified MCP
   client, enable one bounded read-only Tool step from Rollout Policy, and prove
   the natural-language iCourse vertical slice with focused Fakes.
+- [x] Make the explicit `评课社区` marker a deterministic 2.0 Capability signal;
+  execute all 75 benchmark messages through Runtime/MCP dispatch, add the three
+  query-projection regressions, and measure all 75 once with real Luna `low`
+  without QQ Output. Keep dispatch evidence separate from strict semantic completion.
+- [x] Keep each inbound Tool plan to one MCP attempt; default `USE_TOOLS` to LONG
+  only when no explicit AnswerProfile was requested, and package actual multi-part
+  group LONG output as one QQ merged-forward while SHORT/MEDIUM remain ordinary.
 - [ ] Route validated Capability failure through the governed Composer, Persona,
   Final Validator and authorized Delivery path; do not fall back to the legacy
   course handler, Web search or a Bridge-level second send path.

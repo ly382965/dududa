@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "explicit-marker-ai-course",
+      "question": "在评课社区搜索，推荐几门人工智能有关的课程",
+      "expected_category": "campus.course-review",
+      "expected_query": "人工智能",
+      "current_tool": "search_courses",
+      "strict_semantic_status": "partial"
+    },
+    {
+      "case_id": "explicit-marker-user-review",
+      "question": "评课社区搜索萌萌哒mmd",
+      "expected_category": "campus.course-review",
+      "expected_query": "萌萌哒mmd",
+      "current_tool": "search_courses",
+      "required_operation_family": "user_reviews",
+      "strict_semantic_status": "unsupported"
+    },
+    {
+      "case_id": "explicit-marker-linear-algebra-teachers",
+      "question": "评课社区推荐几个线性代数B1老师",
+      "expected_category": "campus.course-review",
+      "expected_query": "线性代数B1",
+      "current_tool": "search_courses",
+      "strict_semantic_status": "partial"
+    }
+  ]
+}

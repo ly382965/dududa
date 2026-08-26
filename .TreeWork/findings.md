@@ -29,6 +29,17 @@
   shared lifecycle; S22 removed the plugin-dedicated per-call Client. Natural-
   language Agent planning currently closes only the iCourse `query` slice; the
   other mappings are Control Plane-callable facts, not automatic Planner proof.
+- An explicit service marker is a deterministic Perception fact, not a model
+  confidence problem. Production therefore maps `评课社区` to the already
+  available `campus.course-review` category before merging model semantics;
+  permissions, Tool enablement, budget, traffic admission and MCP health remain
+  later authorities. The full 75-case dispatch result must remain separate from
+  `strict_runtime_complete=0/75`, because the only automatic operation is still
+  `search_courses(query)`.
+- Tool recall remains bounded by the existing one-attempt plan. In the absence
+  of an explicit detail request, `USE_TOOLS` defaults to LONG; only actual
+  multi-part group output is merged-forward, so short misses are not wrapped
+  merely to imitate a long response.
 - The current S09 Eval and Memory retrieval are narrower than their interface
   names imply: the former is synthetic policy gold, and the latter is exact
   Scope/TTL plus substring/recency rather than semantic retrieval.

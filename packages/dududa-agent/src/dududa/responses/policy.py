@@ -139,6 +139,9 @@ class DeterministicResponseProfilePolicy:
         elif requested is not None:
             uncapped = requested
             reasons.add("current_message_preference_selected")
+        elif request.social_action is SocialAction.USE_TOOLS:
+            uncapped = AnswerProfile.LONG
+            reasons.add("tool_assisted_long_response")
         elif (
             request.complexity_level is TaskComplexityLevel.HIGH
             or request.reasoning_depth is TaskReasoningDepth.DEEP

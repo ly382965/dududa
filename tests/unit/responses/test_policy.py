@@ -60,6 +60,7 @@ def request(
     preference: ResponseProfilePreference | None = None,
     action: SocialAction = SocialAction.DIRECT_REPLY,
     available_tokens: int = 2_000,
+    expected_tool_steps: int = 0,
 ) -> ResponseProfileSelectionRequest:
     phrases = {
         AnswerProfile.SHORT: "请用一句话回答。",
@@ -87,7 +88,7 @@ def request(
             TaskComplexityLevel.MEDIUM: TaskReasoningDepth.MULTI_STEP,
             TaskComplexityLevel.HIGH: TaskReasoningDepth.DEEP,
         }[level],
-        expected_tool_steps=0,
+        expected_tool_steps=expected_tool_steps,
         verification_required=False,
         social_action=action,
         assessment_digest=DigestString("assessment:1"),
@@ -222,6 +223,32 @@ class ResponseProfilePolicyTests(unittest.TestCase):
         self.assertEqual(capped.generated_token_limit, 200)
         self.assertEqual(capped.visible_token_limit, 200)
         self.assertIn("runtime_generated_token_cap_applied", capped.reason_codes)
+
+    def test_tool_assisted_response_defaults_to_long_without_overriding_request(
+        self,
+    ) -> None:
+        selected = self.policy.select(
+            request(
+                TaskComplexityLevel.LOW,
+                None,
+                action=SocialAction.USE_TOOLS,
+                expected_tool_steps=1,
+            ),
+            now=NOW,
+        )
+        explicit = self.policy.select(
+            request(
+                TaskComplexityLevel.LOW,
+                AnswerProfile.MEDIUM,
+                action=SocialAction.USE_TOOLS,
+                expected_tool_steps=1,
+            ),
+            now=NOW,
+        )
+
+        self.assertIs(selected.selected_profile, AnswerProfile.LONG)
+        self.assertIn("tool_assisted_long_response", selected.reason_codes)
+        self.assertIs(explicit.selected_profile, AnswerProfile.MEDIUM)
 
     def test_conversation_cap_narrows_profile_without_changing_tier_inputs(
         self,

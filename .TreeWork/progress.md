@@ -69,9 +69,18 @@ Last sync: unix:1786717871
   a deterministic one-step Capability Planner and first-class Unified MCP. One
   local iCourse success slice proved Luna/Haiku PERCEPTION, exactly one
   `search_courses({"query":"吴天"})` invocation, DIRECT_CHAT synthesis and one
-  final Delivery without `/course`, Web search or process narration. The running
-  AstrBot/NapCat stack was not changed and production remains NOT READY until real
-  Endpoint conformance, health, release binding and authorization exist.
+  final Delivery without `/course`, Web search or process narration. Explicit
+  “评课社区” is now a deterministic `campus.course-review` Rule signal: all 75
+  benchmark messages reached local Runtime/MCP dispatch, including 19/19 marker
+  cases whose scripted model deliberately omitted Tool intent. Real Luna `low`
+  Perception returned valid Schema for 75/75, category for 74/75 and marker
+  recall 19/19. Strict semantic completion remains 0/75 because the automatic
+  Planner still exposes only `search_courses(query)`. The running AstrBot/NapCat
+  stack was not changed and production remains NOT READY until real Endpoint
+  conformance, health, release binding and authorization exist.
+  Tool execution remains one attempt per inbound plan; no-explicit-profile Tool
+  answers default to LONG, and actual multi-part group LONG output is delivered
+  as one merged-forward message.
 - A fixed AstrBot 4.26.2 candidate has now started in a fully isolated
   `--network none` environment with temporary data, a read-only plugin mount,
   no NapCat and no port. AstrBot 4.26.2, plugin loading and `DududaCore loaded`
@@ -207,10 +216,12 @@ Last sync: unix:1786717871
   are assembled through AstrBot Provider Adapters and the existing Static
   Router; Haiku/Luna Hybrid Perception proposes a Capability category and
   entities, deterministic code owns the one-step Plan and Unified MCP call, and
-  DirectChat/Persona/Final Validator own the single final response. Rule-only
-  Perception and `/course` remain compatibility/diagnostic surfaces and are not
-  completion evidence. This is focused local/Fake evidence, not real Endpoint
-  or deployment conformance.
+  DirectChat/Persona/Final Validator own the single final response. Rule
+  Perception now also owns the explicit site-marker fact while the model retains
+  entity extraction; `/course` remains a compatibility/diagnostic surface and is
+  not completion evidence. The 75-case dispatch matrix is local evidence, and
+  the separate Luna run is Provider no-send evidence, not deployed AstrBot
+  Conformance or strict benchmark completion.
 - The same branch now starts the fixed AstrBot 4.26.2 candidate in a fully
   isolated environment, samples Luna/Terra/Sol once each with zero Output, and
   implements a default-off periodic health refresher with failure, TTL and
