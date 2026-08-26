@@ -179,9 +179,9 @@ Title: S23 Authorized Real-Group Validation
   `plugin` scope API Key 支持 GitHub/ZIP 热安装；安装结果不写入 Scope Policy。
 - [x] 发布 `dududa-plugin-development-spec.md` 中文规范并在插件区提供下载链接，
   让人或 AI 生成的插件按同一目录、metadata、配置、权限和测试格式交付。
-- [x] Dududa 2.0 的自然语言 iCourse 纵切经 Haiku/Luna `PERCEPTION` 提取“吴天”
-  与 `campus.course-review`，由确定性单步 Planner 选择
-  `icourse.courses.search.v1`，通过 Unified MCP 返回 Observation，再由
+- [x] Dududa 2.0 的自然语言 iCourse 纵切经 Haiku/Luna `PERCEPTION` 提取实体、
+  category 与标准 intent，由确定性单步 Planner 选择 `icourse.public-query.v2`
+  并投影 `course/review/teacher/ranking/stats`，通过 Unified MCP 返回 Observation，再由
   `DIRECT_CHAT` 产生唯一最终回答；不得经过 `/course` handler 或 Web search，
   不显示中间计划、Observation 原文或思维过程。
 
@@ -281,6 +281,10 @@ Title: S23 Authorized Real-Group Validation
 - [x] Keep each inbound Tool plan to one MCP attempt; default `USE_TOOLS` to LONG
   only when no explicit AnswerProfile was requested, and package actual multi-part
   group LONG output as one QQ merged-forward while SHORT/MEDIUM remain ordinary.
+- [x] Build one public-only iCourse development snapshot, generate answers for all
+  75 benchmark questions with Luna/Terra/Sol at `low`, review each batch once with
+  Luna, correct the remaining groundedness errors, and publish the Chinese answer
+  report without QQ Output or production deployment claims.
 - [ ] Route validated Capability failure through the governed Composer, Persona,
   Final Validator and authorized Delivery path; do not fall back to the legacy
   course handler, Web search or a Bridge-level second send path.

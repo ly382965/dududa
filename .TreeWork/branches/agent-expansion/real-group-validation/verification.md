@@ -4,6 +4,28 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- iCourse public-query follow-up: the final combined focused command ran 29
+  storage/lifecycle/planner/mapping/MCP/Registry/Provider tests; all passed.
+  The generated Capability configuration passed `--check`; changed-file Ruff
+  critical checks and `git diff --check` passed.
+- The public-only development snapshot contains 19,194 course summaries, 174
+  targeted course details and 4,216 public reviews. All 75 benchmark questions
+  have reviewed Chinese answers: 43 are complete from the available evidence,
+  27 are explicitly partial and five request clarification. Luna reviewed every
+  batch once: its boolean result was 59 pass and 16 fail, and it returned 17
+  non-empty revision suggestions. Nineteen final answers differ from their
+  generated draft; four groundedness cases received a factual correction.
+- The answer run made 48 successful Provider calls and zero QQ Output calls.
+  The repository report contains all 75 cases and no API Key, internal chain of
+  thought, raw Observation or provider endpoint. This is a public-snapshot
+  development benchmark, not human Gold or deployed Runtime evidence.
+- `icourse.public-query.v2` now projects `course/review/teacher/ranking/stats`
+  into one ToolStep and at most one MCP call. A Fake MCP Server and iCourse use
+  the same contracts; all five operations are covered without invoking the
+  crawler. S23 remains `partial` because real-group Shadow, QQ delivery,
+  production deployment and human quality calibration are still outstanding.
+- Recorded: 2026-08-26
+
 - Command: `.venv/bin/python -m unittest tests.unit.responses.test_policy tests.unit.runtime.test_composition tests.contracts.test_astrbot_output tests.contracts.test_production_composition.ProductionCompositionContractTests.test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp`.
   Result: 33 focused tests passed in 4.496 seconds. Evidence: Tool-assisted
   responses default to LONG without overriding an explicit profile; the iCourse
@@ -60,12 +82,13 @@ Branch: real-group-validation
   reviewed each candidate once; all three Reviews passed with score 100. The
   sample made six Provider calls and zero QQ Output calls. The full result is a
   `0600` repository-external file and contains no API Key or Base URL.
-- Evidence boundary: this now proves the full 75-case dispatch matrix and real
-  Luna Perception coverage, but not strict semantic completion. The automatic
-  Planner still selects only `search_courses(query)`; user-review, ranking,
-  review text/reply, time-series and multi-step operations remain unavailable.
-  It also does not prove deployed AstrBot Conformance, real-group Shadow or QQ
-  delivery. S23 remains partial and `strict_runtime_complete=0/75` remains true.
+- Evidence boundary: this proves the full 75-case dispatch matrix and real Luna
+  Perception coverage. The later `icourse.public-query.v2` follow-up adds five
+  high-level single-step operations, but the reviewed public-snapshot answers
+  are not equivalent to deployed Runtime semantic completion. Queries requiring
+  unavailable user/reply/longitudinal data or multi-turn clarification remain
+  partial, and this still does not prove AstrBot Conformance, real-group Shadow
+  or QQ delivery. S23 remains partial.
 - Recorded: 2026-08-26
 - Static checks: changed-file Ruff critical/import rules and `git diff --check`
   passed. The broad all-rule Ruff profile was not used as a release gate because

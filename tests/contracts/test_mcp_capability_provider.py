@@ -273,7 +273,7 @@ class McpCapabilityProviderContractTests(unittest.IsolatedAsyncioTestCase):
             finally:
                 await client.close()
 
-    async def test_legacy_icourse_four_capabilities_share_contract_and_project(
+    async def test_icourse_five_capabilities_share_contract_and_project(
         self,
     ) -> None:
         with TemporaryDirectory() as temporary:
@@ -305,6 +305,56 @@ class McpCapabilityProviderContractTests(unittest.IsolatedAsyncioTestCase):
             client = RecordingUnifiedClient(managed)
             provider = _provider(snapshot, client)
             cases = (
+                (
+                    "icourse.public-query.v2",
+                    {
+                        "query": "Database",
+                        "goal": "查询评课社区 Database 课程",
+                        "operation": "course",
+                        "limit": 20,
+                    },
+                    "public-query-course",
+                ),
+                (
+                    "icourse.public-query.v2",
+                    {
+                        "query": "Database",
+                        "goal": "搜索 Database 公开点评",
+                        "operation": "review",
+                        "limit": 20,
+                    },
+                    "public-query-review",
+                ),
+                (
+                    "icourse.public-query.v2",
+                    {
+                        "query": "Teacher Fixture",
+                        "goal": "查询 Teacher Fixture 老师",
+                        "operation": "teacher",
+                        "limit": 20,
+                    },
+                    "public-query-teacher",
+                ),
+                (
+                    "icourse.public-query.v2",
+                    {
+                        "query": "评课社区排行榜",
+                        "goal": "查询评课社区排行榜",
+                        "operation": "ranking",
+                        "limit": 20,
+                    },
+                    "public-query-ranking",
+                ),
+                (
+                    "icourse.public-query.v2",
+                    {
+                        "query": "评课社区统计",
+                        "goal": "查询评课社区站点统计",
+                        "operation": "stats",
+                        "limit": 20,
+                    },
+                    "public-query-stats",
+                ),
                 ("icourse.stats.read.v1", {}, "stats"),
                 (
                     "icourse.courses.search.v1",
@@ -347,10 +397,15 @@ class McpCapabilityProviderContractTests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertIs(missing_result.status, ToolExecutionStatus.FAILED)
 
-                self.assertEqual(len(health.capabilities), 4)
+                self.assertEqual(len(health.capabilities), 5)
                 self.assertEqual(
                     tuple(item[1] for item in client.tool_calls),
                     (
+                        "icourse_public_query",
+                        "icourse_public_query",
+                        "icourse_public_query",
+                        "icourse_public_query",
+                        "icourse_public_query",
                         "icourse_stats",
                         "search_courses",
                         "get_course",
@@ -358,7 +413,7 @@ class McpCapabilityProviderContractTests(unittest.IsolatedAsyncioTestCase):
                         "get_course",
                     ),
                 )
-                self.assertIs(client.tool_calls[2][2]["refresh"], False)
+                self.assertIs(client.tool_calls[7][2]["refresh"], False)
                 rendered = repr((results, missing_result))
                 for forbidden in (
                     str(database),

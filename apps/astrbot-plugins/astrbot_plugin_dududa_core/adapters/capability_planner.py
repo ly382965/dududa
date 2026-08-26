@@ -18,13 +18,24 @@ from dududa.errors import validation_error
 from dududa.ports.capabilities import CapabilityRegistry
 from dududa.ports.context import PortCallContext
 
+ICOURSE_PUBLIC_QUERY_CAPABILITY_ID = "icourse.public-query.v2"
+ICOURSE_INTENT_OPERATIONS = {
+    "icourse.course.search": "course",
+    "icourse.review.search": "review",
+    "icourse.teacher.search": "teacher",
+    "icourse.ranking.read": "ranking",
+    "icourse.stats.read": "stats",
+}
+_ICOURSE_DEFAULT_LIMIT = 20
+
 
 class EntityQueryToolPlanner:
     """Turn model-extracted entities into one schema-bound read query.
 
-    This adapter deliberately supports only a single candidate whose required input
-    is `query`. The model owns intent/entity proposals; the existing deterministic
-    plan validator still owns candidate membership and argument validity.
+    This adapter deliberately emits one step for a candidate whose only required
+    input is `query`. Standard iCourse intents select the high-level public query
+    operation; the existing deterministic validator still owns membership and
+    argument validity.
     """
 
     def __init__(
@@ -73,11 +84,45 @@ class EntityQueryToolPlanner:
             expected_digest=request.retrieval.catalog_digest,
         )
         term = _primary_query_term(request, self._ignored_entity_terms)
+        operation = _icourse_operation(request.query.intent_ids)
+        candidates = request.retrieval.candidates
+        if operation is not None:
+            public_query_candidates = tuple(
+                item
+                for item in candidates
+                if item.capability_id == ICOURSE_PUBLIC_QUERY_CAPABILITY_ID
+            )
+            legacy_course_candidates = (
+                tuple(
+                    item
+                    for item in candidates
+                    if item.capability_id != ICOURSE_PUBLIC_QUERY_CAPABILITY_ID
+                )
+                if operation == "course"
+                else ()
+            )
+            candidates = public_query_candidates + legacy_course_candidates
+
         selected = None
         arguments: Mapping[str, JsonValue] | None = None
-        for candidate in request.retrieval.candidates:
+        for candidate in candidates:
+            is_icourse_public_query = (
+                candidate.capability_id == ICOURSE_PUBLIC_QUERY_CAPABILITY_ID
+            )
+            if is_icourse_public_query and operation is None:
+                continue
             schema = self._registry.get_schema(catalog, candidate.input_schema)
-            projected = _query_arguments(schema.document, term)
+            projected = _query_arguments(
+                schema.document,
+                term,
+                goal=(
+                    request.query.natural_language_goal
+                    if is_icourse_public_query
+                    else None
+                ),
+                operation=operation if is_icourse_public_query else None,
+                limit=_ICOURSE_DEFAULT_LIMIT if is_icourse_public_query else None,
+            )
             if projected is not None:
                 selected = candidate
                 arguments = projected
@@ -152,6 +197,10 @@ def _primary_query_term(
 def _query_arguments(
     document: Mapping[str, JsonValue],
     term: str,
+    *,
+    goal: str | None = None,
+    operation: str | None = None,
+    limit: int | None = None,
 ) -> Mapping[str, JsonValue] | None:
     properties = document.get("properties")
     required = document.get("required")
@@ -159,11 +208,35 @@ def _query_arguments(
         return None
     if "query" not in properties or set(required) != {"query"}:
         return None
-    return {"query": term}
+    arguments: dict[str, JsonValue] = {"query": term}
+    optional = {"goal": goal, "operation": operation, "limit": limit}
+    for name, value in optional.items():
+        if name in properties and value is not None:
+            arguments[name] = value
+    return arguments
 
 
 def supports_entity_query_schema(document: Mapping[str, JsonValue]) -> bool:
-    return _query_arguments(document, "query") is not None
+    return (
+        _query_arguments(
+            document,
+            "query",
+            goal="query",
+            operation="course",
+            limit=_ICOURSE_DEFAULT_LIMIT,
+        )
+        is not None
+    )
+
+
+def _icourse_operation(intent_ids: tuple[str, ...]) -> str | None:
+    for intent_id in intent_ids:
+        operation = ICOURSE_INTENT_OPERATIONS.get(intent_id)
+        if operation is not None:
+            return operation
+    if any(intent_id.startswith("icourse.") for intent_id in intent_ids):
+        return "course"
+    return None
 
 
 def _normalize_term(value: str) -> str:

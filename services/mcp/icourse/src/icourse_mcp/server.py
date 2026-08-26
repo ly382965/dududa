@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -96,6 +97,78 @@ def create_mcp(config: AppConfig) -> FastMCP:
         }
 
     @mcp.tool()
+    def icourse_public_query(
+        query: str,
+        operation: str = "course",
+        goal: str | None = None,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """Run one bounded read-only query over the prepared public iCourse cache."""
+        normalized = query.strip()
+        natural_goal = (goal or query).strip()
+        limit = max(1, min(limit, 30))
+        if operation == "review":
+            year_match = re.search(r"\b(20\d{2})\b", natural_goal)
+            sort_by = "relevance"
+            if any(term in natural_goal for term in ("点赞最多", "高赞")):
+                sort_by = "upvote"
+            elif "最长" in natural_goal:
+                sort_by = "length"
+            elif any(term in natural_goal for term in ("最近", "最新")):
+                sort_by = "latest"
+            return {
+                "schema_version": 1,
+                "operation": operation,
+                "query": normalized,
+                "public_only": True,
+                "result": store.search_reviews(
+                    normalized,
+                    year=int(year_match.group(1)) if year_match else None,
+                    sort_by=sort_by,
+                    limit=limit,
+                ),
+            }
+        if operation == "teacher":
+            return {
+                "schema_version": 1,
+                "operation": operation,
+                "query": normalized,
+                "public_only": True,
+                "result": store.search_teachers(normalized, limit=limit),
+            }
+        if operation == "ranking":
+            return {
+                "schema_version": 1,
+                "operation": operation,
+                "query": normalized,
+                "public_only": True,
+                "result": store.get_rankings(limit=limit),
+            }
+        if operation == "stats":
+            return {
+                "schema_version": 1,
+                "operation": operation,
+                "query": normalized,
+                "public_only": True,
+                "result": store.get_site_statistics(),
+            }
+        filters = _course_filters(natural_goal)
+        text_query = normalized
+        if normalized == natural_goal and filters:
+            text_query = ""
+        return {
+            "schema_version": 1,
+            "operation": "course",
+            "query": normalized,
+            "public_only": True,
+            "result": store.query_courses(
+                query=text_query or None,
+                limit=limit,
+                **filters,
+            ),
+        }
+
+    @mcp.tool()
     def crawl_course(course_id: int, sort_by: str = "upvote") -> dict[str, Any]:
         """Fetch and cache one public course detail page from icourse.club."""
         return current_crawler().crawl_course(course_id, sort_by=sort_by)
@@ -162,6 +235,49 @@ def create_mcp(config: AppConfig) -> FastMCP:
         return store.export_jsonl(Path(output_path), include_reviews=include_reviews)
 
     return mcp
+
+
+def _course_filters(goal: str) -> dict[str, Any]:
+    filters: dict[str, Any] = {}
+    rating_match = re.search(
+        r"(?:评分\s*)?(\d+(?:\.\d+)?)\s*分?\s*(?:以上|起)",
+        goal,
+    )
+    if rating_match:
+        filters["min_rating"] = float(rating_match.group(1))
+    reviews_match = re.search(
+        r"(?:点评|评论)\s*(?:至少|不少于)\s*(\d+)|至少\s*(\d+)\s*(?:条|个)(?:点评|评论)",
+        goal,
+    )
+    if reviews_match:
+        filters["min_reviews"] = int(next(value for value in reviews_match.groups() if value))
+    credit_match = re.search(r"([一二两三四五六\d](?:\.\d+)?)\s*学分", goal)
+    if credit_match:
+        numbers = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6}
+        raw = credit_match.group(1)
+        filters["credit"] = float(numbers.get(raw, raw))
+    term_match = re.search(r"(20\d{2}[秋春夏])", goal)
+    if term_match:
+        filters["term"] = term_match.group(1)
+    if any(term in goal for term in ("计算机学院", "计院")):
+        filters["dept"] = "计算机"
+    if "通识" in goal:
+        filters["course_type"] = "通识"
+    if any(term in goal for term in ("作业少", "作业不要太多", "作业不多")):
+        filters["homework"] = "很少"
+    if any(term in goal for term in ("给分好", "给分不要差")):
+        filters["grading"] = "超好"
+    if any(term in goal for term in ("有收获", "很有收获", "能学到东西", "真正学懂")):
+        filters["gain"] = "很多"
+    if any(term in goal for term in ("比较难", "难一点", "累是累")):
+        filters["difficulty"] = "困难"
+    if any(term in goal for term in ("评分最低", "最不推荐")):
+        filters["sort_by"] = "rating_asc"
+    elif any(term in goal for term in ("评论多", "点评多", "热门")):
+        filters["sort_by"] = "reviews_desc"
+    elif any(term in goal for term in ("最近", "最新")):
+        filters["sort_by"] = "latest"
+    return filters
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

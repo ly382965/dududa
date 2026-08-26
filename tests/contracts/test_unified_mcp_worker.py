@@ -181,6 +181,7 @@ def icourse_definition(database: Path):
                 "crawl_course",
                 "get_course",
                 "get_reviews",
+                "icourse_public_query",
                 "icourse_stats",
                 "search_courses",
                 "search_site_courses",
@@ -494,8 +495,10 @@ class UnifiedMcpWorkerContractTests(unittest.IsolatedAsyncioTestCase):
                 call=service_call(),
             )
             tools = await session.discover(call=service_call())
-            self.assertEqual(len(tools), 10)
-            self.assertIn("icourse_stats", {item.name for item in tools})
+            self.assertEqual(len(tools), 11)
+            names = {item.name for item in tools}
+            self.assertIn("icourse_public_query", names)
+            self.assertIn("icourse_stats", names)
             stats = await session.call_tool(
                 "icourse_stats",
                 {},

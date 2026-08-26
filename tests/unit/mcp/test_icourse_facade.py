@@ -119,7 +119,11 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
         )
         plan = FakeMcpSessionPlan(
             tools=tools,
-            call_outcomes=(result("search"), result("refresh")),
+            call_outcomes=(
+                result("search"),
+                result("public-query"),
+                result("refresh"),
+            ),
         )
         factory = RecordingFakeMcpSessionFactory((plan,))
         unified = ManagedUnifiedMcpClient(
@@ -130,13 +134,17 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
             monotonic_clock=lambda: 1.0,
             id_factory=lambda: "schema",
         )
-        ids = iter(("search", "refresh", "tools"))
+        ids = iter(("search", "public-query", "refresh", "tools"))
         facade = ICourseClient(
             unified,
             clock=lambda: NOW,
             id_factory=lambda: next(ids),
         )
         search = await facade.call("search_courses", {"query": "fixture"})
+        public_query = await facade.call(
+            "icourse_public_query",
+            {"query": "fixture", "operation": "course"},
+        )
         refresh = await facade.call(
             "get_course",
             {"course_id": 1, "refresh": True},
@@ -144,13 +152,15 @@ class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
         visible = await facade.list_tools()
 
         self.assertEqual(search["items"], [])
+        self.assertEqual(public_query["value"], "public-query")
         self.assertEqual(refresh["value"], "refresh")
         self.assertEqual(visible, sorted(ICOURSE_COMPAT_TOOL_ALLOWLIST))
         self.assertEqual(len(factory.sessions), 1)
         calls = factory.sessions[0].call_records
         self.assertEqual(calls[0][2].semantics, McpOperationSemantics.READ_ONLY)
+        self.assertEqual(calls[1][2].semantics, McpOperationSemantics.READ_ONLY)
         self.assertEqual(
-            calls[1][2].semantics,
+            calls[2][2].semantics,
             McpOperationSemantics.NON_IDEMPOTENT,
         )
         await facade.close()

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterable
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .models import Course, CourseListItem, Review, Teacher
 
@@ -137,6 +138,8 @@ class ICourseStore:
                 CREATE INDEX IF NOT EXISTS idx_courses_rating ON courses(rating_average);
                 CREATE INDEX IF NOT EXISTS idx_reviews_course ON reviews(course_id);
                 CREATE INDEX IF NOT EXISTS idx_reviews_term ON reviews(term);
+                CREATE INDEX IF NOT EXISTS idx_reviews_author ON reviews(author_display);
+                CREATE INDEX IF NOT EXISTS idx_reviews_publish_time ON reviews(publish_time);
                 """
             )
 
@@ -223,6 +226,18 @@ class ICourseStore:
                         now,
                     ),
                 )
+
+            if existing is None or existing["detail_crawled_at"] is None:
+                conn.execute("DELETE FROM course_teachers WHERE course_id = ?", (item.id,))
+                for teacher_name in item.teachers:
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO course_teachers(
+                            course_id, teacher_key, teacher_id, teacher_name
+                        ) VALUES (?, ?, NULL, ?)
+                        """,
+                        (item.id, teacher_name, teacher_name),
+                    )
 
     def upsert_course(self, course: Course, source_hash: str | None = None) -> None:
         now = utc_now()
@@ -487,6 +502,408 @@ class ICourseStore:
                 [*params, limit, offset],
             ).fetchall()
         return {"total": total, "items": [self._course_row_to_search_dict(row) for row in rows]}
+
+    def query_courses(
+        self,
+        *,
+        query: str | None = None,
+        teacher: str | None = None,
+        dept: str | None = None,
+        course_type: str | None = None,
+        term: str | None = None,
+        credit: float | None = None,
+        min_rating: float | None = None,
+        max_rating: float | None = None,
+        min_reviews: int | None = None,
+        difficulty: str | None = None,
+        homework: str | None = None,
+        grading: str | None = None,
+        gain: str | None = None,
+        sort_by: str = "rating_desc",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        clauses: list[str] = []
+        params: list[Any] = []
+        if query:
+            like = f"%{query}%"
+            clauses.append(
+                "(name LIKE ? OR courseries LIKE ? OR teachers_json LIKE ? "
+                "OR introduction_text LIKE ? OR summary_text LIKE ?)"
+            )
+            params.extend([like, like, like, like, like])
+        for column, value in (
+            ("teachers_json", teacher),
+            ("dept", dept),
+            ("course_type", course_type),
+            ("term_text", term),
+        ):
+            if value:
+                clauses.append(f"{column} LIKE ?")
+                params.append(f"%{value}%")
+        if credit is not None:
+            clauses.append("credit = ?")
+            params.append(credit)
+        if min_rating is not None:
+            clauses.append("rating_average >= ?")
+            params.append(min_rating)
+        if max_rating is not None:
+            clauses.append("rating_average <= ?")
+            params.append(max_rating)
+        if min_reviews is not None:
+            clauses.append("COALESCE(review_count_site, 0) >= ?")
+            params.append(max(0, min_reviews))
+        for column, value in (
+            ("difficulty", difficulty),
+            ("homework", homework),
+            ("grading", grading),
+            ("gain", gain),
+        ):
+            if value:
+                clauses.append(f"{column} = ?")
+                params.append(value)
+
+        order_by = {
+            "rating_asc": (
+                "COALESCE(rating_average, 99) ASC, "
+                "COALESCE(review_count_site, 0) DESC, id DESC"
+            ),
+            "reviews_desc": (
+                "COALESCE(review_count_site, 0) DESC, "
+                "COALESCE(rating_average, 0) DESC, id DESC"
+            ),
+            "latest": "COALESCE(term_text, '') DESC, id DESC",
+            "name": "name ASC, id DESC",
+        }.get(
+            sort_by,
+            "COALESCE(rating_average, 0) DESC, "
+            "COALESCE(review_count_site, 0) DESC, id DESC",
+        )
+        where_sql = "WHERE " + " AND ".join(clauses) if clauses else ""
+        limit = max(1, min(limit, 100))
+        offset = max(0, offset)
+        with self.connect() as conn:
+            total = conn.execute(
+                f"SELECT COUNT(*) AS total FROM courses {where_sql}",
+                params,
+            ).fetchone()["total"]
+            rows = conn.execute(
+                f"""
+                SELECT * FROM courses
+                {where_sql}
+                ORDER BY {order_by}
+                LIMIT ? OFFSET ?
+                """,
+                [*params, limit, offset],
+            ).fetchall()
+        return {
+            "total": total,
+            "items": [self._course_row_to_search_dict(row) for row in rows],
+        }
+
+    def search_reviews(
+        self,
+        query: str,
+        *,
+        year: int | None = None,
+        sort_by: str = "relevance",
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        query = query.strip()
+        clauses: list[str] = []
+        params: list[Any] = []
+        if query:
+            like = f"%{query}%"
+            clauses.append(
+                "(r.content_text LIKE ? OR r.author_display LIKE ? OR c.name LIKE ? "
+                "OR c.teachers_json LIKE ?)"
+            )
+            params.extend([like, like, like, like])
+        if year is not None:
+            clauses.append(
+                "(r.publish_time LIKE ? OR r.publish_time LIKE ? "
+                "OR r.update_time LIKE ? OR r.update_time LIKE ? OR r.term LIKE ?)"
+            )
+            params.extend(
+                [
+                    f"{year}%",
+                    f"%/{year} %",
+                    f"{year}%",
+                    f"%/{year} %",
+                    f"{year}%",
+                ]
+            )
+        order_by = {
+            "upvote": "COALESCE(r.upvote_count, 0) DESC, r.id DESC",
+            "length": "LENGTH(COALESCE(r.content_text, '')) DESC, r.id DESC",
+            "latest": "COALESCE(r.update_time, r.publish_time, '') DESC, r.id DESC",
+            "oldest": "COALESCE(r.publish_time, '') ASC, r.id ASC",
+            "score_desc": "COALESCE(r.rating_10, 0) DESC, r.id DESC",
+            "score_asc": "COALESCE(r.rating_10, 99) ASC, r.id DESC",
+        }.get(sort_by, "COALESCE(r.upvote_count, 0) DESC, r.id DESC")
+        where_sql = " AND ".join(clauses) if clauses else "1 = 1"
+        limit = max(1, min(limit, 100))
+        offset = max(0, offset)
+        with self.connect() as conn:
+            aggregate = conn.execute(
+                f"""
+                SELECT COUNT(*) AS total,
+                       COUNT(DISTINCT r.course_id) AS distinct_courses,
+                       COALESCE(SUM(r.upvote_count), 0) AS total_upvotes,
+                       COALESCE(AVG(r.rating_10), 0) AS average_rating,
+                       COALESCE(AVG(LENGTH(COALESCE(r.content_text, ''))), 0)
+                           AS average_length
+                FROM reviews r
+                JOIN courses c ON c.id = r.course_id
+                WHERE {where_sql}
+                """,
+                params,
+            ).fetchone()
+            rows = conn.execute(
+                f"""
+                SELECT r.*, c.name AS course_name, c.url AS course_url,
+                       c.teachers_json AS course_teachers_json,
+                       c.rating_average AS course_rating_average
+                FROM reviews r
+                JOIN courses c ON c.id = r.course_id
+                WHERE {where_sql}
+                ORDER BY {order_by}
+                LIMIT ? OFFSET ?
+                """,
+                [*params, limit, offset],
+            ).fetchall()
+        items = []
+        for row in rows:
+            review = self._review_row_to_dict(row)
+            review.update(
+                {
+                    "course_name": row["course_name"],
+                    "course_url": row["course_url"],
+                    "course_teachers": json_loads(row["course_teachers_json"], []),
+                    "course_rating_average": row["course_rating_average"],
+                    "content_length": len(row["content_text"] or ""),
+                }
+            )
+            items.append(review)
+        return {
+            "total": aggregate["total"],
+            "aggregates": {
+                "distinct_courses": aggregate["distinct_courses"],
+                "total_upvotes": aggregate["total_upvotes"],
+                "average_rating": round(float(aggregate["average_rating"]), 3),
+                "average_length": round(float(aggregate["average_length"]), 1),
+            },
+            "items": items,
+        }
+
+    def search_teachers(
+        self,
+        query: str,
+        *,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        query = query.strip()
+        params: list[Any] = []
+        where_sql = ""
+        if query:
+            where_sql = "WHERE ct.teacher_name LIKE ?"
+            params.append(f"%{query}%")
+        with self.connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT ct.teacher_id, ct.teacher_name, c.id AS course_id,
+                       c.name AS course_name, c.url AS course_url,
+                       c.dept, c.term_text, c.rating_average, c.review_count_site,
+                       c.difficulty, c.homework, c.grading, c.gain
+                FROM course_teachers ct
+                JOIN courses c ON c.id = ct.course_id
+                {where_sql}
+                ORDER BY ct.teacher_name ASC,
+                         COALESCE(c.rating_average, 0) DESC,
+                         COALESCE(c.review_count_site, 0) DESC
+                """,
+                params,
+            ).fetchall()
+        grouped: dict[tuple[int | None, str], dict[str, Any]] = {}
+        for row in rows:
+            key = (row["teacher_id"], row["teacher_name"])
+            item = grouped.setdefault(
+                key,
+                {
+                    "teacher_id": row["teacher_id"],
+                    "name": row["teacher_name"],
+                    "departments": set(),
+                    "course_count": 0,
+                    "review_count": 0,
+                    "weighted_rating_total": 0.0,
+                    "courses": [],
+                },
+            )
+            item["course_count"] += 1
+            count = int(row["review_count_site"] or 0)
+            rating = float(row["rating_average"] or 0)
+            item["review_count"] += count
+            item["weighted_rating_total"] += rating * count
+            if row["dept"]:
+                item["departments"].add(row["dept"])
+            if len(item["courses"]) < 20:
+                item["courses"].append(
+                    {
+                        "id": row["course_id"],
+                        "name": row["course_name"],
+                        "url": row["course_url"],
+                        "term_text": row["term_text"],
+                        "rating_average": row["rating_average"],
+                        "review_count_site": row["review_count_site"],
+                        "difficulty": row["difficulty"],
+                        "homework": row["homework"],
+                        "grading": row["grading"],
+                        "gain": row["gain"],
+                    }
+                )
+        items = []
+        for item in grouped.values():
+            review_count = item.pop("review_count")
+            weighted_total = item.pop("weighted_rating_total")
+            item["review_count"] = review_count
+            item["rating_average"] = (
+                round(weighted_total / review_count, 3) if review_count else None
+            )
+            item["departments"] = sorted(item["departments"])
+            items.append(item)
+        items.sort(
+            key=lambda item: (
+                -(item["rating_average"] or 0),
+                -item["review_count"],
+                item["name"],
+            )
+        )
+        return {"total": len(items), "items": items[: max(1, min(limit, 100))]}
+
+    def get_rankings(self, *, limit: int = 10) -> dict[str, Any]:
+        limit = max(1, min(limit, 30))
+        with self.connect() as conn:
+            course_rows = conn.execute(
+                """
+                SELECT * FROM courses
+                WHERE rating_average IS NOT NULL AND COALESCE(review_count_site, 0) > 0
+                """
+            ).fetchall()
+            review_rows = conn.execute(
+                """
+                SELECT r.*, c.name AS course_name, c.url AS course_url
+                FROM reviews r JOIN courses c ON c.id = r.course_id
+                """
+            ).fetchall()
+        counts = [int(row["review_count_site"] or 0) for row in course_rows]
+        weighted_total = sum(
+            float(row["rating_average"] or 0) * int(row["review_count_site"] or 0)
+            for row in course_rows
+        )
+        total_count = sum(counts)
+        global_average = weighted_total / total_count if total_count else 0.0
+        prior_count = sum(counts) / len(counts) if counts else 0.0
+
+        def ranked_course(row: sqlite3.Row) -> dict[str, Any]:
+            count = int(row["review_count_site"] or 0)
+            raw = float(row["rating_average"] or 0)
+            normalized = (
+                (raw * count + global_average * prior_count) / (count + prior_count)
+                if count + prior_count
+                else raw
+            )
+            item = self._course_row_to_search_dict(row)
+            item["normalized_rating"] = round(normalized, 4)
+            return item
+
+        course_items = [ranked_course(row) for row in course_rows]
+        top_courses = sorted(
+            (item for item in course_items if (item["review_count_site"] or 0) >= 20),
+            key=lambda item: (-item["normalized_rating"], -item["review_count_site"]),
+        )[:limit]
+        low_courses = sorted(
+            (item for item in course_items if (item["review_count_site"] or 0) >= 10),
+            key=lambda item: (item["normalized_rating"], -item["review_count_site"]),
+        )[:limit]
+        popular_courses = sorted(
+            course_items,
+            key=lambda item: (-(item["review_count_site"] or 0), -item["normalized_rating"]),
+        )[:limit]
+        reviews = []
+        for row in review_rows:
+            item = self._review_row_to_dict(row)
+            item.update(
+                {
+                    "course_name": row["course_name"],
+                    "course_url": row["course_url"],
+                    "content_length": len(row["content_text"] or ""),
+                }
+            )
+            reviews.append(item)
+        top_reviews = sorted(
+            reviews,
+            key=lambda item: (-(item["upvote_count"] or 0), -item["content_length"]),
+        )[:limit]
+        longest_reviews = sorted(
+            reviews,
+            key=lambda item: (-item["content_length"], -(item["upvote_count"] or 0)),
+        )[:limit]
+        official = self.get_meta("public_rankings_snapshot")
+        return {
+            "source": "official_snapshot" if official else "local_public_cache",
+            "coverage": self.stats(),
+            "formula": {
+                "name": "bayesian_normalized_rating",
+                "global_average": round(global_average, 4),
+                "prior_review_count": round(prior_count, 4),
+            },
+            "top_courses": top_courses,
+            "low_courses": low_courses,
+            "popular_courses": popular_courses,
+            "top_reviews": top_reviews,
+            "longest_reviews": longest_reviews,
+            "official_snapshot": official,
+        }
+
+    def get_site_statistics(self) -> dict[str, Any]:
+        with self.connect() as conn:
+            course_distribution = conn.execute(
+                """
+                SELECT CAST(rating_average AS INTEGER) AS bucket, COUNT(*) AS count
+                FROM courses WHERE rating_average IS NOT NULL
+                GROUP BY bucket ORDER BY bucket
+                """
+            ).fetchall()
+            review_distribution = conn.execute(
+                """
+                SELECT rating_10 AS rating, COUNT(*) AS count
+                FROM reviews WHERE rating_10 IS NOT NULL
+                GROUP BY rating_10 ORDER BY rating_10
+                """
+            ).fetchall()
+            timeline = conn.execute(
+                """
+                SELECT SUBSTR(COALESCE(publish_time, update_time), 1, 7) AS month,
+                       COUNT(*) AS count
+                FROM reviews
+                WHERE COALESCE(publish_time, update_time) IS NOT NULL
+                GROUP BY month ORDER BY month
+                """
+            ).fetchall()
+            average = conn.execute(
+                "SELECT AVG(rating_10) AS value FROM reviews WHERE rating_10 IS NOT NULL"
+            ).fetchone()["value"]
+        official = self.get_meta("public_site_stats_snapshot")
+        return {
+            "source": "official_snapshot" if official else "local_public_cache",
+            "coverage": self.stats(),
+            "average_review_rating": round(float(average), 3) if average else None,
+            "course_rating_distribution": [dict(row) for row in course_distribution],
+            "review_rating_distribution": [dict(row) for row in review_distribution],
+            "review_timeline": [dict(row) for row in timeline],
+            "official_snapshot": official,
+        }
 
     def stats(self) -> dict[str, Any]:
         with self.connect() as conn:

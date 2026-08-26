@@ -71,6 +71,12 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
                         "get_reviews",
                         {"course_id": 1},
                     )
+                    for operation in ("course", "review", "teacher", "ranking", "stats"):
+                        public_query = await mcp._tool_manager.call_tool(
+                            "icourse_public_query",
+                            {"query": "fixture", "operation": operation},
+                        )
+                        self.assertEqual(public_query["operation"], operation)
                     self.assertEqual(stats["courses"], 0)
                     self.assertEqual(search["items"], [])
                     self.assertFalse(course["ok"])

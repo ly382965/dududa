@@ -11,6 +11,19 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- iCourse natural-language planning now uses the single high-level read-only
+  `icourse.public-query.v2` Capability. Standard model intents project
+  deterministically to `course/review/teacher/ranking/stats`; Schema-aware
+  arguments remain limited to `query/goal/operation/limit`, and every inbound
+  plan still has one Tool step and one attempt. The four legacy iCourse
+  Capabilities remain compatible.
+- A public-only development snapshot now contains all 19,194 course-list rows,
+  174 targeted course details and 4,216 public review records plus official
+  ranking/statistics/search/user/latest pages. Luna/Terra/Sol generated
+  35/34/6 benchmark answers at `low`; Luna reviewed every batch. All 75 cases
+  have final answers in `docs/refactor/icourse-75-answers-reviewed-2026-08-26.md`:
+  43 complete, 27 partial and 5 clarification-required. This is offline public
+  snapshot evidence, not human Gold, deployed Runtime or live-group evidence.
 - 本机运行数据目录中的 Sub2API v0.6.2 已作为原插件功能基线核对：当前工作树
   `client.py` 与其字节一致，全部原命令 handler 均保留。`overview` 继续复用原有
   今日、当前计费轮、2026-07-13 起历史累计和上游账号四段取数，只在成功输出端
@@ -74,7 +87,7 @@ Last sync: unix:1786706085
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
   候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
 - Unified MCP 现已注册四个真实只读 Server：匿名 iCourse、认证二课、公开教务处
-  和校车，共映射 17 个受批准 Capability。Web 超级管理员工作台按 Capability ID
+  和校车，共映射 18 个受批准 Capability。Web 超级管理员工作台按 Capability ID
   和 input schema 直接调用，浏览器不接受任意 `server/tool` 透传。现有本机 CAS
   凭据文件以只读挂载复用，固定提交版 `pyustc` 已真实完成二课登录和查询；密码、
   Cookie、TGC 与本机路径不进入 Git、Web 响应或普通日志。校园资讯、arXiv 和行业
@@ -138,6 +151,12 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 完成 iCourse 高层只读查询与 75 题回答审校：新增第 18 个 Capability
+  `icourse.public-query.v2`，五种 operation 共用一次 MCP 调用；78 条路由回归
+  产生 78 次调用。公开快照定向抓取零错误，75 个回答均完成 Luna Review，
+  其中 19 题最终采用 Luna 修订或人工事实校正。28 项聚焦 MCP/Registry/
+  Planner Contract、9 项新增 storage/lifecycle 测试、changed-file Ruff 与
+  `git diff --check` 通过；未触碰 QQ Output 或运行中容器。
 - 完成 Web Runtime 插件管理纵切：超级工作台动态展示 AstrBot 已加载
   插件，通过仅 `plugin` scope 的服务端 Key 代理 GitHub/ZIP 安装和
   热加载，并提供 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文规范下载。安装与
@@ -252,9 +271,11 @@ Last sync: unix:1786706085
   `人工智能`、`萌萌哒mmd` 和 `线性代数B1`。
 - 真实 Luna `low` no-send Perception 已覆盖 75/75：Schema 75/75 有效，iCourse
   category 74/75，显式 marker 19/19，零 QQ Output。唯一漏报 Case 67 没有站点词
-  或 iCourse 上下文，未增加会误伤普通聊天的宽泛规则。自动 Planner 仍只有
-  `search_courses(query)`，因此严格语义完成继续是 0/75；用户点评、排行榜、点评
-  全文/回复、统计时间序列和多步聚合未完成。
+  或 iCourse 上下文，未增加会误伤普通聊天的宽泛规则。随后新增
+  `icourse.public-query.v2`，自动 Planner 可把标准 intent 投影为
+  `course/review/teacher/ranking/stats` 五类单步高层查询。75 题公开快照回答状态为
+  43 个完整、27 个部分、5 个需澄清；这不等于生产 Runtime 语义全通过，需用户、
+  回复、长期时序数据或多步交互的任务仍不完整。
 - Tool 路径在没有显式详略要求时默认选择 LONG；Production 继续使用
   `capability_maximum_attempts=1`，78 条模拟保持每条恰好一次 MCP 调用。超过
   512-byte 分片阈值的群聊 LONG 由 Output Adapter 只发送一条 QQ 合并转发；

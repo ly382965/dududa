@@ -217,7 +217,7 @@ class _ScriptedAstrBotProvider(_AstrBotProvider):
                     ],
                     "intents": [
                         {
-                            "intent_id": "icourse.lookup",
+                            "intent_id": "icourse.teacher.search",
                             "confidence": 0.99,
                             "evidence_refs": [current_ref],
                         }
@@ -258,7 +258,7 @@ class _ScriptedAstrBotProvider(_AstrBotProvider):
                 ensure_ascii=False,
             )
         else:
-            if "icourse.courses.search.v1" not in prompt or "吴天" not in prompt:
+            if "icourse.public-query.v2" not in prompt or "吴天" not in prompt:
                 raise AssertionError("Direct Chat did not receive iCourse Observation")
             completion = (
                 "评课社区的公开数据命中了吴天老师的《数学分析(B1)》，当前固定测试"
@@ -953,7 +953,18 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                         recording_mcp.tool_calls
                     )
                 ],
-                [("icourse", "search_courses", {"query": "吴天"})],
+                [
+                    (
+                        "icourse",
+                        "icourse_public_query",
+                        {
+                            "query": "吴天",
+                            "goal": "@嘟嘟哒 查询评课社区吴天",
+                            "operation": "teacher",
+                            "limit": 20,
+                        },
+                    )
+                ],
             )
             rendered = repr(
                 (provider.calls, recording_mcp.tool_calls, event.sent_chains)
@@ -1088,8 +1099,10 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(calls), 78)
             self.assertTrue(
                 all(
-                    server_id == "icourse" and tool_name == "search_courses"
-                    for server_id, tool_name, _arguments in calls
+                    server_id == "icourse"
+                    and tool_name == "icourse_public_query"
+                    and arguments["operation"] == "course"
+                    for server_id, tool_name, arguments in calls
                 )
             )
             self.assertEqual(
@@ -1100,12 +1113,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 22,
             )
             self.assertEqual(
-                [arguments for _server, _tool, arguments in calls[-3:]],
-                [
-                    {"query": "人工智能"},
-                    {"query": "萌萌哒mmd"},
-                    {"query": "线性代数B1"},
-                ],
+                [arguments["query"] for _server, _tool, arguments in calls[-3:]],
+                ["人工智能", "萌萌哒mmd", "线性代数B1"],
             )
             self.assertEqual(len(provider.calls), 156)
             rendered = repr((provider.calls, recording_mcp.tool_calls, events))

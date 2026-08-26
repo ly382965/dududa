@@ -61,7 +61,7 @@ def service_call() -> ServiceCallContext:
 
 
 class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
-    def test_repository_production_config_contains_only_icourse(self) -> None:
+    def test_repository_production_config_contains_four_campus_servers(self) -> None:
         registry = ConfigMcpServerRegistry(
             ROOT / "configs" / "mcp" / "servers",
             clock=lambda: NOW,
@@ -69,7 +69,8 @@ class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
         )
         snapshot = registry.acquire_snapshot()
         self.assertEqual(
-            tuple(item.server_id for item in snapshot.definitions), ("icourse",)
+            tuple(item.server_id for item in snapshot.definitions),
+            ("icourse", "ustc-academic", "ustc-shuttle", "ustc-young"),
         )
         icourse = registry.resolve_server(snapshot, "icourse")
         self.assertEqual(icourse.maximum_concurrency, 1)
@@ -80,6 +81,7 @@ class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
                     "crawl_course",
                     "get_course",
                     "get_reviews",
+                    "icourse_public_query",
                     "icourse_stats",
                     "search_courses",
                     "search_site_courses",

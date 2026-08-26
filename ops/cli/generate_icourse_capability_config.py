@@ -35,6 +35,16 @@ ROOT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = Path("configs/capabilities")
 
 MCP_SCHEMA_DIGESTS = {
+    "icourse_public_query": (
+        (
+            "dududa-c14n-v1:schema:mcp.icourse.icourse_public_query.input:v1:sha-256:"
+            "d09687a2302978a6c10ae61c6608f1dd2b1a5f114db649f62d14454fb5306f57"
+        ),
+        (
+            "dududa-c14n-v1:schema:mcp.icourse.icourse_public_query.output:v1:sha-256:"
+            "1727a4da37920ad2f4004b50e553e763684b8865d35b01ff07a27bc32f683974"
+        ),
+    ),
     "icourse_stats": (
         (
             "dududa-c14n-v1:schema:mcp.icourse.icourse_stats.input:v1:sha-256:"
@@ -211,7 +221,238 @@ def _course_detail_schema() -> dict[str, object]:
     }
 
 
+def _public_query_course_schema() -> dict[str, object]:
+    properties = {
+        **_course_summary_properties(),
+        "normalized_rating": _nullable_number(),
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": [],
+        "additionalProperties": False,
+    }
+
+
+def _public_query_review_schema() -> dict[str, object]:
+    properties = {
+        **_review_schema()["properties"],
+        "course_name": _nullable_string(300),
+        "course_url": _nullable_string(2_048),
+        "course_teachers": {
+            "type": "array",
+            "maxItems": 32,
+            "items": _teacher_schema(),
+        },
+        "course_rating_average": _nullable_number(),
+        "content_length": {"type": "integer", "minimum": 0},
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": [],
+        "additionalProperties": False,
+    }
+
+
+def _public_query_item_schema() -> dict[str, object]:
+    teacher_course = {
+        "type": "object",
+        "properties": {
+            "id": {"type": "integer", "minimum": 1},
+            "name": {"type": "string", "maxLength": 300},
+            "url": {"type": "string", "maxLength": 2_048},
+            "term_text": _nullable_string(300),
+            "rating_average": _nullable_number(),
+            "review_count_site": _nullable_integer(),
+            "difficulty": _nullable_string(100),
+            "homework": _nullable_string(100),
+            "grading": _nullable_string(100),
+            "gain": _nullable_string(100),
+        },
+        "required": [],
+        "additionalProperties": False,
+    }
+    properties = {
+        **_public_query_course_schema()["properties"],
+        **_public_query_review_schema()["properties"],
+        "teacher_id": _nullable_integer(),
+        "departments": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {"type": "string", "maxLength": 300},
+        },
+        "course_count": {"type": "integer", "minimum": 0},
+        "review_count": {"type": "integer", "minimum": 0},
+        "courses": {
+            "type": "array",
+            "maxItems": 20,
+            "items": teacher_course,
+        },
+    }
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": [],
+        "additionalProperties": False,
+    }
+
+
+def _public_cache_coverage_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "courses": {"type": "integer", "minimum": 0},
+            "courses_with_detail": {"type": "integer", "minimum": 0},
+            "public_reviews": {"type": "integer", "minimum": 0},
+            "last_detail_crawled_at": _nullable_string(64),
+            "last_list_crawled_at": _nullable_string(64),
+        },
+        "required": [
+            "courses",
+            "courses_with_detail",
+            "public_reviews",
+            "last_detail_crawled_at",
+            "last_list_crawled_at",
+        ],
+        "additionalProperties": False,
+    }
+
+
+def _public_query_result_schema() -> dict[str, object]:
+    distribution_item = {
+        "type": "object",
+        "properties": {
+            "bucket": _nullable_integer(),
+            "rating": _nullable_integer(),
+            "month": _nullable_string(16),
+            "count": {"type": "integer", "minimum": 0},
+        },
+        "required": ["count"],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "total": {"type": "integer", "minimum": 0},
+            "items": {
+                "type": "array",
+                "maxItems": 30,
+                "items": _public_query_item_schema(),
+            },
+            "aggregates": {
+                "type": "object",
+                "properties": {
+                    "distinct_courses": {"type": "integer", "minimum": 0},
+                    "total_upvotes": {"type": "integer", "minimum": 0},
+                    "average_rating": {"type": "number", "minimum": 0},
+                    "average_length": {"type": "number", "minimum": 0},
+                },
+                "required": [
+                    "distinct_courses",
+                    "total_upvotes",
+                    "average_rating",
+                    "average_length",
+                ],
+                "additionalProperties": False,
+            },
+            "source": {"type": "string", "maxLength": 100},
+            "coverage": _public_cache_coverage_schema(),
+            "formula": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "maxLength": 100},
+                    "global_average": {"type": "number", "minimum": 0},
+                    "prior_review_count": {"type": "number", "minimum": 0},
+                },
+                "required": ["name", "global_average", "prior_review_count"],
+                "additionalProperties": False,
+            },
+            "top_courses": {
+                "type": "array",
+                "maxItems": 30,
+                "items": _public_query_course_schema(),
+            },
+            "low_courses": {
+                "type": "array",
+                "maxItems": 30,
+                "items": _public_query_course_schema(),
+            },
+            "popular_courses": {
+                "type": "array",
+                "maxItems": 30,
+                "items": _public_query_course_schema(),
+            },
+            "top_reviews": {
+                "type": "array",
+                "maxItems": 30,
+                "items": _public_query_review_schema(),
+            },
+            "longest_reviews": {
+                "type": "array",
+                "maxItems": 30,
+                "items": _public_query_review_schema(),
+            },
+            "average_review_rating": _nullable_number(),
+            "course_rating_distribution": {
+                "type": "array",
+                "maxItems": 32,
+                "items": distribution_item,
+            },
+            "review_rating_distribution": {
+                "type": "array",
+                "maxItems": 32,
+                "items": distribution_item,
+            },
+            "review_timeline": {
+                "type": "array",
+                "maxItems": 1_000,
+                "items": distribution_item,
+            },
+        },
+        "required": [],
+        "additionalProperties": False,
+    }
+
+
 def _schemas() -> dict[str, tuple[dict[str, object], dict[str, object]]]:
+    public_query_input = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "minLength": 1, "maxLength": 200},
+            "goal": _nullable_string(4_000),
+            "operation": {
+                "type": "string",
+                "enum": ["course", "review", "teacher", "ranking", "stats"],
+                "maxLength": 16,
+            },
+            "limit": {"type": "integer", "minimum": 1, "maximum": 30},
+        },
+        "required": ["query"],
+        "additionalProperties": False,
+    }
+    public_query_output = {
+        "type": "object",
+        "properties": {
+            "schema_version": {"type": "integer", "const": 1},
+            "operation": {
+                "type": "string",
+                "enum": ["course", "review", "teacher", "ranking", "stats"],
+                "maxLength": 16,
+            },
+            "query": {"type": "string", "maxLength": 4_000},
+            "public_only": {"type": "boolean", "const": True},
+            "result": _public_query_result_schema(),
+        },
+        "required": [
+            "schema_version",
+            "operation",
+            "query",
+            "public_only",
+            "result",
+        ],
+        "additionalProperties": False,
+    }
     stats_input = {
         "type": "object",
         "properties": {},
@@ -329,6 +570,7 @@ def _schemas() -> dict[str, tuple[dict[str, object], dict[str, object]]]:
         "additionalProperties": False,
     }
     return {
+        "icourse.public-query.v2": (public_query_input, public_query_output),
         "icourse.stats.read.v1": (stats_input, stats_output),
         "icourse.courses.search.v1": (search_input, search_output),
         "icourse.course.get.v1": (course_input, course_output),
@@ -512,6 +754,27 @@ def _mapping_config(mapping: McpCapabilityMapping) -> dict[str, object]:
 
 def rendered_documents() -> dict[Path, str]:
     metadata = {
+        "icourse.public-query.v2": (
+            "Query public iCourse data",
+            (
+                "Run one bounded public course, review, teacher, ranking or "
+                "statistics query."
+            ),
+            frozenset(
+                {
+                    "course",
+                    "course-review",
+                    "icourse",
+                    "ranking",
+                    "review",
+                    "statistics",
+                    "teacher",
+                }
+            ),
+            2,
+            "icourse_public_query",
+            {},
+        ),
         "icourse.stats.read.v1": (
             "Read iCourse public-cache statistics without exposing storage paths.",
             "Read public iCourse cache counts; never returns local storage paths.",

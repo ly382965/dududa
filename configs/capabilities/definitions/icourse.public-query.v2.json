@@ -1,0 +1,1607 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "icourse.public-query.v2",
+  "category": "campus.course-review",
+  "cost_hint_units": 2,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:dfba8d11e5644a11fc6eae4f7563f83e19c86a9c546866976c7ce83d06a8bdd0",
+  "description": "Run one bounded public course, review, teacher, ranking or statistics query.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.icourse.public-query.v2.input:v1:sha-256:8f8c54c1ea8d2befc67b4602dc06800a81a8bf2fc2e334444c6ec4bdcf9ca8ce",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "maxLength": 4000,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limit": {
+          "maximum": 30,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "operation": {
+          "enum": [
+            "course",
+            "review",
+            "teacher",
+            "ranking",
+            "stats"
+          ],
+          "maxLength": 16,
+          "type": "string"
+        },
+        "query": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.icourse.public-query.v2.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 20,
+    "maximum_ms": 2000
+  },
+  "name": "Query public iCourse data",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.icourse.public-query.v2.output:v1:sha-256:5edb6f8b0ebc0f81df118ff5f172e93c1cf6a3c4c129b80d213f080a4b95f668",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "enum": [
+            "course",
+            "review",
+            "teacher",
+            "ranking",
+            "stats"
+          ],
+          "maxLength": 16,
+          "type": "string"
+        },
+        "public_only": {
+          "const": true,
+          "type": "boolean"
+        },
+        "query": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": false,
+          "properties": {
+            "aggregates": {
+              "additionalProperties": false,
+              "properties": {
+                "average_length": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "average_rating": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "distinct_courses": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total_upvotes": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "distinct_courses",
+                "total_upvotes",
+                "average_rating",
+                "average_length"
+              ],
+              "type": "object"
+            },
+            "average_review_rating": {
+              "minimum": 0,
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "course_rating_distribution": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "bucket": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "month": {
+                    "maxLength": 16,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "count"
+                ],
+                "type": "object"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            "coverage": {
+              "additionalProperties": false,
+              "properties": {
+                "courses": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "courses_with_detail": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "last_detail_crawled_at": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "last_list_crawled_at": {
+                  "maxLength": 64,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "public_reviews": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "courses",
+                "courses_with_detail",
+                "public_reviews",
+                "last_detail_crawled_at",
+                "last_list_crawled_at"
+              ],
+              "type": "object"
+            },
+            "formula": {
+              "additionalProperties": false,
+              "properties": {
+                "global_average": {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "name": {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                "prior_review_count": {
+                  "minimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "name",
+                "global_average",
+                "prior_review_count"
+              ],
+              "type": "object"
+            },
+            "items": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "author_display": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "comment_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "content_length": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_text": {
+                    "maxLength": 20000,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "course_id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "course_level": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "course_teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "course_type": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_url": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "courseries": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "courses": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "difficulty": {
+                          "maxLength": 100,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "gain": {
+                          "maxLength": 100,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "grading": {
+                          "maxLength": 100,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "homework": {
+                          "maxLength": 100,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "name": {
+                          "maxLength": 300,
+                          "type": "string"
+                        },
+                        "rating_average": {
+                          "minimum": 0,
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "review_count_site": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "term_text": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "url": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [],
+                      "type": "object"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "credit": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "departments": {
+                    "items": {
+                      "maxLength": 300,
+                      "type": "string"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "dept": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "is_anonymous": {
+                    "type": "boolean"
+                  },
+                  "join_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "missing_review_count_estimate": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": "string"
+                  },
+                  "normalized_rating": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "publish_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating_10": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "review_count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "review_count_site": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "teacher_id": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "teaching_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "term": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "term_text": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "update_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "upvote_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "visible_review_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            "longest_reviews": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "author_display": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "comment_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "content_length": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_text": {
+                    "maxLength": 20000,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "course_name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "course_teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "course_url": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "is_anonymous": {
+                    "type": "boolean"
+                  },
+                  "publish_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating_10": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "term": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "update_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "upvote_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            "low_courses": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "course_level": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_type": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "courseries": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "credit": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "dept": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "join_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "missing_review_count_estimate": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": "string"
+                  },
+                  "normalized_rating": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "review_count_site": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "teaching_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "term_text": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "visible_review_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            "popular_courses": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "course_level": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_type": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "courseries": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "credit": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "dept": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "join_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "missing_review_count_estimate": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": "string"
+                  },
+                  "normalized_rating": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "review_count_site": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "teaching_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "term_text": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "visible_review_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            "review_rating_distribution": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "bucket": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "month": {
+                    "maxLength": 16,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "count"
+                ],
+                "type": "object"
+              },
+              "maxItems": 32,
+              "type": "array"
+            },
+            "review_timeline": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "bucket": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "count": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "month": {
+                    "maxLength": 16,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "count"
+                ],
+                "type": "object"
+              },
+              "maxItems": 1000,
+              "type": "array"
+            },
+            "source": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "top_courses": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "course_level": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_type": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "courseries": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "credit": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "dept": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "join_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "missing_review_count_estimate": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "maxLength": 300,
+                    "type": "string"
+                  },
+                  "normalized_rating": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "review_count_site": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "teaching_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "term_text": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "visible_review_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            "top_reviews": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "author_display": {
+                    "maxLength": 200,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "comment_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "content_length": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "content_text": {
+                    "maxLength": 20000,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "course_name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_rating_average": {
+                    "minimum": 0,
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "course_teachers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "dept": {
+                          "maxLength": 300,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "minimum": 0,
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 200,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "dept"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "course_url": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "difficulty": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "gain": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grading": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "homework": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "is_anonymous": {
+                    "type": "boolean"
+                  },
+                  "publish_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "rating_10": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "term": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "update_time": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "upvote_count": {
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  }
+                },
+                "required": [],
+                "type": "object"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            "total": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "query",
+        "public_only",
+        "result"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.icourse.public-query.v2.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.icourse",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:9cfe5a3297f08eee13cfe4403150448260b394bcc8ebfb61d93742f181cf303a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "icourse-public-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.icourse.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "course",
+    "course-review",
+    "icourse",
+    "ranking",
+    "review",
+    "statistics",
+    "teacher"
+  ]
+}

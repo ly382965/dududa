@@ -22,6 +22,7 @@ ICOURSE_COMPAT_TOOL_ALLOWLIST = frozenset(
         "search_courses",
         "get_course",
         "get_reviews",
+        "icourse_public_query",
         "search_site_courses",
         "crawl_course",
     }
@@ -175,7 +176,12 @@ class UnavailableICourseClient:
 def _icourse_semantics(
     tool: str, arguments: Mapping[str, object]
 ) -> McpOperationSemantics:
-    if tool in {"icourse_stats", "search_courses", "get_reviews"}:
+    if tool in {
+        "icourse_stats",
+        "icourse_public_query",
+        "search_courses",
+        "get_reviews",
+    }:
         return McpOperationSemantics.READ_ONLY
     if tool == "get_course" and arguments.get("refresh", False) is False:
         return McpOperationSemantics.READ_ONLY

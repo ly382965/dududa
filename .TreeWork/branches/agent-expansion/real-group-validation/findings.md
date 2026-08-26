@@ -4,6 +4,20 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- Complex iCourse questions still consume one Runtime Tool step. The selected
+  high-level `icourse.public-query.v2` operation may perform bounded local
+  joins/aggregation inside the read-only Server, but the Agent does not build
+  an N+1 Tool plan or retry Tool selection. Capability and MCP governance remain
+  outside the model.
+- Anonymous iCourse reviews are public records and must remain visible to
+  public full-text search and local ranking. Excluding `is_anonymous=1` would
+  systematically bias results; anonymity affects displayed identity, not
+  public-read eligibility. Site timestamps use both ISO and `MM/DD/YYYY`, so
+  year filters must handle both forms.
+- Luna Review's boolean fields and some numeric scores were inconsistent in the
+  75-answer run. The durable report therefore uses grounded/completeness/
+  process/call-economy/profile booleans, issue lists and revised answers; it
+  does not present the numeric score as calibrated quality evidence.
 - AstrBot “已安装/已加载插件”与 Dududa “已授权 Capability”是两个独立事实。
   Web 安装成功只更改 AstrBot Runtime，不写入会话 Policy、不创建 Capability
   mapping，也不授予 Agent 调用权。浏览器不接触 AstrBot Key；当前写入信任
@@ -104,9 +118,10 @@ Branch: real-group-validation
   共享 Client 的兼容消费者。Runtime 不得再从旧 facade 反向取得 MCP 基础设施。
 - Production 共享 Client 装配失败时，兼容 facade 必须同步 unavailable；立即重试并
   建立一个仅供旧入口使用的独立 Client 会重新制造第二条 MCP 所有权路径。
-- 控制台可直接调用 17 个 Capability，不等于自然语言 Planner 已支持 17 个。
-  首版只公布唯一必填字段为 `query` 的 `icourse.courses.search.v1`；公布范围必须与
-  Planner 实际投影能力一致。
+- 控制台可直接调用 18 个 Capability，不等于自然语言 Planner 已支持全部 18 个。
+  iCourse 现公布一个 Schema-aware 高层 `icourse.public-query.v2`，只投影
+  `query/goal/operation/limit`；教务、校车和二课仍只有 Web 直调，公布范围必须
+  与 Planner 实际投影能力一致。
 - 可信 Capability failure 目前在 Canary 已 claim 后 no-delivery；旧 handler 和 Web
   search 不得接管。用户可见失败提示应沿 2.0 Composer、Persona、Final Validator
   与授权 Delivery 的唯一输出路径实现。
@@ -145,7 +160,7 @@ Branch: real-group-validation
   `effectiveSelection`、`reasonCodes` 与 `contextUsage`。
 - Catalog 由服务端动态返回六项正交配置、插件和 MCP Capability 事实，并区分源码
   已安装、配置/Compose 已装配、Runtime online 与本轮实际调用。Web MCP 工作台
-  只接受 17 个批准的 Capability ID：iCourse 4 项、教务 6 项、校车 2 项和二课
+  只接受 18 个批准的 Capability ID：iCourse 5 项、教务 6 项、校车 2 项和二课
   5 项；输入控件来自 Capability schema，返回值投影到 Capability output schema，
   不开放任意 MCP Tool。`gpt-image-2` 仍是独立图片能力。自动复读
   和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
@@ -202,10 +217,10 @@ Branch: real-group-validation
   category，模型继续负责意图和实体；这比要求模型以概率方式重复识别显式事实更
   稳定，也没有把 Tool、权限或发送权交给规则。确定性触发必须只作用于当前
   Context 已公布的 category，并继续经过开关、授权、预算、流量与健康检查。
-- “测试集存在”与“测试集经过 Runtime”是两种证据。原 iCourse fixture 只证明
-  75 个 Case 被保存；本轮才形成 75 次真实本地 Unified MCP dispatch。类似地，
-  dispatch 通过仍不等于语义完成：当前 query-only Planner 保守只能表达少量单步
-  课程检索，support manifest 的 `strict_runtime_complete=0/75` 继续有效。
+- “测试集存在”“测试集经过 Runtime”和“公开快照上生成了回答”是三种证据。
+  本轮形成 75 次真实本地 Unified MCP dispatch，并另行完成 75 个公开快照回答；
+  两者都不能自动升级为生产语义完成。五操作 Planner 仍是单步高层查询，缺失的
+  用户/回复/历史数据和 27 个部分结果继续阻止全量完成声明。
 - 真实 Luna 在三个用户回归中精确抽取 `人工智能`、`萌萌哒mmd`、`线性代数B1`；
   75 条中 category 为 74/75。Case 67 是无站点词、无上文的泛化评分比较，对其
   强制 iCourse 会造成普通聊天误调用，所以不扩张确定性关键词范围。

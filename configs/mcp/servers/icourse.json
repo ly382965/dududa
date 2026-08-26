@@ -26,6 +26,7 @@
     "crawl_course",
     "get_course",
     "get_reviews",
+    "icourse_public_query",
     "icourse_stats",
     "search_courses",
     "search_site_courses"

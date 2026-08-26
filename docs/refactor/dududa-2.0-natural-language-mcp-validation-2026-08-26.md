@@ -11,7 +11,7 @@ Dududa 2.0 已完成第一条自然语言 iCourse 纵向切片：
 -> Luna / Haiku PERCEPTION
 -> 确定性资格、权限、预算与单步 Schema Planner
 -> 一等 Unified MCP Client
--> iCourse search_courses Observation
+-> iCourse icourse_public_query Observation
 -> DIRECT_CHAT 总结
 -> Persona / Final Validator
 -> 一次最终输出
@@ -23,9 +23,10 @@ Dududa 2.0 已完成第一条自然语言 iCourse 纵向切片：
 本报告随后补充了完整 75 条案例验证。此前只验证测试文件完整性和“吴天”单例，不能称为
 “已运行全部测试集”；该表述现已纠正。
 
-当前自动规划范围只有 `icourse.courses.search.v1`。教务、校车和二课 MCP 已能由超级管理员
-在控制台按 Capability Schema 直接调用，但尚未拥有适合自然语言自动规划的参数投影器，不能
-写成“Agent 已自动调用四类校园 MCP”。
+当前 iCourse 自动规划已扩展为一个高层只读 Capability：`icourse.public-query.v2`。模型提议
+标准 intent，确定性 Planner 将其投影为 `course/review/teacher/ranking/stats` 五种 operation，
+每条消息仍最多一次 MCP 调用。教务、校车和二课 MCP 已能由超级管理员在控制台按 Capability
+Schema 直接调用，但尚未拥有同等的自然语言参数投影器，不能写成“Agent 已自动调用四类校园 MCP”。
 
 ## 75 条完整验证更新
 
@@ -85,18 +86,48 @@ Case 67 为“A 老师 9.9、B 老师 9.7，所以 A 一定更好吗”。单条
 
 ### 仍然不能宣称完成的部分
 
-当前自动 Planner 仍只会选择 `icourse.courses.search.v1`。因此：
+当前自动 Planner 已能在五种 iCourse operation 中确定性投影，但它仍是单步高层查询：
 
-- 人工智能课程可以用 `query="人工智能"` 做课程检索，但 Topic 扩展、点评聚合和推荐排序
-  仍是部分支持；
-- `萌萌哒mmd` 的路由与实体抽取已修复，但正确操作应是尚未实现的用户/用户点评检索；
-  用 `search_courses` 返回空结果不能算语义成功；
-- 线性代数 B1 可以检索课程与教师列表，但完整推荐仍需多候选详情、点评与比较；
-- 排行榜、用户、点评全文、回复、时间序列和多步综合任务仍缺对应 Capability 或 Planner。
+- 课程、教师、公开点评、官方/本地榜单与站点统计已有统一查询入口；
+- Topic 推荐、用户完整公开点评、多课程比较等复杂任务依赖准备好的缓存覆盖，本轮只有定向
+  公开快照，不能声称全站数据完整；
+- 点评回复正文、点踩、完整用户实体、官方统计图时间序列仍未进入 MCP 数据模型；
+- 多跳综合题由一个高层 Server 查询内部完成有限联表/聚合，Runtime 不会通过多次 Tool 重试
+  堆叠召回率。
 
 完整测试发现测试配置默认 `60 RPM` 时，连续第 31 条会因每个成功请求含两次模型调用而被
 Admission 正确限制。完整矩阵仅在测试 Endpoint 上提高 RPM/TPM，以隔离测量路由；生产流量
 限制没有被修改。
+
+### 高层查询与 75 题回答审校
+
+新增 `icourse.public-query.v2` 后，Planner 支持以下标准 intent：
+
+```text
+icourse.course.search  -> course
+icourse.review.search  -> review
+icourse.teacher.search -> teacher
+icourse.ranking.read   -> ranking
+icourse.stats.read     -> stats
+```
+
+Schema 只投影 `query/goal/operation/limit`，仍只产生一个 Tool Step。旧四个 iCourse Capability
+继续兼容。五种 operation 通过真实 subprocess Provider Contract，新增 Capability 后总数为 18。
+75+3 路由回归记录 78 条入站、78 次 `icourse_public_query`，证明调用经济性；它仍不证明模型已
+逐题正确选择语义 operation。
+
+为回答测试集，本轮另行准备了公开快照：19,194 门课程列表摘要、174 个定向课程详情、4,216
+条公开点评，以及官方排行榜、站点统计、点评全文搜索、公开用户页和最新点评页。随后按题型
+调用 Luna 35 题、Terra 34 题、Sol 6 题，统一使用最低已验证推理强度 `low`；每批由 Luna
+审校一次。结果为 75/75 有最终回答；Luna 的布尔审校为 59 题通过、16 题未通过，并返回
+17 份非空修订建议。最终有 19 题与生成原稿不同，其中 Case 6、50、52、74 又经过人工事实
+校正。成功 Provider 调用 48 次，QQ Output 为 0。
+
+完整中文回答与逐题状态见
+[icourse-75-answers-reviewed-2026-08-26.md](icourse-75-answers-reviewed-2026-08-26.md)。回答状态为
+43 完整、27 部分、5 需要澄清；这是一份公开快照上的离线质量报告，不是生产 Runtime、人工
+Gold 或真实群部署证据。Luna Review 的布尔项与部分数值分不一致，因此报告只采用布尔结论、
+问题清单和修订稿，不使用不可解释的数值分。
 
 ## 2.0 设计归属
 
@@ -203,13 +234,15 @@ Review。Review 只返回 grounded/useful/process_hidden/score/issues，不输�
 1. MCP/Capability 失败会在 Canary 已取得所有权后 fail closed，目前没有经过
    Composer/Persona/Final Validator 的用户可见“服务暂不可用”答复。不能用旧 handler 或网页搜索
    回退掩盖；后续应在 2.0 Runtime 内实现受治理的失败回答。
-2. 当前自然语言 Planner 只支持一个 `query` 单步。教务、校车和二课的多字段、零必填字段、
-   学期消歧与多步查询仍需要新的 Schema Planner Adapter 或正式 `ModelRole.TOOL_PLANNING`。
+2. 当前自然语言 Planner 已支持 iCourse 五种单步高层 operation；教务、校车和二课的多字段、
+   零必填字段、学期消歧与多步查询仍需要新的 Schema Planner Adapter 或正式
+   `ModelRole.TOOL_PLANNING`。
 3. Production Context 仍主要是当前消息，尚未接入受限的近期群聊情境投影。
 4. 运行中的 AstrBot 尚未正式注册 Luna/Terra/Sol，也没有真实 Provider Conformance、持续健康、
    候选部署或获授权单群 Shadow 证据。
-5. 真实中文群聊风格、复杂问题 AnswerProfile、75 案例完整度和跨课程聚合仍需要人工 Gold 与
-   后续有代表性的质量测试。
+5. 75 题已有公开快照回答和 Luna 审校，但真实中文群聊风格、完整用户/回复/历史数据、复杂
+   跨课程聚合准确率仍需要人工 Gold 与后续有代表性的质量测试。
 
-因此，本轮可以声明“2.0 自然语言 iCourse 单步成功路径已闭环并有真实模型质量抽样”，不能声明
-“Dududa 2.0 全部校园 MCP 自动调用、失败体验、复杂评课能力或真实群部署已完成”。
+因此，本轮可以声明“2.0 自然语言 iCourse 五操作单步路径与 75 题公开快照回答已完成离线
+验证”，不能声明“Dududa 2.0 全部校园 MCP 自动调用、75 题生产语义全通过、失败体验、完整
+评课数据或真实群部署已完成”。

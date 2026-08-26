@@ -573,7 +573,10 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             "数量词"
             "和“相关的/有关的/课程/老师”等泛化修饰。例如“推荐几门人工智能有关的课程”"
             "提取“人工智能”，“推荐几个线性代数B1老师”提取“线性代数B1”，用户昵称"
-            "“萌萌哒mmd”保持原样。"
+            "“萌萌哒mmd”保持原样。对 campus.course-review，intent_id 必须使用"
+            " icourse.course.search、icourse.review.search、icourse.teacher.search、"
+            "icourse.ranking.read、icourse.stats.read 之一，分别表示课程、点评、教师、"
+            "排行榜和站点统计；确认属于评课社区但无法细分时使用 icourse.course.search。"
         ),
         "structured_output_instruction": "只返回符合下列 JSON Schema 的 JSON 对象。",
         "repair_instruction": None,
@@ -584,7 +587,7 @@ def _perception_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-perception-prompt",
             "1.0.0",
-            "production-v2",
+            "production-v3",
             astrbot_prompt_artifact_digest(**values),
         ),
     )

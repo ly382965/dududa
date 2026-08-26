@@ -12,13 +12,19 @@
 - Dududa 1.0 只保留为 `off/shadow` 下的兼容入口和回滚面，不是 2.0 的设计依据或完成证据；
   Canary 只在既有持久 claim 后取得单一发送所有权。真实 QQ 群运行仍须闭合 S23 环境适配并
   取得逐行为授权。
-- S23 分支已闭合第一条 Dududa 2.0 自然语言 iCourse 成功纵切：Luna/Haiku Hybrid
-  Perception 提议 category/entity，确定性代码完成资格、授权、预算和单步 Schema Planner，
-  一等 Unified MCP 调用 `icourse/search_courses({"query":"吴天"})`，Observation 再经
+- S23 分支已闭合 Dududa 2.0 自然语言 iCourse 五操作纵切：Luna/Haiku Hybrid
+  Perception 提议 category/entity/标准 intent，确定性代码完成资格、授权、预算和单步 Schema
+  Planner，一等 Unified MCP 调用 `icourse/icourse_public_query`，operation 可为
+  `course/review/teacher/ranking/stats`，Observation 再经
   DirectChat、Persona、Final Validator 形成一次最终 Delivery。该证据不经过 `/course`、旧
   `natural_course_query` 或 Web search；运行中部署、真实 Endpoint Conformance 和真实群证据
   仍未完成。Tool 计划最多尝试一次；无显式详略要求时默认 LONG，实际多段群聊 LONG 只发送
   一条 QQ 合并转发，SHORT/MEDIUM 与单段 LONG 仍为普通消息。
+- 2026-08-26 又完成 75 个 iCourse 测试问题的公开快照回答与审校：全站列表摘要 19,194 门，
+  定向详情 174 个、公开点评 4,216 条；Luna/Terra/Sol 分别生成 35/34/6 题，均使用 `low`，
+  每批由 Luna 审校一次。75/75 有最终回答，43 完整、27 部分、5 需要澄清，完整文档为
+  `docs/refactor/icourse-75-answers-reviewed-2026-08-26.md`。该结果是离线公开快照，不是生产
+  Runtime、人工 Gold、真实群或完整 iCourse 数据证明。
 - 2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 完成 Responses 与
   AstrBot 所用 Chat Completions 的最小真实请求抽样，均返回 HTTP 200、模型 ID 匹配和 usage；
   又使用无 QQ Connector/Output 的独立 runner 对三模型各调用一次，均成功且
@@ -85,7 +91,7 @@
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
 | S12 Unified MCP | 已完成（基础设施与四个只读查询 Server） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker 和共享 Contract；iCourse、二课、教务与校车独立注册，iCourse facade 只借用共享 Client | 校园资讯/arXiv/行业 Source 仍不存在；新 Server 仍需独立 Capability mapping，运行中 Agent 部署未完成 |
-| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、四个 Server 的 17 个只读映射与 Web 直调已完成；2.0 Runtime 已闭环 iCourse `query` 单步 | 教务、校车、二课的多字段/零必填字段 Planner、可信失败用户答复、真实部署与高风险/写能力未完成 |
+| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、四个 Server 的 18 个只读映射与 Web 直调已完成；2.0 Runtime 已闭环 iCourse `course/review/teacher/ranking/stats` 单步高层查询 | 教务、校车、二课的多字段/零必填字段 Planner、可信失败用户答复、完整用户/回复/历史数据、真实部署与高风险/写能力未完成 |
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 | S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
 | S15A Proactive Contracts | 已完成（离线） | initiated-run/Target/Grant/Trigger/Subscription/Preview/Dispatch/Receipt v1 契约、当前 Actor 解析、默认拒绝策略、global/Scope quota、metadata-only Preview、稳定幂等、crash recovery、双 Python 590 项全仓测试 | 持久 Scheduler、真实来源、模型合成、生产 Registry/Output、QQ 发送和真实群证据 |
@@ -110,7 +116,7 @@
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **暂停、部分完成；离线 Demo、2.0 iCourse 纵切与候选模型工程已完成** | 历史语料 Demo、配置驱动 Builder、固定 AstrBot 4.26.2 隔离候选、三模型 Provider-level no-send、默认关闭健康刷新器，以及自然语言 -> Hybrid Perception -> 单步 Planner -> Unified MCP -> DirectChat -> 单次 Delivery 的本地 iCourse 成功路径均有聚焦证据；三模型在同一 Observation 上的 Luna Review 均通过 | 先补 2.0 Capability 可信失败答复与其他校园 Schema Planner；再在运行 AstrBot 正式注册三模型、完成 Conformance/部署/持续健康和真实单群 no-send Shadow。实时 Canary、来源和发送继续关闭 |
+| S23 Real Group Validation | **暂停、部分完成；离线 Demo、2.0 iCourse 纵切与候选模型工程已完成** | 历史语料 Demo、配置驱动 Builder、固定 AstrBot 4.26.2 隔离候选、三模型 Provider-level no-send、默认关闭健康刷新器、iCourse 五操作单步 Capability，以及 75/75 公开快照回答/Luna 审校均有证据 | 先补 2.0 Capability 可信失败答复、完整 iCourse 用户/回复/统计历史数据与其他校园 Schema Planner；再在运行 AstrBot 正式注册三模型、完成 Conformance/部署/持续健康和真实单群 no-send Shadow。实时 Canary、来源和发送继续关闭 |
 
 ## 产品模块完成度
 
@@ -123,7 +129,7 @@
 | 插件拆分 | 部分完成 | 源码拆分与 priority-100 rollout handler 已验证；旧 Handler 仅按回滚/兼容设计保留，不作为 2.0 Runtime 证据 |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 Composer/Renderer 与 S23 Hybrid Perception -> Static Router -> Capability/DirectChat 纵切已实现；Perception 固定走 Luna/Haiku，模型只提议 category/entity，确定性代码拥有资格、Plan 和执行；三模型同 Observation 的 low 推理回答均经 Luna Review 通过 | 运行中的 AstrBot 尚未正式注册三模型；真实 Conformance、部署启用、人工 Gold、近期群聊 Context、完整 Persona 资产和多轮/附件语义仍待完成 |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
-| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、独立 worker、四个真实只读查询 Server、17 个 Capability 和 Web Schema 直调已完成；iCourse facade 只借用共享 Client，2.0 Runtime 已证明自然语言 `query` 单步自动调用 | 教务/校车/二课 Schema Planner、可信失败用户答复、运行中 Tool Rollout 和实时校园/arXiv/行业 Source 未完成 |
+| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、独立 worker、四个真实只读查询 Server、18 个 Capability 和 Web Schema 直调已完成；iCourse facade 只借用共享 Client，2.0 Runtime 已证明自然语言 `icourse.public-query.v2` 五类单步高层查询 | 教务/校车/二课 Schema Planner、可信失败用户答复、运行中 Tool Rollout 和实时校园/arXiv/行业 Source 未完成 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
