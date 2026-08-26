@@ -4,11 +4,10 @@ from astrbot.core.star.filter.command import GreedyStr
 
 from .commands.admin import CoreAdminCommands
 from .commands.basic import CoreBasicCommands
-from .commands.compatibility import CoreCompatibilityCommands
 from .commands.course import CoreCourseCommands
 from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F401
 from .commands.memory import CoreMemoryCommands
-from .composition import initialize_plugin
+from .composition import activate_runtime_after_host_start, initialize_plugin
 from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
 
 
@@ -24,7 +23,6 @@ class DududaCorePlugin(
     CoreBasicCommands,
     CoreMemoryCommands,
     CoreAdminCommands,
-    CoreCompatibilityCommands,
     CoreImageCommands,
     Star,
 ):
@@ -32,16 +30,15 @@ class DududaCorePlugin(
         super().__init__(context)
         initialize_plugin(self, config)
 
+    @filter.on_astrbot_loaded()
+    async def activate_runtime(self):
+        """Assemble Dududa 2.0 after AstrBot Providers are available."""
+        await activate_runtime_after_host_start(self)
+
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=100)
     async def controlled_rollout(self, event: AstrMessageEvent):
         """受控执行显式提及的 shadow/canary。"""
         await self._handle_controlled_rollout(event)
-
-    @filter.event_message_type(filter.EventMessageType.ALL, priority=8)
-    async def natural_course_query(self, event: AstrMessageEvent):
-        """把明确的自然语言评课请求路由到 icourse MCP。"""
-        async for result in CoreCourseCommands.natural_course_query(self, event):
-            yield result
 
     @filter.command("help")
     async def help(self, event: AstrMessageEvent, module: str | None=None):
@@ -232,56 +229,8 @@ class DududaCorePlugin(
         async for result in CoreAdminCommands.cancel(self, event, token):
             yield result
 
-    @filter.command("remind")
-    async def remind(self, event: AstrMessageEvent, text: GreedyStr):
-        """提醒入口"""
-        async for result in CoreCompatibilityCommands.remind(self, event, text):
-            yield result
-
-    @filter.command("reminders")
-    async def reminders(self, event: AstrMessageEvent):
-        """查看提醒入口"""
-        async for result in CoreCompatibilityCommands.reminders(self, event):
-            yield result
-
-    @filter.command("summary")
-    async def summary(self, event: AstrMessageEvent, scope: str | None=None):
-        """群聊总结入口"""
-        async for result in CoreCompatibilityCommands.summary(self, event, scope):
-            yield result
-
-    @filter.command("meme")
-    async def meme(self, event: AstrMessageEvent, keyword: str | None=None):
-        """表情包入口"""
-        async for result in CoreCompatibilityCommands.meme(self, event, keyword):
-            yield result
-
     @filter.command("image")
     async def image(self, event: AstrMessageEvent, prompt: GreedyStr):
         """生成图片"""
         async for result in CoreImageCommands.image(self, event, prompt):
-            yield result
-
-    @filter.command("fortune")
-    async def fortune(self, event: AstrMessageEvent):
-        """今日运势"""
-        async for result in CoreCompatibilityCommands.fortune(self, event):
-            yield result
-
-    @filter.command("draw")
-    async def draw(self, event: AstrMessageEvent, topic: GreedyStr):
-        """抽签"""
-        async for result in CoreCompatibilityCommands.draw(self, event, topic):
-            yield result
-
-    @filter.command("poke")
-    async def poke(self, event: AstrMessageEvent):
-        """戳一戳入口"""
-        async for result in CoreCompatibilityCommands.poke(self, event):
-            yield result
-
-    @filter.command("reread")
-    async def reread(self, event: AstrMessageEvent):
-        """复读入口"""
-        async for result in CoreCompatibilityCommands.reread(self, event):
             yield result

@@ -243,11 +243,11 @@ export interface InternalTestAgentStatus {
   modelMapping: Record<InternalTestTier, string>
   runtimeControls: {
     passiveAutoReply: {
-      actualEnabled: false
-      state: 'disabled'
-      rolloutMode: 'off'
-      deliveryEnabled: false
-      killSwitch: true
+      actualEnabled: boolean
+      state: 'enabled' | 'disabled'
+      rolloutMode: 'off' | 'shadow' | 'canary'
+      deliveryEnabled: boolean
+      killSwitch: boolean
       summary: string
     }
     proactiveGroupParticipation: {

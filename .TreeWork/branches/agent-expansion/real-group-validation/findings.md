@@ -4,6 +4,17 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 运行切换后的 Agent 所有权只有一份：`dududa-astrbot-1` 中的 Dududa 2.0 Core。Canary 是
+  2.0 内部的持久 claim/Delivery 模式，不是与 1.0 并行；不受支持的私聊、附件和未 @ 群消息
+  静默结束，不能再回退旧 Agent。
+- Sub2API v0.6.4 与 Reread v2.0.0 是明确保留的 2.0 AstrBot 宿主能力。它们可以与 Core
+  共用一个宿主，但“插件已加载”仍不等于“Agent 获得 Capability/Planner 权限”，也不构成
+  旧 1.0 服务继续运行。
+- Web readiness 必须同时读取 Core 配置和 `runtime-status.json`：当前
+  `actualEnabled=true / canary / deliveryEnabled=true / killSwitch=false` 与 Core `ready=true`
+  一致。QQ 连接健康来自独立的 1/1 NapCat 在线状态；NapCat 在本次切换中未重启。
+- 模型健康探测不需要 45 秒高频请求。当前 900 秒间隔配合 1800 秒 Evidence TTL，仍允许一次
+  漏刷后保持有界健康窗口，同时显著降低三模型持续探测消耗。
 - MCP 链的用户价值由现有 `DIRECT_CHAT` 模型完成，不由 URL formatter 完成。
   Observation 是证据，不是回复；最终回答必须先归纳原文内容，链接只作次要引用。
   这复用 Perception 后既有的第二次模型调用，不再增加一次总结调用或另一条发送路径。
@@ -30,8 +41,8 @@ Branch: real-group-validation
   可确定时回滚该目录并允许显式忽略版本检查重试，结果不唯一时不删除任何插件。
 - `/sub2api overview` 的功能基线是本机可核验的原插件 v0.6.2，而不是仓库中较旧
   的 v0.5.1 Git 基线。原版已经拥有当前计费轮快照、精确起点分页聚合、历史排名、
-  上游账号、缓存与错误处理；本轮不重新设计这些逻辑。由于 2.0 ReplyPolish 默认
-  关闭且只处理合法 LONG 回答，显式管理员命令 `overview` 在自身输出边界直接构造
+  上游账号、缓存与错误处理；本轮不重新设计这些逻辑。由于 ReplyPolish 已退出 2.0
+  运行面，显式管理员命令 `overview` 在自身输出边界直接构造
   四节点合并转发，避免依赖普通回答风格链。
 - 旧 Compose 项目名不能直接等同于 Dududa 1.0：旧 AstrBot 容器已经不存在，
   但同一项目名下的 NapCat 正被 Dududa 2.0 复用为唯一 QQ Connector。版本切换
@@ -85,11 +96,9 @@ Branch: real-group-validation
   MEDIUM 与单段 LONG 都是普通消息；只有独立校验通过的 LONG，同时满足
   群聊、至少两个纯文本 part、无附件时才可合并转发。定向目标继续保留在
   Runtime 契约中，但合并转发不额外发送 `@` 组件。
-- Dududa 1.0 自动社交行为不再整体继承：Meme Manager、PokePro 从默认插件集合
-  退出，Target Talk 从默认 Compose 退出，ReplyPolish 仅作为默认关闭的
-  LONG-only 兼容层保留。自动复读则恢复为独立、默认关闭、受 Scope Policy
-  管理的 AstrBot 插件；显式 `/image` 是图片生成能力，不是自动表情包，应继续
-  保留。
+- Dududa 1.0 自动社交行为不再整体继承：Meme Manager、PokePro、Target Talk、ReplyPolish
+  与旧 Handler 均退出运行面。Reread 作为独立 2.0 宿主能力保留；显式 `/image` 是图片生成
+  能力，不是自动表情包。
 - 操作员显式生成一条真实 Provider 候选，只证明 Web Gateway 的 `no_send`
   纵切可用。该请求没有经过 AstrBot Provider、Dududa Runtime、Connector 或
   Rollout Bridge，不能称为 AstrBot Runtime Shadow、Provider Conformance
@@ -133,8 +142,8 @@ Branch: real-group-validation
 - 仓库外 Evidence 文件是环境 Adapter，不是新的控制面：AstrBot Context
   resolver 保持优先，文件只作为缺失或返回 `None` 时的 fallback。
 - 生产装配复用既有 `BoundedModelHealthPublisher`，不新增第二套健康状态机。
-  插件现已内置默认关闭的周期刷新器，默认间隔/超时/TTL 为 45/15/90 秒；
-  固定模型探测使用 `max_tokens=8`、`request_max_retries=0`，成功发布
+  插件内置的周期刷新器已在当前部署启用，运行间隔/超时/TTL 为 900/15/1800 秒；
+  固定模型探测使用短输出，成功发布
   `HEALTHY`，失败、超时或 TTL 到期发布/保持 `UNKNOWN`，terminate 时取消任务。
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
@@ -172,19 +181,18 @@ Branch: real-group-validation
   路径中接入精确 Scope Policy，在线实例已加载它并接收 NapCat OneBot 事件；
   自动复读仍未消费 Web Policy。校园资讯、arXiv、行业和搜索来源继续显示不可用，
   不把查询型校园 MCP、fixture 或接口预留冒充主动资讯插件。
-- Agent 状态接口把 Policy 期望与实际行为分开：被动自动回复为关闭状态，
-  `rollout_mode=off`、delivery disabled、kill switch active；主动参与仅为
-  `probe_shadow`，并明确 `NO SEND`。候选保持 `outputCalls=0`、
-  `memoryWrites=0` 和 `toolCalls=0`。
+- Agent 状态接口把 Policy 期望与实际行为分开：当前受支持的被动入站为
+  `rollout_mode=canary`、delivery enabled、kill switch inactive；主动参与仍仅为
+  `probe_shadow/NO SEND`。历史评测候选继续保持 `outputCalls=0`、`memoryWrites=0` 和
+  `toolCalls=0`，不能用它覆盖实时 Runtime 状态。
 - Runtime 的 `DeliveryRequestBuilder` 只为合法、已验证的 LONG 授予
   `allow_forward_bundle`；AstrBot Output Adapter 再独立校验档位有效性、群聊、
   多纯文本 part 和无附件；定向目标保留在 Runtime 契约中，转发呈现不另发 `@`。
 - Persona 解析不再受 `response_profiles` feature flag 支配；DirectChat 在
   同一个模型请求中携带可选 `response_plan` 与 `persona_style`，让表达风格与
   回答形态共同生成，而不是由后处理机械拼接人格。
-- 默认 Compose/插件锁不再接入 Meme Manager、PokePro 或 Target Talk；自动复读
-  已重新以只读 Compose mount 装配，并保持全局开关默认关闭。新群初始化不再生成
-  `meme_rate`，管理命令不再写入它。ReplyPolish 仍以默认关闭的兼容插件存在，
+- 当前 Compose/插件运行根只装配 Core、Reread 与 Sub2API，不再接入 ReplyPolish、Meme
+  Manager、PokePro 或 Target Talk。新群初始化不再生成 `meme_rate`，管理命令不再写入它；
   `/image` 命令仍由 Core 显式提供。
 - The planned readiness artifact contains references/digests only. Real account,
   group and test-user mappings remain in a private local binding store.
@@ -212,9 +220,9 @@ Branch: real-group-validation
   Responses API 调用，并只持久化模型/档位、成功标志、延迟、usage、
   `provider_calls=1` 与 `output_calls=0`。收据不包含 Key、Base URL、Prompt、
   回答、QQ 标识或 Provider 错误正文；失败样本使用注入故障验证脱敏。
-- 插件配置新增默认关闭的 `runtime_health_probe_enabled` 及刷新间隔、探测超时、
-  Evidence TTL 参数。刷新任务随插件生命周期启动/取消，不改变 Capability、
-  Rollout 或 Output 所有权。
+- 插件配置提供 `runtime_health_probe_enabled` 及刷新间隔、探测超时、Evidence TTL 参数。
+  当前部署显式启用并使用 900/15/1800 秒；刷新任务随插件生命周期启动/取消，不改变
+  Capability、Rollout 或 Output 所有权。
 
 - 对具有明确产品语义的站点 marker，Rule Perception 应确定性提出 Capability
   category，模型继续负责意图和实体；这比要求模型以概率方式重复识别显式事实更
@@ -236,40 +244,30 @@ Branch: real-group-validation
 - Silver is heavily imbalanced: 447/464 rows say no Tool, only 4/464 are high
   complexity, and no LONG AnswerProfile survived compilation. A balanced human
   Gold set is required before threshold calibration or production integration.
-- The running AstrBot/NapCat stack is not the S19 derived candidate and has not
-  been authorized for replacement. S23 needs an explicit deployment window and
-  a rollback owner before mutation.
+- 2.0 AstrBot 已完成运行替换，NapCat 保持原实例。当前残余风险是缺少用户触发的真实 QQ
+  端到端回复 Receipt，而不是候选尚未部署。
 - 512 条 SSE 重放是断线恢复窗口而非持久日志；服务进程重启或客户端落后超过
   窗口时只能刷新 Snapshot/History。当前修复减少可观察丢失，不构成跨进程
   exactly-once 保证。
 - Persona 接线只证明配置、channel rule 和回答档位进入生成链路；真实中文群聊
   的自然度、群体情境适应和长短回答边界仍需人工内测反馈，不能声明已充分校准。
-- Agent Console 的动态 Catalog、Policy 持久化和有效选择解释只证明超级工作台
-  纵切闭合；六项配置中的回复强度也不能替代真实发送授权。自动复读和
-  `/sub2api 自动查询` 的 `triggerMatched` 只表达确定性触发条件适用，当前仍为
-  `selectedForRun=false`、`toolCalls=0`；已安装/已配置不等于 Runtime online，
-  且 no-send Gateway 不等于生产 AstrBot Runtime 或真实群权限。
+- Agent Console 的动态 Catalog、Policy 持久化和有效选择解释不替代 Runtime 证据。当前 Web
+  已能从 Core config/status 证明受支持入站实际开启；Reread/Sub2API 的在线加载仍只说明宿主
+  能力存在，不能从 `triggerMatched` 或安装状态推导一次实际插件调用。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。
-- 仓库默认 AstrBot 插件隔离仍只装配 Dududa Core、ReplyPolish、自动复读和
-  Sub2API，没有恢复 Meme Manager、PokePro 或 Target Talk。校园 MCP 由独立
-  `mcp-console` 运行并已供 Web 超级管理员只读调用；当前 AstrBot/NapCat 未因该
-  接入重启，因此不能把 Web 调用证据外推为 Agent 自动 Tool 选择或主动发送。
+- 当前唯一 AstrBot 宿主只加载 Dududa Core、Sub2API v0.6.4、Reread v2.0.0 和 AstrBot
+  内建插件；ReplyPolish、Meme Manager、PokePro、Target Talk 与旧 Handler 均已退出运行面。
+  校园 MCP 由独立 `mcp-console` 提供，Web 调用证据仍不能外推为 Agent 自动 Tool 选择或主动发送。
 - Runtime MCP 接入现在能保存连接定义并发现 Tool，但 Discovery 只更新外部事实。
   新 Server 默认有零项 Capability；要让 Agent 使用，仍需主仓独立的 Definition、
   Schema、MCP mapping 和 Scope Policy。当前 Web 信任边界仍是本机回环地址加
   同源管理页面，不能据此声明已经具备远程管理员认证。
-- 可解析的 Evidence JSON 只证明工程契约成立，不证明字段来自真实
-  Conformance 执行。当前聚焦测试仍使用 Fake AstrBot Provider 和固定
-  Evidence fixture；健康刷新实现已经存在，但运行中 AstrBot 未启用，正式
-  Conformance、持续生产健康、部署绑定和实际 Shadow 均未证明。
-- 默认关闭的刷新器只有在正式部署配置启用后才会周期探测；在此之前没有生产
-  健康证据。即使曾发布 `HEALTHY`，TTL 内没有成功刷新时 Router 仍会恢复
-  `UNKNOWN`。
-- 当前运行中的 AstrBot 只注册 DeepSeek V4 Pro/Flash 和 GPT-5.5，尚未切换到
-  已打补丁的候选镜像，也未注册 Luna/Terra/Sol。候选样板的 light/balanced/deep
-  是待 Conformance 的 pilot 初值；真实请求只抽样验证过 `low`，不能据此声称
-  medium/high/xhigh 或持续观测已经通过。
+- Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用，Core status 也为 ready；
+  但单次成功仍不证明长期可用性或质量。刷新器按 900 秒运行，TTL 内没有成功刷新时 Router
+  仍会恢复 `UNKNOWN`。
+- 三档当前都固定为最低 `light/low`。没有证据支持 medium/high/xhigh 的运行质量，也没有
+  实现同一 Endpoint 的逐请求动态思考深度切换。
 - 注入的 no-send 失败样本只证明收据脱敏和零 Output 行为，不代表真实 Endpoint
   曾发生故障，也不能替代正式故障注入或生产错误率观测。

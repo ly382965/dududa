@@ -213,11 +213,11 @@ export interface InternalTestAgentStatus {
   modelMapping: Record<ModelTier, string>
   runtimeControls: {
     passiveAutoReply: {
-      actualEnabled: false
-      state: 'disabled'
-      rolloutMode: 'off'
-      deliveryEnabled: false
-      killSwitch: true
+      actualEnabled: boolean
+      state: 'enabled' | 'disabled'
+      rolloutMode: 'off' | 'shadow' | 'canary'
+      deliveryEnabled: boolean
+      killSwitch: boolean
       summary: string
     }
     proactiveGroupParticipation: {
@@ -299,6 +299,8 @@ export interface FileInternalTestGatewayOptions {
   policyPath?: string
   codexConfigPath?: string
   authPath?: string
+  runtimeConfigPath?: string
+  runtimeStatusPath?: string
   providerName?: string
   providerBaseUrl?: string
   providerApiKey?: string
@@ -715,15 +717,35 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
   ]
 }
 
-function currentAgentRuntimeControls(): InternalTestAgentStatus['runtimeControls'] {
+function currentAgentRuntimeControls(
+  config: Record<string, unknown> = {},
+  runtimeReady?: boolean,
+): InternalTestAgentStatus['runtimeControls'] {
+  const requestedMode = stringValue(config.rollout_mode)?.toLowerCase()
+  const rolloutMode = requestedMode === 'shadow' || requestedMode === 'canary' ? requestedMode : 'off'
+  const deliveryEnabled = config.rollout_delivery_enabled === true
+  const killSwitch = config.rollout_kill_switch !== false
+  const runtimeEnabled = config.runtime_enabled === true
+  const configuredEnabled = runtimeEnabled && rolloutMode === 'canary' && deliveryEnabled && !killSwitch
+  const actualEnabled = configuredEnabled && runtimeReady !== false
+  const configuredGroups = Array.isArray(config.rollout_allowlisted_groups)
+    ? config.rollout_allowlisted_groups
+    : []
+  const allGroups = configuredGroups.includes('*')
   return {
     passiveAutoReply: {
-      actualEnabled: false,
-      state: 'disabled',
-      rolloutMode: 'off',
-      deliveryEnabled: false,
-      killSwitch: true,
-      summary: '被动自动回复当前实际关闭：rollout_mode=off，交付关闭，kill switch 开启。',
+      actualEnabled,
+      state: actualEnabled ? 'enabled' : 'disabled',
+      rolloutMode,
+      deliveryEnabled,
+      killSwitch,
+      summary: actualEnabled
+        ? allGroups
+          ? 'Dududa 2.0 已接管所有群内明确 @Bot 的受支持文本；旧 AstrBot Agent 不再回退接管。'
+          : 'Dududa 2.0 已接管白名单群内明确 @Bot 的受支持文本；旧 AstrBot Agent 不再回退接管。'
+        : configuredEnabled && runtimeReady === false
+          ? 'Dududa 2.0 配置已开启，但 Runtime Assembly 尚未就绪。'
+          : `Dududa 2.0 当前未交付：rollout=${rolloutMode}，delivery=${deliveryEnabled}，kill_switch=${killSwitch}。`,
     },
     proactiveGroupParticipation: {
       actualEnabled: false,
@@ -767,7 +789,7 @@ function buildAgentCatalog(
     replyIntensities: [...REPLY_INTENSITIES],
     contextLengths: CONTEXT_LENGTHS.map((id) => ({ id, ...CONTEXT_BUDGETS[id] })),
     groupChatStyles: [...GROUP_CHAT_STYLES],
-    replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
+    replyIntensityNotice: '候选决策初值；真实消息是否发送由 Dududa Runtime 的入站授权与 Rollout 状态决定。',
     plugins: catalogPlugins(),
     policyDefaults: defaultPolicyDefaults(),
   }
@@ -1112,6 +1134,8 @@ export class FileInternalTestGateway implements InternalTestGateway {
   private readonly policyPath: string
   private readonly codexConfigPath: string
   private readonly authPath: string
+  private readonly runtimeConfigPath?: string
+  private readonly runtimeStatusPath?: string
   private readonly fetchImpl: typeof fetch
   private readonly now: () => Date
   private readonly models: Record<ModelTier, string>
@@ -1135,6 +1159,8 @@ export class FileInternalTestGateway implements InternalTestGateway {
     this.policyPath = policyPath
     this.codexConfigPath = resolve(options.codexConfigPath ?? resolve(homedir(), '.codex/config.toml'))
     this.authPath = resolve(options.authPath ?? resolve(homedir(), '.codex/auth.json'))
+    this.runtimeConfigPath = stringValue(options.runtimeConfigPath)
+    this.runtimeStatusPath = stringValue(options.runtimeStatusPath)
     this.fetchImpl = options.fetchImpl ?? fetch
     this.now = options.now ?? (() => new Date())
     this.models = {
@@ -1395,15 +1421,40 @@ export class FileInternalTestGateway implements InternalTestGateway {
     } catch {
       providerConfigured = false
     }
+    let runtimeReady: boolean | undefined
+    if (this.runtimeStatusPath) {
+      try {
+        const statusText = await readFile(this.runtimeStatusPath, 'utf8')
+        const status = objectValue(JSON.parse(statusText.replace(/^\uFEFF/, '')))
+        runtimeReady = status?.ready === true
+      } catch {
+        runtimeReady = false
+      }
+    }
+    let runtimeControls = currentAgentRuntimeControls({}, runtimeReady)
+    if (this.runtimeConfigPath) {
+      try {
+        const text = await readFile(this.runtimeConfigPath, 'utf8')
+        runtimeControls = currentAgentRuntimeControls(
+          objectValue(JSON.parse(text.replace(/^\uFEFF/, ''))) ?? {},
+          runtimeReady,
+        )
+      } catch {
+        runtimeControls = currentAgentRuntimeControls({}, runtimeReady)
+      }
+    }
     return {
       available: providerConfigured,
       providerConfigured,
       outputEnabled: false,
       modelMapping: { ...this.models },
-      runtimeControls: currentAgentRuntimeControls(),
+      runtimeControls,
       warnings: [
         'INTERNAL TEST RUNTIME',
-        'NO SEND',
+        runtimeControls.passiveAutoReply.actualEnabled
+          ? 'DUDUDA 2.0 PASSIVE RUNTIME ACTIVE'
+          : 'NO PASSIVE RUNTIME DELIVERY',
+        'CONTROL-PLANE CANDIDATE NO SEND',
         'NO MEMORY WRITE',
         'NO TOOL CALL',
         'NO BANDIT',
@@ -1654,6 +1705,8 @@ export function createInternalTestGateway(environment: NodeJS.ProcessEnv = proce
     providerTimeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : undefined,
     codexConfigPath: environment.DUDUDA_INTERNAL_TEST_CODEX_CONFIG,
     authPath: environment.DUDUDA_INTERNAL_TEST_AUTH_FILE,
+    runtimeConfigPath: environment.DUDUDA_ASTRBOT_RUNTIME_CONFIG,
+    runtimeStatusPath: environment.DUDUDA_ASTRBOT_RUNTIME_STATUS,
     models,
   })
 }

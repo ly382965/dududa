@@ -4,6 +4,32 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-26 运行切换核验：旧 `mmdustc-bot-astrbot-qq` Compose 已无 AstrBot 容器，当前唯一
+  Agent 宿主为 `dududa-astrbot-1`。启动日志只加载 Dududa Core、
+  `astrbot_plugin_sub2api_readonly v0.6.4`、`astrbot_plugin_reread v2.0.0` 与 AstrBot 内建插件；
+  ReplyPolish 和其他 1.0 插件未加载。Sub2API/Reread 是保留的 2.0 宿主能力，不是第二个
+  Agent Runtime。
+- 运行配置核验：`runtime_enabled=true`、`rollout_mode=canary`、
+  `rollout_allowlisted_groups=["*"]`、delivery 开启、kill switch 关闭、Tool 开启、Memory 关闭。
+  当前 Handler 只接管群内明确 @Bot、纯文本、无附件消息；私聊、附件与未 @ 消息无 1.0 fallback，
+  主动参与仍为 Probe Shadow/NO SEND。
+- Readiness 核验：Core `runtime-status.json` 返回 `ready=true/state=ready/reason=runtime_ready`；
+  `GET /api/internal-test/agent/status` 返回被动入站
+  `actualEnabled=true / rolloutMode=canary / deliveryEnabled=true / killSwitch=false`，并明确显示
+  “所有群内明确 @Bot”的接管摘要。`GET /api/health` 返回 connected、1/1 个 QQ 账号在线且
+  NapCat 连接正常。
+- 容器边界：`dududa-astrbot-1` 在 2026-08-26 切换时重建；现有 NapCat 的 StartedAt 仍为
+  2026-08-23，切换中未重启，继续作为唯一 QQ Connector。旧 1.0 AstrBot 私有配置/数据已备份。
+- Provider/健康核验：Luna/Terra/Sol 已在运行 AstrBot 注册，旧 GPT-5.5 与 DeepSeek Provider
+  禁用；三模型分别完成一次真实 AstrBot Chat Provider 调用，均成功，三档均使用最低
+  `light/low`。运行配置的模型探测间隔/超时/TTL 为 `900/15/1800` 秒，取代此前 45/15/90 秒
+  的高频候选值。
+- 聚焦回归：Provider/Compose 21 项、Repository/候选配置 15 项、AstrBot Model Adapter 19 项、
+  Web Server 6 项均通过；Web TypeScript typecheck 与 production build 通过。
+- 证据边界：这些结果证明 1.0 已退出、2.0 唯一所有权、真实 Provider 可调用、Core/Web
+  readiness 与 NapCat 连接；尚未由用户发送一条明确 @ 消息来证明真实 QQ Delivery、MCP 与
+  LONG 合并转发。私聊、附件、未 @ 主动参与、日报/Probe、Memory 与在线 Bandit 均未启用。
+
 - MCP answer synthesis style: the focused Dududa 2.0 natural-language iCourse
   vertical test passed (one test in 5.613 seconds). The trace retained exactly
   two model calls, `PERCEPTION` followed by `DIRECT_CHAT`, and one MCP call. The
@@ -256,9 +282,9 @@ Branch: real-group-validation
   60/36,000. The response reports `messagesRead` and `charactersRead`, and the
   Console renders both the selected limit and actual usage. This is a per-Run
   history budget, not the Provider model's maximum Context Window.
-- Evidence: the Runtime status distinguishes administrator intent from actual
-  behavior. Passive automatic reply remains disabled (`rollout_mode=off`,
-  delivery disabled, kill switch active); proactive participation remains
+- Historical evidence at 2026-08-17: the Runtime status distinguished administrator intent from actual
+  behavior. Passive automatic reply was disabled (`rollout_mode=off`,
+  delivery disabled, kill switch active); proactive participation remained
   `probe_shadow` and `NO SEND`. The Catalog truthfully reports iCourse and
   `gpt-image-2` unavailable in the current Console path. Automatic reread and
   `/sub2api 自动查询` are independently installed/configured AstrBot plugins,
@@ -273,8 +299,8 @@ Branch: real-group-validation
   and `toolCalls=0`. This proves the adaptive administrator workbench slice,
   not production AstrBot Runtime, live Capability execution, Provider
   Conformance or real-group authorization.
-- Verification remains `partial`; S23 remains `paused` pending the existing
-  environment and authorization gates.
+- This historical slice remained partial/paused. The 2026-08-26 latest verification
+  above supersedes its passive-runtime status while leaving proactive behavior off.
 - Recorded: 2026-08-17
 
 - Command: `uv run --with pytest --project packages/dududa-agent python -m pytest tests/unit/compatibility/test_reply_polish.py tests/unit/compatibility/test_target_talk.py tests/unit/runtime/test_delivery.py tests/contracts/test_astrbot_output.py tests/unit/runtime/test_direct_chat.py tests/unit/runtime/test_orchestrator.py tests/test_repository_contract.py -q`
@@ -375,14 +401,14 @@ Branch: real-group-validation
 
 - Evidence source: focused periodic model-health implementation and lifecycle
   cases in `05c307f`.
-- Result: partial. Configuration defaults to disabled with 45-second refresh,
+- Historical result at 2026-08-15: partial. Configuration then defaulted to disabled with 45-second refresh,
   15-second timeout and 90-second Evidence TTL. The fixed-model probe uses
   `max_tokens=8` and `request_max_retries=0`; success publishes `HEALTHY`, while
   failure/timeout publishes or retains `UNKNOWN`, expired evidence returns to
   `UNKNOWN`, and plugin termination cancels the refresh task.
-- Evidence boundary: the implementation has focused evidence but is not enabled
-  in the running AstrBot. It does not establish formal Provider Conformance,
-  deployed continuous health or live single-group execution.
+- Current superseding evidence: the 2026-08-26 deployment enables the refresher at
+  900/15/1800 seconds and registers all three models. Long-term health observation
+  and a user-triggered QQ end-to-end sample remain outstanding.
 
 - Command: `uv run --locked python -m unittest tests.test_render_astrbot_candidate -v`
 - Result: partial; 2 focused tests passed in 0.144 seconds.
@@ -403,9 +429,9 @@ Branch: real-group-validation
   further Provider call.
 - Evidence boundary: these are Fake Provider and fixed private-file fixture
   tests. The refresh implementation now has separate focused evidence, but it
-  is not enabled in the running AstrBot; these tests do not prove real AstrBot
-  Provider Conformance, candidate deployment, continuous production health,
-  live single-group Shadow or QQ send.
+  was not enabled when these tests ran. The later 2026-08-26 cutover supplies
+  running-host registration/readiness evidence, but these Fake tests still do not
+  prove a user-triggered QQ send or long-term production health.
 - Verification remains `partial`; S23 remains `paused`.
 - Recorded: 2026-08-15
 
@@ -443,14 +469,12 @@ Branch: real-group-validation
   Completions returned HTTP 200 for both ordinary and `reasoning_effort=low`
   requests on all three models, with exact model IDs and usage at roughly
   2.2--2.3 seconds.
-- Evidence boundary: the probes prove one-shot protocol reachability only. The
-  candidate path now carries output/reasoning parameters, but the models are not
-  registered in the running AstrBot. A default-off refresh implementation now
-  exists, but it has not been enabled against formally conformant Providers and
-  no continuous production-health evidence exists. Only `low` was remotely
-  sampled.
-- Coverage gap: no human Gold, live Dududa traffic, real Endpoint Conformance or
-  health, container deployment and Release binding, live campus/arXiv/industry
-  Source, production Projection/Output composition, QQ send, online Bandit or
-  single-group ladder Receipt. S23 therefore remains `paused/partial`.
+- Historical evidence boundary: these probes proved one-shot protocol reachability
+  only. The 2026-08-26 cutover subsequently registered Luna/Terra/Sol in the running
+  AstrBot, completed one Chat call per model and enabled 900-second refresh. Only
+  `low` is evidenced; long-term production health and quality remain unverified.
+- Coverage gap: no human Gold, user-triggered QQ Delivery Receipt, long-term health,
+  live campus/arXiv/industry Source, proactive Projection/Output composition,
+  online Bandit or private/attachment/unmentioned-message support. S23 therefore
+  remains `partial`.
 - Recorded: 2026-08-15

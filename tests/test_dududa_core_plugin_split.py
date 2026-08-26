@@ -6,7 +6,6 @@ import importlib
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core" / "main.py"
 COMMANDS = ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core" / "commands"
@@ -14,8 +13,8 @@ COURSE_COMMANDS = COMMANDS / "course.py"
 
 
 EXPECTED_HANDLERS = (
+    ("activate_runtime", "self", "filter.on_astrbot_loaded()"),
     ("controlled_rollout", "self, event: AstrMessageEvent", "filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=100)"),
-    ("natural_course_query", "self, event: AstrMessageEvent", "filter.event_message_type(filter.EventMessageType.ALL, priority=8)"),
     ("help", "self, event: AstrMessageEvent, module: str | None=None", "filter.command('help')"),
     ("dududa", "self", "filter.command_group('dududa', alias={'嘟嘟哒'})"),
     ("dududa_help", "self, event: AstrMessageEvent, module: str | None=None", "dududa.command('help')"),
@@ -48,15 +47,7 @@ EXPECTED_HANDLERS = (
     ("admin_broadcast", "self, event: AstrMessageEvent, content: GreedyStr", "admin.command('broadcast')"),
     ("confirm", "self, event: AstrMessageEvent, token: str", "filter.command('confirm')"),
     ("cancel", "self, event: AstrMessageEvent, token: str", "filter.command('cancel')"),
-    ("remind", "self, event: AstrMessageEvent, text: GreedyStr", "filter.command('remind')"),
-    ("reminders", "self, event: AstrMessageEvent", "filter.command('reminders')"),
-    ("summary", "self, event: AstrMessageEvent, scope: str | None=None", "filter.command('summary')"),
-    ("meme", "self, event: AstrMessageEvent, keyword: str | None=None", "filter.command('meme')"),
     ("image", "self, event: AstrMessageEvent, prompt: GreedyStr", "filter.command('image')"),
-    ("fortune", "self, event: AstrMessageEvent", "filter.command('fortune')"),
-    ("draw", "self, event: AstrMessageEvent, topic: GreedyStr", "filter.command('draw')"),
-    ("poke", "self, event: AstrMessageEvent", "filter.command('poke')"),
-    ("reread", "self, event: AstrMessageEvent", "filter.command('reread')"),
 )
 
 
@@ -145,7 +136,7 @@ class DududaCorePluginSplitTests(unittest.TestCase):
 
     def test_handler_order_signatures_and_decorators_are_stable(self) -> None:
         self.assertEqual(_handler_contract(), EXPECTED_HANDLERS)
-        self.assertEqual(len(EXPECTED_HANDLERS), 43)
+        self.assertEqual(len(EXPECTED_HANDLERS), 35)
 
     def test_plugin_registration_identity_is_stable(self) -> None:
         tree = ast.parse(MAIN.read_text(encoding="utf-8"))
@@ -162,7 +153,7 @@ class DududaCorePluginSplitTests(unittest.TestCase):
     def test_main_is_a_thin_wrapper_layer(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
         self.assertLessEqual(len(source.splitlines()), 400)
-        self.assertEqual(source.count("async for result in Core"), 39)
+        self.assertEqual(source.count("async for result in Core"), 30)
         self.assertIn(
             "from .commands.image import CoreImageCommands, ImageGenerationError",
             source,
@@ -200,13 +191,9 @@ class DududaCorePluginSplitTests(unittest.TestCase):
             for handler in star_handlers_registry
             if handler.handler_module_path == module.__name__
         ]
-        self.assertEqual(len(handlers), 43)
+        self.assertEqual(len(handlers), 35)
         self.assertEqual({handler.handler.__module__ for handler in handlers}, {module.__name__})
         self.assertIn(module.__name__, star_map)
-        natural = next(
-            handler for handler in handlers if handler.handler_name == "natural_course_query"
-        )
-        self.assertEqual(natural.extras_configs.get("priority"), 8)
         rollout = next(
             handler for handler in handlers if handler.handler_name == "controlled_rollout"
         )

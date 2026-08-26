@@ -199,11 +199,14 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("/AstrBot/data/plugins\n", compose)
         for name in (
             "astrbot_plugin_dududa_core",
-            "astrbot_plugin_reply_polish",
             "astrbot_plugin_reread",
             "astrbot_plugin_sub2api_readonly",
         ):
             self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
+        self.assertNotIn(
+            "/AstrBot/data/plugins/astrbot_plugin_reply_polish",
+            compose,
+        )
         self.assertNotIn(
             "/AstrBot/data/plugins/astrbot_plugin_target_talk",
             compose,

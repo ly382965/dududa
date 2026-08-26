@@ -78,6 +78,11 @@ class RolloutConfigAndAdmissionTests(unittest.TestCase):
                 connector(),
                 RolloutAdmissionAction.LEGACY,
             ),
+            (
+                control(allowlisted_group_ids=frozenset({"*"})),
+                connector(group_id="new-group"),
+                RolloutAdmissionAction.CANARY,
+            ),
             (control(), connector(mentioned_user=None), RolloutAdmissionAction.LEGACY),
             (
                 control(),

@@ -1,6 +1,6 @@
 # Dududa Current State
 
-Status: Phase 0 audit baseline
+Status: Phase 0 audit baseline with 2026-08-26 runtime disposition
 Baseline commit: `2767cc9768d4bce63d4b4ee811add951ebce6870`
 Audit date: 2026-07-18
 
@@ -23,8 +23,23 @@ Phase 0.
 
 ## Post-Audit Dududa 2.0 Disposition
 
-以下正文的 Runtime 图、插件清单和风险描述仍保留为“重构前基线证据”，不是 2026-08-16 的
-默认运行设计。当前 S23 分支仍为 `paused / partial`，真实中文群聊风格尚未完成人工校准。
+以下正文的 Runtime 图、插件清单和风险描述仍保留为“重构前基线证据”，不是 2026-08-26 的
+当前运行设计。S23 已进入首个实时入站切换阶段，但整体仍为 `partial`，真实中文群聊风格和
+QQ 端到端投递尚未完成人工验收。
+
+2026-08-26 已完成 1.0 -> 2.0 运行面切换：旧 Dududa 1.0 AstrBot 已退出运行面，私有资产已
+备份但不再加载；`dududa-astrbot-1` 是唯一 Agent Runtime 宿主。AstrBot 原生 Agent、Web
+Search、原生 MCP、ReplyPolish 和旧 Dududa 自然语言/兼容 Handler 均不再拥有入站消息。
+当前 Core 配置为 `runtime_enabled=true`、`rollout_mode=canary`、
+`rollout_delivery_enabled=true`、群范围 `*`、`kill_switch=false`、Tool 开启、Memory 关闭。
+这里的 `canary` 是 2.0 的持久 claim/投递所有权模式，不表示仍与 1.0 并行。
+
+因此，所有群内“明确 @Bot、纯文本、无附件”的消息均由 2.0 Runtime 接管；私聊、附件和
+未 @ 的普通群消息当前静默，不回退给 1.0。未 @ 的主动参与仍只有 S15E Probe Shadow，尚不
+发送。运行态 `runtime-status.json` 已报告 `ready=true`，Web 超级工作台据真实 Core 配置显示
+`actualEnabled=true / canary / deliveryEnabled=true / killSwitch=false`，并显示 1/1 个 QQ
+账号在线、NapCat 连接正常。切换过程中只替换 2.0 AstrBot/Web，现有 NapCat 未重启。模型
+健康探测已启用并降频为 900 秒，Evidence TTL 为 1800 秒。
 
 Dududa 2.0 的 WebUI 承载唯一 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始
 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制
@@ -41,20 +56,20 @@ Receipt 生效。Persona、群聊 channel rule 与 AnswerProfile 在一次生成
 | 插件 | Dududa 2.0 默认状态 | 资产处理 | 未来归属 |
 | --- | --- | --- | --- |
 | Meme Manager | deprecated，不再默认安装，不自动发表情 | 本轮不主动清理；若私有运行目录中存在图库、配置或源码则原状保留 | 用户显式触发的 Meme Capability |
-| Reread | deprecated，不再默认安装，不概率复读 | 本轮不主动清理私有运行目录中的既有配置或数据 | 默认不提供自动复读 |
+| Reread | 保留的 2.0 宿主能力，当前由唯一 AstrBot 宿主加载 | 私有配置和数据保留；是否执行仍受独立插件配置约束 | 独立宿主插件，不等同于 Agent Planner Capability |
 | PokePro | deprecated，不再默认安装，不自动戳一戳 | 本轮不主动清理私有运行目录中的既有配置或数据 | 可选显式交互 Capability |
 | Target Talk | 退出默认 Compose 和入站路径 | 源码、配置保留 | S15E Governed Probe / 主动 Runtime |
-| ReplyPolish | 1.0 LONG-only 兼容层，默认关闭 | 源码保留 | LONG-only legacy output |
+| ReplyPolish | 已退出运行面 | 源码和切换前私有备份保留 | 不再拥有 2.0 输出链 |
 | Iris Memory | 不拥有 2.0 Core Memory 控制面 | 既有数据保留 | S14 Memory 迁移或只读来源 |
 | ChatSummary | 自动循环不进入 2.0 默认能力 | 历史数据保留 | 显式 Summary Capability |
 | Better Reminder | 不拥有 2.0 Scheduler | 历史提醒数据保留 | S15B Scheduler / Capability |
-| Dududa Core | 保留 | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
-| Sub2API Readonly | 保留 | 源码、配置保留 | 显式只读 Capability |
+| Dududa Core | 唯一 Agent Runtime | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
+| Sub2API Readonly | 保留的 2.0 宿主能力，当前已加载 | 源码、配置保留 | 独立的 `/sub2api` 只读命令能力 |
 
-`third_party/plugins.lock.json` 当前只保留 Iris、Better Reminder 和 ChatSummary v2；默认 Compose
-不再挂载 Target Talk。退出默认安装、默认挂载或默认执行链，不等于删除源码、配置或持久数据。
-本轮也没有修改或重启正在运行的 AstrBot/NapCat，因此以下历史运行态描述仍可能与私有数据目录
-中实际已安装的旧插件并存。
+`third_party/plugins.lock.json` 的内容仍作为仓库资产保留；退出默认安装、默认挂载或默认执行链，
+不等于删除源码、配置或持久数据。当前唯一 AstrBot 宿主只加载 Dududa Core、Sub2API、Reread
+及 AstrBot 内建插件；旧插件私有资产已备份但不参与运行。以下章节继续记录 Phase 0 历史基线，
+不能用于推断 2026-08-26 的运行插件清单。
 
 ## Repository Topology
 

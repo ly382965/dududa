@@ -35,6 +35,7 @@ CAPABILITY_MAPPINGS_DIR = Path(
     )
 )
 ROLLOUT_LEDGER_PATH = PLUGIN_DATA_DIR / "rollout.sqlite3"
+RUNTIME_STATUS_PATH = PLUGIN_DATA_DIR / "runtime-status.json"
 
 
 def ensure_dirs() -> None:

@@ -493,6 +493,11 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 "CAPABILITY_MAPPINGS_DIR",
                 ROOT / "configs" / "capabilities" / "mappings",
             ),
+            patch.object(
+                composition,
+                "RUNTIME_STATUS_PATH",
+                Path(self.temp.name) / "runtime-status.json",
+            ),
         )
         for active_patch in self.capability_patches:
             active_patch.start()
@@ -1297,6 +1302,12 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             plugin.icourse_reason,
             "unified_infrastructure_missing",
         )
+        self.assertEqual(
+            json.loads(composition.RUNTIME_STATUS_PATH.read_text(encoding="utf-8"))[
+                "state"
+            ],
+            "disabled",
+        )
         self.assertIs(
             plugin.rollout_ledger.config.journal_mode,
             SQLiteJournalMode.DELETE,
@@ -1336,6 +1347,11 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIs(plugin.rollout_bridge, original_bridge)
         self.assertIs(plugin.runtime_assembly, assembly)
+        self.assertTrue(
+            json.loads(composition.RUNTIME_STATUS_PATH.read_text(encoding="utf-8"))[
+                "ready"
+            ]
+        )
         self.assertEqual(resource.close_calls, 0)
         await plugin.terminate()
         self.assertEqual(resource.close_calls, 1)

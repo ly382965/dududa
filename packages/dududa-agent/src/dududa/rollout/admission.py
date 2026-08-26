@@ -38,7 +38,10 @@ def decide_rollout_admission(
         return _legacy(config, digest, "kill_switch_active")
     if message.conversation_type is not ConversationType.GROUP or not message.group_id:
         return _legacy(config, digest, "group_required")
-    if message.group_id not in config.allowlisted_group_ids:
+    if (
+        "*" not in config.allowlisted_group_ids
+        and message.group_id not in config.allowlisted_group_ids
+    ):
         return _legacy(config, digest, "group_not_allowlisted")
     if connector.actor.user_id == message.bot_id:
         return _legacy(config, digest, "self_message")

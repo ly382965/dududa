@@ -111,7 +111,12 @@ describe('internal-test gateway', () => {
           deliveryEnabled: false,
         },
       },
-      warnings: expect.arrayContaining(['NO SEND', 'NO MEMORY WRITE', 'NO TOOL CALL', 'NO BANDIT']),
+      warnings: expect.arrayContaining([
+        'CONTROL-PLANE CANDIDATE NO SEND',
+        'NO MEMORY WRITE',
+        'NO TOOL CALL',
+        'NO BANDIT',
+      ]),
     })
     await expect(gateway.respond({
       conversationId: 'group-1',
@@ -143,6 +148,69 @@ describe('internal-test gateway', () => {
       toolCalls: 0,
     })
     expect(providerRequest).toHaveBeenCalledOnce()
+  })
+
+  it('projects the live Dududa rollout config instead of a hard-coded off state', async () => {
+    const root = await fixtureRoot()
+    const runtimeConfigPath = join(root, 'runtime.json')
+    await writeFile(runtimeConfigPath, JSON.stringify({
+      runtime_enabled: true,
+      rollout_mode: 'canary',
+      rollout_delivery_enabled: true,
+      rollout_kill_switch: false,
+      rollout_allowlisted_groups: ['*'],
+    }))
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      runtimeConfigPath,
+    })
+
+    await expect(gateway.agentStatus()).resolves.toMatchObject({
+      runtimeControls: {
+        passiveAutoReply: {
+          actualEnabled: true,
+          state: 'enabled',
+          rolloutMode: 'canary',
+          deliveryEnabled: true,
+          killSwitch: false,
+          summary: expect.stringContaining('所有群'),
+        },
+      },
+      warnings: expect.arrayContaining(['DUDUDA 2.0 PASSIVE RUNTIME ACTIVE']),
+    })
+  })
+
+  it('does not report an active Runtime before the assembly is ready', async () => {
+    const root = await fixtureRoot()
+    const runtimeConfigPath = join(root, 'runtime.json')
+    const runtimeStatusPath = join(root, 'runtime-status.json')
+    await writeFile(runtimeConfigPath, JSON.stringify({
+      runtime_enabled: true,
+      rollout_mode: 'canary',
+      rollout_delivery_enabled: true,
+      rollout_kill_switch: false,
+      rollout_allowlisted_groups: ['*'],
+    }))
+    await writeFile(runtimeStatusPath, JSON.stringify({ ready: false }))
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      runtimeConfigPath,
+      runtimeStatusPath,
+    })
+
+    await expect(gateway.agentStatus()).resolves.toMatchObject({
+      runtimeControls: {
+        passiveAutoReply: {
+          actualEnabled: false,
+          state: 'disabled',
+          summary: expect.stringContaining('尚未就绪'),
+        },
+      },
+    })
   })
 
   it('persists scoped policy and keeps locked, preferred and adaptive selections distinct', async () => {
@@ -240,7 +308,7 @@ describe('internal-test gateway', () => {
       { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
     ])
     expect(catalog.groupChatStyles).toEqual(['restrained', 'natural', 'lively', 'technical'])
-    expect(catalog.replyIntensityNotice).toContain('NO SEND')
+    expect(catalog.replyIntensityNotice).toContain('Rollout')
     expect(catalog.policyDefaults).toMatchObject({
       replyIntensity: { mode: 'adaptive', preferred: 'normal' },
       contextLength: { mode: 'adaptive', preferred: 'standard' },

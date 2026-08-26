@@ -184,9 +184,11 @@ from .config import (
     MCP_WORKER_PYTHON,
     PLUGIN_DATA_DIR,
     ROLLOUT_LEDGER_PATH,
+    RUNTIME_STATUS_PATH,
     AstrBotRolloutControlProvider,
     ensure_dirs,
     load_json,
+    save_json,
 )
 from .course import UnavailableICourseClient
 from .rollout_bridge import AstrBotRolloutBridge, AstrBotRuntimeRequestFactory
@@ -200,6 +202,22 @@ _TIER_ORDER = {
     ModelTier.SONNET: 1,
     ModelTier.OPUS: 2,
 }
+
+
+def _publish_runtime_status(*, ready: bool, state: str, reason: str) -> None:
+    try:
+        save_json(
+            RUNTIME_STATUS_PATH,
+            {
+                "schema_version": 1,
+                "ready": ready,
+                "state": state,
+                "reason": reason,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+    except Exception:  # noqa: BLE001 - status projection cannot take down Runtime
+        logger.warning("Dududa Runtime status projection failed")
 
 
 @dataclass(frozen=True, slots=True)
@@ -591,6 +609,13 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             astrbot_prompt_artifact_digest(**values),
         ),
     )
+
+
+def _persona_registry_directory() -> Path:
+    deployed = Path("/opt/dududa/config/personas/registry-v1")
+    if deployed.is_dir():
+        return deployed
+    return Path(__file__).resolve().parents[3] / "configs/personas/registry-v1"
 
 
 def build_production_runtime(
@@ -1089,9 +1114,7 @@ def build_production_runtime(
         )
     )
     persona_registry = InMemoryPersonaRegistry(
-        load_persona_directory(
-            Path(__file__).resolve().parents[3] / "configs/personas/registry-v1"
-        ),
+        load_persona_directory(_persona_registry_directory()),
         fallback_persona_id="neutral",
         fallback_version="1.0.0",
     )
@@ -1467,14 +1490,96 @@ def initialize_plugin(
             assembly = unavailable_runtime_assembly()
     else:
         assembly = unavailable_runtime_assembly()
-    install_production_runtime(
+    installed = install_production_runtime(
         plugin,
         assembly,
         _default_runtime_budget(),
         "production-shape-v1",
     )
+    initially_ready = assembly.ready and installed is not None
+    _publish_runtime_status(
+        ready=initially_ready,
+        state=(
+            "ready"
+            if initially_ready
+            else "waiting_for_host_start"
+            if plugin.config.get("runtime_enabled") is True
+            else "disabled"
+        ),
+        reason=(
+            "runtime_ready"
+            if initially_ready
+            else "providers_not_loaded"
+            if plugin.config.get("runtime_enabled") is True
+            else "runtime_disabled"
+        ),
+    )
     _start_model_health_refresh(plugin)
     logger.info("DududaCore loaded: enabled=%s", plugin.enabled)
+
+
+async def activate_runtime_after_host_start(plugin: Any) -> bool:
+    """Replace the startup placeholder once AstrBot has loaded its Providers."""
+
+    if plugin.config.get("runtime_enabled") is not True:
+        return False
+    current = getattr(plugin, "runtime_assembly", None)
+    if (
+        isinstance(current, ProductionRuntimeAssembly)
+        and current.ready
+        and getattr(plugin, "rollout_bridge", None) is not None
+    ):
+        return True
+
+    bridge = getattr(plugin, "rollout_bridge", None)
+    if bridge is not None:
+        await bridge.close()
+        plugin.rollout_bridge = None
+    if isinstance(current, ProductionRuntimeAssembly):
+        await current.close()
+        plugin.runtime_assembly = None
+
+    try:
+        assembly = build_production_runtime(plugin, plugin.config)
+        installed = install_production_runtime(
+            plugin,
+            assembly,
+            _default_runtime_budget(),
+            "production-shape-v1",
+        )
+    except Exception as exc:  # unavailable composition leaves the 1.0 owner disabled
+        info = getattr(exc, "info", None)
+        logger.error(
+            "Dududa 2.0 Runtime activation failed: "
+            "reason=runtime_composition_failed type=%s code=%s detail=%s",
+            type(exc).__name__,
+            getattr(info, "code", "unavailable"),
+            str(exc)[:200],
+        )
+        _publish_runtime_status(
+            ready=False,
+            state="failed",
+            reason="runtime_composition_failed",
+        )
+        return False
+    if installed is None:
+        _publish_runtime_status(
+            ready=False,
+            state="failed",
+            reason="runtime_install_failed",
+        )
+        logger.error(
+            "Dududa 2.0 Runtime activation failed: reason=runtime_install_failed"
+        )
+        return False
+    _start_model_health_refresh(plugin)
+    _publish_runtime_status(ready=True, state="ready", reason="runtime_ready")
+    logger.info(
+        "Dududa 2.0 Runtime activated: model_probes=%s health_refresh=%s",
+        assembly.has_model_health_probes,
+        getattr(plugin, "_dududa_model_health_task", None) is not None,
+    )
+    return installed is not None
 
 
 def install_production_runtime(

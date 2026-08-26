@@ -222,6 +222,19 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output.send_calls, 0)
         await bridge.close()
 
+    async def test_all_groups_scope_claims_without_enumerating_group_ids(self) -> None:
+        config = control(allowlisted_group_ids=frozenset({"*"}))
+        bridge, runtime, _, output = self._bridge(config)
+        event = _Event()
+
+        result = await bridge.handle(event)
+
+        self.assertIs(result.action, AstrBotBridgeAction.CANARY_COMPLETED)
+        self.assertTrue(event.stopped)
+        self.assertEqual(runtime.run_calls, 1)
+        self.assertEqual(output.send_calls, 1)
+        await bridge.close()
+
     async def test_uncertain_claim_suppresses_legacy_without_running_or_sending(
         self,
     ) -> None:

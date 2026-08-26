@@ -18,6 +18,8 @@ services:
       DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
       DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1
       DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE: /run/secrets/astrbot_plugin_api_key
+      DUDUDA_ASTRBOT_RUNTIME_CONFIG: /run/dududa/astrbot-config/astrbot_plugin_dududa_core_config.json
+      DUDUDA_ASTRBOT_RUNTIME_STATUS: /run/dududa/core-state/runtime-status.json
     ports:
       - host_ip: ${DUDUDA_WEB_HOST:-127.0.0.1}
         published: "${DUDUDA_WEB_PORT:-5173}"
@@ -26,6 +28,8 @@ services:
     volumes:
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/onebot_access_token:/run/secrets/onebot_access_token:ro
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/astrbot_plugin_api_key:/run/secrets/astrbot_plugin_api_key:ro
+      - ${STACK_DATA_ROOT:-./data}/astrbot/config:/run/dududa/astrbot-config:ro
+      - ${STACK_DATA_ROOT:-./data}/astrbot/plugin_data/astrbot_plugin_dududa_core:/run/dududa/core-state:ro
     tmpfs:
       - /tmp:size=16m,mode=1777
     networks:
@@ -101,7 +105,6 @@ services:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ${DUDUDA_ASTRBOT_PLUGIN_ROOT:-./runtime/astrbot-plugins}:/AstrBot/data/plugins
       - ./apps/astrbot-plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
-      - ./apps/astrbot-plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
       - ./apps/astrbot-plugins/astrbot_plugin_reread:/AstrBot/data/plugins/astrbot_plugin_reread:ro
       - ./apps/astrbot-plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
