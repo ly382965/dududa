@@ -151,6 +151,9 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 收紧 2.0 MCP 最终表达：现有 `DIRECT_CHAT` 模型调用必须把已验证 Tool Context
+  归纳成自洽正文，链接仅作辅助引用，不得返回裸链接、链接列表、原始 JSON 或让
+  用户自行阅读来源；不新增第三次模型调用，也不修改 1.0 `/course` 兼容命令。
 - 完成 iCourse 高层只读查询与 75 题回答审校：新增第 18 个 Capability
   `icourse.public-query.v2`，五种 operation 共用一次 MCP 调用；78 条路由回归
   产生 78 次调用。公开快照定向抓取零错误，75 个回答均完成 Luna Review，

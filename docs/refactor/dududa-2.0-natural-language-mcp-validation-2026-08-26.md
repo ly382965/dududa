@@ -162,7 +162,10 @@ Step。它是首个可替换 Adapter，不是写死在 Domain 中的 iCourse 命
 
 成功路径在收到并验证 Observation 后才进入 `DIRECT_CHAT`。Persona 与 AnswerProfile 在同一次
 生成中自然融合，最终还要经过 Renderer、Final Validator、`message.send` 授权和 Output
-Adapter。感知 JSON、ToolPlan、Observation 原文、重试过程和隐藏思维均不发送给用户。
+Adapter。`DIRECT_CHAT` 必须由回答模型理解并归纳 MCP 返回的原始内容，形成不点击链接也能
+读懂的结论、关键依据和必要限制；URL 只能作为已有证据的辅助引用，不能用裸链接、链接列表、
+原始 JSON 或“请自行查看网页”代替回答。感知 JSON、ToolPlan、Observation 原文、重试过程和
+隐藏思维均不发送给用户。这仍是既有的第二次模型调用，不新增第三次“总结模型”调用。
 
 为避免调用扩散，Production Capability 计划的 `maximum_attempts=1`，一次入站最多执行一个
 Tool Step，不做自动重试。无显式 SHORT/MEDIUM/LONG 要求时，`USE_TOOLS` 默认选择 LONG；

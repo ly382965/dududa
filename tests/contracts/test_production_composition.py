@@ -939,6 +939,14 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("语义感知器", provider.calls[0]["system_prompt"])
             self.assertIn("自然参与对话", provider.calls[1]["system_prompt"])
             self.assertIn("campus.course-review", provider.calls[0]["prompt"])
+            self.assertIn(
+                "synthesize its source content into a self-contained answer",
+                provider.calls[1]["prompt"],
+            )
+            self.assertIn(
+                "Do not substitute bare URLs, a link list, raw JSON",
+                provider.calls[1]["prompt"],
+            )
             self.assertNotIn("campus.academic", provider.calls[0]["prompt"])
             self.assertNotIn("campus.shuttle", provider.calls[0]["prompt"])
             self.assertNotIn("campus.second-class", provider.calls[0]["prompt"])
@@ -970,6 +978,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 (provider.calls, recording_mcp.tool_calls, event.sent_chains)
             )
             self.assertIn("数学分析(B1)", rendered)
+            self.assertNotIn("https://", repr(event.sent_chains))
             for forbidden in (
                 "web_search_baidu",
                 "search_site_courses",

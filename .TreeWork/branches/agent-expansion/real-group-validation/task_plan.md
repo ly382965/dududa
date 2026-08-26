@@ -183,7 +183,8 @@ Title: S23 Authorized Real-Group Validation
   category 与标准 intent，由确定性单步 Planner 选择 `icourse.public-query.v2`
   并投影 `course/review/teacher/ranking/stats`，通过 Unified MCP 返回 Observation，再由
   `DIRECT_CHAT` 产生唯一最终回答；不得经过 `/course` handler 或 Web search，
-  不显示中间计划、Observation 原文或思维过程。
+  不显示中间计划、Observation 原文或思维过程。最终模型必须归纳 MCP 原始内容并直接
+  回答，已有来源链接仅作辅助引用，不得用裸链接、链接列表或原始 JSON 代替正文。
 
 ## Local Steps
 

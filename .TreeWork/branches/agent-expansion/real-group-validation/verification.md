@@ -4,6 +4,13 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- MCP answer synthesis style: the focused Dududa 2.0 natural-language iCourse
+  vertical test passed (one test in 5.613 seconds). The trace retained exactly
+  two model calls, `PERCEPTION` followed by `DIRECT_CHAT`, and one MCP call. The
+  final model request explicitly required a self-contained synthesis instead of
+  bare URLs, link lists or raw JSON; the emitted answer contained the course
+  summary and no URL. This used a Fake Output with no real QQ side effect; it is
+  not a deployed real-model style evaluation. Recorded: 2026-08-26.
 - iCourse public-query follow-up: the final combined focused command ran 29
   storage/lifecycle/planner/mapping/MCP/Registry/Provider tests; all passed.
   The generated Capability configuration passed `--check`; changed-file Ruff

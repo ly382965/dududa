@@ -4,6 +4,9 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- MCP 链的用户价值由现有 `DIRECT_CHAT` 模型完成，不由 URL formatter 完成。
+  Observation 是证据，不是回复；最终回答必须先归纳原文内容，链接只作次要引用。
+  这复用 Perception 后既有的第二次模型调用，不再增加一次总结调用或另一条发送路径。
 - Complex iCourse questions still consume one Runtime Tool step. The selected
   high-level `icourse.public-query.v2` operation may perform bounded local
   joins/aggregation inside the read-only Server, but the Agent does not build
