@@ -26,7 +26,7 @@ ICOURSE_INTENT_OPERATIONS = {
     "icourse.ranking.read": "ranking",
     "icourse.stats.read": "stats",
 }
-_ICOURSE_DEFAULT_LIMIT = 20
+_ICOURSE_DEFAULT_LIMIT = 10
 
 
 class EntityQueryToolPlanner:
@@ -83,8 +83,12 @@ class EntityQueryToolPlanner:
             request.retrieval.catalog_snapshot_id,
             expected_digest=request.retrieval.catalog_digest,
         )
-        term = _primary_query_term(request, self._ignored_entity_terms)
         operation = _icourse_operation(request.query.intent_ids)
+        term = _primary_query_term(
+            request,
+            self._ignored_entity_terms,
+            operation=operation,
+        )
         candidates = request.retrieval.candidates
         if operation is not None:
             public_query_candidates = tuple(
@@ -184,14 +188,56 @@ class EntityQueryToolPlanner:
 def _primary_query_term(
     request: ToolPlanningRequest,
     ignored_entity_terms: frozenset[str],
+    *,
+    operation: str | None = None,
 ) -> str:
-    for value in request.query.entity_terms:
-        if value.strip() and _normalize_term(value) not in ignored_entity_terms:
-            return value.strip()
+    terms = tuple(
+        value.strip()
+        for value in request.query.entity_terms
+        if value.strip() and _normalize_term(value) not in ignored_entity_terms
+    )
+    if operation == "teacher":
+        teacher = _teacher_query_term(terms, request.query.natural_language_goal)
+        if teacher is not None:
+            return teacher
+    if operation == "review":
+        subject = _goal_first_query_term(
+            terms,
+            request.query.natural_language_goal,
+        )
+        if subject is not None:
+            return subject
+    if terms:
+        return terms[0]
     goal = request.query.natural_language_goal.strip()
     if not goal:
         raise validation_error("tool_planning_query_term_missing")
     return goal
+
+
+def _teacher_query_term(terms: tuple[str, ...], goal: str) -> str | None:
+    compact_goal = _normalize_term(goal)
+    for value in terms:
+        compact = _normalize_term(value)
+        if f"{compact}老师" in compact_goal or f"{compact}教师" in compact_goal:
+            return value
+    return None
+
+
+def _goal_first_query_term(terms: tuple[str, ...], goal: str) -> str | None:
+    compact_goal = _normalize_term(goal)
+    candidates = tuple(value for value in terms if not _is_year_term(value)) or terms
+    positioned = tuple(
+        (position, index, value)
+        for index, value in enumerate(candidates)
+        if (position := compact_goal.find(_normalize_term(value))) >= 0
+    )
+    return min(positioned)[2] if positioned else None
+
+
+def _is_year_term(value: str) -> bool:
+    normalized = _normalize_term(value).removesuffix("年")
+    return len(normalized) == 4 and normalized.isdigit() and normalized.startswith("20")
 
 
 def _query_arguments(

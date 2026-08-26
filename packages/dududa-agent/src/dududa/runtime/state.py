@@ -2154,8 +2154,6 @@ def _validate_tool_terminal_path(state: RuntimeState) -> None:
         _forbid_visible_output(state)
         return
     _require_validated_tool_prefix(state)
-    if state.direct_chat_execution is not None or state.draft_response is not None:
-        raise validation_error("failed_tool_runtime_has_visible_response")
 
 
 def _persona_resolution_binding(

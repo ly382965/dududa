@@ -116,17 +116,18 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 sort_by = "length"
             elif any(term in natural_goal for term in ("最近", "最新")):
                 sort_by = "latest"
+            result = store.search_reviews(
+                normalized,
+                year=int(year_match.group(1)) if year_match else None,
+                sort_by=sort_by,
+                limit=limit,
+            )
             return {
                 "schema_version": 1,
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": store.search_reviews(
-                    normalized,
-                    year=int(year_match.group(1)) if year_match else None,
-                    sort_by=sort_by,
-                    limit=limit,
-                ),
+                "result": _public_review_result(result),
             }
         if operation == "teacher":
             return {
@@ -134,7 +135,9 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": store.search_teachers(normalized, limit=limit),
+                "result": _public_teacher_result(
+                    store.search_teachers(normalized, limit=limit)
+                ),
             }
         if operation == "ranking":
             return {
@@ -142,7 +145,11 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": store.get_rankings(limit=limit),
+                "result": _public_ranking_result(
+                    store.get_rankings(limit=limit),
+                    natural_goal,
+                    limit=limit,
+                ),
             }
         if operation == "stats":
             return {
@@ -150,22 +157,23 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": store.get_site_statistics(),
+                "result": _public_stats_result(store.get_site_statistics()),
             }
         filters = _course_filters(natural_goal)
         text_query = normalized
         if normalized == natural_goal and filters:
             text_query = ""
+        result = store.query_courses(
+            query=text_query or None,
+            limit=limit,
+            **filters,
+        )
         return {
             "schema_version": 1,
             "operation": "course",
             "query": normalized,
             "public_only": True,
-            "result": store.query_courses(
-                query=text_query or None,
-                limit=limit,
-                **filters,
-            ),
+            "result": _public_course_result(result),
         }
 
     @mcp.tool()
@@ -235,6 +243,227 @@ def create_mcp(config: AppConfig) -> FastMCP:
         return store.export_jsonl(Path(output_path), include_reviews=include_reviews)
 
     return mcp
+
+
+def _public_course_item(item: dict[str, Any]) -> dict[str, Any]:
+    projected = _select(
+        item,
+        "id",
+        "name",
+        "courseries",
+        "term_text",
+        "rating_average",
+        "review_count_site",
+        "visible_review_count",
+        "difficulty",
+        "homework",
+        "grading",
+        "gain",
+        "credit",
+        "dept",
+        "course_type",
+        "course_level",
+        "teaching_type",
+    )
+    teachers = item.get("teachers")
+    if isinstance(teachers, list):
+        projected["teachers"] = [
+            _public_teacher_ref(value)
+            for value in teachers
+            if isinstance(value, dict)
+        ]
+    normalized = item.get("normalized_rating")
+    if isinstance(normalized, (int, float)) and not isinstance(normalized, bool):
+        projected["normalized_rating"] = normalized
+    return projected
+
+
+def _public_review_item(
+    item: dict[str, Any],
+    *,
+    excerpt_characters: int,
+) -> dict[str, Any]:
+    projected = _select(
+        item,
+        "id",
+        "course_id",
+        "course_name",
+        "course_rating_average",
+        "author_display",
+        "is_anonymous",
+        "term",
+        "rating_10",
+        "publish_time",
+        "update_time",
+        "upvote_count",
+        "comment_count",
+        "difficulty",
+        "homework",
+        "grading",
+        "gain",
+    )
+    text = item.get("content_text")
+    if isinstance(text, str):
+        projected["content_length"] = len(text)
+        projected["content_text"] = _excerpt(text, excerpt_characters)
+    teachers = item.get("course_teachers")
+    if isinstance(teachers, list):
+        projected["course_teachers"] = [
+            _public_teacher_ref(value)
+            for value in teachers
+            if isinstance(value, dict)
+        ]
+    return projected
+
+
+def _public_teacher_item(item: dict[str, Any]) -> dict[str, Any]:
+    projected = _select(
+        item,
+        "teacher_id",
+        "name",
+        "course_count",
+        "review_count",
+        "rating_average",
+        "departments",
+    )
+    courses = item.get("courses")
+    if isinstance(courses, list):
+        projected["courses"] = [
+            _select(
+                value,
+                "id",
+                "name",
+                "term_text",
+                "rating_average",
+                "review_count_site",
+                "difficulty",
+                "homework",
+                "grading",
+                "gain",
+            )
+            for value in courses[:10]
+            if isinstance(value, dict)
+        ]
+    return projected
+
+
+def _public_course_result(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "total": int(result.get("total") or 0),
+        "items": [
+            _public_course_item(item)
+            for item in result.get("items", [])
+            if isinstance(item, dict)
+        ],
+    }
+
+
+def _public_review_result(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "total": int(result.get("total") or 0),
+        "aggregates": result.get("aggregates", {}),
+        "items": [
+            _public_review_item(item, excerpt_characters=320)
+            for item in result.get("items", [])
+            if isinstance(item, dict)
+        ],
+    }
+
+
+def _public_teacher_result(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "total": int(result.get("total") or 0),
+        "items": [
+            _public_teacher_item(item)
+            for item in result.get("items", [])
+            if isinstance(item, dict)
+        ],
+    }
+
+
+def _public_ranking_result(
+    result: dict[str, Any],
+    goal: str,
+    *,
+    limit: int,
+) -> dict[str, Any]:
+    projected = {
+        "source": result.get("source", "local_public_cache"),
+        "coverage": _public_coverage(result.get("coverage")),
+        "formula": result.get("formula", {}),
+    }
+    course_keys: list[str] = []
+    review_keys: list[str] = []
+    if any(term in goal for term in ("最高", "最好", "推荐")):
+        course_keys.append("top_courses")
+    if any(term in goal for term in ("最低", "最差", "最不", "不受欢迎")):
+        course_keys.append("low_courses")
+    if "热门" in goal:
+        course_keys.append("popular_courses")
+    if "点赞" in goal:
+        review_keys.append("top_reviews")
+    if "最长" in goal:
+        review_keys.append("longest_reviews")
+    if not course_keys and not review_keys:
+        course_keys = ["top_courses", "low_courses", "popular_courses"]
+        review_keys = ["top_reviews"]
+        limit = min(limit, 5)
+    for key in dict.fromkeys(course_keys):
+        projected[key] = [
+            _public_course_item(item)
+            for item in result.get(key, [])[:limit]
+            if isinstance(item, dict)
+        ]
+    for key in dict.fromkeys(review_keys):
+        projected[key] = [
+            _public_review_item(item, excerpt_characters=240)
+            for item in result.get(key, [])[:limit]
+            if isinstance(item, dict)
+        ]
+    return projected
+
+
+def _public_stats_result(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source": result.get("source", "local_public_cache"),
+        "coverage": _public_coverage(result.get("coverage")),
+        "average_review_rating": result.get("average_review_rating"),
+        "course_rating_distribution": result.get("course_rating_distribution", []),
+        "review_rating_distribution": result.get("review_rating_distribution", []),
+        "review_timeline": result.get("review_timeline", []),
+    }
+
+
+def _public_coverage(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return _select(
+        value,
+        "courses",
+        "courses_with_detail",
+        "public_reviews",
+        "last_detail_crawled_at",
+        "last_list_crawled_at",
+    )
+
+
+def _select(item: dict[str, Any], *keys: str) -> dict[str, Any]:
+    return {key: item[key] for key in keys if key in item}
+
+
+def _public_teacher_ref(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": item.get("id"),
+        "name": item.get("name"),
+        "dept": item.get("dept"),
+    }
+
+
+def _excerpt(value: str, maximum_characters: int) -> str:
+    normalized = " ".join(value.split())
+    if len(normalized) <= maximum_characters:
+        return normalized
+    return normalized[: maximum_characters - 6].rstrip() + "[内容截断]"
 
 
 def _course_filters(goal: str) -> dict[str, Any]:

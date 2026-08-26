@@ -23,11 +23,16 @@
   `natural_course_query` 或 Web search；该链现已装配到唯一运行宿主，但仍缺一条用户触发的
   真实 QQ 投递证据。Tool 计划最多尝试一次；无显式详略要求时默认 LONG，实际多段群聊 LONG 只发送
   一条 QQ 合并转发，SHORT/MEDIUM 与单段 LONG 仍为普通消息。
-- 2026-08-26 又完成 75 个 iCourse 测试问题的公开快照回答与审校：全站列表摘要 19,194 门，
-  定向详情 174 个、公开点评 4,216 条；Luna/Terra/Sol 分别生成 35/34/6 题，均使用 `low`，
-  每批由 Luna 审校一次。75/75 有最终回答，43 完整、27 部分、5 需要澄清，完整文档为
-  `docs/refactor/icourse-75-answers-reviewed-2026-08-26.md`。该结果是离线公开快照，不是生产
-  Runtime、人工 Gold、真实群或完整 iCourse 数据证明。
+- 2026-08-26 又完成 75 个 iCourse 问题的真实模型/本地 MCP/Fake Delivery 纵切：75/75
+  Bridge、75/75 Runtime completed、75/75 Fake Delivery、73 次 MCP，显式“评课社区”19/19；
+  Case 25 合理澄清、Case 67 合理直接回答。149 次 Runtime 模型调用与 75 次 Luna Review
+  全部使用 `low`。定向补跑 Case 4/26/27/39 后，Luna 标记 60 完整/15 未完整；人工交叉终审
+  收紧为 49 完整/26 未完整。完整逐题报告为
+  `docs/refactor/icourse-75-native-message-e2e-review-2026-08-26.md`；旧
+  `icourse-75-answers-reviewed-2026-08-26.md` 只保留为前序公开快照 benchmark。
+- 相同 75 条合法 OneBot JSON 已通过 AstrBot 4.26.2 的内存 WebSocket：75/75 生成真实
+  `AiocqhttpMessageEvent` 并进入 RuntimeRequestFactory，QQ 发送为 0。延迟首条成员查询时
+  复现 `1,2,3 -> 2,3,1`，所以仍不能声称真实 NapCat/QQ 端到端或宿主并发顺序已验证。
 - 2026-08-15 已对 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 完成 Responses 与
   AstrBot 所用 Chat Completions 的最小真实请求抽样；2026-08-26 三者又已注册到唯一运行中的
   AstrBot，并分别完成一次真实 AstrBot Chat Provider 调用，均成功。旧 GPT-5.5 与 DeepSeek
@@ -130,7 +135,7 @@
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 历史语料 Demo 与 iCourse 纵切之外，Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用；Core status 为 ready，Web 显示实际开启；所有群明确 `@Bot` 的纯文本、无附件消息由 2.0 Canary/Delivery 接管，1.0 不再回退 | 先用一条真实群消息闭合 QQ 端到端收发和 LONG 转发证据；再补可信失败答复与其他校园 Schema Planner。私聊、附件、未 @ 主动参与、真实来源/日报/Probe、Memory、Bandit 在线学习仍未接通 |
+| S23 Real Group Validation | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 75 题 Runtime/Fake Delivery 为 75/75、宿主内存入口为 75/75、人工终审 49/75 完整；三模型在运行宿主可调用，所有群明确 `@Bot` 的受支持消息由 2.0 接管 | 先处理并验证宿主并发顺序，再用一条真实群消息闭合 QQ 端到端收发和 LONG 转发；随后补多步 Tool、可信失败与其他校园 Planner。私聊、附件、未 @ 主动参与、真实来源/日报/Probe、Memory、在线 Bandit 仍未接通 |
 
 ## 产品模块完成度
 
@@ -138,12 +143,12 @@
 | --- | --- | --- |
 | 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow 与 rollout Ports 已完成；配置驱动 2.0 Runtime 已作为唯一运行 Agent 装配，iCourse 单步 Tool 成功路径已有本地 Unified MCP 证据 | Memory/Attachment、完整 Tool 规划、近期群聊 Context 与真实 QQ 人工验收未完成 |
 | 安全组件 | 部分完成 | 授权、预算、内容安全、隐私、持久 claim 和发送前熔断已贯穿 S10/S11；旧命令兼容权限仍保留 |
-| Connector / Output / Attachment | 部分完成 | NapCat 未重启并继续保持 1/1 账号在线；所有群明确 `@Bot` 的纯文本、无附件消息已进入 2.0 Bridge/Output，持久 rollout 去重和发送 tombstone 已装配 | 仍需一条真实 QQ 回复 Receipt；私聊、附件与第二平台未接通 |
+| Connector / Output / Attachment | 部分完成 | NapCat 未重启并保持 1/1 在线；合法 OneBot JSON 宿主入口 75/75，所有群明确 `@Bot` 的受支持消息已进入 2.0 Bridge/Output；LONG 分片已改为优先自然文本边界 | aiocqhttp 并发入队可乱序；仍需真实 QQ 回复 Receipt，私聊、附件与第二平台未接通 |
 | Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分与 priority-100 rollout handler 已验证；旧 Handler、ReplyPolish 和 1.0 Agent 已退出运行面，Sub2API/Reread 作为独立 2.0 宿主能力保留 | 可组合治理 Plugin Runtime 仍未实现；宿主插件不自动等于 Agent Capability |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 Composer/Renderer 与 S23 Hybrid Perception -> Static Router -> Capability/DirectChat 纵切已实现；Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用，三档采用最低 `light/low`；模型只提议 category/entity，确定性代码拥有资格、Plan 和执行 | 仍缺人工 Gold、近期群聊 Context、完整 Persona 资产、多轮/附件语义和长期 Provider 质量/故障观测 |
-| 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；真实体验仍待外部门禁 |
-| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、独立 worker、四个真实只读查询 Server、18 个 Capability 和 Web Schema 直调已完成；iCourse facade 只借用共享 Client，2.0 Runtime 已证明自然语言 `icourse.public-query.v2` 五类单步高层查询 | 教务/校车/二课 Schema Planner、可信失败用户答复、运行中 Tool Rollout 和实时校园/arXiv/行业 Source 未完成 |
+| 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；LONG 中文断词分片缺陷已修复 | 75 题实际为 LONG 73、SHORT 1、MEDIUM 0，三档真实体验仍未校准 |
+| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、四个真实只读查询 Server、18 个 Capability 和 Web Schema 直调已完成；最终 75 题为 73 次 MCP、显式站点词 19/19，iCourse 五类单步操作已运行 | 人工终审仅 49/75 完整；别名、结构化筛选、最新/时序、用户/回复联表和多步聚合未完成；教务/校车/二课 Planner、可信失败答复与实时 Source 也待补 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
@@ -173,14 +178,17 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 | 2.0 主链 | 自然语言 -> Luna/Haiku Hybrid Perception -> 确定性资格/授权/预算/单步 Planner -> Unified MCP -> Observation -> DirectChat -> Persona/Final Validator -> 单次 Delivery |
 | 固定案例 | `@嘟嘟哒 查询评课社区吴天` 只产生 `icourse/search_courses({"query":"吴天"})` 一次调用；无 `/course`、旧 `natural_course_query`、Web search 或过程播报 |
 | 确定性 marker | Production Rule 将“评课社区”映射为 `campus.course-review`；在 Runtime 接管、Capability 可用、Tool 开启且授权/预算/流量合法时，不依赖模型概率进入 MCP 链 |
-| 75 条 Runtime 模拟 | Case 1--75 全部逐条经过 Canary Bridge 和真实本地 iCourse MCP worker，`75/75` 各调用一次；其中 19 条显式 marker 故意让 Fake Model 漏报 Tool，仍为 `19/19`。另加 3 条参数回归，`人工智能/萌萌哒mmd/线性代数B1` 为 `3/3` |
+| Scripted 路由回归 | Case 1--75 加 3 条参数回归全部经过 Canary Bridge 和本地 iCourse MCP worker，`78/78` 调用；19 条显式 marker 故意让 Fake Model 漏报 Tool，仍为 `19/19`。该项只证明路由和参数投影 |
 | 75 条真实 Luna Perception | `reasoning.effort=low`、零 QQ Output；Schema `75/75`，iCourse category `74/75`，显式 marker `19/19`；唯一漏报 Case 67 没有站点词或 iCourse 上下文 |
-| 模型调用 | 生产验收恰好两次：PERCEPTION + DIRECT_CHAT，均为 `reasoning_effort=low`；DIRECT_CHAT 负责把 MCP 原始内容归纳为自洽正文，链接只作辅助引用；Luna Review 只属于独立 no-send 测试流程，不是生产第三次调用 |
-| Tool 与输出边界 | `capability_maximum_attempts=1`；无显式档位时 `USE_TOOLS -> LONG`；超过 512-byte 后的群聊多段 LONG 为一条 `nodes` 合并转发，SHORT/MEDIUM 与单段 LONG 不压缩 |
+| 75 题最终纵切 | 75/75 Bridge、75/75 Runtime completed、75/75 Fake Delivery、73 次 MCP、0 Runtime/MCP 错误、0 真实 QQ；Case 25 澄清和 Case 67 直接回答均未调用 MCP，显式站点词 19/19 调用 |
+| 审校结果 | 75/75 有回答；Luna 一轮为 63 revised/12 pass、补跑后 60 complete/15 incomplete；人工终审为 49 complete/26 incomplete。65 条 Luna 审校稿没有回注已记录 Delivery |
+| 模型调用 | 最终保留记录为 75 Perception + 74 DirectChat + 75 Luna Review，共 224 次业务链调用且均为 `low`；四题定向补跑另发生 12 次业务调用和 3 次健康探测，全过程为 236 次业务调用、6 次健康探测；DirectChat 为 Terra 73、Sol 1 |
+| Tool 与输出边界 | `capability_maximum_attempts=1`；实际档位 LONG 73、SHORT 1、MEDIUM 0；LONG 多段为一条 `nodes`，SHORT/MEDIUM 与单段 LONG 不压缩。UTF-8 硬切断词已在主跑后修复并聚焦验证，原 Delivery 记录不倒改 |
+| AstrBot 宿主入口 | 固定 AstrBot 4.26.2 / aiocqhttp 1.4.4 内存 WebSocket：75/75 JSON -> Event -> RequestFactory，0 发送；50 ms 延迟探测复现 `1,2,3 -> 2,3,1` |
 | 三模型抽样 | Luna/Terra/Sol 对同一已验证 Observation 各生成一次，由 Luna 各 Review 一次；6 次 Provider 调用、0 次 QQ Output，三项均通过 |
 | MCP 所有权 | Production Composition 直接拥有共享 Unified Client；iCourse facade 只借用，且共享装配失败时不再二次建立旧入口专用 Client |
-| 聚焦验证 | 完整矩阵单测通过（78 个场景，78 次 MCP，78 次 Fake Delivery）；Response Policy、Runtime Composition、Output Adapter 和单例纵切共 33 项通过；`git diff --check` 通过 |
-| 明确未完成 | 75 条严格语义仍为 `0/75`：需要用户/回复/长期时序数据的任务仍不完整；另缺可信失败答复、近期群聊 Context 和一条真实 QQ 端到端验收。私聊、附件及未 @ 主动参与不在当前入站范围 |
+| 聚焦验证 | 前序聚焦集合 97/97；最终干净汇总命令 93/93（132.344 秒）；宿主入口 75/75；LONG 自然边界分片新增聚焦回归通过；`git diff --check` 通过 |
+| 明确未完成 | 人工终审 26/75 未完整，集中在别名规范化、结构化筛选、多步关联、最新/时序、回复正文和完整分页；另缺可信失败答复、近期群聊 Context、宿主顺序修复及一条真实 QQ 端到端验收。私聊、附件及未 @ 主动参与不在当前入站范围 |
 
 详细边界见 [Dududa 2.0 自然语言 MCP 纵切验证报告](dududa-2.0-natural-language-mcp-validation-2026-08-26.md)。
 
@@ -371,8 +379,9 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 ## 残余边界
 
 1. **真实群验证已进入首个入站阶段。** 2.0 已在唯一 AstrBot 宿主接管所有群明确 @ 的受支持
-   文本，但尚缺用户触发的 QQ 端到端 Receipt；私聊、附件、未 @ 主动参与及所有主动发送仍未
-   接通。独立可选 S20 不属于该发布前置。
+   文本，但尚缺用户触发的 QQ 端到端 Receipt；aiocqhttp 为每帧创建独立任务，延迟首帧已复现
+   入队乱序，扩大群测前必须先处理或明确串行化位置。私聊、附件、未 @ 主动参与及所有主动发送
+   仍未接通。独立可选 S20 不属于该发布前置。
 2. **Attachment Actor 绑定不完整。** `AttachmentAccessRequest` 没有独立 `Actor` 字段；当前
    只能验证 `AuthorizationDecision.actor_digest`，Repository 没有第二份当前 Actor 做交叉核对。
 3. **去重分层。** S10 Runtime Store 证明同进程 CAS/single-flight；S11 SQLite rollout ledger
@@ -398,7 +407,8 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 ## 下一步
 
 S17–S22、S21 和 S23A–S23E 离线范围均已完成；2.0 也已进入所有群明确 @ 纯文本的实时
-Canary/Delivery。下一步优先用一条用户消息验证真实 QQ 收取、单次回复和 LONG 合并转发，再处理
+Canary/Delivery。下一步先修复或验证 AstrBot/aiocqhttp 并发入队顺序，再用一条用户消息验证真实
+QQ 收取、单次回复和 LONG 合并转发；随后优先补别名规范化、结构化筛选和有限多步查询，再处理
 可信失败答复与群聊风格人工反馈。私聊、附件和未 @ 主动参与另行接线；真实 Source 只在 Manual
 Digest 前接入，Probe 继续 NO SEND。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为
 开启探索。

@@ -4,6 +4,41 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-26 最终 75 题 Connector 形状 Runtime 纵切：Bridge 75/75、Runtime
+  `completed` 75/75、Fake Delivery 75/75、MCP 73、Runtime/MCP 错误 0、真实 QQ
+  输出 0。Case 25 为确定性澄清、Case 67 为合理直接回答；显式“评课社区”19/19
+  调用 MCP。149 次 Runtime 模型调用为 75 Luna Perception + 73 Terra DirectChat +
+  1 Sol DirectChat；75 次 Luna Review；最终保留记录的 224 次业务链调用全部
+  `reasoning_effort=low`。四题定向补跑另发生 12 次业务调用和 3 次健康探测，故全过程为
+  236 次业务调用和 6 次健康探测。
+- 主跑耗时 2,513,233 ms（41.9 分钟）；Case 4/26/27/39 定向补跑耗时 150,642 ms，
+  其余 71 题没有重跑。补跑后输出形态为 49 forward/26 plain，档位为 73 LONG/
+  1 SHORT，Case 25 无 DirectChat/Profile。Luna 为 63 revised/12 pass、60 complete/
+  15 incomplete；人工交叉终审覆盖 19 条，最终为 49 complete/26 incomplete。
+- 65/75 个 `review.final_answer` 与实际 `delivery.text` 不同。Luna Review 在 Runtime
+  结束后旁路执行，没有重新进入 Composer、Final Validator 或 Fake Delivery；报告不得把
+  审校稿描述为已经发送。逐题报告为
+  `docs/refactor/icourse-75-native-message-e2e-review-2026-08-26.md`，私有合并证据为
+  `/home/mmdustc/temp/dududa-icourse-75-native-message-e2e-2026-08-26-final-audited.json`
+  且 mode 为 `0600`。
+- AstrBot 宿主入口契约在固定 AstrBot 4.26.2 / aiocqhttp 1.4.4 镜像、禁网和严格
+  Fake OneBot API 下完成：75/75 合法 JSON 经内存 WebSocket、`Event.from_payload`、
+  EventBus、AstrBot convert 形成真实 `AiocqhttpMessageEvent` 并进入
+  RuntimeRequestFactory，发送 action 为 0。50 ms 延迟首条成员查询时，输入
+  `1,2,3` 实际入队 `2,3,1`，证明当前宿主存在并发乱序能力。
+- 本轮发现 LONG 分片按 UTF-8 字节硬切会拆开“给分”“基础”等词。实现已改为优先在
+  换行、句末标点或空格处分段；新增聚焦回归与原 UTF-8 上限/重组测试均通过。该修复发生
+  在主跑后，原 Delivery 记录不倒改为已重新投递。
+- 聚焦回归：Runner/Planner、Tool Runtime/Orchestrator/State、Redaction/Safety、
+  iCourse/MCP 与 Production Composition 共 97/97；随后新增 Runner 报告与自然边界分片
+  聚焦用例也通过。`git diff --check` 通过；changed-file Ruff 无 F 类错误，但仍有 23 个
+  E501、6 个 E402、5 个 I001，本轮未把风格清理扩大为主任务。
+- 最终干净汇总命令覆盖 Runner、Planner、Tool Runtime、Orchestrator、State、Redaction、
+  Authorization、iCourse storage/lifecycle/fetcher/facade、离线三模型模拟与 Production
+  Composition，93/93 通过，用时 132.344 秒；命令不含此前误写的不存在模块名。
+- 证据边界：宿主入口与顺序执行 Runtime Runner 是互补的两段证据，不是一次穿过真实
+  NapCat、网络、生产并发和 QQ 服务端回执的无中断 E2E。S23 保持 `partial`。
+
 - 2026-08-26 运行切换核验：旧 `mmdustc-bot-astrbot-qq` Compose 已无 AstrBot 容器，当前唯一
   Agent 宿主为 `dududa-astrbot-1`。启动日志只加载 Dududa Core、
   `astrbot_plugin_sub2api_readonly v0.6.4`、`astrbot_plugin_reread v2.0.0` 与 AstrBot 内建插件；
@@ -41,11 +76,12 @@ Branch: real-group-validation
   storage/lifecycle/planner/mapping/MCP/Registry/Provider tests; all passed.
   The generated Capability configuration passed `--check`; changed-file Ruff
   critical checks and `git diff --check` passed.
-- The public-only development snapshot contains 19,194 course summaries, 174
+- Historical predecessor benchmark: the public-only development snapshot contains 19,194 course summaries, 174
   targeted course details and 4,216 public reviews. All 75 benchmark questions
-  have reviewed Chinese answers: 43 are complete from the available evidence,
+  had reviewed Chinese answers: 43 were complete from the available evidence,
   27 are explicitly partial and five request clarification. Luna reviewed every
-  batch once: its boolean result was 59 pass and 16 fail, and it returned 17
+  batch once: its predecessor boolean field was true for 59 and false for 16;
+  this is not the final protocol's 12 `pass`/63 `revised` verdict. It returned 17
   non-empty revision suggestions. Nineteen final answers differ from their
   generated draft; four groundedness cases received a factual correction.
 - The answer run made 48 successful Provider calls and zero QQ Output calls.
@@ -65,7 +101,7 @@ Branch: real-group-validation
   vertical slice made one MCP call and one `nodes` send after real 512-byte
   splitting; SHORT/MEDIUM, private, attachment and single-part cases retained
   their ordinary delivery behavior.
-- Full iCourse Runtime matrix: all 75 benchmark questions plus three user
+- Scripted iCourse routing matrix: all 75 benchmark questions plus three user
   regressions entered the AstrBot Canary Bridge, Hybrid Perception, Capability
   Runtime and a real local Managed Unified MCP/iCourse worker. The run recorded
   78 MCP calls and 78 single Fake Deliveries. The 19 benchmark questions with
@@ -115,13 +151,12 @@ Branch: real-group-validation
   reviewed each candidate once; all three Reviews passed with score 100. The
   sample made six Provider calls and zero QQ Output calls. The full result is a
   `0600` repository-external file and contains no API Key or Base URL.
-- Evidence boundary: this proves the full 75-case dispatch matrix and real Luna
-  Perception coverage. The later `icourse.public-query.v2` follow-up adds five
-  high-level single-step operations, but the reviewed public-snapshot answers
-  are not equivalent to deployed Runtime semantic completion. Queries requiring
-  unavailable user/reply/longitudinal data or multi-turn clarification remain
-  partial, and this still does not prove AstrBot Conformance, real-group Shadow
-  or QQ delivery. S23 remains partial.
+- Evidence boundary: the scripted matrix proves routing and real Luna Perception
+  coverage. The later host-ingress contract now proves in-memory AstrBot JSON
+  conversion and RequestFactory handoff, but not real NapCat transport,
+  production ordering, QQ delivery or semantic completion. Queries requiring
+  aliases, structured filters, user/reply/longitudinal data or multi-step
+  aggregation remain partial. S23 remains partial.
 - Recorded: 2026-08-26
 - Static checks: changed-file Ruff critical/import rules and `git diff --check`
   passed. The broad all-rule Ruff profile was not used as a release gate because

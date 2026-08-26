@@ -22,7 +22,7 @@ _PRIVATE_KEY = re.compile(
     r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"
 )
 _ABSOLUTE_PATH = re.compile(r"^(?:/[^\s]+|[A-Za-z]:[\\/][^\s]+)$")
-_EMBEDDED_POSIX_PATH = re.compile(r"(?<![A-Za-z0-9:/])/(?:[^\s/]+/)*[^\s/]+")
+_EMBEDDED_POSIX_PATH = re.compile(r"(?<![A-Za-z0-9:/])/(?:[A-Za-z0-9._~-]+/)+[^\s/]+")
 _EMBEDDED_WINDOWS_PATH = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\s]+")
 _FILE_URI = re.compile(r"(?i)\bfile://[^\s\"'<>]+")
 _HTTP_URL = re.compile(r"(?i)\bhttps?://[^\s\"'<>]+")

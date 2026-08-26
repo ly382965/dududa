@@ -25,10 +25,10 @@ from dududa.domain.primitives import (
     RiskLevel,
     RuntimeBudget,
 )
-from dududa.errors import DududaError
+from dududa.errors import DududaError, validation_error
 from dududa.ports.context import ManualCancellationToken
 from dududa.responses import response_plan_digest
-from dududa.runtime.budget import RuntimeToolBudgetPlan
+from dududa.runtime.budget import RuntimeModelBudgetPlan, RuntimeToolBudgetPlan
 from dududa.runtime.context import CurrentMessageContextBuilder
 from dududa.runtime.state import RuntimePhase
 from dududa.security.authorization import (
@@ -106,6 +106,12 @@ class _StubbornExecutor:
                 continue
 
 
+class _FailingFinalValidator:
+    async def validate(self, *args, **kwargs):
+        del args, kwargs
+        raise validation_error("fixture_final_validation_failed")
+
+
 class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.capability_fixture = executor_fixtures.GovernedToolExecutorTests(
@@ -177,11 +183,31 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
             ),
             revision=revision("runtime-tool-budget"),
         )
+        self.model_budget_plan = RuntimeModelBudgetPlan(
+            schema_version=1,
+            perception_reservation=ResourceUsage(
+                schema_version=1,
+                model_calls=1,
+                retries=1,
+                input_tokens=1_000,
+                output_tokens=200,
+                cost_units=Decimal(1),
+            ),
+            direct_chat_reservation=ResourceUsage(
+                schema_version=1,
+                model_calls=1,
+                retries=1,
+                input_tokens=4_000,
+                output_tokens=500,
+                cost_units=Decimal(3),
+            ),
+            revision=revision("runtime-model-budget"),
+        )
         self.initial_budget = RuntimeBudget(
             model_calls_remaining=2,
             tool_steps_remaining=4,
             retries_remaining=6,
-            input_tokens_remaining=4_000,
+            input_tokens_remaining=5_000,
             output_tokens_remaining=700,
             cost_units_remaining=Decimal(14),
         )
@@ -202,6 +228,7 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
         capability_plan_authorized: bool = True,
         maximum_tool_context_bytes: int = 16_384,
         record_phases: bool = False,
+        final_validator=None,
     ) -> OrchestratorFixture:
         context_builder = builder()
         context_builder = CurrentMessageContextBuilder(
@@ -216,10 +243,12 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
             capability_runtime=runtime,
             capability_input_schemas=(self.capability_fixture.definition.input_schema,),
             capability_plan_authorized=capability_plan_authorized,
+            budget_plan=self.model_budget_plan,
             tool_budget_plan=self.tool_budget_plan,
             initial_budget=self.initial_budget,
             maximum_tool_context_bytes=maximum_tool_context_bytes,
             record_phases=record_phases,
+            final_validator=final_validator,
         )
         fixture.clock.now = CAPABILITY_NOW
         return fixture
@@ -380,6 +409,28 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("runtime_tool_context_too_large", result.reason_codes)
         self.assertIsNone(result.delivery_request)
         self.assertEqual(fixture.router.calls, 0)
+
+    async def test_failed_final_validation_retains_unsent_tool_draft(self) -> None:
+        fixture = self._fixture(
+            self.runtime,
+            final_validator=_FailingFinalValidator(),
+        )
+        request, call = fixture.start(
+            run_id="tools-final-validation-failed",
+            feature_flags={"tools": True},
+        )
+
+        result = await fixture.runtime.run(request, call=call)
+        checkpoint = await fixture.store.load(call.run_id, call=call)
+
+        self.assertIs(result.outcome, Outcome.FAILED)
+        self.assertEqual(result.reason_codes, ("fixture_final_validation_failed",))
+        self.assertIsNone(result.delivery_request)
+        assert checkpoint is not None
+        self.assertIs(checkpoint.state.phase, RuntimePhase.FAILED)
+        self.assertIsNotNone(checkpoint.state.direct_chat_execution)
+        self.assertIsNotNone(checkpoint.state.draft_response)
+        self.assertIsNone(checkpoint.state.final_response)
 
     async def test_failed_or_oversensitive_observations_never_enter_model(self) -> None:
         for mode in ("failed", "oversensitive"):

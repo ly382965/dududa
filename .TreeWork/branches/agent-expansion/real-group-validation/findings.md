@@ -228,24 +228,36 @@ Branch: real-group-validation
   category，模型继续负责意图和实体；这比要求模型以概率方式重复识别显式事实更
   稳定，也没有把 Tool、权限或发送权交给规则。确定性触发必须只作用于当前
   Context 已公布的 category，并继续经过开关、授权、预算、流量与健康检查。
-- “测试集存在”“测试集经过 Runtime”和“公开快照上生成了回答”是三种证据。
-  本轮形成 75 次真实本地 Unified MCP dispatch，并另行完成 75 个公开快照回答；
-  两者都不能自动升级为生产语义完成。五操作 Planner 仍是单步高层查询，缺失的
-  用户/回复/历史数据和 27 个部分结果继续阻止全量完成声明。
+- “scripted routing contract”“真实模型 Runtime/Fake Delivery”“AstrBot 宿主入口”和
+  “真实 NapCat/QQ E2E”是四种不同证据。本轮最终真实模型纵切为 75/75 Runtime、
+  73 次 MCP 和 75/75 Fake Delivery；宿主内存入口另为 75/75，但没有形成一条穿过
+  真实 NapCat 与 QQ 回执的无中断链。二者都不能自动升级为生产语义完成。
+- Luna Review 是 Runtime 结束后的旁路测试：最终合并结果中 65/75 个审校稿与实际
+  Delivery 不同，没有重新经过 Composer、Final Validator 或 Output。模型自审在补跑后
+  标记 60/75 完整，人工交叉核对只保留 49/75；以后不能用 reviewer 的 grounded/complete
+  布尔值替代跨题事实审校。
+- 五操作 Planner 仍是单步高层查询。人工未完整项集中在别名规范化、结构化筛选、最新/
+  时序、用户/回复联表、分页和多步聚合；增加重试不会补足这些能力，应该扩展查询计划和
+  Provider 数据语义。
 - 真实 Luna 在三个用户回归中精确抽取 `人工智能`、`萌萌哒mmd`、`线性代数B1`；
   75 条中 category 为 74/75。Case 67 是无站点词、无上文的泛化评分比较，对其
   强制 iCourse 会造成普通聊天误调用，所以不扩张确定性关键词范围。
 - Tool 调用不应通过重试堆叠召回率：当前 `maximum_attempts=1` 已足以把显式
   marker 约束为一次有界计划。`USE_TOOLS` 只在用户没有明确详略要求时默认 LONG；
   输出形态仍由实际分片决定，单段结果不为追求形式而包装成单节点转发。
+- LONG 合并转发原来按 UTF-8 字节硬切，能把“给分”“基础”等词拆到相邻节点。
+  最小修复是保留字节上限、优先选择换行/句末/空格边界；无需引入新的渲染控制面。
+- aiocqhttp 对每个 WebSocket 帧创建独立任务，而 AstrBot 的 @ 转换还会异步查询成员；
+  延迟第一条查询 50 ms 时，输入 `1,2,3` 稳定入队为 `2,3,1`。顺序执行 Runner 的
+  75/75 不能作为生产顺序保证。
 
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 
 - Silver is heavily imbalanced: 447/464 rows say no Tool, only 4/464 are high
   complexity, and no LONG AnswerProfile survived compilation. A balanced human
   Gold set is required before threshold calibration or production integration.
-- 2.0 AstrBot 已完成运行替换，NapCat 保持原实例。当前残余风险是缺少用户触发的真实 QQ
-  端到端回复 Receipt，而不是候选尚未部署。
+- 2.0 AstrBot 已完成运行替换，NapCat 保持原实例。当前残余风险是宿主并发入队可乱序，且
+  缺少用户触发的真实 QQ 端到端回复 Receipt，而不是候选尚未部署。
 - 512 条 SSE 重放是断线恢复窗口而非持久日志；服务进程重启或客户端落后超过
   窗口时只能刷新 Snapshot/History。当前修复减少可观察丢失，不构成跨进程
   exactly-once 保证。

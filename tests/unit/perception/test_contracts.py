@@ -4,6 +4,8 @@ from dataclasses import FrozenInstanceError, replace
 from types import MappingProxyType
 import unittest
 
+from jsonschema import Draft202012Validator
+
 from dududa.domain.primitives import DigestString, freeze_json
 from dududa.errors import DududaError
 from dududa.perception.contracts import (
@@ -119,6 +121,25 @@ class ModelProjectionContractTests(unittest.TestCase):
         self.assertEqual(
             model_projection_schema_ref(limits()),
             model_projection_schema_ref(limits()),
+        )
+
+    def test_schema_requires_targets_for_resolved_references(self) -> None:
+        document = model_projection_schema(limits())
+        reference_schema = document["properties"]["references"]["items"]
+        resolved = {
+            "reference_id": "current-message",
+            "kind": "message",
+            "target_ref": None,
+            "confidence": 1.0,
+            "evidence_refs": ["message:current"],
+        }
+        unresolved = {**resolved, "kind": "unresolved"}
+
+        self.assertTrue(
+            tuple(Draft202012Validator(reference_schema).iter_errors(resolved))
+        )
+        self.assertFalse(
+            tuple(Draft202012Validator(reference_schema).iter_errors(unresolved))
         )
 
     def test_exact_decoder_and_semantic_validator_accept_valid_projection(self) -> None:

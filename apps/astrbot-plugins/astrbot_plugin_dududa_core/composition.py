@@ -110,8 +110,10 @@ from dududa.ports.mcp import UnifiedMcpClient
 from dududa.ports.models import ModelOperationalStateRegistry
 from dududa.ports.runtime import AgentRuntime, InputConnector
 from dududa.responses import (
+    AnswerProfile,
     DeterministicResponseProfilePolicy,
     DeterministicResponseProfileValidator,
+    ResponseProfileLimits,
     UnicodeVisibleTokenCounter,
     pilot_response_profile_policy_config,
 )
@@ -587,7 +589,15 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             "capability_categories 只能从输入给出的 available_capability_categories 中"
             "选择。不要调用工具、选择模型、"
             "授予权限、解释过程或输出用户可见回答。能力名、站点名和 category 不是业务"
-            "实体；entities 只保留可直接写入查询参数的最小业务名词短语，去掉动作、"
+            "实体。target_identity_refs 表示回答要定向给谁，只能引用 context.identities 中"
+            "is_bot=false 的身份；用户显式 @ 机器人表示当前非机器人作者在向机器人提问，"
+            "不要把机器人身份放进 target_identity_refs。"
+            "target_identity_refs、所有 evidence_refs 和 reference.target_ref 必须从 context"
+            " 中逐字复制完整合法引用，绝不能缩写、截断、改写或自行生成；不确定的候选"
+            "不要输出。references 非必要不要输出；kind 为 message、identity 或 topic 时"
+            " target_ref 必须填写对应的完整合法引用，只有 kind=unresolved 时 target_ref"
+            " 才能为 null。"
+            "entities 只保留可直接写入查询参数的最小业务名词短语，去掉动作、"
             "数量词"
             "和“相关的/有关的/课程/老师”等泛化修饰。例如“推荐几门人工智能有关的课程”"
             "提取“人工智能”，“推荐几个线性代数B1老师”提取“线性代数B1”，用户昵称"
@@ -605,7 +615,7 @@ def _perception_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-perception-prompt",
             "1.0.0",
-            "production-v3",
+            "production-v6",
             astrbot_prompt_artifact_digest(**values),
         ),
     )
@@ -677,6 +687,15 @@ def build_production_runtime(
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("clock returned a naive datetime")
     now = now.astimezone(timezone.utc)
+    model_load_max_age_seconds = config.get(
+        "runtime_model_load_max_age_seconds",
+        1_800,
+    )
+    if (
+        type(model_load_max_age_seconds) is not int
+        or model_load_max_age_seconds < 1
+    ):
+        raise ValueError("runtime_model_load_max_age_seconds must be positive")
 
     for index, spec in enumerate(specs):
         astrbot_provider = get_provider(spec.astrbot_provider_id)
@@ -696,7 +715,7 @@ def build_production_runtime(
             observation_window_seconds=60,
             minimum_samples=1,
             cooldown_seconds=0,
-            max_snapshot_age_seconds=300,
+            max_snapshot_age_seconds=model_load_max_age_seconds,
             stale_snapshot_policy=StaleSnapshotPolicy.EXCLUDE,
         )
         reasoning_profile = ReasoningProfile(
@@ -1024,6 +1043,14 @@ def build_production_runtime(
         policy_revision="production-perception-bootstrap-v1",
         reason_codes=("fixed_perception_haiku",),
     )
+    perception_output_limit = min(
+        1_536,
+        *(
+            endpoint.capabilities.max_output_tokens
+            for endpoint in endpoints
+            if endpoint.tier is ModelTier.HAIKU
+        ),
+    )
     perception = HybridPerceptionEngine(
         rules,
         RouterBackedModelPerception(
@@ -1034,7 +1061,7 @@ def build_production_runtime(
                 limits=perception_limits,
                 bootstrap_policy=perception_bootstrap,
                 reasoning_profile_id="provider-default",
-                max_output_tokens=512,
+                max_output_tokens=perception_output_limit,
                 prompt_tokens_upper_bound=512,
                 allow_external_provider=True,
                 allowed_residencies=frozenset({"global"}),
@@ -1047,7 +1074,7 @@ def build_production_runtime(
     )
 
     direct_output_limit = min(
-        1_536,
+        2_048,
         *(endpoint.capabilities.max_output_tokens for endpoint in endpoints),
     )
     budget_plan = RuntimeModelBudgetPlan(
@@ -1058,7 +1085,7 @@ def build_production_runtime(
             tool_steps=0,
             retries=0,
             input_tokens=8_000,
-            output_tokens=512,
+            output_tokens=perception_output_limit,
             cost_units=None,
         ),
         direct_chat_reservation=ResourceUsage(
@@ -1278,6 +1305,35 @@ def build_production_runtime(
             _revision("response-profile-validator"),
         ),
     )
+    response_profile_config = pilot_response_profile_policy_config(
+        _revision("response-profile-policy")
+    )
+    response_profile_config = replace(
+        response_profile_config,
+        profile_limits={
+            AnswerProfile.SHORT: ResponseProfileLimits(
+                1,
+                128,
+                180,
+                2,
+                min(512, direct_output_limit),
+            ),
+            AnswerProfile.MEDIUM: ResponseProfileLimits(
+                1,
+                512,
+                720,
+                6,
+                min(1_024, direct_output_limit),
+            ),
+            AnswerProfile.LONG: ResponseProfileLimits(
+                1,
+                min(1_536, direct_output_limit),
+                2_400,
+                19,
+                direct_output_limit,
+            ),
+        },
+    )
     runtime = OfflineRuntimeOrchestrator(
         OfflineRuntimeOrchestratorConfig(
             schema_version=1,
@@ -1302,7 +1358,7 @@ def build_production_runtime(
         final_validator=final_validator,
         delivery_builder=delivery_builder,
         response_profile_policy=DeterministicResponseProfilePolicy(
-            pilot_response_profile_policy_config(_revision("response-profile-policy"))
+            response_profile_config
         ),
         detail_detector_revision=_revision("detail-detector"),
         persona_registry=persona_registry,

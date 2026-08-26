@@ -162,9 +162,20 @@ class CurrentMessageContextBuilder:
         raw_identity_ids = {message.bot_id, message.user_id}
         raw_identity_ids.update(mention.user_id for mention in message.mentions)
         reference_by_raw = {
-            raw_id: _opaque_identity_ref(scope_hash, raw_id)
-            for raw_id in raw_identity_ids
+            message.bot_id: "identity:bot",
+            message.user_id: "identity:author",
         }
+        mention_ids = sorted(
+            raw_id
+            for raw_id in raw_identity_ids
+            if raw_id not in {message.bot_id, message.user_id}
+        )
+        reference_by_raw.update(
+            {
+                raw_id: f"identity:mention:{index}"
+                for index, raw_id in enumerate(mention_ids, start=1)
+            }
+        )
         identities = tuple(
             PerceptionIdentity(
                 schema_version=1,
@@ -173,15 +184,7 @@ class CurrentMessageContextBuilder:
             )
             for raw_id in sorted(raw_identity_ids)
         )
-        current_message_ref = str(
-            canonical_digest(
-                {
-                    "scope_digest": scope_hash,
-                    "message_id": message.message_id,
-                },
-                domain="runtime:message-ref:v1",
-            )
-        )
+        current_message_ref = "message:current"
         perception_message = PerceptionMessage(
             schema_version=1,
             message_ref=current_message_ref,
@@ -199,7 +202,7 @@ class CurrentMessageContextBuilder:
                 canonical_digest(
                     {
                         "scope_digest": scope_hash,
-                        "current_message_ref": current_message_ref,
+                        "message_id": message.message_id,
                     },
                     domain="runtime:perception-context-id:v1",
                 )
@@ -260,12 +263,3 @@ class CurrentMessageContextBuilder:
         if value is ConversationType.PRIVATE:
             return self._config.private_data_classification
         return self._config.group_data_classification
-
-
-def _opaque_identity_ref(scope_hash: object, raw_id: str) -> str:
-    return str(
-        canonical_digest(
-            {"scope_digest": scope_hash, "platform_identity": raw_id},
-            domain="runtime:identity-ref:v1",
-        )
-    )

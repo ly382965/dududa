@@ -30,13 +30,17 @@ Last sync: unix:1786706085
   arguments remain limited to `query/goal/operation/limit`, and every inbound
   plan still has one Tool step and one attempt. The four legacy iCourse
   Capabilities remain compatible.
-- A public-only development snapshot now contains all 19,194 course-list rows,
-  174 targeted course details and 4,216 public review records plus official
-  ranking/statistics/search/user/latest pages. Luna/Terra/Sol generated
-  35/34/6 benchmark answers at `low`; Luna reviewed every batch. All 75 cases
-  have final answers in `docs/refactor/icourse-75-answers-reviewed-2026-08-26.md`:
-  43 complete, 27 partial and 5 clarification-required. This is offline public
-  snapshot evidence, not human Gold, deployed Runtime or live-group evidence.
+- A public-only development snapshot contains 19,194 course-list rows, 174
+  targeted details and 4,216 public reviews. The final 75-case Runtime benchmark
+  completed 75/75 Bridge runs, 75/75 Runtime runs and 75/75 Fake Deliveries with
+  73 MCP calls. Luna's post-follow-up labels were 60 complete/15 incomplete;
+  cross-case human review reduced that to 49 complete/26 incomplete. The current
+  report is `docs/refactor/icourse-75-native-message-e2e-review-2026-08-26.md`;
+  the earlier 43/27/5 report remains a predecessor snapshot, not current reality.
+- The same 75 legal OneBot JSON frames passed AstrBot 4.26.2's in-memory
+  WebSocket and produced 75 `AiocqhttpMessageEvent`/RequestFactory handoffs with
+  zero sends. A 50 ms delay on the first member lookup reproduced queue order
+  `2,3,1`, so host concurrency ordering and real NapCat/QQ delivery remain open.
 - 本机运行数据目录中的 Sub2API v0.6.2 已作为原插件功能基线核对：当前工作树
   `client.py` 与其字节一致，全部原命令 handler 均保留。`overview` 继续复用原有
   今日、当前计费轮、2026-07-13 起历史累计和上游账号四段取数，只在成功输出端
@@ -144,6 +148,13 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 完成 75 题原生消息形状 Runtime 纵切与最终审校：主跑 75/75 Runtime/Fake Delivery、
+  73 次 MCP、0 Runtime/MCP 错误，Case 4/26/27/39 定向补跑后不重复其余 71 题；Luna
+  为 63 revised/12 pass、60 complete/15 incomplete，人工交叉审校最终为
+  49 complete/26 incomplete。最终保留记录的 224 次业务链模型调用均为 `low`；计入四题
+  定向补跑后全过程为 236 次业务调用和 6 次健康探测，真实 QQ 输出 0。
+  AstrBot 宿主入口另为 75/75，并复现并发乱序。LONG UTF-8 硬切断词已改为优先自然边界，
+  聚焦回归通过；原 Delivery 证据保留运行当时形状，不倒改为已重新投递。
 - 完成 1.0 -> 2.0 运行切换并修正 Web readiness：旧 AstrBot 不再运行，唯一 2.0 宿主加载
   Core/Sub2API v0.6.4/Reread v2.0.0；全群 wildcard 明确 @ 纯文本接管生效。Core status 为
   ready，Web 显示 actual enabled，NapCat 保持原实例在线。Luna/Terra/Sol 各完成一次宿主 Chat
@@ -151,12 +162,9 @@ Last sync: unix:1786706085
 - 收紧 2.0 MCP 最终表达：现有 `DIRECT_CHAT` 模型调用必须把已验证 Tool Context
   归纳成自洽正文，链接仅作辅助引用，不得返回裸链接、链接列表、原始 JSON 或让
   用户自行阅读来源；不新增第三次模型调用，也不修改 1.0 `/course` 兼容命令。
-- 完成 iCourse 高层只读查询与 75 题回答审校：新增第 18 个 Capability
-  `icourse.public-query.v2`，五种 operation 共用一次 MCP 调用；78 条路由回归
-  产生 78 次调用。公开快照定向抓取零错误，75 个回答均完成 Luna Review，
-  其中 19 题最终采用 Luna 修订或人工事实校正。28 项聚焦 MCP/Registry/
-  Planner Contract、9 项新增 storage/lifecycle 测试、changed-file Ruff 与
-  `git diff --check` 通过；未触碰 QQ Output 或运行中容器。
+- 完成 iCourse 高层只读查询：第 18 个 Capability `icourse.public-query.v2` 的五种
+  operation 共用一次 MCP 调用；78 条 scripted 路由回归产生 78 次调用，只作为
+  routing contract。最终真实模型 75 题纵切与人工终审结果以上一条为准。
 - 完成 Web Runtime 插件管理纵切：超级工作台动态展示 AstrBot 已加载
   插件，通过仅 `plugin` scope 的服务端 Key 代理 GitHub/ZIP 安装和
   热加载，并提供 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文规范下载。安装与
@@ -250,9 +258,8 @@ Last sync: unix:1786706085
   `search_site_courses` 与 Web search 均未参与。
 - “评课社区”现在由 Production Rule 确定性补充 `campus.course-review`，不再让
   显式站点词的 Tool 选择依赖模型概率；该规则仍受 Runtime 接管、Capability
-  availability、Tool 开关、授权、预算、流量和 MCP 健康约束。完整 75 条测试已经
-  真正执行到 Runtime/MCP dispatch，但严格语义完成仍为 0/75，不能把调用率写成
-  复杂能力完成率。
+  availability、Tool 开关、授权、预算、流量和 MCP 健康约束。scripted 75/75
+  dispatch 只证明路由；最终真实模型纵切为 73 次 MCP，人工终审 49/75 完整。
 - Unified MCP 生命周期已从旧 iCourse facade 中解耦；兼容 facade 只借用共享 Client。
   Perception 只公布当前 Planner 真能投影的 `campus.course-review`，不会把控制台可
   直调的教务、校车和二课误报成 Agent 已可自然语言自动调用。
@@ -263,32 +270,34 @@ Last sync: unix:1786706085
   0 次 QQ Output，三项 Review 均通过。该结果是质量抽样，不是生产 Runtime 第三次
   模型调用或总体模型排名。
 - 显式“评课社区”已成为 2.0 Production Rule 的确定性
-  `campus.course-review` 信号。75 条原始案例均逐条经过 Canary Bridge 和本地
-  iCourse MCP worker，产生 75 次 Unified MCP 调用；19 条显式 marker 在 Fake
-  Model 故意漏报 Tool 时仍为 19/19。另加 3 条参数回归，实际投影分别为
-  `人工智能`、`萌萌哒mmd` 和 `线性代数B1`。
+  `campus.course-review` 信号。早期 scripted 75 题与 3 条参数回归为 78/78
+  Unified MCP 调用；19 条显式 marker 在 Fake Model 故意漏报 Tool 时仍为 19/19。
+  最终真实模型 75 题则是 73 次 MCP：Case 25 合理澄清、Case 67 合理直接回答，
+  显式 marker 仍为 19/19。
 - 真实 Luna `low` no-send Perception 已覆盖 75/75：Schema 75/75 有效，iCourse
   category 74/75，显式 marker 19/19，零 QQ Output。唯一漏报 Case 67 没有站点词
   或 iCourse 上下文，未增加会误伤普通聊天的宽泛规则。随后新增
   `icourse.public-query.v2`，自动 Planner 可把标准 intent 投影为
-  `course/review/teacher/ranking/stats` 五类单步高层查询。75 题公开快照回答状态为
-  43 个完整、27 个部分、5 个需澄清；这不等于生产 Runtime 语义全通过，需用户、
-  回复、长期时序数据或多步交互的任务仍不完整。
+  `course/review/teacher/ranking/stats` 五类单步高层查询。最终 75 题 Luna 审校在补跑后
+  为 60/15，人工交叉终审为 49/26；别名规范化、结构化筛选、最新/时序、用户/回复联表、
+  分页和多步交互仍不完整。
 - Tool 路径在没有显式详略要求时默认选择 LONG；Production 继续使用
-  `capability_maximum_attempts=1`，78 条模拟保持每条恰好一次 MCP 调用。超过
-  512-byte 分片阈值的群聊 LONG 由 Output Adapter 只发送一条 QQ 合并转发；
-  SHORT/MEDIUM 与单段 LONG 仍为普通消息。
-- 原 42 项聚焦证据仍有效；本轮完整 78 场景矩阵、2 项 fixture 和单例纵切通过，
-  `git diff --check` 通过。全规则 Ruff 仍只报告 `composition.py` 既存风格债务，
-  本轮未借机修改。未重跑全仓。
+  `capability_maximum_attempts=1`。最终 75 题为 LONG 73、SHORT 1、MEDIUM 0；
+  这不证明三档质量已校准。超过 512-byte 的群聊 LONG 仍为单条合并转发，分片器已从
+  UTF-8 硬切改为优先自然文本边界。
+- 本轮 Runner/Planner、Runtime/State、Redaction/Safety、iCourse/MCP 与 Production
+  Composition 合计 97/97，新增分片聚焦回归通过，宿主入口 75/75；changed-file Ruff
+  仍有既有/本轮行长与导入风格项，但 F 类为 0，`git diff --check` 通过。
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
 - Obtain a human-reviewed, class-balanced Gold subset before making semantic,
   tool-use or AnswerProfile quality claims; current labels are strongly
   imbalanced and are not production calibration evidence.
-- 用一条真实群内明确 @ 纯文本闭合 QQ 入站、2.0 claim、模型/MCP、单次 Delivery 和 LONG
-  合并转发证据；readiness 与 Provider 单次成功不能代替这条用户可见验收。
+- 先处理或明确串行化 AstrBot/aiocqhttp 的并发入队顺序；延迟首帧已经复现
+  `1,2,3 -> 2,3,1`，顺序执行的 75 题 Runner 不能证明生产顺序。
+- 随后用一条真实群内明确 @ 纯文本闭合 QQ 入站、2.0 claim、模型/MCP、单次 Delivery 和
+  LONG 合并转发证据；readiness 与 Provider 单次成功不能代替这条用户可见验收。
 - 私聊、附件和未 @ 主动参与需要独立 Connector/Context/Policy 接线；在完成前保持静默且禁止
   回退 1.0。Source/Projection/主动 Output 只在相应主动行为明确进入下一阶段时实现。
 - 继续观察 900 秒健康刷新周期；当前思考深度是每个 Endpoint 的固定最低 `light/low`，不是同
@@ -309,9 +318,9 @@ Last sync: unix:1786706085
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - The private Demo is served at `http://127.0.0.1:8766/` from a repository-
-  external data root. The next S23 action is one user-triggered explicit-mention
-  QQ acceptance sample on the already enabled 2.0 inbound path; proactive sends
-  remain outside that authorization.
+  external data root. The next S23 action is host-ingress ordering, followed by
+  one user-triggered explicit-mention QQ acceptance sample on the enabled 2.0
+  inbound path; proactive sends remain outside that authorization.
 - The live Agent Console now persists administrator preferences and legal
   ranges server-side. Treat `adaptive` and `preferred` as revisable per-Run
   inputs; only `locked` is a hard administrator selection, and no Web setting

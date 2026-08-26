@@ -18,6 +18,7 @@ from dududa.domain.delivery import (
     DeliveryPartStatus,
     DeliveryReceipt,
     DeliveryStatus,
+    _split_utf8_parts,
     validate_delivery_receipt_against_request,
 )
 from dududa.domain.primitives import DigestString, RuntimeBudget, TraceContext
@@ -80,6 +81,20 @@ def _binding() -> NegotiatedBindingReceipt:
 
 
 class DeliveryTests(unittest.IsolatedAsyncioTestCase):
+    def test_utf8_split_prefers_readable_boundaries(self) -> None:
+        text = "课程难度较高；给分很好，基础要求中等。后续建议"
+
+        parts = _split_utf8_parts((text,), maximum_bytes=24, maximum_parts=8)
+
+        self.assertEqual("".join(parts), text)
+        self.assertTrue(all(len(part.encode("utf-8")) <= 24 for part in parts))
+        boundaries = tuple(
+            (left[-1], right[0])
+            for left, right in zip(parts, parts[1:], strict=False)
+        )
+        self.assertNotIn(("给", "分"), boundaries)
+        self.assertTrue(parts[0].endswith("；"))
+
     async def asyncSetUp(self) -> None:
         self.context, self.envelope = _context()
         self.actor = message_actor(self.envelope)

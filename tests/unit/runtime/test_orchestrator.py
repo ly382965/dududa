@@ -236,6 +236,7 @@ class OrchestratorFixture:
         authorization_verifier=None,
         maximum_tool_context_bytes: int = 16_384,
         record_phases: bool = False,
+        final_validator=None,
     ) -> None:
         self.clock = _MutableClock()
         self.policy_snapshot = replace(
@@ -396,14 +397,17 @@ class OrchestratorFixture:
             direct_chat=self.direct_chat,
             composer=_composer(),
             renderer=_renderer(),
-            final_validator=FinalResponseSafetyValidator(
-                DeterministicRenderValidator(revision("render-validator")),
-                DefaultContentSafetyPolicy(clock=self.clock),
-                profile_validator=DeterministicResponseProfileValidator(
-                    UnicodeVisibleTokenCounter(revision("visible-token-counter")),
-                    revision("response-profile-validator"),
-                ),
-                clock=self.clock,
+            final_validator=(
+                final_validator
+                or FinalResponseSafetyValidator(
+                    DeterministicRenderValidator(revision("render-validator")),
+                    DefaultContentSafetyPolicy(clock=self.clock),
+                    profile_validator=DeterministicResponseProfileValidator(
+                        UnicodeVisibleTokenCounter(revision("visible-token-counter")),
+                        revision("response-profile-validator"),
+                    ),
+                    clock=self.clock,
+                )
             ),
             delivery_builder=delivery_builder,
             response_profile_policy=DeterministicResponseProfilePolicy(

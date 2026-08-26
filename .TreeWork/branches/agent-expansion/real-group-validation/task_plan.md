@@ -286,6 +286,11 @@ Title: S23 Authorized Real-Group Validation
   75 benchmark questions with Luna/Terra/Sol at `low`, review each batch once with
   Luna, correct the remaining groundedness errors, and publish the Chinese answer
   report without QQ Output or production deployment claims.
+- [x] Run all 75 legal OneBot-shaped messages through the real-model 2.0 Runtime
+  with Fake Delivery, replace only the four corrected entity-planning cases,
+  perform one Luna review plus a cross-case human final audit, and publish every
+  final answer. Separately exercise AstrBot's in-memory WebSocket ingress and
+  record the observed host-ordering risk without claiming real QQ E2E.
 - [ ] Route validated Capability failure through the governed Composer, Persona,
   Final Validator and authorized Delivery path; do not fall back to the legacy
   course handler, Web search or a Bridge-level second send path.

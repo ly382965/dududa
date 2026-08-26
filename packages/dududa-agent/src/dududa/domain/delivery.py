@@ -243,23 +243,36 @@ def _split_utf8_parts(
 ) -> tuple[str, ...]:
     result: list[str] = []
     for text in texts:
-        current: list[str] = []
-        current_bytes = 0
-        for character in text:
-            size = len(character.encode("utf-8"))
-            if size > maximum_bytes:
+        remaining = text
+        while remaining:
+            end = _utf8_prefix_end(remaining, maximum_bytes)
+            if end == 0:
                 raise validation_error("delivery_part_limit_exceeded")
-            if current and current_bytes + size > maximum_bytes:
-                result.append("".join(current))
-                current = []
-                current_bytes = 0
-            current.append(character)
-            current_bytes += size
-        if current:
-            result.append("".join(current))
+            if end < len(remaining):
+                end = _preferred_text_boundary(remaining, end)
+            result.append(remaining[:end])
+            remaining = remaining[end:]
     if not result or len(result) > maximum_parts:
         raise validation_error("delivery_part_limit_exceeded")
     return tuple(result)
+
+
+def _utf8_prefix_end(text: str, maximum_bytes: int) -> int:
+    used = 0
+    for index, character in enumerate(text):
+        size = len(character.encode("utf-8"))
+        if used + size > maximum_bytes:
+            return index
+        used += size
+    return len(text)
+
+
+def _preferred_text_boundary(text: str, hard_end: int) -> int:
+    minimum = max(1, hard_end // 2)
+    for index in range(hard_end - 1, minimum - 1, -1):
+        if text[index] in "\n。！？；;!?，,、 \t":
+            return index + 1
+    return hard_end
 
 
 @dataclass(frozen=True, slots=True)

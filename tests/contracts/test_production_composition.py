@@ -974,7 +974,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                             "query": "吴天",
                             "goal": "@嘟嘟哒 查询评课社区吴天",
                             "operation": "teacher",
-                            "limit": 20,
+                            "limit": 10,
                         },
                     )
                 ],

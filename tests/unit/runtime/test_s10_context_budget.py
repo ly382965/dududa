@@ -116,7 +116,9 @@ class CurrentMessageContextBuilderTests(unittest.TestCase):
             self.assertNotIn(raw, serialized)
         resolved = result.resolve(result.current_author_identity_ref)
         self.assertEqual(resolved.actor_ref.opaque_actor_id, value.user_id)
-        self.assertNotEqual(result.current_author_identity_ref, value.user_id)
+        self.assertEqual(result.current_author_identity_ref, "identity:author")
+        self.assertEqual(result.perception.bot_identity_ref, "identity:bot")
+        self.assertEqual(result.perception.current_message_ref, "message:current")
 
     def test_private_is_explicit_but_unmentioned_group_is_ignored(self) -> None:
         private = message(private=True, mentioned=False)

@@ -176,6 +176,16 @@ class SecurityServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(second.changed)
         self.assertEqual(first.value, second.value)
 
+    def test_redaction_does_not_treat_slash_alternatives_as_paths(self) -> None:
+        value = "按学年/年份比较给分/作业，再看作业/考核变化。"
+
+        result = DefaultRedactor().redact(
+            RedactionRequest(1, value, Sensitivity.SENSITIVE, "test")
+        )
+
+        self.assertFalse(result.changed)
+        self.assertEqual(result.value, value)
+
     async def test_audit_digest_and_jsonl_persistence(self) -> None:
         event = AuditEvent(
             1,

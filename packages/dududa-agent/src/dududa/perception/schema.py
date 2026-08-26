@@ -85,6 +85,24 @@ def model_projection_schema(limits: PerceptionLimits) -> Mapping[str, JsonValue]
             "evidence_refs": evidence_refs,
         },
     )
+    reference["allOf"] = (
+        {
+            "if": {
+                "properties": {"kind": {"const": ReferenceKind.UNRESOLVED.value}},
+                "required": ("kind",),
+            },
+            "then": {"properties": {"target_ref": {"type": "null"}}},
+            "else": {
+                "properties": {
+                    "target_ref": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128,
+                    }
+                }
+            },
+        },
+    )
     ambiguity = _strict_object(
         (
             "ambiguity_id",
