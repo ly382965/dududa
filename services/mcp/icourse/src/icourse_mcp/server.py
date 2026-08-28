@@ -49,8 +49,8 @@ def create_mcp(config: AppConfig) -> FastMCP:
 
     @mcp.tool()
     def icourse_stats() -> dict[str, Any]:
-        """Return local database statistics for the iCourse public-data cache."""
-        return store.stats()
+        """Return current public site statistics from icourse.club."""
+        return current_crawler().get_site_statistics()["coverage"]
 
     @mcp.tool()
     def search_courses(
@@ -62,32 +62,60 @@ def create_mcp(config: AppConfig) -> FastMCP:
         limit: int = 20,
         offset: int = 0,
     ) -> dict[str, Any]:
-        """Search cached public course records from icourse.club."""
-        return store.search_courses(
-            query=query,
-            teacher=teacher,
-            dept=dept,
-            course_type=course_type,
-            min_rating=min_rating,
-            limit=limit,
-            offset=offset,
+        """Search current public course records on icourse.club."""
+        normalized = (query or teacher or dept or course_type or "").strip()
+        result = current_crawler().query_site_courses(normalized, limit=50)
+        items = [
+            item for item in result.get("items", []) if isinstance(item, dict)
+        ]
+        if teacher:
+            expected = teacher.casefold()
+            items = [
+                item
+                for item in items
+                if any(
+                    expected in str(value.get("name") or "").casefold()
+                    for value in item.get("teachers", [])
+                    if isinstance(value, dict)
+                )
+            ]
+        if dept:
+            items = [item for item in items if dept in str(item.get("dept") or "")]
+        if course_type:
+            items = [
+                item
+                for item in items
+                if course_type in str(item.get("course_type") or "")
+            ]
+        if min_rating is not None:
+            items = [
+                item
+                for item in items
+                if float(item.get("rating_average") or 0) >= min_rating
+            ]
+        offset = max(0, offset)
+        limit = max(1, min(limit, 100))
+        has_filters = bool(
+            teacher or dept or course_type or min_rating is not None
         )
+        return {
+            "total": (
+                len(items)
+                if has_filters
+                else int(result.get("total") or len(items))
+            ),
+            "items": items[offset : offset + limit],
+        }
 
     @mcp.tool()
     def get_course(
         course_id: int, include_reviews: bool = True, refresh: bool = False
     ) -> dict[str, Any]:
-        """Get one cached course. Set refresh=true to fetch its public page first."""
-        if refresh:
-            current_crawler().crawl_course(course_id)
-        course = store.get_course(course_id, include_reviews=include_reviews)
-        if not course:
-            return {
-                "ok": False,
-                "error": "course_not_found_in_cache",
-                "hint": "Call crawl_course(course_id) first, or crawl a course-list page.",
-                "course_id": course_id,
-            }
+        """Get one current public course page from icourse.club."""
+        course = current_crawler().get_site_course(
+            course_id,
+            include_reviews=include_reviews,
+        )
         return {"ok": True, "course": course, "public_only": True}
 
     @mcp.tool()
@@ -98,11 +126,11 @@ def create_mcp(config: AppConfig) -> FastMCP:
         sort_by: str = "upvote",
         limit: int = 50,
     ) -> dict[str, Any]:
-        """Get cached public reviews for one course, optionally filtered by term or 1-5 star rating."""
+        """Get current public reviews from one icourse.club course page."""
         return {
             "ok": True,
             "course_id": course_id,
-            "reviews": store.get_reviews(
+            "reviews": current_crawler().get_site_reviews(
                 course_id, term=term, rating=rating, sort_by=sort_by, limit=limit
             ),
             "public_only": True,

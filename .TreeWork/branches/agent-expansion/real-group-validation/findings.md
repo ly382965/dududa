@@ -39,15 +39,20 @@ Branch: real-group-validation
   Observation 是证据，不是回复；最终回答必须先归纳原文内容，链接只作次要引用。
   这复用 Perception 后既有的第二次模型调用，不再增加一次总结调用或另一条发送路径。
 - Complex iCourse questions still consume one Runtime Tool step. The selected
-  high-level `icourse.public-query.v2` operation may perform bounded local
-  joins/aggregation inside the read-only Server, but the Agent does not build
-  an N+1 Tool plan or retry Tool selection. Capability and MCP governance remain
-  outside the model.
-- Anonymous iCourse reviews are public records and must remain visible to
-  public full-text search and local ranking. Excluding `is_anonymous=1` would
-  systematically bias results; anonymity affects displayed identity, not
-  public-read eligibility. Site timestamps use both ISO and `MM/DD/YYYY`, so
-  year filters must handle both forms.
+  high-level `icourse.public-query.v2` operation may perform a bounded sequence
+  of public-site GETs and in-memory projection inside the read-only Server, but
+  the Agent does not build an N+1 Tool plan or retry Tool selection. Capability
+  and MCP governance remain outside the model; SQLite joins/rankings belong only
+  to historical evaluation and legacy management.
+- iCourse review full-text hits do not establish author identity. In particular,
+  the five `Wanglulu` search hits only mention that name; the exact public user is
+  `/user/12918`, whose review page reports 54. The ranking page may help discover
+  a user ID, but its 56/84 counters differ from the authoritative user-page totals
+  54/83 for Wanglulu and 萌萌哒mmd. Exact-user answers therefore use the user
+  review page and never substitute keyword counts or SQLite rows.
+- Anonymous iCourse reviews remain eligible public evidence; anonymity affects
+  displayed identity, not public-read eligibility. Site timestamps use both ISO
+  and `MM/DD/YYYY`, so year filters must handle both forms in historical assets.
 - Luna Review's boolean fields and some numeric scores were inconsistent in the
   75-answer run. The durable report therefore uses grounded/completeness/
   process/call-economy/profile booleans, issue lists and revised answers; it

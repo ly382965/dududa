@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from icourse_mcp.config import AppConfig
 from icourse_mcp.server import _user_lookup_requested, create_mcp
+from icourse_mcp.storage import ICourseStore
 
 
 class _Crawler:
@@ -27,6 +28,10 @@ class _Crawler:
     def check_robots(self):
         self.calls.append(("check_robots", None))
         return {"ok": True}
+
+    def get_site_course(self, course_id, *, include_reviews=True, sort_by="upvote"):
+        self.calls.append(("get_site_course", course_id))
+        return {"id": course_id, "name": "fixture"}
 
     def close(self) -> None:
         self.close_calls += 1
@@ -74,6 +79,26 @@ class _ForbiddenCrawler:
                 "last_list_crawled_at": None,
             },
         }
+
+    def get_site_course(self, course_id, *, include_reviews=True, sort_by="upvote"):
+        self.calls.append(
+            ("course_detail", (course_id, include_reviews, sort_by))
+        )
+        return {"id": course_id, "name": "fixture"}
+
+    def get_site_reviews(
+        self,
+        course_id,
+        *,
+        term=None,
+        rating=None,
+        sort_by="upvote",
+        limit=50,
+    ):
+        self.calls.append(
+            ("course_reviews", (course_id, term, rating, sort_by, limit))
+        )
+        return [{"id": 7, "course_id": course_id, "content_text": "live"}]
 
     def __getattr__(self, name: str):
         if name.startswith(("crawl", "search", "check", "fetch")):
@@ -169,11 +194,18 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
                 "萌萌哒mmd",
             )
 
-    async def test_approved_capability_uses_live_read_for_review_queries(self) -> None:
+    async def test_all_approved_read_capabilities_bypass_local_cache(self) -> None:
         with TemporaryDirectory() as temporary:
             _ForbiddenCrawler.instances.clear()
             config = AppConfig(db_path=Path(temporary) / "icourse.sqlite3")
-            with patch("icourse_mcp.server.ICourseCrawler", _ForbiddenCrawler):
+            cache_error = AssertionError("model capability read local iCourse cache")
+            with (
+                patch("icourse_mcp.server.ICourseCrawler", _ForbiddenCrawler),
+                patch.object(ICourseStore, "stats", side_effect=cache_error),
+                patch.object(ICourseStore, "search_courses", side_effect=cache_error),
+                patch.object(ICourseStore, "get_course", side_effect=cache_error),
+                patch.object(ICourseStore, "get_reviews", side_effect=cache_error),
+            ):
                 mcp = create_mcp(config)
                 async with mcp._mcp_server.lifespan(mcp._mcp_server):
                     stats = await mcp._tool_manager.call_tool("icourse_stats", {})
@@ -195,14 +227,18 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
                             {"query": "fixture", "operation": operation},
                         )
                         self.assertEqual(public_query["operation"], operation)
-                    self.assertEqual(stats["courses"], 0)
-                    self.assertEqual(search["items"], [])
-                    self.assertFalse(course["ok"])
-                    self.assertEqual(reviews["reviews"], [])
+                    self.assertEqual(stats["courses"], 1)
+                    self.assertEqual(search["items"][0]["id"], 1)
+                    self.assertTrue(course["ok"])
+                    self.assertEqual(reviews["reviews"][0]["content_text"], "live")
                 self.assertEqual(len(_ForbiddenCrawler.instances), 1)
                 self.assertEqual(
                     _ForbiddenCrawler.instances[0].calls,
                     [
+                        ("stats", None),
+                        ("course", ("fixture", 50)),
+                        ("course_detail", (1, True, "upvote")),
+                        ("course_reviews", (1, None, None, "upvote", 50)),
                         ("course", ("fixture", 50)),
                         ("review", ("fixture", 20, False)),
                         ("teacher", ("fixture", 20)),
@@ -233,7 +269,7 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
                         _Crawler.instances[0].calls,
                         [
                             ("crawl_course", 1),
-                            ("crawl_course", 2),
+                            ("get_site_course", 2),
                             ("check_robots", None),
                         ],
                     )

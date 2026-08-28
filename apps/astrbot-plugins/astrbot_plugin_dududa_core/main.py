@@ -56,6 +56,10 @@ class DududaCorePlugin(
         """Replay one native NapCat message without QQ delivery."""
         return await runtime_native_message_preview_response(self)
 
+    async def terminate(self) -> None:
+        """Expose cleanup on the concrete class for AstrBot's plugin loader."""
+        await CoreLifecycleMixin.terminate(self)
+
     @filter.on_astrbot_loaded()
     async def activate_runtime(self):
         """Assemble Dududa 2.0 after AstrBot Providers are available."""

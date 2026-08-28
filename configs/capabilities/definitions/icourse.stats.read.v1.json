@@ -6,8 +6,8 @@
   "capability_id": "icourse.stats.read.v1",
   "category": "campus.course-review",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:3f2bf50988235b30e032b734fd918fde0419e0298d34d5d2f33c67f3f2bd6ae1",
-  "description": "Read public iCourse cache counts; never returns local storage paths.",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:fac966b1c10d35dfaa60422d13eb50c8442349c4d621144f64f92147d9364c15",
+  "description": "Read current public iCourse site counts without using the local cache.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
@@ -25,7 +25,7 @@
     "expected_ms": 20,
     "maximum_ms": 2000
   },
-  "name": "Read iCourse public-cache statistics without exposing storage paths.",
+  "name": "Read live iCourse public statistics",
   "output_schema": {
     "digest": "dududa-c14n-v1:schema:capability.icourse.stats.read.v1.output:v1:sha-256:02761ce4ff015538215a56691109dfe076614dc77d8ff6a23b8f5c32830d63f3",
     "document": {
@@ -90,9 +90,9 @@
     "none"
   ],
   "tags": [
-    "cache",
     "course",
     "icourse",
+    "live",
     "statistics"
   ]
 }

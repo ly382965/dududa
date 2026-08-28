@@ -4,6 +4,38 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-28 iCourse live-source closeout: all five model-visible Capability
+  mappings now read current public pages. A focused test replaces
+  `ICourseStore.stats/search_courses/get_course/get_reviews` with immediate
+  failures; all high-level and legacy reads still pass. The local fixture runs
+  a real MCP stdio subprocess against fixed HTML, so Worker, Capability Provider,
+  natural-language Runtime and the 75-case dispatch contract no longer depend on
+  an SQLite seed or the public network. The 21-test focused unit/plugin/config
+  run passed 19 with two expected AstrBot-host skips; two Worker/Provider tests
+  and two Production Composition regressions passed separately.
+- Real public-site smoke used an empty temporary SQLite and called
+  `icourse_stats`, `search_courses`, `get_course` and `get_reviews`; it observed
+  19,194 courses, 49,606 reviews and four `大数据算法` search hits while the
+  database remained 0 courses/0 reviews. The Web MCP Console then called the
+  compatible `icourse.courses.search.v1 -> search_courses` path and returned the
+  same four live hits on generation 3.
+- Two installed Dududa 2.0 no-send previews in Scope `364894085` each made one
+  MCP call: `查询评课社区wanglulu` reported the user page's 54 reviews and
+  `查询评课社区萌萌哒mmd` reported 83. Both used Terra `low`, selected LONG,
+  returned `bounded_tool_execution + delivery_ready`, and recorded
+  `outputCalls=0` plus `memoryWrites=0`. The active Runtime cache remained 11
+  courses/24 reviews; the Console cache remained 0/0.
+- AstrBot 4.26.2 only detects lifecycle methods declared on the concrete plugin
+  class. The new concrete `terminate()` delegate was installed, and a second
+  Core-only hot reload returned HTTP 200 and removed all three prior Runtime MCP
+  Worker generations without manual process termination. The next no-send run
+  created one current generation per configured Server. AstrBot, NapCat, Web and
+  MCP Console containers were not restarted, and no QQ message was sent.
+- Evidence boundary: crawler/export/cache-maintenance tools and historical
+  SQLite snapshots still exist outside the model Capability surface. This proves
+  live iCourse reads and no cache fallback, not real QQ delivery or full S23;
+  branch status remains `paused/partial`.
+
 - 2026-08-28 长生命周期 Runtime 故障复现与修复：群 `364894085` 的真实 `@Bot`
   事件正常进入 AstrBot，但 30 分钟后的 Endpoint load 快照被 Router 判为陈旧，
   no-send 同形请求稳定返回 `model_route_not_found`、空正文。假时钟跨越 31 分钟的

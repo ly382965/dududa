@@ -194,6 +194,9 @@ Title: S23 Authorized Real-Group Validation
   `DIRECT_CHAT` 产生唯一最终回答；不得经过 `/course` handler 或 Web search，
   不显示中间计划、Observation 原文或思维过程。最终模型必须归纳 MCP 原始内容并直接
   回答，已有来源链接仅作辅助引用，不得用裸链接、链接列表或原始 JSON 代替正文。
+- [x] iCourse 的高层查询和四个旧兼容读 Capability 均以 `icourse.club` 实时公开页
+  为事实源；模型路径不得读取或回退 SQLite。课程/教师、点评/精确用户、排行和统计
+  分别走对应公开端点，crawl/export 缓存只保留为管理与历史评测面。
 
 ## Local Steps
 
@@ -304,6 +307,10 @@ Title: S23 Authorized Real-Group Validation
   perform one Luna review plus a cross-case human final audit, and publish every
   final answer. Separately exercise AstrBot's in-memory WebSocket ingress and
   record the observed host-ordering risk without claiming real QQ E2E.
+- [x] 将 `icourse.public-query.v2` 和 `stats/search/get_course/get_reviews` 四个兼容读
+  工具全部切到实时站点；用禁止 `ICourseStore` 读取的聚焦测试、空 SQLite 真实 Smoke、
+  Web Capability 直调和 2.0 no-send 自然语言预览证明不存在缓存旁路，并修复 Core
+  热重载未关闭继承式 `terminate()` 所遗留的 MCP Worker。
 - [ ] Route validated Capability failure through the governed Composer, Persona,
   Final Validator and authorized Delivery path; do not fall back to the legacy
   course handler, Web search or a Bridge-level second send path.

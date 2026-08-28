@@ -1,6 +1,6 @@
 {
   "argument_mapping_revision": "identity-v1",
-  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:0633eec49950c7032c77522191da7be3fdc7ed2eccfbfeeea031089ddcfb7fdf",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:6cdc5c5c33e09df9c0196e09ce238decf127e286fa9ed99ae6e7ebfd031d7429",
   "capability_id": "icourse.course.get.v1",
   "enabled": true,
   "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.icourse.get_course.input:v1:sha-256:a5522c2fabc11ea6ebdf9f572a0ad40d689b2530da67be89bb77fc3a588525d4",
@@ -8,7 +8,7 @@
   "fixed_arguments": {
     "refresh": false
   },
-  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:d80eae5e7c2979e80e69d72a7f0e973139a23cd3d519979c982efd8502d548ad",
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:764282f6dffe515d1fb26f7a8630197c210cfd94ac6a27954e442ec4e990aef5",
   "result_mapping_revision": "schema-project-v1",
   "schema_version": 1,
   "semantics": "read_only",

@@ -219,6 +219,16 @@ an Adapter for the first iCourse vertical slice, not a general model Tool
 Planner. A future `ModelRole.TOOL_PLANNING` may replace it without changing the
 Capability or MCP control planes.
 
+All five model-visible iCourse read Capabilities treat the current public site
+as their factual source. Course and teacher lookup use `/search/`; review search
+uses `/search-reviews/` and may perform a bounded exact-user discovery before
+reading `/user/{id}/reviews`; ranking and statistics use their public site
+pages. A single MCP Tool may make this bounded upstream sequence, but the Agent
+still owns one Tool step rather than an N+1 plan. The SQLite snapshot remains a
+legacy crawl/export and historical-evaluation asset. It is never a fallback for
+a model-visible read: upstream failure or an unresolved exact user must produce
+a structured unavailable/not-found result instead of cached evidence.
+
 Production Composition owns a first-class `UnifiedMcpClient`; the legacy
 `ICourseClient` borrows it as a compatibility consumer and does not provide or
 own the 2.0 Runtime connection. Perception advertises only categories backed by

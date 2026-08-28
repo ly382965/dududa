@@ -38,8 +38,10 @@ Last sync: unix:1786706085
   `icourse.public-query.v2` Capability. Standard model intents project
   deterministically to `course/review/teacher/ranking/stats`; Schema-aware
   arguments remain limited to `query/goal/operation/limit`, and every inbound
-  plan still has one Tool step and one attempt. The four legacy iCourse
-  Capabilities remain compatible.
+  plan still has one Tool step and one attempt. That high-level path and the four
+  compatible `stats/search/get_course/get_reviews` reads now query current public
+  iCourse pages and never fall back to SQLite. A 2.0 no-send preview returned
+  Wanglulu's 54 and 萌萌哒mmd's 83 public reviews with one MCP call each.
 - A public-only development snapshot contains 19,194 course-list rows, 174
   targeted details and 4,216 public reviews. The final 75-case Runtime benchmark
   completed 75/75 Bridge runs, 75/75 Runtime runs and 75/75 Fake Deliveries with
@@ -47,6 +49,13 @@ Last sync: unix:1786706085
   cross-case human review reduced that to 49 complete/26 incomplete. The current
   report is `docs/refactor/icourse-75-native-message-e2e-review-2026-08-26.md`;
   the earlier 43/27/5 report remains a predecessor snapshot, not current reality.
+  This snapshot is now historical evaluation data only; production model reads
+  do not consult it.
+- AstrBot 4.26.2 checks `terminate` only on the concrete plugin class. Dududa Core
+  now exposes a concrete delegate to the existing lifecycle cleanup, so a plugin
+  hot reload closes all Runtime MCP generations instead of leaving stale Workers.
+  A second reload removed all three live Workers without restarting AstrBot or
+  NapCat; the next preview rebuilt one generation per configured Server.
 - The same 75 legal OneBot JSON frames passed AstrBot 4.26.2's in-memory
   WebSocket and produced 75 `AiocqhttpMessageEvent`/RequestFactory handoffs with
   zero sends. A 50 ms delay on the first member lookup reproduced queue order

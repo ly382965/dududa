@@ -6,8 +6,8 @@
   "capability_id": "icourse.course.get.v1",
   "category": "campus.course-review",
   "cost_hint_units": 2,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:0633eec49950c7032c77522191da7be3fdc7ed2eccfbfeeea031089ddcfb7fdf",
-  "description": "Read one public cached course with refresh permanently disabled.",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:6cdc5c5c33e09df9c0196e09ce238decf127e286fa9ed99ae6e7ebfd031d7429",
+  "description": "Read one current public course page from icourse.club.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
@@ -40,7 +40,7 @@
     "expected_ms": 20,
     "maximum_ms": 2000
   },
-  "name": "Read one cached iCourse course",
+  "name": "Read one live iCourse course",
   "output_schema": {
     "digest": "dududa-c14n-v1:schema:capability.icourse.course.get.v1.output:v1:sha-256:842e8d8cec9f10a1487e4ba45972d23da9fc6321b45f2787e4b416c3119a01c9",
     "document": {
@@ -433,6 +433,7 @@
     "course",
     "course-review",
     "detail",
-    "icourse"
+    "icourse",
+    "live"
   ]
 }

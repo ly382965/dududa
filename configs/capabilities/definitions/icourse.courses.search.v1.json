@@ -6,8 +6,8 @@
   "capability_id": "icourse.courses.search.v1",
   "category": "campus.course-review",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:7e250df3ed2f6fa35e8af4828a37dc4f08f537277213dddbf44bb409de967898",
-  "description": "Search approved public course-review cache data; not personal records.",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:9ee3f21746e0677d9ffe24381705fd7d56b2129ed682e58e45da010f51a123f1",
+  "description": "Search current public course-review data on icourse.club.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
@@ -72,7 +72,7 @@
     "expected_ms": 20,
     "maximum_ms": 2000
   },
-  "name": "Search cached iCourse courses",
+  "name": "Search live iCourse courses",
   "output_schema": {
     "digest": "dududa-c14n-v1:schema:capability.icourse.courses.search.v1.output:v1:sha-256:6303b278935d7bd5c496a9a986060de9680e98340af1befede5c2961de50dcf1",
     "document": {
@@ -304,6 +304,7 @@
     "course",
     "course-review",
     "icourse",
+    "live",
     "search"
   ]
 }

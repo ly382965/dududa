@@ -163,6 +163,23 @@ class DududaCorePluginSplitTests(unittest.TestCase):
             source,
         )
 
+    def test_concrete_plugin_exposes_terminate_for_astrbot_loader(self) -> None:
+        tree = ast.parse(MAIN.read_text(encoding="utf-8"))
+        plugin = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "DududaCorePlugin"
+        )
+        terminate = next(
+            node
+            for node in plugin.body
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "terminate"
+        )
+        self.assertIn(
+            "await CoreLifecycleMixin.terminate(self)",
+            ast.unparse(terminate),
+        )
+
     def test_command_implementations_do_not_own_astrbot_decorators(self) -> None:
         for path in COMMANDS.glob("*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"))

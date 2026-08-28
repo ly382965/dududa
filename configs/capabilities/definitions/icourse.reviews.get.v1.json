@@ -6,8 +6,8 @@
   "capability_id": "icourse.reviews.get.v1",
   "category": "campus.course-review",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:412da4c2c0b0454a6732abfbac80b09a3c8262078e97e936e29dc499d9b7905d",
-  "description": "Read public cached reviews for one course without online refresh.",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:731d952edd6cb79cca98a08c89b4a940f5ca9c3b82a02e68812c92a4ec2f9f20",
+  "description": "Read current public reviews from one icourse.club course page.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
@@ -63,7 +63,7 @@
     "expected_ms": 20,
     "maximum_ms": 2000
   },
-  "name": "Read cached iCourse reviews",
+  "name": "Read live iCourse reviews",
   "output_schema": {
     "digest": "dududa-c14n-v1:schema:capability.icourse.reviews.get.v1.output:v1:sha-256:eca5c407db358e16b40cd383e50018d363cdd4bb28cdbe184ec310f9d85a01cf",
     "document": {
@@ -243,6 +243,7 @@
     "course",
     "course-review",
     "icourse",
+    "live",
     "review"
   ]
 }

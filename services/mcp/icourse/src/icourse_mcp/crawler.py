@@ -232,6 +232,42 @@ class ICourseCrawler:
             "public_only": True,
         }
 
+    def get_site_course(
+        self,
+        course_id: int,
+        *,
+        include_reviews: bool = True,
+        sort_by: str = "upvote",
+    ) -> dict[str, Any]:
+        page = self.fetcher.fetch_course_detail(course_id, sort_by=sort_by)
+        course = parse_course_detail(page.text, self.config.base_url, course_id)
+        return course.to_dict(include_reviews=include_reviews)
+
+    def get_site_reviews(
+        self,
+        course_id: int,
+        *,
+        term: str | None = None,
+        rating: int | None = None,
+        sort_by: str = "upvote",
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        course = self.get_site_course(
+            course_id,
+            include_reviews=True,
+            sort_by=sort_by,
+        )
+        reviews = [
+            item for item in course.get("reviews", []) if isinstance(item, dict)
+        ]
+        if term:
+            reviews = [item for item in reviews if item.get("term") == term]
+        if rating is not None:
+            accepted = {rating * 2 - 1, rating * 2}
+            reviews = [item for item in reviews if item.get("rating_10") in accepted]
+        # The public detail endpoint already applies its documented sort order.
+        return reviews[: max(1, min(limit, 200))]
+
     def search_site_teachers(self, query: str, limit: int = 20) -> dict[str, Any]:
         courses = self.query_site_courses(query, limit=50)
         teachers: dict[str, dict[str, Any]] = {}
@@ -413,8 +449,17 @@ def _public_course_list_item(item: dict[str, Any]) -> dict[str, Any]:
             for name in item.get("teachers", [])
         ],
         "term_text": item.get("term_text"),
+        "courseries": item.get("courseries"),
+        "dept": item.get("dept"),
+        "course_type": item.get("course_type"),
+        "join_type": item.get("join_type"),
+        "teaching_type": item.get("teaching_type"),
+        "course_level": item.get("course_level"),
+        "credit": item.get("credit"),
         "rating_average": item.get("rating_average"),
         "review_count_site": item.get("review_count"),
+        "visible_review_count": item.get("visible_review_count"),
+        "missing_review_count_estimate": item.get("missing_review_count_estimate"),
         "difficulty": item.get("difficulty"),
         "homework": item.get("homework"),
         "grading": item.get("grading"),

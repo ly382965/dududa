@@ -34,8 +34,6 @@ from dududa.models.contracts import (
 )
 from dududa.models.health import ModelHealthEvidence
 from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
-from icourse_mcp.models import Course, Teacher
-from icourse_mcp.storage import ICourseStore
 
 from tests.contracts.test_mcp_capability_provider import (
     RecordingUnifiedClient,
@@ -44,6 +42,7 @@ from tests.contracts.test_unified_mcp_worker import (
     _StaticRegistry,
     factory,
     icourse_definition,
+    icourse_fixture_server,
 )
 from tests.unit.mcp.helpers import replace_server_definition
 from tests.unit.rollout.helpers import control, ledger
@@ -481,6 +480,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.temp = TemporaryDirectory()
         self.path = Path(self.temp.name) / "rollout.sqlite3"
         self.fixture = OrchestratorFixture()
+        self.icourse_fixture_context = None
+        self.icourse_fixture_base_url = None
         _, self.call = self.fixture.start()
         self.capability_patches = (
             patch.object(
@@ -503,9 +504,17 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             active_patch.start()
 
     def tearDown(self) -> None:
+        if self.icourse_fixture_context is not None:
+            self.icourse_fixture_context.__exit__(None, None, None)
         for active_patch in reversed(self.capability_patches):
             active_patch.stop()
         self.temp.cleanup()
+
+    def _live_icourse_fixture(self) -> str:
+        if self.icourse_fixture_base_url is None:
+            self.icourse_fixture_context = icourse_fixture_server()
+            self.icourse_fixture_base_url = self.icourse_fixture_context.__enter__()
+        return self.icourse_fixture_base_url
 
     async def _wait_until(self, predicate, *, timeout: float = 1.0) -> None:
         loop = asyncio.get_running_loop()
@@ -899,21 +908,11 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self,
     ) -> None:
         database = Path(self.temp.name) / "icourse-runtime.sqlite3"
-        ICourseStore(database).upsert_course(
-            Course(
-                id=26_560,
-                name="数学分析(B1)",
-                url="https://icourse.club/course/26560",
-                teachers=[Teacher(id=1_001, name="吴天", dept="数学科学学院")],
-                term_text="2025秋",
-                rating_average=9.6,
-                review_count_site=8,
-                visible_review_count=8,
-            ),
-            source_hash="local-runtime-fixture",
-        )
         server = replace_server_definition(
-            icourse_definition(database),
+            icourse_definition(
+                database,
+                base_url=self._live_icourse_fixture(),
+            ),
             timeouts=McpTimeoutPolicy(
                 connect=timedelta(seconds=10),
                 discovery=timedelta(seconds=10),
@@ -1058,9 +1057,11 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         }
         provider = _ICourseBenchmarkAstrBotProvider(regression_queries)
         database = Path(self.temp.name) / "icourse-runtime-benchmark.sqlite3"
-        ICourseStore(database).stats()
         server = replace_server_definition(
-            icourse_definition(database),
+            icourse_definition(
+                database,
+                base_url=self._live_icourse_fixture(),
+            ),
             timeouts=McpTimeoutPolicy(
                 connect=timedelta(seconds=10),
                 discovery=timedelta(seconds=10),
