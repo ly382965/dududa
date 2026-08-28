@@ -24,6 +24,11 @@ Last sync: unix:1786706085
   `actualEnabled=true / canary / deliveryEnabled=true / killSwitch=false`，健康接口显示 1/1 个
   QQ 账号在线且 NapCat 连接正常。Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat
   调用，三档使用最低 `light/low`；模型健康探测已启用，间隔/超时/TTL 为 `900/15/1800` 秒。
+- Web Policy 不再只是持久化配置。2.0 Bridge 每轮按 `accountId + conversationId`
+  精确解析 Agent 开关和 MCP Capability 模式，并在 Perception 前过滤类别；目标
+  Scope 当前解析为 Agent enabled、iCourse eligible。`on/locked` 只表示可选，
+  实际调用仍由 Perception、Planner 和 Core 的全局资格共同决定。生产 Runtime
+  尚未消费 Console 的全部六项自适应设置。
 - iCourse natural-language planning now uses the single high-level read-only
   `icourse.public-query.v2` Capability. Standard model intents project
   deterministically to `course/review/teacher/ranking/stats`; Schema-aware
@@ -148,6 +153,19 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 接通 Web -> AstrBot extension -> Dududa 2.0 Runtime 的 no-send 预览纵切，页面
+  不再调用固定 `toolCalls=0` 的旧候选器。运行中实测“查询评课社区吴天”进入
+  Perception、iCourse Unified MCP、Terra 总结与内存 Delivery 确认，返回非空正文，
+  `toolCalls=1 / outputCalls=0 / memoryWrites=0`。
+- 实测发现 AstrBot Provider 固定开销被低估：Perception 为 6,608 vs 6,353，
+  Direct Chat 为 5,525 vs 4,016，导致 `provider_usage_receipt_invalid`。现将每个
+  Endpoint 的 `provider_wrapping_tokens` 默认调为 4,608，并将 Perception/总输入
+  预算调为 12,000/40,000；修复后同一路径完成并选择 Terra `low`。
+- 修复 Web Agent Policy 与 2.0 Runtime 的断链：新增精确 Scope Policy Resolver，
+  把 Agent 开关和 MCP 插件模式投影到 Runtime feature flags，并在 Context Builder
+  中过滤 Perception 可见类别。Web 分开显示候选预览与真实 Runtime readiness；
+  运行中目标群已解析为 iCourse eligible。仅替换 AstrBot/Web，NapCat 未重启，
+  未发送测试 QQ 消息。
 - 完成 75 题原生消息形状 Runtime 纵切与最终审校：主跑 75/75 Runtime/Fake Delivery、
   73 次 MCP、0 Runtime/MCP 错误，Case 4/26/27/39 定向补跑后不重复其余 71 题；Luna
   为 63 revised/12 pass、60 complete/15 incomplete，人工交叉审校最终为
@@ -307,8 +325,9 @@ Last sync: unix:1786706085
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
 - `gpt-image-2` 仍需接入正式图片 Capability；四个校园 MCP 的 Web 直接调用已完成，
-  但 Agent 自然语言自动选择目前只闭环 iCourse `query` 单步，其他 Schema Planner
-  仍未实现，且在线 Tool/Capability rollout 继续关闭。
+  但 Agent 自然语言自动选择目前只闭环 iCourse 单步。iCourse 的精确 Scope 资格
+  和 Web no-send Runtime/MCP 预览已接通，仍缺用户触发的真实 QQ MCP/Delivery Receipt；二课、
+  教务和校车的自然语言 Schema Planner 尚未实现。
 - Capability/MCP 的可信失败 receipt 当前会在 Canary claim 后以 no-delivery 终止；
   尚需在 2.0 Composer/Persona/Final Validator 内补用户可见失败回答，不能由旧 handler
   或 Web search 接管。

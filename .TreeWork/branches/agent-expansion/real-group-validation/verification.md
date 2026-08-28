@@ -4,6 +4,32 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-28 Web -> 2.0 Runtime no-send 实测：`POST /agent/respond` 返回 HTTP 200、
+  `runtimePath=dududa_2_preview`、`toolCalls=1`、`outputCalls=0`、
+  `memoryWrites=0`；iCourse 查询经 Terra `low` 生成非空 LONG 回答，Runtime 原因
+  为 `bounded_tool_execution + delivery_ready`。该调用没有发送 QQ 消息。
+- 同一路径修复前连续复现空回答。脱敏诊断测得 Perception input usage
+  6,608/estimate 6,353，Direct Chat 5,525/estimate 4,016，均在 Admission settle
+  产生 `provider_usage_receipt_invalid`；配置 wrapping/预算后复测通过。
+- Python 相关组合/契约共 54 tests 通过，其中既有 75-case iCourse 分发测试完整执行；
+  Ruff F/I 与 `git diff --check` 通过。Web typecheck、聚焦服务端/UI 测试和 production
+  build 通过；Playwright 打开 `127.0.0.1:5173` 确认页面显示“2.0 Runtime 在线”
+  和“2.0 Runtime 预览”。
+- 2026-08-28 Web -> 2.0 Runtime Policy 接线核验：20 项聚焦 Python 测试通过，
+  覆盖精确 Scope 解析、`enabled=false` 的 claim 前退出、Capability 类别过滤和
+  no-delivery 原因保真；Web 76 项前端测试与 7 项服务端测试、TypeScript
+  typecheck 和 production build 均通过。Production 同形测试覆盖自然语言 -> Perception -> Unified
+  MCP -> 总结 -> Fake Delivery，未产生真实 QQ 副作用。
+- 运行中 Core 状态为 `ready/runtime_ready`，OneBot 已连接；用户选择的目标 Scope
+  解析为 Agent enabled、`campus.course-review=true`。Web Catalog 将 iCourse 显示为 Runtime online，
+  二课、教务和校车显示为已装配、待 Planner 接管。仅替换 AstrBot/Web，NapCat
+  容器未重启；本轮没有发送真实 QQ 消息。
+- Evidence boundary: the production Runtime currently consumes only the Scope
+  switch and Capability eligibility from Web Policy. The six adaptive settings
+  are not all production-wired, the other three campus MCPs lack a natural-
+  language Planner, and no user-triggered QQ MCP/Delivery Receipt exists.
+  Verification remains `partial`; S23 remains `paused`.
+
 - 2026-08-26 最终 75 题 Connector 形状 Runtime 纵切：Bridge 75/75、Runtime
   `completed` 75/75、Fake Delivery 75/75、MCP 73、Runtime/MCP 错误 0、真实 QQ
   输出 0。Case 25 为确定性澄清、Case 67 为合理直接回答；显式“评课社区”19/19

@@ -146,6 +146,7 @@ describe('internal-test gateway', () => {
       outputCalls: 0,
       memoryWrites: 0,
       toolCalls: 0,
+      runtimePath: 'candidate_fallback',
     })
     expect(providerRequest).toHaveBeenCalledOnce()
   })
@@ -153,6 +154,7 @@ describe('internal-test gateway', () => {
   it('projects the live Dududa rollout config instead of a hard-coded off state', async () => {
     const root = await fixtureRoot()
     const runtimeConfigPath = join(root, 'runtime.json')
+    const runtimeStatusPath = join(root, 'runtime-status.json')
     await writeFile(runtimeConfigPath, JSON.stringify({
       runtime_enabled: true,
       rollout_mode: 'canary',
@@ -160,11 +162,13 @@ describe('internal-test gateway', () => {
       rollout_kill_switch: false,
       rollout_allowlisted_groups: ['*'],
     }))
+    await writeFile(runtimeStatusPath, JSON.stringify({ ready: true }))
     const gateway = new FileInternalTestGateway({
       dataRoot: root,
       providerBaseUrl: 'https://provider.invalid',
       providerApiKey: 'test-key',
       runtimeConfigPath,
+      runtimeStatusPath,
     })
 
     await expect(gateway.agentStatus()).resolves.toMatchObject({
@@ -179,6 +183,82 @@ describe('internal-test gateway', () => {
         },
       },
       warnings: expect.arrayContaining(['DUDUDA 2.0 PASSIVE RUNTIME ACTIVE']),
+    })
+    await expect(gateway.agentCatalog()).resolves.toMatchObject({
+      plugins: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'icourse.read',
+          runtimeTarget: 'astrbot',
+          runtimeReadiness: 'online',
+        }),
+      ]),
+    })
+  })
+
+  it('uses the AstrBot 2.0 no-send preview and reports the real iCourse call', async () => {
+    const root = await fixtureRoot()
+    const scope = {
+      accountId: 'qq-3296147894',
+      conversationId: 'qq-3296147894:group:364894085',
+    }
+    const preview = vi.fn(async () => ({
+      runId: 'runtime-preview-1',
+      candidate: '吴天老师的公开评课结果已由 iCourse 返回并完成总结。',
+      tier: 'sonnet' as const,
+      model: 'gpt-5.6-terra',
+      reasoning: 'low' as const,
+      answerProfile: 'long' as const,
+      reasonCodes: ['delivery_ready', 'runtime.preview.no_send'],
+      latencyMs: 321,
+      generatedAt: '2026-08-28T09:00:00.000Z',
+      messagesRead: 1,
+      charactersRead: 9,
+      outputCalls: 0 as const,
+      memoryWrites: 0 as const,
+      toolCalls: 1,
+    }))
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      runtimePreview: { preview },
+    })
+    const policy = await gateway.agentConfig(scope)
+    await gateway.saveAgentConfig({
+      scope,
+      policy: {
+        ...policy,
+        plugins: { ...policy.plugins, 'icourse.read': 'on' },
+      },
+    })
+
+    await expect(gateway.respond({
+      ...scope,
+      conversationName: '测试群',
+      conversationType: 'group',
+      prompt: '查询评课社区吴天',
+      messages: [],
+    })).resolves.toMatchObject({
+      runtimePath: 'dududa_2_preview',
+      candidate: '吴天老师的公开评课结果已由 iCourse 返回并完成总结。',
+      tier: 'sonnet',
+      model: 'gpt-5.6-terra',
+      answerProfile: 'long',
+      outputCalls: 0,
+      memoryWrites: 0,
+      toolCalls: 1,
+      effectiveSelection: {
+        plugins: {
+          'icourse.read': {
+            selectedForRun: true,
+            triggerMatched: true,
+          },
+        },
+      },
+    })
+    expect(preview).toHaveBeenCalledWith({
+      ...scope,
+      prompt: '查询评课社区吴天',
     })
   })
 
@@ -210,6 +290,15 @@ describe('internal-test gateway', () => {
           summary: expect.stringContaining('尚未就绪'),
         },
       },
+    })
+    await expect(gateway.agentCatalog()).resolves.toMatchObject({
+      plugins: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'icourse.read',
+          runtimeTarget: 'astrbot',
+          runtimeReadiness: 'configured',
+        }),
+      ]),
     })
   })
 
@@ -254,7 +343,7 @@ describe('internal-test gateway', () => {
         available: true,
         installed: true,
         policyManaged: true,
-        runtimeTarget: 'web_agent',
+        runtimeTarget: 'astrbot',
         runtimeReadiness: 'configured',
         executionKind: 'agent_capability',
         kind: 'mcp',

@@ -932,8 +932,8 @@ export function useWorkspace(
         },
         {
           id: 'candidate',
-          label: '生成内测候选',
-          detail: '不调用工具、不写 Memory、不发送 QQ 消息',
+          label: '运行 2.0 内测预览',
+          detail: '允许只读 Capability；不写 Memory、不发送 QQ 消息',
           status: 'running',
         },
       ],
@@ -963,13 +963,15 @@ export function useWorkspace(
         .map(([id]) => id)
       run.reasonCodes = [...result.reasonCodes]
       run.effectiveSelection = result.effectiveSelection
+      run.runtimePath = result.runtimePath
+      run.toolCalls = result.toolCalls
       run.steps[0] = {
         ...run.steps[0],
         detail: `实际读取 ${result.contextUsage.messagesRead} 条 / ${result.contextUsage.charactersRead.toLocaleString('zh-CN')} 字符（预算上限 ${result.contextUsage.messageLimit} 条 / ${result.contextUsage.characterLimit.toLocaleString('zh-CN')} 字符）`,
       }
       run.steps[1] = {
         ...run.steps[1],
-        detail: `${result.tier} · ${result.model} · ${result.reasoning} · ${result.answerProfile.toUpperCase()}`,
+        detail: `${result.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退'} · ${result.tier} · ${result.model} · Tool ${result.toolCalls}`,
         status: 'completed',
         duration: `${result.latencyMs} ms`,
       }
@@ -986,7 +988,7 @@ export function useWorkspace(
           { type: 'text', text: result.candidate },
           {
             type: 'status',
-            label: `${result.tier} · ${result.model} · ${result.latencyMs} ms · 仅候选，未发送`,
+            label: `${result.tier} · ${result.model} · Tool ${result.toolCalls} · ${result.latencyMs} ms · 未发送`,
             tone: 'success',
           },
         ],

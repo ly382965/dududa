@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 
 import { createDududaServer } from './app'
 import { HttpControlPlaneClient, UnavailableControlPlaneClient } from './control-plane'
+import { HttpDududaRuntimePreviewClient } from './dududa-runtime'
 import { OneBotHub } from './onebot-hub'
 import { HttpMcpConsoleClient, UnavailableMcpConsoleClient } from './mcp-console'
 import { HttpAstrBotPluginManagerClient } from './plugin-manager'
@@ -38,7 +39,8 @@ const mcpConsole = mcpConsoleUrl
   ? new HttpMcpConsoleClient(mcpConsoleUrl)
   : new UnavailableMcpConsoleClient()
 const pluginManager = new HttpAstrBotPluginManagerClient(astrBotPluginApiUrl, astrBotPluginApiKey)
-const server = createDududaServer({ hub, publicDir, controlPlane, mcpConsole, pluginManager })
+const runtimePreview = new HttpDududaRuntimePreviewClient(astrBotPluginApiUrl, astrBotPluginApiKey)
+const server = createDududaServer({ hub, publicDir, controlPlane, mcpConsole, pluginManager, runtimePreview })
 
 server.listen(port, host, () => {
   const tokenState = hub.configured ? 'configured' : 'missing'

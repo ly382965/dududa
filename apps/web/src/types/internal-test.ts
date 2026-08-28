@@ -57,7 +57,7 @@ export interface InternalTestCatalogPlugin {
   requiredRole?: 'super_admin' | 'admin'
   executionRole?: 'admin'
   runtimeTarget: 'web_agent' | 'astrbot'
-  runtimeReadiness: 'configured' | 'unavailable'
+  runtimeReadiness: 'online' | 'configured' | 'unavailable'
   executionKind: 'agent_capability' | 'command_auto_reply' | 'passive_behavior'
   description: string
   unavailableReason?: string
@@ -295,7 +295,8 @@ export interface InternalTestAgentResponse {
   generatedAt: string
   outputCalls: 0
   memoryWrites: 0
-  toolCalls: 0
+  toolCalls: number
+  runtimePath: 'dududa_2_preview' | 'candidate_fallback'
 }
 
 export interface InternalTestSamplesQuery {

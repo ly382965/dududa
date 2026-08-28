@@ -13,6 +13,21 @@ Core `runtime-status.json` 已为 ready，Web 读取真实配置后显示实际�
 现有 NapCat 在切换中未重启。Luna/Terra/Sol 已注册并各完成一次真实 AstrBot Chat Provider
 调用，三档使用最低 `light/low`；健康探测已启用并降频到 900 秒，TTL 为 1800 秒。
 
+2026-08-28，Web 群级 Policy 已接入 Dududa 2.0 生产 Bridge：每轮按精确
+`accountId + conversationId` 消费 Agent 开关和 MCP Capability 模式，并在
+Perception 前过滤合法类别。iCourse 是当前唯一自然语言 Planner 闭环；二课、
+教务和校车已装配且可由超级管理员直接调用，但仍待自然语言 Planner 接管。
+`/agent/respond` 已通过 AstrBot extension 调用同一 2.0 Runtime 的 no-send 预览，
+可执行批准的只读 Capability，并返回真实 `runtimePath/toolCalls`；它不 claim QQ
+Event、不写 Memory、不调用 QQ Output，不能覆盖真实 Runtime 状态。六项自适应
+设置也不能笼统描述为均已接入生产决策。S23 继续保持 `paused/partial`。
+
+同日实测发现 AstrBot Provider 固定 Prompt 开销被旧值 64 Token 严重低估，成功
+模型响应会在容量结算时变成 `provider_usage_receipt_invalid`。现将每个 Endpoint
+的 `provider_wrapping_tokens` 设为可配置项，当前默认 4,608，并把 Perception/总
+输入预算调整为 12,000/40,000。修复后 Web 查询经 iCourse MCP 与 Terra `low`
+返回非空 LONG 回答，`toolCalls=1 / outputCalls=0 / memoryWrites=0`。
+
 因此 S23 已进入首个实时入站阶段，但整体仍为 partial：尚缺一条用户触发的真实 QQ 端到端
 回复/合并转发证据。AstrBot 内存 WebSocket 已证明 75/75 个合法 OneBot 事件可转为
 `AiocqhttpMessageEvent` 并进入 RuntimeRequestFactory，但延迟首帧时复现了 `1,2,3 -> 2,3,1`
@@ -215,8 +230,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | AstrBot Runtime 插件管理 | 已完成（Web 安装纵切） | 已部署动态插件列表、GitHub/ZIP 热安装、`plugin` scope Key 服务端代理、版本警告回滚/显式重试，以及 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文下载；真实 Web 列表返回 4 个已启用插件 | 安装不自动授予 Dududa Capability；可组合治理 Plugin Runtime、远程管理员认证、市场/卸载/升级不在本纵切范围 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测、Agent Console 自适应超级工作台、Runtime 插件与 MCP 接入纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、六面运维投影、六项正交配置、插件四态和四个校园 MCP 直调；Web 现从 Core config/status 读取真实 readiness，显示 `actualEnabled=true / canary / deliveryEnabled=true / killSwitch=false` 与 1/1 QQ 在线 | 主动参与仍仅 S15E Probe Shadow/`NO SEND`；插件安装/加载不等于 Capability 授权。远程管理员认证、`gpt-image-2`、真实 Source/Projection 和主动 Output 仍是后续边界 |
-| 大规模真实群测试与 Debug | S23 部分完成（首个实时入站切换已开始） | 1.0 已退出运行面，2.0 是唯一 Agent Runtime；Luna/Terra/Sol 已注册并真实调用，健康刷新为 900 秒；所有群明确 @ 的纯文本、无附件消息由 2.0 Canary/Delivery 接管 | 先由用户发一条明确 @ 消息闭合真实 QQ 收发与 LONG 转发证据；私聊、附件、未 @ 主动参与、真实 Source/日报/Probe 及大规模长期 Debug 仍未开始 |
+| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测、Agent Console 自适应超级工作台、Runtime 插件与 MCP 接入纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、六面运维投影、六项正交配置、插件四态和四个校园 MCP 直调；Web 现从 Core config/status 读取真实 readiness，并把精确 Scope 的 Agent 开关与 MCP Capability 资格交给 2.0 Runtime。iCourse 显示 online，其他三个校园 MCP 显示 configured/pending Planner | 生产 Runtime 尚未消费全部六项自适应设置；主动参与仍仅 S15E Probe Shadow/`NO SEND`。远程管理员认证、`gpt-image-2`、真实 Source/Projection 和主动 Output 仍是后续边界 |
+| 大规模真实群测试与 Debug | S23 部分完成（首个实时入站切换已开始） | 1.0 已退出运行面，2.0 是唯一 Agent Runtime；Luna/Terra/Sol 已注册并真实调用；所有群明确 @ 的受支持消息由 2.0 Canary/Delivery 接管，目标群 iCourse 资格已从 Web Policy 进入 Runtime | 先由用户发一条明确 @ 的 iCourse 消息闭合真实 QQ MCP/Delivery 与 LONG 转发证据；二课/教务/校车 Planner、私聊、附件、未 @ 主动参与、真实 Source/日报/Probe 及大规模长期 Debug 仍未开始 |
 
 ### 实施步骤完成度
 
@@ -387,6 +402,13 @@ Console 则是控制后台的正式配置与观测面；其配置必须由服务
 30/18,000、60/36,000 条消息/字符的运行预算，而不是模型最大 Context Window；每次 Run 返回
 `contextUsage.messageLimit/characterLimit/messagesRead/charactersRead`、六项有效选择、reason
 codes 和实际插件状态。回复强度只影响候选决策，不能替代真实发送授权。
+
+截至 2026-08-28，Scope Policy 已从“可保存、可预览”推进到生产 Bridge 的有限
+输入：Agent 开关可在 Canary claim 前关闭该 Scope，MCP 插件模式可在 Perception
+前缩小既有 Capability 类别；`auto/on/locked` 只保留资格，不强制调用。当前
+Production Context 只公布 `campus.course-review`，因此 iCourse 已闭环，二课、
+教务和校车仍由超级管理员直调并等待 Planner。模型档位、推理深度等其余六项
+配置尚不能整体宣称已驱动生产 Runtime。
 
 旧灰色控件、前端硬编码插件和 SHORT/MEDIUM/LONG 到 Luna/Terra/Sol 的永久映射已移除。
 截至 2026-08-24，iCourse、二课、教务处和校车已接入 Unified MCP 与 Web Capability Console；

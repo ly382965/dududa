@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import json
 import logging
+import os
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
@@ -167,6 +168,7 @@ from dududa.security.authorization import (
 )
 from dududa.security.content_safety import DefaultContentSafetyPolicy
 
+from .adapters.agent_policy import FileScopeAgentPolicyResolver
 from .adapters.capability_runtime import build_production_capability_runtime
 from .adapters.mcp_runtime import build_icourse_client, build_unified_mcp_client
 from .adapters.message import AstrBotInputConnector
@@ -235,6 +237,7 @@ class _RuntimeModelConfig:
     max_concurrency: int
     rpm_limit: int
     tpm_limit: int
+    provider_wrapping_tokens: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -476,6 +479,19 @@ def _positive_integer(
     return value
 
 
+def _nonnegative_integer(
+    item: dict[str, object],
+    field: str,
+    index: int,
+    *,
+    default: int,
+) -> int:
+    value = item.get(field, default)
+    if type(value) is not int or value < 0:
+        raise ValueError(f"runtime model {index} has invalid {field}")
+    return value
+
+
 def _parse_runtime_models(config: dict[str, object]) -> tuple[_RuntimeModelConfig, ...]:
     raw = config.get("runtime_models_json")
     if not isinstance(raw, str) or not raw.strip():
@@ -548,6 +564,12 @@ def _parse_runtime_models(config: dict[str, object]) -> tuple[_RuntimeModelConfi
                 ),
                 rpm_limit=_positive_integer(item, "rpm_limit", index),
                 tpm_limit=_positive_integer(item, "tpm_limit", index),
+                provider_wrapping_tokens=_nonnegative_integer(
+                    item,
+                    "provider_wrapping_tokens",
+                    index,
+                    default=4_608,
+                ),
             )
         )
         provider_ids.add(provider_id)
@@ -955,7 +977,8 @@ def build_production_runtime(
             ModelRole.DIRECT_CHAT: 256,
         },
         provider_wrapping_tokens={
-            endpoint.descriptor_digest: 64 for endpoint in endpoints
+            endpoint.descriptor_digest: spec.provider_wrapping_tokens
+            for _, spec, endpoint in configured_endpoints
         },
         schema_tokens={
             perception_schema_ref.digest: model_schema_registry.token_upper_bound(
@@ -1084,7 +1107,7 @@ def build_production_runtime(
             model_calls=1,
             tool_steps=0,
             retries=0,
-            input_tokens=8_000,
+            input_tokens=12_000,
             output_tokens=perception_output_limit,
             cost_units=None,
         ),
@@ -1726,6 +1749,15 @@ def install_rollout_runtime(
                 True,
             )
         ),
+        scope_policy_resolver=(
+            FileScopeAgentPolicyResolver(Path(policy_path))
+            if (
+                policy_path := str(
+                    os.environ.get("DUDUDA_AGENT_POLICY_PATH") or ""
+                ).strip()
+            )
+            else None
+        ),
         clock=clock,
     )
     shadow = BoundedShadowSupervisor(
@@ -1747,6 +1779,8 @@ def install_rollout_runtime(
         shadow,
         canary,
         InMemoryDeliveryLedger(),
+        runtime=runtime,
+        clock=clock,
         runtime_ready=runtime_ready,
     )
     plugin.rollout_bridge = bridge
@@ -1763,7 +1797,7 @@ def _default_runtime_budget() -> RuntimeBudget:
         model_calls_remaining=2,
         tool_steps_remaining=1,
         retries_remaining=1,
-        input_tokens_remaining=32_000,
+        input_tokens_remaining=40_000,
         output_tokens_remaining=8_000,
         cost_units_remaining=None,
     )

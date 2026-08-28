@@ -4,6 +4,11 @@ import { homedir } from 'node:os'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
 import dududaPersona from '../../../configs/personas/registry-v1/dududa.json'
+import {
+  DududaRuntimePreviewClientError,
+  type DududaRuntimePreviewClient,
+  type DududaRuntimePreviewResult,
+} from './dududa-runtime'
 
 export const INTERNAL_TEST_EVIDENCE_MODE = 'private_silver_shadow' as const
 
@@ -89,7 +94,7 @@ export interface InternalTestCatalogPlugin {
   requiredRole?: 'super_admin' | 'admin'
   executionRole?: 'admin'
   runtimeTarget: 'web_agent' | 'astrbot'
-  runtimeReadiness: 'configured' | 'unavailable'
+  runtimeReadiness: 'online' | 'configured' | 'unavailable'
   executionKind: 'agent_capability' | 'command_auto_reply' | 'passive_behavior'
   description: string
   unavailableReason?: string
@@ -248,7 +253,8 @@ export interface InternalTestAgentResponse {
   generatedAt: string
   outputCalls: 0
   memoryWrites: 0
-  toolCalls: 0
+  toolCalls: number
+  runtimePath: 'dududa_2_preview' | 'candidate_fallback'
 }
 
 export interface InternalTestFeedbackResult {
@@ -308,6 +314,7 @@ export interface FileInternalTestGatewayOptions {
   models?: Partial<Record<ModelTier, string>>
   fetchImpl?: typeof fetch
   now?: () => Date
+  runtimePreview?: DududaRuntimePreviewClient
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -608,7 +615,7 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
   }
 }
 
-function catalogPlugins(): InternalTestCatalogPlugin[] {
+function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
   return [
     {
       id: 'icourse.read',
@@ -620,8 +627,8 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       policyManaged: true,
       requiredRole: 'super_admin',
       executionRole: 'admin',
-      runtimeTarget: 'web_agent',
-      runtimeReadiness: 'configured',
+      runtimeTarget: 'astrbot',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'agent_capability',
       description: '复用现有匿名 iCourse 服务查询课程与公开评价；超级管理员可在 MCP 工作台直接调用。',
     },
@@ -635,7 +642,7 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       policyManaged: true,
       requiredRole: 'super_admin',
       executionRole: 'admin',
-      runtimeTarget: 'web_agent',
+      runtimeTarget: 'astrbot',
       runtimeReadiness: 'configured',
       executionKind: 'agent_capability',
       description: '复用固定版本 pyustc 查询二课活动；真实调用需要仓库外 CAS SecretRef。',
@@ -650,7 +657,7 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       policyManaged: true,
       requiredRole: 'super_admin',
       executionRole: 'admin',
-      runtimeTarget: 'web_agent',
+      runtimeTarget: 'astrbot',
       runtimeReadiness: 'configured',
       executionKind: 'agent_capability',
       description: '查询培养方案、开课、考试和教学日历；超级管理员可在 MCP 工作台直接调用。',
@@ -665,7 +672,7 @@ function catalogPlugins(): InternalTestCatalogPlugin[] {
       policyManaged: true,
       requiredRole: 'super_admin',
       executionRole: 'admin',
-      runtimeTarget: 'web_agent',
+      runtimeTarget: 'astrbot',
       runtimeReadiness: 'configured',
       executionKind: 'agent_capability',
       description: '查询官网当前班车通知、图片和 revision 绑定的结构化班次。',
@@ -760,6 +767,7 @@ function currentAgentRuntimeControls(
 function buildAgentCatalog(
   models: Record<ModelTier, string>,
   providerConfigured: boolean,
+  runtimeReady = false,
 ): InternalTestAgentCatalog {
   const modelDetails: Array<{ tier: ModelTier; label: string }> = [
     { tier: 'haiku', label: '轻量' },
@@ -790,7 +798,7 @@ function buildAgentCatalog(
     contextLengths: CONTEXT_LENGTHS.map((id) => ({ id, ...CONTEXT_BUDGETS[id] })),
     groupChatStyles: [...GROUP_CHAT_STYLES],
     replyIntensityNotice: '候选决策初值；真实消息是否发送由 Dududa Runtime 的入站授权与 Rollout 状态决定。',
-    plugins: catalogPlugins(),
+    plugins: catalogPlugins(runtimeReady),
     policyDefaults: defaultPolicyDefaults(),
   }
 }
@@ -1226,6 +1234,17 @@ export class FileInternalTestGateway implements InternalTestGateway {
     return projection
   }
 
+  private async runtimeReady(): Promise<boolean | undefined> {
+    if (!this.runtimeStatusPath) return undefined
+    try {
+      const statusText = await readFile(this.runtimeStatusPath, 'utf8')
+      const status = objectValue(JSON.parse(statusText.replace(/^\uFEFF/, '')))
+      return status?.ready === true
+    } catch {
+      return false
+    }
+  }
+
   private async providerConfig(): Promise<PrivateProviderConfig> {
     const explicitBaseUrl = stringValue(this.options.providerBaseUrl)
     const explicitApiKey = stringValue(this.options.providerApiKey)
@@ -1421,16 +1440,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
     } catch {
       providerConfigured = false
     }
-    let runtimeReady: boolean | undefined
-    if (this.runtimeStatusPath) {
-      try {
-        const statusText = await readFile(this.runtimeStatusPath, 'utf8')
-        const status = objectValue(JSON.parse(statusText.replace(/^\uFEFF/, '')))
-        runtimeReady = status?.ready === true
-      } catch {
-        runtimeReady = false
-      }
-    }
+    const runtimeReady = await this.runtimeReady()
     let runtimeControls = currentAgentRuntimeControls({}, runtimeReady)
     if (this.runtimeConfigPath) {
       try {
@@ -1456,7 +1466,9 @@ export class FileInternalTestGateway implements InternalTestGateway {
           : 'NO PASSIVE RUNTIME DELIVERY',
         'CONTROL-PLANE CANDIDATE NO SEND',
         'NO MEMORY WRITE',
-        'NO TOOL CALL',
+        this.options.runtimePreview
+          ? '2.0 RUNTIME PREVIEW NO SEND'
+          : 'NO TOOL CALL',
         'NO BANDIT',
         ...(!providerConfigured ? ['Provider 尚未配置'] : []),
       ],
@@ -1470,7 +1482,11 @@ export class FileInternalTestGateway implements InternalTestGateway {
     } catch {
       providerConfigured = false
     }
-    return buildAgentCatalog(this.models, providerConfigured)
+    return buildAgentCatalog(
+      this.models,
+      providerConfigured,
+      (await this.runtimeReady()) === true,
+    )
   }
 
   async agentConfig(query: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
@@ -1532,6 +1548,77 @@ export class FileInternalTestGateway implements InternalTestGateway {
       pluginReasonCodes.push(selection.reasonCode)
     }
     const context = agentContext(body, contextLength.value)
+    if (this.options.runtimePreview) {
+      let runtime: DududaRuntimePreviewResult
+      try {
+        runtime = await this.options.runtimePreview.preview({
+          accountId: scope.accountId,
+          conversationId: scope.conversationId,
+          prompt: stringValue(body.prompt) ?? '',
+        })
+      } catch (error) {
+        if (error instanceof DududaRuntimePreviewClientError) {
+          throw new InternalTestError(error.message, error.status)
+        }
+        throw new InternalTestError('Dududa 2.0 Runtime 预览失败', 503)
+      }
+      const selectedPlugins = Object.fromEntries(
+        Object.entries(plugins).map(([id, plugin]) => [
+          id,
+          id === 'icourse.read' && runtime.toolCalls > 0
+            ? {
+                ...plugin,
+                selectedForRun: true,
+                applicable: true,
+                triggerMatched: true,
+                selectionReason: 'trigger_matched' as const,
+              }
+            : plugin,
+        ]),
+      )
+      const runtimeContextUsage = {
+        ...context.usage,
+        messagesRead: runtime.messagesRead,
+        charactersRead: runtime.charactersRead,
+      }
+      const effectiveSelection: InternalTestEffectiveSelection = {
+        scope,
+        policySource: resolved.source,
+        modelTier: runtime.tier,
+        model: runtime.model,
+        reasoning: runtime.reasoning,
+        answerProfile: runtime.answerProfile,
+        replyIntensity: replyIntensity.value,
+        contextLength: contextLength.value,
+        groupChatStyle: groupChatStyle.value,
+        contextUsage: runtimeContextUsage,
+        plugins: selectedPlugins,
+      }
+      return {
+        runId: runtime.runId,
+        candidate: runtime.candidate,
+        tier: runtime.tier,
+        model: runtime.model,
+        reasoning: runtime.reasoning,
+        answerProfile: runtime.answerProfile,
+        replyIntensity: replyIntensity.value,
+        contextLength: contextLength.value,
+        groupChatStyle: groupChatStyle.value,
+        contextUsage: runtimeContextUsage,
+        effectiveSelection,
+        reasonCodes: [
+          `policy.${resolved.source}`,
+          ...runtime.reasonCodes,
+          ...pluginReasonCodes,
+        ],
+        latencyMs: runtime.latencyMs,
+        generatedAt: runtime.generatedAt,
+        outputCalls: 0,
+        memoryWrites: 0,
+        toolCalls: runtime.toolCalls,
+        runtimePath: 'dududa_2_preview',
+      }
+    }
     const generated = await this.requestCandidate(
       context.input,
       answerProfile.value,
@@ -1582,6 +1669,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
       outputCalls: 0,
       memoryWrites: 0,
       toolCalls: 0,
+      runtimePath: 'candidate_fallback',
     }
   }
 
@@ -1678,7 +1766,10 @@ export class UnavailableInternalTestGateway implements InternalTestGateway {
   }
 }
 
-export function createInternalTestGateway(environment: NodeJS.ProcessEnv = process.env): InternalTestGateway {
+export function createInternalTestGateway(
+  environment: NodeJS.ProcessEnv = process.env,
+  runtimePreview?: DududaRuntimePreviewClient,
+): InternalTestGateway {
   const dataRoot = stringValue(environment.DUDUDA_INTERNAL_TEST_DATA_ROOT)
   const feedbackPath = stringValue(environment.DUDUDA_INTERNAL_TEST_FEEDBACK_PATH)
   const policyPath = stringValue(environment.DUDUDA_INTERNAL_TEST_POLICY_PATH)
@@ -1707,6 +1798,7 @@ export function createInternalTestGateway(environment: NodeJS.ProcessEnv = proce
     authPath: environment.DUDUDA_INTERNAL_TEST_AUTH_FILE,
     runtimeConfigPath: environment.DUDUDA_ASTRBOT_RUNTIME_CONFIG,
     runtimeStatusPath: environment.DUDUDA_ASTRBOT_RUNTIME_STATUS,
+    runtimePreview,
     models,
   })
 }

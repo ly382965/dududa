@@ -258,10 +258,15 @@ class CanaryCoordinator:
             )
         delivery = runtime_result.delivery_request
         if delivery is None:
+            no_delivery_reason = {
+                Outcome.NO_REPLY: "runtime_no_reply_without_delivery",
+                Outcome.DEFERRED: "runtime_deferred_without_delivery",
+                Outcome.FAILED: "runtime_failed_without_delivery",
+            }.get(runtime_result.outcome, "runtime_completed_without_delivery")
             record = self._ledger.mark_no_delivery(
                 record.message_key_digest,
                 record.revision,
-                "runtime_completed_without_delivery",
+                no_delivery_reason,
             )
             self._record_result(
                 started,
@@ -276,7 +281,7 @@ class CanaryCoordinator:
                 CanaryExecutionDisposition.NO_DELIVERY,
                 record,
                 runtime_result.completion,
-                "runtime_completed_without_delivery",
+                no_delivery_reason,
             )
         try:
             record = self._ledger.mark_ready_to_send(

@@ -45,6 +45,7 @@ describe('internal-test agent routes', () => {
       outputCalls: 0 as const,
       memoryWrites: 0 as const,
       toolCalls: 0 as const,
+      runtimePath: 'dududa_2_preview' as const,
     }))
     const internalTest: InternalTestGateway = {
       status: async () => ({

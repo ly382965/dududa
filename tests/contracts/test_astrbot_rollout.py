@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from astrbot_plugin_dududa_core.adapters.agent_policy import (
+    FileScopeAgentPolicyResolver,
+)
 from astrbot_plugin_dududa_core.adapters.output import InMemoryDeliveryLedger
 from astrbot_plugin_dududa_core.rollout_bridge import (
     AstrBotBridgeAction,
@@ -102,7 +107,9 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
             shadow,
             canary,
             InMemoryDeliveryLedger(),
+            runtime=runtime,
             output_factory=lambda event, output_ledger, guard: output(guard),
+            clock=self.fixture.clock,
         )
         return bridge, runtime, requests, output
 
@@ -149,6 +156,94 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
             dict(tools_request.options.feature_flags),
             {"tools": True, "memory": False},
         )
+
+    async def test_request_factory_projects_exact_scope_capability_policy(self) -> None:
+        message = self.request.connector_result.message
+        account_id = f"qq-{message.bot_id}"
+        conversation_id = f"{account_id}:group:{message.group_id}"
+        policy_path = Path(self.temp.name) / "agent-policies.json"
+        policy_path.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "policies": {
+                        "target": {
+                            "scope": {
+                                "accountId": account_id,
+                                "conversationId": conversation_id,
+                            },
+                            "enabled": True,
+                            "plugins": {
+                                "icourse.read": "on",
+                                "ustc.academic.read": "off",
+                            },
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        factory = AstrBotRuntimeRequestFactory(
+            _Connector(self.request.connector_result),
+            self.call.budget,
+            "policy-v1",
+            scope_policy_resolver=FileScopeAgentPolicyResolver(policy_path),
+            clock=lambda: NOW,
+        )
+
+        request, _ = await factory.prepare(
+            object(),
+            control_revision="rollout-v1",
+            timeout_seconds=10,
+            tools_enabled=True,
+        )
+
+        self.assertTrue(request.options.feature_flags["scope_agent_enabled"])
+        self.assertTrue(
+            request.options.feature_flags[
+                "capability.category.campus.course-review"
+            ]
+        )
+        self.assertFalse(
+            request.options.feature_flags["capability.category.campus.academic"]
+        )
+        self.assertTrue(request.options.feature_flags["tools"])
+
+    async def test_scope_disabled_never_claims_or_stops_event(self) -> None:
+        self.request, self.call = self.fixture.start(
+            feature_flags={"scope_agent_enabled": False}
+        )
+        config = control(allowlisted_group_ids=frozenset({self.group_id}))
+        bridge, runtime, requests, output = self._bridge(config)
+        event = _Event()
+
+        result = await bridge.handle(event)
+
+        self.assertIs(result.action, AstrBotBridgeAction.LEGACY)
+        self.assertEqual(result.reason_code, "scope_agent_disabled")
+        self.assertFalse(event.stopped)
+        self.assertEqual(requests.calls, 1)
+        self.assertEqual(runtime.run_calls, 0)
+        self.assertEqual(output.send_calls, 0)
+        await bridge.close()
+
+    async def test_preview_runs_runtime_without_claim_or_output(self) -> None:
+        config = control(allowlisted_group_ids=frozenset({self.group_id}))
+        bridge, runtime, requests, output = self._bridge(config)
+        event = _Event()
+        self.fixture.clock.now += timedelta(seconds=1)
+
+        result = await bridge.preview(event)
+
+        self.assertEqual(result.runtime_result.run_id, self.call.run_id)
+        self.assertEqual(result.completion.run_id, self.call.run_id)
+        self.assertEqual(result.tool_calls, 0)
+        self.assertEqual(requests.calls, 1)
+        self.assertEqual(runtime.run_calls, 1)
+        self.assertEqual(runtime.ack_calls, 1)
+        self.assertEqual(output.send_calls, 0)
+        self.assertFalse(event.stopped)
+        await bridge.close()
 
     async def test_off_and_shadow_leave_legacy_and_event_ownership_untouched(
         self,

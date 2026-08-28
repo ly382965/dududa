@@ -13,6 +13,19 @@ Branch: real-group-validation
 - Web readiness 必须同时读取 Core 配置和 `runtime-status.json`：当前
   `actualEnabled=true / canary / deliveryEnabled=true / killSwitch=false` 与 Core `ready=true`
   一致。QQ 连接健康来自独立的 1/1 NapCat 在线状态；NapCat 在本次切换中未重启。
+- Web Policy 已成为生产 Runtime 输入，但当前只消费精确 Scope 的 Agent 开关和
+  MCP Capability 类别资格。不能据此宣称模型档位、推理深度、AnswerProfile、
+  回复强度、上下文长度和群聊风格六项都已驱动生产 Runtime。
+- Capability 的 `on/locked` 表示“保留在合法候选集”，不是“每轮必须调用”。
+  Perception、有限 Planner、全局 Tool 开关、授权、预算和健康过滤继续共同决定
+  是否发生实际 MCP 调用。
+- AstrBot/OpenAI Provider 的输入 usage 含宿主与上游固定 Prompt 开销，不能继续
+  用 64 Token 作为通用 wrapping 估算。实测差值会让成功响应在 Admission settle
+  时变成 `provider_usage_receipt_invalid`。该值现在是 Endpoint 配置，默认 4,608；
+  预算只按这项实测开销调整，没有改变模型档位或路由规则。
+- Web no-send 预览必须复用已安装的 `AgentRuntime`，并以内存 Delivery Receipt
+  完成 `READY_TO_EMIT -> COMPLETED`；直接在 Node 中再写一套模型/MCP 编排会形成
+  第二套 Runtime。预览可调用只读 Capability，但不能 claim QQ Event 或调用 Output。
 - 模型健康探测不需要 45 秒高频请求。当前 900 秒间隔配合 1800 秒 Evidence TTL，仍允许一次
   漏刷后保持有界健康窗口，同时显著降低三模型持续探测消耗。
 - MCP 链的用户价值由现有 `DIRECT_CHAT` 模型完成，不由 URL formatter 完成。
@@ -170,6 +183,11 @@ Branch: real-group-validation
   `POST /api/internal-test/agent/respond` 的 Scope-aware 语义。配置按
   `accountId + conversationId` 保存到仓库外数据根，每次响应返回
   `effectiveSelection`、`reasonCodes` 与 `contextUsage`。
+- `FileScopeAgentPolicyResolver` 在 AstrBot Bridge 内读取同一份仓库外 Policy，
+  产生 `scope_agent_enabled` 和 `capability.category.<id>` feature flags；
+  `CurrentMessageContextBuilder` 只用这些 flags 缩小既有 Perception 类别。
+  Web Catalog 的 `online` 表示当前 iCourse 路径已由 ready 的 2.0 Runtime 消费，
+  `configured` 表示二课、教务和校车已装配但仍待自然语言 Planner。
 - Catalog 由服务端动态返回六项正交配置、插件和 MCP Capability 事实，并区分源码
   已安装、配置/Compose 已装配、Runtime online 与本轮实际调用。Web MCP 工作台
   只接受 18 个批准的 Capability ID：iCourse 5 项、教务 6 项、校车 2 项和二课
@@ -266,6 +284,10 @@ Branch: real-group-validation
 - Agent Console 的动态 Catalog、Policy 持久化和有效选择解释不替代 Runtime 证据。当前 Web
   已能从 Core config/status 证明受支持入站实际开启；Reread/Sub2API 的在线加载仍只说明宿主
   能力存在，不能从 `triggerMatched` 或安装状态推导一次实际插件调用。
+- iCourse Policy 接线已有运行中容器、精确 Scope 解析和同形 Fake Delivery 证据，
+  并新增完整 Web -> 2.0 Runtime -> iCourse MCP -> 总结的 no-send 实测；但尚无
+  用户触发的真实 QQ Tool/Delivery Receipt。二课、教务和校车仍只有 Web
+  直接调用证据，不能标记为自然语言 Agent online。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。

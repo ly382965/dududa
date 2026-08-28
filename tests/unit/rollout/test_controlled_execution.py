@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import unittest
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 from dududa.domain.delivery import (
     DeliveryPartReceipt,
@@ -221,6 +221,41 @@ class ControlledExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(output.send_calls, 0)
         self.assertEqual(runtime.run_calls, 1)
         self.assertEqual(runtime.ack_calls, 1)
+
+    async def test_no_reply_keeps_its_reason_instead_of_generic_no_delivery(
+        self,
+    ) -> None:
+        fixture = OrchestratorFixture(
+            perception_transform=lambda result, _context: replace(
+                result,
+                target_identity_refs=(),
+            )
+        )
+        request, call = fixture.start()
+        config = control(
+            allowlisted_group_ids=frozenset(
+                {request.connector_result.message.group_id}
+            )
+        )
+        controls = _MutableControls(config)
+        runtime = _RuntimeProxy(fixture.runtime)
+        coordinator = CanaryCoordinator(
+            runtime,
+            controls,
+            ledger(self.path, clock=lambda: NOW),
+            InMemoryRolloutMetrics(),
+            clock=lambda: NOW,
+        )
+        admission = decide_rollout_admission(request.connector_result, config)
+        claim = coordinator.claim(admission, request)
+        output = _OutputFactory()
+
+        result = await coordinator.execute(claim, request, output, call=call)
+
+        self.assertIs(result.disposition, CanaryExecutionDisposition.NO_DELIVERY)
+        self.assertEqual(result.reason_code, "runtime_no_reply_without_delivery")
+        self.assertEqual(result.ownership.reason_code, result.reason_code)
+        self.assertEqual(output.send_calls, 0)
 
     async def test_unknown_send_is_tombstoned_and_replay_never_resends(self) -> None:
         fixture, request, call, config = self._fixture()

@@ -9,6 +9,7 @@ from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F40
 from .commands.memory import CoreMemoryCommands
 from .composition import activate_runtime_after_host_start, initialize_plugin
 from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
+from .web_runtime import runtime_preview_response
 
 
 @register(
@@ -29,6 +30,18 @@ class DududaCorePlugin(
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         initialize_plugin(self, config)
+        register_web_api = getattr(context, "register_web_api", None)
+        if callable(register_web_api):
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/preview",
+                self.runtime_preview,
+                ["POST"],
+                "Run Dududa 2.0 with no QQ output",
+            )
+
+    async def runtime_preview(self):
+        """Execute the installed 2.0 Runtime without QQ delivery."""
+        return await runtime_preview_response(self)
 
     @filter.on_astrbot_loaded()
     async def activate_runtime(self):

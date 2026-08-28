@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import asyncio
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -9,6 +10,12 @@ from uuid import uuid4
 
 from dududa._compat import StrEnum
 from dududa.contracts.canonical import canonical_digest
+from dududa.domain.delivery import (
+    DeliveryPartReceipt,
+    DeliveryPartStatus,
+    DeliveryReceipt,
+    DeliveryStatus,
+)
 from dududa.domain.primitives import RuntimeBudget, TraceContext
 from dududa.ports.context import (
     NeverCancelled,
@@ -16,7 +23,7 @@ from dududa.ports.context import (
     ServiceCallContext,
     ServicePrincipal,
 )
-from dududa.ports.runtime import InputConnector
+from dududa.ports.runtime import AgentRuntime, InputConnector
 from dududa.rollout import (
     BoundedShadowSupervisor,
     CanaryCoordinator,
@@ -29,7 +36,11 @@ from dududa.rollout import (
     decide_rollout_admission,
 )
 from dududa.runtime.state import (
+    CompletionReceipt,
+    ConnectorResult,
     RuntimeInvocationOptions,
+    RuntimePhase,
+    RuntimeResult,
     RuntimeStartRequest,
     runtime_start_digest,
 )
@@ -56,6 +67,19 @@ class AstrBotBridgeResult:
     canary: CanaryExecutionResult | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class AstrBotRuntimePreviewResult:
+    runtime_result: RuntimeResult
+    completion: CompletionReceipt
+    tool_calls: int
+
+
+class AstrBotRuntimePreviewError(RuntimeError):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
 class RolloutRequestFactory(Protocol):
     async def prepare(
         self,
@@ -68,6 +92,10 @@ class RolloutRequestFactory(Protocol):
     ) -> tuple[RuntimeStartRequest, PortCallContext]: ...
 
 
+class ScopePolicyResolver(Protocol):
+    def feature_flags(self, connector: ConnectorResult) -> Mapping[str, bool]: ...
+
+
 class AstrBotRuntimeRequestFactory:
     def __init__(
         self,
@@ -76,6 +104,7 @@ class AstrBotRuntimeRequestFactory:
         policy_snapshot_id: str,
         *,
         response_profiles_enabled: bool = False,
+        scope_policy_resolver: ScopePolicyResolver | None = None,
         clock=None,
     ) -> None:
         if not isinstance(connector, InputConnector):
@@ -88,6 +117,7 @@ class AstrBotRuntimeRequestFactory:
         self._runtime_budget = runtime_budget
         self._policy_snapshot_id = policy_snapshot_id
         self._response_profiles_enabled = response_profiles_enabled
+        self._scope_policy_resolver = scope_policy_resolver
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     async def prepare(
@@ -127,6 +157,13 @@ class AstrBotRuntimeRequestFactory:
         }
         if self._response_profiles_enabled:
             requested_features["response_profiles"] = True
+        if self._scope_policy_resolver is not None:
+            scope_features = dict(
+                self._scope_policy_resolver.feature_flags(connector)
+            )
+            if set(scope_features) & set(requested_features):
+                raise ValueError("Scope policy cannot replace global feature flags")
+            requested_features.update(scope_features)
         options = RuntimeInvocationOptions(
             1,
             None,
@@ -176,9 +213,11 @@ class AstrBotRolloutBridge:
         canary: CanaryCoordinator,
         output_ledger: InMemoryDeliveryLedger,
         *,
+        runtime: AgentRuntime,
         output_factory: Callable[[object, InMemoryDeliveryLedger, object], object]
         | None = None,
         runtime_ready: bool = True,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         if not isinstance(controls, RolloutControlProvider):
             raise TypeError("controls do not implement RolloutControlProvider")
@@ -188,6 +227,8 @@ class AstrBotRolloutBridge:
             raise TypeError("invalid Canary coordinator")
         if not isinstance(output_ledger, InMemoryDeliveryLedger):
             raise TypeError("invalid AstrBot Output ledger")
+        if not isinstance(runtime, AgentRuntime):
+            raise TypeError("runtime does not implement AgentRuntime")
         if type(runtime_ready) is not bool:
             raise TypeError("invalid Runtime readiness flag")
         self._controls = controls
@@ -202,7 +243,60 @@ class AstrBotRolloutBridge:
                 send_guard=guard,
             )
         )
+        self._runtime = runtime
         self._runtime_ready = runtime_ready
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
+
+    async def preview(self, event: object) -> AstrBotRuntimePreviewResult:
+        """Run the installed 2.0 Runtime and acknowledge a synthetic no-send output."""
+
+        try:
+            config = self._controls.current()
+        except Exception as exc:  # noqa: BLE001 - return one stable public code
+            raise AstrBotRuntimePreviewError("rollout_config_invalid") from exc
+        if not self._runtime_ready:
+            raise AstrBotRuntimePreviewError("rollout_runtime_unavailable")
+        timeout = config.canary_timeout.total_seconds()
+        try:
+            request, call = await self._requests.prepare(
+                event,
+                control_revision=config.revision,
+                timeout_seconds=timeout,
+                tools_enabled=config.tools_enabled,
+                memory_enabled=False,
+            )
+        except Exception as exc:  # noqa: BLE001 - synthetic input stays fail closed
+            raise AstrBotRuntimePreviewError("rollout_event_not_supported") from exc
+        if not request.options.feature_flags.get("scope_agent_enabled", True):
+            raise AstrBotRuntimePreviewError("scope_agent_disabled")
+        admission = decide_rollout_admission(request.connector_result, config)
+        if admission.action is RolloutAdmissionAction.LEGACY:
+            raise AstrBotRuntimePreviewError(admission.reason_codes[0])
+        try:
+            result = await asyncio.wait_for(
+                self._runtime.run(request, call=call),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError as exc:
+            raise AstrBotRuntimePreviewError("runtime_preview_timeout") from exc
+        completion = result.completion
+        if result.delivery_request is not None:
+            receipt = _preview_delivery_receipt(
+                result.delivery_request,
+                acknowledged_at=self._clock(),
+            )
+            completion = await self._runtime.acknowledge_delivery(receipt, call=call)
+        if completion is None:
+            raise AstrBotRuntimePreviewError("runtime_preview_completion_missing")
+        return AstrBotRuntimePreviewResult(
+            runtime_result=result,
+            completion=completion,
+            tool_calls=(
+                1
+                if RuntimePhase.TOOLS_EXECUTED in result.trace_summary.phases
+                else 0
+            ),
+        )
 
     async def handle(self, event: object) -> AstrBotBridgeResult:
         try:
@@ -226,6 +320,8 @@ class AstrBotRolloutBridge:
                 tools_enabled=config.tools_enabled,
                 memory_enabled=config.memory_enabled,
             )
+            if not request.options.feature_flags.get("scope_agent_enabled", True):
+                return _legacy("scope_agent_disabled")
             admission = decide_rollout_admission(request.connector_result, config)
         except Exception:  # noqa: BLE001 - unsupported Event stays on legacy path
             return _legacy("rollout_event_not_supported")
@@ -325,4 +421,31 @@ def _legacy(reason: str) -> AstrBotBridgeResult:
         True,
         False,
         reason,
+    )
+
+
+def _preview_delivery_receipt(request, *, acknowledged_at) -> DeliveryReceipt:
+    parts = tuple(
+        DeliveryPartReceipt(
+            schema_version=1,
+            part_id=part.part_id,
+            content_digest=part.content_digest,
+            status=DeliveryPartStatus.SUCCEEDED,
+            platform_message_ref=None,
+            error_code=None,
+        )
+        for part in request.part_intents
+    )
+    return DeliveryReceipt(
+        schema_version=1,
+        delivery_id=request.delivery_id,
+        run_id=request.run_id,
+        delivery_request_digest=request.request_digest,
+        idempotency_key=request.idempotency_key,
+        attempt=request.attempt,
+        adapter_revision=request.adapter_binding.component_revision,
+        status=DeliveryStatus.SUCCEEDED,
+        parts=parts,
+        acknowledged_at=acknowledged_at,
+        error_code=None,
     )

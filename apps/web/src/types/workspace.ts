@@ -566,6 +566,8 @@ export interface AgentRun {
   plugins?: string[]
   reasonCodes?: string[]
   effectiveSelection?: InternalTestEffectiveSelection
+  runtimePath?: 'dududa_2_preview' | 'candidate_fallback'
+  toolCalls?: number
   steps: AgentRunStep[]
 }
 

@@ -889,6 +889,7 @@ describe('useWorkspace account-scoped state', () => {
       outputCalls: 0,
       memoryWrites: 0,
       toolCalls: 0,
+      runtimePath: 'dududa_2_preview',
     }
     const respond = vi.fn(async (_payload: InternalTestAgentRequest) => response)
     const saveAgentConfig = vi.fn(async (_scope: InternalTestAgentScope, next: InternalTestAgentPolicy) => ({
@@ -982,6 +983,8 @@ describe('useWorkspace account-scoped state', () => {
       answerProfile: 'short',
       contextMessages: 42,
       plugins: [],
+      runtimePath: 'dududa_2_preview',
+      toolCalls: 0,
       reasonCodes: ['policy.saved', 'model.preferred_overridden', 'answer_profile.request_hint'],
       effectiveSelection: response.effectiveSelection,
     })

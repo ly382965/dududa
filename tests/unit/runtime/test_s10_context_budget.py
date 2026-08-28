@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import unittest
 from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal
-import unittest
 
 from dududa.domain.identity import Actor, ConversationScope
 from dududa.domain.message import (
@@ -160,6 +160,38 @@ class CurrentMessageContextBuilderTests(unittest.TestCase):
         preprocess = tiny.preprocess(value, actor(value))
         with self.assertRaises(DududaError):
             tiny.build(value, actor(value), scope(value), preprocess)
+
+    def test_scope_feature_flags_only_remove_configured_capability_categories(
+        self,
+    ) -> None:
+        value = message()
+        configured = CurrentMessageContextBuilder(
+            replace(
+                builder().config,
+                available_capability_categories=(
+                    "campus.course-review",
+                    "campus.shuttle",
+                ),
+            )
+        )
+        preprocess = configured.preprocess(value, actor(value))
+
+        result = configured.build(
+            value,
+            actor(value),
+            scope(value),
+            preprocess,
+            feature_flags={
+                "capability.category.campus.course-review": False,
+                "capability.category.campus.shuttle": True,
+                "capability.category.unknown": True,
+            },
+        )
+
+        self.assertEqual(
+            result.perception.available_capability_categories,
+            ("campus.shuttle",),
+        )
 
 
 class RuntimeBudgetPlanTests(unittest.TestCase):

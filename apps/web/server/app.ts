@@ -38,6 +38,7 @@ import {
   InternalTestError,
   type InternalTestGateway,
 } from './internal-test'
+import type { DududaRuntimePreviewClient } from './dududa-runtime'
 import {
   McpConsoleClientError,
   UnavailableMcpConsoleClient,
@@ -57,6 +58,7 @@ export interface DududaServerOptions {
   internalTest?: InternalTestGateway
   mcpConsole?: McpConsoleClient
   pluginManager?: PluginManagerClient
+  runtimePreview?: DududaRuntimePreviewClient
   maxRequestBytes?: number
 }
 
@@ -391,7 +393,7 @@ async function serveStatic(response: ServerResponse, pathname: string, publicDir
 export function createDududaServer(options: DududaServerOptions) {
   const maxRequestBytes = options.maxRequestBytes ?? 64 * 1024
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
-  const internalTest = options.internalTest ?? createInternalTestGateway()
+  const internalTest = options.internalTest ?? createInternalTestGateway(process.env, options.runtimePreview)
   const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
   const pluginManager = options.pluginManager ?? new UnavailablePluginManagerClient()
   const eventClients = new Set<ServerResponse>()

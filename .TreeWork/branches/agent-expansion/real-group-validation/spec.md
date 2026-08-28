@@ -154,6 +154,16 @@ eligibility filtering:
 - `locked`: keep it in the legal set, without turning availability into a
   mandatory invocation or a permission grant.
 
+The production inbound Bridge reads the repository-external Web Policy for the
+exact `accountId + conversationId` Scope on every Run. `enabled=false` exits
+before the Canary claim. A Capability mode of `off` removes its mapped category
+from the Perception context; `auto/on/locked` only retain an already configured
+category as an eligible candidate. They do not add a category, force a Tool
+call, or override the global Tool switch, authorization, budget or health
+decision. The six adaptive Console settings remain administrator inputs and
+candidate-preview behavior until their corresponding production Runtime
+Adapters are implemented; this slice must not claim otherwise.
+
 The authoritative Catalog is returned dynamically by the server rather than
 hard-coded in Vue. It reports model/Tier, supported reasoning levels,
 modalities, AnswerProfiles, the remaining adaptive-setting choices, plugins
@@ -214,7 +224,10 @@ Production Composition owns a first-class `UnifiedMcpClient`; the legacy
 own the 2.0 Runtime connection. Perception advertises only categories backed by
 the current Planner's supported input Schemas. The initial advertised set is
 therefore only `campus.course-review`, even though the Control Plane can invoke
-other approved campus Capabilities directly.
+other approved campus Capabilities directly. Consequently iCourse is the only
+current natural-language Planner loop. Second-class, academic and shuttle MCP
+Servers are assembled and directly callable by the super administrator, but
+the Agent does not yet plan them from natural language.
 
 `/course` and the legacy natural-language course handler remain compatibility
 and diagnostics only. They do not establish 2.0 Agent Tool selection evidence,
@@ -281,10 +294,17 @@ news, Web search and any other absent integration remain unavailable; fixtures
 and reserved interfaces must not be presented as installed services.
 
 The Control Plane distinguishes administrator intent from actual Runtime
-behavior. Passive automatic reply currently remains disabled with rollout off,
-delivery disabled and the kill switch active. Proactive group participation is
-only the S15E Probe Shadow and remains **NO SEND**. No preference, lock or plugin
-mode in this Console may represent either behavior as live.
+behavior. Supported passive inbound traffic currently uses the Dududa 2.0
+Canary: explicit `@Bot`, text-only, attachment-free group messages may enter the
+Runtime with delivery enabled and the kill switch inactive. Proactive group
+participation is only the S15E Probe Shadow and remains **NO SEND**.
+When the AstrBot extension is available, `/agent/respond` executes the installed
+2.0 Runtime as a no-send preview. It may call an approved read-only Capability,
+acknowledges the candidate only in memory, and never claims/stops a QQ Event,
+writes Memory, or invokes the QQ Output Adapter. Its zero Output count must not
+overwrite the live Runtime state. The old provider-only candidate remains only
+an explicit unavailable-runtime fallback. No preference, lock or plugin mode may
+represent an unsupported behavior as live.
 
 Every Run records the administrator preferences and legal values for all six
 settings, their effective values, reason codes for any change, context budget
@@ -292,8 +312,9 @@ usage and the plugins actually called. For the current Web candidate,
 `triggerMatched` only reports that an AstrBot plugin's deterministic trigger is
 applicable; it does not mean the plugin was selected or executed.
 `selectedForRun=false` and `toolCalls=0` remain the actual call evidence for
-automatic reread and `/sub2api`. Current candidates also keep `outputCalls=0`
-and `memoryWrites=0`. Control Plane configuration is persisted server-side
+automatic reread and `/sub2api`; the iCourse Capability reports its real Tool
+count independently. Current previews keep `outputCalls=0` and
+`memoryWrites=0`. Control Plane configuration is persisted server-side
 outside the repository; browser memory is not authority. The Web may set
 initial values, bounds and explicit locks through dedicated server commands,
 but Core remains the sole owner of identity, Scope, authorization, budgets,

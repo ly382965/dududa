@@ -389,6 +389,7 @@ class OfflineRuntimeOrchestrator:
                 state.actor,
                 state.conversation_scope,
                 preprocess,
+                feature_flags=state.invocation_options.feature_flags,
             )
             authorization_request = build_response_authorization_request(
                 state.actor,

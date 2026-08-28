@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 
 from dududa.contracts.canonical import canonical_digest
@@ -27,6 +28,8 @@ from .contracts import (
     RuntimeIdentityBinding,
 )
 from .perception import serialize_perception_context
+
+CAPABILITY_CATEGORY_FEATURE_PREFIX = "capability.category."
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +141,8 @@ class CurrentMessageContextBuilder:
         actor: Actor,
         scope: ConversationScope,
         preprocess: OfflinePreprocessReceipt,
+        *,
+        feature_flags: Mapping[str, bool] | None = None,
     ) -> CurrentMessageContext:
         if not isinstance(preprocess, OfflinePreprocessReceipt):
             raise validation_error("invalid_preprocess_receipt")
@@ -196,6 +201,16 @@ class CurrentMessageContextBuilder:
             ),
             is_bot_authored=False,
         )
+        available_categories = self._config.available_capability_categories
+        if feature_flags is not None:
+            available_categories = tuple(
+                category
+                for category in available_categories
+                if feature_flags.get(
+                    f"{CAPABILITY_CATEGORY_FEATURE_PREFIX}{category}",
+                    True,
+                )
+            )
         perception = PerceptionContext(
             schema_version=1,
             context_id=str(
@@ -214,9 +229,7 @@ class CurrentMessageContextBuilder:
             current_message_ref=current_message_ref,
             bot_identity_ref=reference_by_raw[message.bot_id],
             limits=self._config.limits,
-            available_capability_categories=(
-                self._config.available_capability_categories
-            ),
+            available_capability_categories=available_categories,
             degraded_components=(),
             content_input_tokens_upper_bound=1,
             data_classification=preprocess.data_classification,

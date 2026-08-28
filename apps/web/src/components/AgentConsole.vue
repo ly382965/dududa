@@ -122,7 +122,16 @@ const emit = defineEmits<{
 const prompt = ref('')
 const sessionMenuOpen = ref(false)
 const stream = ref<HTMLElement>()
-const runtimeLabel = computed(() => props.available ? '内测已连接' : props.runtimeLoading ? '正在连接' : '未连接')
+const productionRuntimeOnline = computed(
+  () => props.runtimeControls?.passiveAutoReply.actualEnabled === true,
+)
+const runtimeLabel = computed(() => productionRuntimeOnline.value
+  ? '2.0 Runtime 在线'
+  : props.available
+    ? '候选预览已连接'
+    : props.runtimeLoading
+      ? '正在连接'
+      : '未连接')
 const runtimeDetail = computed(() => props.runtimeError || props.runtimeWarning || 'QQ 消息与历史仍由 NapCat 实时提供')
 const policyEditable = computed(() => Boolean(props.policy) && !props.policyLoading && !props.policySaving)
 const mcpCatalog = ref<McpConsoleCatalog>()
@@ -161,10 +170,11 @@ const pluginRoleLabels: Record<NonNullable<InternalTestCatalogPlugin['requiredRo
 
 const pluginRuntimeLabels: Record<InternalTestCatalogPlugin['runtimeTarget'], string> = {
   web_agent: 'Web Agent',
-  astrbot: 'AstrBot',
+  astrbot: 'Dududa 2.0 Runtime / AstrBot',
 }
 
 const pluginReadinessLabels: Record<InternalTestCatalogPlugin['runtimeReadiness'], string> = {
+  online: 'Runtime 在线',
   configured: '已装配 · 待 Runtime 接管',
   unavailable: '执行器未接通',
 }
@@ -561,8 +571,8 @@ watch(
       </button>
       <span class="agent-logo"><Sparkles :size="17" /></span>
       <div class="agent-heading">
-        <div><strong>Dududa Agent</strong><span class="runtime-dot" :class="{ online: available }" /> <small>{{ runtimeLabel }}</small></div>
-        <p>{{ available ? `内测 Runtime · 不会发送 · ${conversation?.name ?? '未选择会话'}` : (conversation?.name ?? '未选择会话') }}</p>
+        <div><strong>Dududa Agent</strong><span class="runtime-dot" :class="{ online: productionRuntimeOnline }" /> <small>{{ runtimeLabel }}</small></div>
+        <p>{{ productionRuntimeOnline ? `2.0 被动入站已启用 · ${conversation?.name ?? '未选择会话'}` : available ? `候选预览不发送 · ${conversation?.name ?? '未选择会话'}` : (conversation?.name ?? '未选择会话') }}</p>
       </div>
       <button class="icon-button desktop-collapse" type="button" title="收起 Agent Console" aria-label="收起 Agent Console" @click="emit('collapse')">
         <X :size="17" />
@@ -633,7 +643,7 @@ watch(
 
         <div v-if="available" class="runtime-mode-note">
           <ShieldCheck :size="13" />
-          <span><strong>内测 Runtime</strong>只生成候选，不会发送 QQ 消息、写入 Memory 或调用工具</span>
+          <span><strong>2.0 Runtime 预览</strong>可调用已授权的只读 Capability，但不会写入 Memory 或发送 QQ 消息</span>
         </div>
 
         <div v-if="!available" class="runtime-unavailable">
@@ -795,6 +805,8 @@ watch(
             </div>
             <div><dt>群聊风格</dt><dd>{{ runGroupChatStyle ? groupChatStyleLabels[runGroupChatStyle] : '未记录' }}</dd></div>
             <div><dt>实际插件</dt><dd>{{ runPlugins.length ? runPlugins.join('、') : '本轮未调用' }}</dd></div>
+            <div><dt>执行路径</dt><dd>{{ run.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退' }}</dd></div>
+            <div><dt>Tool 调用</dt><dd>{{ run.toolCalls ?? 0 }}</dd></div>
             <div><dt>开始于</dt><dd>{{ run.startedAt }}</dd></div>
             <div><dt>回复账号</dt><dd>{{ account?.name }}</dd></div>
             <div><dt>发送权限</dt><dd>禁止发送（内测）</dd></div>
@@ -950,7 +962,7 @@ watch(
                   <small :class="plugin.available ? 'available' : 'unavailable'">{{ plugin.available ? '本页可配置' : '当前不可配置' }}</small>
                   <small>{{ pluginExecutionLabels[plugin.executionKind] }}</small>
                   <small>{{ pluginRuntimeLabels[plugin.runtimeTarget] }}</small>
-                  <small :class="plugin.runtimeReadiness === 'configured' ? 'available' : 'unavailable'">
+                  <small :class="plugin.runtimeReadiness !== 'unavailable' ? 'available' : 'unavailable'">
                     {{ pluginReadinessLabels[plugin.runtimeReadiness] }}
                   </small>
                   <small v-if="plugin.builtIn">系统内建</small>

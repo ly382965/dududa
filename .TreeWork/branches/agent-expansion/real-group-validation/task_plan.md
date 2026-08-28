@@ -61,7 +61,9 @@ Title: S23 Authorized Real-Group Validation
 - [x] A configuration-driven inbound production Runtime parses the actually
   configured 1--3 model tiers and assembles the Static Router and DirectChat
   chain; `off` performs zero Provider calls/sends, `shadow` does not claim or
-  send, and disabled or unresolved Providers fall back to legacy.
+  send. This records the pre-cutover acceptance behavior; the current 2.0-only
+  Runtime fails closed when a Provider is disabled or unresolved and does not
+  return ownership to Dududa 1.0.
 - [x] Production Builder 优先使用 AstrBot Context 的 Evidence resolver；
   resolver 缺失或返回 `None` 时，从 `runtime_provider_evidence_path`
   指向的仓库外私有 JSON 解析 Provider binding evidence。Provider/model
@@ -87,10 +89,11 @@ Title: S23 Authorized Real-Group Validation
   可通过 `Last-Event-ID` 按序补放，ID 无效、过旧或服务重启时回退到
   `workspace.refresh`。前端按 `timestampMs`、无损十进制 sequence、消息 ID
   稳定排序，并重放初始快照期间收到的实时事件。
-- [x] Web Agent 的首版候选生成可显式选择 SHORT/MEDIUM/LONG；生成指令复用
+- [x] 历史语料 Evaluation Adapter 的首版候选生成可显式选择 SHORT/MEDIUM/LONG；生成指令复用
   `configs/personas/registry-v1/dududa.json`，按群聊/私聊规则调整表达，同时保持
-  NO SEND、NO MEMORY WRITE、NO TOOL CALL、NO BANDIT。首版 Luna/Terra/Sol 映射
-  只作为历史默认，不再作为永久控制契约。
+  NO SEND、NO MEMORY WRITE、NO TOOL CALL、NO BANDIT。该历史候选不等同于当前
+  `/agent/respond` 的 2.0 Runtime 预览；后者可调用批准的只读 Capability。首版
+  Luna/Terra/Sol 映射只作为历史默认，不再作为永久控制契约。
 - [x] Persona 不再依赖 `response_profiles` 开关：关闭回答档位时仍进入同一次
   模型生成；开启时 Persona、群聊情境与 AnswerProfile 在同一请求中自然融合，
   不复述人设、不自我介绍、不套固定口号、不机械追加表情，也不模仿具体群成员。
@@ -130,12 +133,18 @@ Title: S23 Authorized Real-Group Validation
   不得冒充 AstrBot online 或本轮实际执行。校园资讯、arXiv、行业资讯、网络搜索
   及其他未接能力显示 `unavailable + reason`，不得把 fixture 或预留接口伪装成
   真实服务。
-- [x] Console 同时显示管理员期望值和实际 Runtime 状态：被动自动回复保持
-  `rollout=off`、delivery 关闭、kill switch 开启；主动参与仅为 S15E Probe
-  Shadow，并明确标记 `NO SEND`。Web candidate 即使命中复读或 `/sub2api`
-  的确定性触发条件，也只返回
-  `triggerMatched=true`，实际仍为 `selectedForRun=false`、`outputCalls=0`、
-  `memoryWrites=0`、`toolCalls=0`。
+- [x] Web Scope Policy 已由唯一 2.0 Runtime 每轮消费：`enabled=false` 在 Canary
+  claim 前退出；Capability 为 `off` 时移除映射类别，`auto/on/locked` 只保留
+  原本合法的候选资格，不强制调用，也不覆盖全局 Tool、授权、预算或健康判断。
+- [x] Web 将候选预览与真实 Runtime 分开显示：iCourse 标记为 Runtime online；
+  二课、教务和校车准确标记为已装配、待自然语言 Planner 接管。主动参与仍为
+  S15E Probe Shadow/`NO SEND`。
+- [x] 将 `/agent/respond` 接到 AstrBot 内已安装的 2.0 Runtime no-send 预览：允许
+  已批准的只读 Capability，使用内存 Delivery Receipt 完成状态机，但不 claim/stop
+  QQ Event、不写 Memory、不调用 QQ Output；前端显示真实 `runtimePath/toolCalls`。
+- [x] 按真实 Luna/Terra usage 修复 AstrBot Provider Token 开销估算：每个 Endpoint
+  可配置 `provider_wrapping_tokens`，当前默认 4,608；Perception/总输入预算调整为
+  12,000/40,000，避免成功模型响应被容量结算误判为失败。
 - [x] `/sub2api 自动查询` 已接通精确 Scope Web Policy Adapter；当前 AstrBot
   已加载插件，NapCat OneBot 反向 WebSocket 已连接，目标群的 Policy 已解析为
   `locked`。方法级真实只读查询已成功，等待用户在重连后重新发送命令
@@ -275,6 +284,10 @@ Title: S23 Authorized Real-Group Validation
   path, assemble the existing Capability Runtime over the shared Unified MCP
   client, enable one bounded read-only Tool step from Rollout Policy, and prove
   the natural-language iCourse vertical slice with focused Fakes.
+- [x] Connect the exact-Scope Web Agent Policy to the production Bridge and
+  project its Agent switch plus MCP plugin modes into Perception eligibility;
+  expose iCourse as online while keeping the other campus MCPs in the truthful
+  configured/pending-Planner state.
 - [x] Make the explicit `评课社区` marker a deterministic 2.0 Capability signal;
   execute all 75 benchmark messages through Runtime/MCP dispatch, add the three
   query-projection regressions, and measure all 75 once with real Luna `low`
