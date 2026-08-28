@@ -107,7 +107,7 @@
   "rollout_canary_timeout_ms": {
     "description": "Canary 单任务超时（毫秒）",
     "type": "int",
-    "default": 60000
+    "default": 120000
   },
   "owners": {
     "description": "全局 owner QQ 号",
