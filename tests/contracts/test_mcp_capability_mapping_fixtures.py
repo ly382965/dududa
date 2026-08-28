@@ -66,7 +66,7 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
             ("icourse", "ustc-academic", "ustc-shuttle", "ustc-young"),
         )
         catalog = capability_snapshot(PRODUCTION_CAPABILITIES, "production")
-        self.assertEqual(len(catalog.definitions), 18)
+        self.assertEqual(len(catalog.definitions), 17)
         by_tool = {item.tool_name: item for item in catalog.mcp_mappings}
         self.assertEqual(
             set(by_tool),
@@ -88,7 +88,6 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                 "young_search_activities",
                 "young_get_activity",
                 "young_list_facets",
-                "young_list_my_activities",
             },
         )
         for mapping in by_tool.values():
@@ -175,10 +174,10 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                     "mcp.ustc-young",
                 ),
             )
-            self.assertEqual(len(catalog.definitions), 19)
+            self.assertEqual(len(catalog.definitions), 18)
 
         production = capability_snapshot(PRODUCTION_CAPABILITIES, "still-production")
-        self.assertEqual(len(production.definitions), 18)
+        self.assertEqual(len(production.definitions), 17)
         for relative in (
             "packages/dududa-agent/src/dududa/capabilities/mcp_provider.py",
             "packages/dududa-agent/src/dududa/capabilities/runtime.py",

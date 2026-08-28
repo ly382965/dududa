@@ -42,6 +42,18 @@ Last sync: unix:1786706085
   compatible `stats/search/get_course/get_reviews` reads now query current public
   iCourse pages and never fall back to SQLite. A 2.0 no-send preview returned
   Wanglulu's 54 and 萌萌哒mmd's 83 public reviews with one MCP call each.
+- 二课已进入同一个 Dududa 2.0 Hybrid Perception -> 单步 Planner ->
+  Capability Runtime -> Unified MCP -> Direct Chat -> Delivery 链路。MCP 只暴露活动
+  搜索、活动详情、筛选项和连接状态四个公共只读 Tool；没有登录 Tool、QQ 账号绑定、
+  “我的活动”、报名、取消或申请人能力。部署侧 CAS SecretRef 只用于建立官方上游
+  会话，不代表提问者身份。
+- 二课 75 题以测试代码手工构造的 OneBot-shaped Event 进入唯一 2.0 Bridge：
+  75/75 Runtime completed、75/75 Fake Delivery、62 次 Unified MCP、13 次正确不调用，
+  真实 QQ 发送为 0。关键答案已校验日期、报名窗口、余位阈值、排序、容量、学时效率、
+  五育覆盖和规模比较，不只判断“有回复”。
+- 最新生产 Registry 只发现上述四个 Young Tool，并完成一次真实只读调用；错误凭据返回
+  结构化 `available=false` 且不泄露凭据。Compose 已预留只读凭据挂载，但当前运行中
+  AstrBot 未重启或重建，尚未消费该挂载。
 - A public-only development snapshot contains 19,194 course-list rows, 174
   targeted details and 4,216 public reviews. The final 75-case Runtime benchmark
   completed 75/75 Bridge runs, 75/75 Runtime runs and 75/75 Fake Deliveries with
@@ -118,7 +130,7 @@ Last sync: unix:1786706085
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
   候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
 - Unified MCP 现已注册四个真实只读 Server：匿名 iCourse、认证二课、公开教务处
-  和校车，共映射 18 个受批准 Capability。Web 超级管理员工作台按 Capability ID
+  和校车，共映射 17 个受批准 Capability。Web 超级管理员工作台按 Capability ID
   和 input schema 直接调用，浏览器不接受任意 `server/tool` 透传。现有本机 CAS
   凭据文件以只读挂载复用，固定提交版 `pyustc` 已真实完成二课登录和查询；密码、
   Cookie、TGC 与本机路径不进入 Git、Web 响应或普通日志。校园资讯、arXiv 和行业
@@ -167,6 +179,11 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 完成二课 MCP 的 Dududa 2.0 自然语言纵切：四个公共只读 Tool 经同一 Unified Client
+  进入 Planner/Capability/DirectChat，个人账号与写能力从 MCP、Capability Catalog
+  和普通管理员权限中移除。75 题最新报告为 75/75 Runtime/Fake Delivery、62 次 MCP、
+  13 次正确不调用；真实模型只做最小关键抽样，Luna Review 不是 Runtime 的第三次调用，
+  也未冒充已发送回复。
 - 接通 Web -> AstrBot extension -> Dududa 2.0 Runtime 的 no-send 预览纵切，页面
   不再调用固定 `toolCalls=0` 的旧候选器。运行中实测“查询评课社区吴天”进入
   Perception、iCourse Unified MCP、Terra 总结与内存 Delivery 确认，返回非空正文，
@@ -194,7 +211,7 @@ Last sync: unix:1786706085
 - 收紧 2.0 MCP 最终表达：现有 `DIRECT_CHAT` 模型调用必须把已验证 Tool Context
   归纳成自洽正文，链接仅作辅助引用，不得返回裸链接、链接列表、原始 JSON 或让
   用户自行阅读来源；不新增第三次模型调用，也不修改 1.0 `/course` 兼容命令。
-- 完成 iCourse 高层只读查询：第 18 个 Capability `icourse.public-query.v2` 的五种
+- 完成 iCourse 高层只读查询：Capability `icourse.public-query.v2` 的五种
   operation 共用一次 MCP 调用；78 条 scripted 路由回归产生 78 次调用，只作为
   routing contract。最终真实模型 75 题纵切与人工终审结果以上一条为准。
 - 完成 Web Runtime 插件管理纵切：超级工作台动态展示 AstrBot 已加载
@@ -339,9 +356,9 @@ Last sync: unix:1786706085
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
 - `gpt-image-2` 仍需接入正式图片 Capability；四个校园 MCP 的 Web 直接调用已完成，
-  但 Agent 自然语言自动选择目前只闭环 iCourse 单步。iCourse 的精确 Scope 资格
-  和 Web no-send Runtime/MCP 预览已接通，仍缺用户触发的真实 QQ MCP/Delivery Receipt；二课、
-  教务和校车的自然语言 Schema Planner 尚未实现。
+  Agent 自然语言自动选择已闭环 iCourse 与二课单步。二课当前是手工 OneBot-shaped
+  Event/Fake Delivery 证据，iCourse 已有 Web no-send Runtime/MCP 预览；两者仍缺用户触发的
+  真实 QQ MCP/Delivery Receipt，教务和校车的自然语言 Schema Planner 尚未实现。
 - Capability/MCP 的可信失败 receipt 当前会在 Canary claim 后以 no-delivery 终止；
   尚需在 2.0 Composer/Persona/Final Validator 内补用户可见失败回答，不能由旧 handler
   或 Web search 接管。

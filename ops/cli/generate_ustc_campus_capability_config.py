@@ -69,11 +69,10 @@ SPECS = (
     CapabilitySpec("ustc.academic.calendar.get.v1", "academic", "teaching_calendar_get", "Read USTC teaching calendar", "Read the current official teaching-calendar article and its dated events.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "calendar", "ustc"})),
     CapabilitySpec("ustc.shuttle.schedule.get.v1", "shuttle", "shuttle_current_schedule", "Read USTC shuttle schedule", "Read the current official shuttle notice, timetable image and revision-bound structured schedule.", "campus.shuttle", "capability.ustc.shuttle.read", frozenset({"bus", "schedule", "shuttle", "ustc"})),
     CapabilitySpec("ustc.shuttle.trips.search.v1", "shuttle", "shuttle_search_trips", "Search USTC shuttle trips", "Search current trips between east, west, research and high-tech campuses.", "campus.shuttle", "capability.ustc.shuttle.read", frozenset({"bus", "search", "shuttle", "ustc"})),
-    CapabilitySpec("ustc.young.connection.status.v1", "young", "young_connection_status", "Read second-class connection status", "Report whether the second-class CAS SecretRefs are configured without exposing credentials.", "campus.second-class", "capability.ustc.young.read", frozenset({"authentication", "second-class", "status", "ustc"}), privacy=PrivacyLevel.PERSONAL),
-    CapabilitySpec("ustc.young.activities.search.v1", "young", "young_search_activities", "Search USTC second-class activities", "Search authenticated second-class activities through the pinned pyustc adapter.", "campus.second-class", "capability.ustc.young.read", frozenset({"activity", "search", "second-class", "ustc"}), privacy=PrivacyLevel.PERSONAL, cost=3),
-    CapabilitySpec("ustc.young.activity.get.v1", "young", "young_get_activity", "Read USTC second-class activity", "Read one second-class activity and optional series children.", "campus.second-class", "capability.ustc.young.read", frozenset({"activity", "detail", "second-class", "ustc"}), privacy=PrivacyLevel.PERSONAL, cost=2),
-    CapabilitySpec("ustc.young.facets.list.v1", "young", "young_list_facets", "List USTC second-class filters", "List available module, department or label filters.", "campus.second-class", "capability.ustc.young.read", frozenset({"filter", "second-class", "ustc"}), privacy=PrivacyLevel.PERSONAL, cost=2),
-    CapabilitySpec("ustc.young.activities.mine.list.v1", "young", "young_list_my_activities", "List my USTC second-class activities", "List activities associated with the configured CAS service account.", "campus.second-class", "capability.ustc.young.self.read", frozenset({"activity", "personal", "second-class", "ustc"}), privacy=PrivacyLevel.PERSONAL, private_only=True, cost=3),
+    CapabilitySpec("ustc.young.connection.status.v1", "young", "young_connection_status", "Read second-class connection status", "Report whether the second-class CAS SecretRefs are configured without exposing credentials.", "campus.second-class", "capability.ustc.young.read", frozenset({"authentication", "second-class", "status", "ustc"})),
+    CapabilitySpec("ustc.young.activities.search.v1", "young", "young_search_activities", "Search USTC second-class activities", "Search authenticated second-class activities through the pinned pyustc adapter without projecting deployment-account state.", "campus.second-class", "capability.ustc.young.read", frozenset({"activity", "search", "second-class", "ustc"}), cost=3),
+    CapabilitySpec("ustc.young.activity.get.v1", "young", "young_get_activity", "Read USTC second-class activity", "Read one second-class activity and optional series children without projecting deployment-account state.", "campus.second-class", "capability.ustc.young.read", frozenset({"activity", "detail", "second-class", "ustc"}), cost=2),
+    CapabilitySpec("ustc.young.facets.list.v1", "young", "young_list_facets", "List USTC second-class filters", "List available module, department or label filters.", "campus.second-class", "capability.ustc.young.read", frozenset({"filter", "second-class", "ustc"}), cost=2),
 )
 
 
@@ -138,8 +137,7 @@ def _source_properties() -> dict[str, object]:
 
 
 def _activity_schema() -> dict[str, object]:
-    return _object(
-        {
+    properties = {
             "activity_id": _string(128),
             "name": _string(500, nullable=True),
             "status": _object({"code": _integer(nullable=True), "text": _string(100)}),
@@ -148,15 +146,23 @@ def _activity_schema() -> dict[str, object]:
             "event_window": _object({"start": _string(64, nullable=True), "end": _string(64, nullable=True)}),
             "valid_hours": _number(nullable=True),
             "capacity": _object({"registered": _integer(nullable=True), "limit": _integer(nullable=True)}),
-            "is_registered": _boolean(),
-            "can_apply": _boolean(),
             "module": _object({"id": _string(128, nullable=True), "name": _string(300, nullable=True)}),
             "department": _object({"id": _string(128, nullable=True), "name": _string(300, nullable=True)}),
             "labels": _array(_object({"id": _string(128, nullable=True), "name": _string(300, nullable=True)}), 100),
             "description": _string(20_000, nullable=True),
-            "contact": _string(300, nullable=True),
-        },
-        required=("activity_id", "status", "kind", "apply_window", "event_window", "capacity", "is_registered", "can_apply", "module", "department", "labels"),
+        }
+    required = [
+        "activity_id",
+        "status",
+        "kind",
+        "apply_window",
+        "event_window",
+        "capacity",
+    ]
+    required.extend(("module", "department", "labels"))
+    return _object(
+        properties,
+        required=tuple(required),
     )
 
 
@@ -204,9 +210,8 @@ def _output_schema(capability_id: str) -> dict[str, object]:
     if capability_id == "ustc.young.connection.status.v1":
         return _object({"ok": _boolean(), "available": _boolean(), "authentication": _string(64), "reason": _string(500, nullable=True), "provider": _string(100), "provider_revision": _string(128), "fetched_at": _string(64)}, required=("ok", "available", "authentication", "provider", "provider_revision", "fetched_at"))
     activity = _activity_schema()
-    if capability_id in {"ustc.young.activities.search.v1", "ustc.young.activities.mine.list.v1"}:
+    if capability_id == "ustc.young.activities.search.v1":
         properties = _young_result_properties(activity)
-        properties["account_scoped"] = _boolean()
         return _object(properties, required=("ok", "available", "authentication", "items", "total", "source_url", "fetched_at"))
     if capability_id == "ustc.young.activity.get.v1":
         properties = _young_result_properties(activity)

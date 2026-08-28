@@ -311,6 +311,15 @@ Title: S23 Authorized Real-Group Validation
   工具全部切到实时站点；用禁止 `ICourseStore` 读取的聚焦测试、空 SQLite 真实 Smoke、
   Web Capability 直调和 2.0 no-send 自然语言预览证明不存在缓存旁路，并修复 Core
   热重载未关闭继承式 `terminate()` 所遗留的 MCP Worker。
+- [x] 将二课的搜索、详情、动态筛选项和连接状态接入唯一 Dududa 2.0 自然语言
+  Planner；不增加 QQ 用户登录、账号绑定、“我的活动”或报名写能力，不经过任何
+  1.0 handler、旧命令路由或 Web search。
+- [x] 建立 75 条二课自然语言案例，覆盖今日/本周、德智体美劳、报名窗口、余位、
+  学时效率、规模比较、系列活动、上下文追问与正确拒绝；全部通过 OneBot-shaped
+  原生消息模拟进入 2.0 Bridge，并区分路由完成、事实完成和正确边界回答。
+- [x] 使用固定二课活动 fixture 完成 75/75 无 QQ 发送模拟；再以最小真实模型抽样
+  检查 Perception、最终总结、过程隐藏和群聊表达，不把旁路 Reviewer 稿冒充
+  Runtime 实际输出。
 - [ ] Route validated Capability failure through the governed Composer, Persona,
   Final Validator and authorized Delivery path; do not fall back to the legacy
   course handler, Web search or a Bridge-level second send path.

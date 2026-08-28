@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import MappingProxyType
-import uuid
 
 from dududa.domain.primitives import ComponentRevision, DigestString
 from dududa.domain.task import TaskReasoningDepth
@@ -166,7 +166,7 @@ class DeterministicPerceptionMerger:
             conflicting = any(
                 (
                     task_conflict,
-                    model_targets != rule_targets,
+                    bool(model_targets) and model_targets != rule_targets,
                     rules.need_tools and not model.need_tools,
                     rules.verification_required and not model.verification_required,
                     rules.reasoning_depth is TaskReasoningDepth.DEEP

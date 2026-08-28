@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Callable, Mapping
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from dududa.capabilities import (
     TOOL_COMPLETION_ALL_STEPS,
@@ -27,15 +29,50 @@ ICOURSE_INTENT_OPERATIONS = {
     "icourse.stats.read": "stats",
 }
 _ICOURSE_DEFAULT_LIMIT = 10
+YOUNG_SEARCH_CAPABILITY_ID = "ustc.young.activities.search.v1"
+YOUNG_ACTIVITY_CAPABILITY_ID = "ustc.young.activity.get.v1"
+YOUNG_FACETS_CAPABILITY_ID = "ustc.young.facets.list.v1"
+YOUNG_STATUS_CAPABILITY_ID = "ustc.young.connection.status.v1"
+YOUNG_INTENT_CAPABILITIES = {
+    "ustc.young.activity.search": YOUNG_SEARCH_CAPABILITY_ID,
+    "ustc.young.activity.get": YOUNG_ACTIVITY_CAPABILITY_ID,
+    "ustc.young.facets.list": YOUNG_FACETS_CAPABILITY_ID,
+    "ustc.young.connection.status": YOUNG_STATUS_CAPABILITY_ID,
+}
+YOUNG_RUNTIME_CAPABILITY_IDS = frozenset(YOUNG_INTENT_CAPABILITIES.values())
+_YOUNG_DEFAULT_LIMIT = 50
+_YOUNG_LOCAL_TIMEZONE = ZoneInfo("Asia/Shanghai")
+_YOUNG_GENERIC_TERMS = frozenset(
+    {
+        "二课",
+        "第二课堂",
+        "活动",
+        "德智体美劳",
+        "德育",
+        "智育",
+        "体育",
+        "美育",
+        "劳育",
+        "今天",
+        "明天",
+        "后天",
+        "本周",
+        "周末",
+    }
+)
+_ACTIVITY_ID_RE = re.compile(
+    r"(?:活动\s*(?:id|编号)|\bid)\s*(?:为|是|[:：#])?\s*([A-Za-z0-9][A-Za-z0-9_-]{1,127})",
+    re.IGNORECASE,
+)
 
 
 class EntityQueryToolPlanner:
-    """Turn model-extracted entities into one schema-bound read query.
+    """Turn model-extracted entities into one bounded schema-bound read query.
 
-    This adapter deliberately emits one step for a candidate whose only required
-    input is `query`. Standard iCourse intents select the high-level public query
-    operation; the existing deterministic validator still owns membership and
-    argument validity.
+    Standard iCourse intents select the high-level public query operation.
+    Second-class intents select one existing read Capability and project its
+    simple filters. The existing deterministic validator still owns membership
+    and argument validity.
     """
 
     def __init__(
@@ -58,12 +95,12 @@ class EntityQueryToolPlanner:
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._revision = revision or ComponentRevision(
             "astrbot.entity-query-tool-planner",
-            "1.0.0",
-            "single-step-v1",
+            "1.1.0",
+            "single-step-icourse-young-v1",
             DigestString(
                 str(
                     canonical_digest(
-                        {"planner": "entity-query-single-step"},
+                        {"planner": "entity-query-single-step-icourse-young"},
                         domain="astrbot:tool-planner-artifact:v1",
                     )
                 )
@@ -84,13 +121,21 @@ class EntityQueryToolPlanner:
             expected_digest=request.retrieval.catalog_digest,
         )
         operation = _icourse_operation(request.query.intent_ids)
-        term = _primary_query_term(
-            request,
-            self._ignored_entity_terms,
-            operation=operation,
-        )
+        young_capability_id = _young_capability(request.query.intent_ids)
+        if (
+            young_capability_id is None
+            and operation is None
+            and "campus.second-class" in request.query.preferred_categories
+        ):
+            young_capability_id = YOUNG_SEARCH_CAPABILITY_ID
         candidates = request.retrieval.candidates
-        if operation is not None:
+        if young_capability_id is not None:
+            candidates = tuple(
+                item
+                for item in candidates
+                if item.capability_id == young_capability_id
+            )
+        elif operation is not None:
             public_query_candidates = tuple(
                 item
                 for item in candidates
@@ -110,11 +155,32 @@ class EntityQueryToolPlanner:
         selected = None
         arguments: Mapping[str, JsonValue] | None = None
         for candidate in candidates:
+            if candidate.capability_id in YOUNG_RUNTIME_CAPABILITY_IDS:
+                if candidate.capability_id != young_capability_id:
+                    continue
+                schema = self._registry.get_schema(catalog, candidate.input_schema)
+                projected = _young_arguments(
+                    candidate.capability_id,
+                    schema.document,
+                    request,
+                    self._ignored_entity_terms,
+                    self._clock(),
+                )
+                if projected is not None:
+                    selected = candidate
+                    arguments = projected
+                    break
+                continue
             is_icourse_public_query = (
                 candidate.capability_id == ICOURSE_PUBLIC_QUERY_CAPABILITY_ID
             )
             if is_icourse_public_query and operation is None:
                 continue
+            term = _primary_query_term(
+                request,
+                self._ignored_entity_terms,
+                operation=operation,
+            )
             schema = self._registry.get_schema(catalog, candidate.input_schema)
             projected = _query_arguments(
                 schema.document,
@@ -152,7 +218,7 @@ class EntityQueryToolPlanner:
             capability_id=selected.capability_id,
             definition_digest=selected.definition_digest,
             arguments=ArgumentTemplate(1, arguments, ()),
-            purpose="answer_with_approved_public_query",
+            purpose="answer_with_approved_read_query",
             depends_on=(),
             expected_output_schema=selected.output_schema,
         )
@@ -275,6 +341,164 @@ def supports_entity_query_schema(document: Mapping[str, JsonValue]) -> bool:
     )
 
 
+def supports_production_query_schema(
+    capability_id: str,
+    document: Mapping[str, JsonValue],
+) -> bool:
+    if supports_entity_query_schema(document):
+        return True
+    expected_required = {
+        YOUNG_SEARCH_CAPABILITY_ID: frozenset(),
+        YOUNG_ACTIVITY_CAPABILITY_ID: frozenset({"activity_id"}),
+        YOUNG_FACETS_CAPABILITY_ID: frozenset({"facet"}),
+        YOUNG_STATUS_CAPABILITY_ID: frozenset(),
+    }.get(capability_id)
+    if expected_required is None:
+        return False
+    properties = document.get("properties")
+    required = document.get("required", ())
+    return (
+        isinstance(properties, Mapping)
+        and isinstance(required, (list, tuple))
+        and set(required) == set(expected_required)
+        and expected_required <= set(properties)
+    )
+
+
+def _young_capability(intent_ids: tuple[str, ...]) -> str | None:
+    for intent_id in intent_ids:
+        capability_id = YOUNG_INTENT_CAPABILITIES.get(intent_id)
+        if capability_id is not None:
+            return capability_id
+    return None
+
+
+def _young_arguments(
+    capability_id: str,
+    document: Mapping[str, JsonValue],
+    request: ToolPlanningRequest,
+    ignored_entity_terms: frozenset[str],
+    now: datetime,
+) -> Mapping[str, JsonValue] | None:
+    goal = request.query.natural_language_goal.strip()
+    if capability_id == YOUNG_STATUS_CAPABILITY_ID:
+        return _declared_arguments(document, {})
+    if capability_id == YOUNG_FACETS_CAPABILITY_ID:
+        compact = _normalize_term(goal)
+        facet = (
+            "label"
+            if "标签" in compact
+            else "department"
+            if any(value in compact for value in ("部门", "单位", "学院", "组织"))
+            else "module"
+        )
+        return _declared_arguments(document, {"facet": facet})
+    if capability_id == YOUNG_ACTIVITY_CAPABILITY_ID:
+        match = _ACTIVITY_ID_RE.search(goal)
+        if match is None:
+            return None
+        return _declared_arguments(
+            document,
+            {
+                "activity_id": match.group(1),
+                "include_children": any(
+                    value in goal for value in ("子活动", "所有场次", "第一场")
+                ),
+            },
+        )
+    if capability_id != YOUNG_SEARCH_CAPABILITY_ID:
+        return None
+
+    terms = tuple(
+        value.strip()
+        for value in request.query.entity_terms
+        if value.strip()
+        and _normalize_term(value) not in ignored_entity_terms
+        and _normalize_term(value) not in _YOUNG_GENERIC_TERMS
+        and not _is_year_term(value)
+    )
+    arguments: dict[str, JsonValue] = {
+        "query": terms[0] if len(terms) == 1 else "",
+        "state": _young_state(goal),
+        "limit": _YOUNG_DEFAULT_LIMIT,
+    }
+    window = _young_time_window(goal, now)
+    if window is not None:
+        arguments["start_time"], arguments["end_time"] = window
+    return _declared_arguments(document, arguments)
+
+
+def _declared_arguments(
+    document: Mapping[str, JsonValue],
+    values: Mapping[str, JsonValue],
+) -> Mapping[str, JsonValue] | None:
+    properties = document.get("properties")
+    required = document.get("required", ())
+    if not isinstance(properties, Mapping) or not isinstance(required, (list, tuple)):
+        return None
+    required_names = set(required)
+    if not required_names <= set(values) or not required_names <= set(properties):
+        return None
+    return {name: value for name, value in values.items() if name in properties}
+
+
+def _young_state(goal: str) -> str:
+    compact = _normalize_term(goal)
+    return (
+        "history"
+        if any(value in compact for value in ("历史", "过去", "最近一周", "已结束", "结束的"))
+        else "applying"
+    )
+
+
+def _young_time_window(goal: str, now: datetime) -> tuple[str, str] | None:
+    compact = _normalize_term(goal)
+    if any(value in compact for value in ("报名截止", "截止报名")):
+        return None
+    local_now = now.astimezone(_YOUNG_LOCAL_TIMEZONE)
+    day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start.replace(hour=23, minute=59, second=59)
+    start: datetime | None = None
+    end: datetime | None = None
+    if "最近一周" in compact:
+        start, end = local_now - timedelta(days=7), local_now
+    elif "今晚" in compact:
+        start, end = day_start.replace(hour=18), day_end
+    elif "后天" in compact:
+        start, end = day_start + timedelta(days=2), day_end + timedelta(days=2)
+    elif "明天" in compact:
+        start, end = day_start + timedelta(days=1), day_end + timedelta(days=1)
+    elif "今天" in compact:
+        start, end = day_start, day_end
+    elif "周末" in compact:
+        if local_now.weekday() == 6:
+            start = day_start
+        else:
+            start = day_start + timedelta(days=(5 - local_now.weekday()) % 7)
+        end = start + timedelta(days=(0 if local_now.weekday() == 6 else 1), hours=23, minutes=59, seconds=59)
+    elif "本周" in compact:
+        start = local_now
+        end = day_end + timedelta(days=6 - local_now.weekday())
+    else:
+        match = re.search(r"未来([一二两三四五六七]|\d+)天", compact)
+        if match is not None:
+            count = _small_day_count(match.group(1))
+            start, end = local_now, day_end + timedelta(days=count - 1)
+    if start is None or end is None:
+        return None
+    return _local_iso(start), _local_iso(end)
+
+
+def _small_day_count(value: str) -> int:
+    names = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7}
+    result = names.get(value, int(value) if value.isdigit() else 1)
+    return max(1, min(result, 7))
+
+
+def _local_iso(value: datetime) -> str:
+    return value.replace(tzinfo=None).isoformat(timespec="seconds")
+
+
 def _icourse_operation(intent_ids: tuple[str, ...]) -> str | None:
     for intent_id in intent_ids:
         operation = ICOURSE_INTENT_OPERATIONS.get(intent_id)
@@ -291,4 +515,11 @@ def _normalize_term(value: str) -> str:
     return "".join(value.split()).casefold()
 
 
-__all__ = ["EntityQueryToolPlanner", "supports_entity_query_schema"]
+__all__ = [
+    "ICOURSE_INTENT_OPERATIONS",
+    "YOUNG_INTENT_CAPABILITIES",
+    "YOUNG_RUNTIME_CAPABILITY_IDS",
+    "EntityQueryToolPlanner",
+    "supports_entity_query_schema",
+    "supports_production_query_schema",
+]

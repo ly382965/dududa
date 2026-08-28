@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from astrbot_plugin_dududa_core.adapters.mcp_runtime import (
     AllowlistedEnvironmentProvider,
+    EnvironmentMcpSecretResolver,
     build_icourse_client,
     build_unified_mcp_client,
 )
@@ -19,6 +22,7 @@ from astrbot_plugin_dududa_core.course import (
 from dududa.contracts.canonical import canonical_json_bytes
 from dududa.errors import DududaError
 from dududa.mcp import (
+    ConfigMcpServerRegistry,
     ManagedUnifiedMcpClient,
     McpContentBlock,
     McpContentKind,
@@ -92,6 +96,35 @@ def result(value: str) -> McpTransportToolResult:
 
 
 class ICourseFacadeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_runtime_secret_resolver_reuses_existing_cas_store(self) -> None:
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "credentials.toml"
+            path.write_text(
+                'username = "student"\npassword = "local-secret"\n',
+                encoding="utf-8",
+            )
+            resolver = EnvironmentMcpSecretResolver(path)
+            definition = json.loads(
+                (ROOT / "configs" / "mcp" / "servers" / "ustc-young.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            registry_root = Path(temporary) / "servers"
+            registry_root.mkdir()
+            (registry_root / "ustc-young.json").write_text(
+                json.dumps(definition), encoding="utf-8"
+            )
+            server = ConfigMcpServerRegistry(registry_root).acquire_snapshot().definitions[0]
+            with patch.dict(
+                os.environ,
+                {"USTC_CAS_USR": "", "USTC_CAS_PWD": ""},
+            ):
+                resolved = [
+                    await resolver.resolve(reference, call=None)
+                    for reference in server.secret_refs
+                ]
+            self.assertEqual(resolved, ["student", "local-secret"])
+
     async def test_facade_reuses_unified_session_and_derives_exact_semantics(
         self,
     ) -> None:

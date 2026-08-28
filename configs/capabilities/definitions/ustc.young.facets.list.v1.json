@@ -6,7 +6,7 @@
   "capability_id": "ustc.young.facets.list.v1",
   "category": "campus.second-class",
   "cost_hint_units": 2,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:a2b76e78c272b33f4d431c3bb75304a884e4f2a6e690033b23788723cccefce7",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:3833c0a0a50ec958d65c793e6ae409bb4d31223a9b084c900fe231a8ec738c4c",
   "description": "List available module, department or label filters.",
   "enabled": true,
   "idempotency": "read_only",
@@ -113,7 +113,7 @@
     "schema_id": "capability.ustc.young.facets.list.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "personal",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-young",
     "revision": {

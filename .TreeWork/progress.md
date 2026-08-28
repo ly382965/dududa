@@ -66,18 +66,14 @@ Last sync: unix:1786717871
   shape: declared AstrBot Providers can be adapted into the existing Static
   Router and DirectChat path, with Runtime default-off and legacy compatibility
   ownership in `off/shadow`. The current Dududa 2.0 path uses Hybrid Perception,
-  a deterministic one-step Capability Planner and first-class Unified MCP. One
-  local iCourse success slice proved Luna/Haiku PERCEPTION, exactly one
-  `search_courses({"query":"吴天"})` invocation, DIRECT_CHAT synthesis and one
-  final Delivery without `/course`, Web search or process narration. Explicit
-  “评课社区” is now a deterministic `campus.course-review` Rule signal: all 75
-  benchmark messages reached local Runtime/MCP dispatch, including 19/19 marker
-  cases whose scripted model deliberately omitted Tool intent. Real Luna `low`
-  Perception returned valid Schema for 75/75, category for 74/75 and marker
-  recall 19/19. Strict semantic completion remains 0/75 because the automatic
-  Planner still exposes only `search_courses(query)`. The running AstrBot/NapCat
-  stack was not changed and production remains NOT READY until real Endpoint
-  conformance, health, release binding and authorization exist.
+  a deterministic one-step Capability Planner and first-class Unified MCP.
+  iCourse now provides five high-level public-query operations over live public
+  pages; USTC second-class provides four public read operations without a user
+  login, account binding or write action. The Young 75-case hand-built
+  OneBot-shaped simulation completed 75/75 Runtime and Fake Delivery with 62 MCP
+  calls, 13 correct no-calls and focused answer-semantic assertions. This is not
+  NapCat/QQ end-to-end evidence. Academic and shuttle still await a natural-
+  language Planner, and generic Capability failure composition remains open.
   Tool execution remains one attempt per inbound plan; no-explicit-profile Tool
   answers default to LONG, and actual multi-part group LONG output is delivered
   as one merged-forward message.

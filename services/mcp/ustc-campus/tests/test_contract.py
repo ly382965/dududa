@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import unittest
+from contextlib import asynccontextmanager
 
 from ustc_campus_mcp.calendar import TeachingCalendarClient
 from ustc_campus_mcp.server import create_mcp
@@ -31,7 +33,6 @@ class UstcCampusContractTests(unittest.TestCase):
                 "young_connection_status",
                 "young_get_activity",
                 "young_list_facets",
-                "young_list_my_activities",
                 "young_search_activities",
             },
         )
@@ -53,6 +54,45 @@ class UstcCampusContractTests(unittest.TestCase):
     def test_young_missing_secret_and_shuttle_aliases_are_explicit(self) -> None:
         self.assertEqual(YoungClient("", "").status()["authentication"], "missing_secret")
         self.assertEqual(ShuttleClient._station("高新校区"), "hightech")
+
+    def test_young_activity_is_not_applyable_when_capacity_is_full(self) -> None:
+        class Activity:
+            def __init__(self) -> None:
+                self.id = "activity-1"
+                self.data = {
+                    "itemName": "测试讲座",
+                    "itemStatus": 26,
+                    "itemCategory": "0",
+                    "applyNum": 100,
+                    "peopleNum": 100,
+                    "booleanRegistration": 0,
+                }
+
+            @property
+            def status(self):
+                return type("Status", (), {"text": "报名中"})()
+
+        result = YoungClient._activity(Activity())
+
+        self.assertEqual(result["capacity"], {"registered": 100, "limit": 100})
+        self.assertFalse(result["can_apply"])
+
+    def test_young_upstream_failure_is_a_visible_read_observation(self) -> None:
+        class UnavailableYoungClient(YoungClient):
+            @asynccontextmanager
+            async def _service(self):
+                raise RuntimeError("private upstream detail")
+                yield
+
+        result = asyncio.run(
+            UnavailableYoungClient("service", "secret").search_activities(limit=1)
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["available"])
+        self.assertEqual(result["error"], "young_authentication_or_upstream_failed")
+        self.assertEqual(result["items"], [])
+        self.assertNotIn("private upstream detail", repr(result))
 
 
 if __name__ == "__main__":

@@ -171,11 +171,6 @@ def create_mcp(service: str) -> FastMCP:
             """List second-class module, department or label filters."""
             return await young().list_facets(facet)
 
-        @mcp.tool()
-        async def young_list_my_activities(query: str = "", limit: int = 20) -> dict[str, Any]:
-            """List activities associated with the configured CAS service account."""
-            return await young().list_my_activities(query, limit)
-
     return mcp
 
 

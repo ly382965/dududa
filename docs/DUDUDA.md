@@ -122,7 +122,7 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
 当前通过同一个 `McpServerRegistry` 和 `UnifiedMcpClient` 管理四个独立只读 Server：
 
 - `icourse`：匿名访问评课社区缓存，向 Capability 层开放统计、课程搜索、课程详情和评价 4 项公开读取。
-- `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索/详情、筛选项和本人活动 5 项读取。
+- `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索、活动详情和筛选项 4 项公共观察；不提供登录或本人活动工具。
 - `ustc-academic`：提供学期、培养方案、开课、考试和教学日历 6 项公开查询。
 - `ustc-shuttle`：提供当前官方时刻表和站点间班次 2 项公开查询。
 
@@ -132,10 +132,12 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
   `--service academic|shuttle|young` 启动三个独立逻辑 Server。
 - 二课依赖固定为 `pyustc@f16d9465fd572463cb1b239d310e02010593386c`，规避 1.1.1 的异步登录缺陷。
 - 本机既有 `credentials.toml` 以只读方式挂入独立 MCP Console，再由 SecretRef
-  仅向二课子进程注入；凭据、Cookie 和 TGC 不写入仓库或 Web 返回值。
+  仅向二课子进程注入以建立上游 CAS 会话；这不是用户登录能力，凭据、Cookie 和
+  TGC 不写入仓库或 Web 返回值。
 - WebUI 的 `MCP 工作台` 展示四个 Server 和 17 个 Capability，`super_admin`
   只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
-- 已真实验证 iCourse、公开教务、校车和二课查询；本次只重建 MCP Console，未重启 AstrBot/NapCat。
+- 已真实验证 iCourse、公开教务、校车和二课查询；二课自然语言查询已进入唯一
+  Dududa 2.0 Runtime，本轮模拟不发送 QQ，也不经过 1.0 handler 或 Web search。
 - 这些是按需查询能力，不等于校园资讯、arXiv 或行业日报 Source 已接入。
 
 ## 3. 项目文件树

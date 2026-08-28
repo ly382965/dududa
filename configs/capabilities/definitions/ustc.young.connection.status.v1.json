@@ -6,7 +6,7 @@
   "capability_id": "ustc.young.connection.status.v1",
   "category": "campus.second-class",
   "cost_hint_units": 1,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:77a48e6dd3b2a987404dfc614e3fe8bc91269b2ae06fd9a59d788006ec8d5015",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:606a5c789100360f850f35f86ceb97a59e555640b77b9d93a7a17cb435fff9cf",
   "description": "Report whether the second-class CAS SecretRefs are configured without exposing credentials.",
   "enabled": true,
   "idempotency": "read_only",
@@ -74,7 +74,7 @@
     "schema_id": "capability.ustc.young.connection.status.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "personal",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-young",
     "revision": {

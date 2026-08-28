@@ -232,12 +232,31 @@ a structured unavailable/not-found result instead of cached evidence.
 Production Composition owns a first-class `UnifiedMcpClient`; the legacy
 `ICourseClient` borrows it as a compatibility consumer and does not provide or
 own the 2.0 Runtime connection. Perception advertises only categories backed by
-the current Planner's supported input Schemas. The initial advertised set is
-therefore only `campus.course-review`, even though the Control Plane can invoke
-other approved campus Capabilities directly. Consequently iCourse is the only
-current natural-language Planner loop. Second-class, academic and shuttle MCP
-Servers are assembled and directly callable by the super administrator, but
-the Agent does not yet plan them from natural language.
+the current Planner's supported input Schemas. The first slice advertised only
+`campus.course-review`; the approved second-class increment also advertises
+`campus.second-class` after its deterministic argument projection is installed.
+Academic and shuttle MCP Servers remain directly callable by the super
+administrator but are not yet planned from natural language.
+
+The second-class slice has no QQ-user login, account binding or login Tool. The
+MCP exposes only activity search, activity detail, facet listing and connection
+status. Its process uses the existing `ustc-young` SecretRefs solely to create
+the upstream CAS session required by the official structured API; that service
+identity is never projected into an Observation or interpreted as the
+requesting QQ user. “My activities”, accumulated personal hours, registration,
+cancellation and applicant lookup do not exist in the MCP or Capability
+Catalog. They receive an honest unsupported response through the ordinary 2.0
+Direct Chat path; no 1.0 handler, legacy command, Web search or alternate output
+path may take ownership.
+
+Second-class planning remains a bounded one-step 2.0 plan over the existing
+Capability Runtime and Unified MCP. Relative dates are projected in
+`Asia/Shanghai`; official module/label names remain facts, while any
+`德/智/体/美/劳` mapping is explicitly an interpretation. “Easy to register” or
+“suitable for earning hours” is a relative recommendation based on current
+status, registration window, capacity, remaining seats, valid hours, event
+duration and explicit description evidence. A large lecture or a small club
+activity is never sufficient by itself to prove registration difficulty.
 
 `/course` and the legacy natural-language course handler remain compatibility
 and diagnostics only. They do not establish 2.0 Agent Tool selection evidence,

@@ -67,7 +67,6 @@ def project_capability_run_request(
         "preferred_categories": perception.capability_categories,
         "excluded_side_effects": frozenset(
             {
-                SideEffect.NETWORK_READ,
                 SideEffect.PERSISTENT_WRITE,
                 SideEffect.EXTERNAL_WRITE,
                 SideEffect.MESSAGE_SEND,

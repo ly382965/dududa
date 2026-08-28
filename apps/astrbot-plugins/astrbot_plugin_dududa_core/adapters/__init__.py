@@ -7,6 +7,7 @@ from .capability_runtime import (
 )
 from .mcp_runtime import (
     AllowlistedEnvironmentProvider,
+    EnvironmentMcpSecretResolver,
     RejectingMcpSecretResolver,
     build_icourse_client,
     build_unified_mcp_client,
@@ -25,6 +26,7 @@ from .output import AstrBotOutputAdapter, InMemoryDeliveryLedger
 
 __all__ = [
     "AllowlistedEnvironmentProvider",
+    "EnvironmentMcpSecretResolver",
     "AstrBotInputConnector",
     "AstrBotModelProviderAdapter",
     "AstrBotOutputAdapter",

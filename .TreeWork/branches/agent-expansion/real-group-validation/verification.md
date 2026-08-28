@@ -4,6 +4,30 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-29 二课原生消息形状模拟：75 个手工构造的 OneBot-shaped Event 全部进入
+  唯一 Dududa 2.0 Bridge，结果为 75/75 Runtime completed、75/75 Fake Delivery、
+  62 次 Unified MCP、13 次正确不调用、150 次脚本 Fake 模型调用和 0 次真实 QQ 发送。
+  关键语义断言覆盖日期、报名窗口、余位阈值、填充率排序、容量、学时效率、五育覆盖
+  和规模比较。
+- 同一路径只调用 `young_search_activities`、`young_get_activity`、
+  `young_list_facets` 和 `young_connection_status`；个人活动、报名、取消、申请人、
+  Web search、ReplyPolish 和旧命令路由均未执行。Case 54 多实体比较使用宽查询，
+  根据公开余位比较当前报名可行性，没有仅按活动规模推断。
+- Case 70 的脚本模型故意把“我参加过哪些二课”误判为 Young 公共搜索；2.0 合并前的
+  确定性资格过滤移除该 category/intent，最终仍给出诚实边界回答且 MCP 调用为 0。
+- 生产 Registry -> Unified Client -> Young MCP 真实只读抽样只发现四个 Tool 并成功
+  调用；错误凭据抽样返回 `available=false` / `young_authentication_or_upstream_failed`，
+  无凭据或内部异常泄露。这些是只读工程证据，不是提问者登录、真实 QQ 端到端或全量
+  中文质量证据。
+- Luna Perception + Terra DirectChat 以最低 `low` 对 Case 1/54/71 完成 3/3 最小
+  真实模型抽样，旁路 Luna Review 为 3/3 grounded/complete/process-hidden。Review
+  未进入 Runtime 生产链，不是已发送回复。
+- 聚焦验证通过：75-case 1 项、Young Planner 3 项、Young MCP Contract 4 项、CAS
+  Secret resolver 1 项和配置生成器 `--check`。运行中的 AstrBot 未重启或重建，因此
+  尚未消费新增的只读 CAS 挂载；75 个 Event 也未经过 NapCat、AstrBot Filter 调度或
+  真实 QQ 回执。教务/校车 Planner 和通用 Capability 失败答复仍未完成，S23 保持
+  `paused/partial`。
+
 - 2026-08-28 iCourse live-source closeout: all five model-visible Capability
   mappings now read current public pages. A focused test replaces
   `ICourseStore.stats/search_courses/get_course/get_reviews` with immediate
@@ -62,12 +86,13 @@ Branch: real-group-validation
   MCP -> 总结 -> Fake Delivery，未产生真实 QQ 副作用。
 - 运行中 Core 状态为 `ready/runtime_ready`，OneBot 已连接；用户选择的目标 Scope
   解析为 Agent enabled、`campus.course-review=true`。Web Catalog 将 iCourse 显示为 Runtime online，
-  二课、教务和校车显示为已装配、待 Planner 接管。仅替换 AstrBot/Web，NapCat
+  当时二课、教务和校车显示为已装配、待 Planner 接管；2026-08-29 的二课 2.0
+  证据已取代该项中的二课状态。仅替换 AstrBot/Web，NapCat
   容器未重启；本轮没有发送真实 QQ 消息。
 - Evidence boundary: the production Runtime currently consumes only the Scope
   switch and Capability eligibility from Web Policy. The six adaptive settings
-  are not all production-wired, the other three campus MCPs lack a natural-
-  language Planner, and no user-triggered QQ MCP/Delivery Receipt exists.
+  are not all production-wired, academic and shuttle lack a natural-language
+  Planner, and no user-triggered QQ MCP/Delivery Receipt exists.
   Verification remains `partial`; S23 remains `paused`.
 
 - 2026-08-26 最终 75 题 Connector 形状 Runtime 纵切：Bridge 75/75、Runtime

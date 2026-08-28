@@ -62,17 +62,20 @@ class YoungClient:
             labels=[Label(value, value) for value in (label_ids or [])],
         )
         apply_ended = state.casefold() in {"ended", "finished", "history"}
-        async with self._service():
-            values = [
-                self._activity(item)
-                async for item in SecondClass.find(
-                    filter_value,
-                    apply_ended=apply_ended,
-                    expand_series=False,
-                    max=limit,
-                    size=min(limit, 50),
-                )
-            ]
+        try:
+            async with self._service():
+                values = [
+                    self._public_activity(item)
+                    async for item in SecondClass.find(
+                        filter_value,
+                        apply_ended=apply_ended,
+                        expand_series=False,
+                        max=limit,
+                        size=min(limit, 50),
+                    )
+                ]
+        except RuntimeError:
+            return self._upstream_unavailable()
         return self._result(values)
 
     async def get_activity(self, activity_id: str, include_children: bool = False) -> dict[str, Any]:
@@ -81,11 +84,23 @@ class YoungClient:
             return unavailable
         from pyustc.young import SecondClass
 
-        async with self._service():
-            activity = SecondClass(activity_id)
-            await activity.update()
-            item = self._activity(activity)
-            children = [self._activity(value) for value in await activity.get_children()] if include_children else []
+        try:
+            async with self._service():
+                activity = SecondClass(activity_id)
+                await activity.update()
+                item = self._public_activity(activity)
+                children = (
+                    [
+                        self._public_activity(value)
+                        for value in await activity.get_children()
+                    ]
+                    if include_children
+                    else []
+                )
+        except RuntimeError:
+            return self._upstream_unavailable(
+                extra={"activity": None, "children": []}
+            )
         return self._result([item], extra={"activity": item, "children": children})
 
     async def list_facets(self, facet: str) -> dict[str, Any]:
@@ -95,39 +110,35 @@ class YoungClient:
         from pyustc.young import Department, Label, Module
 
         kind = facet.casefold()
-        async with self._service():
-            if kind == "module":
-                items = [{"id": value.value, "name": value.text} for value in await Module.get_available_tags()]
-            elif kind == "label":
-                items = [{"id": value.id, "name": value.name} for value in await Label.get_available_tags()]
-            elif kind == "department":
-                root = await Department.get_root_dept()
-                items = []
+        if kind not in {"module", "label", "department"}:
+            raise ValueError("facet must be module, department or label")
+        try:
+            async with self._service():
+                if kind == "module":
+                    items = [
+                        {"id": value.value, "name": value.text}
+                        for value in await Module.get_available_tags()
+                    ]
+                elif kind == "label":
+                    items = [
+                        {"id": value.id, "name": value.name}
+                        for value in await Label.get_available_tags()
+                    ]
+                else:
+                    root = await Department.get_root_dept()
+                    items = []
 
-                def visit(value: Any) -> None:
-                    items.append({"id": value.id, "name": value.name, "level": value.level})
-                    for child in value.children:
-                        visit(child)
+                    def visit(value: Any) -> None:
+                        items.append(
+                            {"id": value.id, "name": value.name, "level": value.level}
+                        )
+                        for child in value.children:
+                            visit(child)
 
-                visit(root)
-            else:
-                raise ValueError("facet must be module, department or label")
+                    visit(root)
+        except RuntimeError:
+            return self._upstream_unavailable()
         return self._result(items)
-
-    async def list_my_activities(self, query: str = "", limit: int = 20) -> dict[str, Any]:
-        unavailable = self._unavailable()
-        if unavailable:
-            return unavailable
-        if not 1 <= limit <= 100:
-            raise ValueError("limit must be between 1 and 100")
-        from pyustc.young import SecondClass
-
-        async with self._service():
-            values = [
-                self._activity(item)
-                async for item in SecondClass.get_participated(query or None, max=limit, size=min(limit, 50))
-            ]
-        return self._result(values, extra={"account_scoped": True})
 
     @asynccontextmanager
     async def _service(self) -> AsyncIterator[None]:
@@ -159,6 +170,22 @@ class YoungClient:
         }
 
     @staticmethod
+    def _upstream_unavailable(
+        *, extra: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        return {
+            "ok": False,
+            "available": False,
+            "error": "young_authentication_or_upstream_failed",
+            "authentication": "failed",
+            "items": [],
+            "total": 0,
+            "source_url": "https://young.ustc.edu.cn/",
+            "fetched_at": fetched_at(),
+            **(extra or {}),
+        }
+
+    @staticmethod
     def _date_time(value: str) -> datetime:
         try:
             return datetime.fromisoformat(value)
@@ -181,6 +208,9 @@ class YoungClient:
             raw_names = [item for item in raw_names.split(",") if item]
         for index, name in enumerate(raw_names if isinstance(raw_names, list) else []):
             labels.append({"id": raw_ids[index] if index < len(raw_ids) else None, "name": name})
+        registered = raw.get("applyNum")
+        capacity_limit = raw.get("peopleNum")
+        is_registered = raw.get("booleanRegistration") == 1
         return {
             "activity_id": value.id,
             "name": raw.get("itemName"),
@@ -189,15 +219,28 @@ class YoungClient:
             "apply_window": {"start": raw.get("applySt"), "end": raw.get("applyEt")},
             "event_window": {"start": raw.get("st"), "end": raw.get("et")},
             "valid_hours": raw.get("validHour"),
-            "capacity": {"registered": raw.get("applyNum"), "limit": raw.get("peopleNum")},
-            "is_registered": raw.get("booleanRegistration") == 1,
-            "can_apply": status_code == 26 and raw.get("booleanRegistration") != 1,
+            "capacity": {"registered": registered, "limit": capacity_limit},
+            "is_registered": is_registered,
+            "can_apply": (
+                status_code == 26
+                and not is_registered
+                and isinstance(registered, int)
+                and isinstance(capacity_limit, int)
+                and registered < capacity_limit
+            ),
             "module": {"id": raw.get("module"), "name": raw.get("moduleName")},
             "department": {"id": raw.get("businessDeptId"), "name": raw.get("bussinessDeptName")},
             "labels": labels,
             "description": raw.get("conceive"),
             "contact": raw.get("tel"),
         }
+
+    @classmethod
+    def _public_activity(cls, value: Any) -> dict[str, Any]:
+        item = cls._activity(value)
+        for account_field in ("is_registered", "can_apply", "contact"):
+            item.pop(account_field, None)
+        return item
 
     @staticmethod
     def _result(items: list[dict[str, Any]], extra: dict[str, Any] | None = None) -> dict[str, Any]:

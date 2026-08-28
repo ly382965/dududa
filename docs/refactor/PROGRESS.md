@@ -110,7 +110,7 @@
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
 | S12 Unified MCP | 已完成（基础设施与四个只读查询 Server） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker 和共享 Contract；iCourse、二课、教务与校车独立注册，iCourse facade 只借用共享 Client | 校园资讯/arXiv/行业 Source 仍不存在；新 Server 仍需独立 Capability mapping，运行中 Agent 部署未完成 |
-| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、四个 Server 的 18 个只读映射与 Web 直调已完成；2.0 Runtime 已闭环 iCourse `course/review/teacher/ranking/stats` 单步高层查询 | 教务、校车、二课的多字段/零必填字段 Planner、可信失败用户答复、完整用户/回复/历史数据、真实部署与高风险/写能力未完成 |
+| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、四个 Server 的 17 个只读映射与 Web 直调已完成；2.0 Runtime 已闭环 iCourse 五种高层查询和二课搜索/详情/筛选项/连接状态 | 教务、校车 Planner、可信失败用户答复、近期多轮上下文、真实 QQ Receipt 与高风险/写能力未完成 |
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 | S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
 | S15A Proactive Contracts | 已完成（离线） | initiated-run/Target/Grant/Trigger/Subscription/Preview/Dispatch/Receipt v1 契约、当前 Actor 解析、默认拒绝策略、global/Scope quota、metadata-only Preview、稳定幂等、crash recovery、双 Python 590 项全仓测试 | 持久 Scheduler、真实来源、模型合成、生产 Registry/Output、QQ 发送和真实群证据 |
@@ -148,7 +148,7 @@
 | 插件拆分 | 部分完成 | 源码拆分与 priority-100 rollout handler 已验证；旧 Handler、ReplyPolish 和 1.0 Agent 已退出运行面，Sub2API/Reread 作为独立 2.0 宿主能力保留 | 可组合治理 Plugin Runtime 仍未实现；宿主插件不自动等于 Agent Capability |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 Composer/Renderer 与 S23 Hybrid Perception -> Static Router -> Capability/DirectChat 纵切已实现；Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用，三档采用最低 `light/low`；模型只提议 category/entity，确定性代码拥有资格、Plan 和执行 | 仍缺人工 Gold、近期群聊 Context、完整 Persona 资产、多轮/附件语义和长期 Provider 质量/故障观测 |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；LONG 中文断词分片缺陷已修复 | 75 题实际为 LONG 73、SHORT 1、MEDIUM 0，三档真实体验仍未校准 |
-| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、四个真实只读查询 Server、18 个 Capability 和 Web Schema 直调已完成；最终 75 题为 73 次 MCP、显式站点词 19/19，iCourse 五类单步操作已运行 | 人工终审仅 49/75 完整；别名、结构化筛选、最新/时序、用户/回复联表和多步聚合未完成；教务/校车/二课 Planner、可信失败答复与实时 Source 也待补 |
+| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、四个真实只读查询 Server、17 个 Capability 和 Web Schema 直调已完成；iCourse 五类单步操作已运行；二课四类公共观察完成 75/75 Runtime/Fake Delivery、62 次 MCP、13 次正确不调用及关键答案语义断言 | 教务/校车 Planner、二课完整人工质量与真实 QQ 证据、通用 Capability 失败答复及实时 Source 仍待补 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |

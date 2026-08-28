@@ -155,13 +155,16 @@ Branch: real-group-validation
   共享 Client 的兼容消费者。Runtime 不得再从旧 facade 反向取得 MCP 基础设施。
 - Production 共享 Client 装配失败时，兼容 facade 必须同步 unavailable；立即重试并
   建立一个仅供旧入口使用的独立 Client 会重新制造第二条 MCP 所有权路径。
-- 控制台可直接调用 18 个 Capability，不等于自然语言 Planner 已支持全部 18 个。
-  iCourse 现公布一个 Schema-aware 高层 `icourse.public-query.v2`，只投影
-  `query/goal/operation/limit`；教务、校车和二课仍只有 Web 直调，公布范围必须
-  与 Planner 实际投影能力一致。
+- 控制台可直接调用 17 个 Capability，不等于自然语言 Planner 已支持全部 17 个。
+  iCourse 现公布 Schema-aware 高层 `icourse.public-query.v2`，二课公布搜索、详情、
+  筛选项和连接状态四种公共观察；教务和校车仍只有 Web 直调。公布范围必须与 Planner
+  实际投影能力一致。
 - 可信 Capability failure 目前在 Canary 已 claim 后 no-delivery；旧 handler 和 Web
   search 不得接管。用户可见失败提示应沿 2.0 Composer、Persona、Final Validator
   与授权 Delivery 的唯一输出路径实现。
+- Young 上游必须使用 CAS 会话，但部署 SecretRef 是 Server 连接事实，不是 QQ 用户身份。
+  因此 MCP 只保留四个公共只读 Tool，并从 Schema、Capability、权限和 Observation 中移除
+  `young_list_my_activities`、个人报名状态、联系方式、报名/取消和申请人数据。
 - `off`/`shadow` 始终保留 legacy 所有权；只有既有 Canary 协议完成持久
   claim 后，Runtime 才可能取得发送所有权。
 - 仓库外 Evidence 文件是环境 Adapter，不是新的控制面：AstrBot Context
@@ -198,12 +201,12 @@ Branch: real-group-validation
 - `FileScopeAgentPolicyResolver` 在 AstrBot Bridge 内读取同一份仓库外 Policy，
   产生 `scope_agent_enabled` 和 `capability.category.<id>` feature flags；
   `CurrentMessageContextBuilder` 只用这些 flags 缩小既有 Perception 类别。
-  Web Catalog 的 `online` 表示当前 iCourse 路径已由 ready 的 2.0 Runtime 消费，
-  `configured` 表示二课、教务和校车已装配但仍待自然语言 Planner。
+  Web Catalog 的 `online` 表示对应路径已由 ready 的 2.0 Runtime 消费；当前 iCourse
+  和二课已接自然语言 Planner，教务和校车仍为已装配待 Planner。
 - Catalog 由服务端动态返回六项正交配置、插件和 MCP Capability 事实，并区分源码
   已安装、配置/Compose 已装配、Runtime online 与本轮实际调用。Web MCP 工作台
-  只接受 18 个批准的 Capability ID：iCourse 5 项、教务 6 项、校车 2 项和二课
-  5 项；输入控件来自 Capability schema，返回值投影到 Capability output schema，
+  只接受 17 个批准的 Capability ID：iCourse 5 项、教务 6 项、校车 2 项和二课
+  4 项；输入控件来自 Capability schema，返回值投影到 Capability output schema，
   不开放任意 MCP Tool。`gpt-image-2` 仍是独立图片能力。自动复读
   和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
   `accountId + conversationId` 由 Scope Policy 配置。两者要求 WebUI
@@ -296,10 +299,10 @@ Branch: real-group-validation
 - Agent Console 的动态 Catalog、Policy 持久化和有效选择解释不替代 Runtime 证据。当前 Web
   已能从 Core config/status 证明受支持入站实际开启；Reread/Sub2API 的在线加载仍只说明宿主
   能力存在，不能从 `triggerMatched` 或安装状态推导一次实际插件调用。
-- iCourse Policy 接线已有运行中容器、精确 Scope 解析和同形 Fake Delivery 证据，
-  并新增完整 Web -> 2.0 Runtime -> iCourse MCP -> 总结的 no-send 实测；但尚无
-  用户触发的真实 QQ Tool/Delivery Receipt。二课、教务和校车仍只有 Web
-  直接调用证据，不能标记为自然语言 Agent online。
+- iCourse Policy 接线已有运行中容器、精确 Scope 解析和完整 Web -> 2.0 Runtime ->
+  MCP -> 总结的 no-send 实测。二课已有 OneBot-shaped Event -> 2.0 Runtime ->
+  Unified MCP -> Fake Delivery 的 75 题证据，但还不是 NapCat/QQ 真端到端；教务和
+  校车仍只有 Web 直接调用证据。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。

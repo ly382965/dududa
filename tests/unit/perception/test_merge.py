@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import unittest
+from dataclasses import replace
 
 from dududa.domain.primitives import DigestString, freeze_json
 from dududa.domain.task import TaskReasoningDepth
@@ -153,6 +153,21 @@ class DeterministicPerceptionMergerTests(unittest.TestCase):
         self.assertEqual(result.target_identity_refs, ("identity:user",))
         self.assertTrue(result.conflicting_evidence)
         self.assertEqual(result.confidence, 0.59)
+
+    def test_model_may_omit_the_rule_authoritative_response_target(self) -> None:
+        value = context()
+        model = replace(_projection(value), target_identity_refs=())
+
+        result = _merger().merge(
+            value,
+            _rules(value),
+            model,
+            model_status=PerceptionModelStatus.VALID,
+        )
+
+        self.assertEqual(result.target_identity_refs, ("identity:user",))
+        self.assertFalse(result.conflicting_evidence)
+        self.assertIn("rule_model_merged", result.reason_codes)
 
     def test_plan_fingerprint_ignores_result_identity(self) -> None:
         value = context()

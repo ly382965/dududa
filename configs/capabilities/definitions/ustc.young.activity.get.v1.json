@@ -6,8 +6,8 @@
   "capability_id": "ustc.young.activity.get.v1",
   "category": "campus.second-class",
   "cost_hint_units": 2,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:bb3608d3519788bd12d9460013a06500ae44d9b58164c49351d5c0653bdeda3f",
-  "description": "Read one second-class activity and optional series children.",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:43e13b3a06880097fab5a41bdf17617e9cc3a893c6de61cd202071d644e5375d",
+  "description": "Read one second-class activity and optional series children without projecting deployment-account state.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
@@ -40,7 +40,7 @@
   },
   "name": "Read USTC second-class activity",
   "output_schema": {
-    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activity.get.v1.output:v1:sha-256:6355920cf643723692e31bf94e247a83e48d3f15f2c424a5fa7f00a89461e6c5",
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activity.get.v1.output:v1:sha-256:127dd0d00de973783a22973e30feff530a6fe085a87c9a78fb5bdd65daf5af27",
     "document": {
       "additionalProperties": false,
       "properties": {
@@ -72,9 +72,6 @@
               "required": [],
               "type": "object"
             },
-            "can_apply": {
-              "type": "boolean"
-            },
             "capacity": {
               "additionalProperties": false,
               "properties": {
@@ -93,13 +90,6 @@
               },
               "required": [],
               "type": "object"
-            },
-            "contact": {
-              "maxLength": 300,
-              "type": [
-                "string",
-                "null"
-              ]
             },
             "department": {
               "additionalProperties": false,
@@ -149,9 +139,6 @@
               },
               "required": [],
               "type": "object"
-            },
-            "is_registered": {
-              "type": "boolean"
             },
             "kind": {
               "maxLength": 32,
@@ -241,8 +228,6 @@
             "apply_window",
             "event_window",
             "capacity",
-            "is_registered",
-            "can_apply",
             "module",
             "department",
             "labels"
@@ -288,9 +273,6 @@
                 "required": [],
                 "type": "object"
               },
-              "can_apply": {
-                "type": "boolean"
-              },
               "capacity": {
                 "additionalProperties": false,
                 "properties": {
@@ -309,13 +291,6 @@
                 },
                 "required": [],
                 "type": "object"
-              },
-              "contact": {
-                "maxLength": 300,
-                "type": [
-                  "string",
-                  "null"
-                ]
               },
               "department": {
                 "additionalProperties": false,
@@ -365,9 +340,6 @@
                 },
                 "required": [],
                 "type": "object"
-              },
-              "is_registered": {
-                "type": "boolean"
               },
               "kind": {
                 "maxLength": 32,
@@ -457,8 +429,6 @@
               "apply_window",
               "event_window",
               "capacity",
-              "is_registered",
-              "can_apply",
               "module",
               "department",
               "labels"
@@ -508,9 +478,6 @@
                 "required": [],
                 "type": "object"
               },
-              "can_apply": {
-                "type": "boolean"
-              },
               "capacity": {
                 "additionalProperties": false,
                 "properties": {
@@ -529,13 +496,6 @@
                 },
                 "required": [],
                 "type": "object"
-              },
-              "contact": {
-                "maxLength": 300,
-                "type": [
-                  "string",
-                  "null"
-                ]
               },
               "department": {
                 "additionalProperties": false,
@@ -585,9 +545,6 @@
                 },
                 "required": [],
                 "type": "object"
-              },
-              "is_registered": {
-                "type": "boolean"
               },
               "kind": {
                 "maxLength": 32,
@@ -677,8 +634,6 @@
               "apply_window",
               "event_window",
               "capacity",
-              "is_registered",
-              "can_apply",
               "module",
               "department",
               "labels"
@@ -713,7 +668,7 @@
     "schema_id": "capability.ustc.young.activity.get.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "personal",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-young",
     "revision": {

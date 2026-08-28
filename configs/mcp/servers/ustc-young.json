@@ -35,7 +35,6 @@
     "young_connection_status",
     "young_get_activity",
     "young_list_facets",
-    "young_list_my_activities",
     "young_search_activities"
   ],
   "denied_tools": [

@@ -43,6 +43,7 @@ from tests.contracts.test_unified_mcp_worker import (
     factory,
     icourse_definition,
     icourse_fixture_server,
+    young_fixture_definition,
 )
 from tests.unit.mcp.helpers import replace_server_definition
 from tests.unit.rollout.helpers import control, ledger
@@ -58,6 +59,9 @@ ICOURSE_BENCHMARK = (
 )
 ICOURSE_ROUTING_REGRESSIONS = (
     ROOT / "tests" / "fixtures" / "mcp" / "icourse-v2-routing-regressions.json"
+)
+YOUNG_NATIVE_CASES = (
+    ROOT / "tests" / "fixtures" / "mcp" / "young-v2-native-message-cases.json"
 )
 ICOURSE_CASE_HEADING_RE = re.compile(
     r"^### Case (\d+)(?:[：:].*)?$",
@@ -360,6 +364,630 @@ class _ICourseBenchmarkAstrBotProvider(_AstrBotProvider):
         )
 
 
+_YOUNG_TOOL_CAPABILITY_IDS = {
+    "young_search_activities": "ustc.young.activities.search.v1",
+    "young_get_activity": "ustc.young.activity.get.v1",
+    "young_list_facets": "ustc.young.facets.list.v1",
+    "young_connection_status": "ustc.young.connection.status.v1",
+}
+
+
+class _YoungBenchmarkAstrBotProvider(_AstrBotProvider):
+    """Script model semantics while the production 2.0 path remains real."""
+
+    def __init__(self, cases: tuple[dict[str, object], ...]) -> None:
+        super().__init__()
+        self._by_question = {str(item["question"]): item for item in cases}
+        self._active_case: dict[str, object] | None = None
+        self.perception_decisions: list[tuple[int, bool]] = []
+
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        system_prompt = str(kwargs["system_prompt"])
+        prompt = str(kwargs["prompt"])
+        if "语义感知器" in system_prompt:
+            marker = "context_json:\n"
+            start = prompt.index(marker) + len(marker)
+            end = prompt.index("\n[/DUDUDA_USER_INPUT]", start)
+            context = json.loads(prompt[start:end])
+            current_ref = context["current_message_ref"]
+            current = next(
+                item
+                for item in context["messages"]
+                if item["message_ref"] == current_ref
+            )
+            question = str(current["text"]).removeprefix("@嘟嘟哒").strip()
+            case = self._by_question[question]
+            self._active_case = case
+            tool_name = case.get("tool_name")
+            model_tool_need = bool(
+                case.get("simulate_model_tool_false_positive", False)
+            ) or (
+                tool_name is not None
+                and not bool(case.get("simulate_model_tool_miss", False))
+            )
+            self.perception_decisions.append(
+                (int(case["case_id"]), model_tool_need)
+            )
+            intents = (
+                [
+                    {
+                        "intent_id": (
+                            case["intent_id"] or "ustc.young.activity.search"
+                        ),
+                        "confidence": 0.99,
+                        "evidence_refs": [current_ref],
+                    }
+                ]
+                if model_tool_need
+                else []
+            )
+            entities = [
+                {
+                    "entity_id": f"young-entity-{index}",
+                    "kind": "other",
+                    "value": value,
+                    "confidence": 0.99,
+                    "evidence_refs": [current_ref],
+                }
+                for index, value in enumerate(case["entity_terms"], start=1)
+            ]
+            completion = json.dumps(
+                {
+                    "schema_version": 1,
+                    "target_identity_refs": (
+                        []
+                        if case.get("omit_model_target", False)
+                        else [current["author_identity_ref"]]
+                    ),
+                    "speech_acts": ["request"],
+                    "topics": [
+                        {
+                            "topic_id": "second-class",
+                            "label": "第二课堂活动",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "intents": intents,
+                    "entities": entities,
+                    "references": [],
+                    "ambiguities": [],
+                    "need_tools": model_tool_need,
+                    "capability_categories": (
+                        ["campus.second-class"] if model_tool_need else []
+                    ),
+                    "task_kind": "direct_chat",
+                    "reasoning_depth": (
+                        "multi_step"
+                        if case["semantic_status"] == "bounded_aggregation"
+                        else "shallow"
+                    ),
+                    "expected_tool_steps": 1 if model_tool_need else 0,
+                    "verification_required": False,
+                    "complexity_signals": [
+                        {
+                            "code": "simple_retrieval",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "confidence": 0.98,
+                },
+                ensure_ascii=False,
+            )
+        else:
+            if self._active_case is None:
+                raise AssertionError("Young Direct Chat has no active case")
+            completion = _young_scripted_answer(self._active_case, prompt)
+        return SimpleNamespace(
+            completion_text=completion,
+            usage=SimpleNamespace(input_other=32, input_cached=0, output=48),
+        )
+
+
+def _young_scripted_answer(case: dict[str, object], prompt: str) -> str:
+    tool_name = case.get("tool_name")
+    if tool_name is None:
+        return str(case["boundary_answer"])
+    capability_id = _YOUNG_TOOL_CAPABILITY_IDS[str(tool_name)]
+    if capability_id not in prompt:
+        raise AssertionError(f"Direct Chat did not receive {capability_id}")
+    data = _young_tool_data(prompt)
+    if data.get("available") is False:
+        return "第二课堂查询服务暂时不可用，请稍后再试。"
+    if tool_name == "young_connection_status":
+        return (
+            "第二课堂查询服务当前可用，认证配置正常。"
+            if data.get("available")
+            else "第二课堂查询服务当前不可用。"
+        )
+    if tool_name == "young_list_facets":
+        names = [
+            str(item.get("name"))
+            for item in data.get("items", [])
+            if isinstance(item, dict) and item.get("name")
+        ]
+        return "当前公开筛选项包括：" + "、".join(names) + "。"
+    if tool_name == "young_get_activity":
+        return _young_activity_answer(case, data)
+    items = [
+        item for item in data.get("items", []) if isinstance(item, dict)
+    ]
+    if not items:
+        return "按当前条件没有查到匹配的第二课堂活动。"
+    answer = _young_search_answer(case, items)
+    status = str(case["semantic_status"])
+    if status == "evidence_boundary":
+        answer += "这些记录不包含历史抢报、个人签到或实际考核结果，不能据此补猜。"
+    elif status == "planner_boundary":
+        answer += "当前单步查询只能给出这一层结果，不能继续自动展开下一层详情。"
+    return answer
+
+
+def _young_search_answer(
+    case: dict[str, object],
+    source_items: list[dict[str, object]],
+) -> str:
+    case_id = int(case["case_id"])
+    question = str(case["question"])
+    items = list(source_items)
+    for module in ("德育", "智育", "体育", "美育", "劳育"):
+        if f"{module}活动" in question and "德智体美劳各" not in question:
+            items = [item for item in items if _young_module(item) == module]
+            break
+
+    if case_id in {1, 2, 3, 4, 5, 6, 7}:
+        items = [item for item in items if item.get("kind") != "series"]
+        if case_id == 2:
+            items = [
+                item
+                for item in items
+                if (_young_event_start(item) or datetime.min).hour >= 18
+            ]
+    if case_id == 19:
+        selections = []
+        for module in ("德育", "智育", "体育", "美育", "劳育"):
+            match = next(
+                (item for item in items if _young_module(item) == module),
+                None,
+            )
+            selections.append(
+                f"{module}：{_young_activity_line(match)}"
+                if match is not None
+                else f"{module}：当前没有匹配活动"
+            )
+        return "；".join(selections) + "。"
+    if case_id == 21:
+        return _young_lines(
+            [item for item in items if _young_can_apply(item)],
+            include_apply=True,
+            include_capacity=True,
+        )
+    if case_id == 22:
+        today = [
+            item
+            for item in items
+            if _young_apply_end(item) is not None
+            and _young_apply_end(item).date() == datetime(2026, 8, 29).date()
+        ]
+        return _young_lines(today, include_apply=True)
+    if case_id in {23, 24}:
+        return _young_lines(items, include_apply=True, include_capacity=True)
+    if case_id in {25, 26, 27}:
+        item = items[0]
+        line = _young_activity_line(
+            item,
+            include_apply=True,
+            include_capacity=True,
+        )
+        if _young_can_apply(item):
+            return line + "；按当前公开状态、报名窗口和余位判断，可以报名。"
+        reason = "活动已满" if _young_remaining(item) == 0 else "当前状态不在报名中"
+        return line + f"；{reason}，按当前公开条件不能报名。"
+    if case_id == 29:
+        item = items[0]
+        window = item.get("event_window")
+        event_start = window.get("start") if isinstance(window, dict) else None
+        event_end = window.get("end") if isinstance(window, dict) else None
+        apply_end = _young_apply_end(item)
+        return (
+            f"{item.get('name')}：报名截止 "
+            f"{apply_end.isoformat() if apply_end else '未知'}；"
+            f"活动时间 {event_start} 至 {event_end}。"
+        )
+    if case_id == 35:
+        return _young_lines([max(items, key=lambda item: _young_remaining(item) or -1)])
+    if case_id == 36:
+        available = [item for item in items if _young_can_apply(item)]
+        return _young_lines(
+            [min(available, key=lambda item: _young_remaining(item) or 0)]
+        )
+    if case_id == 37:
+        return _young_lines(
+            [item for item in items if (_young_remaining(item) or 0) >= 100]
+        )
+    if case_id == 38:
+        ranked = sorted(items, key=_young_fill_ratio, reverse=True)[:3]
+        return "；".join(_young_ratio_line(item) for item in ranked) + "。"
+    if case_id == 40:
+        return _young_lines(
+            [item for item in items if _young_valid_hours(item) == 2]
+        )
+    if case_id == 41:
+        return _young_lines([max(items, key=_young_valid_hours)])
+    if case_id == 42:
+        ranked = sorted(
+            [item for item in items if item.get("kind") != "series"],
+            key=_young_efficiency,
+            reverse=True,
+        )
+        return "；".join(_young_efficiency_line(item) for item in ranked) + "。"
+    if case_id == 43:
+        lecture = next(item for item in items if "人工智能" in str(item.get("name")))
+        volunteer = next(item for item in items if "志愿服务" in str(item.get("name")))
+        return (
+            f"{lecture.get('name')}和{volunteer.get('name')}都是 1 学时/小时，"
+            "按当前记录学时效率相同。"
+        )
+    if case_id == 44:
+        item = items[0]
+        return (
+            f"是。{item.get('name')}活动时长 {_young_duration(item):g} 小时，"
+            f"有效学时 {_young_valid_hours(item):g}。"
+        )
+    if case_id == 45:
+        return (
+            "系列入口本身显示 0 学时，但当前搜索结果没有展开子活动，"
+            "不能据此推断每个子活动也都是 0 学时。"
+        )
+    if case_id in {46, 47}:
+        candidates = sorted(
+            [
+                item
+                for item in items
+                if _young_can_apply(item) and item.get("kind") != "series"
+            ],
+            key=_young_efficiency,
+            reverse=True,
+        )
+        answer = "按当前公开条件可优先比较：" + "；".join(
+            _young_efficiency_line(item, include_description=True)
+            for item in candidates[:5]
+        )
+        return answer + "。这里只比较公开学时、时长、余位和明确要求，不保证实际获得学时。"
+    if case_id == 48:
+        return _young_capacity_line(max(items, key=_young_capacity_limit)) + "。"
+    if case_id == 49:
+        return _young_capacity_line(min(items, key=_young_capacity_limit)) + "。"
+    if case_id == 50:
+        return _young_capacity_line(max(items, key=_young_registered)) + "。"
+    if case_id == 51:
+        return _young_ratio_line(max(items, key=_young_fill_ratio)) + "。"
+    if case_id == 52:
+        available = [item for item in items if _young_can_apply(item)]
+        return _young_ratio_line(max(available, key=_young_fill_ratio)) + "。"
+    if case_id == 53:
+        return (
+            "；".join(
+                _young_capacity_line(item)
+                for item in items
+                if _young_capacity_limit(item) >= 200
+            )
+            + "。"
+        )
+    if case_id == 54:
+        lecture = next(item for item in items if _young_capacity_limit(item) == 300)
+        workshop = next(item for item in items if _young_capacity_limit(item) == 12)
+        return (
+            f"按当前公开数据，{lecture.get('name')}余位 {_young_remaining(lecture)}，"
+            f"{workshop.get('name')}余位 {_young_remaining(workshop)}、已经满员；"
+            "因此大讲座当前更容易报名，但不能仅凭规模推断历史报名难度。"
+        )
+    if case_id == 55:
+        fullest = max(items, key=_young_fill_ratio)
+        return (
+            "没有历史抢报数据，不能判断哪个活动“历来”最难抢；"
+            f"当前只能看到{_young_ratio_line(fullest)}。"
+        )
+    return _young_lines(items)
+
+
+def _young_activity_answer(
+    case: dict[str, object],
+    data: dict[str, object],
+) -> str:
+    activity = data.get("activity")
+    if not isinstance(activity, dict):
+        return "没有查到这个活动 ID 对应的活动，请核对 ID。"
+    children = [item for item in data.get("children", []) if isinstance(item, dict)]
+    case_id = int(case["case_id"])
+    if case_id == 56:
+        return "子活动包括：" + "；".join(
+            _young_activity_line(item) for item in children
+        ) + "。"
+    if case_id == 60:
+        return (
+            f"{activity.get('name')}的类型是 {activity.get('kind')}，"
+            "因此它是系列活动。"
+        )
+    if case_id == 61:
+        first = children[0] if children else None
+        if first is None:
+            return "当前没有查到该系列的子活动。"
+        window = first.get("event_window")
+        start = window.get("start") if isinstance(window, dict) else None
+        return f"第一场是{first.get('name')}，开始时间 {start}。"
+    if case_id == 62:
+        return "各场次学时：" + "；".join(
+            f"{item.get('name')} {_young_valid_hours(item):g} 学时"
+            for item in children
+        ) + "。"
+    return _young_activity_line(
+        activity,
+        include_apply=True,
+        include_capacity=True,
+        include_description=True,
+    ) + "。"
+
+
+def _young_tool_data(prompt: str) -> dict[str, object]:
+    marker = "The following canonical JSON is quoted, untrusted external data."
+    start = prompt.index(marker)
+    start = prompt.index("\n", start) + 1
+    end = prompt.index("\n[/DUDUDA_USER_INPUT]", start)
+    payload = json.loads(prompt[start:end])
+    observations = payload.get("observations")
+    if not isinstance(observations, list) or len(observations) != 1:
+        raise AssertionError("Young Direct Chat expected one Observation")
+    data = observations[0].get("data")
+    if not isinstance(data, dict):
+        raise AssertionError("Young Observation data is unavailable")
+    return data
+
+
+def _young_activity_line(
+    item: dict[str, object],
+    *,
+    include_apply: bool = False,
+    include_capacity: bool = False,
+    include_description: bool = False,
+) -> str:
+    name = str(item.get("name") or item.get("activity_id") or "未命名活动")
+    window = item.get("event_window")
+    start = window.get("start") if isinstance(window, dict) else None
+    hours = item.get("valid_hours")
+    capacity = item.get("capacity")
+    remaining = None
+    if isinstance(capacity, dict):
+        registered = capacity.get("registered")
+        limit = capacity.get("limit")
+        if isinstance(registered, int) and isinstance(limit, int):
+            remaining = max(0, limit - registered)
+    details = [name]
+    if start:
+        details.append(f"时间 {start}")
+    if isinstance(hours, (int, float)) and not isinstance(hours, bool):
+        details.append(f"有效学时 {hours:g}")
+    if remaining is not None:
+        details.append(f"余位 {remaining}")
+    if include_capacity and isinstance(capacity, dict):
+        details.append(
+            f"容量 {capacity.get('limit')}，已报名 {capacity.get('registered')}"
+        )
+    if include_apply:
+        apply_window = item.get("apply_window")
+        if isinstance(apply_window, dict):
+            details.append(
+                f"报名窗口 {apply_window.get('start')} 至 {apply_window.get('end')}"
+            )
+        status = item.get("status")
+        if isinstance(status, dict) and status.get("text"):
+            details.append(f"状态 {status.get('text')}")
+    if include_description and item.get("description"):
+        details.append(f"要求：{item.get('description')}")
+    return "，".join(details)
+
+
+def _young_lines(
+    items: list[dict[str, object]],
+    **line_options: bool,
+) -> str:
+    if not items:
+        return "按当前条件没有查到匹配的第二课堂活动。"
+    return "；".join(
+        _young_activity_line(item, **line_options) for item in items
+    ) + "。"
+
+
+def _young_module(item: dict[str, object]) -> str:
+    module = item.get("module")
+    return str(module.get("name") or "") if isinstance(module, dict) else ""
+
+
+def _young_event_start(item: dict[str, object]) -> datetime | None:
+    window = item.get("event_window")
+    value = window.get("start") if isinstance(window, dict) else None
+    return datetime.fromisoformat(value) if isinstance(value, str) and value else None
+
+
+def _young_apply_end(item: dict[str, object]) -> datetime | None:
+    window = item.get("apply_window")
+    value = window.get("end") if isinstance(window, dict) else None
+    return datetime.fromisoformat(value) if isinstance(value, str) and value else None
+
+
+def _young_remaining(item: dict[str, object]) -> int | None:
+    capacity = item.get("capacity")
+    if not isinstance(capacity, dict):
+        return None
+    registered = capacity.get("registered")
+    limit = capacity.get("limit")
+    if type(registered) is not int or type(limit) is not int:
+        return None
+    return max(0, limit - registered)
+
+
+def _young_capacity_limit(item: dict[str, object]) -> int:
+    capacity = item.get("capacity")
+    value = capacity.get("limit") if isinstance(capacity, dict) else 0
+    return value if type(value) is int else 0
+
+
+def _young_registered(item: dict[str, object]) -> int:
+    capacity = item.get("capacity")
+    value = capacity.get("registered") if isinstance(capacity, dict) else 0
+    return value if type(value) is int else 0
+
+
+def _young_fill_ratio(item: dict[str, object]) -> float:
+    limit = _young_capacity_limit(item)
+    return _young_registered(item) / limit if limit else 0.0
+
+
+def _young_valid_hours(item: dict[str, object]) -> float:
+    value = item.get("valid_hours")
+    return (
+        float(value)
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+        else 0.0
+    )
+
+
+def _young_duration(item: dict[str, object]) -> float:
+    window = item.get("event_window")
+    if not isinstance(window, dict):
+        return 0.0
+    start = window.get("start")
+    end = window.get("end")
+    if not isinstance(start, str) or not isinstance(end, str):
+        return 0.0
+    seconds = (
+        datetime.fromisoformat(end) - datetime.fromisoformat(start)
+    ).total_seconds()
+    return max(0.0, seconds / 3600)
+
+
+def _young_efficiency(item: dict[str, object]) -> float:
+    duration = _young_duration(item)
+    return _young_valid_hours(item) / duration if duration else 0.0
+
+
+def _young_can_apply(item: dict[str, object]) -> bool:
+    status = item.get("status")
+    code = status.get("code") if isinstance(status, dict) else None
+    end = _young_apply_end(item)
+    return (
+        code == 26
+        and (_young_remaining(item) or 0) > 0
+        and end is not None
+        and datetime(2026, 8, 29, 9, 30) <= end
+    )
+
+
+def _young_ratio_line(item: dict[str, object]) -> str:
+    return (
+        f"{item.get('name')}，报名 {_young_registered(item)}/"
+        f"{_young_capacity_limit(item)}，填充率 {_young_fill_ratio(item):.0%}"
+    )
+
+
+def _young_capacity_line(item: dict[str, object]) -> str:
+    return (
+        f"{item.get('name')}，容量 {_young_capacity_limit(item)}，"
+        f"已报名 {_young_registered(item)}，余位 {_young_remaining(item)}"
+    )
+
+
+def _young_efficiency_line(
+    item: dict[str, object],
+    *,
+    include_description: bool = False,
+) -> str:
+    answer = (
+        f"{item.get('name')}，{_young_valid_hours(item):g} 学时/"
+        f"{_young_duration(item):g} 小时={_young_efficiency(item):.2g} 学时/小时，"
+        f"余位 {_young_remaining(item)}"
+    )
+    if include_description and item.get("description"):
+        description = str(item.get("description")).rstrip("。；; ")
+        answer += f"，要求：{description}"
+    return answer
+
+
+def _young_delivery_text(chains: list[object]) -> str:
+    texts: list[str] = []
+    for chain in chains:
+        if not isinstance(chain, list):
+            continue
+        for component in chain:
+            if not isinstance(component, tuple) or not component:
+                continue
+            if component[0] == "plain":
+                texts.append(str(component[1]))
+            elif component[0] == "nodes":
+                texts.extend(
+                    str(node[1])
+                    for node in component[1]
+                    if isinstance(node, tuple) and node and node[0] == "node"
+                )
+    return "".join(texts)
+
+
+def _assert_young_answer_semantics(case_id: int, answer: str) -> None:
+    required = {
+        2: ("人工智能前沿公开讲座",),
+        19: ("德育：", "智育：", "体育：", "美育：", "劳育："),
+        21: ("报名窗口", "余位"),
+        22: ("2026-08-29T18:00:00",),
+        23: ("报名窗口", "2026-08-29T18:00:00"),
+        24: ("2026-08-20T08:00:00", "2026-08-29T18:00:00"),
+        25: ("活动已满", "不能报名"),
+        26: ("结项", "不能报名"),
+        27: ("余位 500", "可以报名"),
+        29: ("报名截止", "活动时间"),
+        35: ("生涯发展系列讲座", "余位 500"),
+        36: ("校园劳动志愿服务", "余位 4"),
+        37: ("人工智能前沿公开讲座", "科学精神与学术道德", "生涯发展系列讲座"),
+        38: ("机器人社团小组工作坊", "100%", "校园劳动志愿服务", "90%", "新生体能训练体验", "75%"),
+        40: ("人工智能前沿公开讲座", "有效学时 2"),
+        41: ("校园劳动志愿服务", "有效学时 3"),
+        43: ("1 学时/小时", "效率相同"),
+        45: ("不能据此推断", "子活动"),
+        46: ("学时/小时", "要求：", "不保证实际获得学时"),
+        47: ("学时/小时", "不保证实际获得学时"),
+        48: ("生涯发展系列讲座", "容量 500"),
+        49: ("机器人社团小组工作坊", "容量 12"),
+        50: ("人工智能前沿公开讲座", "已报名 180"),
+        51: ("机器人社团小组工作坊", "填充率 100%"),
+        52: ("校园劳动志愿服务", "填充率 90%"),
+        53: ("人工智能前沿公开讲座", "科学精神与学术道德", "生涯发展系列讲座"),
+        54: ("人工智能前沿公开讲座", "余位 120", "机器人社团小组工作坊", "余位 0", "当前更容易报名"),
+        55: ("没有历史抢报数据", "不能判断"),
+        60: ("是系列活动",),
+        61: ("2026-08-29T09:00:00",),
+        62: ("生涯发展系列讲座第一场", "1.5 学时"),
+    }
+    forbidden = {
+        2: ("机器人社团小组工作坊", "生涯发展系列讲座"),
+        21: ("机器人社团小组工作坊",),
+        35: ("人工智能前沿公开讲座",),
+        36: ("机器人社团小组工作坊",),
+        37: ("校园美育艺术赏析", "校园劳动志愿服务"),
+        38: ("人工智能前沿公开讲座",),
+        40: ("机器人社团小组工作坊", "生涯发展系列讲座"),
+        48: ("人工智能前沿公开讲座",),
+        49: ("校园劳动志愿服务",),
+    }
+    missing = [value for value in required.get(case_id, ()) if value not in answer]
+    unexpected = [value for value in forbidden.get(case_id, ()) if value in answer]
+    if missing or unexpected:
+        raise AssertionError(
+            f"Young case {case_id} semantic mismatch: missing={missing}, "
+            f"unexpected={unexpected}, answer={answer}"
+        )
+
+
 def _icourse_benchmark_questions() -> tuple[tuple[int, str], ...]:
     source = ICOURSE_BENCHMARK.read_text(encoding="utf-8")
     headings = list(ICOURSE_CASE_HEADING_RE.finditer(source))
@@ -374,6 +1002,16 @@ def _icourse_benchmark_questions() -> tuple[tuple[int, str], ...]:
         )
         questions.append((int(heading.group(1)), normalized))
     return tuple(questions)
+
+
+def _young_native_cases() -> tuple[dict[str, object], ...]:
+    document = json.loads(YOUNG_NATIVE_CASES.read_text(encoding="utf-8"))
+    if document.get("schema_version") != 1:
+        raise ValueError("unsupported Young native fixture schema")
+    cases = tuple(document.get("cases", ()))
+    if [item.get("case_id") for item in cases] != list(range(1, 76)):
+        raise ValueError("Young native cases must be continuous from 1 through 75")
+    return cases
 
 
 class _BlockingAstrBotProvider(_AstrBotProvider):
@@ -395,6 +1033,11 @@ class At:
     def __init__(self, qq: str) -> None:
         self.qq = qq
         self.name = None
+
+
+class Plain:
+    def __init__(self, text: str) -> None:
+        self.text = text
 
 
 class _Event:
@@ -450,6 +1093,54 @@ class _Event:
 
     def chain_result(self, components: list[object]) -> list[object]:
         return components
+
+
+class _YoungNativeEvent(_Event):
+    """OneBot-shaped group message consumed by the production Connector."""
+
+    def __init__(self, case: dict[str, object]) -> None:
+        case_id = int(case["case_id"])
+        question = str(case["question"])
+        timestamp = 1_787_968_200 + case_id
+        message_id = 910_000_000 + case_id
+        super().__init__(
+            group_id="2000000001",
+            message_id=str(message_id),
+            message_str=question,
+        )
+        self.message_obj = SimpleNamespace(
+            message_id=str(message_id),
+            timestamp=timestamp,
+            message=[At("1000000001"), Plain(question)],
+            raw_message={
+                "time": timestamp,
+                "self_id": 1_000_000_001,
+                "post_type": "message",
+                "message_type": "group",
+                "sub_type": "normal",
+                "message_id": message_id,
+                "group_id": 2_000_000_001,
+                "user_id": 3_000_000_001,
+                "message": [
+                    {"type": "at", "data": {"qq": "1000000001"}},
+                    {"type": "text", "data": {"text": f" {question}"}},
+                ],
+                "raw_message": f"[CQ:at,qq=1000000001] {question}",
+                "font": 0,
+                "sender": {
+                    "user_id": 3_000_000_001,
+                    "nickname": "young-benchmark-user",
+                    "card": "",
+                    "role": "member",
+                },
+            },
+        )
+
+    def get_self_id(self) -> str:
+        return "1000000001"
+
+    def get_sender_id(self) -> str:
+        return "3000000001"
 
 
 class _Closeable:
@@ -987,7 +1678,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertNotIn("campus.academic", provider.calls[0]["prompt"])
             self.assertNotIn("campus.shuttle", provider.calls[0]["prompt"])
-            self.assertNotIn("campus.second-class", provider.calls[0]["prompt"])
+            self.assertIn("campus.second-class", provider.calls[0]["prompt"])
             self.assertEqual(
                 [item["reasoning_effort"] for item in provider.calls],
                 ["low", "low"],
@@ -1177,6 +1868,177 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 "tool-plan:",
             ):
                 self.assertNotIn(forbidden, rendered)
+        finally:
+            await plugin.terminate()
+        self.assertTrue(recording_mcp.closed)
+
+    async def test_all_young_native_messages_use_only_the_2_0_runtime(
+        self,
+    ) -> None:
+        cases = _young_native_cases()
+        self.assertEqual(len(cases), 75)
+        self.assertEqual(
+            sum(item["tool_name"] is not None for item in cases),
+            62,
+        )
+        provider = _YoungBenchmarkAstrBotProvider(cases)
+        fixed_now = datetime(2026, 8, 29, 1, 30, tzinfo=timezone.utc)
+        managed = ManagedUnifiedMcpClient(
+            _StaticRegistry(young_fixture_definition()),
+            factory(),
+            JsonSchemaMcpValidator(),
+            wall_clock=lambda: fixed_now,
+        )
+        recording_mcp = RecordingUnifiedClient(managed)
+        plugin = self._production_plugin(provider)
+        plugin.icourse = _ICourseFacade(recording_mcp)
+        plugin.unified_mcp_client = recording_mcp
+        values = self._runtime_config(rollout_mode="canary")
+        model_specs = json.loads(str(values["runtime_models_json"]))
+        model_specs[0]["rpm_limit"] = 1_000
+        model_specs[0]["tpm_limit"] = 10_000_000
+        values["runtime_models_json"] = json.dumps(model_specs)
+        values.update(
+            {
+                "rollout_allowlisted_groups": ["2000000001"],
+                "rollout_delivery_enabled": True,
+                "rollout_kill_switch": False,
+                "rollout_tools_enabled": True,
+            }
+        )
+        assembly = composition.build_production_runtime(
+            plugin,
+            values,
+            clock=lambda: fixed_now,
+        )
+        self._initialize(
+            plugin,
+            values,
+            "production-young-native-benchmark",
+            runtime_assembly=assembly,
+        )
+        plugin.rollout_bridge._output_factory = (
+            lambda event, ledger, guard: AstrBotOutputAdapter(
+                event,
+                ledger,
+                component_factory=_ComponentFactory(),
+                send_guard=guard,
+                clock=lambda: fixed_now,
+            )
+        )
+        await plugin.runtime_assembly.publish_model_health(
+            (
+                self._healthy_evidence(
+                    plugin.runtime_assembly,
+                    fixed_now,
+                    ttl=timedelta(minutes=10),
+                ),
+            ),
+            call=replace(self.call, deadline=fixed_now + timedelta(minutes=1)),
+        )
+        events: list[_YoungNativeEvent] = []
+        calls_by_case: dict[int, list[tuple[str, str, object, object]]] = {}
+
+        try:
+            for case in cases:
+                case_id = int(case["case_id"])
+                before = len(recording_mcp.tool_calls)
+                event = _YoungNativeEvent(case)
+                result = await plugin.rollout_bridge.handle(event)
+                events.append(event)
+                calls_by_case[case_id] = recording_mcp.tool_calls[before:]
+                with self.subTest(case_id=case_id):
+                    self.assertIs(
+                        result.action,
+                        AstrBotBridgeAction.CANARY_COMPLETED,
+                    )
+                    self.assertEqual(event.stop_calls, 1)
+                    self.assertEqual(event.send_calls, 1)
+                    self.assertEqual(len(event.sent_chains), 1)
+                    _assert_young_answer_semantics(
+                        case_id,
+                        _young_delivery_text(event.sent_chains),
+                    )
+                    expected_count = 1 if case["tool_name"] is not None else 0
+                    self.assertEqual(len(calls_by_case[case_id]), expected_count)
+
+            self.assertEqual(len(provider.calls), 150)
+            self.assertEqual(len(recording_mcp.tool_calls), 62)
+            self.assertEqual(
+                sum(not needed for _case_id, needed in provider.perception_decisions),
+                13,
+            )
+            self.assertEqual(
+                [
+                    (server_id, tool_name)
+                    for server_id, tool_name, _arguments, _call in (
+                        recording_mcp.tool_calls
+                    )
+                ].count(("ustc-young", "young_search_activities")),
+                51,
+            )
+            for case in cases:
+                case_id = int(case["case_id"])
+                calls = calls_by_case[case_id]
+                if not calls:
+                    continue
+                server_id, tool_name, arguments, _call = calls[0]
+                self.assertEqual(server_id, "ustc-young")
+                self.assertEqual(tool_name, case["tool_name"])
+                if tool_name == "young_search_activities":
+                    self.assertEqual(arguments["query"], case["expected_query"])
+                    self.assertEqual(
+                        arguments["state"],
+                        case.get("expected_state", "applying"),
+                    )
+                    self.assertEqual(arguments["limit"], 50)
+                elif tool_name == "young_get_activity":
+                    self.assertEqual(
+                        arguments,
+                        {
+                            "activity_id": case["expected_activity_id"],
+                            "include_children": case["expected_include_children"],
+                        },
+                    )
+                elif tool_name == "young_list_facets":
+                    self.assertEqual(
+                        arguments,
+                        {"facet": case["expected_facet"]},
+                    )
+                else:
+                    self.assertEqual(arguments, {})
+
+            self.assertEqual(len(calls_by_case[1]), 1)
+            self.assertFalse(provider.perception_decisions[0][1])
+            self.assertTrue(dict(provider.perception_decisions)[70])
+            self.assertEqual(calls_by_case[70], [])
+            for case_id in range(63, 76):
+                self.assertEqual(calls_by_case[case_id], [])
+            rendered_output = repr(
+                [event.sent_chains for event in events]
+            )
+            for forbidden in (
+                "web_search_baidu",
+                "search_site_courses",
+                "young_list_my_activities",
+                "young_apply",
+                "young_cancel_apply",
+                "ReplyPolish",
+                "我先查找",
+                "我再检索",
+                "正在查询",
+                "ToolPlan",
+                "tool-plan:",
+            ):
+                self.assertNotIn(forbidden, rendered_output)
+            self.assertTrue(
+                all(
+                    event.message_obj.raw_message["post_type"] == "message"
+                    and event.message_obj.raw_message["message_type"] == "group"
+                    and event.send_calls == 1
+                    for event in events
+                )
+            )
         finally:
             await plugin.terminate()
         self.assertTrue(recording_mcp.closed)
@@ -1399,6 +2261,33 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         await plugin._handle_controlled_rollout(_Event())
 
         plugin.rollout_bridge.handle.assert_not_awaited()
+
+    async def test_registered_command_never_enters_the_rollout_bridge(self) -> None:
+        plugin = _Plugin()
+        plugin.enabled = True
+        plugin.rollout_bridge = AsyncMock()
+        event = _Event(message_str="sub2api overview")
+        event.get_extra = lambda key, default=None: {
+            "handlers_parsed_params": {"sub2api.overview": {}}
+        }.get(key, default)
+
+        await plugin._handle_controlled_rollout(event)
+
+        plugin.rollout_bridge.handle.assert_not_awaited()
+        self.assertEqual(event.stop_calls, 0)
+
+    async def test_non_command_message_still_enters_the_rollout_bridge(self) -> None:
+        plugin = _Plugin()
+        plugin.enabled = True
+        plugin.rollout_bridge = AsyncMock()
+        event = _Event(message_str="@嘟嘟哒 你好")
+        event.get_extra = lambda key, default=None: {
+            "handlers_parsed_params": {}
+        }.get(key, default)
+
+        await plugin._handle_controlled_rollout(event)
+
+        plugin.rollout_bridge.handle.assert_awaited_once_with(event)
 
     async def test_ready_off_composition_is_single_and_closes_once(self) -> None:
         plugin = self._plugin()

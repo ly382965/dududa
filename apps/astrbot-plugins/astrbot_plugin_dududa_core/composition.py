@@ -5,6 +5,7 @@ import inspect
 import json
 import logging
 import os
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
@@ -81,7 +82,12 @@ from dududa.perception.complexity import (
 from dududa.perception.contracts import (
     ClarificationKey,
     GroupInteractionMode,
+    ModelPerceptionProjection,
+    PerceptionContext,
     PerceptionLimits,
+    PerceptionModelStatus,
+    PerceptionResult,
+    RulePerceptionResult,
 )
 from dududa.perception.merge import (
     DeterministicPerceptionMerger,
@@ -206,6 +212,90 @@ _TIER_ORDER = {
     ModelTier.SONNET: 1,
     ModelTier.OPUS: 2,
 }
+
+_YOUNG_ACCOUNT_BOUND_PATTERNS = (
+    re.compile(r"(?:我|本人|个人).{0,12}(?:已?报名|累计.{0,12}学时|签到)"),
+    re.compile(r"我(?:参加|参与)过.{0,12}(?:二课|第二课堂)"),
+    re.compile(r"(?:我的|本人(?:的)?|个人(?:的)?)(?:二课|第二课堂)(?:活动|记录|历史)"),
+    re.compile(r"(?:帮|替).{0,4}我.{0,12}(?:报名|取消)"),
+    re.compile(r"(?:报名名单|哪些人报名|申请人|签到成功)"),
+)
+
+
+def _is_young_account_bound(context: PerceptionContext) -> bool:
+    return any(
+        pattern.search(context.current_message.text)
+        for pattern in _YOUNG_ACCOUNT_BOUND_PATTERNS
+    )
+
+
+class _ProductionRulePerception:
+    """Keep explicit Young markers from claiming account-bound requests."""
+
+    def __init__(self, delegate: DeterministicRulePerception) -> None:
+        self._delegate = delegate
+
+    def perceive(self, context: PerceptionContext) -> RulePerceptionResult:
+        result = self._delegate.perceive(context)
+        if (
+            "campus.second-class" not in result.capability_categories
+            or not _is_young_account_bound(context)
+        ):
+            return result
+        categories = tuple(
+            value
+            for value in result.capability_categories
+            if value != "campus.second-class"
+        )
+        return replace(
+            result,
+            need_tools=bool(categories),
+            capability_categories=categories,
+            expected_tool_steps=len(categories),
+            component_revision=_revision("production-rule-perception"),
+        )
+
+
+class _ProductionPerceptionMerger:
+    """Remove account-bound Young candidates before additive model merging."""
+
+    def __init__(self, delegate: DeterministicPerceptionMerger) -> None:
+        self._delegate = delegate
+
+    def merge(
+        self,
+        context: PerceptionContext,
+        rules: RulePerceptionResult,
+        model: ModelPerceptionProjection | None,
+        *,
+        model_status: PerceptionModelStatus,
+        model_route_receipt_digest: DigestString | None = None,
+    ) -> PerceptionResult:
+        if model is not None and _is_young_account_bound(context):
+            categories = tuple(
+                value
+                for value in model.capability_categories
+                if value != "campus.second-class"
+            )
+            intents = tuple(
+                value
+                for value in model.intents
+                if not value.intent_id.startswith("ustc.young.")
+            )
+            model = replace(
+                model,
+                need_tools=bool(categories),
+                capability_categories=categories,
+                intents=intents,
+                expected_tool_steps=1 if categories else 0,
+            )
+        return self._delegate.merge(
+            context,
+            rules,
+            model,
+            model_status=model_status,
+            model_route_receipt_digest=model_route_receipt_digest,
+        )
 
 
 def _publish_runtime_status(*, ready: bool, state: str, reason: str) -> None:
@@ -598,6 +688,20 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
             "不要使用预训练记忆补充评课事实，也不要补完标为内容截断的后文。单条点评只能表述为个体观点，"
             "多条相互支持时才能称为共识；每条观点只能归给其所在 review_evidence 组的 course_teachers，"
             "不得在教师间转移；注明相关学期和样本新旧，并尽量覆盖有点评证据的主要候选。"
+            "回答第二课堂活动时，只把工具返回的活动、官方模块、标签、时间、学时、容量和说明当作事实。"
+            "若二课工具明确返回 available=false，只说明第二课堂查询服务暂不可用并建议稍后再试；"
+            "不要改用网页搜索、预训练记忆或旧命令补答案。"
+            "判断公开报名可行性必须同时检查报名状态、报名窗口及余位；公开活动观察不会包含部署账号的"
+            "报名状态，不能据此判断提问者本人是否已经报名。"
+            "比较报名难度时给出容量、剩余名额或填充率依据，大型讲座和小型社团本身都不能证明容易或困难。"
+            "比较学时效率时说明有效学时、活动时长和描述中明确写出的要求；没有签到、考核、选拔或历史抢报"
+            "数据时明确不知道。只能说按当前公开条件相对值得考虑，不要使用“稳拿学时”“比较稳”"
+            "“一定能拿到”或“肯定好混”等保证。德智体美劳映射若不是官方模块名，必须标为根据模块、"
+            "标签和活动说明作出的"
+            "解释。用户要求按多个类别各选一项、排序或按阈值筛选时，要逐项完成其明确列出的维度；某一类"
+            "没有证据就明确说没有，不要为了缩短回答只保留其中一类。系统没有 QQ 用户登录或账号绑定，"
+            "不得把部署侧服务账号说成提问者本人，也不得承诺查询"
+            "个人累计学时、替用户报名或取消报名；不要猜测学校平台中的菜单或页面路径。"
         ),
         "structured_output_instruction": "返回普通文本回答。",
         "repair_instruction": None,
@@ -608,7 +712,7 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-direct-chat-prompt",
             "1.0.0",
-            "production-v4",
+            "production-v5",
             astrbot_prompt_artifact_digest(**values),
         ),
     )
@@ -643,6 +747,14 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             "以用户的主目标判定：推荐、比较或选择课程教师时使用 icourse.teacher.search，"
             "即使用户同时要求总结具体点评；只有主目标是查找、列出或总结点评本身时才使用"
             " icourse.review.search。"
+            "对 campus.second-class，只在用户查询中国科大二课/第二课堂的当前活动事实时选择。"
+            "intent_id 必须使用 ustc.young.activity.search、ustc.young.activity.get、"
+            "ustc.young.facets.list、ustc.young.connection.status 之一。按日期、五育、学时、容量、"
+            "余位、报名状态、活动名称、讲座或推荐筛选时使用 activity.search；只有用户给出明确活动 ID"
+            "并查询详情或系列子活动时使用 activity.get；查询官方模块、标签或部门列表时使用 facets.list；"
+            "查询二课服务是否可用时使用 connection.status。系统没有 QQ 用户登录或账号绑定：查询“我报名"
+            "了什么”、个人累计学时、签到/考核，或要求报名、取消报名时，不选择 campus.second-class，"
+            "交给普通回答明确当前不支持。不要把泛指的“活动”单独判为二课。"
         ),
         "structured_output_instruction": "只返回符合下列 JSON Schema 的 JSON 对象。",
         "repair_instruction": None,
@@ -1062,16 +1174,21 @@ def build_production_runtime(
         default_rule_perception_config(_revision("rule-perception")),
         capability_keywords={
             "campus.course-review": frozenset({"评课社区"}),
+            "campus.second-class": frozenset(
+                {"二课", "第二课堂", "德智体美劳"}
+            ),
         },
     )
-    rules = DeterministicRulePerception(rule_config)
-    merger = DeterministicPerceptionMerger(
-        PerceptionMergeConfig(
-            pipeline_revision=_revision("perception-pipeline"),
-            merger_revision=_revision("perception-merger"),
-            validator_revision=_revision("perception-validator"),
-            fallback_confidence_ceiling=0.59,
-            conflict_confidence_ceiling=0.55,
+    rules = _ProductionRulePerception(DeterministicRulePerception(rule_config))
+    merger = _ProductionPerceptionMerger(
+        DeterministicPerceptionMerger(
+            PerceptionMergeConfig(
+                pipeline_revision=_revision("perception-pipeline"),
+                merger_revision=_revision("perception-merger"),
+                validator_revision=_revision("perception-validator"),
+                fallback_confidence_ceiling=0.59,
+                conflict_confidence_ceiling=0.55,
+            )
         )
     )
     perception_bootstrap = BootstrapTierPolicyDefinition(
@@ -1214,14 +1331,10 @@ def build_production_runtime(
             "capability.icourse.read",
             "capability.ustc.academic.read",
             "capability.ustc.shuttle.read",
-        }
-    )
-    admin_capability_permissions = normal_capability_permissions | frozenset(
-        {
             "capability.ustc.young.read",
-            "capability.ustc.young.self.read",
         }
     )
+    admin_capability_permissions = normal_capability_permissions
 
     def role_constraints(
         permissions: frozenset[str],
@@ -1325,6 +1438,7 @@ def build_production_runtime(
             adapter_binding=binding,
         ),
         authorization,
+        clock=effective_clock,
     )
     state_store = InMemoryRuntimeStateStore(
         InMemoryRuntimeStateStoreConfig(
@@ -1389,7 +1503,10 @@ def build_production_runtime(
         authorization_verifier=authorization,
         perception=perception,
         complexity=DeterministicComplexityAssessor(complexity_config),
-        social=DeterministicSocialDecisionPolicy(social_config),
+        social=DeterministicSocialDecisionPolicy(
+            social_config,
+            clock=effective_clock,
+        ),
         tier_policy=DeterministicModelTierPolicy(),
         direct_chat=direct_chat,
         composer=composer,

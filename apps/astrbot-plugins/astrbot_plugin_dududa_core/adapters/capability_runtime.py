@@ -26,7 +26,10 @@ from dududa.security.audit import InMemoryAuditSink
 from dududa.security.limits import InMemoryBudgetLedger, InMemoryInteractionLimiter
 from dududa.security.ports import AuthorizationDecisionVerifier, AuthorizationPolicy
 
-from .capability_planner import EntityQueryToolPlanner, supports_entity_query_schema
+from .capability_planner import (
+    EntityQueryToolPlanner,
+    supports_production_query_schema,
+)
 from .mcp_schema import JsonSchemaCapabilityValidator
 
 
@@ -119,7 +122,15 @@ def build_production_capability_runtime(
         EntityQueryToolPlanner(
             registry,
             ignored_entity_terms=frozenset(
-                {"评课社区", "iCourse", "USTC评课社区", "中国科大评课社区"}
+                {
+                    "评课社区",
+                    "iCourse",
+                    "USTC评课社区",
+                    "中国科大评课社区",
+                    "二课",
+                    "第二课堂",
+                    "中国科大第二课堂",
+                }
             ),
             clock=clock,
         ),
@@ -141,7 +152,10 @@ def build_production_capability_runtime(
         definition
         for definition in initial.definitions
         if definition.enabled
-        and supports_entity_query_schema(schema_documents[definition.input_schema])
+        and supports_production_query_schema(
+            definition.capability_id,
+            schema_documents[definition.input_schema],
+        )
     )
     categories = tuple(sorted({definition.category for definition in plannable}))
     schemas = {

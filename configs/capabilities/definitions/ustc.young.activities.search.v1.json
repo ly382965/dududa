@@ -6,8 +6,8 @@
   "capability_id": "ustc.young.activities.search.v1",
   "category": "campus.second-class",
   "cost_hint_units": 3,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ef46029f49fee06b59a07f15465453a7dba7a92a579a3751703ed7fda31c4582",
-  "description": "Search authenticated second-class activities through the pinned pyustc adapter.",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:94c1405c4f855c5561aab6fd622b9eb5f70c71b61f9a8159a22cf6c95b2ea414",
+  "description": "Search authenticated second-class activities through the pinned pyustc adapter without projecting deployment-account state.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
@@ -78,13 +78,10 @@
   },
   "name": "Search USTC second-class activities",
   "output_schema": {
-    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activities.search.v1.output:v1:sha-256:f02a2a8c06b6262b093aba2e7cca38c8f359b30d4ad589f6571b2c8ecbd9f22a",
+    "digest": "dududa-c14n-v1:schema:capability.ustc.young.activities.search.v1.output:v1:sha-256:cc7fb2e2bde36dfaadf49a46a0e0de4607dd1b4379421bdc7e3c2d042d2ffce6",
     "document": {
       "additionalProperties": false,
       "properties": {
-        "account_scoped": {
-          "type": "boolean"
-        },
         "authentication": {
           "maxLength": 64,
           "type": "string"
@@ -132,9 +129,6 @@
                 "required": [],
                 "type": "object"
               },
-              "can_apply": {
-                "type": "boolean"
-              },
               "capacity": {
                 "additionalProperties": false,
                 "properties": {
@@ -153,13 +147,6 @@
                 },
                 "required": [],
                 "type": "object"
-              },
-              "contact": {
-                "maxLength": 300,
-                "type": [
-                  "string",
-                  "null"
-                ]
               },
               "department": {
                 "additionalProperties": false,
@@ -209,9 +196,6 @@
                 },
                 "required": [],
                 "type": "object"
-              },
-              "is_registered": {
-                "type": "boolean"
               },
               "kind": {
                 "maxLength": 32,
@@ -301,8 +285,6 @@
               "apply_window",
               "event_window",
               "capacity",
-              "is_registered",
-              "can_apply",
               "module",
               "department",
               "labels"
@@ -337,7 +319,7 @@
     "schema_id": "capability.ustc.young.activities.search.v1.output",
     "schema_version": 1
   },
-  "privacy_level": "personal",
+  "privacy_level": "conversation",
   "provider": {
     "provider_id": "mcp.ustc-young",
     "revision": {

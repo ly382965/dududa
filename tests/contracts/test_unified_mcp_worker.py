@@ -54,6 +54,9 @@ WORKER_PYTHON = WORKER_ROOT / ".venv" / "bin" / "python"
 ROOT_PYTHON = Path(sys.executable)
 FAKE_SERVER = ROOT / "tests" / "fixtures" / "mcp" / "v2_fake_server.py"
 STUBBORN_SERVER = ROOT / "tests" / "fixtures" / "mcp" / "stubborn_stdio_server.py"
+YOUNG_FIXTURE_SERVER = (
+    ROOT / "tests" / "fixtures" / "mcp" / "young_fixture_server.py"
+)
 
 ICOURSE_COURSE_SEARCH_PAGE = """
 <span class="text-muted">共 2 门课（当前第 1 页）</span>
@@ -315,6 +318,40 @@ def icourse_definition(database: Path, *, base_url: str | None = None):
         ),
         maximum_concurrency=1,
         config_revision="icourse-contract-v1",
+    )
+
+
+def young_fixture_definition():
+    endpoint = McpStdioEndpoint(
+        command=str(ROOT_PYTHON),
+        args=(str(YOUNG_FIXTURE_SERVER),),
+        cwd=str(ROOT),
+        env_allowlist=frozenset({"PYTHONDONTWRITEBYTECODE", "PYTHONPATH"}),
+    )
+    return replace_server_definition(
+        server_definition("ustc-young"),
+        protocol_mode=McpProtocolMode.LEGACY,
+        endpoint=endpoint,
+        allowed_tools=frozenset(
+            {
+                "young_connection_status",
+                "young_get_activity",
+                "young_list_facets",
+                "young_search_activities",
+            }
+        ),
+        denied_tools=frozenset(
+            {"young_apply", "young_cancel_apply", "young_get_applicants"}
+        ),
+        maximum_concurrency=1,
+        timeouts=McpTimeoutPolicy(
+            connect=timedelta(seconds=10),
+            discovery=timedelta(seconds=10),
+            call=timedelta(seconds=10),
+            maximum_call=timedelta(seconds=30),
+            close=timedelta(seconds=5),
+        ),
+        config_revision="young-fixture-v1",
     )
 
 
@@ -638,6 +675,51 @@ class UnifiedMcpWorkerContractTests(unittest.IsolatedAsyncioTestCase):
                     self.assertTrue(database.is_file())
                 finally:
                     await session.close()
+
+    async def test_legacy_young_fixture_uses_same_session_contract(self) -> None:
+        session = await factory().open(
+            young_fixture_definition(),
+            1,
+            call=service_call(),
+        )
+        try:
+            tools = await session.discover(call=service_call())
+            self.assertEqual(
+                {item.name for item in tools},
+                {
+                    "young_connection_status",
+                    "young_get_activity",
+                    "young_list_facets",
+                    "young_search_activities",
+                },
+            )
+            search = await session.call_tool(
+                "young_search_activities",
+                {
+                    "query": "人工智能前沿公开讲座",
+                    "state": "applying",
+                    "start_time": "2026-08-29T00:00:00",
+                    "end_time": "2026-08-29T23:59:59",
+                    "limit": 50,
+                },
+                call=transport_call(),
+            )
+            detail = await session.call_tool(
+                "young_get_activity",
+                {
+                    "activity_id": "series-career-2026",
+                    "include_children": True,
+                },
+                call=transport_call(),
+            )
+            self.assertEqual(search.structured_content["total"], 1)
+            self.assertEqual(
+                search.structured_content["items"][0]["activity_id"],
+                "ai-lecture-20260829",
+            )
+            self.assertEqual(len(detail.structured_content["children"]), 1)
+        finally:
+            await session.close()
 
 
 if __name__ == "__main__":
