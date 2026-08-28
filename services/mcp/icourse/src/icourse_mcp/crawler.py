@@ -6,7 +6,12 @@ from typing import Any
 from .config import AppConfig
 from .fetcher import ICourseFetcher
 from .models import CourseListItem
-from .parser import parse_course_detail, parse_list_page
+from .parser import (
+    parse_course_detail,
+    parse_list_page,
+    parse_review_search_page,
+    parse_user_reviews_page,
+)
 from .storage import ICourseStore
 
 
@@ -208,6 +213,48 @@ class ICourseCrawler:
             "public_only": True,
         }
 
+    def search_site_reviews(self, query: str, limit: int = 20) -> dict[str, Any]:
+        query = query.strip()
+        if not query:
+            return {"total": 0, "items": [], "source": "live_site", "public_only": True}
+        limit = max(1, min(limit, 30))
+        search_page = self.fetcher.fetch_review_search(
+            query,
+            per_page=min(50, max(limit, 10)),
+        )
+        search_result = parse_review_search_page(search_page.text, self.config.base_url)
+        exact_authors = [
+            item
+            for item in search_result["items"]
+            if _normalized_text(item.get("author_display")) == _normalized_text(query)
+            and item.get("user_id") is not None
+        ]
+        if exact_authors:
+            user_id = int(exact_authors[0]["user_id"])
+            reviews_page = self.fetcher.fetch_user_reviews(user_id)
+            result = parse_user_reviews_page(
+                reviews_page.text,
+                self.config.base_url,
+                user_id,
+            )
+            result["items"] = result["items"][:limit]
+            result.update(
+                {
+                    "query": query,
+                    "source": "live_site_user_reviews",
+                    "search_result_total": search_result["total"],
+                    "public_only": True,
+                }
+            )
+            return result
+        return {
+            "query": query,
+            "total": search_result["total"],
+            "items": search_result["items"][:limit],
+            "source": "live_site_review_search",
+            "public_only": True,
+        }
+
     def crawl_latest_reviews(self, pages: int = 1, per_page: int = 10, max_courses: int | None = None) -> dict[str, Any]:
         pages = max(1, min(pages, 20))
         per_page = max(1, min(per_page, 50))
@@ -240,3 +287,7 @@ class ICourseCrawler:
             "db_stats": self.store.stats(),
             "public_only": True,
         }
+
+
+def _normalized_text(value: object) -> str:
+    return "".join(str(value or "").split()).casefold()

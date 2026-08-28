@@ -33,6 +33,9 @@ def create_mcp(config: AppConfig) -> FastMCP:
             raise RuntimeError("icourse crawler lifespan is not active")
         return crawler
 
+    def live_review_query(query: str, limit: int) -> dict[str, Any]:
+        return current_crawler().search_site_reviews(query, limit=limit)
+
     mcp = FastMCP("icourse-mcp", lifespan=lifespan)
 
     @mcp.tool()
@@ -103,31 +106,18 @@ def create_mcp(config: AppConfig) -> FastMCP:
         goal: str | None = None,
         limit: int = 20,
     ) -> dict[str, Any]:
-        """Run one bounded read-only query over the prepared public iCourse cache."""
+        """Run one bounded read-only query over public iCourse data."""
         normalized = query.strip()
         natural_goal = (goal or query).strip()
         limit = max(1, min(limit, 30))
         if operation == "review":
-            year_match = re.search(r"\b(20\d{2})\b", natural_goal)
-            sort_by = "relevance"
-            if any(term in natural_goal for term in ("点赞最多", "高赞")):
-                sort_by = "upvote"
-            elif "最长" in natural_goal:
-                sort_by = "length"
-            elif any(term in natural_goal for term in ("最近", "最新")):
-                sort_by = "latest"
-            result = store.search_reviews(
-                normalized,
-                year=int(year_match.group(1)) if year_match else None,
-                sort_by=sort_by,
-                limit=limit,
-            )
+            live_result = live_review_query(normalized, limit)
             return {
                 "schema_version": 1,
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": _public_review_result(result),
+                "result": _public_review_result(live_result),
             }
         if operation == "teacher":
             return {
@@ -169,14 +159,14 @@ def create_mcp(config: AppConfig) -> FastMCP:
             **filters,
         )
         if text_query and not result.get("total"):
-            review_result = store.search_reviews(normalized, limit=limit)
-            if review_result.get("total"):
+            live_result = live_review_query(normalized, limit)
+            if live_result.get("total"):
                 return {
                     "schema_version": 1,
                     "operation": "review",
                     "query": normalized,
                     "public_only": True,
-                    "result": _public_review_result(review_result),
+                    "result": _public_review_result(live_result),
                 }
         return {
             "schema_version": 1,
@@ -314,7 +304,8 @@ def _public_review_item(
     )
     text = item.get("content_text")
     if isinstance(text, str):
-        projected["content_length"] = len(text)
+        if not item.get("content_is_excerpt"):
+            projected["content_length"] = len(text)
         projected["content_text"] = _excerpt(text, excerpt_characters)
     teachers = item.get("course_teachers")
     if isinstance(teachers, list):
@@ -369,15 +360,20 @@ def _public_course_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _public_review_result(result: dict[str, Any]) -> dict[str, Any]:
-    return {
+    projected: dict[str, Any] = {
         "total": int(result.get("total") or 0),
-        "aggregates": result.get("aggregates", {}),
         "items": [
             _public_review_item(item, excerpt_characters=320)
             for item in result.get("items", [])
             if isinstance(item, dict)
         ],
     }
+    aggregates = result.get("aggregates")
+    if isinstance(aggregates, dict):
+        projected["aggregates"] = aggregates
+    if isinstance(result.get("source"), str):
+        projected["source"] = result["source"]
+    return projected
 
 
 def _public_teacher_result(result: dict[str, Any]) -> dict[str, Any]:

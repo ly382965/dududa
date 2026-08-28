@@ -39,6 +39,36 @@ class ICourseFetcherTests(unittest.TestCase):
         self.assertNotIn("token", request.url.params)
         self.assertNotEqual(request.url.path, "/api/search/token")
 
+    def test_public_user_review_paths_use_plain_get(self) -> None:
+        requests: list[httpx.Request] = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, text="<html>ok</html>", request=request)
+
+        fetcher = ICourseFetcher(
+            "https://icourse.club",
+            "dududa-test",
+            request_delay=0,
+        )
+        fetcher.client.close()
+        fetcher.client = httpx.Client(
+            transport=httpx.MockTransport(handle),
+            follow_redirects=True,
+        )
+        try:
+            fetcher.fetch_review_search("萌萌哒mmd", page=2)
+            fetcher.fetch_user_reviews(7858)
+        finally:
+            fetcher.close()
+
+        self.assertEqual(
+            [(request.method, request.url.path) for request in requests],
+            [("GET", "/search-reviews/"), ("GET", "/user/7858/reviews")],
+        )
+        self.assertEqual(requests[0].url.params["q"], "萌萌哒mmd")
+        self.assertEqual(requests[0].url.params["page"], "2")
+
 
 if __name__ == "__main__":
     unittest.main()

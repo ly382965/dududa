@@ -9,12 +9,15 @@ from bs4 import BeautifulSoup, Tag
 
 from .models import Course, CourseListItem, Review, Teacher
 
-
 COURSE_LINK_RE = re.compile(r"^/course/(\d+)/$")
 TEACHER_LINK_RE = re.compile(r"^/teacher/(\d+)/$")
+USER_LINK_RE = re.compile(r"^/user/(\d+)$")
+REVIEW_LINK_RE = re.compile(r"^/course/(\d+)/#review-(\d+)$")
 COURSE_TITLE_RE = re.compile(r"^(?P<name>.+?)（(?P<teachers>.+)）$")
 COURSE_COUNT_RE = re.compile(r"共\s*(\d+)\s*门课")
 REVIEW_COUNT_RE = re.compile(r"\((\d+)\s*人评价\)")
+REVIEW_SEARCH_COUNT_RE = re.compile(r"共\s*(\d+)\s*个点评")
+USER_REVIEW_COUNT_RE = re.compile(r"写了\s*(\d+)\s*条点评")
 COURSE_NO_RE = re.compile(r"课程号：\s*([^\s]+)")
 
 
@@ -136,6 +139,151 @@ def parse_list_page(html: str, base_url: str) -> dict[str, Any]:
         )
 
     return {"total_courses": total_courses, "items": [item.to_dict() for item in items]}
+
+
+def parse_review_search_page(html: str, base_url: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "html.parser")
+    total = _matched_count(soup, REVIEW_SEARCH_COUNT_RE)
+    items: list[dict[str, Any]] = []
+    for block in soup.select("div.ud-pd-md.dashed"):
+        author_link = block.find("a", href=USER_LINK_RE)
+        review_link = block.find("a", href=REVIEW_LINK_RE)
+        if not isinstance(review_link, Tag):
+            continue
+        review_match = REVIEW_LINK_RE.match(str(review_link.get("href") or ""))
+        if not review_match:
+            continue
+        user_match = (
+            USER_LINK_RE.match(str(author_link.get("href") or ""))
+            if isinstance(author_link, Tag)
+            else None
+        )
+        author_display = (
+            clean_text(author_link.get_text(" ", strip=True))
+            if isinstance(author_link, Tag)
+            else _anonymous_search_author(block)
+        )
+        content_node = block.select_one("p.review-content")
+        items.append(
+            {
+                "id": int(review_match.group(2)),
+                "course_id": int(review_match.group(1)),
+                "course_name": clean_text(review_link.get_text(" ", strip=True)),
+                "author_display": author_display,
+                "user_id": int(user_match.group(1)) if user_match else None,
+                "is_anonymous": user_match is None,
+                "content_text": _review_excerpt(content_node),
+                "content_is_excerpt": True,
+                "update_time": _first_localtime(block),
+                "url": normalize_url(base_url, str(review_link.get("href") or "")),
+            }
+        )
+    return {"total": total if total is not None else len(items), "items": items}
+
+
+def parse_user_reviews_page(
+    html: str,
+    base_url: str,
+    user_id: int,
+) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "html.parser")
+    profile_link = soup.find("a", href=f"/user/{user_id}")
+    author_display = (
+        clean_text(profile_link.get_text(" ", strip=True))
+        if isinstance(profile_link, Tag)
+        else None
+    )
+    total = None
+    description = soup.find("meta", attrs={"property": "og:description"})
+    if isinstance(description, Tag):
+        match = USER_REVIEW_COUNT_RE.search(str(description.get("content") or ""))
+        if match:
+            total = int(match.group(1))
+    if total is None:
+        count_text = soup.find(string=re.compile(r"（\s*\d+\s*门\s*）"))
+        total = parse_int(str(count_text)) if count_text else None
+
+    items: list[dict[str, Any]] = []
+    for block in soup.select("div.ud-pd-md.dashed"):
+        review_link = block.find("a", href=REVIEW_LINK_RE)
+        if not isinstance(review_link, Tag):
+            continue
+        review_match = REVIEW_LINK_RE.match(str(review_link.get("href") or ""))
+        if not review_match:
+            continue
+        course_id = int(review_match.group(1))
+        review_id = int(review_match.group(2))
+        course_link = block.find("a", href=f"/course/{course_id}/")
+        term_node = block.find("span", class_=lambda value: value and "grey" in value)
+        term = clean_text(term_node.get_text(" ", strip=True)) if term_node else None
+        if term:
+            term = term.removeprefix("学期：")
+        upvote_node = block.select_one(f"#review-upvote-count-{review_id}")
+        comment_node = block.select_one(f"#review-comment-count-{review_id}")
+        items.append(
+            {
+                "id": review_id,
+                "course_id": course_id,
+                "course_name": (
+                    clean_text(course_link.get_text(" ", strip=True))
+                    if isinstance(course_link, Tag)
+                    else None
+                ),
+                "author_display": author_display,
+                "user_id": user_id,
+                "is_anonymous": False,
+                "term": term,
+                "content_text": _review_excerpt(block.select_one("p.dark-grey")),
+                "content_is_excerpt": True,
+                "update_time": _first_localtime(block),
+                "upvote_count": (
+                    parse_int(upvote_node.get_text(" ", strip=True))
+                    if upvote_node
+                    else None
+                ),
+                "comment_count": (
+                    parse_int(comment_node.get_text(" ", strip=True))
+                    if comment_node
+                    else None
+                ),
+                "url": normalize_url(base_url, str(review_link.get("href") or "")),
+            }
+        )
+    return {
+        "total": total if total is not None else len(items),
+        "items": items,
+        "profile": {
+            "user_id": user_id,
+            "author_display": author_display,
+            "url": normalize_url(base_url, f"/user/{user_id}"),
+        },
+    }
+
+
+def _matched_count(soup: BeautifulSoup, pattern: re.Pattern[str]) -> int | None:
+    value = soup.find(string=pattern)
+    match = pattern.search(str(value)) if value else None
+    return int(match.group(1)) if match else None
+
+
+def _first_localtime(block: Tag) -> str | None:
+    node = block.select_one("span.localtime")
+    return clean_text(node.get_text(" ", strip=True)) if node else None
+
+
+def _review_excerpt(node: Tag | None) -> str | None:
+    text = clean_text(node.get_text(" ", strip=True)) if node else None
+    if not text:
+        return None
+    return re.sub(r"\s*>>\s*(?:more|更多)\s*$", "", text, flags=re.IGNORECASE).strip()
+
+
+def _anonymous_search_author(block: Tag) -> str | None:
+    header = block.find("div", class_=lambda value: value and "grey" in value)
+    text = clean_text(header.get_text(" ", strip=True)) if header else None
+    if not text:
+        return None
+    return clean_text(re.split(r"(?:更新了点评|点评了)", text, maxsplit=1)[0])
 
 
 def parse_course_detail(html: str, base_url: str, course_id: int) -> Course:
