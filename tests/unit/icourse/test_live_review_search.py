@@ -47,6 +47,30 @@ USER_REVIEWS_PAGE = """
 </div>
 """
 
+WANGLULU_SEARCH_PAGE = """
+<span class="text-muted">共 5 个点评（当前第 1 页）</span>
+<div class="ud-pd-md dashed">
+  <a href="/user/13599"><bdi>XH_5219</bdi></a>
+  <a href="/course/1787/#review-96222">大学生心理学（杨映秋）</a>
+  <p class="review-content">参考 Wanglulu 的个人简介</p>
+</div>
+"""
+
+RANKINGS_PAGE = """
+<table><tr><th>TOP</th><th>用户名</th></tr>
+<tr><th>#2</th><td><a href="/user/12918"><bdi>Wanglulu</bdi></a></td></tr>
+</table>
+"""
+
+WANGLULU_REVIEWS_PAGE = """
+<meta property="og:description" content="Wanglulu 写了 54 条点评，关注了 0 门课">
+<span class="blue h3"><a href="/user/12918"><bdi>Wanglulu</bdi></a> 点评</span>（54门）
+<div class="ud-pd-md dashed">
+  <a href="/course/13486/">数学分析(B1)（程艺）</a>
+  <p class="dark-grey">公开点评 <a href="/course/13486/#review-103500">&gt;&gt;more</a></p>
+</div>
+"""
+
 
 class _FixtureFetcher:
     def __init__(self) -> None:
@@ -59,14 +83,25 @@ class _FixtureFetcher:
         per_page: int = 10,
     ) -> FetchedPage:
         self.calls.append(("search", (query, page, per_page)))
-        return FetchedPage("https://icourse.club/search-reviews/", 200, SEARCH_PAGE, "fixture")
+        html = WANGLULU_SEARCH_PAGE if query.casefold() == "wanglulu" else SEARCH_PAGE
+        return FetchedPage("https://icourse.club/search-reviews/", 200, html, "fixture")
+
+    def fetch_site_rankings(self) -> FetchedPage:
+        self.calls.append(("rankings", None))
+        return FetchedPage(
+            "https://icourse.club/stats/rankings/",
+            200,
+            RANKINGS_PAGE,
+            "fixture",
+        )
 
     def fetch_user_reviews(self, user_id: int) -> FetchedPage:
         self.calls.append(("reviews", user_id))
+        html = WANGLULU_REVIEWS_PAGE if user_id == 12918 else USER_REVIEWS_PAGE
         return FetchedPage(
             f"https://icourse.club/user/{user_id}/reviews",
             200,
-            USER_REVIEWS_PAGE,
+            html,
             "fixture",
         )
 
@@ -99,6 +134,36 @@ class ICourseLiveReviewSearchTests(unittest.TestCase):
         self.assertEqual(
             fixture_fetcher.calls,
             [("search", ("萌萌哒mmd", 1, 10)), ("reviews", 7858)],
+        )
+
+    def test_explicit_user_lookup_does_not_confuse_keyword_hits_with_user_reviews(self) -> None:
+        with TemporaryDirectory() as temporary:
+            crawler = ICourseCrawler(
+                AppConfig(db_path=Path(temporary) / "icourse.sqlite3", request_delay=0)
+            )
+            crawler.fetcher.close()
+            fixture_fetcher = _FixtureFetcher()
+            crawler.fetcher = fixture_fetcher  # type: ignore[assignment]
+            try:
+                result = crawler.search_site_reviews(
+                    "wanglulu",
+                    limit=10,
+                    user_lookup=True,
+                )
+            finally:
+                crawler.close()
+
+        self.assertEqual(result["source"], "live_site_user_reviews")
+        self.assertEqual(result["total"], 54)
+        self.assertEqual(result["profile"]["user_id"], 12918)
+        self.assertEqual(result["items"][0]["author_display"], "Wanglulu")
+        self.assertEqual(
+            fixture_fetcher.calls,
+            [
+                ("search", ("wanglulu", 1, 10)),
+                ("rankings", None),
+                ("reviews", 12918),
+            ],
         )
 
 

@@ -7,9 +7,12 @@ from .config import AppConfig
 from .fetcher import ICourseFetcher
 from .models import CourseListItem
 from .parser import (
+    find_exact_user_reference,
     parse_course_detail,
     parse_list_page,
     parse_review_search_page,
+    parse_site_rankings_page,
+    parse_site_stats_page,
     parse_user_reviews_page,
 )
 from .storage import ICourseStore
@@ -213,7 +216,81 @@ class ICourseCrawler:
             "public_only": True,
         }
 
-    def search_site_reviews(self, query: str, limit: int = 20) -> dict[str, Any]:
+    def query_site_courses(self, query: str, limit: int = 20) -> dict[str, Any]:
+        query = query.strip()
+        if not query:
+            return {"total": 0, "items": [], "source": "live_site_course_search"}
+        limit = max(1, min(limit, 50))
+        page = self.fetcher.fetch_course_search(query, per_page=50)
+        parsed = parse_list_page(page.text, self.config.base_url)
+        items = [_public_course_list_item(item) for item in parsed.get("items", [])]
+        return {
+            "query": query,
+            "total": int(parsed.get("total_courses") or len(items)),
+            "items": items[:limit],
+            "source": "live_site_course_search",
+            "public_only": True,
+        }
+
+    def search_site_teachers(self, query: str, limit: int = 20) -> dict[str, Any]:
+        courses = self.query_site_courses(query, limit=50)
+        teachers: dict[str, dict[str, Any]] = {}
+        for course in courses["items"]:
+            for teacher in course.get("teachers", []):
+                name = str(teacher.get("name") or "").strip()
+                if not name or name == "未知":
+                    continue
+                key = _normalized_text(name)
+                item = teachers.setdefault(
+                    key,
+                    {
+                        "teacher_id": None,
+                        "name": name,
+                        "course_count": 0,
+                        "review_count": 0,
+                        "rating_average": None,
+                        "departments": [],
+                        "courses": [],
+                        "_rating_total": 0.0,
+                        "_rating_weight": 0,
+                    },
+                )
+                item["course_count"] += 1
+                review_count = int(course.get("review_count_site") or 0)
+                item["review_count"] += review_count
+                rating = course.get("rating_average")
+                if isinstance(rating, (int, float)):
+                    weight = max(1, review_count)
+                    item["_rating_total"] += float(rating) * weight
+                    item["_rating_weight"] += weight
+                item["courses"].append(course)
+        for item in teachers.values():
+            if item["_rating_weight"]:
+                item["rating_average"] = round(
+                    item["_rating_total"] / item["_rating_weight"],
+                    2,
+                )
+            item.pop("_rating_total", None)
+            item.pop("_rating_weight", None)
+        ranked = sorted(
+            teachers.values(),
+            key=lambda item: (-item["review_count"], item["name"].casefold()),
+        )
+        return {
+            "query": query,
+            "total": len(ranked),
+            "items": ranked[: max(1, min(limit, 30))],
+            "source": "live_site_course_search",
+            "public_only": True,
+        }
+
+    def search_site_reviews(
+        self,
+        query: str,
+        limit: int = 20,
+        *,
+        user_lookup: bool = False,
+    ) -> dict[str, Any]:
         query = query.strip()
         if not query:
             return {"total": 0, "items": [], "source": "live_site", "public_only": True}
@@ -223,20 +300,33 @@ class ICourseCrawler:
             per_page=min(50, max(limit, 10)),
         )
         search_result = parse_review_search_page(search_page.text, self.config.base_url)
-        exact_authors = [
-            item
-            for item in search_result["items"]
-            if _normalized_text(item.get("author_display")) == _normalized_text(query)
-            and item.get("user_id") is not None
-        ]
-        if exact_authors:
-            user_id = int(exact_authors[0]["user_id"])
+        user = _exact_review_author(search_result, query)
+        if user is None and user_lookup:
+            rankings = self.fetcher.fetch_site_rankings()
+            user = find_exact_user_reference(rankings.text, query)
+        if user is None and user_lookup:
+            for course_id in _review_course_ids(search_result)[:3]:
+                detail = self.fetcher.fetch_course_detail(course_id)
+                user = find_exact_user_reference(detail.text, query)
+                if user is not None:
+                    break
+        if user is not None:
+            user_id = int(user["user_id"])
             reviews_page = self.fetcher.fetch_user_reviews(user_id)
             result = parse_user_reviews_page(
                 reviews_page.text,
                 self.config.base_url,
                 user_id,
             )
+            profile = result.get("profile") or {}
+            if _normalized_text(profile.get("author_display")) != _normalized_text(query):
+                return {
+                    "query": query,
+                    "total": 0,
+                    "items": [],
+                    "source": "live_site_user_not_found",
+                    "public_only": True,
+                }
             result["items"] = result["items"][:limit]
             result.update(
                 {
@@ -247,6 +337,14 @@ class ICourseCrawler:
                 }
             )
             return result
+        if user_lookup:
+            return {
+                "query": query,
+                "total": 0,
+                "items": [],
+                "source": "live_site_user_not_found",
+                "public_only": True,
+            }
         return {
             "query": query,
             "total": search_result["total"],
@@ -254,6 +352,18 @@ class ICourseCrawler:
             "source": "live_site_review_search",
             "public_only": True,
         }
+
+    def get_site_rankings(self) -> dict[str, Any]:
+        page = self.fetcher.fetch_site_rankings()
+        result = parse_site_rankings_page(page.text, self.config.base_url)
+        result["public_only"] = True
+        return result
+
+    def get_site_statistics(self) -> dict[str, Any]:
+        page = self.fetcher.fetch_site_stats()
+        result = parse_site_stats_page(page.text)
+        result["public_only"] = True
+        return result
 
     def crawl_latest_reviews(self, pages: int = 1, per_page: int = 10, max_courses: int | None = None) -> dict[str, Any]:
         pages = max(1, min(pages, 20))
@@ -291,3 +401,44 @@ class ICourseCrawler:
 
 def _normalized_text(value: object) -> str:
     return "".join(str(value or "").split()).casefold()
+
+
+def _public_course_list_item(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": item["id"],
+        "name": item["name"],
+        "url": item["url"],
+        "teachers": [
+            {"id": None, "name": name, "dept": None}
+            for name in item.get("teachers", [])
+        ],
+        "term_text": item.get("term_text"),
+        "rating_average": item.get("rating_average"),
+        "review_count_site": item.get("review_count"),
+        "difficulty": item.get("difficulty"),
+        "homework": item.get("homework"),
+        "grading": item.get("grading"),
+        "gain": item.get("gain"),
+    }
+
+
+def _exact_review_author(result: dict[str, Any], query: str) -> dict[str, Any] | None:
+    for item in result.get("items", []):
+        if (
+            _normalized_text(item.get("author_display")) == _normalized_text(query)
+            and item.get("user_id") is not None
+        ):
+            return {
+                "user_id": int(item["user_id"]),
+                "author_display": item.get("author_display"),
+            }
+    return None
+
+
+def _review_course_ids(result: dict[str, Any]) -> list[int]:
+    values: list[int] = []
+    for item in result.get("items", []):
+        course_id = item.get("course_id")
+        if isinstance(course_id, int) and course_id not in values:
+            values.append(course_id)
+    return values

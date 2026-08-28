@@ -66,8 +66,21 @@ class ICourseFetcher:
             params["sort_by"] = sort_by
         return self.fetch_path("/course/", params=params)
 
-    def fetch_course_search(self, query: str, page: int = 1) -> FetchedPage:
-        return self.fetch_path("/search/", params={"q": query, "page": page})
+    def fetch_course_search(
+        self,
+        query: str,
+        page: int = 1,
+        per_page: int = 50,
+    ) -> FetchedPage:
+        return self.fetch_path(
+            "/search/",
+            params={
+                "q": query,
+                "page": page,
+                "per_page": max(1, min(per_page, 50)),
+                "noredirect": "True",
+            },
+        )
 
     def fetch_review_search(
         self,
@@ -82,6 +95,12 @@ class ICourseFetcher:
 
     def fetch_user_reviews(self, user_id: int) -> FetchedPage:
         return self.fetch_path(f"/user/{user_id}/reviews")
+
+    def fetch_site_stats(self) -> FetchedPage:
+        return self.fetch_path("/stats/")
+
+    def fetch_site_rankings(self) -> FetchedPage:
+        return self.fetch_path("/stats/rankings/")
 
     def fetch_course_detail(self, course_id: int, sort_by: str = "upvote") -> FetchedPage:
         return self.fetch_path(f"/course/{course_id}/", params={"sort_by": sort_by})

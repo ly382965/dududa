@@ -7,7 +7,7 @@ from typing import ClassVar
 from unittest.mock import patch
 
 from icourse_mcp.config import AppConfig
-from icourse_mcp.server import create_mcp
+from icourse_mcp.server import _user_lookup_requested, create_mcp
 
 
 class _Crawler:
@@ -38,13 +38,42 @@ class _ForbiddenCrawler:
     def __init__(self, config, store) -> None:
         self.config = config
         self.store = store
-        self.calls: list[tuple[str, int]] = []
+        self.calls: list[tuple[str, object]] = []
         self.close_calls = 0
         self.instances.append(self)
 
-    def search_site_reviews(self, query: str, limit: int):
-        self.calls.append((query, limit))
+    def query_site_courses(self, query: str, limit: int):
+        self.calls.append(("course", (query, limit)))
+        return {
+            "total": 1,
+            "items": [{"id": 1, "name": "fixture", "url": "https://icourse.club/course/1/"}],
+            "source": "live_site_course_search",
+        }
+
+    def search_site_reviews(self, query: str, limit: int, *, user_lookup: bool = False):
+        self.calls.append(("review", (query, limit, user_lookup)))
         return {"total": 0, "items": [], "source": "live_site_review_search"}
+
+    def search_site_teachers(self, query: str, limit: int):
+        self.calls.append(("teacher", (query, limit)))
+        return {"total": 0, "items": [], "source": "live_site_course_search"}
+
+    def get_site_rankings(self):
+        self.calls.append(("ranking", None))
+        return {"source": "live_site_rankings"}
+
+    def get_site_statistics(self):
+        self.calls.append(("stats", None))
+        return {
+            "source": "live_site_stats",
+            "coverage": {
+                "courses": 1,
+                "courses_with_detail": 0,
+                "public_reviews": 2,
+                "last_detail_crawled_at": None,
+                "last_list_crawled_at": None,
+            },
+        }
 
     def __getattr__(self, name: str):
         if name.startswith(("crawl", "search", "check", "fetch")):
@@ -59,12 +88,16 @@ class _LiveReviewCrawler:
     instances: ClassVar[list[_LiveReviewCrawler]] = []
 
     def __init__(self, config, store) -> None:
-        self.calls: list[tuple[str, int]] = []
+        self.calls: list[tuple[str, object]] = []
         self.close_calls = 0
         self.instances.append(self)
 
-    def search_site_reviews(self, query: str, limit: int):
-        self.calls.append((query, limit))
+    def query_site_courses(self, query: str, limit: int):
+        self.calls.append(("course", (query, limit)))
+        return {"total": 0, "items": [], "source": "live_site_course_search"}
+
+    def search_site_reviews(self, query: str, limit: int, *, user_lookup: bool = False):
+        self.calls.append(("review", (query, limit, user_lookup)))
         return {
             "total": 83,
             "source": "live_site_user_reviews",
@@ -85,6 +118,14 @@ class _LiveReviewCrawler:
 
 
 class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
+    def test_bare_ascii_username_query_enables_user_lookup(self) -> None:
+        self.assertTrue(
+            _user_lookup_requested("查询评课社区wanglulu", "wanglulu")
+        )
+        self.assertFalse(
+            _user_lookup_requested("评课社区搜索 Python 点评", "Python")
+        )
+
     async def test_course_zero_hit_uses_live_review_author_result(self) -> None:
         with TemporaryDirectory() as temporary:
             _LiveReviewCrawler.instances.clear()
@@ -103,7 +144,10 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(result["result"]["items"]), 1)
             self.assertEqual(
                 _LiveReviewCrawler.instances[0].calls,
-                [("萌萌哒mmd", 10)],
+                [
+                    ("course", ("萌萌哒mmd", 50)),
+                    ("review", ("萌萌哒mmd", 10, False)),
+                ],
             )
 
     async def test_course_operation_returns_matching_public_review_author(self) -> None:
@@ -158,7 +202,13 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(_ForbiddenCrawler.instances), 1)
                 self.assertEqual(
                     _ForbiddenCrawler.instances[0].calls,
-                    [("fixture", 20), ("fixture", 20)],
+                    [
+                        ("course", ("fixture", 50)),
+                        ("review", ("fixture", 20, False)),
+                        ("teacher", ("fixture", 20)),
+                        ("ranking", None),
+                        ("stats", None),
+                    ],
                 )
                 self.assertEqual(_ForbiddenCrawler.instances[0].close_calls, 1)
 

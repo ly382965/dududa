@@ -36,6 +36,8 @@ class ICourseFetcherTests(unittest.TestCase):
         self.assertEqual(request.url.path, "/search/")
         self.assertEqual(request.url.params["q"], "吴天")
         self.assertEqual(request.url.params["page"], "2")
+        self.assertEqual(request.url.params["per_page"], "50")
+        self.assertEqual(request.url.params["noredirect"], "True")
         self.assertNotIn("token", request.url.params)
         self.assertNotEqual(request.url.path, "/api/search/token")
 
@@ -59,12 +61,19 @@ class ICourseFetcherTests(unittest.TestCase):
         try:
             fetcher.fetch_review_search("萌萌哒mmd", page=2)
             fetcher.fetch_user_reviews(7858)
+            fetcher.fetch_site_stats()
+            fetcher.fetch_site_rankings()
         finally:
             fetcher.close()
 
         self.assertEqual(
             [(request.method, request.url.path) for request in requests],
-            [("GET", "/search-reviews/"), ("GET", "/user/7858/reviews")],
+            [
+                ("GET", "/search-reviews/"),
+                ("GET", "/user/7858/reviews"),
+                ("GET", "/stats/"),
+                ("GET", "/stats/rankings/"),
+            ],
         )
         self.assertEqual(requests[0].url.params["q"], "萌萌哒mmd")
         self.assertEqual(requests[0].url.params["page"], "2")

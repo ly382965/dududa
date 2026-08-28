@@ -33,8 +33,17 @@ def create_mcp(config: AppConfig) -> FastMCP:
             raise RuntimeError("icourse crawler lifespan is not active")
         return crawler
 
-    def live_review_query(query: str, limit: int) -> dict[str, Any]:
-        return current_crawler().search_site_reviews(query, limit=limit)
+    def live_review_query(
+        query: str,
+        limit: int,
+        *,
+        user_lookup: bool = False,
+    ) -> dict[str, Any]:
+        return current_crawler().search_site_reviews(
+            query,
+            limit=limit,
+            user_lookup=user_lookup,
+        )
 
     mcp = FastMCP("icourse-mcp", lifespan=lifespan)
 
@@ -110,8 +119,13 @@ def create_mcp(config: AppConfig) -> FastMCP:
         normalized = query.strip()
         natural_goal = (goal or query).strip()
         limit = max(1, min(limit, 30))
+        user_lookup = _user_lookup_requested(natural_goal, normalized)
         if operation == "review":
-            live_result = live_review_query(normalized, limit)
+            live_result = live_review_query(
+                normalized,
+                limit,
+                user_lookup=user_lookup,
+            )
             return {
                 "schema_version": 1,
                 "operation": operation,
@@ -126,7 +140,7 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "query": normalized,
                 "public_only": True,
                 "result": _public_teacher_result(
-                    store.search_teachers(normalized, limit=limit)
+                    current_crawler().search_site_teachers(normalized, limit=limit)
                 ),
             }
         if operation == "ranking":
@@ -136,7 +150,7 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "query": normalized,
                 "public_only": True,
                 "result": _public_ranking_result(
-                    store.get_rankings(limit=limit),
+                    current_crawler().get_site_rankings(),
                     natural_goal,
                     limit=limit,
                 ),
@@ -147,19 +161,23 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": _public_stats_result(store.get_site_statistics()),
+                "result": _public_stats_result(
+                    current_crawler().get_site_statistics()
+                ),
             }
         filters = _course_filters(natural_goal)
-        text_query = normalized
-        if normalized == natural_goal and filters:
-            text_query = ""
-        result = store.query_courses(
-            query=text_query or None,
+        live_courses = current_crawler().query_site_courses(normalized, limit=50)
+        result = _filter_live_course_result(
+            live_courses,
+            filters,
             limit=limit,
-            **filters,
         )
-        if text_query and not result.get("total"):
-            live_result = live_review_query(normalized, limit)
+        if not live_courses.get("total"):
+            live_result = live_review_query(
+                normalized,
+                limit,
+                user_lookup=user_lookup,
+            )
             if live_result.get("total"):
                 return {
                     "schema_version": 1,
@@ -264,6 +282,7 @@ def _public_course_item(item: dict[str, Any]) -> dict[str, Any]:
         "course_type",
         "course_level",
         "teaching_type",
+        "url",
     )
     teachers = item.get("teachers")
     if isinstance(teachers, list):
@@ -301,6 +320,8 @@ def _public_review_item(
         "homework",
         "grading",
         "gain",
+        "url",
+        "content_length",
     )
     text = item.get("content_text")
     if isinstance(text, str):
@@ -349,7 +370,7 @@ def _public_teacher_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _public_course_result(result: dict[str, Any]) -> dict[str, Any]:
-    return {
+    projected = {
         "total": int(result.get("total") or 0),
         "items": [
             _public_course_item(item)
@@ -357,6 +378,9 @@ def _public_course_result(result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ],
     }
+    if isinstance(result.get("source"), str):
+        projected["source"] = result["source"]
+    return projected
 
 
 def _public_review_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -377,7 +401,7 @@ def _public_review_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _public_teacher_result(result: dict[str, Any]) -> dict[str, Any]:
-    return {
+    projected = {
         "total": int(result.get("total") or 0),
         "items": [
             _public_teacher_item(item)
@@ -385,6 +409,9 @@ def _public_teacher_result(result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ],
     }
+    if isinstance(result.get("source"), str):
+        projected["source"] = result["source"]
+    return projected
 
 
 def _public_ranking_result(
@@ -393,11 +420,13 @@ def _public_ranking_result(
     *,
     limit: int,
 ) -> dict[str, Any]:
-    projected = {
-        "source": result.get("source", "local_public_cache"),
-        "coverage": _public_coverage(result.get("coverage")),
-        "formula": result.get("formula", {}),
-    }
+    projected = {"source": result.get("source", "live_site_rankings")}
+    coverage = result.get("coverage")
+    if isinstance(coverage, dict):
+        projected["coverage"] = _public_coverage(coverage)
+    formula = result.get("formula")
+    if isinstance(formula, dict):
+        projected["formula"] = formula
     course_keys: list[str] = []
     review_keys: list[str] = []
     if any(term in goal for term in ("最高", "最好", "推荐")):
@@ -513,6 +542,58 @@ def _course_filters(goal: str) -> dict[str, Any]:
     elif any(term in goal for term in ("最近", "最新")):
         filters["sort_by"] = "latest"
     return filters
+
+
+def _filter_live_course_result(
+    result: dict[str, Any],
+    filters: dict[str, Any],
+    *,
+    limit: int,
+) -> dict[str, Any]:
+    items = [item for item in result.get("items", []) if isinstance(item, dict)]
+    sort_by = filters.get("sort_by")
+    checks = {key: value for key, value in filters.items() if key != "sort_by"}
+
+    def matches(item: dict[str, Any]) -> bool:
+        if "min_rating" in checks and float(item.get("rating_average") or 0) < checks["min_rating"]:
+            return False
+        if "min_reviews" in checks and int(item.get("review_count_site") or 0) < checks["min_reviews"]:
+            return False
+        if "credit" in checks and item.get("credit") != checks["credit"]:
+            return False
+        for key in ("term", "dept", "course_type"):
+            expected = checks.get(key)
+            if expected is not None and str(expected) not in str(item.get(key) or ""):
+                return False
+        for key in ("homework", "grading", "gain", "difficulty"):
+            expected = checks.get(key)
+            if expected is not None and item.get(key) != expected:
+                return False
+        return True
+
+    filtered = [item for item in items if matches(item)]
+    if sort_by == "rating_asc":
+        filtered.sort(key=lambda item: float(item.get("rating_average") or 0))
+    elif sort_by == "reviews_desc":
+        filtered.sort(key=lambda item: int(item.get("review_count_site") or 0), reverse=True)
+    elif sort_by == "latest":
+        filtered.sort(key=lambda item: str(item.get("term_text") or ""), reverse=True)
+    return {
+        "total": len(filtered) if checks else int(result.get("total") or len(filtered)),
+        "items": filtered[:limit],
+        "source": result.get("source", "live_site_course_search"),
+    }
+
+
+def _user_lookup_requested(goal: str, query: str) -> bool:
+    if any(term in goal for term in ("用户", "账号", "作者")):
+        return True
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{3,63}", query) is None:
+        return False
+    if any(term in goal for term in ("点评", "评论", "课程", "老师", "教师")):
+        return False
+    compact = "".join(goal.split()).casefold()
+    return "评课社区" in compact and query.casefold() in compact
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

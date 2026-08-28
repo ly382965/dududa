@@ -19,6 +19,7 @@ REVIEW_COUNT_RE = re.compile(r"\((\d+)\s*人评价\)")
 REVIEW_SEARCH_COUNT_RE = re.compile(r"共\s*(\d+)\s*个点评")
 USER_REVIEW_COUNT_RE = re.compile(r"写了\s*(\d+)\s*条点评")
 COURSE_NO_RE = re.compile(r"课程号：\s*([^\s]+)")
+RANKING_REVIEW_LINK_RE = re.compile(r"^/course/(\d+)/#review-(\d+)$")
 
 
 def clean_text(value: str | None) -> str | None:
@@ -258,6 +259,127 @@ def parse_user_reviews_page(
             "url": normalize_url(base_url, f"/user/{user_id}"),
         },
     }
+
+
+def find_exact_user_reference(html: str, query: str) -> dict[str, Any] | None:
+    soup = BeautifulSoup(html, "html.parser")
+    expected = "".join(query.split()).casefold()
+    for link in soup.find_all("a", href=USER_LINK_RE):
+        name = clean_text(link.get_text(" ", strip=True))
+        if not name or "".join(name.split()).casefold() != expected:
+            continue
+        match = USER_LINK_RE.match(str(link.get("href") or ""))
+        if match:
+            return {"user_id": int(match.group(1)), "author_display": name}
+    return None
+
+
+def parse_site_stats_page(html: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "html.parser")
+    labels: dict[str, str] = {}
+    for row in soup.select("table tr"):
+        cells = [clean_text(cell.get_text(" ", strip=True)) for cell in row.find_all("td")]
+        if len(cells) == 2 and cells[0] and cells[1]:
+            labels[cells[0]] = cells[1]
+    return {
+        "source": "live_site_stats",
+        "average_review_rating": parse_float(labels.get("平均评分")),
+        "coverage": {
+            "courses": parse_int(labels.get("课程数")) or 0,
+            "courses_with_detail": 0,
+            "public_reviews": parse_int(labels.get("点评数")) or 0,
+            "last_detail_crawled_at": None,
+            "last_list_crawled_at": None,
+        },
+    }
+
+
+def parse_site_rankings_page(html: str, base_url: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "html.parser")
+    result: dict[str, Any] = {"source": "live_site_rankings"}
+    title_keys = {
+        "最受欢迎的课程": "top_courses",
+        "不受欢迎的课程": "low_courses",
+        "点评最多的课程": "popular_courses",
+        "点赞最多的点评": "top_reviews",
+        "最长的点评": "longest_reviews",
+    }
+    for table in soup.find_all("table"):
+        title_node = table.find_previous("span", class_=lambda value: value and "h4" in value)
+        title = clean_text(title_node.get_text(" ", strip=True)) if title_node else None
+        key = title_keys.get(title or "")
+        if key is None:
+            continue
+        items: list[dict[str, Any]] = []
+        for row in table.find_all("tr")[1:]:
+            if key in {"top_courses", "low_courses", "popular_courses"}:
+                item = _ranking_course_row(row, base_url, key)
+            else:
+                item = _ranking_review_row(row, base_url, key)
+            if item is not None:
+                items.append(item)
+        result[key] = items
+
+    page_text = clean_text(soup.get_text(" ", strip=True)) or ""
+    formula_match = re.search(
+        r"全站点评的平均分为\s*(\d+(?:\.\d+)?).*?平均点评数为\s*(\d+(?:\.\d+)?)",
+        page_text,
+    )
+    if formula_match:
+        result["formula"] = {
+            "name": "bayesian_normalized_rating",
+            "global_average": float(formula_match.group(1)),
+            "prior_review_count": float(formula_match.group(2)),
+        }
+    return result
+
+
+def _ranking_course_row(row: Tag, base_url: str, key: str) -> dict[str, Any] | None:
+    link = row.find("a", href=COURSE_LINK_RE)
+    if not isinstance(link, Tag):
+        return None
+    match = COURSE_LINK_RE.match(str(link.get("href") or ""))
+    cells = [clean_text(cell.get_text(" ", strip=True)) for cell in row.find_all("td")]
+    if not match or len(cells) < 3:
+        return None
+    item = {
+        "id": int(match.group(1)),
+        "name": clean_text(link.get_text(" ", strip=True)) or "",
+        "url": normalize_url(base_url, str(link.get("href") or "")) or "",
+        "review_count_site": parse_int(cells[1]),
+        "rating_average": parse_float(cells[2]),
+    }
+    if key != "popular_courses" and len(cells) >= 4:
+        item["normalized_rating"] = parse_float(cells[3])
+    return item
+
+
+def _ranking_review_row(row: Tag, base_url: str, key: str) -> dict[str, Any] | None:
+    link = row.find("a", href=RANKING_REVIEW_LINK_RE)
+    if not isinstance(link, Tag):
+        return None
+    match = RANKING_REVIEW_LINK_RE.match(str(link.get("href") or ""))
+    cells = [clean_text(cell.get_text(" ", strip=True)) for cell in row.find_all("td")]
+    if not match or len(cells) < 3:
+        return None
+    author_link = row.find("a", href=USER_LINK_RE)
+    author_display = (
+        clean_text(author_link.get_text(" ", strip=True))
+        if isinstance(author_link, Tag)
+        else cells[1]
+    )
+    item = {
+        "id": int(match.group(2)),
+        "course_id": int(match.group(1)),
+        "course_name": clean_text(link.get_text(" ", strip=True)),
+        "author_display": author_display,
+        "is_anonymous": not isinstance(author_link, Tag),
+        "upvote_count": parse_int(cells[2]),
+        "url": normalize_url(base_url, str(link.get("href") or "")),
+    }
+    if key == "longest_reviews" and len(cells) >= 4:
+        item["content_length"] = parse_int(cells[3])
+    return item
 
 
 def _matched_count(soup: BeautifulSoup, pattern: re.Pattern[str]) -> int | None:
