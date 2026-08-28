@@ -100,7 +100,7 @@ def default_rollout_config() -> RolloutControlConfig:
             "maximum_text_bytes": 8_192,
             "shadow_max_in_flight": 2,
             "shadow_timeout_ms": 30_000,
-            "canary_timeout_ms": 120_000,
+            "canary_timeout_ms": 180_000,
         }
     )
 

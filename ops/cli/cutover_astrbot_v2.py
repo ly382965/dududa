@@ -237,7 +237,7 @@ def activate(
             "rollout_kill_switch": False,
             "rollout_tools_enabled": True,
             "rollout_memory_enabled": False,
-            "rollout_canary_timeout_ms": 120_000,
+            "rollout_canary_timeout_ms": 180_000,
             "default_model_id": "astrbot-luna",
         }
     )
