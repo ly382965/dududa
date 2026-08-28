@@ -168,6 +168,16 @@ def create_mcp(config: AppConfig) -> FastMCP:
             limit=limit,
             **filters,
         )
+        if text_query and not result.get("total"):
+            review_result = store.search_reviews(normalized, limit=limit)
+            if review_result.get("total"):
+                return {
+                    "schema_version": 1,
+                    "operation": "review",
+                    "query": normalized,
+                    "public_only": True,
+                    "result": _public_review_result(review_result),
+                }
         return {
             "schema_version": 1,
             "operation": "course",

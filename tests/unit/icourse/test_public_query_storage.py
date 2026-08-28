@@ -9,6 +9,34 @@ from icourse_mcp.storage import ICourseStore
 
 
 class ICoursePublicQueryStorageTests(unittest.TestCase):
+    def test_course_name_parentheses_and_teacher_lookup_by_course(self) -> None:
+        with TemporaryDirectory() as temporary:
+            store = ICourseStore(Path(temporary) / "icourse.sqlite3")
+            store.upsert_course(
+                Course(
+                    id=2,
+                    name="数学分析(B1)",
+                    url="https://icourse.club/course/2/",
+                    teachers=[Teacher(id=8, name="吴天")],
+                    reviews=[
+                        Review(
+                            id=20,
+                            course_id=2,
+                            url="https://icourse.club/course/2/#review-20",
+                            author_display="公开用户",
+                            content_text="课程公开点评",
+                        )
+                    ],
+                )
+            )
+
+            self.assertEqual(store.search_courses(query="数学分析B1")["total"], 1)
+            self.assertEqual(store.query_courses(query="数学分析B1")["total"], 1)
+            self.assertEqual(store.search_reviews("数学分析B1")["total"], 1)
+            teachers = store.search_teachers("数学分析B1")
+            self.assertEqual(teachers["total"], 1)
+            self.assertEqual(teachers["items"][0]["name"], "吴天")
+
     def test_public_queries_include_anonymous_reviews_and_site_timestamp_year(self) -> None:
         with TemporaryDirectory() as temporary:
             store = ICourseStore(Path(temporary) / "icourse.sqlite3")

@@ -9,7 +9,10 @@ from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F40
 from .commands.memory import CoreMemoryCommands
 from .composition import activate_runtime_after_host_start, initialize_plugin
 from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
-from .web_runtime import runtime_preview_response
+from .web_runtime import (
+    runtime_native_message_preview_response,
+    runtime_preview_response,
+)
 
 
 @register(
@@ -38,10 +41,20 @@ class DududaCorePlugin(
                 ["POST"],
                 "Run Dududa 2.0 with no QQ output",
             )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/native-message-preview",
+                self.runtime_native_message_preview,
+                ["POST"],
+                "Replay one NapCat message through Dududa 2.0 with no QQ output",
+            )
 
     async def runtime_preview(self):
         """Execute the installed 2.0 Runtime without QQ delivery."""
         return await runtime_preview_response(self)
+
+    async def runtime_native_message_preview(self):
+        """Replay one native NapCat message without QQ delivery."""
+        return await runtime_native_message_preview_response(self)
 
     @filter.on_astrbot_loaded()
     async def activate_runtime(self):

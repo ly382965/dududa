@@ -7,7 +7,9 @@ from typing import ClassVar
 from unittest.mock import patch
 
 from icourse_mcp.config import AppConfig
+from icourse_mcp.models import Course, Review, Teacher
 from icourse_mcp.server import create_mcp
+from icourse_mcp.storage import ICourseStore
 
 
 class _Crawler:
@@ -51,6 +53,42 @@ class _ForbiddenCrawler:
 
 
 class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
+    async def test_course_operation_returns_matching_public_review_author(self) -> None:
+        with TemporaryDirectory() as temporary:
+            database = Path(temporary) / "icourse.sqlite3"
+            ICourseStore(database).upsert_course(
+                Course(
+                    id=1,
+                    name="数学分析(B1)",
+                    url="https://icourse.club/course/1/",
+                    teachers=[Teacher(id=7, name="吴天")],
+                    reviews=[
+                        Review(
+                            id=10,
+                            course_id=1,
+                            url="https://icourse.club/course/1/#review-10",
+                            author_display="萌萌哒mmd",
+                            content_text="公开评价内容",
+                        )
+                    ],
+                )
+            )
+            config = AppConfig(db_path=database)
+            with patch("icourse_mcp.server.ICourseCrawler", _ForbiddenCrawler):
+                mcp = create_mcp(config)
+                async with mcp._mcp_server.lifespan(mcp._mcp_server):
+                    result = await mcp._tool_manager.call_tool(
+                        "icourse_public_query",
+                        {"query": "萌萌哒mmd", "operation": "course"},
+                    )
+
+            self.assertEqual(result["operation"], "review")
+            self.assertEqual(result["result"]["total"], 1)
+            self.assertEqual(
+                result["result"]["items"][0]["author_display"],
+                "萌萌哒mmd",
+            )
+
     async def test_approved_capability_tools_never_touch_network_crawler(self) -> None:
         with TemporaryDirectory() as temporary:
             _ForbiddenCrawler.instances.clear()

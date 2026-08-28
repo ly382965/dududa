@@ -1,8 +1,51 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from astrbot_plugin_dududa_core.web_runtime import preview_event
+from astrbot_plugin_dududa_core.web_runtime import (
+    native_message_preview_event,
+    preview_event,
+)
+
+
+class _NapCatClient:
+    def __init__(self, messages: list[dict[str, object]]) -> None:
+        self.messages = messages
+        self.calls: list[dict[str, object]] = []
+
+    async def call_action(self, **kwargs: object) -> dict[str, object]:
+        self.calls.append(kwargs)
+        return {"messages": self.messages}
+
+
+class _OneBotAdapter:
+    def __init__(self, client: _NapCatClient) -> None:
+        self.client = client
+        self.converted: list[object] = []
+
+    def meta(self) -> object:
+        return SimpleNamespace(name="aiocqhttp")
+
+    def get_client(self) -> _NapCatClient:
+        return self.client
+
+    async def convert_message(self, event: object) -> object:
+        self.converted.append(event)
+        return SimpleNamespace(message_str="查询评课社区用户萌萌哒mmd")
+
+    def create_event(self, message: object) -> object:
+        return SimpleNamespace(native_message=message)
+
+
+class _Plugin:
+    def __init__(self, adapter: _OneBotAdapter) -> None:
+        self.context = SimpleNamespace(
+            get_platform_inst=lambda platform_id: (
+                adapter if platform_id == "test" else None
+            )
+        )
 
 
 class AstrBotWebRuntimeContractTests(unittest.TestCase):
@@ -35,6 +78,51 @@ class AstrBotWebRuntimeContractTests(unittest.TestCase):
                             "prompt": "查询评课社区吴天",
                         }
                     )
+
+
+class AstrBotNativeMessagePreviewContractTests(unittest.IsolatedAsyncioTestCase):
+    async def test_reads_napcat_history_and_uses_the_native_adapter(self) -> None:
+        raw = {
+            "time": 1_787_916_847,
+            "message_id": 1_486_592_189,
+            "group_id": 364_894_085,
+            "user_id": 1_778_159_807,
+            "message": [
+                {"type": "at", "data": {"qq": "3296147894"}},
+                {"type": "text", "data": {"text": " 查询评课社区用户萌萌哒mmd"}},
+            ],
+            "raw_message": "[CQ:at,qq=3296147894] 查询评课社区用户萌萌哒mmd",
+            "sender": {
+                "user_id": 1_778_159_807,
+                "nickname": "测试用户",
+                "card": "",
+                "role": "owner",
+            },
+        }
+        client = _NapCatClient([raw])
+        adapter = _OneBotAdapter(client)
+
+        with patch(
+            "astrbot_plugin_dududa_core.web_runtime._onebot_event_from_payload",
+            return_value=SimpleNamespace(message=raw["message"]),
+        ):
+            event, prompt, source = await native_message_preview_event(
+                _Plugin(adapter),
+                {
+                    "accountId": "qq-3296147894",
+                    "conversationId": "qq-3296147894:group:364894085",
+                    "platformId": "test",
+                    "messageId": "1486592189",
+                },
+            )
+
+        self.assertEqual(prompt, "查询评课社区用户萌萌哒mmd")
+        self.assertTrue(hasattr(event, "native_message"))
+        self.assertEqual(source["kind"], "napcat.get_group_msg_history")
+        self.assertEqual(source["senderId"], "1778159807")
+        self.assertEqual(client.calls[0]["action"], "get_group_msg_history")
+        self.assertEqual(client.calls[0]["group_id"], 364894085)
+        self.assertEqual(len(adapter.converted), 1)
 
 
 if __name__ == "__main__":

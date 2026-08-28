@@ -11,6 +11,11 @@ from typing import Any
 from .models import Course, CourseListItem, Review, Teacher
 
 
+def _course_name_like(value: str) -> str:
+    compact = value.translate(str.maketrans("", "", "()（）"))
+    return f"%{compact}%"
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -468,10 +473,12 @@ class ICourseStore:
         if query:
             like = f"%{query}%"
             clauses.append(
-                "(name LIKE ? OR teachers_json LIKE ? OR courseries LIKE ? "
+                "(name LIKE ? OR "
+                "REPLACE(REPLACE(REPLACE(REPLACE(name, '(', ''), ')', ''), "
+                "'（', ''), '）', '') LIKE ? OR teachers_json LIKE ? OR courseries LIKE ? "
                 "OR introduction_text LIKE ? OR summary_text LIKE ?)"
             )
-            params.extend([like, like, like, like, like])
+            params.extend([like, _course_name_like(query), like, like, like, like])
         if teacher:
             clauses.append("teachers_json LIKE ?")
             params.append(f"%{teacher}%")
@@ -528,10 +535,12 @@ class ICourseStore:
         if query:
             like = f"%{query}%"
             clauses.append(
-                "(name LIKE ? OR courseries LIKE ? OR teachers_json LIKE ? "
+                "(name LIKE ? OR "
+                "REPLACE(REPLACE(REPLACE(REPLACE(name, '(', ''), ')', ''), "
+                "'（', ''), '）', '') LIKE ? OR courseries LIKE ? OR teachers_json LIKE ? "
                 "OR introduction_text LIKE ? OR summary_text LIKE ?)"
             )
-            params.extend([like, like, like, like, like])
+            params.extend([like, _course_name_like(query), like, like, like, like])
         for column, value in (
             ("teachers_json", teacher),
             ("dept", dept),
@@ -617,9 +626,10 @@ class ICourseStore:
             like = f"%{query}%"
             clauses.append(
                 "(r.content_text LIKE ? OR r.author_display LIKE ? OR c.name LIKE ? "
-                "OR c.teachers_json LIKE ?)"
+                "OR REPLACE(REPLACE(REPLACE(REPLACE(c.name, '(', ''), ')', ''), "
+                "'（', ''), '）', '') LIKE ? OR c.teachers_json LIKE ?)"
             )
-            params.extend([like, like, like, like])
+            params.extend([like, like, like, _course_name_like(query), like])
         if year is not None:
             clauses.append(
                 "(r.publish_time LIKE ? OR r.publish_time LIKE ? "
@@ -707,8 +717,13 @@ class ICourseStore:
         params: list[Any] = []
         where_sql = ""
         if query:
-            where_sql = "WHERE ct.teacher_name LIKE ?"
-            params.append(f"%{query}%")
+            like = f"%{query}%"
+            where_sql = (
+                "WHERE ct.teacher_name LIKE ? OR c.name LIKE ? OR "
+                "REPLACE(REPLACE(REPLACE(REPLACE(c.name, '(', ''), ')', ''), "
+                "'（', ''), '）', '') LIKE ?"
+            )
+            params.extend([like, like, _course_name_like(query)])
         with self.connect() as conn:
             rows = conn.execute(
                 f"""
