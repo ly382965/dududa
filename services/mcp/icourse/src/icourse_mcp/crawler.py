@@ -270,6 +270,14 @@ class ICourseCrawler:
 
     def search_site_teachers(self, query: str, limit: int = 20) -> dict[str, Any]:
         courses = self.query_site_courses(query, limit=50)
+        exact_courses = [
+            course
+            for course in courses["items"]
+            if _normalized_text(str(course.get("name") or ""))
+            == _normalized_text(query)
+        ]
+        if exact_courses:
+            courses = {**courses, "items": exact_courses, "total": len(exact_courses)}
         teachers: dict[str, dict[str, Any]] = {}
         for course in courses["items"]:
             for teacher in course.get("teachers", []):

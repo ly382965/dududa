@@ -61,7 +61,24 @@ class _ForbiddenCrawler:
 
     def search_site_teachers(self, query: str, limit: int):
         self.calls.append(("teacher", (query, limit)))
-        return {"total": 0, "items": [], "source": "live_site_course_search"}
+        return {
+            "total": 1,
+            "items": [
+                {
+                    "name": "测试教师",
+                    "course_count": 1,
+                    "review_count": 3,
+                    "courses": [
+                        {
+                            "id": 1,
+                            "name": "fixture",
+                            "review_count_site": 3,
+                        }
+                    ],
+                }
+            ],
+            "source": "live_site_course_search",
+        }
 
     def get_site_rankings(self):
         self.calls.append(("ranking", None))
@@ -84,7 +101,19 @@ class _ForbiddenCrawler:
         self.calls.append(
             ("course_detail", (course_id, include_reviews, sort_by))
         )
-        return {"id": course_id, "name": "fixture"}
+        return {
+            "id": course_id,
+            "name": "fixture",
+            "teachers": [{"id": 1, "name": "测试教师", "dept": None}],
+            "reviews": [
+                {
+                    "id": 7,
+                    "course_id": course_id,
+                    "content_text": "讲课清楚，作业适中，期末考试与课堂内容一致。",
+                    "rating_10": 9,
+                }
+            ],
+        }
 
     def get_site_reviews(
         self,
@@ -193,6 +222,32 @@ class ICourseServerLifecycleTests(unittest.IsolatedAsyncioTestCase):
                 result["result"]["items"][0]["author_display"],
                 "萌萌哒mmd",
             )
+
+    async def test_recommendation_includes_live_review_evidence(self) -> None:
+        with TemporaryDirectory() as temporary:
+            _ForbiddenCrawler.instances.clear()
+            config = AppConfig(db_path=Path(temporary) / "icourse.sqlite3")
+            with patch("icourse_mcp.server.ICourseCrawler", _ForbiddenCrawler):
+                mcp = create_mcp(config)
+                async with mcp._mcp_server.lifespan(mcp._mcp_server):
+                    result = await mcp._tool_manager.call_tool(
+                        "icourse_public_query",
+                        {
+                            "query": "fixture",
+                            "operation": "teacher",
+                            "goal": "推荐 fixture 老师",
+                        },
+                    )
+
+        self.assertEqual(result["result"]["review_sampled_course_count"], 1)
+        self.assertEqual(
+            result["result"]["review_evidence"][0]["course_teachers"][0]["name"],
+            "测试教师",
+        )
+        self.assertEqual(
+            result["result"]["review_evidence"][0]["samples"][0]["content_text"],
+            "讲课清楚，作业适中，期末考试与课堂内容一致。",
+        )
 
     async def test_all_approved_read_capabilities_bypass_local_cache(self) -> None:
         with TemporaryDirectory() as temporary:

@@ -255,6 +255,29 @@ def _public_query_review_schema() -> dict[str, object]:
     }
 
 
+def _public_query_review_evidence_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "course_id": {"type": "integer", "minimum": 1},
+            "course_name": _nullable_string(300),
+            "course_teachers": {
+                "type": "array",
+                "maxItems": 32,
+                "items": _teacher_schema(),
+            },
+            "course_rating_average": _nullable_number(),
+            "samples": {
+                "type": "array",
+                "maxItems": 2,
+                "items": _public_query_review_schema(),
+            },
+        },
+        "required": ["samples"],
+        "additionalProperties": False,
+    }
+
+
 def _public_query_item_schema() -> dict[str, object]:
     teacher_course = {
         "type": "object",
@@ -339,6 +362,16 @@ def _public_query_result_schema() -> dict[str, object]:
                 "type": "array",
                 "maxItems": 30,
                 "items": _public_query_item_schema(),
+            },
+            "review_evidence": {
+                "type": "array",
+                "maxItems": 7,
+                "items": _public_query_review_evidence_schema(),
+            },
+            "review_sampled_course_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 7,
             },
             "aggregates": {
                 "type": "object",

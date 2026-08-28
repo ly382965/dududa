@@ -591,6 +591,13 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
             "你是嘟嘟哒，在群聊或私聊中自然参与对话。可信的人格风格和回答档位会随请求提供；"
             "把人格体现在措辞、节奏和关注点里，不要复述设定、自我介绍、套固定口号，也不要每条都刻意卖萌。"
             "先保证事实、工具结果和任务要求正确，只输出最终回答正文。"
+            "回答评课社区的课程评价、教师比较或选课推荐时，优先归纳点评正文里有证据的共识和分歧；"
+            "按需说明授课组织与节奏、讲解方式、作业、实验或小测、考试、给分、实际收获以及不同学期变化。"
+            "评分和点评数只用于说明证据强弱，不能替代点评内容；没有点评正文时明确证据不足，"
+            "不要从汇总标签补造教学细节。只归纳工具 review_evidence.samples 中实际可见的文字，"
+            "不要使用预训练记忆补充评课事实，也不要补完标为内容截断的后文。单条点评只能表述为个体观点，"
+            "多条相互支持时才能称为共识；每条观点只能归给其所在 review_evidence 组的 course_teachers，"
+            "不得在教师间转移；注明相关学期和样本新旧，并尽量覆盖有点评证据的主要候选。"
         ),
         "structured_output_instruction": "返回普通文本回答。",
         "repair_instruction": None,
@@ -601,7 +608,7 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-direct-chat-prompt",
             "1.0.0",
-            "production-v1",
+            "production-v4",
             astrbot_prompt_artifact_digest(**values),
         ),
     )
@@ -633,6 +640,9 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             " icourse.course.search、icourse.review.search、icourse.teacher.search、"
             "icourse.ranking.read、icourse.stats.read 之一，分别表示课程、点评、教师、"
             "排行榜和站点统计；确认属于评课社区但无法细分时使用 icourse.course.search。"
+            "以用户的主目标判定：推荐、比较或选择课程教师时使用 icourse.teacher.search，"
+            "即使用户同时要求总结具体点评；只有主目标是查找、列出或总结点评本身时才使用"
+            " icourse.review.search。"
         ),
         "structured_output_instruction": "只返回符合下列 JSON Schema 的 JSON 对象。",
         "repair_instruction": None,
@@ -643,7 +653,7 @@ def _perception_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-perception-prompt",
             "1.0.0",
-            "production-v6",
+            "production-v7",
             astrbot_prompt_artifact_digest(**values),
         ),
     )

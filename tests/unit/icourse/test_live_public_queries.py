@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from icourse_mcp.config import AppConfig
 from icourse_mcp.crawler import ICourseCrawler
@@ -69,6 +70,37 @@ class ICourseLivePublicQueryTests(unittest.TestCase):
         self.assertEqual(courses["items"][1]["review_count_site"], 29)
         self.assertEqual([item["name"] for item in teachers["items"]], ["丁虎", "彭攀", "宋骐"])
         self.assertEqual(fetcher.calls, [("大数据算法", 1, 50), ("大数据算法", 1, 50)])
+
+    def test_teacher_query_prefers_an_exact_course_name(self) -> None:
+        with TemporaryDirectory() as temporary:
+            crawler = ICourseCrawler(
+                AppConfig(db_path=Path(temporary) / "icourse.sqlite3", request_delay=0)
+            )
+            result = {
+                "total": 2,
+                "items": [
+                    {
+                        "id": 1,
+                        "name": "算法基础",
+                        "teachers": [{"id": 1, "name": "甲", "dept": None}],
+                        "review_count_site": 10,
+                    },
+                    {
+                        "id": 2,
+                        "name": "统计算法基础",
+                        "teachers": [{"id": 2, "name": "乙", "dept": None}],
+                        "review_count_site": 20,
+                    },
+                ],
+                "source": "live_site_course_search",
+            }
+            try:
+                with patch.object(crawler, "query_site_courses", return_value=result):
+                    teachers = crawler.search_site_teachers("算法基础", limit=10)
+            finally:
+                crawler.close()
+
+        self.assertEqual([item["name"] for item in teachers["items"]], ["甲"])
 
     def test_stats_and_rankings_are_projected_from_live_html(self) -> None:
         stats = parse_site_stats_page(STATS_PAGE)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import re
 import sys
 from contextlib import asynccontextmanager
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,13 @@ from mcp.server.fastmcp import FastMCP
 from .config import AppConfig
 from .crawler import ICourseCrawler
 from .storage import ICourseStore
+
+logger = logging.getLogger(__name__)
+
+_REVIEW_EVIDENCE_COURSE_LIMIT = 7
+_REVIEW_SAMPLES_PER_COURSE = 2
+_REVIEW_EVIDENCE_SAMPLE_LIMIT = 10
+_REVIEW_SAMPLE_CHARACTERS = 200
 
 
 def create_mcp(config: AppConfig) -> FastMCP:
@@ -162,14 +171,21 @@ def create_mcp(config: AppConfig) -> FastMCP:
                 "result": _public_review_result(live_result),
             }
         if operation == "teacher":
+            teacher_result = current_crawler().search_site_teachers(
+                normalized,
+                limit=limit,
+            )
+            if _review_evidence_requested(natural_goal):
+                teacher_result = _enrich_teacher_result_with_reviews(
+                    current_crawler(),
+                    teacher_result,
+                )
             return {
                 "schema_version": 1,
                 "operation": operation,
                 "query": normalized,
                 "public_only": True,
-                "result": _public_teacher_result(
-                    current_crawler().search_site_teachers(normalized, limit=limit)
-                ),
+                "result": _public_teacher_result(teacher_result),
             }
         if operation == "ranking":
             return {
@@ -214,6 +230,11 @@ def create_mcp(config: AppConfig) -> FastMCP:
                     "public_only": True,
                     "result": _public_review_result(live_result),
                 }
+        if _review_evidence_requested(natural_goal):
+            result = _enrich_course_result_with_reviews(
+                current_crawler(),
+                result,
+            )
         return {
             "schema_version": 1,
             "operation": "course",
@@ -406,6 +427,7 @@ def _public_course_result(result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ],
     }
+    _project_review_evidence(result, projected)
     if isinstance(result.get("source"), str):
         projected["source"] = result["source"]
     return projected
@@ -437,9 +459,264 @@ def _public_teacher_result(result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ],
     }
+    _project_review_evidence(result, projected)
     if isinstance(result.get("source"), str):
         projected["source"] = result["source"]
     return projected
+
+
+def _project_review_evidence(
+    source: dict[str, Any],
+    projected: dict[str, Any],
+) -> None:
+    groups = source.get("review_evidence")
+    if not isinstance(groups, list):
+        return
+    projected["review_evidence"] = [
+        _public_review_evidence_group(item)
+        for item in groups[:_REVIEW_EVIDENCE_COURSE_LIMIT]
+        if isinstance(item, dict)
+    ]
+    count = source.get("review_sampled_course_count")
+    if isinstance(count, int) and not isinstance(count, bool):
+        projected["review_sampled_course_count"] = count
+
+
+def _public_review_evidence_group(item: dict[str, Any]) -> dict[str, Any]:
+    projected = _select(
+        item,
+        "course_id",
+        "course_name",
+        "course_rating_average",
+    )
+    teachers = item.get("course_teachers")
+    if isinstance(teachers, list):
+        projected["course_teachers"] = [
+            _public_teacher_ref(value)
+            for value in teachers
+            if isinstance(value, dict)
+        ]
+    samples = item.get("samples")
+    projected["samples"] = [
+        _public_review_item(value, excerpt_characters=_REVIEW_SAMPLE_CHARACTERS)
+        for value in samples or []
+        if isinstance(value, dict)
+    ]
+    return projected
+
+
+def _review_evidence_requested(goal: str) -> bool:
+    compact = "".join(goal.split())
+    return any(
+        term in compact
+        for term in (
+            "推荐",
+            "评价",
+            "评课情况",
+            "怎么样",
+            "怎么选",
+            "如何选",
+            "选谁",
+            "哪个老师",
+            "哪位老师",
+            "比较",
+            "对比",
+            "优缺点",
+            "口碑",
+            "适合",
+        )
+    )
+
+
+def _enrich_course_result_with_reviews(
+    crawler: ICourseCrawler,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    enriched = deepcopy(result)
+    courses = [
+        item for item in enriched.get("items", []) if isinstance(item, dict)
+    ]
+    return _attach_review_evidence(crawler, enriched, courses)
+
+
+def _enrich_teacher_result_with_reviews(
+    crawler: ICourseCrawler,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    enriched = deepcopy(result)
+    courses = [
+        course
+        for teacher in enriched.get("items", [])
+        if isinstance(teacher, dict)
+        for course in teacher.get("courses", [])
+        if isinstance(course, dict)
+    ]
+    return _attach_review_evidence(crawler, enriched, courses)
+
+
+def _attach_review_evidence(
+    crawler: ICourseCrawler,
+    result: dict[str, Any],
+    courses: list[dict[str, Any]],
+) -> dict[str, Any]:
+    evidence_groups: list[dict[str, Any]] = []
+    for course in _rank_review_evidence_courses(courses):
+        try:
+            detail = crawler.get_site_course(
+                int(course["id"]),
+                include_reviews=True,
+                sort_by="upvote",
+            )
+        except Exception as exc:  # noqa: BLE001 - preserve partial search evidence.
+            logger.warning(
+                "Unable to read iCourse detail for review evidence: course_id=%s error=%s",
+                course.get("id"),
+                type(exc).__name__,
+            )
+            continue
+        samples = _representative_review_samples(detail.get("reviews", []))
+        if samples:
+            evidence_groups.append(
+                {
+                    "course_id": detail.get("id", course.get("id")),
+                    "course_name": detail.get("name", course.get("name")),
+                    "course_teachers": detail.get(
+                        "teachers",
+                        course.get("teachers", []),
+                    ),
+                    "course_rating_average": detail.get(
+                        "rating_average",
+                        course.get("rating_average"),
+                    ),
+                    "samples": samples,
+                }
+            )
+
+    selected_by_group: list[list[dict[str, Any]]] = [
+        [] for _ in evidence_groups
+    ]
+    selected_count = 0
+    for sample_index in range(_REVIEW_SAMPLES_PER_COURSE):
+        for group_index, group in enumerate(evidence_groups):
+            samples = group["samples"]
+            if sample_index < len(samples):
+                selected_by_group[group_index].append(samples[sample_index])
+                selected_count += 1
+            if selected_count >= _REVIEW_EVIDENCE_SAMPLE_LIMIT:
+                break
+        if selected_count >= _REVIEW_EVIDENCE_SAMPLE_LIMIT:
+            break
+    result["review_evidence"] = [
+        {**group, "samples": selected_by_group[index]}
+        for index, group in enumerate(evidence_groups)
+        if selected_by_group[index]
+    ]
+    result["review_sampled_course_count"] = len(evidence_groups)
+    return result
+
+
+def _rank_review_evidence_courses(
+    courses: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    unique: dict[int, tuple[int, dict[str, Any]]] = {}
+    for index, course in enumerate(courses):
+        course_id = course.get("id")
+        if not isinstance(course_id, int) or isinstance(course_id, bool):
+            continue
+        review_count = course.get("review_count_site")
+        if not isinstance(review_count, int) or review_count < 1:
+            continue
+        previous = unique.get(course_id)
+        if previous is None or review_count > int(
+            previous[1].get("review_count_site") or 0
+        ):
+            unique[course_id] = (index, course)
+    ranked = sorted(
+        unique.values(),
+        key=lambda value: (
+            -int(value[1].get("review_count_site") or 0),
+            value[0],
+        ),
+    )
+    return [course for _, course in ranked[:_REVIEW_EVIDENCE_COURSE_LIMIT]]
+
+
+def _representative_review_samples(
+    reviews: object,
+) -> list[dict[str, Any]]:
+    if not isinstance(reviews, list):
+        return []
+    candidates = [
+        item
+        for item in reviews
+        if isinstance(item, dict)
+        and isinstance(item.get("content_text"), str)
+        and item["content_text"].strip()
+    ]
+    if not candidates:
+        return []
+
+    selected = [
+        max(
+            candidates,
+            key=lambda item: (
+                _review_content_evidence_score(item),
+                int(item.get("upvote_count") or 0),
+                len(str(item.get("content_text") or "")),
+            ),
+        )
+    ]
+    remaining = [item for item in candidates if item is not selected[0]]
+    rated = [
+        item
+        for item in remaining
+        if isinstance(item.get("rating_10"), int)
+        and not isinstance(item.get("rating_10"), bool)
+    ]
+    if rated:
+        selected.append(
+            min(
+                rated,
+                key=lambda item: (
+                    int(item["rating_10"]),
+                    -_review_content_evidence_score(item),
+                    -int(item.get("upvote_count") or 0),
+                ),
+            )
+        )
+    elif remaining:
+        selected.append(
+            max(
+                remaining,
+                key=lambda item: (
+                    str(item.get("publish_time") or ""),
+                    _review_content_evidence_score(item),
+                ),
+            )
+        )
+    return selected[:_REVIEW_SAMPLES_PER_COURSE]
+
+
+def _review_content_evidence_score(review: dict[str, Any]) -> int:
+    text = str(review.get("content_text") or "")[:_REVIEW_SAMPLE_CHARACTERS]
+    return sum(
+        term in text
+        for term in (
+            "上课",
+            "讲课",
+            "板书",
+            "PPT",
+            "作业",
+            "实验",
+            "小测",
+            "期中",
+            "期末",
+            "考试",
+            "给分",
+            "收获",
+            "难度",
+        )
+    )
 
 
 def _public_ranking_result(
@@ -569,6 +846,11 @@ def _course_filters(goal: str) -> dict[str, Any]:
         filters["sort_by"] = "reviews_desc"
     elif any(term in goal for term in ("最近", "最新")):
         filters["sort_by"] = "latest"
+    elif any(
+        term in goal
+        for term in ("推荐", "怎么选", "如何选", "选谁", "哪个老师", "哪位老师")
+    ):
+        filters["sort_by"] = "reviews_desc"
     return filters
 
 
