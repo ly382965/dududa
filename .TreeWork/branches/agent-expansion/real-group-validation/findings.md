@@ -4,6 +4,13 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- Provider health freshness and Endpoint load freshness are independent Router
+  inputs. Re-publishing fresh health with the original load timestamp makes a
+  long-lived Runtime fail after `runtime_model_load_max_age_seconds`, even when
+  every health probe succeeds. The existing production load value is the local
+  assumption of zero external-to-admission-controller traffic, so each bounded
+  health cycle now republishes that assumption with the same observation time;
+  local RPM/TPM and concurrency remain owned by the Admission Controller.
 - 运行切换后的 Agent 所有权只有一份：`dududa-astrbot-1` 中的 Dududa 2.0 Core。Canary 是
   2.0 内部的持久 claim/Delivery 模式，不是与 1.0 并行；不受支持的私聊、附件和未 @ 群消息
   静默结束，不能再回退旧 Agent。

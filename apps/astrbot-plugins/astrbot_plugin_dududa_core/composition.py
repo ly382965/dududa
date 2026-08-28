@@ -364,8 +364,14 @@ class ProductionRuntimeAssembly:
             raise ValueError("model health clock returned a naive datetime")
         now = now.astimezone(timezone.utc)
         identity = uuid4().hex
-        return await self.publish_model_health(
+        refreshed_load = tuple(
+            replace(item, checked_at=now) for item in self._model_endpoint_load
+        )
+        if self.model_health_publisher is None:
+            raise RuntimeError("model health publisher is unavailable")
+        return await self.model_health_publisher.publish(
             evidence,
+            refreshed_load,
             call=ServiceCallContext(
                 operation_id=f"astrbot-model-health:{identity}",
                 principal=ServicePrincipal(

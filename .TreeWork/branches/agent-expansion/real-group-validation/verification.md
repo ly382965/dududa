@@ -4,6 +4,14 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-28 长生命周期 Runtime 故障复现与修复：群 `364894085` 的真实 `@Bot`
+  事件正常进入 AstrBot，但 30 分钟后的 Endpoint load 快照被 Router 判为陈旧，
+  no-send 同形请求稳定返回 `model_route_not_found`、空正文。假时钟跨越 31 分钟的
+  聚焦测试通过；Core 单插件热重载后，原 iCourse 请求恢复为
+  `bounded_tool_execution + delivery_ready`、Terra `low`、LONG、`toolCalls=1`
+  和非空正文。该复测没有调用 QQ Output。
+- 热重载 API 返回 HTTP 200；`dududa-astrbot-1` 的容器 ID、StartedAt 和
+  `RestartCount=0` 前后不变，NapCat 未重启。
 - 2026-08-28 Web -> 2.0 Runtime no-send 实测：`POST /agent/respond` 返回 HTTP 200、
   `runtimePath=dududa_2_preview`、`toolCalls=1`、`outputCalls=0`、
   `memoryWrites=0`；iCourse 查询经 Terra `low` 生成非空 LONG 回答，Runtime 原因

@@ -11,6 +11,11 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- 2026-08-28 修复长生命周期模型路由失效：周期健康探测原先只刷新 Provider
+  health，仍复用 AstrBot 启动时创建的 Endpoint load 时间戳；运行超过 1,800 秒后
+  三档模型会一起被判为 `endpoint_load_stale`，最终表现为
+  `model_route_not_found` 和空回答。健康刷新现同步续期这份本地零外部负载观测；
+  目标 iCourse no-send 复测恢复为 Terra `low`、`toolCalls=1` 和非空 LONG 正文。
 - 2026-08-26 已完成 1.0 -> 2.0 运行切换。旧 Dududa 1.0 AstrBot 已退出运行面，
   `dududa-astrbot-1` 是唯一 Agent Runtime 宿主；旧 Compose 只保留当前复用且未重启的 NapCat。
   当前运行插件为 Dududa Core、Sub2API v0.6.4、Reread v2.0.0 加 AstrBot 内建插件。Sub2API

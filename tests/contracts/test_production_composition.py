@@ -798,6 +798,40 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(provider.calls[0]["request_max_retries"], 0)
         await plugin.terminate()
 
+    async def test_health_refresh_keeps_long_lived_runtime_load_eligible(
+        self,
+    ) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        observed_at = datetime.now(timezone.utc)
+        clock = _MutableClock(observed_at)
+        values = self._runtime_config(rollout_mode="shadow")
+        assembly = composition.build_production_runtime(
+            plugin,
+            values,
+            clock=clock,
+        )
+        clock.now = observed_at + timedelta(minutes=31)
+
+        snapshot = await assembly.refresh_model_health(
+            timeout_seconds=1,
+            evidence_ttl=timedelta(minutes=30),
+        )
+
+        self.assertEqual(snapshot.endpoint_load[0].checked_at, clock.now)
+        self._initialize(
+            plugin,
+            values,
+            "production-health-long-lived",
+            runtime_assembly=assembly,
+        )
+        result = await plugin.rollout_bridge.handle(_Event(message_id="long-lived"))
+        await plugin.rollout_bridge._shadow.drain()
+
+        self.assertIs(result.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
+        self.assertGreater(len(provider.calls), 1)
+        await plugin.terminate()
+
     async def test_health_probe_without_running_loop_stays_unknown(self) -> None:
         provider = _AstrBotProvider()
         plugin = self._production_plugin(provider)
