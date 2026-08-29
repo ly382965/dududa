@@ -4,6 +4,17 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-29 培养方案事实回归：USTC campus package 14/14、Planner 4/4、Ruff、
+  output Schema 和 whitespace 检查通过。真实公开快照直调对完整单方案问题返回
+  `2025级 计算机科学与技术 / 167 学分`；对
+  `query=25, goal=对比25级计算机和人工智能` 返回两份 2025 级普通主修，而不是
+  `02502` 网络与新媒体。MCP Console 同一路径成功，generation=2。
+- Core 经单插件热重载生效，AstrBot 与 NapCat `RestartCount` 保持 0。原 NapCat
+  消息 `712374591` 通过 `get_group_msg_history -> aiocqhttp convert_message ->
+  Dududa 2.0` no-send 重放，结果为 Terra/low、LONG、一次
+  `ustc.curriculum.public-query.v1`、`outputCalls=0`、`memoryWrites=0`；回答正确引用
+  2025 级两专业均为 167 学分及专业课程差集。第一条单方案原问题的 Web -> 2.0
+  预览同样只调用一次培养方案 Capability，并明确快照无法证明必修/选修分项学分。
 - 2026-08-29 目标群 `364894085` no-send 耦合抽样：iCourse、二课、培养方案、
   Academic 和校车均为 `on`；五类自然语言输入各自只选择对应插件并执行一次只读
   Tool，普通聊天为零 Tool。六条 Web -> 已安装 2.0 Runtime 预览均返回

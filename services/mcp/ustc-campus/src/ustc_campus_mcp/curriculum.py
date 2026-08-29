@@ -45,6 +45,7 @@ _GENERIC_QUERY_TERMS = (
     "怎么样",
     "级",
 )
+_YOUNG_PROGRAM_MARKERS = ("少年班", "少院")
 
 
 class CurriculumClient:
@@ -160,16 +161,36 @@ class CurriculumClient:
     async def _program(self, query, goal, limit, manifest):
         del manifest
         rows = await self._csv("programs.csv")
-        grade = _years(goal)
+        term = f"{query} {goal}".strip()
+        grade = _years(term)
+        include_young = _mentions_young_program(term)
         candidates = [
             row
             for row in rows
             if (not grade or str(row.get("grade")) == grade[-1])
-            and _matches_row(row, query or goal, ("majorName", "majorCode", "departmentName", "departmentCode", "planName", "sourceProgramId"))
+            and (include_young or not _is_young_program(row))
+            and (
+                _matches_row(
+                    row,
+                    term,
+                    (
+                        "majorName",
+                        "majorCode",
+                        "departmentName",
+                        "departmentCode",
+                        "planName",
+                        "sourceProgramId",
+                    ),
+                )
+                or any(
+                    alias in _normalize(term) for alias in _major_aliases(row)
+                )
+            )
         ]
         candidates.sort(
             key=lambda row: (
-                _program_score(row, query or goal),
+                include_young and _is_young_program(row),
+                _program_score(row, term),
                 str(row.get("departmentCode") or "") != "000",
                 str(row.get("grade") or ""),
             ),
@@ -177,8 +198,16 @@ class CurriculumClient:
         )
         selected = candidates[:limit]
         detail_requested = any(
-            marker in goal
-            for marker in (*_DIMENSIONS, "要学", "学什么", "必修", "选修", "课程有哪些", "课程要求")
+            marker in term
+            for marker in (
+                *_DIMENSIONS,
+                "要学",
+                "学什么",
+                "必修",
+                "选修",
+                "课程有哪些",
+                "课程要求",
+            )
         )
         research = await self._json("research.json") if detail_requested else {}
         comparison = research.get("programComparisons") if isinstance(research, dict) else None
@@ -193,43 +222,27 @@ class CurriculumClient:
                 requested_dimensions = tuple(
                     dimension
                     for marker, dimension in _DIMENSIONS.items()
-                    if marker in goal
+                    if marker in term
                 )
                 if not requested_dimensions:
                     requested_dimensions = tuple(_DIMENSION_NAMES)
-                include_electives = "选修" in goal
+                include_electives = "选修" in term
                 if isinstance(dimension_groups, dict):
-                    for dimension in requested_dimensions:
-                        groups = dimension_groups.get(dimension)
-                        if not isinstance(groups, dict):
-                            continue
-                        states = (
-                            ("requiredOnly", "required"),
-                            ("mixed", "mixed"),
-                            *(((("electiveOnly", "elective"),)) if include_electives else ()),
-                        )
-                        for key, state in states:
-                            codes = groups.get(key)
-                            if not isinstance(codes, list):
-                                continue
-                            for code in codes:
-                                course_codes.append(
-                                    _course_entry(
-                                        str(code),
-                                        names,
-                                        dimension=dimension,
-                                        state=state,
-                                    )
-                                )
-                                if len(course_codes) >= 30:
-                                    break
-                            if len(course_codes) >= 30:
-                                break
-                        if len(course_codes) >= 30:
-                            break
+                    course_codes = _balanced_program_courses(
+                        dimension_groups,
+                        requested_dimensions,
+                        include_electives=include_electives,
+                        names=names,
+                        maximum=30,
+                    )
             summary = (
-                f"{row.get('programType')}，要求 {row.get('requiredCredits') or '未知'} 学分，"
-                f"观测到 {row.get('courseCodeCount') or 0} 个课程号。"
+                f"{row.get('programType')}，总学分要求 {row.get('requiredCredits') or '未知'} 学分；"
+                f"课程号池观测到 {row.get('courseCodeCount') or 0} 个课程号，"
+                f"其中必修专属 {row.get('requiredOnlyCount') or 0} 个、"
+                f"选修专属 {row.get('electiveOnlyCount') or 0} 个、"
+                f"混合 {row.get('mixedCount') or 0} 个。"
+                "这些都是候选课程号池的分类计数，不是必修/选修学分或实际修读门数；"
+                "当前研究快照未发布必修与选修的分项学分要求。"
             )
             if course_codes:
                 summary += f" 本次按问题所需维度返回 {len(course_codes)} 个课程号。"
@@ -249,9 +262,22 @@ class CurriculumClient:
                     required_credits=_number(row.get("requiredCredits")),
                     course_codes=course_codes,
                     counts=(
-                        {"name": "course_code_count", "value": _number(row.get("courseCodeCount"))},
-                        {"name": "required_only_count", "value": _number(row.get("requiredOnlyCount"))},
-                        {"name": "elective_only_count", "value": _number(row.get("electiveOnlyCount"))},
+                        {
+                            "name": "course_code_pool_count",
+                            "value": _number(row.get("courseCodeCount")),
+                        },
+                        {
+                            "name": "required_only_course_code_pool_count",
+                            "value": _number(row.get("requiredOnlyCount")),
+                        },
+                        {
+                            "name": "elective_only_course_code_pool_count",
+                            "value": _number(row.get("electiveOnlyCount")),
+                        },
+                        {
+                            "name": "mixed_course_code_pool_count",
+                            "value": _number(row.get("mixedCount")),
+                        },
                     ),
                     evidence_refs=(f"program:{row.get('sourceProgramId')}",),
                 )
@@ -379,7 +405,25 @@ class CurriculumClient:
         comparison = comparison if isinstance(comparison, dict) else {}
         plans = comparison.get("plans") if isinstance(comparison.get("plans"), dict) else {}
         matches = comparison.get("matches") if isinstance(comparison.get("matches"), list) else []
-        years = _years(goal)
+        term = f"{query} {goal}".strip()
+        years = _years(term)
+        requested_groups = _comparison_groups(term)
+        names = _course_names(research)
+        if not requested_groups:
+            pair = _ordinary_comparison_pair(plans, term, years)
+            if pair is not None:
+                program_rows = {
+                    str(row.get("sourceProgramId") or ""): row
+                    for row in await self._csv("programs.csv")
+                }
+                left = _merge_program_credits(pair[0], program_rows)
+                right = _merge_program_credits(pair[1], program_rows)
+                return (
+                    [_ordinary_comparison_item(left, right, names)],
+                    1,
+                    False,
+                    "research.json",
+                )
         ordinary = [
             plan
             for plan in plans.values()
@@ -399,8 +443,6 @@ class CurriculumClient:
         )
         groups = match.get("groups") if isinstance(match, dict) and isinstance(match.get("groups"), dict) else {}
         group_names = {"young": "少年班", "minor": "辅修/双学位", "strongFoundation": "强基", "talent": "英才班"}
-        requested_groups = _comparison_groups(f"{query} {goal}")
-        names = _course_names(research)
         items = []
         baseline_codes = _plan_code_set(baseline)
         total = sum(
@@ -631,6 +673,7 @@ def _query_fragments(value: str) -> tuple[str, ...]:
         fragment
         for fragment in re.findall(r"[\u4e00-\u9fffA-Za-z0-9*:+.-]+", cleaned)
         if len(_normalize(fragment)) >= 2
+        and not (fragment.isdigit() and len(fragment) == 2)
     )
 
 
@@ -639,6 +682,8 @@ def _matches_row(row: dict[str, Any], query: str, fields: tuple[str, ...]) -> bo
     if not normalized:
         return True
     values = tuple(str(row.get(field) or "") for field in fields)
+    if re.fullmatch(r"\d{2}", normalized):
+        return any(normalized == _normalize(value) for value in values)
     haystack = _normalize(" ".join(values))
     if normalized in haystack:
         return True
@@ -662,7 +707,16 @@ def _course_score(row: dict[str, Any], query: str) -> int:
 
 
 def _years(value: str) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(re.findall(r"20(?:1[5-9]|2[0-6])", value)))
+    values = (
+        match.group(1)
+        for match in re.finditer(
+            r"(?<![A-Za-z0-9])(20(?:1[5-9]|2[0-6])|(?:1[5-9]|2[0-6])(?=\s*级))(?![A-Za-z0-9])",
+            value,
+        )
+    )
+    return tuple(
+        dict.fromkeys(value if len(value) == 4 else f"20{value}" for value in values)
+    )
 
 
 def _transition_years_match(row: dict[str, Any], years: tuple[str, ...]) -> bool:
@@ -687,6 +741,66 @@ def _course_names(research: object) -> dict[str, str]:
     comparison = research.get("programComparisons")
     names = comparison.get("courseNames") if isinstance(comparison, dict) else None
     return {str(key): str(value) for key, value in names.items()} if isinstance(names, dict) else {}
+
+
+def _mentions_young_program(value: str) -> bool:
+    return any(marker in value for marker in _YOUNG_PROGRAM_MARKERS)
+
+
+def _is_young_program(row: dict[str, Any]) -> bool:
+    return _mentions_young_program(
+        " ".join(
+            str(row.get(field) or "")
+            for field in ("planName", "majorName", "departmentName", "programType")
+        )
+    )
+
+
+def _balanced_program_courses(
+    dimension_groups: dict[str, Any],
+    requested_dimensions: tuple[str, ...],
+    *,
+    include_electives: bool,
+    names: dict[str, str],
+    maximum: int,
+) -> list[dict[str, Any]]:
+    states = [
+        ("requiredOnly", "required"),
+        ("mixed", "mixed"),
+    ]
+    if include_electives:
+        states.append(("electiveOnly", "elective"))
+    buckets: list[tuple[str, str, list[Any], int]] = []
+    for dimension in requested_dimensions:
+        groups = dimension_groups.get(dimension)
+        if not isinstance(groups, dict):
+            continue
+        for key, state in states:
+            codes = groups.get(key)
+            if isinstance(codes, list) and codes:
+                buckets.append((dimension, state, codes, 0))
+
+    entries: list[dict[str, Any]] = []
+    while len(entries) < maximum:
+        progressed = False
+        next_buckets: list[tuple[str, str, list[Any], int]] = []
+        for dimension, state, codes, index in buckets:
+            if index < len(codes) and len(entries) < maximum:
+                entries.append(
+                    _course_entry(
+                        str(codes[index]),
+                        names,
+                        dimension=dimension,
+                        state=state,
+                    )
+                )
+                index += 1
+                progressed = True
+            next_buckets.append((dimension, state, codes, index))
+        buckets = next_buckets
+        if not progressed:
+            break
+    return entries
 
 
 def _transition_courses(row: dict[str, Any], names: dict[str, str], *, maximum: int) -> list[dict[str, Any]]:
@@ -786,6 +900,229 @@ def _plan_code_set(plan: dict[str, Any]) -> set[str]:
         for values in groups.values()
         if isinstance(values, list)
         for code in values
+    }
+
+
+def _ordinary_comparison_pair(
+    plans: dict[str, Any],
+    term: str,
+    years: tuple[str, ...],
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    candidates: list[tuple[int, int, dict[str, Any]]] = []
+    normalized = _normalize(term)
+    for plan in plans.values():
+        if (
+            not isinstance(plan, dict)
+            or str(plan.get("programType") or "") != "主修"
+            or str(plan.get("departmentCode") or "") == "000"
+            or _is_young_program(plan)
+            or (years and str(plan.get("grade") or "") != years[-1])
+        ):
+            continue
+        aliases = _major_aliases(plan)
+        positions = [normalized.find(alias) for alias in aliases if alias in normalized]
+        if not positions:
+            continue
+        candidates.append((min(positions), max(len(alias) for alias in aliases if alias in normalized), plan))
+
+    by_grade: dict[str, list[tuple[int, int, dict[str, Any]]]] = {}
+    for candidate in candidates:
+        by_grade.setdefault(str(candidate[2].get("grade") or ""), []).append(candidate)
+    viable = {
+        grade: values
+        for grade, values in by_grade.items()
+        if len({_major_identity(value[2]) for value in values}) >= 2
+    }
+    if not viable:
+        return None
+    grade = years[-1] if years and years[-1] in viable else max(viable)
+    ordered = sorted(viable[grade], key=lambda value: (value[0], -value[1]))
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for _, _, plan in ordered:
+        identity = _major_identity(plan)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        selected.append(plan)
+        if len(selected) == 2:
+            return selected[0], selected[1]
+    return None
+
+
+def _major_aliases(plan: dict[str, Any]) -> tuple[str, ...]:
+    name = _normalize(plan.get("majorName"))
+    aliases = {name} if name else set()
+    for suffix in ("科学与技术", "工程与技术", "工程", "技术", "科学", "专业"):
+        if name.endswith(suffix):
+            shortened = name[: -len(suffix)]
+            if len(shortened) >= 2:
+                aliases.add(shortened)
+    code = _normalize(plan.get("majorCode"))
+    if code:
+        aliases.add(code)
+    return tuple(aliases)
+
+
+def _major_identity(plan: dict[str, Any]) -> str:
+    return str(
+        plan.get("majorTrackKey")
+        or plan.get("majorCode")
+        or plan.get("majorName")
+        or plan.get("sourceProgramId")
+        or ""
+    )
+
+
+def _ordinary_comparison_item(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    names: dict[str, str],
+) -> dict[str, Any]:
+    left_pools = _plan_code_pools(left)
+    right_pools = _plan_code_pools(right)
+    left_major = _major_course_codes(left)
+    right_major = _major_course_codes(right)
+    left_only = left_major - right_major
+    right_only = right_major - left_major
+    entries = _balanced_comparison_courses(
+        left_pools,
+        right_pools,
+        left_only,
+        right_only,
+        names,
+        maximum=60,
+    )
+
+    left_name = str(left.get("majorName") or left.get("planName") or "左侧专业")
+    right_name = str(right.get("majorName") or right.get("planName") or "右侧专业")
+    left_credits = left.get("requiredCredits") or "未知"
+    right_credits = right.get("requiredCredits") or "未知"
+    return _item(
+        kind="comparison",
+        title=f"{left.get('grade')}级普通主修：{left_name} vs {right_name}",
+        summary=(
+            f"左侧 {left_name} 总学分 {left_credits}，右侧 {right_name} 总学分 {right_credits}；"
+            "课程号池的必修专属/选修专属/混合数量分别为 "
+            f"左侧 {len(left_pools['required'])}/{len(left_pools['elective'])}/{len(left_pools['mixed'])}，"
+            f"右侧 {len(right_pools['required'])}/{len(right_pools['elective'])}/{len(right_pools['mixed'])}；"
+            f"专业课程差集为左侧独有 {len(left_only)} 个、右侧独有 {len(right_only)} 个。"
+            "课程号池计数不是必修/选修学分或实际修读门数。"
+            "课程号明细按六个课程号池与两侧专业差集轮转抽样，最多返回 60 条。"
+        ),
+        source_program_id=None,
+        grade=str(left.get("grade") or ""),
+        major_name=f"{left_name} vs {right_name}",
+        program_type="主修横向比较",
+        course_codes=entries,
+        counts=(
+            {"name": "left_required_credits", "value": _number(left.get("requiredCredits"))},
+            {"name": "right_required_credits", "value": _number(right.get("requiredCredits"))},
+            {"name": "left_required_pool_count", "value": len(left_pools["required"])},
+            {"name": "left_elective_pool_count", "value": len(left_pools["elective"])},
+            {"name": "left_mixed_pool_count", "value": len(left_pools["mixed"])},
+            {"name": "right_required_pool_count", "value": len(right_pools["required"])},
+            {"name": "right_elective_pool_count", "value": len(right_pools["elective"])},
+            {"name": "right_mixed_pool_count", "value": len(right_pools["mixed"])},
+            {"name": "left_major_only_count", "value": len(left_only)},
+            {"name": "right_major_only_count", "value": len(right_only)},
+        ),
+        evidence_refs=(
+            f"program:{left.get('sourceProgramId')}",
+            f"program:{right.get('sourceProgramId')}",
+        ),
+    )
+
+
+def _merge_program_credits(
+    plan: dict[str, Any],
+    programs: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    merged = dict(plan)
+    row = programs.get(str(plan.get("sourceProgramId") or ""))
+    if row is not None:
+        merged["requiredCredits"] = row.get("requiredCredits")
+    return merged
+
+
+def _balanced_comparison_courses(
+    left_pools: dict[str, set[str]],
+    right_pools: dict[str, set[str]],
+    left_only: set[str],
+    right_only: set[str],
+    names: dict[str, str],
+    *,
+    maximum: int,
+) -> list[dict[str, Any]]:
+    buckets = [
+        (state, f"{side}_pool", "", sorted(pools[state]), 0)
+        for side, pools in (("left", left_pools), ("right", right_pools))
+        for state in ("required", "elective", "mixed")
+    ]
+    buckets.extend(
+        (
+            "",
+            change,
+            "专业课程",
+            sorted(codes),
+            0,
+        )
+        for change, codes in (
+            ("left_major_only", left_only),
+            ("right_major_only", right_only),
+        )
+    )
+    entries: list[dict[str, Any]] = []
+    while len(entries) < maximum:
+        progressed = False
+        next_buckets = []
+        for state, change, dimension, codes, index in buckets:
+            if index < len(codes) and len(entries) < maximum:
+                entries.append(
+                    _course_entry(
+                        codes[index],
+                        names,
+                        dimension=dimension,
+                        state=state,
+                        change=change,
+                    )
+                )
+                index += 1
+                progressed = True
+            next_buckets.append((state, change, dimension, codes, index))
+        buckets = next_buckets
+        if not progressed:
+            break
+    return entries
+
+
+def _plan_code_pools(plan: dict[str, Any]) -> dict[str, set[str]]:
+    groups = plan.get("courseCodes")
+    groups = groups if isinstance(groups, dict) else {}
+    return {
+        state: {str(code) for code in groups.get(key, [])}
+        if isinstance(groups.get(key), list)
+        else set()
+        for state, key in (
+            ("required", "requiredOnly"),
+            ("elective", "electiveOnly"),
+            ("mixed", "mixed"),
+        )
+    }
+
+
+def _major_course_codes(plan: dict[str, Any]) -> set[str]:
+    dimensions = plan.get("courseDimensionCodes")
+    if not isinstance(dimensions, dict):
+        return _plan_code_set(plan)
+    return {
+        str(code)
+        for dimension in ("majorFoundation", "majorCore", "majorElective")
+        for groups in (dimensions.get(dimension),)
+        if isinstance(groups, dict)
+        for codes in groups.values()
+        if isinstance(codes, list)
+        for code in codes
     }
 
 

@@ -468,8 +468,14 @@ def _goal_first_query_term(terms: tuple[str, ...], goal: str) -> str | None:
 
 
 def _is_year_term(value: str) -> bool:
-    normalized = _normalize_term(value).removesuffix("年")
-    return len(normalized) == 4 and normalized.isdigit() and normalized.startswith("20")
+    normalized = _normalize_term(value)
+    if normalized.endswith(("年", "级")):
+        normalized = normalized[:-1]
+    if not normalized.isdigit():
+        return False
+    if len(normalized) == 4:
+        return normalized.startswith("20")
+    return len(normalized) == 2 and 15 <= int(normalized) <= 26
 
 
 def _query_arguments(
@@ -797,6 +803,8 @@ def _curriculum_query_term(
     )
     if operation == "substitution":
         return " ".join(terms) if terms else request.query.natural_language_goal.strip()
+    if operation == "comparison" and terms:
+        return " ".join(terms[:2])
     if terms:
         return terms[0]
     if operation == "shared":

@@ -4,6 +4,13 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 培养方案中的两位年级是领域实体，不是自由文本查询词。Planner 应先归一化
+  `25级 -> 2025` 并保留横向比较的两个专业；MCP 边界仍要拒绝两位数字对子串代码
+  的模糊命中，避免一次感知漏项演变成表面合理的无关事实。普通主修跨专业比较与
+  同专业特殊方案对照是两种语义，不能继续共用“取任意首条普通方案”的回退。
+- `requiredOnly/electiveOnly/mixed` 是研究快照中的课程号池分类，不是学生实际需修
+  门数或分项学分。最终 Observation 必须同时给出准确总学分、池计数的口径，以及
+  当前公开快照未发布分项学分这一边界；不能让 DirectChat 从 53/393 反推毕业要求。
 - 校车是仅供 Dududa 使用、无需认证/缓存/独立发布周期的静态确定性查询；MCP 会增加
   不必要的进程、Session 和网络抓取路径。它因此改为 owned 插件实现的 `BUILTIN`
   Capability Provider，继续复用同一个 Registry/Retrieval/Planner/Executor/Validator

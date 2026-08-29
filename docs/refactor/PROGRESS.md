@@ -12,6 +12,13 @@
 - 2026-08-26 已将 Dududa 1.0 AstrBot 完全移出运行面；它只以私有备份/回滚资产存在，不再
   作为 `off/shadow` 兼容所有者。`dududa-astrbot-1` 是唯一 Agent Runtime 宿主，Canary 的
   持久 claim 只用于 2.0 的单一发送所有权，不代表新旧 Runtime 并行。
+- 2026-08-29 修复培养方案查询的生产事实错误：两位年级现按数据范围归一化
+  （`25级 -> 2025`），不会再把 `25` 模糊命中专业代码 `02502`；Planner 在普通主修横向
+  比较中保留两个专业，MCP 可直接比较同年级的两个普通主修方案。单方案查询默认不混入
+  少年班，并明确区分总学分、课程号池计数和当前快照未发布的必修/选修分项学分。
+  原 NapCat 消息 `712374591` 经 AstrBot OneBot 转换器进入 2.0 no-send Runtime 后，只调用
+  `ustc.curriculum.public-query.v1` 一次，正确返回 2025 级计算机与人工智能方案；另一条原问题
+  预览正确返回计算机总学分 167，二者均为 `outputCalls=0 / memoryWrites=0`。
 - 当前 2.0 配置接管所有群内明确 `@Bot` 的纯文本、无附件消息：
   `runtime_enabled=true`、`rollout_mode=canary`、群范围 `*`、delivery 开启、kill switch 关闭。
   私聊、附件和未 @ 的普通群消息静默且不回退 1.0；未 @ 主动参与仍只有 Probe Shadow/NO SEND。

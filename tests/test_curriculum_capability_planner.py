@@ -78,6 +78,23 @@ class CurriculumCapabilityPlannerTests(unittest.TestCase):
                     operation,
                 )
 
+    def test_real_comparison_shape_keeps_both_majors_and_drops_short_grade(self) -> None:
+        request = SimpleNamespace(
+            query=SimpleNamespace(
+                entity_terms=("25", "计算机", "人工智能", "主修"),
+                natural_language_goal="对比一下25级计算机和人工智能的主修培养方案",
+            )
+        )
+
+        self.assertEqual(
+            _curriculum_query_term(
+                request,
+                frozenset({"培养方案", "培养计划", "课程体系"}),
+                "comparison",
+            ),
+            "计算机 人工智能",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
