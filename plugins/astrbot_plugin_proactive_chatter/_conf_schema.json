@@ -1,0 +1,38 @@
+{
+  "enabled": {
+    "description": "是否启用插件",
+    "type": "bool",
+    "default": true
+  },
+  "activity_threshold": {
+    "description": "窗口时间内多少条消息算热闹",
+    "type": "int",
+    "default": 15
+  },
+  "window_seconds": {
+    "description": "???????(?)???240(4??)",
+    "type": "int",
+    "default": 240
+  },
+  "trigger_probability": {
+    "description": "热闹时触发发言的概率(0-1)",
+    "type": "float",
+    "default": 0.35
+  },
+  "global_cooldown_seconds": {
+    "description": "全局最低间隔(秒)",
+    "type": "int",
+    "default": 360
+  },
+  "group_cooldown_seconds": {
+    "description": "每群最低间隔(秒)",
+    "type": "int",
+    "default": 600
+  },
+  "group_whitelist": {
+    "description": "仅在这些群生效(为空则全部)",
+    "type": "list",
+    "item_type": "str",
+    "default": []
+  }
+}

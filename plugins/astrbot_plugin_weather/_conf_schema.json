@@ -1,0 +1,27 @@
+{
+  "enabled": {
+    "description": "??????",
+    "type": "bool",
+    "default": true
+  },
+  "xingning_group": {
+    "description": "?????????????",
+    "type": "string",
+    "default": "901226396"
+  },
+  "extra_groups": {
+    "description": "???????",
+    "type": "list",
+    "item_type": "string",
+    "default": []
+  },
+  "xingning_groups": {
+    "description": "???????????????",
+    "type": "list",
+    "item_type": "string",
+    "default": [
+      "901226396",
+      "1061090893"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "catalog-mcp"
+version = "0.1.0"
+description = "MCP server for the public USTC course-catalog open-data API (catalog.ustc.edu.cn), exposing class timetables and capacities without login."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27.0",
+    "mcp>=1.2.0",
+]
+
+[project.scripts]
+catalog-mcp = "catalog_mcp.server:main"
+catalog-mcp-sync = "catalog_mcp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

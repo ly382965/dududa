@@ -10,7 +10,7 @@ from typing import Any
 import httpx
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
-from astrbot.api.message_components import Image
+from astrbot.api.message_components import At, Image
 from astrbot.api.star import Context, Star, register
 from astrbot.core.star.filter.command import GreedyStr
 
@@ -27,6 +27,7 @@ from .config import (
     save_plugin_config,
     str_set,
 )
+from .catalog import CatalogClient, format_open_result
 from .course import ICourseClient, format_review, format_search, format_stats
 from .help_menu import admin_help, module_help, user_help
 from .permissions import PermissionManager
@@ -61,6 +62,7 @@ class DududaCorePlugin(Star):
         self.perms = PermissionManager(self.config)
         self.audit = AuditLog()
         self.icourse = ICourseClient()
+        self.catalog = CatalogClient()
         self.pending: dict[str, PendingAction] = {}
         self.course_refresh_at: dict[str, float] = {}
         self.user_state_path = PLUGIN_DATA_DIR / "user_state.json"
@@ -168,11 +170,42 @@ class DududaCorePlugin(Star):
             event.stop_event()
             return
 
+        open_query = self._extract_open_query(text)
+        if open_query:
+            try:
+                reply = await self._catalog_open(open_query)
+            except Exception as exc:
+                logger.warning("Natural catalog open query failed: %s", exc)
+                yield event.plain_result(f"开课信息查询失败：{type(exc).__name__}")
+                event.stop_event()
+                return
+            self.audit.write(event, "natural_catalog_open", {"query": open_query[:80]})
+            yield event.plain_result(reply)
+            event.stop_event()
+            return
+
         query = self._extract_course_query(text)
         if not query:
+            if self._is_at_bot(event):
+                tc = self._extract_teacher_course(text)
+                if tc:
+                    try:
+                        reply = await self._answer_teacher_course_integrated(tc, text)
+                    except Exception as exc:
+                        logger.warning("At-bot teacher/course failed: %s", exc)
+                        yield event.plain_result(f"课程查询失败：{type(exc).__name__}")
+                        event.stop_event()
+                        return
+                    self.audit.write(event, "at_bot_course", {"query": tc[:60]})
+                    yield event.plain_result(reply)
+                    event.stop_event()
+                    return
             return
         try:
-            reply = await self._answer_natural_course_query(query, text, event)
+            if self._looks_like_specific_lookup(text):
+                reply = await self._answer_teacher_course_integrated(query, text)
+            else:
+                reply = await self._answer_natural_course_query(query, text, event)
         except Exception as exc:
             logger.warning("Natural icourse query failed: %s", exc)
             yield event.plain_result(f"评课社区查询失败：{type(exc).__name__}")
@@ -181,6 +214,126 @@ class DududaCorePlugin(Star):
         self.audit.write(event, "natural_course_query", {"query": query[:60]})
         yield event.plain_result(reply)
         event.stop_event()
+
+    @filter.command("open")
+    async def open_lesson(self, event: AstrMessageEvent, query: GreedyStr):
+        """查询公开开课信息：课堂时间、容量、老师、校区。
+
+        用法：/open <课程名或课程代码>  ；/open sync [学期id] ；/open semester
+        """
+        if self._blocked(event):
+            return
+        text = str(query).strip()
+        if text == "":
+            yield event.plain_result("用法：/open <课程名或代码>  例如 /open 热力学  、/open 022063")
+            event.stop_event()
+            return
+        sub, _, rest = text.partition(" ")
+        try:
+            if sub == "sync":
+                semester = int(rest.strip()) if rest.strip().isdigit() else None
+                reply = await self._catalog_sync(semester)
+            elif sub == "semester":
+                reply = await self._catalog_semester_help()
+            else:
+                reply = await self._catalog_open(text)
+        except Exception as exc:
+            logger.warning("Catalog open query failed: %s", exc)
+            yield event.plain_result(f"开课查询失败：{type(exc).__name__}")
+            event.stop_event()
+            return
+        self.audit.write(event, "catalog_open", {"query": text[:80]})
+        yield event.plain_result(reply)
+        event.stop_event()
+
+    async def _catalog_semester_help(self) -> str:
+        result = await self.catalog.call("catalog_semesters", {"limit": 8})
+        sems = result.get("semesters") or []
+        lines = ["可同步的开课学期："]
+        for s in sems:
+            lines.append(f"  {s.get('id')} | {s.get('name')} | {s.get('start')}")
+        lines.append("同步：/open sync <学期id>  （会下载该学期全部公开开课并缓存）")
+        return "\n".join(lines)
+
+    async def _catalog_sync(self, semester: int | None) -> str:
+        if semester:
+            result = await self.catalog.call("catalog_sync", {"semester": semester})
+            return f"已同步学期 {result.get('semester')}：缓存 {result.get('cached_lessons')} 门开课。"
+        sems = await self.catalog.call("catalog_semesters", {"limit": 1})
+        first = (sems.get("semesters") or [{}])[0]
+        sid = first.get("id")
+        if not sid:
+            return "无法获取最新学期，请指定 /open sync <学期id>。"
+        result = await self.catalog.call("catalog_sync", {"semester": sid})
+        return f"已同步最新学期 {result.get('semester')}（{first.get('name')}）：缓存 {result.get('cached_lessons')} 门开课。"
+
+    async def _catalog_open(self, query: str) -> str:
+        result = await self.catalog.call("catalog_open", {"query": query, "limit": 6})
+        if not result.get("ok"):
+            return "开课查询失败：" + str(result.get("error") or result)
+        return format_open_result(result, query)
+
+    _OPEN_TRIGGERS = (
+        "开课",
+        "课堂容量",
+        "上课时间",
+        "上课安排",
+        "授课时间",
+        "几点上",
+        "什么时候上课",
+        "课表",
+        "容量",
+        "招生人数",
+        "选课人数",
+    )
+
+    @staticmethod
+    def _extract_open_query(text: str) -> str | None:
+        if not text or text.startswith("/"):
+            return None
+        if not any(word in text for word in DududaCorePlugin._OPEN_TRIGGERS):
+            return None
+        cleaned = DududaCorePlugin._clean_course_query_text(text)
+        cleaned = re.sub(r"(?i)开课|课堂容量|上课时间|上课安排|授课时间|几点上|什么时候上课|课表|容量|招生人数|选课人数", " ", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip().strip("？！:：。，,;；")
+        return cleaned[:80] or None
+
+    @staticmethod
+    def _is_at_bot(event: AstrMessageEvent) -> bool:
+        """可靠判断消息是否 @ 了 bot 自己（遍历消息组件里的 At）。"""
+        try:
+            self_id = str(event.get_self_id())
+        except Exception:
+            self_id = ""
+        try:
+            for msg in event.get_messages() or []:
+                if isinstance(msg, At):
+                    qq = str(getattr(msg, "qq", "") or "")
+                    if qq == self_id or qq == "all":
+                        return True
+        except Exception:
+            pass
+        return False
+
+    @staticmethod
+    def _extract_teacher_course(text: str) -> str | None:
+        """从 @bot 消息里提取 老师名/课程名 作为查询词。"""
+        if not text or text.startswith("/"):
+            return None
+        pure = re.sub(r"[\s，。！？、；：,.!?;:（）()【】\[\]\"'“”‘’@～~]+", "", text)
+        if not pure or len(pure) > 30:
+            return None
+        # 排除纯问候/表情/管理话术
+        if re.fullmatch(r"(你好|在吗|嗨|哈喽|hi|hello|早上好|晚上好|在不在|help|帮助|谢谢|再见|拜拜)[！!。？?，,~]?", pure, re.IGNORECASE):
+            return None
+        if re.search(r"(admin|管理|插件|日志|重启|配置|权限|帮我|能不能|可以吗|说说看|讲个|天气|气温|多少度|几点起床|几点睡)", pure, re.IGNORECASE):
+            return None
+        cleaned = DududaCorePlugin._clean_course_query_text(text)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        if len(cleaned) < 2 or len(cleaned) > 30:
+            return None
+        # 老师名 + 课程名：返回完整清理串作为查询
+        return cleaned[:80]
 
     @filter.command("help")
     async def help(self, event: AstrMessageEvent, module: str | None = None):
@@ -358,6 +511,147 @@ class DududaCorePlugin(Star):
             summaries,
         )
 
+    _RECOMMEND_WORDS = (
+        "推荐",
+        "哪个老师好",
+        "哪位老师好",
+        "怎么选",
+        "如何选",
+        "选择",
+        "选哪个",
+        "推荐一个",
+        "推荐一位",
+        "避雷",
+        "排序",
+        "列举",
+        "谁更好",
+        "哪个好",
+        "好不好",
+    )
+
+    @staticmethod
+    def _looks_like_specific_lookup(text: str) -> bool:
+        if not text:
+            return False
+        return not any(word in text for word in DududaCorePlugin._RECOMMEND_WORDS)
+
+    async def _best_single_course(
+        self,
+        query: str,
+        teacher_hint: str | None = None,
+        max_items: int = 12,
+    ) -> dict[str, Any] | None:
+        result = await self._search_course_expanded(query)
+        items = result.get("items") or []
+        if not items:
+            return None
+        items = sorted(items, key=self._course_rank_key, reverse=True)
+        if teacher_hint:
+            hint = DududaCorePlugin._teacher_normalize(teacher_hint)
+            for item in items:
+                if hint and hint in DududaCorePlugin._teacher_normalize(
+                    DududaCorePlugin._teacher_names(item)
+                ):
+                    return item
+        return items[0]
+
+    @staticmethod
+    def _teacher_normalize(name: str) -> str:
+        return (name or "").replace(" ", "").replace("老师", "").strip()
+
+    async def _load_single_course_card(self, course_id: int) -> dict[str, Any] | None:
+        try:
+            course_result = await self.icourse.call(
+                "get_course",
+                {"course_id": course_id, "include_reviews": True, "refresh": True},
+            )
+            course = course_result.get("course")
+            if not course:
+                review_result = await self.icourse.call(
+                    "get_reviews", {"course_id": course_id, "limit": 8, "sort_by": "upvote"}
+                )
+                course = {"id": course_id, "reviews": review_result.get("reviews") or []}
+            return course
+        except Exception as exc:
+            logger.warning("Failed to load single icourse card %s: %s", course_id, exc)
+            return None
+
+    async def _answer_teacher_course_integrated(
+        self,
+        query: str,
+        original_text: str,
+    ) -> str:
+        course = await self._best_single_course(query)
+        if not course:
+            return f"没在评课社区找到「{query}」，换个全名或老师名试试~"
+        course_id = course.get("id")
+        course_name = course.get("name") or query
+        teacher = self._teacher_names(course) or ""
+        card = await self._load_single_course_card(course_id) if course_id else course
+        if not card:
+            card = course
+        reviews = card.get("reviews") or []
+        rating = card.get("rating_average")
+        diff = self._course_field(card, "difficulty")
+        hw = self._course_field(card, "homework")
+        grading = self._course_field(card, "grading")
+        gain = self._course_field(card, "gain")
+
+        rating_txt = f"{rating:.1f}分" if isinstance(rating, float) else "评分暂无"
+        lines = [f"《{course_name}》"]
+        if teacher:
+            lines.append(f"👤 {teacher}")
+        meta = []
+        if diff:
+            meta.append(diff)
+        if hw:
+            meta.append(f"作业{hw}")
+        if grading:
+            meta.append(grading)
+        if gain:
+            meta.append(gain)
+        if meta or rating_txt != "评分暂无":
+            lines.append(f"📚 {'，'.join(meta) if meta else ''} {rating_txt}".rstrip())
+        elif reviews:
+            excerpt = self._first_review_excerpt(reviews)
+            if excerpt:
+                lines.append(f"📚 {excerpt}")
+
+        campus = await self._catalog_lookup(course_name)
+        if campus:
+            cap = campus.get("limit_count")
+            std = campus.get("std_count")
+            cap_txt = f"{std}/{cap}" if cap is not None else "容量未知"
+            lines.append(f"🕐 {self._catalog_time_text(campus)}")
+            loc = campus.get("campus_zh") or ""
+            if loc:
+                lines.append(f"📍 {loc}｜👥 {cap_txt}")
+            else:
+                lines.append(f"👥 {cap_txt}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _course_field(card: dict[str, Any], key: str) -> str:
+        value = card.get(key)
+        if value is None or value in ("未知", None, ""):
+            return ""
+        text = str(value)
+        return text if len(text) < 20 else ""
+
+    async def _catalog_lookup(self, course_name: str) -> dict[str, Any] | None:
+        try:
+            result = await self.catalog.call("catalog_open", {"query": course_name, "limit": 6})
+            results = result.get("results") or []
+            return results[0] if results else None
+        except Exception as exc:
+            logger.warning("Catalog lookup failed for %s: %s", course_name, exc)
+            return None
+
+    @staticmethod
+    def _catalog_time_text(item: dict[str, Any]) -> str:
+        t = item.get("date_time_place_text") or ""
+        return t.replace(";", "；") if t else "时间未公布"
+
     async def _search_course_expanded(self, query: str) -> dict[str, Any]:
         online = await self.icourse.call(
             "search_site_courses",
@@ -372,7 +666,6 @@ class DududaCorePlugin(Star):
         )
         if online.get("items"):
             return online
-
         fallback_query = self._fallback_course_query(query)
         if fallback_query and fallback_query != query:
             online = await self.icourse.call(

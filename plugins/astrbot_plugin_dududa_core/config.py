@@ -19,6 +19,8 @@ ICOURSE_DB_PATH = Path(
         str(DATA_ROOT / "icourse-cache" / "icourse.sqlite3"),
     )
 )
+CATALOG_ROOT = DATA_ROOT / "catalog-mcp"
+CATALOG_DB_PATH = DATA_ROOT / "catalog-cache" / "catalog.sqlite3"
 
 
 def ensure_dirs() -> None:

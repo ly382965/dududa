@@ -24,6 +24,7 @@ def user_help() -> str:
 /course review <课程/老师>
 /course compare <A> | <B>
 /course refresh <课程ID>
+/open <课程名/代码>      查询公开开课信息：课堂时间、容量、老师
 
 工具：
 /remind <时间> <内容>
@@ -82,6 +83,9 @@ def module_help(module: str) -> str:
 /course review <课程/老师>
 /course compare <A> | <B>
 /course refresh <课程ID>
+/open <课程名/代码>      查询公开开课信息：课堂时间、容量、老师
+/open semester            查看可同步学期
+/open sync [学期id]       同步某学期开课数据
 
 例子：
 /course 推荐一个数学分析老师

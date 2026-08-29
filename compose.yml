@@ -27,7 +27,10 @@ services:
       - ./plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
       - ./plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
       - ./plugins/astrbot_plugin_target_talk:/AstrBot/data/plugins/astrbot_plugin_target_talk:ro
+      - ./plugins/astrbot_plugin_proactive_chatter:/AstrBot/data/plugins/astrbot_plugin_proactive_chatter:ro
+      - ./plugins/astrbot_plugin_weather:/AstrBot/data/plugins/astrbot_plugin_weather:ro
       - ./services/icourse-mcp:/AstrBot/data/icourse-mcp:ro
+      - ./services/catalog-mcp:/AstrBot/data/catalog-mcp:ro
       - ./config:/opt/dududa/config:ro
       - ./scripts:/opt/dududa/scripts:ro
       - /etc/localtime:/etc/localtime:ro

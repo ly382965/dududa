@@ -10,6 +10,17 @@
         "1.0"
       ],
       "disabled": false
+    },
+    "catalog": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/catalog-mcp/run_catalog_mcp.py",
+        "--db-path",
+        "/AstrBot/data/catalog-cache/catalog.sqlite3",
+        "--request-delay",
+        "0.5"
+      ],
+      "disabled": false
     }
   }
 }
