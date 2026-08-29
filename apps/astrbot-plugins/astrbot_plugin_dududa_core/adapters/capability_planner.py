@@ -29,6 +29,35 @@ ICOURSE_INTENT_OPERATIONS = {
     "icourse.stats.read": "stats",
 }
 _ICOURSE_DEFAULT_LIMIT = 10
+CURRICULUM_PUBLIC_QUERY_CAPABILITY_ID = "ustc.curriculum.public-query.v1"
+CURRICULUM_INTENT_OPERATIONS = {
+    "ustc.curriculum.overview.read": "overview",
+    "ustc.curriculum.program.read": "program",
+    "ustc.curriculum.course.read": "course",
+    "ustc.curriculum.change.read": "change",
+    "ustc.curriculum.comparison.read": "comparison",
+    "ustc.curriculum.substitution.read": "substitution",
+    "ustc.curriculum.shared.read": "shared",
+    "ustc.curriculum.history.read": "history",
+}
+_CURRICULUM_DEFAULT_LIMIT = 6
+_CURRICULUM_QUERY_MODIFIERS = frozenset(
+    {
+        "专业核心",
+        "专业基础",
+        "专业选修",
+        "通修",
+        "毕业论文",
+        "必修",
+        "选修",
+        "普通主修",
+        "少年班",
+        "强基",
+        "辅修",
+        "双学位",
+        "英才班",
+    }
+)
 YOUNG_SEARCH_CAPABILITY_ID = "ustc.young.activities.search.v1"
 YOUNG_ACTIVITY_CAPABILITY_ID = "ustc.young.activity.get.v1"
 YOUNG_FACETS_CAPABILITY_ID = "ustc.young.facets.list.v1"
@@ -69,10 +98,10 @@ _ACTIVITY_ID_RE = re.compile(
 class EntityQueryToolPlanner:
     """Turn model-extracted entities into one bounded schema-bound read query.
 
-    Standard iCourse intents select the high-level public query operation.
-    Second-class intents select one existing read Capability and project its
-    simple filters. The existing deterministic validator still owns membership
-    and argument validity.
+    Standard iCourse and curriculum intents select one high-level public query
+    operation. Second-class intents select one existing read Capability and
+    project its simple filters. The existing deterministic validator still owns
+    membership and argument validity.
     """
 
     def __init__(
@@ -95,12 +124,12 @@ class EntityQueryToolPlanner:
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._revision = revision or ComponentRevision(
             "astrbot.entity-query-tool-planner",
-            "1.1.0",
-            "single-step-icourse-young-v1",
+            "1.2.0",
+            "single-step-campus-public-query-v1",
             DigestString(
                 str(
                     canonical_digest(
-                        {"planner": "entity-query-single-step-icourse-young"},
+                        {"planner": "entity-query-single-step-campus-public-query"},
                         domain="astrbot:tool-planner-artifact:v1",
                     )
                 )
@@ -120,14 +149,25 @@ class EntityQueryToolPlanner:
             request.retrieval.catalog_snapshot_id,
             expected_digest=request.retrieval.catalog_digest,
         )
-        operation = _icourse_operation(request.query.intent_ids)
+        icourse_operation = _icourse_operation(request.query.intent_ids)
+        curriculum_operation = _curriculum_operation(request.query.intent_ids)
         young_capability_id = _young_capability(request.query.intent_ids)
         if (
             young_capability_id is None
-            and operation is None
+            and icourse_operation is None
+            and curriculum_operation is None
             and "campus.second-class" in request.query.preferred_categories
         ):
             young_capability_id = YOUNG_SEARCH_CAPABILITY_ID
+        if (
+            curriculum_operation is None
+            and young_capability_id is None
+            and icourse_operation is None
+            and "campus.curriculum" in request.query.preferred_categories
+        ):
+            curriculum_operation = _curriculum_operation_from_goal(
+                request.query.natural_language_goal
+            )
         candidates = request.retrieval.candidates
         if young_capability_id is not None:
             candidates = tuple(
@@ -135,7 +175,13 @@ class EntityQueryToolPlanner:
                 for item in candidates
                 if item.capability_id == young_capability_id
             )
-        elif operation is not None:
+        elif curriculum_operation is not None:
+            candidates = tuple(
+                item
+                for item in candidates
+                if item.capability_id == CURRICULUM_PUBLIC_QUERY_CAPABILITY_ID
+            )
+        elif icourse_operation is not None:
             public_query_candidates = tuple(
                 item
                 for item in candidates
@@ -147,7 +193,7 @@ class EntityQueryToolPlanner:
                     for item in candidates
                     if item.capability_id != ICOURSE_PUBLIC_QUERY_CAPABILITY_ID
                 )
-                if operation == "course"
+                if icourse_operation == "course"
                 else ()
             )
             candidates = public_query_candidates + legacy_course_candidates
@@ -174,12 +220,25 @@ class EntityQueryToolPlanner:
             is_icourse_public_query = (
                 candidate.capability_id == ICOURSE_PUBLIC_QUERY_CAPABILITY_ID
             )
-            if is_icourse_public_query and operation is None:
+            is_curriculum_public_query = (
+                candidate.capability_id == CURRICULUM_PUBLIC_QUERY_CAPABILITY_ID
+            )
+            if is_icourse_public_query and icourse_operation is None:
                 continue
-            term = _primary_query_term(
-                request,
-                self._ignored_entity_terms,
-                operation=operation,
+            if is_curriculum_public_query and curriculum_operation is None:
+                continue
+            term = (
+                _curriculum_query_term(
+                    request,
+                    self._ignored_entity_terms,
+                    curriculum_operation,
+                )
+                if is_curriculum_public_query
+                else _primary_query_term(
+                    request,
+                    self._ignored_entity_terms,
+                    operation=icourse_operation,
+                )
             )
             schema = self._registry.get_schema(catalog, candidate.input_schema)
             projected = _query_arguments(
@@ -187,11 +246,23 @@ class EntityQueryToolPlanner:
                 term,
                 goal=(
                     request.query.natural_language_goal
-                    if is_icourse_public_query
+                    if is_icourse_public_query or is_curriculum_public_query
                     else None
                 ),
-                operation=operation if is_icourse_public_query else None,
-                limit=_ICOURSE_DEFAULT_LIMIT if is_icourse_public_query else None,
+                operation=(
+                    icourse_operation
+                    if is_icourse_public_query
+                    else curriculum_operation
+                    if is_curriculum_public_query
+                    else None
+                ),
+                limit=(
+                    _ICOURSE_DEFAULT_LIMIT
+                    if is_icourse_public_query
+                    else _CURRICULUM_DEFAULT_LIMIT
+                    if is_curriculum_public_query
+                    else None
+                ),
             )
             if projected is not None:
                 selected = candidate
@@ -509,6 +580,76 @@ def _icourse_operation(intent_ids: tuple[str, ...]) -> str | None:
     return None
 
 
+def _curriculum_operation(intent_ids: tuple[str, ...]) -> str | None:
+    for intent_id in intent_ids:
+        operation = CURRICULUM_INTENT_OPERATIONS.get(intent_id)
+        if operation is not None:
+            return operation
+    if any(intent_id.startswith("ustc.curriculum.") for intent_id in intent_ids):
+        return "program"
+    return None
+
+
+def _curriculum_operation_from_goal(goal: str) -> str:
+    compact = _normalize_term(goal)
+    operation_markers = (
+        ("substitution", ("替代", "互换", "顶替", "等价课程")),
+        ("change", ("变化", "变动", "改了", "新增", "移出", "调整")),
+        (
+            "comparison",
+            ("对比", "比较", "区别", "差别", "少年班", "强基", "辅修", "双学位", "英才班"),
+        ),
+        (
+            "shared",
+            (
+                "共享课程",
+                "共同课程",
+                "共同使用",
+                "共用",
+                "最多专业",
+                "哪些专业都",
+                "覆盖专业",
+                "多少个专业代码",
+            ),
+        ),
+        ("history", ("历年", "历史", "沿革", "最早", "首次出现")),
+        ("overview", ("数据范围", "快照", "多少份方案", "更新时间", "是否官方")),
+    )
+    for operation, markers in operation_markers:
+        if any(marker in compact for marker in markers):
+            return operation
+    if re.search(r"(?i)\b(?:[A-Z]{2,}\d[A-Z0-9*.-]*|\d{6}[A-Z]?)\b", goal):
+        return "course"
+    return "program"
+
+
+def _curriculum_query_term(
+    request: ToolPlanningRequest,
+    ignored_entity_terms: frozenset[str],
+    operation: str | None,
+) -> str:
+    if operation == "overview":
+        return ""
+    terms = tuple(
+        value.strip()
+        for value in request.query.entity_terms
+        if value.strip()
+        and _normalize_term(value) not in ignored_entity_terms
+        and _normalize_term(value) not in _CURRICULUM_QUERY_MODIFIERS
+        and not _is_year_term(value)
+    )
+    if operation == "substitution":
+        return " ".join(terms) if terms else request.query.natural_language_goal.strip()
+    if terms:
+        return terms[0]
+    if operation == "shared":
+        return ""
+    goal = request.query.natural_language_goal.strip()
+    if not goal:
+        raise validation_error("tool_planning_query_term_missing")
+    return goal
+
+
 def _normalize_term(value: str) -> str:
     if not isinstance(value, str):
         raise TypeError("entity term must be str")
@@ -516,6 +657,8 @@ def _normalize_term(value: str) -> str:
 
 
 __all__ = [
+    "CURRICULUM_INTENT_OPERATIONS",
+    "CURRICULUM_PUBLIC_QUERY_CAPABILITY_ID",
     "ICOURSE_INTENT_OPERATIONS",
     "YOUNG_INTENT_CAPABILITIES",
     "YOUNG_RUNTIME_CAPABILITY_IDS",

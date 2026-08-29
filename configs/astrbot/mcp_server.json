@@ -20,6 +20,15 @@
       ],
       "disabled": true
     },
+    "ustc-curriculum": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
+        "--service",
+        "curriculum"
+      ],
+      "disabled": true
+    },
     "ustc-shuttle": {
       "command": "/usr/local/bin/python",
       "args": [

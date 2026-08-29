@@ -4,7 +4,8 @@
 
 本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。权威 Registry 路径是
 `configs/mcp/servers/*.json`。当前真实只读 Server 为 `icourse`、`ustc-young`、
-`ustc-academic` 和 `ustc-shuttle`；实现分别位于 `services/mcp/icourse/` 与共享实现包
+`ustc-academic`、`ustc-curriculum` 和 `ustc-shuttle`；实现分别位于
+`services/mcp/icourse/` 与共享实现包
 `services/mcp/ustc-campus/`。S22 已移除旧 `config/` 与 `services/icourse-mcp/` 兼容链接；
 新增 Server 只使用 canonical 路径。
 

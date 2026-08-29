@@ -15,13 +15,18 @@ class UstcCampusContractTests(unittest.TestCase):
         self.assertEqual(
             {tool.name for tool in create_mcp("academic")._tool_manager.list_tools()},
             {
-                "catalog_get_program",
                 "catalog_list_semesters",
                 "catalog_search_exams",
                 "catalog_search_lessons",
-                "catalog_search_programs",
                 "teaching_calendar_get",
             },
+        )
+        self.assertEqual(
+            {
+                tool.name
+                for tool in create_mcp("curriculum")._tool_manager.list_tools()
+            },
+            {"curriculum_public_query"},
         )
         self.assertEqual(
             {tool.name for tool in create_mcp("shuttle")._tool_manager.list_tools()},

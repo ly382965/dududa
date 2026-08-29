@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:a38af968c8670022499fe3d61d102b9e992c8b82eb1a3af9ad3bee66b5618e22",
+  "capability_id": "ustc.curriculum.public-query.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-curriculum.curriculum_public_query.input:v1:sha-256:0c4212be7bad884ebde39bccf936c787ed435561778dfef0ce690222cb05dfec",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.ustc-curriculum.curriculum_public_query.output:v1:sha-256:6e5802c91ba7680866dc1dcd5d00d1a80a72f708227e541b6643dc5bdd047828",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:b0fc138b3c4e655c46578479910e842aa868d27cc5976086aa7f6a841f8b2b82",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "ustc-curriculum",
+  "tool_name": "curriculum_public_query"
+}

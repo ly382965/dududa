@@ -130,6 +130,10 @@ def build_production_capability_runtime(
                     "二课",
                     "第二课堂",
                     "中国科大第二课堂",
+                    "培养方案",
+                    "培养计划",
+                    "课程体系",
+                    "中国科大培养方案",
                 }
             ),
             clock=clock,

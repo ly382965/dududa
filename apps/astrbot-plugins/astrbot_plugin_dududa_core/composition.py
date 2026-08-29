@@ -221,6 +221,19 @@ _YOUNG_ACCOUNT_BOUND_PATTERNS = (
     re.compile(r"(?:报名名单|哪些人报名|申请人|签到成功)"),
 )
 
+_CURRICULUM_OUT_OF_SCOPE_PATTERNS = (
+    re.compile(
+        r"(?:帮我|替我|我要|我想).{0,48}"
+        r"(?:培养方案|培养计划|课程体系|专业核心课).{0,32}"
+        r"(?:删除|删掉|修改|改掉|添加|提交|写入)"
+    ),
+    re.compile(
+        r"(?:把|将).{0,48}(?:培养方案|培养计划|课程体系|专业核心课).{0,32}"
+        r"(?:删除|删掉|修改|改掉|添加|提交|写入)"
+    ),
+    re.compile(r"(?:毕业后|就业|薪资|职业方向|行业去向)"),
+)
+
 
 def _is_young_account_bound(context: PerceptionContext) -> bool:
     return any(
@@ -229,23 +242,39 @@ def _is_young_account_bound(context: PerceptionContext) -> bool:
     )
 
 
+def _is_curriculum_out_of_scope(context: PerceptionContext) -> bool:
+    return any(
+        pattern.search(context.current_message.text)
+        for pattern in _CURRICULUM_OUT_OF_SCOPE_PATTERNS
+    )
+
+
+def _blocked_capability_categories(
+    context: PerceptionContext,
+) -> frozenset[str]:
+    blocked: set[str] = set()
+    if _is_young_account_bound(context):
+        blocked.add("campus.second-class")
+    if _is_curriculum_out_of_scope(context):
+        blocked.add("campus.curriculum")
+    return frozenset(blocked)
+
+
 class _ProductionRulePerception:
-    """Keep explicit Young markers from claiming account-bound requests."""
+    """Keep explicit markers from claiming unsupported requests."""
 
     def __init__(self, delegate: DeterministicRulePerception) -> None:
         self._delegate = delegate
 
     def perceive(self, context: PerceptionContext) -> RulePerceptionResult:
         result = self._delegate.perceive(context)
-        if (
-            "campus.second-class" not in result.capability_categories
-            or not _is_young_account_bound(context)
-        ):
+        blocked = _blocked_capability_categories(context)
+        if not blocked.intersection(result.capability_categories):
             return result
         categories = tuple(
             value
             for value in result.capability_categories
-            if value != "campus.second-class"
+            if value not in blocked
         )
         return replace(
             result,
@@ -257,7 +286,7 @@ class _ProductionRulePerception:
 
 
 class _ProductionPerceptionMerger:
-    """Remove account-bound Young candidates before additive model merging."""
+    """Remove unsupported candidates before additive model merging."""
 
     def __init__(self, delegate: DeterministicPerceptionMerger) -> None:
         self._delegate = delegate
@@ -271,16 +300,24 @@ class _ProductionPerceptionMerger:
         model_status: PerceptionModelStatus,
         model_route_receipt_digest: DigestString | None = None,
     ) -> PerceptionResult:
-        if model is not None and _is_young_account_bound(context):
+        blocked = _blocked_capability_categories(context)
+        if model is not None and blocked.intersection(model.capability_categories):
             categories = tuple(
                 value
                 for value in model.capability_categories
-                if value != "campus.second-class"
+                if value not in blocked
             )
             intents = tuple(
                 value
                 for value in model.intents
-                if not value.intent_id.startswith("ustc.young.")
+                if not (
+                    "campus.second-class" in blocked
+                    and value.intent_id.startswith("ustc.young.")
+                )
+                and not (
+                    "campus.curriculum" in blocked
+                    and value.intent_id.startswith("ustc.curriculum.")
+                )
             )
             model = replace(
                 model,
@@ -690,6 +727,12 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
             "不要使用预训练记忆补充评课事实，也不要补完标为内容截断的后文。单条点评只能表述为个体观点，"
             "多条相互支持时才能称为共识；每条观点只能归给其所在 review_evidence 组的 course_teachers，"
             "不得在教师间转移；注明相关学期和样本新旧，并尽量覆盖有点评证据的主要候选。"
+            "回答培养方案问题时，只使用工具返回的公开研究快照，保留 snapshot_date、snapshot_scope、"
+            "dataset_schema_version、unofficial_notice 和 identity_rule 所表达的证据边界。它不是实时教务"
+            "数据，也不能直接用于毕业审核；需要实时开课、考试或教学日历时不要把研究快照当成当前事实。"
+            "课程身份只按课程号判断，课程名相似不能推出同一门课；替代关系必须按工具返回的方向和完整"
+            "课程组合解释，不能拆散组合替代关系。对逐年变化、横向比较和共享课程，区分方案、年级、"
+            "专业轨道及方案类型，不把评课社区评价或预训练记忆混入培养方案事实。"
             "回答第二课堂活动时，只把工具返回的活动、官方模块、标签、时间、学时、容量和说明当作事实。"
             "若二课工具明确返回 available=false，只说明第二课堂查询服务暂不可用并建议稍后再试；"
             "不要改用网页搜索、预训练记忆或旧命令补答案。"
@@ -714,7 +757,7 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-direct-chat-prompt",
             "1.0.0",
-            "production-v5",
+            "production-v6",
             astrbot_prompt_artifact_digest(**values),
         ),
     )
@@ -757,6 +800,19 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             "查询二课服务是否可用时使用 connection.status。系统没有 QQ 用户登录或账号绑定：查询“我报名"
             "了什么”、个人累计学时、签到/考核，或要求报名、取消报名时，不选择 campus.second-class，"
             "交给普通回答明确当前不支持。不要把泛指的“活动”单独判为二课。"
+            "对 campus.curriculum，只在查询 docs.mmdustc.top/curriculum 的公开培养方案研究快照时选择。"
+            "intent_id 必须使用 ustc.curriculum.overview.read、ustc.curriculum.program.read、"
+            "ustc.curriculum.course.read、ustc.curriculum.change.read、"
+            "ustc.curriculum.comparison.read、ustc.curriculum.substitution.read、"
+            "ustc.curriculum.shared.read、ustc.curriculum.history.read 之一。查询数据日期、范围、数量、"
+            "身份口径或是否官方时使用 overview.read；查询单个年级、专业或方案详情时使用 program.read；"
+            "按课程号或课程名查课程在方案中的分布时使用 course.read；比较同一专业相邻年级的增删调整"
+            "使用 change.read；比较同年级不同方案类型、专业或轨道使用 comparison.read；查询课程替代"
+            "方向或组合替代使用 substitution.read；查询跨专业共用课程使用 shared.read；查询专业轨道"
+            "最早、最晚或历年覆盖使用 history.read。entities 只保留专业名、方案编号、课程名、课程号、"
+            "年级等查询值，不把“培养方案”本身作为实体。培养方案修改、提交或删除是写操作，毕业审核、"
+            "就业去向也不在该快照范围内，不选择 campus.curriculum。评课评价应选择 campus.course-review；"
+            "实时学期、开课、考试和教学日历应选择 campus.academic。"
         ),
         "structured_output_instruction": "只返回符合下列 JSON Schema 的 JSON 对象。",
         "repair_instruction": None,
@@ -767,7 +823,7 @@ def _perception_prompt() -> AstrBotPromptArtifact:
         revision=ComponentRevision(
             "astrbot-perception-prompt",
             "1.0.0",
-            "production-v7",
+            "production-v8",
             astrbot_prompt_artifact_digest(**values),
         ),
     )
@@ -1176,6 +1232,9 @@ def build_production_runtime(
         default_rule_perception_config(_revision("rule-perception")),
         capability_keywords={
             "campus.course-review": frozenset({"评课社区"}),
+            "campus.curriculum": frozenset(
+                {"培养方案", "培养计划", "课程体系"}
+            ),
             "campus.second-class": frozenset(
                 {"二课", "第二课堂", "德智体美劳"}
             ),
@@ -1332,6 +1391,7 @@ def build_production_runtime(
         {
             "capability.icourse.read",
             "capability.ustc.academic.read",
+            "capability.ustc.curriculum.read",
             "capability.ustc.shuttle.read",
             "capability.ustc.young.read",
         }

@@ -14,6 +14,7 @@ _PLUGIN_CAPABILITY_CATEGORIES: Mapping[str, str] = {
     "icourse.read": "campus.course-review",
     "ustc.young.read": "campus.second-class",
     "ustc.academic.read": "campus.academic",
+    "ustc.curriculum.read": "campus.curriculum",
     "ustc.shuttle.read": "campus.shuttle",
 }
 

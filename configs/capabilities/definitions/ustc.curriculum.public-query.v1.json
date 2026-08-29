@@ -1,0 +1,448 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.curriculum.public-query.v1",
+  "category": "campus.curriculum",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:a38af968c8670022499fe3d61d102b9e992c8b82eb1a3af9ad3bee66b5618e22",
+  "description": "Query the bounded public 2015-2026 curriculum research snapshot without accessing the live academic system.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.curriculum.public-query.v1.input:v1:sha-256:05e0220ccf986a0d41c3e3170c7d22bc60172f480b4bc111957991bd635ef0a0",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "default": "",
+          "title": "Goal",
+          "type": "string"
+        },
+        "limit": {
+          "default": 6,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "operation": {
+          "default": "program",
+          "enum": [
+            "overview",
+            "program",
+            "course",
+            "change",
+            "comparison",
+            "substitution",
+            "shared",
+            "history"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "curriculum_public_queryArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.curriculum.public-query.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Query USTC curriculum research",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.curriculum.public-query.v1.output:v1:sha-256:7cccff0738ada77818f320eba924d6e8bb12ed0a3fd297b751f826773c322e26",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_schema_version": {
+          "maxLength": 32,
+          "type": "string"
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "identity_rule": {
+          "maxLength": 1000,
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "overview",
+            "program",
+            "course",
+            "change",
+            "comparison",
+            "substitution",
+            "shared",
+            "history"
+          ],
+          "maxLength": 32,
+          "type": "string"
+        },
+        "public_only": {
+          "const": true,
+          "type": "boolean"
+        },
+        "query": {
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": false,
+          "properties": {
+            "dataset_counts": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "maxLength": 100,
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "value"
+                ],
+                "type": "object"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "items": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "counts": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "maxLength": 100,
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "course_code": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "course_codes": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "change": {
+                          "maxLength": 32,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "code": {
+                          "maxLength": 64,
+                          "type": "string"
+                        },
+                        "dimension": {
+                          "maxLength": 64,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "maxLength": 500,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "maxLength": 32,
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "name",
+                        "dimension",
+                        "state",
+                        "change"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 60,
+                    "type": "array"
+                  },
+                  "course_name": {
+                    "maxLength": 500,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "department_code": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "department_name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "evidence_refs": {
+                    "items": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "from_grade": {
+                    "maxLength": 16,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "grade": {
+                    "maxLength": 16,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "interchangeable": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "is_hyperedge": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "kind": {
+                    "maxLength": 32,
+                    "type": "string"
+                  },
+                  "major_code": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "major_name": {
+                    "maxLength": 300,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "major_track_key": {
+                    "maxLength": 160,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "original_course_codes": {
+                    "items": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "program_type": {
+                    "maxLength": 100,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "required_credits": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "source_program_id": {
+                    "maxLength": 64,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "substitute_course_codes": {
+                    "items": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "maxItems": 32,
+                    "type": "array"
+                  },
+                  "summary": {
+                    "maxLength": 4000,
+                    "type": "string"
+                  },
+                  "title": {
+                    "maxLength": 1000,
+                    "type": "string"
+                  },
+                  "to_grade": {
+                    "maxLength": 16,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "title",
+                  "summary",
+                  "source_program_id",
+                  "grade",
+                  "department_code",
+                  "department_name",
+                  "major_code",
+                  "major_name",
+                  "major_track_key",
+                  "program_type",
+                  "required_credits",
+                  "course_code",
+                  "course_name",
+                  "from_grade",
+                  "to_grade",
+                  "course_codes",
+                  "substitute_course_codes",
+                  "original_course_codes",
+                  "interchangeable",
+                  "is_hyperedge",
+                  "counts",
+                  "evidence_refs"
+                ],
+                "type": "object"
+              },
+              "maxItems": 12,
+              "type": "array"
+            },
+            "total": {
+              "type": "integer"
+            },
+            "truncated": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "items",
+            "total",
+            "truncated",
+            "dataset_counts"
+          ],
+          "type": "object"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "snapshot_date": {
+          "maxLength": 16,
+          "type": "string"
+        },
+        "snapshot_scope": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "unofficial_notice": {
+          "maxLength": 1000,
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operation",
+        "query",
+        "public_only",
+        "snapshot_date",
+        "snapshot_scope",
+        "dataset_schema_version",
+        "unofficial_notice",
+        "identity_rule",
+        "result",
+        "source_url",
+        "fetched_at"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.curriculum.public-query.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.ustc-curriculum",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:7bfa6126afcd763500688540072d1029687bdb2dbf15c2af6a4db2397a83b412",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "ustc-curriculum-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.ustc.curriculum.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "curriculum",
+    "program",
+    "research",
+    "ustc"
+  ]
+}

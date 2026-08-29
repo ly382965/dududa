@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "server_id": "ustc-academic",
+  "server_id": "ustc-curriculum",
   "enabled": true,
   "transport": "stdio",
   "protocol_mode": "legacy",
@@ -9,7 +9,7 @@
     "args": [
       "/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py",
       "--service",
-      "academic"
+      "curriculum"
     ],
     "cwd": "/AstrBot/data/ustc-campus-mcp",
     "env_allowlist": [
@@ -17,16 +17,12 @@
       "LC_ALL",
       "PATH",
       "PYTHONPATH",
-      "USTC_CATALOG_BASE_URL",
-      "USTC_TEACHING_CALENDAR_URL"
+      "USTC_CURRICULUM_DATA_BASE_URL"
     ]
   },
   "secret_refs": [],
   "allowed_tools": [
-    "catalog_list_semesters",
-    "catalog_search_exams",
-    "catalog_search_lessons",
-    "teaching_calendar_get"
+    "curriculum_public_query"
   ],
   "denied_tools": [],
   "timeouts_seconds": {
@@ -47,5 +43,5 @@
   },
   "maximum_concurrency": 2,
   "schema_ttl_seconds": 300,
-  "config_revision": "ustc-academic-read-v1"
+  "config_revision": "ustc-curriculum-research-v1"
 }

@@ -4,16 +4,17 @@ import argparse
 import os
 import sys
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 
 from .academic import AcademicClient
 from .calendar import TeachingCalendarClient
+from .curriculum import CurriculumClient
 from .shuttle import ShuttleClient
 from .young import YoungClient
 
-SERVICES = ("academic", "shuttle", "young")
+SERVICES = ("academic", "curriculum", "shuttle", "young")
 
 
 def create_mcp(service: str) -> FastMCP:
@@ -28,6 +29,13 @@ def create_mcp(service: str) -> FastMCP:
             clients["academic"] = AcademicClient(os.getenv("USTC_CATALOG_BASE_URL", "https://catalog.ustc.edu.cn"))
             clients["calendar"] = TeachingCalendarClient(
                 os.getenv("USTC_TEACHING_CALENDAR_URL", "https://www.teach.ustc.edu.cn/calendar/20135.html")
+            )
+        elif service == "curriculum":
+            clients["curriculum"] = CurriculumClient(
+                os.getenv(
+                    "USTC_CURRICULUM_DATA_BASE_URL",
+                    "https://docs.mmdustc.top/curriculum/data",
+                )
             )
         elif service == "shuttle":
             clients["shuttle"] = ShuttleClient(
@@ -54,29 +62,6 @@ def create_mcp(service: str) -> FastMCP:
         async def catalog_list_semesters(include_future: bool = True, limit: int = 20) -> dict[str, Any]:
             """List official USTC teaching semesters and their integer API IDs."""
             return await academic().list_semesters(include_future, limit)
-
-        @mcp.tool()
-        async def catalog_search_programs(
-            query: str = "",
-            department_code: str = "",
-            major_code: str = "",
-            grade: str = "",
-            train_type: str = "",
-            offset: int = 0,
-            limit: int = 20,
-        ) -> dict[str, Any]:
-            """Search official USTC undergraduate training programs."""
-            return await academic().search_programs(query, department_code, major_code, grade, train_type, offset, limit)
-
-        @mcp.tool()
-        async def catalog_get_program(
-            program_id: int,
-            term: str = "",
-            expand_shared_modules: bool = False,
-            include_introduction: bool = False,
-        ) -> dict[str, Any]:
-            """Read one official training program; large course introductions are off by default."""
-            return await academic().get_program(program_id, term, expand_shared_modules, include_introduction)
 
         @mcp.tool()
         async def catalog_search_lessons(
@@ -124,6 +109,31 @@ def create_mcp(service: str) -> FastMCP:
         async def teaching_calendar_get(start_date: str = "", end_date: str = "") -> dict[str, Any]:
             """Read the current official teaching-calendar article and optionally filter dates."""
             return await clients["calendar"].get(start_date, end_date)
+
+    elif service == "curriculum":
+        @mcp.tool()
+        async def curriculum_public_query(
+            query: str,
+            goal: str = "",
+            operation: Literal[
+                "overview",
+                "program",
+                "course",
+                "change",
+                "comparison",
+                "substitution",
+                "shared",
+                "history",
+            ] = "program",
+            limit: int = 6,
+        ) -> dict[str, Any]:
+            """Query the bounded public curriculum research snapshot, not live SIS data."""
+            return await clients["curriculum"].public_query(
+                query,
+                goal,
+                operation,
+                limit,
+            )
 
     elif service == "shuttle":
         @mcp.tool()

@@ -63,10 +63,16 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
         transport = registry.acquire_snapshot()
         self.assertEqual(
             tuple(item.server_id for item in transport.definitions),
-            ("icourse", "ustc-academic", "ustc-shuttle", "ustc-young"),
+            (
+                "icourse",
+                "ustc-academic",
+                "ustc-curriculum",
+                "ustc-shuttle",
+                "ustc-young",
+            ),
         )
         catalog = capability_snapshot(PRODUCTION_CAPABILITIES, "production")
-        self.assertEqual(len(catalog.definitions), 17)
+        self.assertEqual(len(catalog.definitions), 16)
         by_tool = {item.tool_name: item for item in catalog.mcp_mappings}
         self.assertEqual(
             set(by_tool),
@@ -77,11 +83,10 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                 "get_course",
                 "get_reviews",
                 "catalog_list_semesters",
-                "catalog_search_programs",
-                "catalog_get_program",
                 "catalog_search_lessons",
                 "catalog_search_exams",
                 "teaching_calendar_get",
+                "curriculum_public_query",
                 "shuttle_current_schedule",
                 "shuttle_search_trips",
                 "young_connection_status",
@@ -160,7 +165,14 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
             )
             self.assertEqual(
                 tuple(item.server_id for item in transport.definitions),
-                ("fake-b", "icourse", "ustc-academic", "ustc-shuttle", "ustc-young"),
+                (
+                    "fake-b",
+                    "icourse",
+                    "ustc-academic",
+                    "ustc-curriculum",
+                    "ustc-shuttle",
+                    "ustc-young",
+                ),
             )
             self.assertEqual(
                 tuple(
@@ -170,14 +182,15 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                     "mcp.fake-b",
                     "mcp.icourse",
                     "mcp.ustc-academic",
+                    "mcp.ustc-curriculum",
                     "mcp.ustc-shuttle",
                     "mcp.ustc-young",
                 ),
             )
-            self.assertEqual(len(catalog.definitions), 18)
+            self.assertEqual(len(catalog.definitions), 17)
 
         production = capability_snapshot(PRODUCTION_CAPABILITIES, "still-production")
-        self.assertEqual(len(production.definitions), 17)
+        self.assertEqual(len(production.definitions), 16)
         for relative in (
             "packages/dududa-agent/src/dududa/capabilities/mcp_provider.py",
             "packages/dududa-agent/src/dududa/capabilities/runtime.py",

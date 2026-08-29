@@ -62,11 +62,10 @@ class CapabilitySpec:
 
 SPECS = (
     CapabilitySpec("ustc.academic.semesters.list.v1", "academic", "catalog_list_semesters", "List USTC semesters", "List official teaching semesters and stable integer semester IDs.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "semester", "ustc"})),
-    CapabilitySpec("ustc.academic.programs.search.v1", "academic", "catalog_search_programs", "Search USTC training programs", "Search official undergraduate training programs by major, grade and type.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "program", "search", "ustc"}), cost=2),
-    CapabilitySpec("ustc.academic.program.get.v1", "academic", "catalog_get_program", "Read USTC training program", "Read one official training program with optional shared-module expansion.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "program", "ustc"}), cost=3),
     CapabilitySpec("ustc.academic.lessons.search.v1", "academic", "catalog_search_lessons", "Search USTC lessons", "Search the official semester lesson list with local filters and pagination.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "course", "lesson", "search", "ustc"}), cost=3),
     CapabilitySpec("ustc.academic.exams.search.v1", "academic", "catalog_search_exams", "Search USTC exams", "Search normalized official scheduled and general exam records.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "exam", "search", "ustc"}), cost=3),
     CapabilitySpec("ustc.academic.calendar.get.v1", "academic", "teaching_calendar_get", "Read USTC teaching calendar", "Read the current official teaching-calendar article and its dated events.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "calendar", "ustc"})),
+    CapabilitySpec("ustc.curriculum.public-query.v1", "curriculum", "curriculum_public_query", "Query USTC curriculum research", "Query the bounded public 2015-2026 curriculum research snapshot without accessing the live academic system.", "campus.curriculum", "capability.ustc.curriculum.read", frozenset({"curriculum", "program", "research", "ustc"}), cost=3),
     CapabilitySpec("ustc.shuttle.schedule.get.v1", "shuttle", "shuttle_current_schedule", "Read USTC shuttle schedule", "Read the current official shuttle notice, timetable image and revision-bound structured schedule.", "campus.shuttle", "capability.ustc.shuttle.read", frozenset({"bus", "schedule", "shuttle", "ustc"})),
     CapabilitySpec("ustc.shuttle.trips.search.v1", "shuttle", "shuttle_search_trips", "Search USTC shuttle trips", "Search current trips between east, west, research and high-tech campuses.", "campus.shuttle", "capability.ustc.shuttle.read", frozenset({"bus", "search", "shuttle", "ustc"})),
     CapabilitySpec("ustc.young.connection.status.v1", "young", "young_connection_status", "Read second-class connection status", "Report whether the second-class CAS SecretRefs are configured without exposing credentials.", "campus.second-class", "capability.ustc.young.read", frozenset({"authentication", "second-class", "status", "ustc"})),
@@ -79,7 +78,7 @@ SPECS = (
 def _tool_catalog() -> dict[tuple[str, str], object]:
     return {
         (service, tool.name): tool
-        for service in ("academic", "shuttle", "young")
+        for service in ("academic", "curriculum", "shuttle", "young")
         for tool in create_mcp(service)._tool_manager.list_tools()
     }
 
@@ -182,14 +181,6 @@ def _output_schema(capability_id: str) -> dict[str, object]:
     if capability_id == "ustc.academic.semesters.list.v1":
         item = _object({"id": _integer(), "code": _string(32, nullable=True), "name": _string(200, nullable=True), "start": _string(32, nullable=True), "end": _string(32, nullable=True), "is_last": _boolean()})
         return _object({"ok": _boolean(), "items": _array(item), "total": _integer(), "offset": _integer(), "limit": _integer(), **_source_properties()}, required=("ok", "items", "total", "offset", "limit", "source_url", "fetched_at"))
-    if capability_id == "ustc.academic.programs.search.v1":
-        item = _object({"program_id": _integer(), "name": _string(500, nullable=True), "grade": _string(16, nullable=True), "train_type": _string(100, nullable=True), "department": _object({"code": _string(64, nullable=True), "name": _string(300, nullable=True)}), "major": _object({"code": _string(64, nullable=True), "name": _string(300, nullable=True)})})
-        return _object({"ok": _boolean(), "items": _array(item), "total": _integer(), "offset": _integer(), "limit": _integer(), **_source_properties()}, required=("ok", "items", "total", "offset", "limit", "source_url", "fetched_at"))
-    if capability_id == "ustc.academic.program.get.v1":
-        course = _object({"course_id": _integer(nullable=True), "code": _string(64, nullable=True), "name": _string(500, nullable=True), "name_en": _string(500, nullable=True), "credits": _number(nullable=True), "compulsory": _boolean(), "terms": _array(_string(32), 32), "exam_mode": _string(200, nullable=True), "department": _named_schema(), "introduction": _string(20_000, nullable=True)})
-        module = _object({"module_id": _integer(nullable=True), "parent_id": _integer(nullable=True), "level": _integer(), "name": _string(300, nullable=True), "name_en": _string(300, nullable=True), "remark": _string(2_000, nullable=True), "required_credits": _number(nullable=True), "required_course_count": _integer(nullable=True), "shared_module_id": _integer(nullable=True), "expanded_shared": _boolean(), "courses": _array(course, 500)})
-        program = _object({"train_type": _string(100, nullable=True), "grade": _string(16, nullable=True), "education": _string(100), "student_type": _string(100), "department": _named_schema(), "major": _named_schema(), "major_direction": _named_schema(), "required_credits": _number(nullable=True), "award_degree": _boolean(), "begin_semester": _string(100, nullable=True), "modules": _array(module, 2_000)})
-        return _object({"ok": _boolean(), "program_id": _integer(), "requested_term": _string(32, nullable=True), "program": program, "shared_modules": _array(module, 2_000), "source_url": _string(2_048), "api_source": _string(2_048), "fetched_at": _string(64)}, required=("ok", "program_id", "requested_term", "program", "shared_modules", "source_url", "api_source", "fetched_at"))
     if capability_id == "ustc.academic.lessons.search.v1":
         item = _object({"lesson_id": _integer(nullable=True), "lesson_code": _string(64, nullable=True), "course_code": _string(64, nullable=True), "course_name": _string(500, nullable=True), "course_name_en": _string(500, nullable=True), "credits": _number(nullable=True), "period": _integer(nullable=True), "teachers": _array(_string(200), 32), "department": _object({"code": _string(64, nullable=True), "name": _string(300, nullable=True)}), "campus": _string(100), "education": _string(100), "class_type": _string(200), "course_type": _string(200), "course_classify": _string(200), "schedule": _string(4_000), "student_count": _integer(nullable=True), "limit_count": _integer(nullable=True), "exam_mode": _string(200)})
         return _object({"ok": _boolean(), "items": _array(item), "total": _integer(), "offset": _integer(), "limit": _integer(), "semester_id": _integer(), "freshness_notice": _string(500), **_source_properties()}, required=("ok", "items", "total", "offset", "limit", "semester_id", "freshness_notice", "source_url", "fetched_at"))
@@ -200,6 +191,72 @@ def _output_schema(capability_id: str) -> dict[str, object]:
     if capability_id == "ustc.academic.calendar.get.v1":
         day = _object({"date": _string(16), "week": _string(32), "event": _string(2_000)})
         return _object({"ok": _boolean(), "semester": _string(200), "last_modified": _string(100, nullable=True), "days": _array(day, 400), "events": _array(day, 400), "notes": _array(_string(2_000), 32), "source_note": _string(500), **_source_properties()}, required=("ok", "semester", "days", "events", "notes", "source_note", "source_url", "fetched_at"))
+    if capability_id == "ustc.curriculum.public-query.v1":
+        course = _object(
+            {
+                "code": _string(64),
+                "name": _string(500, nullable=True),
+                "dimension": _string(64, nullable=True),
+                "state": _string(32, nullable=True),
+                "change": _string(32, nullable=True),
+            },
+            required=("code", "name", "dimension", "state", "change"),
+        )
+        count = _object(
+            {"name": _string(100), "value": _number()},
+            required=("name", "value"),
+        )
+        item_properties = {
+            "kind": _string(32),
+            "title": _string(1_000),
+            "summary": _string(4_000),
+            "source_program_id": _string(64, nullable=True),
+            "grade": _string(16, nullable=True),
+            "department_code": _string(64, nullable=True),
+            "department_name": _string(300, nullable=True),
+            "major_code": _string(64, nullable=True),
+            "major_name": _string(300, nullable=True),
+            "major_track_key": _string(160, nullable=True),
+            "program_type": _string(100, nullable=True),
+            "required_credits": _number(nullable=True),
+            "course_code": _string(64, nullable=True),
+            "course_name": _string(500, nullable=True),
+            "from_grade": _string(16, nullable=True),
+            "to_grade": _string(16, nullable=True),
+            "course_codes": _array(course, 60),
+            "substitute_course_codes": _array(_string(64), 32),
+            "original_course_codes": _array(_string(64), 32),
+            "interchangeable": _boolean(nullable=True),
+            "is_hyperedge": _boolean(nullable=True),
+            "counts": _array(count, 32),
+            "evidence_refs": _array(_string(256), 64),
+        }
+        item = _object(item_properties, required=tuple(item_properties))
+        result = _object(
+            {
+                "items": _array(item, 12),
+                "total": _integer(),
+                "truncated": _boolean(),
+                "dataset_counts": _array(count, 100),
+            },
+            required=("items", "total", "truncated", "dataset_counts"),
+        )
+        return _object(
+            {
+                "schema_version": {"type": "integer", "const": 1},
+                "operation": {"type": "string", "enum": ["overview", "program", "course", "change", "comparison", "substitution", "shared", "history"], "maxLength": 32},
+                "query": _string(4_000),
+                "public_only": {"type": "boolean", "const": True},
+                "snapshot_date": _string(16),
+                "snapshot_scope": _string(500),
+                "dataset_schema_version": _string(32),
+                "unofficial_notice": _string(1_000),
+                "identity_rule": _string(1_000),
+                "result": result,
+                **_source_properties(),
+            },
+            required=("schema_version", "operation", "query", "public_only", "snapshot_date", "snapshot_scope", "dataset_schema_version", "unofficial_notice", "identity_rule", "result", "source_url", "fetched_at"),
+        )
     stop_times = _object({"east": _string(8, nullable=True), "west": _string(8, nullable=True), "research": _string(8, nullable=True), "hightech": _string(8, nullable=True)})
     if capability_id == "ustc.shuttle.schedule.get.v1":
         route = _object({"direction": _string(64), "stops": _array(_string(32), 8), "trips": _array(stop_times, 32)})
