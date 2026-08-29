@@ -2,17 +2,17 @@
 
 - 版本：v0.7
 - 范围：`.`
-- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处和校车四个只读 MCP 已接入，真实群聊风格仍待人工校准。
+- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处、培养方案研究和校车五个只读 MCP 已接入，真实群聊风格仍待人工校准。
 
-Dududa 2.0 当前说明（2026-08-26）：
+Dududa 2.0 当前说明（2026-08-29）：
 
 - 系统定位为“受治理的群体情境适应 Runtime”：最小治理内核持有身份、Scope、权限和副作用，Persona 与群体情境只在这些事实不变的前提下适应表达。
 - WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
 - Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效。人格通过措辞、节奏、关注点和信息取舍自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情证明人格。
 - SHORT、MEDIUM 始终作为普通 QQ 消息发送；LONG 单段仍是普通消息，群聊中实际拆成至少两个纯文本 part 且没有附件时使用合并转发。定向目标继续保留在 Runtime 语义中，但合并转发不额外发送 `@` 组件。
 - Meme Manager、PokePro 和旧 Target Talk 已退出 Dududa 2.0 默认 Compose；自动复读仅以独立、默认关闭、按 Scope 配置的插件保留。
-- 第一条自然语言 iCourse 路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
-- 本轮没有修改或重启正在运行的 AstrBot/NapCat，因此“仓库默认退场”不等于“现有运行实例已在线停用旧插件”。
+- iCourse、二课和培养方案研究的自然语言路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
+- 本轮已通过单插件 API 热重载 Dududa Core，AstrBot 与 NapCat 均未重启；运行实例继续只使用 Dududa 2.0 Agent Runtime。
 
 以下为 Dududa 1.0 工程状态快照（2026-07-06）：
 
@@ -119,24 +119,27 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
 
 ### 2.4 USTC 校园 MCP 资源
 
-当前通过同一个 `McpServerRegistry` 和 `UnifiedMcpClient` 管理四个独立只读 Server：
+当前通过同一个 `McpServerRegistry` 和 `UnifiedMcpClient` 管理五个独立只读 Server：
 
-- `icourse`：匿名访问评课社区缓存，向 Capability 层开放统计、课程搜索、课程详情和评价 4 项公开读取。
+- `icourse`：实时访问评课社区公开页面，向 Capability 层开放统一公开查询及统计、课程搜索、课程详情和评价 5 项读取。
 - `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索、活动详情和筛选项 4 项公共观察；不提供登录或本人活动工具。
-- `ustc-academic`：提供学期、培养方案、开课、考试和教学日历 6 项公开查询。
+- `ustc-academic`：提供学期、开课、考试和教学日历 4 项官方公开查询。
+- `ustc-curriculum`：基于 `docs.mmdustc.top/curriculum/data/` 的公开研究快照提供
+  方案、课程、逐年变化、横向对照、替代、共享课和专业历史查询；不直连实时教务，
+  不能代替毕业审核。
 - `ustc-shuttle`：提供当前官方时刻表和站点间班次 2 项公开查询。
 
 当前仓库状态：
 
 - `services/mcp/icourse/` 保留既有评课实现；`services/mcp/ustc-campus/` 通过
-  `--service academic|shuttle|young` 启动三个独立逻辑 Server。
+  `--service academic|curriculum|shuttle|young` 启动四个独立逻辑 Server。
 - 二课依赖固定为 `pyustc@f16d9465fd572463cb1b239d310e02010593386c`，规避 1.1.1 的异步登录缺陷。
 - 本机既有 `credentials.toml` 以只读方式挂入独立 MCP Console，再由 SecretRef
   仅向二课子进程注入以建立上游 CAS 会话；这不是用户登录能力，凭据、Cookie 和
   TGC 不写入仓库或 Web 返回值。
-- WebUI 的 `MCP 工作台` 展示四个 Server 和 17 个 Capability，`super_admin`
+- WebUI 的 `MCP 工作台` 展示五个 Server 和 16 个 Capability，`super_admin`
   只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
-- 已真实验证 iCourse、公开教务、校车和二课查询；二课自然语言查询已进入唯一
+- 已真实验证 iCourse、公开教务、培养方案研究快照、校车和二课查询；自然语言查询进入唯一
   Dududa 2.0 Runtime，本轮模拟不发送 QQ，也不经过 1.0 handler 或 Web search。
 - 这些是按需查询能力，不等于校园资讯、arXiv 或行业日报 Source 已接入。
 
@@ -416,7 +419,7 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 - USTC 学校通知搜索。
 - 学院通知搜索。
 - 教学日历查询。
-- 培养方案查询。
+- 培养方案研究快照查询（已接入；非实时教务，不能代替毕业审核）。
 - 公开课程信息查询。
 - 讲座、活动、竞赛通知。
 - 图书馆开放时间和公开馆藏查询。
