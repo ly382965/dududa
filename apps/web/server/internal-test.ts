@@ -606,6 +606,7 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
     plugins: {
       'icourse.read': 'off',
       'ustc.young.read': 'off',
+      'ustc.curriculum.read': 'off',
       'ustc.academic.read': 'off',
       'ustc.shuttle.read': 'off',
       'image.generate.gpt-image-2': 'off',
@@ -648,6 +649,21 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       description: '复用固定版本 pyustc 查询二课活动；真实调用需要仓库外 CAS SecretRef。',
     },
     {
+      id: 'ustc.curriculum.read',
+      displayName: 'USTC 培养方案研究',
+      kind: 'mcp',
+      installed: true,
+      available: true,
+      builtIn: true,
+      policyManaged: true,
+      requiredRole: 'super_admin',
+      executionRole: 'admin',
+      runtimeTarget: 'astrbot',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'agent_capability',
+      description: '查询 docs.mmdustc.top/curriculum 的公开研究快照；不是实时教务数据，不能直接用于毕业审核。',
+    },
+    {
       id: 'ustc.academic.read',
       displayName: 'USTC 教务处',
       kind: 'mcp',
@@ -660,7 +676,7 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       runtimeTarget: 'astrbot',
       runtimeReadiness: 'configured',
       executionKind: 'agent_capability',
-      description: '查询培养方案、开课、考试和教学日历；超级管理员可在 MCP 工作台直接调用。',
+      description: '查询学期、开课、考试和教学日历；超级管理员可在 MCP 工作台直接调用。',
     },
     {
       id: 'ustc.shuttle.read',
@@ -1565,6 +1581,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
       const selectedPluginIds = new Set<string>(runtime.capabilityIds.map((capabilityId) => {
         if (capabilityId.startsWith('icourse.')) return 'icourse.read'
         if (capabilityId.startsWith('ustc.young.')) return 'ustc.young.read'
+        if (capabilityId.startsWith('ustc.curriculum.')) return 'ustc.curriculum.read'
         if (capabilityId.startsWith('ustc.academic.')) return 'ustc.academic.read'
         if (capabilityId.startsWith('ustc.shuttle.')) return 'ustc.shuttle.read'
         return ''
