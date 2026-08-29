@@ -58,10 +58,12 @@ they never activate services, grant capabilities, or widen side effects.
   capabilities retrieve normalized public source items; Scheduler, policy,
   composition, authorization, delivery, and unsubscribe remain Dududa-owned.
 - The original offline Goal began with iCourse as its only real MCP Server. The
-  2026-08-24 S23 extension adds real read-only second-class, academic and
-  shuttle Servers through the same framework-neutral Client, Registry and
-  explicit Capability mapping, without changing Core or copying the Client.
-  Campus news, arXiv and industry source Servers remain absent.
+  2026-08-24 S23 extension added real read-only second-class, academic,
+  curriculum and shuttle queries. The 2026-08-29 correction moves shuttle to a
+  local Builtin Capability plugin backed by a versioned timetable; iCourse,
+  second-class, academic and curriculum remain MCP Servers. Both Provider kinds
+  use the same Capability Runtime. Campus news, arXiv and industry source
+  Servers remain absent.
 - The first complete runtime handles explicit mentions, direct chat only, with
   tools and memory disabled. Shadow execution has no user-visible or persistent
   side effects.
@@ -296,9 +298,9 @@ substituted for the later external run.
     It never owns schedules, subscriptions, target selection, policy, message
     composition, or delivery.
 16. S12 established the reusable Client/Registry/Capability boundary with
-    iCourse and a Fake. The later S23 extension must prove that boundary by
-    adding second-class, academic and shuttle read-only Servers through
-    configuration, Adapter and Capability mapping only; it must not invent
+    iCourse and a Fake. The later S23 extension proves the MCP boundary with
+    second-class, academic and curriculum Servers, while shuttle proves the
+    existing Builtin Provider Port with a local plugin. Neither path may invent
     campus news, arXiv or industry source Servers.
 17. S15C completes source contracts and fixed fixtures only. Real campus,
     arXiv and industry Adapters remain external work until their sources and

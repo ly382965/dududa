@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "dataset_id": "ustc-shuttle-timetable-v1",
+  "timezone": "Asia/Shanghai",
+  "source_kind": "operator_provided_official_timetable_transcription",
+  "services": [
+    {
+      "service_id": "campus",
+      "name": "东区/西区/南区校园班车",
+      "effective_date": "2026-08-30",
+      "service_day": "workday",
+      "notes": [
+        "标记 holiday 的班次在学期中节假日仍保持正常运行。",
+        "标记 no_public_bus 的班次没有公交车辆运行，但不表示班次取消。",
+        "东区与西区、南区与西区之间的线路途经北区，北区未提供固定时刻。"
+      ],
+      "routes": [
+        {
+          "direction": "东区 -> 西区",
+          "stops": ["东区", "北区", "西区"],
+          "trips": [
+            {"times": ["07:30", null, null], "holiday": true},
+            {"times": ["09:20", null, null], "no_public_bus": true},
+            {"times": ["09:35", null, null], "no_public_bus": true},
+            {"times": ["11:35", null, null], "holiday": true},
+            {"times": ["12:15", null, null], "no_public_bus": true},
+            {"times": ["13:30", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["15:30", null, null], "no_public_bus": true},
+            {"times": ["15:50", null, null], "no_public_bus": true},
+            {"times": ["17:30", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["17:50", null, null]},
+            {"times": ["18:40", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["20:10", null, null], "no_public_bus": true},
+            {"times": ["21:15", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["22:10", null, null], "no_public_bus": true}
+          ]
+        },
+        {
+          "direction": "西区 -> 东区",
+          "stops": ["西区", "北区", "东区"],
+          "trips": [
+            {"times": ["07:40", null, null], "holiday": true},
+            {"times": ["09:30", null, null]},
+            {"times": ["09:45", null, null]},
+            {"times": ["11:45", null, null], "holiday": true},
+            {"times": ["12:25", null, null]},
+            {"times": ["13:40", null, null], "holiday": true},
+            {"times": ["15:40", null, null]},
+            {"times": ["16:00", null, null]},
+            {"times": ["17:40", null, null], "holiday": true},
+            {"times": ["18:00", null, null]},
+            {"times": ["18:50", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["20:20", null, null], "no_public_bus": true},
+            {"times": ["21:25", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["22:20", null, null], "no_public_bus": true}
+          ]
+        },
+        {
+          "direction": "南区 -> 东区",
+          "stops": ["南区", "东区"],
+          "trips": [
+            {"times": ["07:10", null]},
+            {"times": ["07:30", null], "holiday": true},
+            {"times": ["08:00", null]},
+            {"times": ["08:30", null]},
+            {"times": ["09:00", null], "no_public_bus": true},
+            {"times": ["12:05", null]},
+            {"times": ["13:20", null], "no_public_bus": true},
+            {"times": ["13:40", null], "holiday": true, "no_public_bus": true},
+            {"times": ["14:00", null]},
+            {"times": ["15:10", null], "no_public_bus": true},
+            {"times": ["18:20", null], "no_public_bus": true},
+            {"times": ["19:15", null], "holiday": true, "no_public_bus": true},
+            {"times": ["20:45", null], "no_public_bus": true},
+            {"times": ["21:50", null], "holiday": true, "no_public_bus": true},
+            {"times": ["22:45", null]}
+          ]
+        },
+        {
+          "direction": "东区 -> 南区",
+          "stops": ["东区", "南区"],
+          "trips": [
+            {"times": ["07:30", null]},
+            {"times": ["08:30", null]},
+            {"times": ["11:35", null]},
+            {"times": ["11:45", null], "holiday": true, "no_public_bus": true},
+            {"times": ["12:10", null]},
+            {"times": ["12:35", null]},
+            {"times": ["14:30", null]},
+            {"times": ["17:25", null]},
+            {"times": ["17:45", null], "holiday": true, "no_public_bus": true},
+            {"times": ["18:10", null], "no_public_bus": true},
+            {"times": ["19:00", null], "holiday": true},
+            {"times": ["20:30", null]},
+            {"times": ["21:35", null], "holiday": true, "no_public_bus": true},
+            {"times": ["22:30", null]}
+          ]
+        },
+        {
+          "direction": "南区 -> 西区",
+          "stops": ["南区", "北区", "西区"],
+          "trips": [
+            {"times": ["07:10", null, null], "no_public_bus": true},
+            {"times": ["07:30", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["08:00", null, null], "no_public_bus": true},
+            {"times": ["08:30", null, null], "no_public_bus": true},
+            {"times": ["09:00", null, null], "no_public_bus": true},
+            {"times": ["13:20", null, null]},
+            {"times": ["13:40", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["14:00", null, null], "no_public_bus": true},
+            {"times": ["15:10", null, null]}
+          ]
+        },
+        {
+          "direction": "西区 -> 南区",
+          "stops": ["西区", "北区", "南区"],
+          "trips": [
+            {"times": ["07:35", null, null]},
+            {"times": ["11:35", null, null], "holiday": true},
+            {"times": ["12:25", null, null]},
+            {"times": ["17:35", null, null], "holiday": true},
+            {"times": ["18:00", null, null]},
+            {"times": ["18:50", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["20:20", null, null], "no_public_bus": true},
+            {"times": ["21:25", null, null], "holiday": true, "no_public_bus": true},
+            {"times": ["22:20", null, null], "no_public_bus": true}
+          ]
+        }
+      ]
+    },
+    {
+      "service_id": "hightech",
+      "name": "高新校区班车",
+      "effective_date": "2026-08-30",
+      "notes": [
+        "先研院为途经站，到站即停即走，没有固定发车时间。",
+        "始发站班车会提前进站，满员即发。",
+        "双休节假日高新校区 16:00 和东区 18:30 各发 1 台车运行。"
+      ],
+      "schedules": [
+        {
+          "service_day": "workday",
+          "routes": [
+            {
+              "direction": "高新校区 -> 东区",
+              "stops": ["高新校区", "先研院", "西区", "东区"],
+              "on_demand_stops": ["西区"],
+              "trips": [
+                {"times": ["06:40", "06:45", null, "07:25"]},
+                {"times": ["08:00", "08:05", null, "08:50"]},
+                {"times": ["09:35", "09:40", null, "10:20"]},
+                {"times": ["12:50", "12:55", null, "13:35"]},
+                {"times": ["14:30", "14:35", null, "15:25"]},
+                {"times": ["16:00", "16:05", null, "16:50"]},
+                {"times": ["18:30", "18:35", null, "19:25"]},
+                {"times": ["22:05", "22:10", null, "22:50"]}
+              ]
+            },
+            {
+              "direction": "东区 -> 高新校区",
+              "stops": ["东区", "西区", "先研院", "高新校区"],
+              "on_demand_stops": ["先研院"],
+              "trips": [
+                {"times": ["06:50", "07:00", null, "07:40"]},
+                {"times": ["08:00", "08:10", null, "09:00"]},
+                {"times": ["12:50", "13:00", null, "13:40"]},
+                {"times": ["14:30", "14:40", null, "15:25"]},
+                {"times": ["16:00", "16:10", null, "16:50"]},
+                {"times": ["18:30", "18:40", null, "19:30"]},
+                {"times": ["21:20", "21:30", null, "22:00"]},
+                {"times": ["22:05", "22:15", null, "23:00"]}
+              ]
+            }
+          ]
+        },
+        {
+          "service_day": "weekend_holiday",
+          "routes": [
+            {
+              "direction": "高新校区 -> 东区",
+              "stops": ["高新校区", "先研院", "西区", "东区"],
+              "on_demand_stops": ["西区"],
+              "trips": [
+                {"times": ["08:00", "08:05", null, "08:50"]},
+                {"times": ["13:40", "13:45", null, "14:30"]},
+                {"times": ["16:00", "16:05", null, "16:50"]},
+                {"times": ["21:50", "21:55", null, "22:40"]}
+              ]
+            },
+            {
+              "direction": "东区 -> 高新校区",
+              "stops": ["东区", "西区", "先研院", "高新校区"],
+              "on_demand_stops": ["先研院"],
+              "trips": [
+                {"times": ["06:50", "07:00", null, "07:40"]},
+                {"times": ["12:50", "13:00", null, "13:40"]},
+                {"times": ["18:30", "18:40", null, "19:30"]},
+                {"times": ["21:50", "22:00", null, "22:50"]}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service_id": "taihu",
+      "name": "太湖路园区班车",
+      "effective_date": "2026-08-27",
+      "notes": [
+        "东区乘车点为下穿通道北侧站台。",
+        "太湖路园区乘车点为教学楼东侧站台。",
+        "太湖路园区 07:10 发往东区的班次仅周六运行。"
+      ],
+      "schedules": [
+        {
+          "service_day": "monday_to_saturday",
+          "routes": [
+            {
+              "direction": "太湖路园区 -> 东区",
+              "stops": ["太湖路园区", "东区"],
+              "trips": [
+                {"times": ["07:10", "07:40"], "saturday_only": true},
+                {"times": ["09:10", "09:40"]},
+                {"times": ["10:30", "11:00"]},
+                {"times": ["11:30", "12:00"]},
+                {"times": ["13:30", "13:50"]},
+                {"times": ["15:00", "15:30"]},
+                {"times": ["18:30", "19:00"]},
+                {"times": ["21:30", "22:00"]}
+              ]
+            },
+            {
+              "direction": "东区 -> 太湖路园区",
+              "stops": ["东区", "太湖路园区"],
+              "trips": [
+                {"times": ["07:10", "07:40"]},
+                {"times": ["09:10", "09:40"]},
+                {"times": ["10:30", "11:00"]},
+                {"times": ["11:30", "12:00"]},
+                {"times": ["13:30", "13:50"]},
+                {"times": ["18:40", "19:10"]},
+                {"times": ["22:10", "22:40"]}
+              ]
+            }
+          ]
+        },
+        {
+          "service_day": "sunday",
+          "routes": [
+            {
+              "direction": "太湖路园区 -> 东区",
+              "stops": ["太湖路园区", "东区"],
+              "trips": [
+                {"times": ["11:30", "12:00"]},
+                {"times": ["13:30", "13:50"]},
+                {"times": ["21:30", "22:00"]}
+              ]
+            },
+            {
+              "direction": "东区 -> 太湖路园区",
+              "stops": ["东区", "太湖路园区"],
+              "trips": [
+                {"times": ["07:30", "08:00"]},
+                {"times": ["11:30", "12:00"]},
+                {"times": ["13:30", "13:50"]},
+                {"times": ["22:10", "22:40"]}
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

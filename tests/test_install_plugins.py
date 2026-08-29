@@ -15,6 +15,22 @@ SPEC.loader.exec_module(MODULE)
 
 
 class InstallPluginsTests(unittest.TestCase):
+    def test_owned_plugins_are_installed_into_the_runtime_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            plugins_root = Path(tmp)
+            for relative_path in MODULE.OWNED_PLUGIN_PATHS:
+                MODULE.install_owned_plugin(relative_path, plugins_root)
+
+            for relative_path in MODULE.OWNED_PLUGIN_PATHS:
+                name = Path(relative_path).name
+                target = plugins_root / name
+                self.assertTrue((target / "main.py").is_file())
+                marker = json.loads(
+                    (target / ".dududa-owned.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(marker["path"], relative_path)
+                self.assertFalse((target / "__pycache__").exists())
+
     def test_s17_marker_path_aliases_preserve_existing_installs(self) -> None:
         cases = (
             (

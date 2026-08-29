@@ -104,8 +104,9 @@ Effective Services
 这延续 Dududa 的核心原则：**先过滤资格，再优化质量**。控制后台同时显示 Desired 与 Effective，
 以及每个差异的稳定 reason code，不能把“配置里勾选了”显示成“已经可用”。
 
-当前 iCourse、二课、教务处和校车是四个真实只读 MCP Server，超级管理员可在 MCP 工作台按
-Capability ID 直接查询；这不自动形成群服务授权，也不代表 Agent 已在生产 Rollout 中选择 Tool。
+当前 iCourse、二课、教务处和培养方案研究是四个真实只读 MCP Server；校车是本地
+只读插件。超级管理员可在工作台配置这些能力并进行 no-send 查询；这不自动形成群服务授权，
+也不代表 Agent 已在生产 Rollout 中选择 Tool。
 校园资讯、arXiv、行业资讯、真实 Memory、主动 Probe/Digest 和在线 Bandit 在其 Adapter/授权
 门禁关闭前仍必须显示为 `unavailable`、`shadow_only` 或 `authorization_required`，不能把校园
 查询 Capability 伪装成主动资讯来源。

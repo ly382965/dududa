@@ -644,9 +644,9 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       requiredRole: 'super_admin',
       executionRole: 'admin',
       runtimeTarget: 'astrbot',
-      runtimeReadiness: 'configured',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'agent_capability',
-      description: '复用固定版本 pyustc 查询二课活动；真实调用需要仓库外 CAS SecretRef。',
+      description: '2.0 Runtime 通过固定版本 pyustc 查询二课公共活动；不提供用户登录或个人活动能力，上游连接使用仓库外 CAS SecretRef。',
     },
     {
       id: 'ustc.curriculum.read',
@@ -674,14 +674,14 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       requiredRole: 'super_admin',
       executionRole: 'admin',
       runtimeTarget: 'astrbot',
-      runtimeReadiness: 'configured',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'agent_capability',
-      description: '查询学期、开课、考试和教学日历；超级管理员可在 MCP 工作台直接调用。',
+      description: '查询学期、开课、考试和教学日历；支持 2.0 自然语言调用和超级管理员直接调用。',
     },
     {
       id: 'ustc.shuttle.read',
       displayName: 'USTC 校车',
-      kind: 'mcp',
+      kind: 'readonly_query',
       installed: true,
       available: true,
       builtIn: true,
@@ -689,9 +689,9 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       requiredRole: 'super_admin',
       executionRole: 'admin',
       runtimeTarget: 'astrbot',
-      runtimeReadiness: 'configured',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'agent_capability',
-      description: '查询官网当前班车通知、图片和 revision 绑定的结构化班次。',
+      description: '本地版本化时刻表插件；查询校园、高新校区和太湖路园区班次，不在运行时抓取网页。',
     },
     {
       id: 'image.generate.gpt-image-2',
@@ -1250,15 +1250,20 @@ export class FileInternalTestGateway implements InternalTestGateway {
     return projection
   }
 
-  private async runtimeReady(): Promise<boolean | undefined> {
+  private async runtimeStatus(): Promise<Record<string, unknown> | undefined> {
     if (!this.runtimeStatusPath) return undefined
     try {
       const statusText = await readFile(this.runtimeStatusPath, 'utf8')
-      const status = objectValue(JSON.parse(statusText.replace(/^\uFEFF/, '')))
-      return status?.ready === true
+      return objectValue(JSON.parse(statusText.replace(/^\uFEFF/, '')))
     } catch {
-      return false
+      return undefined
     }
+  }
+
+  private async runtimeReady(): Promise<boolean | undefined> {
+    const status = await this.runtimeStatus()
+    if (!status) return this.runtimeStatusPath ? false : undefined
+    return status.ready === true
   }
 
   private async providerConfig(): Promise<PrivateProviderConfig> {
@@ -1456,8 +1461,9 @@ export class FileInternalTestGateway implements InternalTestGateway {
     } catch {
       providerConfigured = false
     }
-    const runtimeReady = await this.runtimeReady()
-    let runtimeControls = currentAgentRuntimeControls({}, runtimeReady)
+    const runtimeStatus = await this.runtimeStatus()
+    const runtimeReady = runtimeStatus ? runtimeStatus.ready === true : this.runtimeStatusPath ? false : undefined
+    let runtimeControls = currentAgentRuntimeControls(runtimeStatus ?? {}, runtimeReady)
     if (this.runtimeConfigPath) {
       try {
         const text = await readFile(this.runtimeConfigPath, 'utf8')
@@ -1466,7 +1472,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
           runtimeReady,
         )
       } catch {
-        runtimeControls = currentAgentRuntimeControls({}, runtimeReady)
+        runtimeControls = currentAgentRuntimeControls(runtimeStatus ?? {}, runtimeReady)
       }
     }
     return {

@@ -3,10 +3,11 @@ from __future__ import annotations
 import asyncio
 import unittest
 from contextlib import asynccontextmanager
+from datetime import date
 
+from ustc_campus_mcp.academic import AcademicClient
 from ustc_campus_mcp.calendar import TeachingCalendarClient
 from ustc_campus_mcp.server import create_mcp
-from ustc_campus_mcp.shuttle import ShuttleClient
 from ustc_campus_mcp.young import YoungClient
 
 
@@ -29,10 +30,6 @@ class UstcCampusContractTests(unittest.TestCase):
             {"curriculum_public_query"},
         )
         self.assertEqual(
-            {tool.name for tool in create_mcp("shuttle")._tool_manager.list_tools()},
-            {"shuttle_current_schedule", "shuttle_search_trips"},
-        )
-        self.assertEqual(
             {tool.name for tool in create_mcp("young")._tool_manager.list_tools()},
             {
                 "young_connection_status",
@@ -41,6 +38,48 @@ class UstcCampusContractTests(unittest.TestCase):
                 "young_search_activities",
             },
         )
+
+    def test_academic_lesson_and_exam_tools_accept_semester_labels(self) -> None:
+        tools = {
+            tool.name: tool.parameters
+            for tool in create_mcp("academic")._tool_manager.list_tools()
+        }
+        for name in ("catalog_search_lessons", "catalog_search_exams"):
+            self.assertEqual(tools[name].get("required", []), [])
+            self.assertIn("semester", tools[name]["properties"])
+            self.assertIn("semester_id", tools[name]["properties"])
+
+    def test_academic_semester_selector_resolves_term_and_nearest_term(self) -> None:
+        items = [
+            {
+                "id": 421,
+                "code": "20252",
+                "name": "2026年春季学期",
+                "start": "2026-03-01",
+                "end": "2026-07-03",
+            },
+            {
+                "id": 461,
+                "code": "20261",
+                "name": "2026年秋季学期",
+                "start": "2026-08-30",
+                "end": "2027-01-15",
+            },
+        ]
+
+        explicit = AcademicClient.select_semester(
+            items,
+            "教务处查询 2026 秋季学期的开课信息",
+            today=date(2026, 8, 29),
+        )
+        nearest = AcademicClient.select_semester(
+            items,
+            "本学期开课",
+            today=date(2026, 8, 29),
+        )
+
+        self.assertEqual(explicit["id"], 461)
+        self.assertEqual(nearest["id"], 461)
 
     def test_calendar_uses_article_table_instead_of_stale_widget_json(self) -> None:
         parsed = TeachingCalendarClient.parse(
@@ -56,9 +95,8 @@ class UstcCampusContractTests(unittest.TestCase):
         self.assertEqual(parsed["events"][0], {"date": "2026-08-21", "week": "", "event": "新生报到"})
         self.assertNotIn("2019", repr(parsed))
 
-    def test_young_missing_secret_and_shuttle_aliases_are_explicit(self) -> None:
+    def test_young_missing_secret_is_explicit(self) -> None:
         self.assertEqual(YoungClient("", "").status()["authentication"], "missing_secret")
-        self.assertEqual(ShuttleClient._station("高新校区"), "hightech")
 
     def test_young_activity_is_not_applyable_when_capacity_is_full(self) -> None:
         class Activity:

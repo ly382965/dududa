@@ -36,7 +36,6 @@ SERVER_NAMES = {
     "icourse": "评课社区",
     "ustc-academic": "教务处",
     "ustc-curriculum": "培养方案",
-    "ustc-shuttle": "校车",
     "ustc-young": "二课",
 }
 MAX_BODY_BYTES = 65_536

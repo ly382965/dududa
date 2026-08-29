@@ -46,10 +46,12 @@ Dududa 当前已经实现：
 
 | `server_id` | 实现位置 | 说明 |
 | --- | --- | --- |
-| `icourse` | `services/mcp/icourse/` | 评课社区公开数据与本地缓存 |
+| `icourse` | `services/mcp/icourse/` | 评课社区公开页面只读查询；模型能力不回退本地缓存 |
 | `ustc-young` | `services/mcp/ustc-campus/` | 二课查询，使用 CAS SecretRef |
-| `ustc-academic` | `services/mcp/ustc-campus/` | 培养方案、开课、考试和教学日历 |
-| `ustc-shuttle` | `services/mcp/ustc-campus/` | 校车时刻查询 |
+| `ustc-academic` | `services/mcp/ustc-campus/` | 学期、开课、考试和教学日历 |
+| `ustc-curriculum` | `services/mcp/ustc-campus/` | 非官方培养方案研究快照 |
+
+校车时刻表由本地 Builtin 插件提供，不是 MCP Server，也不占用 MCP Session。
 
 `streamable_http` 已有 Core 类型、Registry、Worker Adapter 和无网络 Contract Test，但当前
 四个真实 Server 都不是 Streamable HTTP。新 HTTP Server 在自己的真实 endpoint 通过

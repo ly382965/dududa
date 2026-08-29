@@ -66,8 +66,6 @@ SPECS = (
     CapabilitySpec("ustc.academic.exams.search.v1", "academic", "catalog_search_exams", "Search USTC exams", "Search normalized official scheduled and general exam records.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "exam", "search", "ustc"}), cost=3),
     CapabilitySpec("ustc.academic.calendar.get.v1", "academic", "teaching_calendar_get", "Read USTC teaching calendar", "Read the current official teaching-calendar article and its dated events.", "campus.academic", "capability.ustc.academic.read", frozenset({"academic", "calendar", "ustc"})),
     CapabilitySpec("ustc.curriculum.public-query.v1", "curriculum", "curriculum_public_query", "Query USTC curriculum research", "Query the bounded public 2015-2026 curriculum research snapshot without accessing the live academic system.", "campus.curriculum", "capability.ustc.curriculum.read", frozenset({"curriculum", "program", "research", "ustc"}), cost=3),
-    CapabilitySpec("ustc.shuttle.schedule.get.v1", "shuttle", "shuttle_current_schedule", "Read USTC shuttle schedule", "Read the current official shuttle notice, timetable image and revision-bound structured schedule.", "campus.shuttle", "capability.ustc.shuttle.read", frozenset({"bus", "schedule", "shuttle", "ustc"})),
-    CapabilitySpec("ustc.shuttle.trips.search.v1", "shuttle", "shuttle_search_trips", "Search USTC shuttle trips", "Search current trips between east, west, research and high-tech campuses.", "campus.shuttle", "capability.ustc.shuttle.read", frozenset({"bus", "search", "shuttle", "ustc"})),
     CapabilitySpec("ustc.young.connection.status.v1", "young", "young_connection_status", "Read second-class connection status", "Report whether the second-class CAS SecretRefs are configured without exposing credentials.", "campus.second-class", "capability.ustc.young.read", frozenset({"authentication", "second-class", "status", "ustc"})),
     CapabilitySpec("ustc.young.activities.search.v1", "young", "young_search_activities", "Search USTC second-class activities", "Search authenticated second-class activities through the pinned pyustc adapter without projecting deployment-account state.", "campus.second-class", "capability.ustc.young.read", frozenset({"activity", "search", "second-class", "ustc"}), cost=3),
     CapabilitySpec("ustc.young.activity.get.v1", "young", "young_get_activity", "Read USTC second-class activity", "Read one second-class activity and optional series children without projecting deployment-account state.", "campus.second-class", "capability.ustc.young.read", frozenset({"activity", "detail", "second-class", "ustc"}), cost=2),
@@ -78,7 +76,7 @@ SPECS = (
 def _tool_catalog() -> dict[tuple[str, str], object]:
     return {
         (service, tool.name): tool
-        for service in ("academic", "curriculum", "shuttle", "young")
+        for service in ("academic", "curriculum", "young")
         for tool in create_mcp(service)._tool_manager.list_tools()
     }
 
@@ -257,13 +255,6 @@ def _output_schema(capability_id: str) -> dict[str, object]:
             },
             required=("schema_version", "operation", "query", "public_only", "snapshot_date", "snapshot_scope", "dataset_schema_version", "unofficial_notice", "identity_rule", "result", "source_url", "fetched_at"),
         )
-    stop_times = _object({"east": _string(8, nullable=True), "west": _string(8, nullable=True), "research": _string(8, nullable=True), "hightech": _string(8, nullable=True)})
-    if capability_id == "ustc.shuttle.schedule.get.v1":
-        route = _object({"direction": _string(64), "stops": _array(_string(32), 8), "trips": _array(stop_times, 32)})
-        return _object({"ok": _boolean(), "title": _string(300), "structured": _boolean(), "valid_from": _string(16, nullable=True), "valid_to": _string(16, nullable=True), "routes": _array(route, 8), "notice": _string(1_000), "image_url": _string(2_048), **_source_properties()}, required=("ok", "title", "structured", "routes", "notice", "image_url", "source_url", "fetched_at"))
-    if capability_id == "ustc.shuttle.trips.search.v1":
-        item = _object({"direction": _string(64), "from": _string(32), "to": _string(32), "departure": _string(8, nullable=True), "arrival": _string(8, nullable=True), "stop_times": stop_times, "time_notice": _string(500)})
-        return _object({"ok": _boolean(), "from_station": _string(32), "to_station": _string(32), "items": _array(item, 32), "total": _integer(), "structured": _boolean(), "valid_from": _string(16, nullable=True), "valid_to": _string(16, nullable=True), "image_url": _string(2_048), **_source_properties()}, required=("ok", "from_station", "to_station", "items", "total", "structured", "image_url", "source_url", "fetched_at"))
     if capability_id == "ustc.young.connection.status.v1":
         return _object({"ok": _boolean(), "available": _boolean(), "authentication": _string(64), "reason": _string(500, nullable=True), "provider": _string(100), "provider_revision": _string(128), "fetched_at": _string(64)}, required=("ok", "available", "authentication", "provider", "provider_revision", "fetched_at"))
     activity = _activity_schema()

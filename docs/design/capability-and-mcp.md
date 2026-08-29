@@ -6,14 +6,15 @@
   S13 Capability Runtime 均已完成本地实现与验证；S15C 只批准 source-neutral Contract、Fake
   Provider 和本地固定 fixture，不包含真实主动日报来源 Adapter。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
-- 当前真实 MCP Server：`icourse`、`ustc-young`、`ustc-academic`、`ustc-curriculum`、
-  `ustc-shuttle`；后四者共享 `services/mcp/ustc-campus/` 实现包，但拥有独立 Registry
-  身份和 Session。`ustc-curriculum` 只读取公开的非官方培养方案研究快照，不访问实时教务。
+- 当前真实 MCP Server：`icourse`、`ustc-young`、`ustc-academic`、`ustc-curriculum`；
+  后三者共享 `services/mcp/ustc-campus/` 实现包，但拥有独立 Registry 身份和 Session。
+  `ustc-curriculum` 只读取公开的非官方培养方案研究快照，不访问实时教务。校车由
+  `astrbot_plugin_ustc_shuttle` 的本地 Builtin Provider 提供，不占用 MCP Session。
 - 当前配置目录：`configs/capabilities/`、`configs/mcp/servers/`；旧路径只保留一 Release
   兼容链接。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 iCourse service。
 
-本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现通用闭环；五个校园查询 Server 已接入超级管理员 Web Console，Dududa 2.0 Runtime 已闭环 iCourse、二课和培养方案研究的单步自然语言调用。教务开课/考试与校车的自然语言 Planner 仍未完成。本文不改变当前 `icourse` Server 名、SQLite 路径或作为兼容/诊断入口保留的 `/course` 命令。
+本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现通用闭环；四个查询 MCP 与一个本地校车 Capability 已接入统一 Runtime。Dududa 2.0 Runtime 已闭环 iCourse、二课、培养方案研究、教务和校车的单步自然语言调用；教务开课/考试在同一次 MCP 调用内解析官方学期 ID。本文不改变当前 `icourse` Server 名、SQLite 路径或作为兼容/诊断入口保留的 `/course` 命令。
 
 接口权威以 `dududa/capabilities/contracts.py`、`dududa/ports/capabilities.py` 和严格 JSON
 配置为准；本文代码块用于展示稳定公共形状和所有权，不替代构造校验、摘要函数或 Contract
@@ -1063,11 +1064,12 @@ iCourse MCP v1 Server，不是第二套插件 Client。
 
 ## 14. 当前状态与扩展点
 
-当前已有 iCourse、二课、教务、培养方案研究和校车五个独立 Registry Server、严格 JSON Registry、统一
-Client 与隔离 v2 worker；`ICourseClient` 只作为借用共享 Client 的兼容 facade。S13 通用
-Catalog/Retrieval/Planner/Executor/Observation Validator 已实现，16 个映射可由 Web 超级管理员
-按 Schema 直调。2.0 Agent 已自动规划 iCourse 五种、二课四种和培养方案研究八种高层操作；
-Discovery 仍不授予能力。教务/校车 Planner、可信失败用户答复和实时资讯 Source 尚未实现。
+当前已有 iCourse、二课、教务和培养方案研究四个独立 Registry Server、严格 JSON Registry、统一
+Client 与隔离 v2 worker；`ICourseClient` 只作为借用共享 Client 的兼容 facade。校车通过
+本地 Builtin Provider 接入。S13 通用 Catalog/Retrieval/Planner/Executor/Observation Validator
+已实现，当前为 14 个 MCP 映射和 1 个校车 Builtin。2.0 Agent 已自动规划 iCourse、二课、
+培养方案研究、教务和校车；Discovery 仍不授予能力。可信失败用户答复和实时资讯 Source
+尚未实现。
 
 后续新增校园通知或其他 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和
 存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。

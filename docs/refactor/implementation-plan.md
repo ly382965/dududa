@@ -15,8 +15,8 @@ Core `runtime-status.json` 已为 ready，Web 读取真实配置后显示实际�
 
 2026-08-28，Web 群级 Policy 已接入 Dududa 2.0 生产 Bridge：每轮按精确
 `accountId + conversationId` 消费 Agent 开关和 MCP Capability 模式，并在
-Perception 前过滤合法类别。iCourse 与二课已完成自然语言 Planner 闭环；教务和校车
-已装配且可由超级管理员直接调用，但仍待自然语言 Planner 接管。
+Perception 前过滤合法类别。iCourse、二课、培养方案、教务和校车均已完成自然语言
+单步 Planner 闭环；校车使用本地 Plugin Provider，其余四项使用 Unified MCP。
 `/agent/respond` 已通过 AstrBot extension 调用同一 2.0 Runtime 的 no-send 预览，
 可执行批准的只读 Capability，并返回真实 `runtimePath/toolCalls`；它不 claim QQ
 Event、不写 Memory、不调用 QQ Output，不能覆盖真实 Runtime 状态。六项自适应
@@ -138,8 +138,8 @@ Context Window。`compact`、`standard`、`extended` 分别限制为 12 条/6,00
 
 插件使用 `off/auto/on/locked`，但任何模式都不能越过 Core 的 Capability 资格、权限、预算和
 副作用控制。Catalog 由服务端动态提供，并分别标记源码已安装、配置/Compose 已装配、Runtime
-online 和本轮实际调用。iCourse、二课、教务处、培养方案研究和校车现已作为五个真实只读
-Registry Server 接入 Unified MCP，共映射 16 个 Capability；Web 超级管理员可按 schema 直接调用。
+online 和本轮实际调用。iCourse、二课、教务处和培养方案研究作为四个真实只读
+Registry Server 接入 Unified MCP；校车作为本地 Builtin 插件接入同一 Capability Runtime。
 `gpt-image-2` 仍是独立待接图片能力。自动复读和现有 `/sub2api 自动查询` 作为独立的 2.0
 宿主能力保留，并与 Dududa Core 一起由唯一 AstrBot 宿主加载；WebUI 配置身份为
 `super_admin`，声明的 Bot 执行身份为 `admin`。`/sub2api` 已消费精确 Scope Policy；自动复读
@@ -227,8 +227,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | 输入 Connector 与 Output Adapter | 部分完成 | NapCat 维持 1/1 在线且切换中未重启；AstrBot Connector/Output 已装配；内存 WebSocket 的合法 OneBot 输入 75/75 形成真实 AstrBot Event，LONG 自然边界分片回归已通过 | aiocqhttp 并发入队可乱序；仍缺一条真实群回复 Receipt、真实 Attachment Source、私聊与第二平台 |
 | 模型路由器 | 已完成（S08 静态范围） | 三 Tier 契约、逐 Endpoint descriptor、Registry、隐私/预算/健康/流量过滤、容量 admission、fallback、Fake 与兼容 Adapter | 真实多 Provider 质量/延迟/成本证据；动态优化和 Bandit 不在 S08 范围 |
 | Memory | 部分完成 | S14 已闭合 generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 重启证据、M0/M1/M2、纯 Python CJK BM25 和固定合成 Eval；Scope/Write Gate 与 fail-closed Iris 边界保持不变 | 旧命令与 Context Builder 消费者迁移、真实 Iris SDK Backend、授权数据/人工质量评测、Embedding/Hybrid 证据、shadow 和生产切流 |
-| MCP 集成 | 已完成（S12/S22 基础设施与五个查询 Server）；Agent 接入部分完成 | Core MCP DTO/Port、严格 Registry、长生命周期 Unified Client 和共享 Contract 已完成；五个只读 Server 已真实查询，iCourse、二课与培养方案研究均已装配到唯一 2.0 Runtime；二课复用只读 SecretRef 建立上游会话，没有登录 Tool | 教务/校车自然语言 Planner、真实校园资讯/arXiv/行业 Source、通用 Capability 失败答复与真实 QQ Tool 调用验收仍未完成 |
-| Capability 与 Tool Runtime | 基础设施已完成（16 个只读映射）；自然语言规划部分完成 | Catalog/Retrieval/Planner/Executor/Validator 均有测试；超级管理员可按 schema 直调 16 个 Capability；iCourse 五种、二课四种和培养方案研究八种 operation 均保持单 ToolStep、单次 MCP 调用；培养方案 30 题中 26 条真实快照读取全部有结果，另 4 条为不误调用/只读/跨 Provider 边界 | 教务/校车 Planner、完整人工质量校准、真实 QQ Receipt、近期多轮 Context 和通用 Capability 失败答复仍未完成 |
+| MCP 集成 | 已完成（S12/S22 基础设施与四个查询 Server）；Agent 接入部分完成 | Core MCP DTO/Port、严格 Registry、长生命周期 Unified Client 和共享 Contract 已完成；iCourse、二课、教务处和培养方案研究四个只读 Server 已接入；二课复用只读 SecretRef 建立上游会话，没有登录 Tool。校车已从 MCP 移出并改为本地插件 | 真实校园资讯/arXiv/行业 Source、通用 Capability 失败答复与真实 QQ Tool 调用验收仍未完成 |
+| Capability 与 Tool Runtime | 基础设施已完成（14 个 MCP 映射 + 1 个 Builtin）；五项校园查询的单步自然语言规划已完成 | Catalog/Retrieval/Planner/Executor/Validator 均有测试；iCourse、二课、培养方案研究、教务与校车均进入唯一 2.0 Runtime。教务开课/考试在单次 MCP 调用内解析官方学期，校车插件 20/20 固定题和 3 条原生消息抽样通过且不调用 MCP | 完整人工质量校准、真实 QQ Receipt、近期多轮 Context 和通用 Capability 失败答复仍未完成 |
 | 语义理解与 Social Decision | 部分完成 | 通用 Intent/Entity/Reference/Evidence、Rule/Model/Merger/Validator、Social Policy、Complexity、TierPolicy 和 320 条合成 Eval 已实现；Production 使用 Luna/Haiku Hybrid Perception；真实 Luna `low` 对 75 条得到 Schema `75/75`、iCourse category `74/75`、显式 marker `19/19`，三个重点查询实体为 `人工智能/萌萌哒mmd/线性代数B1` | Case 67 在无站点词/上下文时保持普通比较，避免宽泛误调用；仍缺人工 Gold、阈值校准、近期群聊 Context、当前 Bot 实时流量和多轮/附件语义质量证据 |
 | 回答档位与动态输出预算 | 已完成（S15 离线范围） | 独立 `ResponsePlan(SHORT/MEDIUM/LONG)`、显式详略证据、动态预算、Router/Tier/Reasoning 正交性、最终长度/完整性 Validator 和固定 3x3 Eval 已通过；LONG 自然边界分片缺陷已修复 | 75 题实际为 LONG 73、SHORT 1、MEDIUM 0，尚未形成三档真实质量证据；仍缺 QQ 分片体验和最终预算校准 |
 | OC 与 Persona | 部分完成 | S15 已增加 typed `dududa`/`neutral` 资产、Catalog CAS/LKG/旧 generation 回放、确定性 Renderer 和 Persona/Plan 最终绑定；S23 DirectChat 已在同一次模型生成中消费 Persona 与 AnswerProfile | 多 Persona 产品资产、用户偏好存储、近期群聊风格投影和人工风格 Eval |
@@ -238,8 +238,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | AstrBot Runtime 插件管理 | 已完成（Web 安装纵切） | 已部署动态插件列表、GitHub/ZIP 热安装、`plugin` scope Key 服务端代理、版本警告回滚/显式重试，以及 `DUDUDA-PLUGIN-SPEC 1.0.0` 中文下载；真实 Web 列表返回 4 个已启用插件 | 安装不自动授予 Dududa Capability；可组合治理 Plugin Runtime、远程管理员认证、市场/卸载/升级不在本纵切范围 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 资产和 Bandit 分权 | 尚无 DTO、Projection、候选流水线、授权数据或 Eval；不得自动发布 Skill 或推断真实人物关系 |
 | Trace、Eval 与 CI | 部分完成 | 版本化 Python 测试、S09/S13 合成 Eval、Runtime Trace、S11 低基数指标、镜像 registry smoke 和 CI 门禁 | 真实 SLO、长期趋势、线上故障注入与人工 Eval 确认 |
-| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测、Agent Console 自适应超级工作台、Runtime 插件与 MCP 接入纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、六面运维投影、六项正交配置、插件四态和五个校园 MCP 直调；Web 现从 Core config/status 读取真实 readiness，并把精确 Scope 的 Agent 开关与 MCP Capability 资格交给 2.0 Runtime。iCourse、二课与培养方案研究已有 2.0 Planner，教务和校车仍为 configured/pending Planner | 生产 Runtime 尚未消费全部六项自适应设置；主动参与仍仅 S15E Probe Shadow/`NO SEND`。远程管理员认证、`gpt-image-2`、真实 Source/Projection 和主动 Output 仍是后续边界 |
-| 大规模真实群测试与 Debug | S23 部分完成（首个实时入站切换已开始） | 1.0 已退出运行面，2.0 是唯一 Agent Runtime；Luna/Terra/Sol 已注册并真实调用；所有群明确 @ 的受支持消息由 2.0 Canary/Delivery 接管，iCourse 与二课均有自然语言 no-send 纵切证据 | 先由用户发一条明确 @ 的消息闭合真实 QQ MCP/Delivery 与 LONG 转发证据；教务/校车 Planner、私聊、附件、未 @ 主动参与、真实 Source/日报/Probe 及大规模长期 Debug 仍未开始 |
+| WebUI / Bot Control Plane | S21 已完成（离线）；历史语料内测、Agent Console 自适应超级工作台、Runtime 插件与 MCP 接入纵切均已完成 | 已实现 operator session/RBAC、Profile/Assignment、六面运维投影、六项正交配置和插件四态；MCP 工作台显示四个 Server，校车显示为本地 `readonly_query` 插件。Web 把精确 Scope 的 Agent 开关与 Capability 资格交给 2.0 Runtime，五项校园查询 Planner 均已闭环 | 生产 Runtime 尚未消费全部六项自适应设置；主动参与仍仅 S15E Probe Shadow/`NO SEND`。远程管理员认证、`gpt-image-2`、真实 Source/Projection 和主动 Output 仍是后续边界 |
+| 大规模真实群测试与 Debug | S23 部分完成（首个实时入站切换已开始） | 1.0 已退出运行面，2.0 是唯一 Agent Runtime；Luna/Terra/Sol 已注册并真实调用；所有群明确 @ 的受支持消息由 2.0 Canary/Delivery 接管，iCourse、二课、培养方案研究、教务和校车均有自然语言 no-send/Fake Delivery 纵切证据 | 先由用户发一条明确 @ 的消息闭合真实 QQ Tool/Delivery 与 LONG 转发证据；Capability 多步/跨能力规划、私聊、附件、未 @ 主动参与、真实 Source/日报/Probe 及大规模长期 Debug 仍未开始 |
 
 ### 实施步骤完成度
 
@@ -258,8 +258,8 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S10 | 已完成 | 显式 @ 直聊离线闭环、两次模型预算、CAS/single-flight、Composition、Delivery/reconciliation 与 Shadow | 生产 Provider 与 Memory/Tool/Attachment 不在 S10 范围 |
 | S11 | 已完成（本地） | typed rollout、SQLite claim/tombstone、AstrBot Bridge、发送前熔断、指标和可执行回滚 | 授权真实 QQ 群证据延期到最终 S23 |
 | S12A | 已完成 | MCP v2 native/legacy、生命周期和版本隔离 Spike 已形成 ADOPT ADR | 保持主环境 MCP 1.29、worker MCP 2.0 的隔离结论 |
-| S12 | 已完成 | Unified MCP、严格 Registry、独立 worker、iCourse facade、Fake 扩展与故障验证均已通过；后续按同一 Client/Registry 接入二课、教务、培养方案研究和校车，并补齐 Runtime overlay、结构化 Web 登记、热 reload/Discovery 与中文规范 | 登记新 Server 仍不自动创建 Capability；实时资讯 Source、真实 HTTP Server 样本和运行中 Agent 部署保持后续门禁 |
-| S13 | 已完成（基础设施）；自然语言规划部分完成 | Catalog/Retrieval/Planner/Executor/Validator、16 个只读映射、Web Schema 直调和 no-send 集成测试通过；S23 已将 iCourse 五种、二课四种和培养方案研究八种高层查询接入 2.0 Runtime | 教务/校车 Schema Planner、可信失败用户答复、人工质量与真实 QQ Tool Rollout 未完成 |
+| S12 | 已完成 | Unified MCP、严格 Registry、独立 worker、iCourse facade、Fake 扩展与故障验证均已通过；后续按同一 Client/Registry 接入二课、教务和培养方案研究。校车改用既有 Builtin Provider Port | 登记新 Server 仍不自动创建 Capability；实时资讯 Source、真实 HTTP Server 样本和运行中 Agent 部署保持后续门禁 |
+| S13 | 已完成（基础设施）；五项校园查询的单步自然语言规划已完成 | Catalog/Retrieval/Planner/Executor/Validator、14 个 MCP 映射和 1 个校车 Builtin、Web/no-send 集成测试通过；iCourse、二课、培养方案研究、教务和校车已接入 2.0 Runtime | 可信失败用户答复、人工质量与真实 QQ Tool Rollout 未完成 |
 | S14 | 已完成（离线） | 生命周期、删除/tombstone、scoped export、archive/restore、M0 no-memory、M1 recency、M2 CJK BM25、固定合成 Eval 与双 Python/构建/Web/安全综合证据均通过 | 不启用 Runtime Memory；真实 Iris、授权数据、人工质量和 Embedding/Hybrid 继续作为外部门禁 |
 | S15 | 已完成（离线） | Profile/Persona 契约、Runtime/Delivery 绑定、17-case 3x3 Eval、双 Python/构建/Web 综合证据均通过 | 不声明真实中文体验、Persona 风格、Provider tokenizer 或最终预算已校准 |
 | S15A | 已完成（离线） | 主动 DTO/Port、Target/Grant Registry、Actor 解析、默认拒绝 Policy、quota、Preview metadata、Dispatch CAS/recovery、Fake 与 590 项双 Python 全仓证据 | 不含 Scheduler、来源、模型、真实 Output 或 QQ 发送；生产保持无入口且默认 off |
@@ -273,7 +273,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | **已完成、已验证（离线）** | Foundation、Group Onboarding、Governed Operations 与 Completion Audit 均通过；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影，Agent 路径不直发 NapCat | 生产 HTTP/身份、真实健康、真实 Provider/Source/Projection/Output、人工质量和真实 QQ 操作仍属于 S23 外部门禁 |
-| S23 | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 既有 manifest/Demo/Console/iCourse 纵切之上，三模型真实可调用；75 题 Runtime/Fake Delivery 为 75/75，AstrBot 内存宿主入口 75/75，人工终审 49/75 完整；所有群明确 `@Bot` 的受支持消息由 2.0 接管 | 分支尚未合并；先修复/验证宿主并发顺序，再补一条真实 QQ 端到端回复/合并转发证据。Capability 多步规划、可信失败、其他校园 Planner、私聊、附件、未 @ 主动参与、真实来源、日报/Probe、`gpt-image-2` 和在线 Bandit 仍未完成 |
+| S23 | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 既有 manifest/Demo/Console/iCourse 纵切之上，三模型真实可调用；75 题 Runtime/Fake Delivery 为 75/75，AstrBot 内存宿主入口 75/75，人工终审 49/75 完整；所有群明确 `@Bot` 的受支持消息由 2.0 接管，五项校园查询已完成 no-send 单步耦合抽样 | 分支尚未合并；先修复/验证宿主并发顺序，再补一条真实 QQ 端到端回复/合并转发证据。Capability 多步/跨能力规划、可信失败、私聊、附件、未 @ 主动参与、真实来源、日报/Probe、`gpt-image-2` 和在线 Bandit 仍未完成 |
 
 ### 公共开工门禁
 
@@ -297,7 +297,7 @@ Spec/ADR 提议扩展。各步骤依次编码前，接口 Owner 先冻结最小 
 | 模型路由器 | ⭐⭐⭐ | 先做单 Provider 静态 Router，只启用 `PERCEPTION`/`DIRECT_CHAT`；Bandit 后置 | 定义 `ModelRole`、逐 Endpoint Descriptor、`ModelRequest/Response`、隐私处理 receipt、错误、静态 Route Policy 和 Fake Provider；先证明 `PERCEPTION` 一个角色 | 接入 AstrBot/OpenAI-compatible Adapter；为 Perception、Direct Chat、Tool Planning、Response Composition 分别配置 Structured Output、deadline、预算和 fallback | 多 Provider 健康检查、熔断、数据等级/驻留/retention 过滤、成本/延迟路由、热更新；可在硬过滤后接保守 Contextual Bandit，完成回滚后清理旧模型路径 |
 | 在线学习 / Bandit | ⭐⭐⭐⭐ | 最后实现；先把可评估日志做好，不与 Router 首版并行 | 定义 eligible action、最小 Feature、behavior/candidate propensity、before-action Log、延迟 Feedback、Reward Policy 和静态 baseline；用合成已知策略验证 OPE estimator，不做 live exploration | 先对 Model Route 做 shadow，只验证候选、日志、fallback、策略一致率和延迟；确定性 baseline 对未执行动作没有 support，不能声称效果提升 | 对安全 Endpoint 做极小 conservative canary；只用具有 propensity/support 的日志报告 IPS/SNIPS/DR、有效样本量和群级 bootstrap，通过后才扩展到等价 Capability、预审 Prompt、低风险 Search 和 style；高风险/敏感探索恒为 0，任一安全 Gate 违规立即回滚 |
 | Memory | ⭐⭐⭐⭐⭐ | 按“安全边界 -> 生命周期/词法基线 -> 授权数据效果门禁”串行；自动写入始终另行授权 | 已完成 `MemoryScope`、Selector、Repository、Write Gate、内存/JSON 与 fail-closed Iris 边界；S14 又闭合删除/tombstone、导出、恢复和冲突 | 已完成同一授权候选集上的 M0 no-memory、M1 recency、M2 CJK BM25 与固定合成 Eval；Runtime/旧命令仍关闭，不把 fixture 指标外推为真实质量 | 取得授权数据和人工判断后才比较 Embedding/Hybrid，并仅在稳定增益时进入 shadow；Graph/Temporal、生产 Iris 和自动写入继续后置 |
-| MCP 集成 | ⭐⭐⭐⭐ | S12 只完成传输与生命周期，S13 才授予业务 Capability | Core 定义 MCP DTO/Port；严格 JSON `McpServerRegistry`、长生命周期 `UnifiedMcpClient`、Schema/timeout/retry/circuit、Fake 和独立 v2 worker | iCourse 兼容 Adapter 与 Fake 先通过同一 Contract；现已按同一边界接入二课、教务处、培养方案研究和校车四个只读 Server | 五个 Server 共 16 个 Capability，Web 超级管理员可直接调用；Runtime 新 Server 可从结构化表单写入仓库外 overlay 并发现 Tool，但 Capability 仍需独立 mapping；校园资讯/arXiv/行业 Source 另行实现 |
+| MCP 集成 | ⭐⭐⭐⭐ | S12 只完成传输与生命周期，S13 才授予业务 Capability | Core 定义 MCP DTO/Port；严格 JSON `McpServerRegistry`、长生命周期 `UnifiedMcpClient`、Schema/timeout/retry/circuit、Fake 和独立 v2 worker | iCourse 兼容 Adapter 与 Fake 先通过同一 Contract；现有四个只读 MCP Server 为 iCourse、二课、教务处和培养方案研究，校车为本地插件 | MCP 共 14 个映射，校车另有 1 个 Builtin Capability；Runtime 新 Server 可从结构化表单写入仓库外 overlay 并发现 Tool，但 Capability 仍需独立 mapping；校园资讯/arXiv/行业 Source 另行实现 |
 | 输入 Connector | ⭐⭐⭐ | 首批实现；只支持 AstrBot，接口稳定后才考虑第二平台 | 实现 AstrBot Event 到 `MessageEnvelope` 与 `Actor` 的转换、真实 conversation ID、引用/@/附件引用、幂等键和 conformance fixture；不做意图判断 | 接入附件 Preprocessor、Context 来源、Output Adapter 和 `DeliveryReceipt`；在 shadow Runtime 中验证不重复发送 | 提炼 Connector SDK，支持新平台能力协商、背压、顺序和版本兼容；新增平台不修改 Core Runtime |
 | 语义理解（意图/实体） | ⭐⭐⭐⭐ | 规则 baseline 先行，模型只补规则无法覆盖的结构化结果 | 定义 `PerceptionResult`、Intent/Entity/Reference/Evidence Schema、标注规范和 200–500 条脱敏/合成基线集；实现 RulePerception、Validator 和确定性 Social Policy | 经 Model Router 接入 ModelPerception，固定 Rule -> Model -> Merger -> Validator；实现实体、指代、歧义和工具需求，shadow 对比 TargetTalk | 扩展多轮、多意图、QQ 口语、附件摘要和置信度校准；基于真实错误做 Active Learning，只有 Eval 支持时才微调模型 |
 | 回答档位 / Response Plan | ⭐⭐⭐ | 作为 S15 首个子步骤；不重做 S08/S09，不把长度映射为 Tier | 定义 `AnswerProfile`、`ResponsePlan`、显式详略 hint、可见 Token/字符/分片和必要内容契约；固定 SHORT/MEDIUM/LONG policy | Runtime 将 Plan digest/动态预算交给 TierPolicy/Router/Composer/Renderer/Final Validator；覆盖 HIGH+SHORT、LOW+LONG | 多语言/平台预算与用户偏好；只有离线证据支持时优化 Profile policy，Bandit 不选择 Profile |
@@ -414,13 +414,16 @@ codes 和实际插件状态。回复强度只影响候选决策，不能替代�
 截至 2026-08-28，Scope Policy 已从“可保存、可预览”推进到生产 Bridge 的有限
 输入：Agent 开关可在 Canary claim 前关闭该 Scope，MCP 插件模式可在 Perception
 前缩小既有 Capability 类别；`auto/on/locked` 只保留资格，不强制调用。当前
-Production Context 只公布已有确定性投影的 `campus.course-review` 与
-`campus.second-class`，因此 iCourse 和二课已闭环；教务和校车仍由超级管理员直调并
-等待 Planner。模型档位、推理深度等其余六项
+Production Context 只公布已有确定性投影的 `campus.course-review`、
+`campus.second-class`、`campus.curriculum`、`campus.academic` 与
+`campus.shuttle`；校车通过本地插件 Provider 闭环，教务的学期、开课、考试和
+教学日历由现有四个只读 Capability 闭环。开课/考试仍是一个 Agent Tool Step，
+Academic MCP 在该次调用内把“2026 秋/本学期”解析为官方 semester ID。模型档位、推理深度等其余六项
 配置尚不能整体宣称已驱动生产 Runtime。
 
 旧灰色控件、前端硬编码插件和 SHORT/MEDIUM/LONG 到 Luna/Terra/Sol 的永久映射已移除。
-截至 2026-08-24，iCourse、二课、教务处和校车已接入 Unified MCP 与 Web Capability Console；
+截至 2026-08-29，iCourse、二课、教务处和培养方案研究由 Unified MCP 接入；校车已改为
+版本化本地插件，并从 MCP Registry 与 Console 中移除；
 超级管理员还可以用结构化表单登记 stdio/Streamable HTTP Server，配置写入仓库外 overlay，
 经同一个严格 Registry 热 reload 和 Tool Discovery。登记结果固定为
 `capabilityGranted=false`，只有后续独立的 Capability definition/mapping 与 Scope Policy
@@ -939,8 +942,9 @@ Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S2
    已完成默认关闭的源码、配置面和 Compose 装配；自动复读的 Web Policy Adapter 仍未接通；
    `/sub2api` 已解析在线 Scope；Reread 与 Sub2API 均由唯一 2.0 AstrBot 宿主加载，但不会因此
    自动成为 Agent Capability；
-10. Dududa 2.0 自然语言 iCourse 和二课本地纵切已闭环；旧 `/course` 仅作诊断，
-    Web search 不参与 2.0 回答；教务/校车 Schema Planner 与通用可信失败答复仍未完成；
+10. Dududa 2.0 自然语言 iCourse、二课、培养方案、教务和校车纵切已闭环；旧
+    `/course` 仅作诊断，Web search 不参与 2.0 回答；校车使用本地 Plugin Provider，
+    其余四项使用 Unified MCP。通用可信失败答复仍未完成；
 11. 当前所有群的明确 `@Bot`、纯文本、无附件消息已经进入 2.0 Canary/Delivery；Core status
     为 ready，Web 显示 actual enabled，NapCat 在切换中未重启；
 12. 下一步先处理并验证 AstrBot/aiocqhttp 并发入队顺序，再用一条真实群消息闭合收发和 LONG

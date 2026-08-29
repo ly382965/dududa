@@ -137,7 +137,7 @@ Title: S23 Authorized Real-Group Validation
   claim 前退出；Capability 为 `off` 时移除映射类别，`auto/on/locked` 只保留
   原本合法的候选资格，不强制调用，也不覆盖全局 Tool、授权、预算或健康判断。
 - [x] Web 将候选预览与真实 Runtime 分开显示：iCourse 标记为 Runtime online；
-  二课、教务和校车准确标记为已装配、待自然语言 Planner 接管。主动参与仍为
+  当时二课、教务和校车标记为已装配。后三者自然语言 Planner 现均已闭环，主动参与仍为
   S15E Probe Shadow/`NO SEND`。
 - [x] 将 `/agent/respond` 接到 AstrBot 内已安装的 2.0 Runtime no-send 预览：允许
   已批准的只读 Capability，使用内存 Delivery Receipt 完成状态机，但不 claim/stop
@@ -176,12 +176,15 @@ Title: S23 Authorized Real-Group Validation
 - [x] After the adaptive Agent Console slice is implemented and sampled,
   synchronize its Progress, Findings and Verification and create one local
   commit without push.
-- [x] iCourse、二课、教务处与校车作为四个独立 Registry Server 接入现有 Unified
-  MCP；iCourse 继续匿名复用，二课通过 SecretRef 使用固定 pyustc 版本，首版全部
-  只读。
-- [x] 教务处实现培养方案、开课、考试和教学日历查询；校车实现当前时刻表和行程
-  查询，并对公开来源各完成一次真实只读 Smoke。
-- [x] WebUI 展示四个 MCP 的健康、认证和 Capability 状态，`super_admin` 可依据
+- [x] iCourse、二课、教务处与培养方案研究作为四个独立 Registry Server 接入现有
+  Unified MCP；iCourse 继续匿名复用，二课通过 SecretRef 使用固定 pyustc 版本。
+- [x] 校车从 MCP 迁移为本地 owned 插件：版本化时刻表、Builtin Provider、自然语言
+  Planner 和 20 题固定测试已闭环，旧 Server/mapping/网页抓取路径已移除。
+- [x] 教务学期、开课、考试和教学日历进入自然语言单步 Planner；开课/考试由
+  Academic MCP 在同一次调用内把学期名称解析为官方 semester ID。目标群五项
+  校园查询已启用并完成 no-send 耦合抽样。
+- [x] WebUI 展示四个 MCP 的健康、认证和 Capability 状态，并把校车显示为本地
+  `readonly_query` 插件；`super_admin` 可依据
   Capability input schema 直接调用并查看结构化结果、来源与抓取时间；不开放任意
   MCP tool 透传。
 - [x] WebUI 新增 Runtime 插件管理区，动态列出 AstrBot 已加载插件，通过服务端
@@ -267,11 +270,12 @@ Title: S23 Authorized Real-Group Validation
   four-node merged-forward presentation for `overview`; run the focused
   Sub2API tests and leave the running container lifecycle unchanged.
 - [x] Implement the shared `ustc-campus` MCP package and independently register
-  `ustc-young`, `ustc-academic` and `ustc-shuttle`; retain the existing
+  `ustc-young`, `ustc-academic` and `ustc-curriculum`; retain the existing
   `icourse` Server and compatibility path.
 - [x] Add read-only Capability definitions/mappings, deployment assembly and
-  runtime config sync for all four Servers. A missing CAS SecretRef must degrade
-  only the Young Server to an explicit unavailable state.
+  runtime config sync for all four MCP Servers. Add shuttle through the existing
+  Builtin Provider Port. A missing CAS SecretRef must degrade only the Young
+  Server to an explicit unavailable state.
 - [x] Add the internal Capability Console API and schema-driven Agent Console
   panel, then verify one iCourse/public-campus call path without enabling QQ
   output or restarting the current NapCat/AstrBot containers.
@@ -289,8 +293,10 @@ Title: S23 Authorized Real-Group Validation
   the natural-language iCourse vertical slice with focused Fakes.
 - [x] Connect the exact-Scope Web Agent Policy to the production Bridge and
   project its Agent switch plus MCP plugin modes into Perception eligibility;
-  expose iCourse as online while keeping the other campus MCPs in the truthful
-  configured/pending-Planner state.
+  expose the four campus MCPs and local shuttle plugin truthfully, then keep
+  each Capability unavailable to natural-language planning until its bounded
+  argument projection is implemented. All five campus query paths now have
+  that projection and report Runtime-online status.
 - [x] Make the explicit `评课社区` marker a deterministic 2.0 Capability signal;
   execute all 75 benchmark messages through Runtime/MCP dispatch, add the three
   query-projection regressions, and measure all 75 once with real Luna `low`

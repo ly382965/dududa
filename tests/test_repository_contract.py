@@ -115,7 +115,7 @@ class RepositoryContractTests(unittest.TestCase):
         )
         self.assertEqual(
             set(config["mcpServers"]),
-            {"icourse", "ustc-academic", "ustc-shuttle", "ustc-young"},
+            {"icourse", "ustc-academic", "ustc-curriculum", "ustc-young"},
         )
         self.assertEqual(
             config["mcpServers"]["icourse"]["command"], "/usr/local/bin/python"
@@ -125,7 +125,7 @@ class RepositoryContractTests(unittest.TestCase):
             "/AstrBot/data/icourse-cache/icourse.sqlite3",
             config["mcpServers"]["icourse"]["args"],
         )
-        for server_id in ("ustc-academic", "ustc-shuttle", "ustc-young"):
+        for server_id in ("ustc-academic", "ustc-curriculum", "ustc-young"):
             self.assertTrue(config["mcpServers"][server_id]["disabled"])
             self.assertIn("/AstrBot/data/ustc-campus-mcp/run_ustc_mcp.py", config["mcpServers"][server_id]["args"])
         plugin_schema = json.loads(
@@ -191,18 +191,21 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn('rec["meme_rate"] =', admin)
         self.assertIn("已停用自动表情包概率配置", admin)
 
-    def test_compose_keeps_owned_code_read_only(self) -> None:
+    def test_compose_uses_only_the_v2_plugin_runtime(self) -> None:
         compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
             encoding="utf-8"
         )
         self.assertIn("PYTHONDONTWRITEBYTECODE", compose)
-        self.assertIn("/AstrBot/data/plugins\n", compose)
+        self.assertIn(
+            "${DUDUDA_ASTRBOT_PLUGIN_ROOT:-./runtime/astrbot-plugins}:/AstrBot/data/plugins",
+            compose,
+        )
         for name in (
             "astrbot_plugin_dududa_core",
             "astrbot_plugin_reread",
             "astrbot_plugin_sub2api_readonly",
         ):
-            self.assertIn(f"/AstrBot/data/plugins/{name}:ro", compose)
+            self.assertNotIn(f"/AstrBot/data/plugins/{name}", compose)
         self.assertNotIn(
             "/AstrBot/data/plugins/astrbot_plugin_reply_polish",
             compose,

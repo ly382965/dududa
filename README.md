@@ -19,7 +19,8 @@ QQ / QQ Group
       +-- Reply Polish ------- default-off LONG compatibility layer
       +-- Sub2API Readonly ---- Sub2API admin UI read-only JSON endpoints
       +-- locked third-party plugins
-      +-- Unified MCP -------- iCourse / second-class / academic / shuttle
+      +-- Unified MCP -------- iCourse / second-class / academic / curriculum
+      +-- Shuttle Plugin ----- versioned local timetable Capability
 ```
 
 Bot 和 NapCat 默认加入外部 Docker 网络 `mmdustc-edge`，并保留原主站使用的
@@ -137,9 +138,10 @@ the Iris privacy patch before forcing any plugin replacement.
 
 Production data is intentionally not copied into Git. To reuse an existing data
 directory, back it up first and set an absolute `STACK_DATA_ROOT` in `.env`.
-Run `./manage.sh sync` to merge the `icourse` MCP entry. Owned plugins are
-read-only bind mounts, so source updates take effect after an AstrBot restart;
-the command does not copy provider credentials, databases or QQ login state.
+Run `./manage.sh sync` to merge the `icourse` MCP entry. `./manage.sh plugins`
+atomically installs owned and locked plugins into `runtime/astrbot-plugins`, the
+single Dududa 2.0 plugin root mounted by AstrBot. The command does not copy
+provider credentials, databases or QQ login state.
 
 ## External Contracts
 

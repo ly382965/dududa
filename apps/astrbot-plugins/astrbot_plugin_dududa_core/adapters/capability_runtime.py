@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
 from dududa.capabilities import (
+    CapabilityProviderKind,
     ConfigCapabilityRegistry,
     DeterministicArgumentBinder,
     DeterministicBoundedCapabilityRuntime,
@@ -21,6 +22,7 @@ from dududa.capabilities import (
     load_capability_catalog_snapshot,
 )
 from dududa.domain.primitives import ResourceUsage, SchemaRef
+from dududa.ports.capabilities import CapabilityProvider
 from dududa.ports.mcp import UnifiedMcpClient
 from dududa.security.audit import InMemoryAuditSink
 from dududa.security.limits import InMemoryBudgetLedger, InMemoryInteractionLimiter
@@ -50,6 +52,9 @@ def build_production_capability_runtime(
     definitions_directory: Path,
     mappings_directory: Path,
     policy_revision: str,
+    builtin_provider_factories: Mapping[
+        str, Callable[..., CapabilityProvider]
+    ] | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> ProductionCapabilityAssembly:
     if not isinstance(policy_revision, str) or not policy_revision.strip():
@@ -61,16 +66,29 @@ def build_production_capability_runtime(
         snapshot_id="capability-catalog:production-startup",
         acquired_at=(clock() if clock is not None else datetime.now(timezone.utc)),
     )
-    providers = tuple(
-        McpCapabilityProvider.from_catalog(
-            initial,
-            descriptor,
-            unified_client,
-            schema_validator,
-            clock=clock,
+    providers: list[CapabilityProvider] = []
+    for descriptor in initial.provider_descriptors:
+        if descriptor.kind is CapabilityProviderKind.MCP:
+            providers.append(
+                McpCapabilityProvider.from_catalog(
+                    initial,
+                    descriptor,
+                    unified_client,
+                    schema_validator,
+                    clock=clock,
+                )
+            )
+            continue
+        factory = (builtin_provider_factories or {}).get(
+            descriptor.provider.provider_id
         )
-        for descriptor in initial.provider_descriptors
-    )
+        if descriptor.kind is not CapabilityProviderKind.BUILTIN or factory is None:
+            raise ValueError(
+                f"unsupported production Capability Provider: {descriptor.provider.provider_id}"
+            )
+        providers.append(
+            factory(initial, descriptor, schema_validator, clock=clock)
+        )
     provider_registry = InMemoryCapabilityProviderRegistry(providers)
     registry = ConfigCapabilityRegistry(
         definitions_directory,
@@ -134,6 +152,18 @@ def build_production_capability_runtime(
                     "培养计划",
                     "课程体系",
                     "中国科大培养方案",
+                    "教务处",
+                    "教务系统",
+                    "中国科大教务处",
+                    "开课查询",
+                    "考试查询",
+                    "教学日历",
+                    "校历",
+                    "校车",
+                    "班车",
+                    "校园班车",
+                    "高新校区班车",
+                    "太湖路园区班车",
                 }
             ),
             clock=clock,

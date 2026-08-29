@@ -6,12 +6,12 @@
   "capability_id": "ustc.academic.lessons.search.v1",
   "category": "campus.academic",
   "cost_hint_units": 3,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:f2dab89f7c2fb3e832a5d5b2fe8e2380512550a98a11fefa42c1e7178399e912",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:04446cc7f5d2c42026bfab800e1d8cccbd65c1920b971ef61fb4b2a5304d9953",
   "description": "Search the official semester lesson list with local filters and pagination.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
-    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.lessons.search.v1.input:v1:sha-256:1a2a0d754a299fd37ef7bef2a6dd0de214c382f529541824df353f53ef1dac90",
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.lessons.search.v1.input:v1:sha-256:41aca081c191f74616d789dff564f65475a667b301f61e602c134aff964995ca",
     "document": {
       "additionalProperties": false,
       "properties": {
@@ -60,7 +60,13 @@
           "title": "Query",
           "type": "string"
         },
+        "semester": {
+          "default": "",
+          "title": "Semester",
+          "type": "string"
+        },
         "semester_id": {
+          "default": 0,
           "title": "Semester Id",
           "type": "integer"
         },
@@ -75,9 +81,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "semester_id"
-      ],
       "title": "catalog_search_lessonsArguments",
       "type": "object"
     },

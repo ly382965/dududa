@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import copy
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timezone
 from typing import Any
 
 import httpx
@@ -61,6 +62,79 @@ class AcademicClient:
         ]
         items.reverse()
         return self._result(items[:limit], len(items), "/api/teach/semester/list")
+
+    async def resolve_semester_id(self, selector: str = "") -> int:
+        result = await self.list_semesters(include_future=True, limit=100)
+        selected = self.select_semester(
+            result["items"],
+            selector,
+            today=datetime.now(timezone.utc).date(),
+        )
+        semester_id = selected.get("id")
+        if not isinstance(semester_id, int) or semester_id <= 0:
+            raise RuntimeError("catalog_semester_shape_changed")
+        return semester_id
+
+    @staticmethod
+    def select_semester(
+        items: list[dict[str, Any]],
+        selector: str,
+        *,
+        today: date,
+    ) -> dict[str, Any]:
+        valid = [
+            item
+            for item in items
+            if isinstance(item, dict)
+            and isinstance(item.get("id"), int)
+            and isinstance(item.get("start"), str)
+            and isinstance(item.get("end"), str)
+        ]
+        if not valid:
+            raise RuntimeError("catalog_semester_shape_changed")
+        compact = "".join(str(selector or "").split()).casefold()
+
+        code_match = re.search(r"(?<!\d)(20\d{3})(?!\d)", compact)
+        if code_match is not None:
+            match = next(
+                (item for item in valid if str(item.get("code")) == code_match.group(1)),
+                None,
+            )
+            if match is not None:
+                return match
+
+        term_match = re.search(r"(20\d{2})年?(春季?|夏季?|秋季?)", compact)
+        if term_match is not None:
+            year, season = term_match.groups()
+            season = season[0]
+            match = next(
+                (
+                    item
+                    for item in valid
+                    if year in str(item.get("name") or "")
+                    and season in str(item.get("name") or "")
+                ),
+                None,
+            )
+            if match is None:
+                raise ValueError("semester_not_found")
+            return match
+
+        dated = [
+            (
+                date.fromisoformat(str(item["start"])),
+                date.fromisoformat(str(item["end"])),
+                item,
+            )
+            for item in valid
+        ]
+        current = [item for start, end, item in dated if start <= today <= end]
+        if current:
+            return max(current, key=lambda item: str(item["start"]))
+        upcoming = [(start, item) for start, _, item in dated if start > today]
+        if upcoming:
+            return min(upcoming, key=lambda value: value[0])[1]
+        return max(dated, key=lambda value: value[1])[2]
 
     async def search_programs(
         self,

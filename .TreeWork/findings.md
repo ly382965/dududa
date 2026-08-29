@@ -24,11 +24,11 @@
 - MCP transports approved capabilities but owns neither Schema freshness,
   scheduling nor delivery. Scheduler occurrence/CAS remains Dududa-owned.
 - iCourse was the original real MCP Server. The Registry now contains four
-  read-only query Servers and 17 Capability mappings: iCourse, second-class,
-  academic and shuttle. S12 still owns the single Unified MCP Port, Registry and
-  shared lifecycle; S22 removed the plugin-dedicated per-call Client. Natural-
-  language Agent planning currently closes only the iCourse `query` slice; the
-  other mappings are Control Plane-callable facts, not automatic Planner proof.
+  read-only query Servers and 14 MCP Capability mappings: iCourse, second-class,
+  academic and curriculum. Shuttle is one local Builtin Capability Provider,
+  which demonstrates that the shared Capability Runtime is transport-neutral.
+  S12 still owns the single Unified MCP Port, Registry and shared lifecycle;
+  S22 removed the plugin-dedicated per-call Client.
 - An explicit service marker is a deterministic Perception fact, not a model
   confidence problem. Production therefore maps `评课社区` to the already
   available `campus.course-review` category before merging model semantics;

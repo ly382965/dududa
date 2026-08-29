@@ -303,6 +303,38 @@ describe('internal-test gateway', () => {
     })
   })
 
+  it('falls back to the readable Runtime status projection when AstrBot config is private', async () => {
+    const root = await fixtureRoot()
+    const runtimeStatusPath = join(root, 'runtime-status.json')
+    await writeFile(runtimeStatusPath, JSON.stringify({
+      ready: true,
+      runtime_enabled: true,
+      rollout_mode: 'canary',
+      rollout_delivery_enabled: true,
+      rollout_kill_switch: false,
+      rollout_allowlisted_groups: ['*'],
+    }))
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      runtimeConfigPath: join(root, 'private-runtime-config.json'),
+      runtimeStatusPath,
+    })
+
+    await expect(gateway.agentStatus()).resolves.toMatchObject({
+      runtimeControls: {
+        passiveAutoReply: {
+          actualEnabled: true,
+          rolloutMode: 'canary',
+          deliveryEnabled: true,
+          killSwitch: false,
+        },
+      },
+      warnings: expect.arrayContaining(['DUDUDA 2.0 PASSIVE RUNTIME ACTIVE']),
+    })
+  })
+
   it('persists scoped policy and keeps locked, preferred and adaptive selections distinct', async () => {
     const root = await fixtureRoot()
     const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
@@ -351,7 +383,7 @@ describe('internal-test gateway', () => {
       }),
       expect.objectContaining({ id: 'ustc.young.read', available: true, kind: 'mcp' }),
       expect.objectContaining({ id: 'ustc.academic.read', available: true, kind: 'mcp' }),
-      expect.objectContaining({ id: 'ustc.shuttle.read', available: true, kind: 'mcp' }),
+      expect.objectContaining({ id: 'ustc.shuttle.read', available: true, kind: 'readonly_query' }),
       expect.objectContaining({
         id: 'image.generate.gpt-image-2',
         available: false,

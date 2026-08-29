@@ -4,6 +4,29 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-29 目标群 `364894085` no-send 耦合抽样：iCourse、二课、培养方案、
+  Academic 和校车均为 `on`；五类自然语言输入各自只选择对应插件并执行一次只读
+  Tool，普通聊天为零 Tool。六条 Web -> 已安装 2.0 Runtime 预览均返回
+  `runtimePath=dududa_2_preview / outputCalls=0 / memoryWrites=0`，AstrBot 与 NapCat
+  `RestartCount=0`，未发送 QQ 消息。
+- Academic 实际预览把“教务处查询 2026 秋季学期的开课信息”解析为官方
+  `semester_id=461`，返回 2,841 个教学班中的前 10 条；只选择
+  `ustc.academic.read`。USTC campus package 11/11、Production Composition 聚焦通过、
+  Web server 9/9 和配置生成器 `--check` 通过。
+- 2026-08-29 校车插件：`tests/fixtures/ustc_shuttle/questions.v1.json` 的 20/20 问题
+  通过静态查询事实断言和 Capability output Schema 校验，覆盖校园三校区、节假日、
+  `no_public_bus`、高新即停即走、下一班、太湖路周六特例、周日班次与未知直达线路。
+- 3 条原生 `@Bot` 消息抽样通过 Dududa 2.0 Perception -> Planner -> Builtin Provider
+  -> Observation -> DirectChat -> Fake Delivery；每条一次本地 Tool、一次最终回答、一次
+  Fake Delivery。模型漏报校车 Tool 的样本由显式 marker 补回，MCP Client 未执行校车
+  discover/call，QQ Output 为 0。
+- 当前聚焦回归通过：校园 Runtime/配置/Registry 18/18，二课 75 题纵切 1/1，
+  owned 插件安装与 repository contract 15/15，USTC campus package 11/11，Web
+  `internal-test.spec.ts` 9/9，配置生成器 `--check` 通过。S23 仍为 `paused/partial`。
+- 固定时钟复跑曾暴露 Production Composition 只把时钟传给 Router/Orchestrator，
+  未传给 State Store、DirectChat 和 Content Safety，导致固定时间过去后 75 题在
+  不同阶段被误判超时。三处现共用 `effective_clock`；原 75 题测试无需改 fixture 即通过。
+
 - 2026-08-29 二课原生消息形状模拟：75 个手工构造的 OneBot-shaped Event 全部进入
   唯一 Dududa 2.0 Bridge，结果为 75/75 Runtime completed、75/75 Fake Delivery、
   62 次 Unified MCP、13 次正确不调用、150 次脚本 Fake 模型调用和 0 次真实 QQ 发送。
@@ -25,7 +48,8 @@ Branch: real-group-validation
 - 聚焦验证通过：75-case 1 项、Young Planner 3 项、Young MCP Contract 4 项、CAS
   Secret resolver 1 项和配置生成器 `--check`。运行中的 AstrBot 未重启或重建，因此
   尚未消费新增的只读 CAS 挂载；75 个 Event 也未经过 NapCat、AstrBot Filter 调度或
-  真实 QQ 回执。教务/校车 Planner 和通用 Capability 失败答复仍未完成，S23 保持
+  真实 QQ 回执。校车与教务 Planner 已由上方 2026-08-29 证据补齐；通用
+  Capability 失败答复仍未完成，S23 保持
   `paused/partial`。
 
 - 2026-08-28 iCourse live-source closeout: all five model-visible Capability
@@ -86,13 +110,14 @@ Branch: real-group-validation
   MCP -> 总结 -> Fake Delivery，未产生真实 QQ 副作用。
 - 运行中 Core 状态为 `ready/runtime_ready`，OneBot 已连接；用户选择的目标 Scope
   解析为 Agent enabled、`campus.course-review=true`。Web Catalog 将 iCourse 显示为 Runtime online，
-  当时二课、教务和校车显示为已装配、待 Planner 接管；2026-08-29 的二课 2.0
-  证据已取代该项中的二课状态。仅替换 AstrBot/Web，NapCat
+  当时二课、教务和校车显示为已装配、待 Planner 接管；2026-08-29 的二课、
+  教务和校车 2.0 证据已取代该项状态。仅替换 AstrBot/Web，NapCat
   容器未重启；本轮没有发送真实 QQ 消息。
 - Evidence boundary: the production Runtime currently consumes only the Scope
   switch and Capability eligibility from Web Policy. The six adaptive settings
-  are not all production-wired, academic and shuttle lack a natural-language
-  Planner, and no user-triggered QQ MCP/Delivery Receipt exists.
+  are not all production-wired, and no user-triggered QQ Tool/Delivery Receipt
+  exists. Later Academic and Shuttle Runtime evidence supersedes the earlier
+  Planner gaps.
   Verification remains `partial`; S23 remains `paused`.
 
 - 2026-08-26 最终 75 题 Connector 形状 Runtime 纵切：Bridge 75/75、Runtime

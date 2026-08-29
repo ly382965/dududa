@@ -14,6 +14,9 @@ Client；worker 继续以 `protocol_mode=legacy` 连接 iCourse v1 Server。
 教务处和校车三个真实只读 Server。下文“iCourse 唯一”描述的是 S12 决策时的 Spike 范围，
 不表示当前 Registry 事实；校园资讯、arXiv 和行业 Source Server 仍未实现。
 
+后续状态（2026-08-29）：校车已迁出 Registry，改由本地 Builtin 插件提供；当前四个查询
+Server 为 iCourse、二课、教务和培养方案研究。该迁移不改变本 ADR 的统一 Client 决策。
+
 ## 背景
 
 ADR 0004 已决定由一个 Core Port 和一个受治理的基础设施实现统一 MCP

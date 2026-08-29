@@ -12,6 +12,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from astrbot_plugin_dududa_core import audit, composition, config
+from astrbot_plugin_dududa_core.adapters.capability_planner import (
+    supports_production_query_schema,
+)
 from astrbot_plugin_dududa_core.adapters.mcp_schema import JsonSchemaMcpValidator
 from astrbot_plugin_dududa_core.adapters.model import (
     AstrBotProviderBindingEvidence,
@@ -62,6 +65,9 @@ ICOURSE_ROUTING_REGRESSIONS = (
 )
 YOUNG_NATIVE_CASES = (
     ROOT / "tests" / "fixtures" / "mcp" / "young-v2-native-message-cases.json"
+)
+SHUTTLE_NATIVE_CASES = (
+    ROOT / "tests" / "fixtures" / "ustc_shuttle" / "questions.v1.json"
 )
 ICOURSE_CASE_HEADING_RE = re.compile(
     r"^### Case (\d+)(?:[：:].*)?$",
@@ -483,6 +489,99 @@ class _YoungBenchmarkAstrBotProvider(_AstrBotProvider):
         return SimpleNamespace(
             completion_text=completion,
             usage=SimpleNamespace(input_other=32, input_cached=0, output=48),
+        )
+
+
+class _ShuttleBenchmarkAstrBotProvider(_AstrBotProvider):
+    def __init__(self, cases: tuple[dict[str, object], ...]) -> None:
+        super().__init__()
+        self._by_question = {str(item["question"]): item for item in cases}
+        self._active_case: dict[str, object] | None = None
+
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        system_prompt = str(kwargs["system_prompt"])
+        prompt = str(kwargs["prompt"])
+        if "语义感知器" in system_prompt:
+            marker = "context_json:\n"
+            start = prompt.index(marker) + len(marker)
+            end = prompt.index("\n[/DUDUDA_USER_INPUT]", start)
+            context = json.loads(prompt[start:end])
+            current_ref = context["current_message_ref"]
+            current = next(
+                item
+                for item in context["messages"]
+                if item["message_ref"] == current_ref
+            )
+            question = str(current["text"]).removeprefix("@嘟嘟哒").strip()
+            case = self._by_question[question]
+            self._active_case = case
+            model_requests_tools = int(case["case_id"]) != 6
+            completion = json.dumps(
+                {
+                    "schema_version": 1,
+                    "target_identity_refs": [current["author_identity_ref"]],
+                    "speech_acts": ["request"],
+                    "topics": [
+                        {
+                            "topic_id": "ustc-shuttle",
+                            "label": "中国科大校车",
+                            "confidence": 0.99,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "intents": (
+                        [
+                            {
+                                "intent_id": "ustc.shuttle.next.read",
+                                "confidence": 0.99,
+                                "evidence_refs": [current_ref],
+                            }
+                        ]
+                        if model_requests_tools
+                        else []
+                    ),
+                    "entities": [],
+                    "references": [],
+                    "ambiguities": [],
+                    "need_tools": model_requests_tools,
+                    "capability_categories": (
+                        ["campus.shuttle"] if model_requests_tools else []
+                    ),
+                    "task_kind": "direct_chat",
+                    "reasoning_depth": "shallow",
+                    "expected_tool_steps": 1 if model_requests_tools else 0,
+                    "verification_required": False,
+                    "complexity_signals": [
+                        {
+                            "code": "simple_retrieval",
+                            "confidence": 0.99,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "confidence": 0.99,
+                },
+                ensure_ascii=False,
+            )
+        else:
+            if self._active_case is None:
+                raise AssertionError("Shuttle Direct Chat has no active case")
+            case_id = int(self._active_case["case_id"])
+            if "ustc.shuttle.public-query.v1" not in prompt:
+                raise AssertionError("Direct Chat did not receive Shuttle Observation")
+            expected = {
+                6: ('"departure":"14:00"', "下一班是 14:00。"),
+                11: ('"on_demand":true', "先研院是即停即走站，没有固定发车时间。"),
+                20: ('"matched":false', "当前时刻表没有北区直达太湖路园区的班次。"),
+            }[case_id]
+            if expected[0] not in prompt:
+                raise AssertionError(
+                    f"Shuttle case {case_id} lost expected fact: {expected[0]}"
+                )
+            completion = expected[1]
+        return SimpleNamespace(
+            completion_text=completion,
+            usage=SimpleNamespace(input_other=32, input_cached=0, output=24),
         )
 
 
@@ -1167,6 +1266,21 @@ class _MutableClock:
 
 
 class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
+    def test_all_academic_read_schemas_are_plannable(self) -> None:
+        for path in sorted(
+            (ROOT / "configs" / "capabilities" / "definitions").glob(
+                "ustc.academic.*.v1.json"
+            )
+        ):
+            definition = json.loads(path.read_text(encoding="utf-8"))
+            self.assertTrue(
+                supports_production_query_schema(
+                    definition["capability_id"],
+                    definition["input_schema"]["document"],
+                ),
+                path.name,
+            )
+
     def setUp(self) -> None:
         self.temp = TemporaryDirectory()
         self.path = Path(self.temp.name) / "rollout.sqlite3"
@@ -1676,8 +1790,8 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 "Do not substitute bare URLs, a link list, raw JSON",
                 provider.calls[1]["prompt"],
             )
-            self.assertNotIn("campus.academic", provider.calls[0]["prompt"])
-            self.assertNotIn("campus.shuttle", provider.calls[0]["prompt"])
+            self.assertIn("campus.academic", provider.calls[0]["prompt"])
+            self.assertIn("campus.shuttle", provider.calls[0]["prompt"])
             self.assertIn("campus.second-class", provider.calls[0]["prompt"])
             self.assertEqual(
                 [item["reasoning_effort"] for item in provider.calls],
@@ -1721,6 +1835,87 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await plugin.terminate()
         self.assertTrue(recording_mcp.closed)
+
+    async def test_shuttle_questions_use_local_plugin_provider_in_2_0_runtime(
+        self,
+    ) -> None:
+        document = json.loads(SHUTTLE_NATIVE_CASES.read_text(encoding="utf-8"))
+        selected_ids = {6, 11, 20}
+        cases = tuple(
+            item for item in document["cases"] if int(item["case_id"]) in selected_ids
+        )
+        self.assertEqual([int(item["case_id"]) for item in cases], [6, 11, 20])
+        fixed_now = datetime.fromisoformat(document["observed_at"]).astimezone(
+            timezone.utc
+        )
+        provider = _ShuttleBenchmarkAstrBotProvider(cases)
+        plugin = self._production_plugin(provider)
+        unified_mcp_client = plugin.unified_mcp_client
+        values = self._runtime_config(rollout_mode="canary")
+        values.update(
+            {
+                "rollout_delivery_enabled": True,
+                "rollout_kill_switch": False,
+                "rollout_tools_enabled": True,
+            }
+        )
+        assembly = composition.build_production_runtime(
+            plugin,
+            values,
+            clock=lambda: fixed_now,
+        )
+        self._initialize(
+            plugin,
+            values,
+            "production-shuttle-plugin",
+            runtime_assembly=assembly,
+        )
+        plugin.rollout_bridge._output_factory = (
+            lambda event, ledger, guard: AstrBotOutputAdapter(
+                event,
+                ledger,
+                component_factory=_ComponentFactory(),
+                send_guard=guard,
+                clock=lambda: fixed_now,
+            )
+        )
+        await plugin.runtime_assembly.publish_model_health(
+            (
+                self._healthy_evidence(
+                    plugin.runtime_assembly,
+                    fixed_now,
+                    ttl=timedelta(minutes=10),
+                ),
+            ),
+            call=replace(self.call, deadline=fixed_now + timedelta(minutes=1)),
+        )
+
+        try:
+            for case in cases:
+                event = _Event(
+                    message_id=f"shuttle-{case['case_id']}",
+                    message_str=f"@嘟嘟哒 {case['question']}",
+                )
+                result = await plugin.rollout_bridge.handle(event)
+                with self.subTest(case_id=case["case_id"]):
+                    self.assertIs(
+                        result.action,
+                        AstrBotBridgeAction.CANARY_COMPLETED,
+                    )
+                    self.assertEqual(event.stop_calls, 1)
+                    self.assertEqual(event.send_calls, 1)
+                    self.assertEqual(len(event.sent_chains), 1)
+            self.assertEqual(len(provider.calls), 6)
+            self.assertTrue(
+                all(
+                    "plugin://ustc-shuttle/ustc-shuttle-timetable-v1"
+                    in str(call["prompt"])
+                    for call in provider.calls[1::2]
+                )
+            )
+        finally:
+            await plugin.terminate()
+        self.assertTrue(unified_mcp_client.closed)
 
     async def test_all_icourse_benchmark_messages_reach_2_0_mcp_dispatch(
         self,

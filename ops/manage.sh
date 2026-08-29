@@ -38,6 +38,17 @@ web_data_root() {
   fi
 }
 
+astrbot_plugin_root() {
+  local root
+  root="${DUDUDA_ASTRBOT_PLUGIN_ROOT:-$(env_value DUDUDA_ASTRBOT_PLUGIN_ROOT "$ENV_FILE")}"
+  root="${root:-./runtime/astrbot-plugins}"
+  if [[ "$root" = /* ]]; then
+    printf '%s\n' "$root"
+  else
+    printf '%s\n' "$ROOT_DIR/${root#./}"
+  fi
+}
+
 ensure_web_secrets() {
   local root token_file plugin_key_file
   root="$(web_data_root)"
@@ -113,7 +124,7 @@ usage() {
     '  restore     Verify and plan restore; use --apply only for an empty target' \
     '  rollback    Roll back through an explicit operations driver plan' \
     '  init        Create private runtime directories and merge safe templates' \
-    '  plugins     Install locked third-party plugins into runtime data' \
+    '  plugins     Install owned and locked plugins into the 2.0 runtime' \
     '  plugin-access  Provision the Web plugin-scope AstrBot API key' \
     '  sync        Merge the icourse MCP template into runtime config' \
     '  seed        Install the Dududa persona and MCP config into AstrBot' \
@@ -146,9 +157,9 @@ case "$cmd" in
     "$PYTHON" ops/cli/sync_runtime.py --data-root "$runtime_root"
     ;;
   plugins)
-    runtime_root="$(data_root)"
-    mkdir -p "$runtime_root/astrbot/plugins"
-    "$PYTHON" ops/cli/install_plugins.py --data-root "$runtime_root"
+    plugin_root="$(astrbot_plugin_root)"
+    mkdir -p "$plugin_root"
+    "$PYTHON" ops/cli/install_plugins.py --plugins-root "$plugin_root"
     ;;
   plugin-access)
     setup_docker

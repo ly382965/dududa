@@ -58,6 +58,39 @@ _CURRICULUM_QUERY_MODIFIERS = frozenset(
         "英才班",
     }
 )
+ACADEMIC_SEMESTERS_CAPABILITY_ID = "ustc.academic.semesters.list.v1"
+ACADEMIC_LESSONS_CAPABILITY_ID = "ustc.academic.lessons.search.v1"
+ACADEMIC_EXAMS_CAPABILITY_ID = "ustc.academic.exams.search.v1"
+ACADEMIC_CALENDAR_CAPABILITY_ID = "ustc.academic.calendar.get.v1"
+ACADEMIC_INTENT_CAPABILITIES = {
+    "ustc.academic.semesters.list": ACADEMIC_SEMESTERS_CAPABILITY_ID,
+    "ustc.academic.lesson.search": ACADEMIC_LESSONS_CAPABILITY_ID,
+    "ustc.academic.exam.search": ACADEMIC_EXAMS_CAPABILITY_ID,
+    "ustc.academic.calendar.read": ACADEMIC_CALENDAR_CAPABILITY_ID,
+}
+ACADEMIC_RUNTIME_CAPABILITY_IDS = frozenset(ACADEMIC_INTENT_CAPABILITIES.values())
+_ACADEMIC_GENERIC_TERMS = frozenset(
+    {
+        "中国科大",
+        "科大",
+        "教务处",
+        "教务系统",
+        "学期",
+        "开课",
+        "开课信息",
+        "课程表",
+        "考试",
+        "考试安排",
+        "教学日历",
+        "校历",
+    }
+)
+_ACADEMIC_SEMESTER_ID_RE = re.compile(
+    r"(?:学期\s*)?(?:id|编号)\s*(?:为|是|[:：#])?\s*(\d{1,8})",
+    re.IGNORECASE,
+)
+_ACADEMIC_SEMESTER_TERM_RE = re.compile(r"20\d{2}\s*年?\s*[春夏秋](?:季)?(?:学期)?")
+_ACADEMIC_DATE_RE = re.compile(r"20\d{2}-\d{2}-\d{2}")
 YOUNG_SEARCH_CAPABILITY_ID = "ustc.young.activities.search.v1"
 YOUNG_ACTIVITY_CAPABILITY_ID = "ustc.young.activity.get.v1"
 YOUNG_FACETS_CAPABILITY_ID = "ustc.young.facets.list.v1"
@@ -69,6 +102,7 @@ YOUNG_INTENT_CAPABILITIES = {
     "ustc.young.connection.status": YOUNG_STATUS_CAPABILITY_ID,
 }
 YOUNG_RUNTIME_CAPABILITY_IDS = frozenset(YOUNG_INTENT_CAPABILITIES.values())
+SHUTTLE_PUBLIC_QUERY_CAPABILITY_ID = "ustc.shuttle.public-query.v1"
 _YOUNG_DEFAULT_LIMIT = 8
 _YOUNG_LOCAL_TIMEZONE = ZoneInfo("Asia/Shanghai")
 _YOUNG_GENERIC_TERMS = frozenset(
@@ -152,6 +186,14 @@ class EntityQueryToolPlanner:
         icourse_operation = _icourse_operation(request.query.intent_ids)
         curriculum_operation = _curriculum_operation(request.query.intent_ids)
         young_capability_id = _young_capability(request.query.intent_ids)
+        academic_capability_id = _academic_capability(request.query.intent_ids)
+        shuttle_requested = (
+            "campus.shuttle" in request.query.preferred_categories
+            or any(
+                intent_id.startswith("ustc.shuttle.")
+                for intent_id in request.query.intent_ids
+            )
+        )
         if (
             young_capability_id is None
             and icourse_operation is None
@@ -162,18 +204,41 @@ class EntityQueryToolPlanner:
         if (
             curriculum_operation is None
             and young_capability_id is None
+            and academic_capability_id is None
             and icourse_operation is None
             and "campus.curriculum" in request.query.preferred_categories
         ):
             curriculum_operation = _curriculum_operation_from_goal(
                 request.query.natural_language_goal
             )
+        if (
+            academic_capability_id is None
+            and young_capability_id is None
+            and curriculum_operation is None
+            and icourse_operation is None
+            and "campus.academic" in request.query.preferred_categories
+        ):
+            academic_capability_id = _academic_capability_from_goal(
+                request.query.natural_language_goal
+            )
         candidates = request.retrieval.candidates
-        if young_capability_id is not None:
+        if shuttle_requested:
+            candidates = tuple(
+                item
+                for item in candidates
+                if item.capability_id == SHUTTLE_PUBLIC_QUERY_CAPABILITY_ID
+            )
+        elif young_capability_id is not None:
             candidates = tuple(
                 item
                 for item in candidates
                 if item.capability_id == young_capability_id
+            )
+        elif academic_capability_id is not None:
+            candidates = tuple(
+                item
+                for item in candidates
+                if item.capability_id == academic_capability_id
             )
         elif curriculum_operation is not None:
             candidates = tuple(
@@ -201,6 +266,21 @@ class EntityQueryToolPlanner:
         selected = None
         arguments: Mapping[str, JsonValue] | None = None
         for candidate in candidates:
+            if candidate.capability_id == SHUTTLE_PUBLIC_QUERY_CAPABILITY_ID:
+                schema = self._registry.get_schema(catalog, candidate.input_schema)
+                goal = request.query.natural_language_goal.strip()
+                if not shuttle_requested or not goal:
+                    continue
+                projected = _query_arguments(
+                    schema.document,
+                    goal,
+                    goal=goal,
+                )
+                if projected is not None:
+                    selected = candidate
+                    arguments = projected
+                    break
+                continue
             if candidate.capability_id in YOUNG_RUNTIME_CAPABILITY_IDS:
                 if candidate.capability_id != young_capability_id:
                     continue
@@ -211,6 +291,21 @@ class EntityQueryToolPlanner:
                     request,
                     self._ignored_entity_terms,
                     self._clock(),
+                )
+                if projected is not None:
+                    selected = candidate
+                    arguments = projected
+                    break
+                continue
+            if candidate.capability_id in ACADEMIC_RUNTIME_CAPABILITY_IDS:
+                if candidate.capability_id != academic_capability_id:
+                    continue
+                schema = self._registry.get_schema(catalog, candidate.input_schema)
+                projected = _academic_arguments(
+                    candidate.capability_id,
+                    schema.document,
+                    request,
+                    self._ignored_entity_terms,
                 )
                 if projected is not None:
                     selected = candidate
@@ -419,6 +514,10 @@ def supports_production_query_schema(
     if supports_entity_query_schema(document):
         return True
     expected_required = {
+        ACADEMIC_SEMESTERS_CAPABILITY_ID: frozenset(),
+        ACADEMIC_LESSONS_CAPABILITY_ID: frozenset(),
+        ACADEMIC_EXAMS_CAPABILITY_ID: frozenset(),
+        ACADEMIC_CALENDAR_CAPABILITY_ID: frozenset(),
         YOUNG_SEARCH_CAPABILITY_ID: frozenset(),
         YOUNG_ACTIVITY_CAPABILITY_ID: frozenset({"activity_id"}),
         YOUNG_FACETS_CAPABILITY_ID: frozenset({"facet"}),
@@ -442,6 +541,64 @@ def _young_capability(intent_ids: tuple[str, ...]) -> str | None:
         if capability_id is not None:
             return capability_id
     return None
+
+
+def _academic_capability(intent_ids: tuple[str, ...]) -> str | None:
+    for intent_id in intent_ids:
+        capability_id = ACADEMIC_INTENT_CAPABILITIES.get(intent_id)
+        if capability_id is not None:
+            return capability_id
+    return None
+
+
+def _academic_capability_from_goal(goal: str) -> str:
+    compact = _normalize_term(goal)
+    if any(value in compact for value in ("教学日历", "校历", "开学日期", "放假")):
+        return ACADEMIC_CALENDAR_CAPABILITY_ID
+    if any(value in compact for value in ("考试", "考场", "期末")):
+        return ACADEMIC_EXAMS_CAPABILITY_ID
+    if any(value in compact for value in ("开课", "教学班", "课程表", "任课老师")):
+        return ACADEMIC_LESSONS_CAPABILITY_ID
+    return ACADEMIC_SEMESTERS_CAPABILITY_ID
+
+
+def _academic_arguments(
+    capability_id: str,
+    document: Mapping[str, JsonValue],
+    request: ToolPlanningRequest,
+    ignored_entity_terms: frozenset[str],
+) -> Mapping[str, JsonValue] | None:
+    goal = request.query.natural_language_goal.strip()
+    if capability_id == ACADEMIC_SEMESTERS_CAPABILITY_ID:
+        return _declared_arguments(document, {"include_future": True, "limit": 20})
+    if capability_id == ACADEMIC_CALENDAR_CAPABILITY_ID:
+        dates = _ACADEMIC_DATE_RE.findall(goal)
+        values: dict[str, JsonValue] = {}
+        if dates:
+            values["start_date"] = dates[0]
+        if len(dates) > 1:
+            values["end_date"] = dates[1]
+        return _declared_arguments(document, values)
+    if capability_id not in {ACADEMIC_LESSONS_CAPABILITY_ID, ACADEMIC_EXAMS_CAPABILITY_ID}:
+        return None
+
+    terms = tuple(
+        value.strip()
+        for value in request.query.entity_terms
+        if value.strip()
+        and _normalize_term(value) not in ignored_entity_terms
+        and _normalize_term(value) not in _ACADEMIC_GENERIC_TERMS
+        and not _is_year_term(value)
+        and _ACADEMIC_SEMESTER_TERM_RE.fullmatch(value.strip()) is None
+    )
+    values = {
+        "query": terms[0] if terms else "",
+        "semester": goal,
+        "limit": 10,
+    }
+    if match := _ACADEMIC_SEMESTER_ID_RE.search(goal):
+        values["semester_id"] = int(match.group(1))
+    return _declared_arguments(document, values)
 
 
 def _young_arguments(
@@ -657,6 +814,8 @@ def _normalize_term(value: str) -> str:
 
 
 __all__ = [
+    "ACADEMIC_INTENT_CAPABILITIES",
+    "ACADEMIC_RUNTIME_CAPABILITY_IDS",
     "CURRICULUM_INTENT_OPERATIONS",
     "CURRICULUM_PUBLIC_QUERY_CAPABILITY_ID",
     "ICOURSE_INTENT_OPERATIONS",

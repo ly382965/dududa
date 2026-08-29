@@ -5,6 +5,10 @@
 - TreeWork 状态：`paused / partial`
 - 会前 Git 基线：`84ea4fb docs: add August project meeting summary`
 
+> 2026-08-29 后续状态：校车已从 MCP 迁移为本地 Builtin 插件；当前是四个查询
+> MCP Server 加一个校车插件，五类校园查询均已闭合单步自然语言 no-send 路径。
+> 下文保留 2026-08-24 会议时点的原始状态。
+
 ## 一、30 秒结论
 
 Dududa 2.0 已经完成 S01-S22 约定的本地或离线工程主链，核心契约、静态模型路由、

@@ -4,6 +4,14 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 校车是仅供 Dududa 使用、无需认证/缓存/独立发布周期的静态确定性查询；MCP 会增加
+  不必要的进程、Session 和网络抓取路径。它因此改为 owned 插件实现的 `BUILTIN`
+  Capability Provider，继续复用同一个 Registry/Retrieval/Planner/Executor/Validator
+  控制面。插件不注册消息 handler，不能绕过 Dududa 2.0 Runtime。
+- 教务开课和考试 Tool 的官方上游仍要求整数 semester ID，但用户输入通常是
+  “2026 秋/本学期”。为保持一个 Agent Tool Step，Academic MCP Adapter 在该次
+  只读调用内查询官方学期列表并解析 ID；Planner 只投影学期表达和公开过滤词，
+  不硬编码 semester ID，也不引入第二个控制面。
 - Provider health freshness and Endpoint load freshness are independent Router
   inputs. Re-publishing fresh health with the original load timestamp makes a
   long-lived Runtime fail after `runtime_model_load_max_age_seconds`, even when
@@ -74,7 +82,8 @@ Branch: real-group-validation
   只关闭明确识别出的 legacy AstrBot；不得对旧项目执行整体 `down/stop`。
 - S23 completion is the bounded single-group ladder plus closeout. Expansion to
   3–5 groups is a later authorization decision, not an inherited grant.
-- iCourse、二课、教务和校车都是查询型 MCP Capability，不能据此声称日报 Source
+- iCourse、二课、教务和培养方案研究是查询型 MCP Capability，校车是本地查询
+  Capability；不能据此声称日报 Source
   已接入。校园资讯、arXiv 与行业信息仍没有 live Source Provider。
 - 本机所谓“已登录工具”实际是 `0600` 的 CAS 凭据存储加临时会话导出器，不是
   持久登录 daemon。直接只读挂载该 TOML，并由现有 SecretRef Resolver 在子进程
@@ -155,10 +164,11 @@ Branch: real-group-validation
   共享 Client 的兼容消费者。Runtime 不得再从旧 facade 反向取得 MCP 基础设施。
 - Production 共享 Client 装配失败时，兼容 facade 必须同步 unavailable；立即重试并
   建立一个仅供旧入口使用的独立 Client 会重新制造第二条 MCP 所有权路径。
-- 控制台可直接调用 17 个 Capability，不等于自然语言 Planner 已支持全部 17 个。
+- MCP 控制台可直接调用 14 个映射，不等于自然语言 Planner 已支持全部映射。
   iCourse 现公布 Schema-aware 高层 `icourse.public-query.v2`，二课公布搜索、详情、
-  筛选项和连接状态四种公共观察；教务和校车仍只有 Web 直调。公布范围必须与 Planner
-  实际投影能力一致。
+  筛选项和连接状态四种公共观察；培养方案研究和教务只公布已有确定性投影的只读操作，
+  校车另由本地 Builtin Provider 执行。五类均已进入单步 Planner，公布范围必须与 Planner
+  实际投影能力一致；这不等于 14 个映射都支持任意自然语言参数组合。
 - 可信 Capability failure 目前在 Canary 已 claim 后 no-delivery；旧 handler 和 Web
   search 不得接管。用户可见失败提示应沿 2.0 Composer、Persona、Final Validator
   与授权 Delivery 的唯一输出路径实现。
@@ -198,15 +208,18 @@ Branch: real-group-validation
   `POST /api/internal-test/agent/respond` 的 Scope-aware 语义。配置按
   `accountId + conversationId` 保存到仓库外数据根，每次响应返回
   `effectiveSelection`、`reasonCodes` 与 `contextUsage`。
+- Scope 查询必须保留 Connector 的命名空间账号 ID，例如 `qq-<self_id>`；只传裸
+  QQ 数字会解析到另一个默认 Scope，从而错误显示插件全为 `off`，不能据此判断
+  目标群策略未生效。
 - `FileScopeAgentPolicyResolver` 在 AstrBot Bridge 内读取同一份仓库外 Policy，
   产生 `scope_agent_enabled` 和 `capability.category.<id>` feature flags；
   `CurrentMessageContextBuilder` 只用这些 flags 缩小既有 Perception 类别。
-  Web Catalog 的 `online` 表示对应路径已由 ready 的 2.0 Runtime 消费；当前 iCourse
-  和二课已接自然语言 Planner，教务和校车仍为已装配待 Planner。
+  Web Catalog 的 `online` 表示对应路径已由 ready 的 2.0 Runtime 消费；当前 iCourse、
+  二课、培养方案研究、教务和校车均已接自然语言 Planner。
 - Catalog 由服务端动态返回六项正交配置、插件和 MCP Capability 事实，并区分源码
   已安装、配置/Compose 已装配、Runtime online 与本轮实际调用。Web MCP 工作台
-  只接受 17 个批准的 Capability ID：iCourse 5 项、教务 6 项、校车 2 项和二课
-  4 项；输入控件来自 Capability schema，返回值投影到 Capability output schema，
+  只接受 14 个批准的 MCP Capability ID；校车的 1 个本地 Capability 通过 Agent
+  no-send 预览调用。输入控件来自 Capability schema，返回值投影到 Capability output schema，
   不开放任意 MCP Tool。`gpt-image-2` 仍是独立图片能力。自动复读
   和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
   `accountId + conversationId` 由 Scope Policy 配置。两者要求 WebUI
@@ -301,11 +314,14 @@ Branch: real-group-validation
   能力存在，不能从 `triggerMatched` 或安装状态推导一次实际插件调用。
 - iCourse Policy 接线已有运行中容器、精确 Scope 解析和完整 Web -> 2.0 Runtime ->
   MCP -> 总结的 no-send 实测。二课已有 OneBot-shaped Event -> 2.0 Runtime ->
-  Unified MCP -> Fake Delivery 的 75 题证据，但还不是 NapCat/QQ 真端到端；教务和
-  校车仍只有 Web 直接调用证据。
+  Unified MCP -> Fake Delivery 的 75 题证据；培养方案、教务和校车也已有 2.0
+  no-send Runtime 抽样，但这些都还不是 NapCat/QQ 真端到端 Receipt。
 - Production `CurrentMessageContextBuilder` 目前仍主要投影当前消息；Web 内测
   上下文与 Prompt 风格接线不能替代生产近期群聊上下文，因此长期群体情境适应
   尚未完成。
+- Production Composition 的注入时钟必须同时交给 Runtime State Store、DirectChat
+  和 Content Safety；只让 Router/Orchestrator 使用该时钟会使固定时钟 Run 在真实
+  时间推进后被下游误判为过期。现有 75 题固定时间纵切直接复现并覆盖该契约。
 - 当前唯一 AstrBot 宿主只加载 Dududa Core、Sub2API v0.6.4、Reread v2.0.0 和 AstrBot
   内建插件；ReplyPolish、Meme Manager、PokePro、Target Talk 与旧 Handler 均已退出运行面。
   校园 MCP 由独立 `mcp-console` 提供，Web 调用证据仍不能外推为 Agent 自动 Tool 选择或主动发送。

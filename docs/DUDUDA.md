@@ -2,7 +2,7 @@
 
 - 版本：v0.7
 - 范围：`.`
-- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处、培养方案研究和校车五个只读 MCP 已接入，真实群聊风格仍待人工校准。
+- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处和培养方案研究四个只读 MCP 与本地校车插件已接入，真实群聊风格仍待人工校准。
 
 Dududa 2.0 当前说明（2026-08-29）：
 
@@ -11,7 +11,7 @@ Dududa 2.0 当前说明（2026-08-29）：
 - Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效。人格通过措辞、节奏、关注点和信息取舍自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情证明人格。
 - SHORT、MEDIUM 始终作为普通 QQ 消息发送；LONG 单段仍是普通消息，群聊中实际拆成至少两个纯文本 part 且没有附件时使用合并转发。定向目标继续保留在 Runtime 语义中，但合并转发不额外发送 `@` 组件。
 - Meme Manager、PokePro 和旧 Target Talk 已退出 Dududa 2.0 默认 Compose；自动复读仅以独立、默认关闭、按 Scope 配置的插件保留。
-- iCourse、二课和培养方案研究的自然语言路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
+- iCourse、二课、培养方案研究和教务的自然语言路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；校车在同一主链使用本地 Builtin Provider；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
 - 本轮已通过单插件 API 热重载 Dududa Core，AstrBot 与 NapCat 均未重启；运行实例继续只使用 Dududa 2.0 Agent Runtime。
 
 以下为 Dududa 1.0 工程状态快照（2026-07-06）：
@@ -83,8 +83,9 @@ cd .
 - `data_v4.db`：AstrBot 主数据。
 - `knowledge_base/kb.db`：知识库数据库。
 - `cmd_config.json`：命令配置，已有多份备份。
-- `mcp_server.json`：MCP 配置文件，已接入 `icourse` 评课社区 MCP。
+- `mcp_server.json`：MCP 配置文件，已接入 iCourse、二课、教务和培养方案研究四个查询 Server。
 - `apps/astrbot-plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
+- `apps/astrbot-plugins/astrbot_plugin_ustc_shuttle/`：版本化本地校车时刻表 Capability 插件。
 - `apps/astrbot-plugins/astrbot_plugin_sub2api_readonly/`：Sub2API 用量、排名和账号状态只读查询。
 - `skills/`、`skills.json`：AstrBot skills 资源。
 - `t2i_templates/`：文本转图片模板。
@@ -92,22 +93,24 @@ cd .
 - `attachments/`、`temp/`：附件与临时文件目录。
 - 本地生成的历史备份。
 
-`./manage.sh plugins` 当前会按 `third_party/plugins.lock.json` 安装以下第三方插件：
+`./manage.sh plugins` 会将 Dududa Core、校车、Reread 和 Sub2API Readonly 从权威源码
+原子安装到 `runtime/astrbot-plugins`，并按 `third_party/plugins.lock.json` 安装以下
+锁定第三方插件：
 
 - `astrbot_plugin_iris_chat_memory`
 - `astrbot_plugin_better_reminder`
 - `astrbot_plugin_chatsummary_v2`
 
-默认 Compose 另外只读挂载 Dududa Core、ReplyPolish 和 Sub2API Readonly。Meme Manager、
-Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Compose 挂载。私有运行目录中
-可能仍保留旧插件及数据；本轮不进行在线卸载或清理。
+默认 Compose 只挂载这一整个 Dududa 2.0 插件根目录，不再用单插件源码挂载覆盖运行态。
+Meme Manager、PokePro、ReplyPolish 和 Target Talk 不进入干净安装集合。私有运行目录中可能仍
+保留旧插件数据；本轮不恢复 Dududa 1.0 runtime。
 
 ### 2.3 已有插件能力整合
 
 | 插件/模块 | Dududa 2.0 默认状态 | 资产处理 | 未来归属 |
 | --- | --- | --- | --- |
 | Meme Manager | deprecated，不再默认安装，不自动发表情 | 本轮不主动清理；若私有运行目录中存在图库、配置或源码则原状保留 | 用户显式触发的 Meme Capability |
-| Reread | deprecated，不再默认安装，不概率复读 | 本轮不主动清理私有运行目录中的既有配置或数据 | 默认不提供自动复读 |
+| Reread | 兼容插件，安装于 2.0 plugin root，行为由私有配置控制 | 保留既有配置和数据 | 后续迁移为显式交互 Capability |
 | PokePro | deprecated，不再默认安装，不自动戳一戳 | 本轮不主动清理私有运行目录中的既有配置或数据 | 可选显式交互 Capability |
 | Target Talk | 退出默认 Compose 和入站路径 | 源码、配置保留 | S15E Governed Probe / 主动 Runtime |
 | ReplyPolish | 1.0 LONG-only 兼容层，默认关闭 | 源码保留 | LONG-only legacy output |
@@ -117,9 +120,10 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
 | Dududa Core | 保留 | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
 | Sub2API Readonly | 保留 | 源码、配置保留 | 显式只读 Capability |
 
-### 2.4 USTC 校园 MCP 资源
+### 2.4 USTC 校园查询能力
 
-当前通过同一个 `McpServerRegistry` 和 `UnifiedMcpClient` 管理五个独立只读 Server：
+当前通过 `McpServerRegistry` 和 `UnifiedMcpClient` 管理四个独立只读 Server，并让
+本地插件实现同一个 Capability Provider Port：
 
 - `icourse`：实时访问评课社区公开页面，向 Capability 层开放统一公开查询及统计、课程搜索、课程详情和评价 5 项读取。
 - `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索、活动详情和筛选项 4 项公共观察；不提供登录或本人活动工具。
@@ -127,19 +131,25 @@ Reread、PokePro 不再进入干净安装集合，Target Talk 不再由默认 Co
 - `ustc-curriculum`：基于 `docs.mmdustc.top/curriculum/data/` 的公开研究快照提供
   方案、课程、逐年变化、横向对照、替代、共享课和专业历史查询；不直连实时教务，
   不能代替毕业审核。
-- `ustc-shuttle`：提供当前官方时刻表和站点间班次 2 项公开查询。
+- `astrbot_plugin_ustc_shuttle`：以版本化静态数据提供校园、高新校区和太湖路园区
+  校车查询；它是本地 `BUILTIN` Capability，不联网、不创建 MCP Session，也不独立抢占消息。
 
 当前仓库状态：
 
 - `services/mcp/icourse/` 保留既有评课实现；`services/mcp/ustc-campus/` 通过
-  `--service academic|curriculum|shuttle|young` 启动四个独立逻辑 Server。
+  `--service academic|curriculum|young` 启动三个独立逻辑 Server。
 - 二课依赖固定为 `pyustc@f16d9465fd572463cb1b239d310e02010593386c`，规避 1.1.1 的异步登录缺陷。
 - 本机既有 `credentials.toml` 以只读方式挂入独立 MCP Console，再由 SecretRef
   仅向二课子进程注入以建立上游 CAS 会话；这不是用户登录能力，凭据、Cookie 和
   TGC 不写入仓库或 Web 返回值。
-- WebUI 的 `MCP 工作台` 展示五个 Server 和 16 个 Capability，`super_admin`
+- WebUI 的 `MCP 工作台` 展示四个 Server 和 14 个 MCP Capability，`super_admin`
   只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
-- 已真实验证 iCourse、公开教务、培养方案研究快照、校车和二课查询；自然语言查询进入唯一
+- 校车在“插件与能力”中显示为本地只读插件，群级默认关闭；启用后自然语言查询仍进入
+  唯一 Dududa 2.0 Runtime。20/20 固定问题与 3 条原生消息抽样已经通过。
+- 群 `364894085` 已将评课、二课、培养方案、教务和校车五项查询设为 `on`。no-send
+  耦合抽样中，每类问题只选择自己的 Provider，普通聊天为零 Tool 调用；教务开课查询
+  已把“2026 秋”解析为官方 `semester_id=461`。这些证据没有发送 QQ 消息。
+- 已验证 iCourse、公开教务、培养方案研究快照、校车和二课查询；自然语言查询进入唯一
   Dududa 2.0 Runtime，本轮模拟不发送 QQ，也不经过 1.0 handler 或 Web search。
 - 这些是按需查询能力，不等于校园资讯、arXiv 或行业日报 Source 已接入。
 

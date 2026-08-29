@@ -2,42 +2,44 @@
 
 ## 1. 当前状态
 
-S23 是发布前的真实证据阶段，不是默认上线。S17-S20、S22 和既定 WebUI 回归已经完成本地范围；
-S23 分支也已补齐配置驱动的入站 Runtime、第一条 Dududa 2.0 自然语言 iCourse 纵切和固定 AstrBot 4.26.2 候选镜像；
-Adapter/Composition 的 34 项聚焦测试在 0.719 秒内通过，并完成 Bot Control Plane 内的 Web
-人工内测第一版。它仍只能执行离线 readiness、人工评价与 no-send 验证：
+S23 是发布前的真实证据阶段，不是全面上线。Dududa 2.0 已成为唯一运行 Agent，当前以
+Canary 接管群内明确 `@Bot` 的纯文本、无附件消息；旧 1.0 Agent 不再回退接管。群
+`364894085` 已将评课、二课、培养方案、教务和校车五项查询设为 `on`，五类输入均完成
+no-send 耦合抽样：每次只选择目标 Capability，普通聊天保持零 Tool 调用。
+
+当前校园查询形状为四个 Unified MCP Server 加一个本地校车 Builtin 插件。教务学期、开课、
+考试和教学日历均已进入单步 Planner；开课/考试在同一次 MCP 调用内把学期名称解析为官方
+semester ID。该证据仍不等于用户触发的真实 QQ Tool/Delivery Receipt，以下门禁尚未关闭：
 
 - `configs/release/s19-pilot-slo-v1.json` 仍为 `s23_ready=false`；
-- 没有完成 conformance 的真实模型 Endpoint；
 - 没有校园、arXiv 或行业资讯的 live Source Adapter；
 - 没有生产 Probe Projection/Output composition；
-- 没有单群授权、私有 SecretRef 绑定或部署窗口。
+- 没有五项校园查询的用户触发 QQ 端到端回执；
+- 没有近期多轮群聊 Context、生产 Memory、可信 Capability 失败答复或在线 Bandit。
 
-除本节记录的无群聊输入、无 Output 路径的隔离 Provider 抽样外，在这些门禁关闭前不读取真实
-群消息、不修改运行中的 NapCat/AstrBot、不调用实时来源、不执行单群 Runtime Shadow，也不发送
-QQ 消息。iCourse 是评课社区 MCP，不能作为资讯日报来源。
+本 Runbook 的自动验证继续使用 no-send/Fake Output；不要由测试程序向 QQ 群发送消息，也不要
+把查询 MCP 误称为资讯日报来源。iCourse 是评课社区 MCP，校车是本地只读插件，两者都不是
+校园资讯 Source Provider。
 
 当前入站 production shape 的边界如下：
 
-- `runtime_enabled` 默认 `false`；关闭、配置非法或 AstrBot Provider 无法解析时回退 legacy；
+- 配置默认仍为 `runtime_enabled=false`；当前唯一宿主已显式启用。关闭、配置非法或模型不可用
+  时保持 unavailable，不再把事件交给已下线的 1.0 Agent；
 - `runtime_models_json` 只声明实际接入的 1–3 个 Haiku/Sonnet/Opus Endpoint，API Key 仍由
   AstrBot Provider 管理；
 - Dududa Core 继续拥有 Tier、预算、Runtime 状态和 rollout 所有权；Provider 只实现模型调用 Port；
-- 2.0 主链使用 Luna/Haiku Hybrid Perception；规则感知只作降级组件。启用 Tool 的当前
-  成功路径依次执行一次 PERCEPTION、一次确定性 iCourse `query` MCP 调用和一次
-  DIRECT_CHAT；`off` 零 Provider 调用，`shadow` 不 claim、不调用 Output；
+- 2.0 主链使用 Luna/Haiku Hybrid Perception；规则感知只作降级组件。启用 Tool 时按类别
+  执行一次确定性单步 Capability：iCourse、二课、培养方案和教务经 Unified MCP，校车经
+  本地 Builtin Provider；随后只执行一次 DIRECT_CHAT。`off` 零 Provider 调用，no-send
+  预览不调用 QQ Output；
 - Builder 优先解析 AstrBot Context 提供的 Provider Evidence；resolver 不存在或返回 `None` 时，
   才读取 `runtime_provider_evidence_path` 指向的仓库外私有 JSON。路径为空、文件非法或
   Provider/model 绑定不匹配时，Runtime 保持 unavailable 并回退 legacy；
 - 私有 Evidence 文件只保存模型绑定和验证结论，不保存 API Key、Base URL、QQ 标识或聊天正文。
   文件能够被解析不等于已经完成真实 Conformance；
-- 初始 operational health 固定为 `UNKNOWN`。只有显式发布的、descriptor 和 revision 绑定正确
-  且未过期的 `ModelHealthEvidence` 才能转为 `HEALTHY`；TTL 到期后自动恢复 `UNKNOWN`。
-  仓库已经实现可选的 AstrBot Provider 健康刷新循环，但 `runtime_health_probe_enabled` 默认
-  `false`，没有在运行中的 AstrBot 启用。启用后每个 Endpoint 使用最多 8 个输出 Token、零重试
-  的有界探测；成功发布短 TTL 的 `HEALTHY`，超时、Provider 异常或空结果只发布脱敏
-  `UNKNOWN`，不记录 Provider 错误正文。默认刷新间隔、单次超时和证据 TTL 分别为
-  45/15/90 秒，插件关闭时取消刷新任务。
+- 初始 operational health 固定为 `UNKNOWN`。只有 descriptor/revision 匹配且未过期的
+  `ModelHealthEvidence` 才能转为 `HEALTHY`。当前宿主已启用有界健康刷新，间隔、单次超时和
+  TTL 为 900/15/1800 秒；刷新同时续期本地 Endpoint load 观测，插件关闭时取消任务。
 
 ### 1.1 真实 Endpoint 最小可达性抽样
 

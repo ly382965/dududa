@@ -11,10 +11,9 @@ from mcp.server.fastmcp import FastMCP
 from .academic import AcademicClient
 from .calendar import TeachingCalendarClient
 from .curriculum import CurriculumClient
-from .shuttle import ShuttleClient
 from .young import YoungClient
 
-SERVICES = ("academic", "curriculum", "shuttle", "young")
+SERVICES = ("academic", "curriculum", "young")
 
 
 def create_mcp(service: str) -> FastMCP:
@@ -36,10 +35,6 @@ def create_mcp(service: str) -> FastMCP:
                     "USTC_CURRICULUM_DATA_BASE_URL",
                     "https://docs.mmdustc.top/curriculum/data",
                 )
-            )
-        elif service == "shuttle":
-            clients["shuttle"] = ShuttleClient(
-                os.getenv("USTC_SHUTTLE_URL", "https://www.ustc.edu.cn/info/1029/25471.htm")
             )
         else:
             clients["young"] = YoungClient()
@@ -65,7 +60,8 @@ def create_mcp(service: str) -> FastMCP:
 
         @mcp.tool()
         async def catalog_search_lessons(
-            semester_id: int,
+            semester_id: int = 0,
+            semester: str = "",
             query: str = "",
             department_code: str = "",
             teacher: str = "",
@@ -78,15 +74,21 @@ def create_mcp(service: str) -> FastMCP:
             offset: int = 0,
             limit: int = 25,
         ) -> dict[str, Any]:
-            """Search a semester's official lesson list with local filters and pagination."""
+            """Search an official lesson list, resolving a semester label when needed."""
+            resolved_semester_id = (
+                semester_id
+                if semester_id > 0
+                else await academic().resolve_semester_id(semester)
+            )
             return await academic().search_lessons(
-                semester_id, query, department_code, teacher, campus, location,
+                resolved_semester_id, query, department_code, teacher, campus, location,
                 education, class_type, course_classify, time_span, offset, limit,
             )
 
         @mcp.tool()
         async def catalog_search_exams(
-            semester_id: int,
+            semester_id: int = 0,
+            semester: str = "",
             query: str = "",
             department_code: str = "",
             teacher: str = "",
@@ -99,9 +101,14 @@ def create_mcp(service: str) -> FastMCP:
             offset: int = 0,
             limit: int = 25,
         ) -> dict[str, Any]:
-            """Search normalized scheduled and general USTC exam records."""
+            """Search official exams, resolving a semester label when needed."""
+            resolved_semester_id = (
+                semester_id
+                if semester_id > 0
+                else await academic().resolve_semester_id(semester)
+            )
             return await academic().search_exams(
-                semester_id, query, department_code, teacher, grade, admin_class,
+                resolved_semester_id, query, department_code, teacher, grade, admin_class,
                 location, exam_date, exam_type, education, offset, limit,
             )
 
@@ -134,17 +141,6 @@ def create_mcp(service: str) -> FastMCP:
                 operation,
                 limit,
             )
-
-    elif service == "shuttle":
-        @mcp.tool()
-        async def shuttle_current_schedule() -> dict[str, Any]:
-            """Return the current official shuttle notice, image and revision-bound structured timetable."""
-            return await clients["shuttle"].current_schedule()
-
-        @mcp.tool()
-        async def shuttle_search_trips(from_station: str, to_station: str, after: str = "") -> dict[str, Any]:
-            """Search trips between east, west, research and hightech campuses."""
-            return await clients["shuttle"].search_trips(from_station, to_station, after)
 
     else:
         def young() -> YoungClient:

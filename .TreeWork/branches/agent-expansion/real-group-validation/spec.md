@@ -176,16 +176,14 @@ running container has loaded it and consumes Web Policy, and per-Run selection
 or invocation is reported independently. Neither `installed` nor `configured`
 may be presented as an online executor or an actual call.
 
-The campus MCP expansion keeps the existing Unified MCP and Capability control
-plane. Four independently registered Servers are exposed: `icourse` reuses the
-existing anonymous read-only implementation; `ustc-young` adapts the pinned
-`pyustc` implementation behind repository-external CAS SecretRefs;
-`ustc-academic` provides read-only program, lesson, exam and teaching-calendar
-queries; and `ustc-shuttle` provides the current official timetable and trip
-queries. The three new Servers share one implementation package but retain
-independent Registry identities, sessions, health and schema snapshots. All
-first-release tools are read-only. Missing CAS credentials make only
-`ustc-young` unavailable and never block the public campus sources.
+The campus query expansion keeps the existing Unified MCP and Capability
+control plane. Four independently registered MCP Servers are exposed:
+`icourse`, `ustc-young`, `ustc-academic` and `ustc-curriculum`. The latter three
+share one implementation package but retain independent Registry identities,
+sessions, health and schema snapshots. Shuttle is instead a local owned plugin:
+its versioned JSON and `BUILTIN` Provider implement the existing Capability Port
+without network access or a message handler. Missing CAS credentials make only
+`ustc-young` unavailable and never block public or local campus sources.
 
 The WebUI exposes these Servers and their approved Capability mappings to the
 `super_admin` as a schema-driven direct-call workspace. Browser and Node code do
@@ -204,7 +202,7 @@ legacy command parser:
 natural-language input
   -> Haiku/Luna PERCEPTION structured intent, entities and Capability category
   -> deterministic eligibility, authorization and one-step Schema projection
-  -> Unified MCP
+  -> Capability Provider (Unified MCP or local plugin)
   -> validated Observation
   -> DIRECT_CHAT synthesis
   -> Persona and Final Validator
@@ -235,8 +233,13 @@ own the 2.0 Runtime connection. Perception advertises only categories backed by
 the current Planner's supported input Schemas. The first slice advertised only
 `campus.course-review`; the approved second-class increment also advertises
 `campus.second-class` after its deterministic argument projection is installed.
-Academic and shuttle MCP Servers remain directly callable by the super
-administrator but are not yet planned from natural language.
+The current Planner also advertises `campus.curriculum`, `campus.academic` and
+`campus.shuttle`; the latter projects the complete user goal into one local
+plugin query. Academic natural-language planning is limited to the four
+existing read operations: semester list, lesson search, exam search and
+teaching calendar. Lesson and exam calls remain one Agent Tool step; their MCP
+Adapter resolves an explicit term such as `2026 秋` or `本学期` to the official
+semester ID inside that call before applying the existing read filters.
 
 The second-class slice has no QQ-user login, account binding or login Tool. The
 MCP exposes only activity search, activity detail, facet listing and connection

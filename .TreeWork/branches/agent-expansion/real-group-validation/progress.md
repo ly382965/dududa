@@ -11,6 +11,15 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- 校车已从 `ustc-shuttle` MCP 迁移为 `astrbot_plugin_ustc_shuttle` 本地 owned
+  插件。`ustc.shuttle.public-query.v1` 由现有 `BUILTIN` Capability Provider Port
+  执行，读取版本化 JSON，覆盖校园、高新校区和太湖路园区时刻表；旧 MCP Server、
+  mapping、网页抓取 Client 与 Tool 已移除。Production Perception/Planner 已能自然语言
+  调用，Web Catalog 将其显示为 `readonly_query`，群级默认仍为 `off`。
+- 目标群 `364894085` 的 iCourse、二课、培养方案、教务和校车策略现均为 `on`。
+  Academic Planner 已把学期列表、开课、考试和教学日历四个现有只读 Capability
+  接入自然语言路径；开课/考试在同一次 MCP 调用内解析官方 semester ID。五类
+  no-send 抽样各自只选择目标 Provider，普通聊天保持零 Tool 调用。
 - 2026-08-28 修复长生命周期模型路由失效：周期健康探测原先只刷新 Provider
   health，仍复用 AstrBot 启动时创建的 Endpoint load 时间戳；运行超过 1,800 秒后
   三档模型会一起被判为 `endpoint_load_stale`，最终表现为
@@ -130,7 +139,8 @@ Last sync: unix:1786706085
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
   候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
 - Unified MCP 现已注册四个真实只读 Server：匿名 iCourse、认证二课、公开教务处
-  和校车，共映射 17 个受批准 Capability。Web 超级管理员工作台按 Capability ID
+  和培养方案研究，共映射 14 个受批准 MCP Capability；校车另由一个本地 Builtin
+  Provider 实现。Web 超级管理员工作台按 Capability ID
   和 input schema 直接调用，浏览器不接受任意 `server/tool` 透传。现有本机 CAS
   凭据文件以只读挂载复用，固定提交版 `pyustc` 已真实完成二课登录和查询；密码、
   Cookie、TGC 与本机路径不进入 Git、Web 响应或普通日志。校园资讯、arXiv 和行业
@@ -179,6 +189,16 @@ Last sync: unix:1786706085
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- 修复 Production Composition 注入时钟未贯穿 State Store、DirectChat 和 Content
+  Safety 的问题；原二课 75 题固定时间纵切在不改 fixture 的情况下重新通过。
+- 2026-08-29 目标群校园能力耦合抽样完成：五项校园插件模式均设为 `on`；评课、
+  二课、培养方案、教务和校车输入各只选中一个对应插件，普通聊天 `toolCalls=0`。
+  教务开课实测将 `2026 秋` 解析为 semester `461` 并返回官方教学班数据。所有
+  预览均为 `outputCalls=0 / memoryWrites=0`，没有真实 QQ 发送。
+- 2026-08-29 校车插件纵切完成：20/20 固定时钟问题通过事实与输出 Schema 校验；
+  Case 6/11/20 又以原生 `@Bot` 消息形状穿过唯一 2.0 Runtime、本地 Provider、
+  DirectChat 和 Fake Delivery，其中 Case 6 的模型故意漏报 Tool，确定性“校车/班车”
+  marker 仍正确选中 Capability。三条路径没有校车 MCP 调用或真实 QQ 发送。
 - 完成二课 MCP 的 Dududa 2.0 自然语言纵切：四个公共只读 Tool 经同一 Unified Client
   进入 Planner/Capability/DirectChat，个人账号与写能力从 MCP、Capability Catalog
   和普通管理员权限中移除。75 题最新报告为 75/75 Runtime/Fake Delivery、62 次 MCP、
@@ -310,8 +330,8 @@ Last sync: unix:1786706085
   availability、Tool 开关、授权、预算、流量和 MCP 健康约束。scripted 75/75
   dispatch 只证明路由；最终真实模型纵切为 73 次 MCP，人工终审 49/75 完整。
 - Unified MCP 生命周期已从旧 iCourse facade 中解耦；兼容 facade 只借用共享 Client。
-  Perception 只公布当前 Planner 真能投影的 `campus.course-review`，不会把控制台可
-  直调的教务、校车和二课误报成 Agent 已可自然语言自动调用。
+  Perception 只公布当前 Planner 真能投影的类别；现已包含评课、二课、培养方案、
+  教务和校车，不会把其他控制台直调能力误报成 Agent 已可自然语言自动调用。
 - Production 初始化在共享 Unified Client 装配失败时直接保留 unavailable 兼容 facade，
   不再让旧 facade 二次创建一个仅供 1.0 路径使用的独立 Client。
 - Luna/Terra/Sol 使用同一固定 Observation 和 Responses `reasoning.effort=low`
@@ -355,10 +375,11 @@ Last sync: unix:1786706085
   当前测试只证明结构接线，不能证明风格质量。
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
-- `gpt-image-2` 仍需接入正式图片 Capability；四个校园 MCP 的 Web 直接调用已完成，
-  Agent 自然语言自动选择已闭环 iCourse 与二课单步。二课当前是手工 OneBot-shaped
+- `gpt-image-2` 仍需接入正式图片 Capability；四个查询 MCP 的 Web 直接调用已完成，
+  Agent 自然语言自动选择已闭环 iCourse、二课、培养方案研究、教务与校车单步。二课当前是手工 OneBot-shaped
   Event/Fake Delivery 证据，iCourse 已有 Web no-send Runtime/MCP 预览；两者仍缺用户触发的
-  真实 QQ MCP/Delivery Receipt，教务和校车的自然语言 Schema Planner 尚未实现。
+  真实 QQ MCP/Delivery Receipt；教务和校车已有 no-send Runtime 证据，但仍没有用户
+  触发的真实 QQ Receipt。
 - Capability/MCP 的可信失败 receipt 当前会在 Canary claim 后以 no-delivery 终止；
   尚需在 2.0 Composer/Persona/Final Validator 内补用户可见失败回答，不能由旧 handler
   或 Web search 接管。

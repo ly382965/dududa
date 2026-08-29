@@ -105,9 +105,6 @@ services:
     volumes:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ${DUDUDA_ASTRBOT_PLUGIN_ROOT:-./runtime/astrbot-plugins}:/AstrBot/data/plugins
-      - ./apps/astrbot-plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
-      - ./apps/astrbot-plugins/astrbot_plugin_reread:/AstrBot/data/plugins/astrbot_plugin_reread:ro
-      - ./apps/astrbot-plugins/astrbot_plugin_sub2api_readonly:/AstrBot/data/plugins/astrbot_plugin_sub2api_readonly:ro
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
       - ./services/mcp/ustc-campus:/AstrBot/data/ustc-campus-mcp:ro
       - ./configs:/opt/dududa/config:ro

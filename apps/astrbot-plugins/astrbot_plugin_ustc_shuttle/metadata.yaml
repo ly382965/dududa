@@ -1,0 +1,7 @@
+name: astrbot_plugin_ustc_shuttle
+display_name: 中国科大校车
+desc: 基于版本化静态时刻表提供确定性校车查询，由 Dududa 2.0 Runtime 调用
+help: 在 Dududa 超级工作台按群启用；插件本身不抢占消息
+version: v2.0.0
+author: mmdustc
+repo: https://github.com/mmdustc/dududa

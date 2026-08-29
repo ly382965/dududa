@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -213,6 +213,20 @@ _TIER_ORDER = {
     ModelTier.OPUS: 2,
 }
 
+
+def _shuttle_provider_factory():
+    try:
+        from astrbot_plugin_ustc_shuttle import UstcShuttleCapabilityProvider
+    except ModuleNotFoundError as exc:
+        if exc.name != "astrbot_plugin_ustc_shuttle":
+            raise
+        from data.plugins.astrbot_plugin_ustc_shuttle import (
+            UstcShuttleCapabilityProvider,
+        )
+
+    return UstcShuttleCapabilityProvider.from_catalog
+
+
 _YOUNG_ACCOUNT_BOUND_PATTERNS = (
     re.compile(r"(?:我|本人|个人).{0,12}(?:已?报名|累计.{0,12}学时|签到)"),
     re.compile(r"我(?:参加|参与)过.{0,12}(?:二课|第二课堂)"),
@@ -335,18 +349,40 @@ class _ProductionPerceptionMerger:
         )
 
 
-def _publish_runtime_status(*, ready: bool, state: str, reason: str) -> None:
-    try:
-        save_json(
-            RUNTIME_STATUS_PATH,
+def _publish_runtime_status(
+    *,
+    ready: bool,
+    state: str,
+    reason: str,
+    runtime_config: Mapping[str, Any] | None = None,
+) -> None:
+    status: dict[str, Any] = {
+        "schema_version": 1,
+        "ready": ready,
+        "state": state,
+        "reason": reason,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if runtime_config is not None:
+        status.update(
             {
-                "schema_version": 1,
-                "ready": ready,
-                "state": state,
-                "reason": reason,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            },
+                "runtime_enabled": runtime_config.get("runtime_enabled") is True,
+                "rollout_mode": str(runtime_config.get("rollout_mode") or "off"),
+                "rollout_delivery_enabled": runtime_config.get(
+                    "rollout_delivery_enabled"
+                )
+                is True,
+                "rollout_kill_switch": runtime_config.get("rollout_kill_switch")
+                is not False,
+                "rollout_allowlisted_groups": [
+                    str(value)
+                    for value in runtime_config.get("rollout_allowlisted_groups", ())
+                    if isinstance(value, (str, int))
+                ],
+            }
         )
+    try:
+        save_json(RUNTIME_STATUS_PATH, status)
     except Exception:  # noqa: BLE001 - status projection cannot take down Runtime
         logger.warning("Dududa Runtime status projection failed")
 
@@ -747,6 +783,11 @@ def _direct_chat_prompt() -> AstrBotPromptArtifact:
             "没有证据就明确说没有，不要为了缩短回答只保留其中一类。系统没有 QQ 用户登录或账号绑定，"
             "不得把部署侧服务账号说成提问者本人，也不得承诺查询"
             "个人累计学时、替用户报名或取消报名；不要猜测学校平台中的菜单或页面路径。"
+            "回答校车问题时，只使用校车插件返回的版本化静态时刻表。明确区分工作日、周六、周日和"
+            "双休节假日；holiday 表示学期中节假日仍运行，no_public_bus 只表示该趟没有公交车辆运行，"
+            "不等于班次取消。即停即走的途经站没有固定发车时间；始发站提前进站、满员即发，但不能猜"
+            "具体提前分钟数。数据未覆盖的线路、到站时间或最新临时调整要明确说不知道，不要改用网页"
+            "搜索或预训练记忆补齐。"
         ),
         "structured_output_instruction": "返回普通文本回答。",
         "repair_instruction": None,
@@ -813,6 +854,18 @@ def _perception_prompt() -> AstrBotPromptArtifact:
             "年级等查询值，不把“培养方案”本身作为实体。培养方案修改、提交或删除是写操作，毕业审核、"
             "就业去向也不在该快照范围内，不选择 campus.curriculum。评课评价应选择 campus.course-review；"
             "实时学期、开课、考试和教学日历应选择 campus.academic。"
+            "对 campus.academic，只在查询中国科大教务处公开学期、开课、考试或教学日历时选择。"
+            "intent_id 必须使用 ustc.academic.semesters.list、ustc.academic.lesson.search、"
+            "ustc.academic.exam.search、ustc.academic.calendar.read 之一。按年份和春夏秋学期查"
+            "开课班级或任课老师时使用 lesson.search；查考试日期、考场或考试安排时使用"
+            "exam.search；查询可用学期及其 ID 时使用 semesters.list；查询校历、开学、放假等"
+            "日期时使用 calendar.read。entities 只保留课程名、课程号、老师或地点等过滤值，"
+            "年份与春夏秋学期可以作为实体但不得当作课程查询词。个人课表、个人考试安排、"
+            "选课、退课和成绩不属于公开教务能力，不选择 campus.academic。"
+            "对 campus.shuttle，只在查询中国科大校车、班车、高新校区班车或太湖路园区班车时选择。"
+            "查询完整时刻、线路、途经站、下一班、到达时间、工作日/周末/节假日运行状态时，intent_id"
+            "使用 ustc.shuttle.schedule.read 或 ustc.shuttle.next.read。不要把出租车、公交线路、火车"
+            "或泛指的“车”判为 campus.shuttle；不需要把“校车”“班车”本身作为实体。"
         ),
         "structured_output_instruction": "只返回符合下列 JSON Schema 的 JSON 对象。",
         "repair_instruction": None,
@@ -868,7 +921,7 @@ def build_production_runtime(
         max_identities=8,
         max_characters_per_message=2_000,
         max_total_characters=4_000,
-        max_capability_categories=4,
+        max_capability_categories=5,
         max_degraded_components=4,
         max_candidates_per_kind=8,
         max_evidence_refs_per_item=4,
@@ -1238,6 +1291,12 @@ def build_production_runtime(
             "campus.second-class": frozenset(
                 {"二课", "第二课堂", "德智体美劳"}
             ),
+            "campus.academic": frozenset(
+                {"教务处", "开课查询", "开课信息", "考试查询", "考试安排", "教学日历", "校历"}
+            ),
+            "campus.shuttle": frozenset(
+                {"校车", "班车", "校园班车", "高新校区班车", "太湖路园区班车"}
+            ),
         },
     )
     rules = _ProductionRulePerception(DeterministicRulePerception(rule_config))
@@ -1335,6 +1394,7 @@ def build_production_runtime(
         visible_token_counter=UnicodeVisibleTokenCounter(
             _revision("direct-chat-visible-counter")
         ),
+        clock=effective_clock,
     )
     composer = MinimalResponseComposer(
         MinimalResponseComposerConfig(
@@ -1438,6 +1498,9 @@ def build_production_runtime(
         definitions_directory=CAPABILITY_DEFINITIONS_DIR,
         mappings_directory=CAPABILITY_MAPPINGS_DIR,
         policy_revision=_PRODUCTION_POLICY_REVISION,
+        builtin_provider_factories={
+            "plugin.ustc-shuttle": _shuttle_provider_factory(),
+        },
         clock=effective_clock,
     )
     runtime_policy = OfflineRuntimePolicySnapshot(
@@ -1510,11 +1573,12 @@ def build_production_runtime(
             maximum_checkpoints=1_000,
             maximum_dedup_records=1_000,
             component_revision=_revision("runtime-state-store"),
-        )
+        ),
+        clock=effective_clock,
     )
     final_validator = FinalResponseSafetyValidator(
         DeterministicRenderValidator(_revision("render-validator")),
-        DefaultContentSafetyPolicy(),
+        DefaultContentSafetyPolicy(clock=effective_clock),
         profile_validator=DeterministicResponseProfileValidator(
             UnicodeVisibleTokenCounter(_revision("visible-token-counter")),
             _revision("response-profile-validator"),
@@ -1788,6 +1852,7 @@ def initialize_plugin(
             if plugin.config.get("runtime_enabled") is True
             else "runtime_disabled"
         ),
+        runtime_config=plugin.config,
     )
     _start_model_health_refresh(plugin)
     logger.info("DududaCore loaded: enabled=%s", plugin.enabled)
@@ -1835,6 +1900,7 @@ async def activate_runtime_after_host_start(plugin: Any) -> bool:
             ready=False,
             state="failed",
             reason="runtime_composition_failed",
+            runtime_config=plugin.config,
         )
         return False
     if installed is None:
@@ -1842,13 +1908,19 @@ async def activate_runtime_after_host_start(plugin: Any) -> bool:
             ready=False,
             state="failed",
             reason="runtime_install_failed",
+            runtime_config=plugin.config,
         )
         logger.error(
             "Dududa 2.0 Runtime activation failed: reason=runtime_install_failed"
         )
         return False
     _start_model_health_refresh(plugin)
-    _publish_runtime_status(ready=True, state="ready", reason="runtime_ready")
+    _publish_runtime_status(
+        ready=True,
+        state="ready",
+        reason="runtime_ready",
+        runtime_config=plugin.config,
+    )
     logger.info(
         "Dududa 2.0 Runtime activated: model_probes=%s health_refresh=%s",
         assembly.has_model_health_probes,

@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-01T18:00:00+08:00",
+  "source": "apps/astrbot-plugins/astrbot_plugin_ustc_shuttle/data/timetable.v1.json",
+  "cases": [
+    {
+      "case_id": 1,
+      "category": "校园班车",
+      "question": "工作日东区去西区有哪些班车？",
+      "expected_total": 14,
+      "expected_departures": ["07:30", "09:20", "09:35", "11:35", "12:15", "13:30", "15:30", "15:50", "17:30", "17:50", "18:40", "20:10", "21:15", "22:10"],
+      "expected_service_id": "campus",
+      "expected_stops": ["东区", "北区", "西区"]
+    },
+    {
+      "case_id": 2,
+      "category": "校园班车",
+      "question": "工作日西区到东区最后一班校车几点？",
+      "expected_total": 1,
+      "expected_departure": "22:20",
+      "expected_no_public_bus": true
+    },
+    {
+      "case_id": 3,
+      "category": "校园班车",
+      "question": "节假日东区去西区哪些班车还运行？",
+      "expected_total": 6,
+      "expected_departures": ["07:30", "11:35", "13:30", "17:30", "18:40", "21:15"],
+      "expected_holiday": true
+    },
+    {
+      "case_id": 4,
+      "category": "标记语义",
+      "question": "东区去西区09:20这班校车是不是没有公交车？",
+      "expected_total": 1,
+      "expected_departure": "09:20",
+      "expected_no_public_bus": true,
+      "required_semantic_terms": ["不等于班次取消"]
+    },
+    {
+      "case_id": 5,
+      "category": "校园班车",
+      "question": "工作日南区到西区的班车会经过北区吗？",
+      "expected_total": 9,
+      "expected_service_id": "campus",
+      "expected_stops": ["南区", "北区", "西区"]
+    },
+    {
+      "case_id": 6,
+      "category": "下一班",
+      "question": "工作日南区去东区下午两点以后下一班校车几点？",
+      "expected_total": 1,
+      "expected_departure": "14:00"
+    },
+    {
+      "case_id": 7,
+      "category": "下一班",
+      "question": "工作日东区去南区19:01以后下一班校车几点？",
+      "expected_total": 1,
+      "expected_departure": "20:30"
+    },
+    {
+      "case_id": 8,
+      "category": "高新校区",
+      "question": "高新校区工作日早上8点去东区，班车几点到？",
+      "expected_total": 1,
+      "expected_service_id": "hightech",
+      "expected_departure": "08:00",
+      "expected_arrival": "08:50"
+    },
+    {
+      "case_id": 9,
+      "category": "高新校区",
+      "question": "工作日东区21点以后去高新校区下一班车几点？",
+      "expected_total": 1,
+      "expected_departure": "21:20",
+      "expected_arrival": "22:00"
+    },
+    {
+      "case_id": 10,
+      "category": "高新校区",
+      "question": "工作日高新校区到东区的班车经过先研院和西区吗？",
+      "expected_total": 8,
+      "expected_stops": ["高新校区", "先研院", "西区", "东区"]
+    },
+    {
+      "case_id": 11,
+      "category": "即停即走",
+      "question": "工作日东区21:20去高新校区时，班车在先研院几点？",
+      "expected_total": 1,
+      "expected_departure": "21:20",
+      "expected_arrival": "22:00",
+      "expected_on_demand_stop": "先研院"
+    },
+    {
+      "case_id": 12,
+      "category": "高新校区",
+      "question": "周末高新校区到东区有哪些班车？",
+      "expected_total": 4,
+      "expected_departures": ["08:00", "13:40", "16:00", "21:50"]
+    },
+    {
+      "case_id": 13,
+      "category": "高新校区",
+      "question": "周末东区18:30这班车去高新校区几点到？",
+      "expected_total": 1,
+      "expected_departure": "18:30",
+      "expected_arrival": "19:30"
+    },
+    {
+      "case_id": 14,
+      "category": "运行提示",
+      "question": "高新校区始发站班车会提前多久进站？",
+      "expected_total": 8,
+      "required_notice_terms": ["提前进站", "满员即发"]
+    },
+    {
+      "case_id": 15,
+      "category": "太湖路园区",
+      "question": "周一太湖路园区09:10这班车去东区几点到？",
+      "expected_total": 1,
+      "expected_service_id": "taihu",
+      "expected_departure": "09:10",
+      "expected_arrival": "09:40"
+    },
+    {
+      "case_id": 16,
+      "category": "太湖路园区",
+      "question": "周六太湖路园区最早一班车去东区几点？",
+      "expected_total": 1,
+      "expected_departure": "07:10",
+      "expected_arrival": "07:40",
+      "expected_saturday_only": true
+    },
+    {
+      "case_id": 17,
+      "category": "太湖路园区",
+      "question": "周一太湖路园区最早一班车去东区几点？",
+      "expected_total": 1,
+      "expected_departure": "09:10",
+      "expected_arrival": "09:40",
+      "expected_saturday_only": false
+    },
+    {
+      "case_id": 18,
+      "category": "太湖路园区",
+      "question": "周日东区去太湖路园区有哪些班车？",
+      "expected_total": 4,
+      "expected_departures": ["07:30", "11:30", "13:30", "22:10"],
+      "expected_stops": ["东区", "太湖路园区"]
+    },
+    {
+      "case_id": 19,
+      "category": "太湖路园区",
+      "question": "周日太湖路园区13:30这班车去东区几点到？",
+      "expected_total": 1,
+      "expected_departure": "13:30",
+      "expected_arrival": "13:50"
+    },
+    {
+      "case_id": 20,
+      "category": "证据边界",
+      "question": "北区到太湖路园区有直达校车吗？",
+      "expected_total": 0,
+      "expected_matched": false
+    }
+  ]
+}

@@ -23,10 +23,12 @@ used as implementation inputs.
 At the start of the offline expansion, iCourse was the sole real MCP Server and
 its dedicated plugin Client opened a new session per operation. S12 therefore
 used iCourse as the compatibility Adapter and a local Fake as the extension
-proof. The 2026-08-24 S23 extension now adds real read-only second-class,
-academic and shuttle Servers through that completed boundary. Campus news,
-arXiv and industry fixtures still establish source contracts without implying
-that their live Source Servers or Adapters exist.
+proof. The 2026-08-24 S23 extension added real read-only second-class,
+academic, curriculum and shuttle queries. The 2026-08-29 correction keeps
+iCourse, second-class, academic and curriculum on Unified MCP and moves shuttle
+to a versioned local Builtin Capability plugin. Campus news, arXiv and industry
+fixtures still establish source contracts without implying that their live
+Source Servers or Adapters exist.
 
 ### Confirmed Long-Horizon Direction
 
@@ -608,9 +610,10 @@ requested profile services
 Profile selection never grants a Capability. Unknown, unhealthy, unauthorized
 or production-incomplete services remain inactive and are reported as such.
 Four real read-only query MCP Servers now exist: iCourse, second-class,
-academic and shuttle. They are not proactive information feeds; planned campus
-news/arXiv/industry sources must remain unavailable until real Source Adapters
-and policy evidence exist.
+academic and curriculum. Shuttle is a local read-only Capability plugin. None
+of them is a proactive information feed; planned campus news/arXiv/industry
+sources must remain unavailable until real Source Adapters and policy evidence
+exist.
 
 The onboarding state machine is:
 

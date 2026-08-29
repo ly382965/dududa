@@ -53,11 +53,11 @@ Last sync: unix:1786717871
   is the only real MCP Server. S12 has returned the reusable multi-Server
   boundary with a Fake extension proof; S15C supplies source contracts and
   fixtures only, while live sources and S23 remain external.
-- On 2026-08-24 the user supplied a new integration scope. The Unified MCP
-  Registry now has four real read-only Servers: iCourse, USTC second-class,
-  academic catalog/calendar and shuttle. This supersedes the earlier
-  iCourse-only fact without turning those query Capabilities into proactive
-  campus/arXiv/industry Source Providers.
+- On 2026-08-24 the user supplied a new integration scope. The 2026-08-29
+  correction leaves four real read-only Unified MCP Servers: iCourse, USTC
+  second-class, academic catalog/calendar and curriculum research. Shuttle is
+  now a versioned local Builtin Capability plugin. None of these query
+  Capabilities is a proactive campus/arXiv/industry Source Provider.
 - The locked root uv workspace, Node 22/npm environment, Playwright Chromium,
   clean sdist-to-wheel path and warning-free MCP v1 fallback are reproducible.
   The Web unit/server/type/build/E2E gates pass; the existing containers were
@@ -72,8 +72,10 @@ Last sync: unix:1786717871
   login, account binding or write action. The Young 75-case hand-built
   OneBot-shaped simulation completed 75/75 Runtime and Fake Delivery with 62 MCP
   calls, 13 correct no-calls and focused answer-semantic assertions. This is not
-  NapCat/QQ end-to-end evidence. Academic and shuttle still await a natural-
-  language Planner, and generic Capability failure composition remains open.
+  NapCat/QQ end-to-end evidence. Shuttle now has a natural-language local-plugin
+  Planner with 20/20 fixed questions and three native-message Runtime samples.
+  Academic semester/lesson/exam/calendar planning now resolves semester labels
+  inside one MCP call; generic Capability failure composition remains open.
   Tool execution remains one attempt per inbound plan; no-explicit-profile Tool
   answers default to LONG, and actual multi-part group LONG output is delivered
   as one merged-forward message.
@@ -251,11 +253,13 @@ Last sync: unix:1786717871
   changing any running container or sending a message.
 - S12 returned a framework-neutral multi-Server MCP Client/Registry, isolated
   v2 worker and iCourse compatibility facade. The later campus expansion now
-  registers four real read-only query Servers on the same infrastructure.
+  registers four real read-only query Servers on the same infrastructure;
+  shuttle is a local Builtin plugin rather than a fifth MCP Server.
 - S13 returned a separate governed Capability Catalog/Retrieval/Planner/
-  Executor/Validator. Seventeen read-only mappings are available to the Control
-  Plane; one local 2.0 iCourse `query` path is auto-planned, while running Agent
-  deployment and other Schema planners remain incomplete.
+  Executor/Validator. Fourteen MCP mappings and one shuttle Builtin are available
+  to the Control Plane. The running 2.0 Agent now auto-plans bounded one-step
+  iCourse, second-class, curriculum, academic and shuttle queries; governed
+  failures, multi-step planning and real QQ Tool/Delivery receipts remain open.
 - S14 now returns generation-bound Memory lifecycle and restore, M0/M1/M2
   bounded retrieval and a manifest-bound synthetic Eval. It did not migrate
   legacy commands, enable Runtime Memory, use real data or integrate Iris.

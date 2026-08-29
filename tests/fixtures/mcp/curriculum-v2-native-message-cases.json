@@ -447,7 +447,7 @@
       "entity_terms": ["数据结构A", "2026秋"],
       "forbidden_capability_ids": ["ustc.curriculum.public-query.v1", "icourse.public-query.v2"],
       "semantic_status": "cross_provider_boundary",
-      "current_runtime_assertion": "培养方案 MCP 不得接管；教务开课自然语言 Planner 属于独立后续能力，本题不宣称已经调用。"
+      "current_runtime_assertion": "培养方案 MCP 不得接管；教务开课由 campus.academic 单步 Planner 调用 catalog_search_lessons，并在 MCP 内解析官方学期 ID。"
     }
   ]
 }

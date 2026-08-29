@@ -591,12 +591,12 @@ layer.
 | Target area | Current status |
 | --- | --- |
 | Core package and security contracts | S01-S03 local scope complete; legacy compatibility paths remain |
-| Message Envelope, Runtime State and delivery | S04/S10/S11 inbound explicit-mention local scope complete; S23 adds one local 2.0 iCourse path; running deployment remains |
+| Message Envelope, Runtime State and delivery | S04/S10/S11 inbound explicit-mention local scope complete; S23 made 2.0 the sole running Agent for supported explicit mentions; real QQ Tool/Delivery receipt, private chat and attachment evidence remain |
 | Context Builder, Perception and SocialAction | S09/S10 bounded scope plus S23 Hybrid Perception path complete; recent group context, real calibration and attachment evidence remain |
 | Scoped MemoryRepository and Write Gate | S06/S07 safety boundary complete; real Iris/runtime retrieval not implemented |
-| Capability Registry and Retrieval | S13 infrastructure and 17 mappings complete; only iCourse `query` is auto-planned in the 2.0 local path |
+| Capability Registry and Retrieval | S13 infrastructure, 14 MCP mappings and one shuttle Builtin complete; all five campus query categories have bounded one-step 2.0 planning |
 | Unified MCP Client and Registry | S12 complete; four read-only query Servers share one Client; iCourse facade is compatibility-only |
-| Tool Planner/Executor/Validator loop | S13 bounded loop complete; one iCourse natural-language slice works locally; other Schema planners and deployment remain |
+| Tool Planner/Executor/Validator loop | S13 bounded loop complete; iCourse, second-class, curriculum, academic and shuttle no-send slices work; multi-step/cross-capability planning, governed failures and real QQ evidence remain |
 | Role-based Model Router | S08 static local core complete; real multi-Provider production composition remains |
 | Response Composer / OC Renderer split | S10 path and S15 Persona/ResponsePlan integration complete locally; human style quality remains |
 | AnswerProfile / ResponsePlan | S15 SHORT/MEDIUM/LONG mechanical contract complete; real calibration remains |

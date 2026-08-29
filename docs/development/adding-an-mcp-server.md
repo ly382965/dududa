@@ -4,10 +4,14 @@
 
 本文说明如何新增 MCP Server，并通过统一传输边界接入嘟嘟哒。权威 Registry 路径是
 `configs/mcp/servers/*.json`。当前真实只读 Server 为 `icourse`、`ustc-young`、
-`ustc-academic`、`ustc-curriculum` 和 `ustc-shuttle`；实现分别位于
+`ustc-academic` 和 `ustc-curriculum`；实现分别位于
 `services/mcp/icourse/` 与共享实现包
 `services/mcp/ustc-campus/`。S22 已移除旧 `config/` 与 `services/icourse-mcp/` 兼容链接；
 新增 Server 只使用 canonical 路径。
+
+校车时刻表是仅供 Dududa 使用、无需联网和独立生命周期的简单本地查询，因此位于
+`apps/astrbot-plugins/astrbot_plugin_ustc_shuttle/`，通过通用 Builtin Capability
+Provider 接入，不再作为 MCP Server。它也是“何时不应使用 MCP”的当前样例。
 
 MCP Server 和 worker 是传输/集成边界，不是完整 Agent。它们负责清晰、原子、结构化的操作和协议生命周期；它们不负责理解整段群聊、决定是否回复、选择 Persona、授予 Capability、判断 Schema freshness、调度或发送。模型可见性由独立的 Capability Registry 决定。
 
@@ -386,8 +390,9 @@ Server README 至少包含：
 
 ## 13. iCourse 参考迁移
 
-iCourse 是首个真实 Server 和统一传输兼容样板；当前 Registry 还包含二课、教务和校车三个
-只读查询 Server。S12 已保留 iCourse 的 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
+iCourse 是首个真实 Server 和统一传输兼容样板；当前 Registry 还包含二课、教务和培养方案研究
+三个只读查询 Server。校车由本地 Builtin 插件提供，不在 MCP Registry。S12 已保留 iCourse
+的 parser、crawler、SQLite 和 FastMCP 资产，并完成以下迁移边界：
 
 - `ICourseClient` 是 Unified MCP facade；S22 已删除专用直连 Client，并将 Unified 基础设施
   缺失收敛为 fail-closed unavailable facade；

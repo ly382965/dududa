@@ -1,0 +1,339 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "ustc.shuttle.public-query.v1",
+  "category": "campus.shuttle",
+  "cost_hint_units": 0,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:23b07585464fbe9c4eccd1b5dfca2d3e02f21571f11942188b7d2d56233792f8",
+  "description": "Query the versioned local USTC campus, high-tech campus and Taihu Road shuttle timetables.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.shuttle.public-query.v1.input:v1:sha-256:5847c3858f6fb97018674daa6f55e2228ba833b5577e6ddb6f7219fdc76b9af4",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "default": "",
+          "maxLength": 64,
+          "type": "string"
+        },
+        "goal": {
+          "default": "",
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "query": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.shuttle.public-query.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 5,
+    "maximum_ms": 500
+  },
+  "name": "Query USTC shuttle timetable",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.ustc.shuttle.public-query.v1.output:v1:sha-256:1e8a039731464c3de7927dd9a93e016d98ea288b34e6998c2e8639e1acadefec",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "arrival": {
+                "maxLength": 8,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "departure": {
+                "maxLength": 8,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "destination": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "direction": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "effective_date": {
+                "maxLength": 16,
+                "type": "string"
+              },
+              "holiday": {
+                "type": "boolean"
+              },
+              "no_public_bus": {
+                "type": "boolean"
+              },
+              "origin": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "reference_departure": {
+                "maxLength": 8,
+                "type": "string"
+              },
+              "saturday_only": {
+                "type": "boolean"
+              },
+              "service_day": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "service_id": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "service_name": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "stops": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "maxLength": 32,
+                      "type": "string"
+                    },
+                    "on_demand": {
+                      "type": "boolean"
+                    },
+                    "time": {
+                      "maxLength": 8,
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "time",
+                    "on_demand"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 8,
+                "type": "array"
+              }
+            },
+            "required": [
+              "service_id",
+              "service_name",
+              "effective_date",
+              "service_day",
+              "direction",
+              "origin",
+              "destination",
+              "departure",
+              "arrival",
+              "reference_departure",
+              "stops",
+              "holiday",
+              "no_public_bus",
+              "saturday_only"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "matched": {
+          "type": "boolean"
+        },
+        "notices": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "observed_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "query": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "request": {
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "maxLength": 8,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "destination": {
+              "maxLength": 32,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "origin": {
+              "maxLength": 32,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "selector": {
+              "maxLength": 16,
+              "type": "string"
+            },
+            "service_days": {
+              "items": {
+                "maxLength": 16,
+                "type": "string"
+              },
+              "maxItems": 3,
+              "type": "array"
+            }
+          },
+          "required": [
+            "origin",
+            "destination",
+            "service_days",
+            "after",
+            "selector"
+          ],
+          "type": "object"
+        },
+        "semantics": {
+          "additionalProperties": false,
+          "properties": {
+            "holiday": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "no_public_bus": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "on_demand": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          "required": [
+            "holiday",
+            "no_public_bus",
+            "on_demand"
+          ],
+          "type": "object"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "dataset_id": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "effective_dates": {
+              "additionalProperties": false,
+              "properties": {
+                "campus": {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                "hightech": {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                "taihu": {
+                  "maxLength": 16,
+                  "type": "string"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "source_kind": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          "required": [
+            "dataset_id",
+            "source_kind",
+            "effective_dates"
+          ],
+          "type": "object"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ok",
+        "matched",
+        "query",
+        "observed_at",
+        "request",
+        "items",
+        "total",
+        "notices",
+        "semantics",
+        "source"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.ustc.shuttle.public-query.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "plugin.ustc-shuttle",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:beab01b864c73f44bc3277f2d728f86220344a8be4fb802b808af20e7a950526",
+      "component_id": "capability-provider.ustc-shuttle-plugin",
+      "config_revision": "timetable-v1",
+      "implementation_version": "2.0.0"
+    }
+  },
+  "provider_kind": "builtin",
+  "required_permissions": [
+    "capability.ustc.shuttle.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "bus",
+    "campus",
+    "local",
+    "schedule",
+    "shuttle",
+    "ustc"
+  ]
+}

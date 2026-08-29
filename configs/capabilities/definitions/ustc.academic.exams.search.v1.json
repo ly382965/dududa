@@ -6,12 +6,12 @@
   "capability_id": "ustc.academic.exams.search.v1",
   "category": "campus.academic",
   "cost_hint_units": 3,
-  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:52fb5605ccaeb5aebdd31606aae63d0502d960e82f42ab0c850e7aa26aaa1542",
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:fb13e41a3fe85cdbaf8ed31f02576ce3691f495a4d6898a024409b80f0af2fd5",
   "description": "Search normalized official scheduled and general exam records.",
   "enabled": true,
   "idempotency": "read_only",
   "input_schema": {
-    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.exams.search.v1.input:v1:sha-256:3800233837b4d0771fdd338b69f87fd667135146ee55dcafd7829413df3a54ce",
+    "digest": "dududa-c14n-v1:schema:capability.ustc.academic.exams.search.v1.input:v1:sha-256:610182abdc41c5b8879ef16324ad492c02d9604a197d4356d57d766d39394862",
     "document": {
       "additionalProperties": false,
       "properties": {
@@ -65,7 +65,13 @@
           "title": "Query",
           "type": "string"
         },
+        "semester": {
+          "default": "",
+          "title": "Semester",
+          "type": "string"
+        },
         "semester_id": {
+          "default": 0,
           "title": "Semester Id",
           "type": "integer"
         },
@@ -75,9 +81,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "semester_id"
-      ],
       "title": "catalog_search_examsArguments",
       "type": "object"
     },
