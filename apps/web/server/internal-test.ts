@@ -1562,10 +1562,17 @@ export class FileInternalTestGateway implements InternalTestGateway {
         }
         throw new InternalTestError('Dududa 2.0 Runtime 预览失败', 503)
       }
+      const selectedPluginIds = new Set<string>(runtime.capabilityIds.map((capabilityId) => {
+        if (capabilityId.startsWith('icourse.')) return 'icourse.read'
+        if (capabilityId.startsWith('ustc.young.')) return 'ustc.young.read'
+        if (capabilityId.startsWith('ustc.academic.')) return 'ustc.academic.read'
+        if (capabilityId.startsWith('ustc.shuttle.')) return 'ustc.shuttle.read'
+        return ''
+      }).filter(Boolean))
       const selectedPlugins = Object.fromEntries(
         Object.entries(plugins).map(([id, plugin]) => [
           id,
-          id === 'icourse.read' && runtime.toolCalls > 0
+          selectedPluginIds.has(id)
             ? {
                 ...plugin,
                 selectedForRun: true,

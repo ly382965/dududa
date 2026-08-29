@@ -1991,7 +1991,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                         arguments["state"],
                         case.get("expected_state", "applying"),
                     )
-                    self.assertEqual(arguments["limit"], 50)
+                    self.assertEqual(arguments["limit"], 8)
                 elif tool_name == "young_get_activity":
                     self.assertEqual(
                         arguments,

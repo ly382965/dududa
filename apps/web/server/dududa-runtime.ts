@@ -19,6 +19,7 @@ export interface DududaRuntimePreviewResult {
   outputCalls: 0
   memoryWrites: 0
   toolCalls: number
+  capabilityIds: string[]
 }
 
 export interface DududaRuntimePreviewClient {
@@ -119,6 +120,7 @@ function runtimePreviewResult(value: unknown): DududaRuntimePreviewResult {
     outputCalls: 0,
     memoryWrites: 0,
     toolCalls: nonnegativeInteger(item.toolCalls),
+    capabilityIds: stringArray(item.capabilityIds),
   }
 }
 

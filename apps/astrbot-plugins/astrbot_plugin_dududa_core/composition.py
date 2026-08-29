@@ -115,7 +115,7 @@ from dududa.ports.context import (
 )
 from dududa.ports.mcp import UnifiedMcpClient
 from dududa.ports.models import ModelOperationalStateRegistry
-from dududa.ports.runtime import AgentRuntime, InputConnector
+from dududa.ports.runtime import AgentRuntime, InputConnector, RuntimeStateStore
 from dududa.responses import (
     AnswerProfile,
     DeterministicResponseProfilePolicy,
@@ -351,6 +351,7 @@ class ProductionRuntimeAssembly:
         model_health_probes: Iterable[AstrBotModelProviderAdapter] = (),
         model_health_clock: Callable[[], datetime] | None = None,
         runtime_clock: Callable[[], datetime] | None = None,
+        state_store: RuntimeStateStore | None = None,
     ) -> None:
         if not isinstance(runtime, AgentRuntime):
             raise TypeError("runtime does not implement AgentRuntime")
@@ -382,6 +383,7 @@ class ProductionRuntimeAssembly:
             raise TypeError("invalid model health probe")
         self.runtime = runtime
         self.ready = ready
+        self.state_store = state_store
         self.model_operational_registry = model_operational_registry
         self.model_health_publisher = model_health_publisher
         self._model_endpoint_load = endpoint_load
@@ -1531,6 +1533,7 @@ def build_production_runtime(
         model_health_probes=adapters,
         model_health_clock=effective_clock,
         runtime_clock=effective_clock,
+        state_store=state_store,
     )
 
 
@@ -1832,6 +1835,7 @@ def install_production_runtime(
             connector=connector,
             clock=effective_clock,
             runtime_ready=assembly.ready,
+            state_store=assembly.state_store,
         )
     except Exception:  # unavailable composition preserves the legacy owner
         try:
@@ -1857,6 +1861,7 @@ def install_rollout_runtime(
     connector: InputConnector[object] | None = None,
     clock: Any = None,
     runtime_ready: bool = True,
+    state_store: RuntimeStateStore | None = None,
 ) -> AstrBotRolloutBridge:
     if getattr(plugin, "rollout_bridge", None) is not None:
         raise RuntimeError("rollout Runtime is already installed")
@@ -1913,6 +1918,7 @@ def install_rollout_runtime(
         canary,
         InMemoryDeliveryLedger(),
         runtime=runtime,
+        state_store=state_store,
         clock=clock,
         runtime_ready=runtime_ready,
     )

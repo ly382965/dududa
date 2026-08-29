@@ -23,7 +23,7 @@ from dududa.ports.context import (
     ServiceCallContext,
     ServicePrincipal,
 )
-from dududa.ports.runtime import AgentRuntime, InputConnector
+from dududa.ports.runtime import AgentRuntime, InputConnector, RuntimeStateStore
 from dududa.rollout import (
     BoundedShadowSupervisor,
     CanaryCoordinator,
@@ -72,6 +72,7 @@ class AstrBotRuntimePreviewResult:
     runtime_result: RuntimeResult
     completion: CompletionReceipt
     tool_calls: int
+    capability_ids: tuple[str, ...] = ()
 
 
 class AstrBotRuntimePreviewError(RuntimeError):
@@ -214,6 +215,7 @@ class AstrBotRolloutBridge:
         output_ledger: InMemoryDeliveryLedger,
         *,
         runtime: AgentRuntime,
+        state_store: RuntimeStateStore | None = None,
         output_factory: Callable[[object, InMemoryDeliveryLedger, object], object]
         | None = None,
         runtime_ready: bool = True,
@@ -229,6 +231,8 @@ class AstrBotRolloutBridge:
             raise TypeError("invalid AstrBot Output ledger")
         if not isinstance(runtime, AgentRuntime):
             raise TypeError("runtime does not implement AgentRuntime")
+        if state_store is not None and not isinstance(state_store, RuntimeStateStore):
+            raise TypeError("state_store does not implement RuntimeStateStore")
         if type(runtime_ready) is not bool:
             raise TypeError("invalid Runtime readiness flag")
         self._controls = controls
@@ -244,6 +248,7 @@ class AstrBotRolloutBridge:
             )
         )
         self._runtime = runtime
+        self._state_store = state_store
         self._runtime_ready = runtime_ready
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
@@ -280,6 +285,13 @@ class AstrBotRolloutBridge:
         except asyncio.TimeoutError as exc:
             raise AstrBotRuntimePreviewError("runtime_preview_timeout") from exc
         completion = result.completion
+        capability_ids: tuple[str, ...] = ()
+        if self._state_store is not None:
+            checkpoint = await self._state_store.load(result.run_id, call=call)
+            if checkpoint is not None and checkpoint.state.tool_plan is not None:
+                capability_ids = tuple(
+                    step.capability_id for step in checkpoint.state.tool_plan.steps
+                )
         if result.delivery_request is not None:
             receipt = _preview_delivery_receipt(
                 result.delivery_request,
@@ -296,6 +308,7 @@ class AstrBotRolloutBridge:
                 if RuntimePhase.TOOLS_EXECUTED in result.trace_summary.phases
                 else 0
             ),
+            capability_ids=capability_ids,
         )
 
     async def handle(self, event: object) -> AstrBotBridgeResult:

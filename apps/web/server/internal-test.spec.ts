@@ -216,6 +216,7 @@ describe('internal-test gateway', () => {
       outputCalls: 0 as const,
       memoryWrites: 0 as const,
       toolCalls: 1,
+      capabilityIds: ['icourse.public-query.v2'],
     }))
     const gateway = new FileInternalTestGateway({
       dataRoot: root,

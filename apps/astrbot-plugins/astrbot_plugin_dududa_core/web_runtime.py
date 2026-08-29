@@ -279,6 +279,7 @@ async def _runtime_preview_json(
         "outputCalls": 0,
         "memoryWrites": 0,
         "toolCalls": preview.tool_calls,
+        "capabilityIds": list(preview.capability_ids),
     }
     if source is not None:
         data["source"] = source

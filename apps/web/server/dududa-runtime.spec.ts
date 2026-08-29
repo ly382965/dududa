@@ -31,6 +31,7 @@ describe('Dududa Runtime preview client', () => {
           outputCalls: 0,
           memoryWrites: 0,
           toolCalls: 1,
+          capabilityIds: ['icourse.public-query.v2'],
         },
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     })
@@ -47,6 +48,7 @@ describe('Dududa Runtime preview client', () => {
     })).resolves.toMatchObject({
       runId: 'run-1',
       toolCalls: 1,
+      capabilityIds: ['icourse.public-query.v2'],
       outputCalls: 0,
     })
   })
