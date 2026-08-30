@@ -581,53 +581,141 @@ class DududaCorePlugin(Star):
         query: str,
         original_text: str,
     ) -> str:
-        course = await self._best_single_course(query)
-        if not course:
-            return f"没在评课社区找到「{query}」，换个全名或老师名试试~"
-        course_id = course.get("id")
-        course_name = course.get("name") or query
-        teacher = self._teacher_names(course) or ""
-        card = await self._load_single_course_card(course_id) if course_id else course
-        if not card:
-            card = course
-        reviews = card.get("reviews") or []
-        rating = card.get("rating_average")
-        diff = self._course_field(card, "difficulty")
-        hw = self._course_field(card, "homework")
-        grading = self._course_field(card, "grading")
-        gain = self._course_field(card, "gain")
+        """@bot 查询课程/老师时，聚合评课社区评价 + 开课数据，用 LLM 综合分析输出。"""
+        result = await self._search_course_expanded(query)
+        items = result.get("items") or []
+        if not items:
+            return f"没在评课社区找到「{query}」，换个课程全名或老师名试试~"
 
-        rating_txt = f"{rating:.1f}分" if isinstance(rating, float) else "评分暂无"
-        lines = [f"《{course_name}》"]
-        if teacher:
-            lines.append(f"👤 {teacher}")
-        meta = []
-        if diff:
-            meta.append(diff)
-        if hw:
-            meta.append(f"作业{hw}")
-        if grading:
-            meta.append(grading)
-        if gain:
-            meta.append(gain)
-        if meta or rating_txt != "评分暂无":
-            lines.append(f"📚 {'，'.join(meta) if meta else ''} {rating_txt}".rstrip())
-        elif reviews:
-            excerpt = self._first_review_excerpt(reviews)
-            if excerpt:
-                lines.append(f"📚 {excerpt}")
+        # 加载前几门课的详情和评论
+        cards: list[dict[str, Any]] = []
+        for item in sorted(items, key=self._course_rank_key, reverse=True)[:8]:
+            cid = item.get("id")
+            card = await self._load_single_course_card(cid) if cid else item
+            if card is None:
+                card = item
+            cards.append(card)
 
-        campus = await self._catalog_lookup(course_name)
-        if campus:
-            cap = campus.get("limit_count")
-            std = campus.get("std_count")
-            cap_txt = f"{std}/{cap}" if cap is not None else "容量未知"
-            lines.append(f"🕐 {self._catalog_time_text(campus)}")
-            loc = campus.get("campus_zh") or ""
-            if loc:
-                lines.append(f"📍 {loc}｜👥 {cap_txt}")
-            else:
-                lines.append(f"👥 {cap_txt}")
+        # 判断更像“老师查询”还是“课程查询”
+        teacher_like = self._looks_like_teacher_query(query, cards)
+        analysis = await self._analyze_course_cards(query, cards, teacher_like)
+        if not analysis:
+            # LLM 失败时回退到简单罗列
+            return self._format_simple_integrated(query, cards)
+
+        catalog_lines: list[str] = []
+        for card in cards[:4]:
+            name = card.get("name") or ""
+            if not name:
+                continue
+            cam = await self._catalog_lookup(name)
+            if cam:
+                cap = cam.get("limit_count")
+                std = cam.get("std_count")
+                cap_txt = f"{std}/{cap}" if cap is not None else "容量未知"
+                t = self._catalog_time_text(cam)
+                loc = cam.get("campus_zh") or ""
+                catalog_lines.append(f"{name}：{t}｜{loc}｜{cap_txt}")
+        if catalog_lines:
+            analysis += "\n\n🕐 开课信息：\n" + "\n".join(catalog_lines[:4])
+        return analysis
+
+    def _looks_like_teacher_query(self, query: str, cards: list[dict[str, Any]]) -> bool:
+        """若结果里多个课程集中在同一位老师、且查询词像人名，则按老师查询。"""
+        if not cards:
+            return False
+        teacher_names = [self._teacher_names(c) for c in cards if self._teacher_names(c)]
+        if not teacher_names:
+            return False
+        # 只出现在课程名里的次数判断：若查询词命中老师名字，视为老师查询
+        q = DududaCorePlugin._teacher_normalize(query)
+        for t in teacher_names:
+            if q and (q in DududaCorePlugin._teacher_normalize(t) or DududaCorePlugin._teacher_normalize(t) in q):
+                return True
+        # 若老师完全一致且不止一门课
+        uniq = {DududaCorePlugin._teacher_normalize(t) for t in teacher_names}
+        return len(uniq) == 1 and len(cards) >= 2
+
+    async def _analyze_course_cards(
+        self,
+        query: str,
+        cards: list[dict[str, Any]],
+        teacher_query: bool,
+    ) -> str | None:
+        """把多门课的评课数据喂给 LLM，用嘟嘟哒口吻输出综合分析、推荐与学习建议。"""
+        records: list[str] = []
+        for idx, card in enumerate(cards, start=1):
+            name = card.get("name") or "未知课程"
+            teachers = self._teacher_names(card) or "教师未知"
+            rating = card.get("rating_average")
+            rating_txt = f"{rating:.1f}" if isinstance(rating, float) else str(rating or "暂无")
+            diff = self._course_field(card, "difficulty")
+            hw = self._course_field(card, "homework")
+            grading = self._course_field(card, "grading")
+            gain = self._course_field(card, "gain")
+            term = card.get("term_text") or "学期未知"
+            tags = "、".join([x for x in [diff, hw, grading, gain] if x]) or "无标签"
+            reviews = card.get("reviews") or []
+            review_lines = []
+            for r in reviews[:6]:
+                text = self._review_excerpt(r, limit=180)
+                if not text or text == "无正文":
+                    continue
+                meta = []
+                if r.get("rating_10"):
+                    meta.append(f"{r['rating_10']}/10")
+                if r.get("term"):
+                    meta.append(str(r["term"]))
+                review_lines.append(f"({' '.join(meta) or '评论'}) {text}")
+            records.append(
+                f"[{idx}] {name}｜{teachers}｜{term}｜评分{rating_txt}｜标签:{tags}\n"
+                + ("\n".join(review_lines) if review_lines else "（暂无可见评论正文）")
+            )
+
+        mode_text = (
+            "用户查的是「这位老师」，请综合 TA 在各门课里的评价，总结这位老师的教学风格、给分、作业量、口碑，"
+            "再给出是否推荐选 TA 的课。"
+            if teacher_query
+            else "用户查的是「这门课程」，请按不同老师分别总结评价，对比后给出推荐（选哪位老师的课），"
+            "并给一些学习建议（如先修课程、平时怎么学）。"
+        )
+
+        prompt = (
+            "[CourseData]\n" + "\n\n".join(records) + "\n[/CourseData]\n\n"
+            f"用户查询：{query}\n"
+            f"{mode_text}\n"
+            "要求：\n"
+            "1. 只根据 [CourseData] 里的公开评课内容，不要编造任何信息；\n"
+            "2. 用嘟嘟哒的口吻（可爱、轻松、聪明、认真），像给群友讲选课经验一样自然；\n"
+            "3. 简短，控制在 200 字以内，不需要列表堆砌，像聊天一样说完；\n"
+            "4. 数据不足时诚实说“公开评价还不多”，不要硬编；\n"
+            "5. 输出纯文字，不要 Markdown、不要 emoji 堆砌。"
+        )
+        try:
+            provider = self.context.get_using_provider()
+            if not provider:
+                return None
+            response = await provider.text_chat(
+                prompt=prompt,
+                system_prompt="你是嘟嘟哒，一个可爱、聪明、认真又有点早熟的小小 USTC 预备役，帮群友分析评课和选课。",
+                max_tokens=700,
+                temperature=0.5,
+            )
+            text = (getattr(response, "completion_text", "") or "").strip()
+            return text or None
+        except Exception as exc:
+            logger.warning("Course analysis LLM failed: %s", exc)
+            return None
+
+    def _format_simple_integrated(self, query: str, cards: list[dict[str, Any]]) -> str:
+        lines = [f"查了下「{query}」，这些是公开记录："]
+        for idx, card in enumerate(cards[:5], start=1):
+            name = card.get("name") or "未知课程"
+            teachers = self._teacher_names(card) or "教师未知"
+            rating = card.get("rating_average")
+            rating_txt = f"{rating:.1f}" if isinstance(rating, float) else str(rating or "暂无")
+            lines.append(f"{idx}. {name}｜{teachers}｜评分 {rating_txt}")
+        lines.append("（评课数据较多，AI 总结暂时不可用，先给你列出来~）")
         return "\n".join(lines)
 
     @staticmethod

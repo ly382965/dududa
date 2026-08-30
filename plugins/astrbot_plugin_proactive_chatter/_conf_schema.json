@@ -4,30 +4,30 @@
     "type": "bool",
     "default": true
   },
-  "activity_threshold": {
-    "description": "窗口时间内多少条消息算热闹",
-    "type": "int",
-    "default": 15
-  },
   "window_seconds": {
-    "description": "???????(?)???240(4??)",
+    "description": "热闹度统计窗口(秒)，默认900(15分钟)",
     "type": "int",
-    "default": 240
+    "default": 900
+  },
+  "activity_threshold": {
+    "description": "窗口内至少多少条才考虑接话，默认1(15分钟有一句就可能接)",
+    "type": "int",
+    "default": 1
   },
   "trigger_probability": {
-    "description": "热闹时触发发言的概率(0-1)",
+    "description": "符合条件时随机接话概率(0-1)，默认0.3(不句句接)",
     "type": "float",
-    "default": 0.35
+    "default": 0.3
   },
   "global_cooldown_seconds": {
-    "description": "全局最低间隔(秒)",
+    "description": "全局接话最低间隔(秒)，默认1800(30分钟)",
     "type": "int",
-    "default": 360
+    "default": 1800
   },
   "group_cooldown_seconds": {
-    "description": "每群最低间隔(秒)",
+    "description": "每群接话最低间隔(秒)，默认1800(30分钟)",
     "type": "int",
-    "default": 600
+    "default": 1800
   },
   "group_whitelist": {
     "description": "仅在这些群生效(为空则全部)",
