@@ -463,6 +463,7 @@ class ProductionRuntimeAssembly:
         self._model_health_clock = model_health_clock or (
             lambda: datetime.now(timezone.utc)
         )
+        self._usable_model_health_evidence: dict[str, ModelHealthEvidence] = {}
         self.runtime_clock = runtime_clock or (lambda: datetime.now(timezone.utc))
         self._closeables = list(resources)
         self._abort_callbacks = list(callbacks)
@@ -514,7 +515,7 @@ class ProductionRuntimeAssembly:
     ) -> ModelOperationalSnapshot:
         if not self._model_health_probes:
             raise RuntimeError("model health probes are unavailable")
-        evidence = await asyncio.gather(
+        probed_evidence = await asyncio.gather(
             *(
                 probe.probe_health(
                     timeout_seconds=timeout_seconds,
@@ -527,6 +528,27 @@ class ProductionRuntimeAssembly:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError("model health clock returned a naive datetime")
         now = now.astimezone(timezone.utc)
+        evidence: list[ModelHealthEvidence] = []
+        unavailable_statuses = {
+            EndpointHealthStatus.UNAVAILABLE,
+            EndpointHealthStatus.UNKNOWN,
+        }
+        for item in probed_evidence:
+            provider_id = item.health.provider_id
+            if item.health.status not in unavailable_statuses:
+                self._usable_model_health_evidence[provider_id] = item
+            elif item.health.status is EndpointHealthStatus.UNAVAILABLE:
+                self._usable_model_health_evidence.pop(provider_id, None)
+            else:
+                cached = self._usable_model_health_evidence.get(provider_id)
+                if (
+                    cached is not None
+                    and cached.health.checked_at <= now < cached.expires_at
+                ):
+                    item = cached
+                else:
+                    self._usable_model_health_evidence.pop(provider_id, None)
+            evidence.append(item)
         identity = uuid4().hex
         refreshed_load = tuple(
             replace(item, checked_at=now) for item in self._model_endpoint_load
@@ -1675,7 +1697,7 @@ def _model_health_refresh_config(
         timeout_seconds=_positive_seconds(
             config,
             "runtime_health_probe_timeout_seconds",
-            15.0,
+            60.0,
         ),
         evidence_ttl=timedelta(
             seconds=_positive_seconds(

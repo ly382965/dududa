@@ -33,7 +33,7 @@
   "runtime_health_probe_timeout_seconds": {
     "description": "单次模型健康探测超时（秒）",
     "type": "int",
-    "default": 15
+    "default": 60
   },
   "runtime_health_evidence_ttl_seconds": {
     "description": "模型健康证据有效期（秒）",

@@ -564,6 +564,19 @@ Branch: real-group-validation
   repeat Endpoint requests, corpus processing, container startup or QQ output.
 - Recorded: 2026-08-15
 
+- Command: `uv run --locked python -m unittest tests.contracts.test_production_composition.ProductionCompositionContractTests.test_timed_out_health_probe_publishes_unknown tests.contracts.test_production_composition.ProductionCompositionContractTests.test_transient_probe_timeout_keeps_unexpired_health_evidence tests.contracts.test_production_composition.ProductionCompositionContractTests.test_enabled_health_probe_publishes_and_periodically_refreshes tests.unit.models.test_health`
+- Result: 11 focused tests passed in 3.053 seconds.
+- Evidence: an initial timeout remains `UNKNOWN`; after one successful probe, a transient timeout keeps the
+  endpoint `HEALTHY` only until the original evidence TTL; another timeout after expiry returns it to
+  `UNKNOWN`. The periodic task and model-health publisher regressions remain green.
+- Live no-send evidence: Core was synchronized and hot-reloaded without restarting AstrBot or NapCat;
+  active timeout is 60 seconds. A group `419256533` Runtime preview returned HTTP 200 through Luna in
+  23.516 seconds with a non-empty candidate, `delivery_ready`, `explicit_direct_reply`, zero Tool calls and
+  `outputCalls=0`; `model_route_not_found` was absent.
+- Evidence boundary: this closes the model-route failure and proves no-send execution only. No new natural
+  message arrived in the target group during verification, so a real proactive QQ Delivery remains pending.
+- Recorded: 2026-08-30
+
 - Evidence source: isolated fixed AstrBot 4.26.2 candidate startup associated
   with `e9cb9e0`.
 - Result: partial. The candidate started with `--network none`, a temporary

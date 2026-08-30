@@ -363,6 +363,11 @@ Branch: real-group-validation
 - Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用，Core status 也为 ready；
   但单次成功仍不证明长期可用性或质量。刷新器按 900 秒运行，TTL 内没有成功刷新时 Router
   仍会恢复 `UNKNOWN`。
+- 2026-08-30 的主动搭话失败不是凭据失效：三档模型探测均能成功，但容器内延迟存在明显
+  波动，原 15 秒探测超时会把慢成功取消为 `UNKNOWN`；后续一次临时超时还会立即覆盖
+  TTL 内的健康证据，导致 Static Router 暂时没有合法候选。Core 现在使用 60 秒探测超时，
+  并在新探测仅为 `UNKNOWN` 时沿用尚未过期的最后可用证据；显式 `UNAVAILABLE` 和 TTL
+  到期仍会正常撤销资格，没有放宽 Router 的资格过滤。
 - 三档当前都固定为最低 `light/low`。没有证据支持 medium/high/xhigh 的运行质量，也没有
   实现同一 Endpoint 的逐请求动态思考深度切换。
 - 注入的 no-send 失败样本只证明收据脱敏和零 Output 行为，不代表真实 Endpoint

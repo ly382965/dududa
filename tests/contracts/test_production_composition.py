@@ -1128,6 +1128,17 @@ class _BlockingAstrBotProvider(_AstrBotProvider):
             self.cancelled.set()
 
 
+class _SucceedsThenBlocksAstrBotProvider(_AstrBotProvider):
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        if len(self.calls) == 1:
+            return SimpleNamespace(
+                completion_text="OK",
+                usage=SimpleNamespace(input_other=2, input_cached=0, output=1),
+            )
+        await asyncio.Future()
+
+
 class At:
     def __init__(self, qq: str) -> None:
         self.qq = qq
@@ -1611,6 +1622,50 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(provider.calls), 1)
         self.assertEqual(provider.calls[0]["request_max_retries"], 0)
         await plugin.terminate()
+
+    async def test_transient_probe_timeout_keeps_unexpired_health_evidence(
+        self,
+    ) -> None:
+        provider = _SucceedsThenBlocksAstrBotProvider()
+        plugin = self._production_plugin(provider)
+        observed_at = datetime.now(timezone.utc)
+        clock = _MutableClock(observed_at)
+        assembly = composition.build_production_runtime(
+            plugin,
+            self._runtime_config(),
+            clock=clock,
+        )
+
+        healthy = await assembly.refresh_model_health(
+            timeout_seconds=0.1,
+            evidence_ttl=timedelta(seconds=30),
+        )
+        self.assertIs(
+            healthy.provider_health[0].status,
+            EndpointHealthStatus.HEALTHY,
+        )
+
+        clock.now = observed_at + timedelta(seconds=1)
+        transient_timeout = await assembly.refresh_model_health(
+            timeout_seconds=0.01,
+            evidence_ttl=timedelta(seconds=30),
+        )
+        self.assertIs(
+            transient_timeout.provider_health[0].status,
+            EndpointHealthStatus.HEALTHY,
+        )
+
+        clock.now = observed_at + timedelta(seconds=31)
+        expired = await assembly.refresh_model_health(
+            timeout_seconds=0.01,
+            evidence_ttl=timedelta(seconds=30),
+        )
+        self.assertIs(
+            expired.provider_health[0].status,
+            EndpointHealthStatus.UNKNOWN,
+        )
+        self.assertEqual(len(provider.calls), 3)
+        await assembly.close()
 
     async def test_health_refresh_keeps_long_lived_runtime_load_eligible(
         self,

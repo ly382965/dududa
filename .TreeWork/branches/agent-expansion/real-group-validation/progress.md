@@ -385,7 +385,8 @@ Last sync: unix:1786706085
 - 私聊、附件和其他群的未 `@` 主动参与继续保持静默且禁止回退 1.0。目标群的
   bounded-history 自动搭话已接通，但尚未观察到一次自然概率命中的真实 Delivery；
   Digest Source/Projection 和通用 Probe 仍需各自授权后实现。
-- 继续观察 900 秒健康刷新周期；当前思考深度是每个 Endpoint 的固定最低 `light/low`，不是同
+- 继续观察 900 秒健康刷新周期；探测超时已从 15 秒提高到 60 秒，临时 `UNKNOWN` 不再覆盖
+  TTL 内最后一次可用证据。当前思考深度仍是每个 Endpoint 的固定最低 `light/low`，不是同
   Endpoint 动态切换。
 - 用人工内测校准真实中文群聊中的自然度、措辞节奏和 SHORT/MEDIUM/LONG 边界；
   当前测试只证明结构接线，不能证明风格质量。
