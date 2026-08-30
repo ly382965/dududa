@@ -111,7 +111,14 @@ class CanaryCoordinator:
             return None
         try:
             current = self._controls.current()
-            refreshed = decide_rollout_admission(request.connector_result, current)
+            refreshed = decide_rollout_admission(
+                request.connector_result,
+                current,
+                allow_proactive_group=request.options.feature_flags.get(
+                    "proactive_group_participation",
+                    False,
+                ),
+            )
         except Exception:  # noqa: BLE001 - invalid live control fails before ownership
             self._record(
                 RolloutMetricStage.CLAIM,

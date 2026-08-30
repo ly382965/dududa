@@ -48,6 +48,7 @@ class _PreparedRequests:
         timeout_seconds,
         tools_enabled=False,
         memory_enabled=False,
+        proactive_group_participation=False,
     ):
         self.calls += 1
         return self.request, self.call
@@ -143,6 +144,14 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
             timeout_seconds=10,
             tools_enabled=True,
         )
+        proactive_request, _ = await enabled_factory.prepare(
+            object(),
+            control_revision="rollout-v1",
+            timeout_seconds=10,
+            tools_enabled=True,
+            memory_enabled=True,
+            proactive_group_participation=True,
+        )
 
         self.assertEqual(
             dict(default_request.options.feature_flags),
@@ -155,6 +164,17 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             dict(tools_request.options.feature_flags),
             {"tools": True, "memory": False},
+        )
+        self.assertEqual(
+            proactive_request.options.entrypoint_id, "astrbot_proactive_talk"
+        )
+        self.assertFalse(proactive_request.options.feature_flags["tools"])
+        self.assertFalse(proactive_request.options.feature_flags["memory"])
+        self.assertTrue(
+            proactive_request.options.feature_flags["proactive_group_participation"]
+        )
+        self.assertTrue(
+            proactive_request.options.feature_flags["response_profile.force_short"]
         )
 
     async def test_request_factory_projects_exact_scope_capability_policy(self) -> None:
@@ -200,9 +220,7 @@ class AstrBotRolloutBridgeContractTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(request.options.feature_flags["scope_agent_enabled"])
         self.assertTrue(
-            request.options.feature_flags[
-                "capability.category.campus.course-review"
-            ]
+            request.options.feature_flags["capability.category.campus.course-review"]
         )
         self.assertFalse(
             request.options.feature_flags["capability.category.campus.academic"]

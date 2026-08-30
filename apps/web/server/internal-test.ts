@@ -28,6 +28,7 @@ const PLUGIN_MODES = ['off', 'auto', 'on', 'locked'] as const
 const REPLY_INTENSITIES = ['quiet', 'normal', 'active'] as const
 const CONTEXT_LENGTHS = ['compact', 'standard', 'extended'] as const
 const GROUP_CHAT_STYLES = ['restrained', 'natural', 'lively', 'technical'] as const
+const PROACTIVE_FREQUENCIES = ['low', 'normal', 'high'] as const
 const CONTEXT_BUDGETS = {
   compact: { messageLimit: 12, characterLimit: 6_000 },
   standard: { messageLimit: 30, characterLimit: 18_000 },
@@ -42,6 +43,7 @@ export type PluginMode = typeof PLUGIN_MODES[number]
 export type ReplyIntensity = typeof REPLY_INTENSITIES[number]
 export type ContextLength = typeof CONTEXT_LENGTHS[number]
 export type GroupChatStyle = typeof GROUP_CHAT_STYLES[number]
+export type ProactiveFrequency = typeof PROACTIVE_FREQUENCIES[number]
 type ConversationType = 'group' | 'private'
 type FeedbackVerdict = 'accepted' | 'rejected' | 'needs_review'
 
@@ -64,6 +66,9 @@ export interface InternalTestAgentPolicyDefaults {
   replyIntensity: AdaptiveSetting<ReplyIntensity>
   contextLength: AdaptiveSetting<ContextLength>
   groupChatStyle: AdaptiveSetting<GroupChatStyle>
+  proactiveTalk: {
+    frequency: ProactiveFrequency
+  }
   plugins: Record<string, PluginMode>
 }
 
@@ -120,6 +125,12 @@ export interface InternalTestAgentCatalog {
     characterLimit: number
   }>
   groupChatStyles: GroupChatStyle[]
+  proactiveFrequencies: Array<{
+    id: ProactiveFrequency
+    probability: number
+    cooldownSeconds: number
+    maximumPerHour: number
+  }>
   replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults
@@ -226,10 +237,10 @@ export interface InternalTestAgentStatus {
       summary: string
     }
     proactiveGroupParticipation: {
-      actualEnabled: false
-      state: 'shadow'
-      stage: 'probe_shadow'
-      deliveryEnabled: false
+      actualEnabled: boolean
+      state: 'enabled' | 'disabled'
+      stage: 'proactive_canary' | 'probe_shadow'
+      deliveryEnabled: boolean
       summary: string
     }
   }
@@ -603,6 +614,9 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
       preferred: 'natural',
       allowed: ['restrained', 'natural', 'lively', 'technical'],
     },
+    proactiveTalk: {
+      frequency: 'low',
+    },
     plugins: {
       'icourse.read': 'off',
       'ustc.young.read': 'off',
@@ -610,6 +624,7 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
       'ustc.academic.read': 'off',
       'ustc.shuttle.read': 'off',
       'image.generate.gpt-image-2': 'off',
+      'social.proactive_talk': 'off',
       'social.reread.auto': 'off',
       'sub2api.auto_query': 'off',
     },
@@ -709,6 +724,21 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       model: 'gpt-image-2',
     },
     {
+      id: 'social.proactive_talk',
+      displayName: 'Dududa 2.0 自动搭话',
+      kind: 'social_automation',
+      installed: true,
+      available: true,
+      builtIn: true,
+      policyManaged: true,
+      requiredRole: 'super_admin',
+      executionRole: 'admin',
+      runtimeTarget: 'astrbot',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'passive_behavior',
+      description: '读取有界群聊历史并通过 2.0 Runtime 生成 SHORT 群级接话；频率、冷却和每小时上限由独立主动频率控制。',
+    },
+    {
       id: 'social.reread.auto',
       displayName: '自动复读',
       kind: 'social_automation',
@@ -751,6 +781,7 @@ function currentAgentRuntimeControls(
   const runtimeEnabled = config.runtime_enabled === true
   const configuredEnabled = runtimeEnabled && rolloutMode === 'canary' && deliveryEnabled && !killSwitch
   const actualEnabled = configuredEnabled && runtimeReady !== false
+  const proactiveEnabled = actualEnabled && config.proactive_talk_enabled === true
   const configuredGroups = Array.isArray(config.rollout_allowlisted_groups)
     ? config.rollout_allowlisted_groups
     : []
@@ -771,11 +802,13 @@ function currentAgentRuntimeControls(
           : `Dududa 2.0 当前未交付：rollout=${rolloutMode}，delivery=${deliveryEnabled}，kill_switch=${killSwitch}。`,
     },
     proactiveGroupParticipation: {
-      actualEnabled: false,
-      state: 'shadow',
-      stage: 'probe_shadow',
-      deliveryEnabled: false,
-      summary: '主动参与当前只有 S15E Probe Shadow，只生成机会与候选，不发送消息。',
+      actualEnabled: proactiveEnabled,
+      state: proactiveEnabled ? 'enabled' : 'disabled',
+      stage: proactiveEnabled ? 'proactive_canary' : 'probe_shadow',
+      deliveryEnabled: proactiveEnabled,
+      summary: proactiveEnabled
+        ? 'Dududa 2.0 主动搭话执行器在线；仅对 Scope Policy 明确启用的群生效，自动回复固定为 SHORT。'
+        : '主动参与当前只有 S15E Probe Shadow，只生成机会与候选，不发送消息。',
     },
   }
 }
@@ -813,7 +846,12 @@ function buildAgentCatalog(
     replyIntensities: [...REPLY_INTENSITIES],
     contextLengths: CONTEXT_LENGTHS.map((id) => ({ id, ...CONTEXT_BUDGETS[id] })),
     groupChatStyles: [...GROUP_CHAT_STYLES],
-    replyIntensityNotice: '候选决策初值；真实消息是否发送由 Dududa Runtime 的入站授权与 Rollout 状态决定。',
+    proactiveFrequencies: [
+      { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
+      { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
+      { id: 'high', probability: 0.20, cooldownSeconds: 180, maximumPerHour: 8 },
+    ],
+    replyIntensityNotice: '本轮参与倾向；不会替代独立的主动搭话频率、冷却和每小时上限。',
     plugins: catalogPlugins(runtimeReady),
     policyDefaults: defaultPolicyDefaults(),
   }
@@ -1096,9 +1134,24 @@ function normalizeAgentPolicy(
       GROUP_CHAT_STYLES,
       'groupChatStyle',
     ),
+    proactiveTalk: {
+      frequency: proactiveFrequency(
+        objectValue(policy.proactiveTalk ?? policy.proactive_talk)?.frequency,
+        current.proactiveTalk.frequency,
+      ),
+    },
     plugins,
     ...(updatedAt ? { updatedAt } : {}),
   }
+}
+
+function proactiveFrequency(value: unknown, fallback: ProactiveFrequency): ProactiveFrequency {
+  const frequency = stringValue(value)?.toLowerCase()
+  if (!frequency) return fallback
+  if (PROACTIVE_FREQUENCIES.includes(frequency as ProactiveFrequency)) {
+    return frequency as ProactiveFrequency
+  }
+  throw new InternalTestError('proactiveTalk.frequency 参数无效')
 }
 
 function feedbackVerdict(value: unknown): FeedbackVerdict {

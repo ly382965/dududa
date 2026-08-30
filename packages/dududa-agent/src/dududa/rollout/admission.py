@@ -25,11 +25,15 @@ def rollout_message_key_digest(connector: ConnectorResult) -> DigestString:
 def decide_rollout_admission(
     connector: ConnectorResult,
     config: RolloutControlConfig,
+    *,
+    allow_proactive_group: bool = False,
 ) -> RolloutAdmissionDecision:
     if not isinstance(connector, ConnectorResult):
         raise validation_error("invalid_rollout_connector_result")
     if not isinstance(config, RolloutControlConfig):
         raise validation_error("invalid_rollout_config")
+    if type(allow_proactive_group) is not bool:
+        raise validation_error("invalid_proactive_rollout_flag")
     message = connector.message
     digest = rollout_message_key_digest(connector)
     if config.mode is RolloutMode.OFF:
@@ -45,10 +49,11 @@ def decide_rollout_admission(
         return _legacy(config, digest, "group_not_allowlisted")
     if connector.actor.user_id == message.bot_id:
         return _legacy(config, digest, "self_message")
-    if not any(
+    explicit = any(
         mention.platform == message.platform and mention.user_id == message.bot_id
         for mention in message.mentions
-    ):
+    )
+    if not explicit and not allow_proactive_group:
         return _legacy(config, digest, "trusted_explicit_mention_required")
     normalized = message.text.strip()
     if not normalized:
@@ -76,7 +81,13 @@ def decide_rollout_admission(
         RolloutAdmissionAction.CANARY,
         config.revision,
         digest,
-        ("canary_admitted",),
+        (
+            (
+                "canary_proactive_admitted"
+                if allow_proactive_group and not explicit
+                else "canary_admitted"
+            ),
+        ),
     )
 
 

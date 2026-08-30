@@ -65,7 +65,9 @@ class CurrentMessageContextBuilderConfig:
         if (
             len(categories) > self.limits.max_capability_categories
             or len(categories) != len(set(categories))
-            or any(not isinstance(value, str) or not value.strip() for value in categories)
+            or any(
+                not isinstance(value, str) or not value.strip() for value in categories
+            )
         ):
             raise validation_error("invalid_context_capability_categories")
         object.__setattr__(
@@ -89,6 +91,8 @@ class CurrentMessageContextBuilder:
         self,
         message: MessageEnvelope,
         actor: Actor,
+        *,
+        feature_flags: Mapping[str, bool] | None = None,
     ) -> OfflinePreprocessReceipt:
         if not isinstance(message, MessageEnvelope) or not isinstance(actor, Actor):
             raise validation_error("invalid_context_builder_input")
@@ -103,6 +107,9 @@ class CurrentMessageContextBuilder:
             mention.platform == message.platform and mention.user_id == message.bot_id
             for mention in message.mentions
         )
+        proactive = bool(
+            feature_flags and feature_flags.get("proactive_group_participation", False)
+        )
         if actor.user_id == message.bot_id:
             action = RuntimeAdmissionAction.IGNORE
             reasons = ("self_message",)
@@ -115,12 +122,20 @@ class CurrentMessageContextBuilder:
         elif message.conversation_type is ConversationType.CHANNEL:
             action = RuntimeAdmissionAction.IGNORE
             reasons = ("channel_out_of_scope",)
-        elif message.conversation_type is ConversationType.GROUP and not explicit:
+        elif (
+            message.conversation_type is ConversationType.GROUP
+            and not explicit
+            and not proactive
+        ):
             action = RuntimeAdmissionAction.IGNORE
             reasons = ("group_explicit_mention_required",)
         else:
             action = RuntimeAdmissionAction.PROCEED
-            reasons = ("s10_text_admitted",)
+            reasons = (
+                ("proactive_group_text_admitted",)
+                if proactive and not explicit
+                else ("s10_text_admitted",)
+            )
         return OfflinePreprocessReceipt(
             schema_version=1,
             message_digest=canonical_digest(

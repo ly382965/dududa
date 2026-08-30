@@ -800,6 +800,11 @@ describe('useWorkspace account-scoped state', () => {
         { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
       ],
       groupChatStyles: ['restrained', 'natural', 'lively', 'technical'],
+      proactiveFrequencies: [
+        { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
+        { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
+        { id: 'high', probability: 0.20, cooldownSeconds: 180, maximumPerHour: 8 },
+      ],
       replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
       plugins: [{
         id: 'icourse',
@@ -822,6 +827,7 @@ describe('useWorkspace account-scoped state', () => {
         replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
         contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
         groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
+        proactiveTalk: { frequency: 'low' },
         plugins: { icourse: 'off' },
       },
     }
@@ -835,6 +841,7 @@ describe('useWorkspace account-scoped state', () => {
       replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
       contextLength: { mode: 'preferred', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
       groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
+      proactiveTalk: { frequency: 'normal' },
       plugins: { icourse: 'auto' },
     }
     const response: InternalTestAgentResponse = {
@@ -917,7 +924,7 @@ describe('useWorkspace account-scoped state', () => {
           },
           proactiveGroupParticipation: {
             actualEnabled: false,
-            state: 'shadow',
+            state: 'disabled',
             stage: 'probe_shadow',
             deliveryEnabled: false,
             summary: '主动参与当前只有 Probe Shadow。',
@@ -1043,7 +1050,7 @@ describe('useWorkspace account-scoped state', () => {
           },
           proactiveGroupParticipation: {
             actualEnabled: false,
-            state: 'shadow',
+            state: 'disabled',
             stage: 'probe_shadow',
             deliveryEnabled: false,
             summary: '主动参与当前只有 Probe Shadow。',

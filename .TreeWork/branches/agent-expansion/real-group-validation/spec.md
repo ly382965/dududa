@@ -328,8 +328,35 @@ and reserved interfaces must not be presented as installed services.
 The Control Plane distinguishes administrator intent from actual Runtime
 behavior. Supported passive inbound traffic currently uses the Dududa 2.0
 Canary: explicit `@Bot`, text-only, attachment-free group messages may enter the
-Runtime with delivery enabled and the kill switch inactive. Proactive group
-participation is only the S15E Probe Shadow and remains **NO SEND**.
+Runtime with delivery enabled and the kill switch inactive.
+
+The first live group-participation slice is a separately enabled
+`social.proactive_talk` Scope capability. It does not restore the 1.0 Target
+Talk plugin and does not pretend that an unmentioned message was an explicit
+`@Bot` interaction. The AstrBot Adapter reads a bounded recent public group
+window from NapCat, applies an exact-Scope enablement, cooldown, hourly quota and
+sampling decision, then enters the existing 2.0 Runtime with
+`explicit_interaction=false`, tools and Memory disabled, and a fixed SHORT
+ResponsePlan override. The existing Canary ownership, authorization, Output
+Adapter and delivery receipt remain the only send path.
+
+`proactiveFrequency` is the separate operator frequency control for this slice;
+`replyIntensity` remains a per-Run participation preference and is not reused
+as a send probability. Initial pilot values are deliberately observable rather
+than learned: `low` uses a 2% sample, 30-minute cooldown and at most 1
+message/hour; `normal` uses 8%, 10 minutes and 3/hour; `high` uses 20%, 3
+minutes and 8/hour. `contextLength` selects the recent-message budget,
+additionally capped by the existing rollout text-byte limit. `groupChatStyle`
+is supplied as expression context. These settings do not alter facts,
+permissions or the send target. Automatic talk is always SHORT and group-level,
+without personal `@`; only the ordinary explicit `@Bot` entrypoint may select
+or be locked to LONG.
+
+The live slice is default-off globally and per Scope. A successful proactive
+delivery stops the original event before another passive reply plugin can also
+answer; skipped or failed attempts do not claim the event. The prior S15E Probe
+Shadow remains the offline opportunity-evaluation asset and is not renamed into
+live execution evidence.
 When the AstrBot extension is available, `/agent/respond` executes the installed
 2.0 Runtime as a no-send preview. It may call an approved read-only Capability,
 acknowledges the candidate only in memory, and never claims/stops a QQ Event,

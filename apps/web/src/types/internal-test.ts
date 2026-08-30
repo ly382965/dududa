@@ -6,6 +6,7 @@ export type InternalTestPluginMode = 'off' | 'auto' | 'on' | 'locked'
 export type InternalTestReplyIntensity = 'quiet' | 'normal' | 'active'
 export type InternalTestContextLength = 'compact' | 'standard' | 'extended'
 export type InternalTestGroupChatStyle = 'restrained' | 'natural' | 'lively' | 'technical'
+export type InternalTestProactiveFrequency = 'low' | 'normal' | 'high'
 export type InternalTestVerdict = 'accepted' | 'rejected' | 'needs_review'
 
 export interface InternalTestAdaptiveSetting<T extends string> {
@@ -27,6 +28,9 @@ export interface InternalTestAgentPolicyDefaults {
   replyIntensity: InternalTestAdaptiveSetting<InternalTestReplyIntensity>
   contextLength: InternalTestAdaptiveSetting<InternalTestContextLength>
   groupChatStyle: InternalTestAdaptiveSetting<InternalTestGroupChatStyle>
+  proactiveTalk: {
+    frequency: InternalTestProactiveFrequency
+  }
   plugins: Record<string, InternalTestPluginMode>
 }
 
@@ -131,6 +135,12 @@ export interface InternalTestAgentCatalog {
     characterLimit: number
   }>
   groupChatStyles: InternalTestGroupChatStyle[]
+  proactiveFrequencies: Array<{
+    id: InternalTestProactiveFrequency
+    probability: number
+    cooldownSeconds: number
+    maximumPerHour: number
+  }>
   replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults
@@ -251,10 +261,10 @@ export interface InternalTestAgentStatus {
       summary: string
     }
     proactiveGroupParticipation: {
-      actualEnabled: false
-      state: 'shadow'
-      stage: 'probe_shadow'
-      deliveryEnabled: false
+      actualEnabled: boolean
+      state: 'enabled' | 'disabled'
+      stage: 'proactive_canary' | 'probe_shadow'
+      deliveryEnabled: boolean
       summary: string
     }
   }

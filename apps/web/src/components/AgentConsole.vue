@@ -38,6 +38,7 @@ import type {
   InternalTestEffectiveSelection,
   InternalTestGroupChatStyle,
   InternalTestPluginMode,
+  InternalTestProactiveFrequency,
   InternalTestReasoningLevel,
   InternalTestReplyIntensity,
   InternalTestSelectionMode,
@@ -124,6 +125,16 @@ const sessionMenuOpen = ref(false)
 const stream = ref<HTMLElement>()
 const productionRuntimeOnline = computed(
   () => props.runtimeControls?.passiveAutoReply.actualEnabled === true,
+)
+const proactivePolicyEnabled = computed(() => {
+  const mode = props.policy?.plugins['social.proactive_talk'] ?? 'off'
+  return mode === 'auto' || mode === 'on' || mode === 'locked'
+})
+const proactiveRuntimeEnabled = computed(
+  () => props.runtimeControls?.proactiveGroupParticipation.actualEnabled === true,
+)
+const proactiveActuallyEnabled = computed(
+  () => proactivePolicyEnabled.value && proactiveRuntimeEnabled.value,
 )
 const runtimeLabel = computed(() => productionRuntimeOnline.value
   ? '2.0 Runtime 在线'
@@ -214,6 +225,12 @@ const groupChatStyleLabels: Record<InternalTestGroupChatStyle, string> = {
   natural: '自然',
   lively: '活跃',
   technical: '技术型',
+}
+
+const proactiveFrequencyLabels: Record<InternalTestProactiveFrequency, string> = {
+  low: '低频',
+  normal: '正常',
+  high: '高频',
 }
 
 const tabs = [
@@ -377,6 +394,11 @@ function emitPolicy(patch: Partial<InternalTestAgentPolicy>): void {
     ...patch,
     plugins: patch.plugins ?? { ...props.policy.plugins },
   })
+}
+
+function updateProactiveFrequency(frequency: InternalTestProactiveFrequency): void {
+  if (!props.policy) return
+  emitPolicy({ proactiveTalk: { frequency } })
 }
 
 function updateAdaptiveMode(axis: AdaptiveAxis, mode: InternalTestSelectionMode): void {
@@ -868,15 +890,34 @@ watch(
           <article class="runtime-control-card">
             <header>
               <span><strong>主动加入群聊</strong><small>PROACTIVE GROUP PARTICIPATION</small></span>
-              <b :class="{ enabled: runtimeControls.proactiveGroupParticipation.actualEnabled }">
-                {{ runtimeControls.proactiveGroupParticipation.actualEnabled ? '实际开启' : 'Shadow' }}
+              <b :class="{ enabled: proactiveActuallyEnabled }">
+                {{ proactiveActuallyEnabled ? '本群已开启' : proactiveRuntimeEnabled ? '本群未开启' : 'Shadow' }}
               </b>
             </header>
             <dl>
-              <div><dt>管理员期望</dt><dd>{{ policy ? (policy.enabled ? '启用会话 Agent（非发送授权）' : '停用会话 Agent') : '尚未读取' }}</dd></div>
-              <div><dt>当前阶段</dt><dd>{{ runtimeControls.proactiveGroupParticipation.stage === 'probe_shadow' ? 'Probe Shadow' : runtimeControls.proactiveGroupParticipation.stage }}</dd></div>
+              <div><dt>管理员期望</dt><dd>{{ proactivePolicyEnabled ? '启用 2.0 自动搭话' : '关闭自动搭话' }}</dd></div>
+              <div><dt>当前阶段</dt><dd>{{ runtimeControls.proactiveGroupParticipation.stage === 'probe_shadow' ? 'Probe Shadow' : 'Proactive Canary' }}</dd></div>
               <div><dt>消息交付</dt><dd>{{ runtimeControls.proactiveGroupParticipation.deliveryEnabled ? '已开启' : '关闭 / NO SEND' }}</dd></div>
-              <div><dt>真实主动发言</dt><dd>{{ runtimeControls.proactiveGroupParticipation.actualEnabled ? '已接通' : '未接通' }}</dd></div>
+              <div><dt>真实主动发言</dt><dd>{{ proactiveActuallyEnabled ? '已接通' : '未接通' }}</dd></div>
+              <div>
+                <dt>主动频率</dt>
+                <dd>
+                  <select
+                    :value="policy?.proactiveTalk.frequency ?? 'low'"
+                    :disabled="!policyEditable"
+                    aria-label="主动搭话频率"
+                    @change="updateProactiveFrequency(($event.target as HTMLSelectElement).value as InternalTestProactiveFrequency)"
+                  >
+                    <option
+                      v-for="frequency in catalog?.proactiveFrequencies ?? []"
+                      :key="frequency.id"
+                      :value="frequency.id"
+                    >
+                      {{ proactiveFrequencyLabels[frequency.id] }} · {{ Math.round(frequency.probability * 100) }}% · 冷却 {{ Math.round(frequency.cooldownSeconds / 60) }} 分钟 · {{ frequency.maximumPerHour }}/小时
+                    </option>
+                  </select>
+                </dd>
+              </div>
             </dl>
             <p>{{ runtimeControls.proactiveGroupParticipation.summary }}</p>
           </article>

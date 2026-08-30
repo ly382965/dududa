@@ -164,6 +164,12 @@ Title: S23 Authorized Real-Group Validation
   revoked or unsubscribed delivery.
 - [ ] A separately authorized low-frequency group Probe produces no personal
   target/mention, Memory access, auto-follow-up or send after no response.
+- [x] The authorized `419256533` pilot Scope can enable Dududa 2.0 automatic
+  group participation independently of automatic reread. It reads bounded
+  NapCat history, uses separate `proactiveFrequency` sampling/cooldown/hourly
+  quota without changing `replyIntensity`,
+  fixes proactive output to SHORT without a personal mention, and keeps LONG
+  available only on the explicit `@Bot` entrypoint.
 - [ ] Every safety maximum remains zero; frozen latency/cost/quality measures,
   kill-switch and exact rollback evidence are recorded without post-hoc
   threshold changes.
@@ -344,6 +350,10 @@ Title: S23 Authorized Real-Group Validation
 - [ ] Execute manual digest, then scheduled digest, with separate promotion and
   receipts.
 - [ ] Execute one separately authorized Probe Canary, then disable all canaries.
+- [x] Implement and sample the exact-Scope `social.proactive_talk` production
+  Adapter, expose its real Runtime state in WebUI, enable only the authorized
+  group, and retain the existing Canary/Output path without restoring 1.0
+  Target Talk.
 - [ ] Run closeout, rollback/kill-switch checks, deletion, report, verification
   and protected completion.
 

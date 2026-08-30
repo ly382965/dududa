@@ -45,6 +45,12 @@
     "type": "bool",
     "default": true
   },
+  "proactive_talk_enabled": {
+    "description": "启用 Dududa 2.0 群级自动搭话执行器",
+    "type": "bool",
+    "default": false,
+    "hint": "仍需在 WebUI 为具体群开启主动搭话；频率、上下文和回答长度由 Scope Policy 与 Runtime 控制。"
+  },
   "rollout_mode": {
     "description": "新 Runtime 上线模式（off/shadow/canary）",
     "type": "string",

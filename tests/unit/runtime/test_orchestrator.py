@@ -559,6 +559,48 @@ class OfflineRuntimeOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fixture.perception.calls, 1)
         self.assertEqual(fixture.router.calls, 1)
 
+    async def test_proactive_group_run_is_non_explicit_short_and_has_no_personal_target(
+        self,
+    ) -> None:
+        fixture = OrchestratorFixture()
+        request, call = fixture.start(
+            mentioned=False,
+            feature_flags={
+                "proactive_group_participation": True,
+                "response_profile.force_short": True,
+                "tools": False,
+                "memory": False,
+            },
+        )
+
+        result = await fixture.runtime.run(request, call=call)
+        checkpoint = await fixture.store.load(call.run_id, call=call)
+
+        self.assertIs(result.outcome, Outcome.RESPONSE)
+        self.assertIsNotNone(result.delivery_request)
+        assert checkpoint is not None
+        assert checkpoint.state.preprocess_result is not None
+        assert checkpoint.state.social_decision is not None
+        assert checkpoint.state.response_plan is not None
+        self.assertFalse(checkpoint.state.preprocess_result.explicit_interaction)
+        self.assertEqual(
+            checkpoint.state.social_decision.reason_codes,
+            ("proactive_group_direct_reply",),
+        )
+        self.assertEqual(checkpoint.state.social_decision.target_identity_refs, ())
+        self.assertIs(
+            checkpoint.state.response_plan.selected_profile,
+            AnswerProfile.SHORT,
+        )
+        self.assertEqual(
+            checkpoint.state.response_plan.reason_codes,
+            ("current_message_preference_selected", "entrypoint_short_profile"),
+        )
+        self.assertEqual(
+            result.delivery_request.response.response.target_users,
+            (),
+        )
+
     async def test_concurrent_duplicate_runs_execute_one_model_chain(self) -> None:
         fixture = OrchestratorFixture()
         request, call = fixture.start()

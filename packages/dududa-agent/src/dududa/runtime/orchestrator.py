@@ -33,7 +33,11 @@ from dududa.models.digests import (
     task_complexity_assessment_digest,
     tier_decision_digest,
 )
-from dududa.perception.contracts import SocialAction, SocialDecision
+from dududa.perception.contracts import (
+    GroupInteractionMode,
+    SocialAction,
+    SocialDecision,
+)
 from dududa.perception.digests import social_decision_digest
 from dududa.persona.contracts import (
     PersonaCatalogSnapshot,
@@ -55,6 +59,8 @@ from dududa.ports.runtime import (
 )
 from dududa.responses.budget import project_response_reservation
 from dududa.responses.contracts import (
+    AnswerProfile,
+    DetailPreferenceEvidence,
     ResponsePlan,
     ResponseProfileSelectionRequest,
 )
@@ -361,7 +367,11 @@ class OfflineRuntimeOrchestrator:
     ) -> RuntimeResult:
         try:
             state = checkpoint.state
-            preprocess = self._context_builder.preprocess(state.message, state.actor)
+            preprocess = self._context_builder.preprocess(
+                state.message,
+                state.actor,
+                feature_flags=state.invocation_options.feature_flags,
+            )
             checkpoint = await self._commit_transition(
                 checkpoint,
                 RuntimePhase.PREPROCESSED,
@@ -503,7 +513,14 @@ class OfflineRuntimeOrchestrator:
                 explicit_interaction=preprocess.explicit_interaction,
                 conversation_type=state.message.conversation_type,
                 data_classification=preprocess.data_classification,
-                group_mode=self._config.runtime_policy.group_mode,
+                group_mode=(
+                    GroupInteractionMode.ACTIVE
+                    if state.invocation_options.feature_flags.get(
+                        "proactive_group_participation",
+                        False,
+                    )
+                    else self._config.runtime_policy.group_mode
+                ),
                 known_target=known_target,
                 tool_authorization=capability_authorization,
                 tools_enabled=tools_enabled,
@@ -1264,11 +1281,7 @@ class OfflineRuntimeOrchestrator:
             social_action=social.action,
             assessment_digest=task_complexity_assessment_digest(assessment),
             social_decision_digest=social_decision_digest(social),
-            detail_evidence=detect_detail_preference(
-                context.perception.current_message_ref,
-                current.text,
-                detector_revision=self._detail_detector_revision,
-            ),
+            detail_evidence=self._detail_evidence(state, context, current.text),
             persistent_preference=None,
             available_generated_tokens=(
                 state.model_budget_plan.direct_chat_reservation.output_tokens
@@ -1282,6 +1295,34 @@ class OfflineRuntimeOrchestrator:
         if not isinstance(plan, ResponsePlan):
             raise validation_error("invalid_response_profile_policy_result")
         return request, plan
+
+    def _detail_evidence(
+        self,
+        state: RuntimeState,
+        context: CurrentMessageContext,
+        text: str,
+    ) -> DetailPreferenceEvidence:
+        flags = state.invocation_options.feature_flags
+        forced = tuple(
+            profile
+            for profile in AnswerProfile
+            if flags.get(f"response_profile.force_{profile.value}", False)
+        )
+        if len(forced) > 1:
+            raise validation_error("conflicting_forced_response_profiles")
+        if forced:
+            return DetailPreferenceEvidence(
+                schema_version=1,
+                message_ref=context.perception.current_message_ref,
+                requested_profile=forced[0],
+                reason_codes=(f"entrypoint_{forced[0].value}_profile",),
+                detector_revision=self._detail_detector_revision,
+            )
+        return detect_detail_preference(
+            context.perception.current_message_ref,
+            text,
+            detector_revision=self._detail_detector_revision,
+        )
 
     def _resolve_persona(self, state: RuntimeState) -> PersonaResolution:
         registry = self._persona_registry

@@ -90,6 +90,7 @@ class RolloutRequestFactory(Protocol):
         timeout_seconds: float,
         tools_enabled: bool = False,
         memory_enabled: bool = False,
+        proactive_group_participation: bool = False,
     ) -> tuple[RuntimeStartRequest, PortCallContext]: ...
 
 
@@ -129,10 +130,18 @@ class AstrBotRuntimeRequestFactory:
         timeout_seconds: float,
         tools_enabled: bool = False,
         memory_enabled: bool = False,
+        proactive_group_participation: bool = False,
     ) -> tuple[RuntimeStartRequest, PortCallContext]:
         if timeout_seconds <= 0:
             raise ValueError("invalid rollout request timeout")
-        if type(tools_enabled) is not bool or type(memory_enabled) is not bool:
+        if any(
+            type(value) is not bool
+            for value in (
+                tools_enabled,
+                memory_enabled,
+                proactive_group_participation,
+            )
+        ):
             raise ValueError("invalid rollout feature flag")
         now = self._clock()
         deadline = now + timedelta(seconds=timeout_seconds)
@@ -152,23 +161,34 @@ class AstrBotRuntimeRequestFactory:
             policy_snapshot_id=self._policy_snapshot_id,
         )
         connector = await self._connector.convert(event, operation=connector_call)
-        requested_features = {
-            "tools": tools_enabled,
-            "memory": memory_enabled,
+        requested_features: dict[str, bool] = {
+            "tools": tools_enabled and not proactive_group_participation,
+            "memory": memory_enabled and not proactive_group_participation,
         }
         if self._response_profiles_enabled:
             requested_features["response_profiles"] = True
         if self._scope_policy_resolver is not None:
-            scope_features = dict(
-                self._scope_policy_resolver.feature_flags(connector)
-            )
+            scope_features = dict(self._scope_policy_resolver.feature_flags(connector))
             if set(scope_features) & set(requested_features):
                 raise ValueError("Scope policy cannot replace global feature flags")
             requested_features.update(scope_features)
+        if proactive_group_participation:
+            requested_features.update(
+                {
+                    "proactive_group_participation": True,
+                    "response_profile.force_short": True,
+                    "response_profile.force_medium": False,
+                    "response_profile.force_long": False,
+                }
+            )
         options = RuntimeInvocationOptions(
             1,
             None,
-            "astrbot_rollout",
+            (
+                "astrbot_proactive_talk"
+                if proactive_group_participation
+                else "astrbot_rollout"
+            ),
             requested_features,
             control_revision,
         )
@@ -304,14 +324,17 @@ class AstrBotRolloutBridge:
             runtime_result=result,
             completion=completion,
             tool_calls=(
-                1
-                if RuntimePhase.TOOLS_EXECUTED in result.trace_summary.phases
-                else 0
+                1 if RuntimePhase.TOOLS_EXECUTED in result.trace_summary.phases else 0
             ),
             capability_ids=capability_ids,
         )
 
-    async def handle(self, event: object) -> AstrBotBridgeResult:
+    async def handle(
+        self,
+        event: object,
+        *,
+        proactive_group_participation: bool = False,
+    ) -> AstrBotBridgeResult:
         try:
             config = self._controls.current()
         except Exception:  # noqa: BLE001 - invalid pre-claim config keeps legacy owner
@@ -332,10 +355,15 @@ class AstrBotRolloutBridge:
                 timeout_seconds=timeout.total_seconds(),
                 tools_enabled=config.tools_enabled,
                 memory_enabled=config.memory_enabled,
+                proactive_group_participation=proactive_group_participation,
             )
             if not request.options.feature_flags.get("scope_agent_enabled", True):
                 return _legacy("scope_agent_disabled")
-            admission = decide_rollout_admission(request.connector_result, config)
+            admission = decide_rollout_admission(
+                request.connector_result,
+                config,
+                allow_proactive_group=proactive_group_participation,
+            )
         except Exception:  # noqa: BLE001 - unsupported Event stays on legacy path
             return _legacy("rollout_event_not_supported")
         if admission.action is RolloutAdmissionAction.LEGACY:

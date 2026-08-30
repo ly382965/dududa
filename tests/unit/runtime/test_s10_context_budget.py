@@ -133,6 +133,18 @@ class CurrentMessageContextBuilderTests(unittest.TestCase):
             RuntimeAdmissionAction.IGNORE,
         )
 
+    def test_proactive_group_entrypoint_preserves_non_explicit_evidence(self) -> None:
+        group = message(mentioned=False)
+        preprocess = builder().preprocess(
+            group,
+            actor(group),
+            feature_flags={"proactive_group_participation": True},
+        )
+
+        self.assertIs(preprocess.action, RuntimeAdmissionAction.PROCEED)
+        self.assertFalse(preprocess.explicit_interaction)
+        self.assertEqual(preprocess.reason_codes, ("proactive_group_text_admitted",))
+
     def test_attachment_is_deferred_and_cannot_build_context(self) -> None:
         value = replace(
             message(),

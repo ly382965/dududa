@@ -62,7 +62,12 @@ from dududa.models.digests import (
 from dududa.models.policy import TierDecision, TierSelectionContext
 from dududa.models.tiering import validate_tier_decision
 from dududa.perception.complexity import validate_task_complexity_assessment
-from dududa.perception.contracts import DecisionSignals, SocialAction, SocialDecision
+from dududa.perception.contracts import (
+    DecisionSignals,
+    GroupInteractionMode,
+    SocialAction,
+    SocialDecision,
+)
 from dududa.perception.digests import (
     perception_context_digest,
     social_decision_digest,
@@ -971,8 +976,7 @@ def _validate_disabled_fields(state: RuntimeState) -> None:
         "response_profiles", False
     )
     if not response_profiles_enabled and (
-        state.response_profile_request is not None
-        or state.response_plan is not None
+        state.response_profile_request is not None or state.response_plan is not None
     ):
         raise validation_error("response_profile_state_without_feature")
     tools_enabled = state.invocation_options.feature_flags.get("tools", False)
@@ -1263,7 +1267,14 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
             explicit_interaction=preprocess.explicit_interaction,
             conversation_type=state.message.conversation_type,
             data_classification=preprocess.data_classification,
-            group_mode=state.runtime_policy.group_mode,
+            group_mode=(
+                GroupInteractionMode.ACTIVE
+                if state.invocation_options.feature_flags.get(
+                    "proactive_group_participation",
+                    False,
+                )
+                else state.runtime_policy.group_mode
+            ),
             known_target=known_target,
             tool_authorization=capability_plan_authorization,
             tools_enabled=state.invocation_options.feature_flags.get("tools", False),
@@ -2360,6 +2371,10 @@ def _validate_preprocess_binding(
         and mention.user_id == state.message.bot_id
         for mention in state.message.mentions
     )
+    proactive = state.invocation_options.feature_flags.get(
+        "proactive_group_participation",
+        False,
+    )
     if state.actor.user_id == state.message.bot_id:
         expected_action = RuntimeAdmissionAction.IGNORE
         expected_reasons = ("self_message",)
@@ -2372,12 +2387,20 @@ def _validate_preprocess_binding(
     elif state.message.conversation_type is ConversationType.CHANNEL:
         expected_action = RuntimeAdmissionAction.IGNORE
         expected_reasons = ("channel_out_of_scope",)
-    elif state.message.conversation_type is ConversationType.GROUP and not explicit:
+    elif (
+        state.message.conversation_type is ConversationType.GROUP
+        and not explicit
+        and not proactive
+    ):
         expected_action = RuntimeAdmissionAction.IGNORE
         expected_reasons = ("group_explicit_mention_required",)
     else:
         expected_action = RuntimeAdmissionAction.PROCEED
-        expected_reasons = ("s10_text_admitted",)
+        expected_reasons = (
+            ("proactive_group_text_admitted",)
+            if proactive and not explicit
+            else ("s10_text_admitted",)
+        )
     if (
         receipt.explicit_interaction is not explicit
         or receipt.action is not expected_action

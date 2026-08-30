@@ -187,6 +187,7 @@ from .adapters.model import (
 from .adapters.model_codec import JsonSchemaDocumentRegistry, JsonSchemaOutputCodec
 from .adapters.model_evidence import AstrBotProviderEvidenceStore
 from .adapters.output import ASTRBOT_OUTPUT_REVISION, InMemoryDeliveryLedger
+from .adapters.proactive_talk import ProactiveTalkController
 from .config import (
     CAPABILITY_DEFINITIONS_DIR,
     CAPABILITY_MAPPINGS_DIR,
@@ -286,9 +287,7 @@ class _ProductionRulePerception:
         if not blocked.intersection(result.capability_categories):
             return result
         categories = tuple(
-            value
-            for value in result.capability_categories
-            if value not in blocked
+            value for value in result.capability_categories if value not in blocked
         )
         return replace(
             result,
@@ -317,9 +316,7 @@ class _ProductionPerceptionMerger:
         blocked = _blocked_capability_categories(context)
         if model is not None and blocked.intersection(model.capability_categories):
             categories = tuple(
-                value
-                for value in model.capability_categories
-                if value not in blocked
+                value for value in model.capability_categories if value not in blocked
             )
             intents = tuple(
                 value
@@ -379,6 +376,8 @@ def _publish_runtime_status(
                     for value in runtime_config.get("rollout_allowlisted_groups", ())
                     if isinstance(value, (str, int))
                 ],
+                "proactive_talk_enabled": runtime_config.get("proactive_talk_enabled")
+                is True,
             }
         )
     try:
@@ -952,10 +951,7 @@ def build_production_runtime(
         "runtime_model_load_max_age_seconds",
         1_800,
     )
-    if (
-        type(model_load_max_age_seconds) is not int
-        or model_load_max_age_seconds < 1
-    ):
+    if type(model_load_max_age_seconds) is not int or model_load_max_age_seconds < 1:
         raise ValueError("runtime_model_load_max_age_seconds must be positive")
 
     for index, spec in enumerate(specs):
@@ -1285,14 +1281,18 @@ def build_production_runtime(
         default_rule_perception_config(_revision("rule-perception")),
         capability_keywords={
             "campus.course-review": frozenset({"评课社区"}),
-            "campus.curriculum": frozenset(
-                {"培养方案", "培养计划", "课程体系"}
-            ),
-            "campus.second-class": frozenset(
-                {"二课", "第二课堂", "德智体美劳"}
-            ),
+            "campus.curriculum": frozenset({"培养方案", "培养计划", "课程体系"}),
+            "campus.second-class": frozenset({"二课", "第二课堂", "德智体美劳"}),
             "campus.academic": frozenset(
-                {"教务处", "开课查询", "开课信息", "考试查询", "考试安排", "教学日历", "校历"}
+                {
+                    "教务处",
+                    "开课查询",
+                    "开课信息",
+                    "考试查询",
+                    "考试安排",
+                    "教学日历",
+                    "校历",
+                }
             ),
             "campus.shuttle": frozenset(
                 {"校车", "班车", "校园班车", "高新校区班车", "太湖路园区班车"}
@@ -1788,6 +1788,7 @@ def initialize_plugin(
     plugin.rollout_metrics = InMemoryRolloutMetrics()
     plugin.rollout_ledger = None
     plugin.rollout_bridge = None
+    plugin.proactive_talk = None
     plugin.runtime_assembly = None
     plugin._dududa_runtime_cleanup_assemblies = []
     plugin._dududa_model_health_task = None
@@ -1821,10 +1822,14 @@ def initialize_plugin(
     elif plugin.config.get("runtime_enabled") is True:
         try:
             assembly = build_production_runtime(plugin, plugin.config)
-        except Exception:  # unavailable composition preserves the legacy owner
+        except Exception as exc:  # unavailable composition preserves the legacy owner
+            info = getattr(exc, "info", None)
             logger.warning(
                 "Dududa production Runtime unavailable: "
-                "reason=runtime_composition_failed"
+                "reason=runtime_composition_failed type=%s code=%s detail=%s",
+                type(exc).__name__,
+                getattr(info, "code", "unavailable"),
+                str(exc)[:200],
             )
             assembly = unavailable_runtime_assembly()
     else:
@@ -2009,6 +2014,10 @@ def install_rollout_runtime(
         InMemoryAttachmentRepository(clock=clock),
         clock=clock,
     )
+    policy_path = str(os.environ.get("DUDUDA_AGENT_POLICY_PATH") or "").strip()
+    scope_policy_resolver = (
+        FileScopeAgentPolicyResolver(Path(policy_path)) if policy_path else None
+    )
     requests = AstrBotRuntimeRequestFactory(
         connector,
         runtime_budget,
@@ -2019,15 +2028,7 @@ def install_rollout_runtime(
                 True,
             )
         ),
-        scope_policy_resolver=(
-            FileScopeAgentPolicyResolver(Path(policy_path))
-            if (
-                policy_path := str(
-                    os.environ.get("DUDUDA_AGENT_POLICY_PATH") or ""
-                ).strip()
-            )
-            else None
-        ),
+        scope_policy_resolver=scope_policy_resolver,
         clock=clock,
     )
     shadow = BoundedShadowSupervisor(
@@ -2055,6 +2056,13 @@ def install_rollout_runtime(
         runtime_ready=runtime_ready,
     )
     plugin.rollout_bridge = bridge
+    plugin.proactive_talk = (
+        ProactiveTalkController(bridge, scope_policy_resolver)
+        if getattr(plugin, "config", {}).get("proactive_talk_enabled") is True
+        and scope_policy_resolver is not None
+        and runtime_ready
+        else None
+    )
     return bridge
 
 

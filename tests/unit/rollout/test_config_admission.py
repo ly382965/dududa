@@ -129,6 +129,22 @@ class RolloutConfigAndAdmissionTests(unittest.TestCase):
         )
         self.assertIs(decision.action, RolloutAdmissionAction.SHADOW)
 
+    def test_proactive_entrypoint_admits_unmentioned_group_without_faking_at(
+        self,
+    ) -> None:
+        value = connector(mentioned_user=None)
+
+        ordinary = decide_rollout_admission(value, control())
+        proactive = decide_rollout_admission(
+            value,
+            control(),
+            allow_proactive_group=True,
+        )
+
+        self.assertIs(ordinary.action, RolloutAdmissionAction.LEGACY)
+        self.assertIs(proactive.action, RolloutAdmissionAction.CANARY)
+        self.assertEqual(proactive.reason_codes, ("canary_proactive_admitted",))
+
 
 if __name__ == "__main__":
     unittest.main()

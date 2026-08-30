@@ -327,6 +327,7 @@ export function useWorkspace(
       replyIntensity: { ...policy.replyIntensity, allowed: [...policy.replyIntensity.allowed] },
       contextLength: { ...policy.contextLength, allowed: [...policy.contextLength.allowed] },
       groupChatStyle: { ...policy.groupChatStyle, allowed: [...policy.groupChatStyle.allowed] },
+      proactiveTalk: { ...policy.proactiveTalk },
       plugins: { ...policy.plugins },
     }
     agentPolicyError.value = ''

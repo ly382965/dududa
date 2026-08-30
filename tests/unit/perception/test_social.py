@@ -75,6 +75,23 @@ class DeterministicSocialDecisionPolicyTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(decision.action, SocialAction.DIRECT_REPLY)
         self.assertEqual(decision.target_identity_refs, ("identity:user",))
 
+    async def test_active_proactive_group_reply_is_group_level(self) -> None:
+        perception = _perception(context())
+
+        decision = await _policy().decide(
+            perception,
+            _signals(
+                explicit_interaction=False,
+                known_target=False,
+                group_mode=GroupInteractionMode.ACTIVE,
+            ),
+            call=_call(),
+        )
+
+        self.assertIs(decision.action, SocialAction.DIRECT_REPLY)
+        self.assertEqual(decision.reason_codes, ("proactive_group_direct_reply",))
+        self.assertEqual(decision.target_identity_refs, ())
+
     async def test_hard_ignore_gates_precede_soft_semantics(self) -> None:
         perception = _perception(context())
         cases = (

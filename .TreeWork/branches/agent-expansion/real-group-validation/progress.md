@@ -11,6 +11,13 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- 2026-08-30 已在唯一 2.0 宿主为 `qq-3296147894:group:419256533`
+  启用 `social.proactive_talk`。每条合格普通群消息按独立频率抽样；命中后读取
+  NapCat 最近 12/30/60 条群历史并做群级别名投影，再以
+  `explicit_interaction=false` 进入现有 Runtime。目标群当前为 `normal`
+  （8%、10 分钟冷却、最多 3 次/小时）、`standard` 上下文和 `natural` 风格。
+  主动路径固定 SHORT、关闭 Tool/Memory、无个人 `@`；普通明确 `@Bot` 路径在
+  该 Scope 锁定 LONG。Web 显示执行器 online 和“本群已开启”。
 - 校车已从 `ustc-shuttle` MCP 迁移为 `astrbot_plugin_ustc_shuttle` 本地 owned
   插件。`ustc.shuttle.public-query.v1` 由现有 `BUILTIN` Capability Provider Port
   执行，读取版本化 JSON，覆盖校园、高新校区和太湖路园区时刻表；旧 MCP Server、
@@ -36,19 +43,19 @@ Last sync: unix:1786706085
   当前运行插件为 Dududa Core、Sub2API v0.6.4、Reread v2.0.0 加 AstrBot 内建插件。Sub2API
   与 Reread 是明确保留的 2.0 宿主能力，不是仍在并行的 1.0 服务，也不会因加载自动获得
   Agent Capability 权限。
-- 2.0 当前接管所有群内明确 `@Bot` 的纯文本、无附件消息：`runtime_enabled=true`、
-  `rollout_mode=canary`、allowlist `*`、delivery 开启、kill switch 关闭、Tool 开启、Memory
-  关闭。私聊、附件和未 @ 的普通群消息静默且不回退 1.0；主动参与仍只有 S15E Probe
-  Shadow/NO SEND。
+- 2.0 当前接管所有群内明确 `@Bot` 的纯文本、无附件消息，并仅为上方精确 Scope
+  增加独立的未 `@` 主动入口：`runtime_enabled=true`、`rollout_mode=canary`、
+  allowlist `*`、delivery 开启、kill switch 关闭。其他群的未 `@` 普通消息、私聊和
+  附件仍静默且不回退 1.0；S15E Probe Shadow 继续作为离线机会评测资产。
 - Core `runtime-status.json` 已报告 `ready=true`。Web 读取真实 Core 配置后显示
   `actualEnabled=true / canary / deliveryEnabled=true / killSwitch=false`，健康接口显示 1/1 个
   QQ 账号在线且 NapCat 连接正常。Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat
   调用，三档使用最低 `light/low`；模型健康探测已启用，间隔/超时/TTL 为 `900/15/1800` 秒。
 - Web Policy 不再只是持久化配置。2.0 Bridge 每轮按 `accountId + conversationId`
-  精确解析 Agent 开关和 MCP Capability 模式，并在 Perception 前过滤类别；目标
-  Scope 当前解析为 Agent enabled、iCourse eligible。`on/locked` 只表示可选，
-  实际调用仍由 Perception、Planner 和 Core 的全局资格共同决定。生产 Runtime
-  尚未消费 Console 的全部六项自适应设置。
+  精确解析 Agent 开关和 MCP Capability 模式，并在 Perception 前过滤类别；主动
+  Adapter 还消费独立频率、上下文预算和群聊风格，普通入口消费锁定的 AnswerProfile。
+  `on/locked` 仍只表示合法候选或明确选择，不能绕过 Perception、Planner、授权、
+  预算与健康检查；模型档位、推理深度和 `replyIntensity` 仍未全部接入生产选择。
 - iCourse natural-language planning now uses the single high-level read-only
   `icourse.public-query.v2` Capability. Standard model intents project
   deterministically to `course/review/teacher/ranking/stats`; Schema-aware
@@ -373,8 +380,9 @@ Last sync: unix:1786706085
   `1,2,3 -> 2,3,1`，顺序执行的 75 题 Runner 不能证明生产顺序。
 - 随后用一条真实群内明确 @ 纯文本闭合 QQ 入站、2.0 claim、模型/MCP、单次 Delivery 和
   LONG 合并转发证据；readiness 与 Provider 单次成功不能代替这条用户可见验收。
-- 私聊、附件和未 @ 主动参与需要独立 Connector/Context/Policy 接线；在完成前保持静默且禁止
-  回退 1.0。Source/Projection/主动 Output 只在相应主动行为明确进入下一阶段时实现。
+- 私聊、附件和其他群的未 `@` 主动参与继续保持静默且禁止回退 1.0。目标群的
+  bounded-history 自动搭话已接通，但尚未观察到一次自然概率命中的真实 Delivery；
+  Digest Source/Projection 和通用 Probe 仍需各自授权后实现。
 - 继续观察 900 秒健康刷新周期；当前思考深度是每个 Endpoint 的固定最低 `light/low`，不是同
   Endpoint 动态切换。
 - 用人工内测校准真实中文群聊中的自然度、措辞节奏和 SHORT/MEDIUM/LONG 边界；
@@ -395,9 +403,10 @@ Last sync: unix:1786706085
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - The private Demo is served at `http://127.0.0.1:8766/` from a repository-
-  external data root. The next S23 action is host-ingress ordering, followed by
-  one user-triggered explicit-mention QQ acceptance sample on the enabled 2.0
-  inbound path; proactive sends remain outside that authorization.
+  external data root. The next S23 evidence is one naturally sampled proactive
+  Delivery in the authorized `419256533` Scope plus one explicit-mention QQ
+  acceptance sample; implementation and enablement are complete, but observed
+  delivery quality is not yet established.
 - The live Agent Console now persists administrator preferences and legal
   ranges server-side. Treat `adaptive` and `preferred` as revisable per-Run
   inputs; only `locked` is a hard administrator selection, and no Web setting

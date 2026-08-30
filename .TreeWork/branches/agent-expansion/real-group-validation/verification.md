@@ -4,6 +4,18 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-30 自动搭话聚焦验证：Admission、Context、Social、Runtime、Rollout、
+  历史投影与频率 46/46 通过；Web Workspace 12/12、Server 10/10、TypeScript
+  typecheck 和 production build 通过。真实 AstrBot `Plain` 事件投影 smoke 通过，
+  Web 经 OneBot `get_group_msg_history` 读取目标群最近 12 条，证明 NapCat 历史能力
+  在线；未人为发送测试 QQ 消息。
+- 部署证据：本地 wheel 镜像中的 `decide_rollout_admission` 已包含
+  `allow_proactive_group`，Context preprocess 已接收 feature flags；唯一
+  `dududa-astrbot-1` 与 `dududa-web-1` 单次重建后 Runtime status 为
+  `ready=true / proactive_talk_enabled=true`，NapCat 未重启并恢复 OneBot 连接。
+  Web Catalog 报告 `social.proactive_talk` online，目标 Scope 返回
+  `normal + standard + natural`、主动 SHORT 和明确 `@Bot` LONG 锁定。自然概率
+  命中的真实主动 Delivery 尚未观察，因此 S23 总体仍为 `paused/partial`。
 - 2026-08-29 培养方案事实回归：USTC campus package 14/14、Planner 4/4、Ruff、
   output Schema 和 whitespace 检查通过。真实公开快照直调对完整单方案问题返回
   `2025级 计算机科学与技术 / 167 学分`；对

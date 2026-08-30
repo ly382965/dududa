@@ -17,7 +17,6 @@ from dududa.domain.primitives import (
 from dududa.domain.task import TaskReasoningDepth
 from dududa.errors import validation_error
 
-
 _REFERENCE_MAX_LENGTH = 128
 _LABEL_MAX_LENGTH = 256
 _ENTITY_VALUE_MAX_LENGTH = 512
@@ -990,10 +989,16 @@ class SocialDecision:
         if self.decided_at is None:
             raise validation_error("missing_social_decided_at")
         require_aware(self.decided_at, "social_decided_at")
+        proactive_group_reply = (
+            self.action is SocialAction.DIRECT_REPLY
+            and "proactive_group_direct_reply" in self.reason_codes
+        )
         targets = _unique_strings(
             self.target_identity_refs,
             "social_target_identity_refs",
-            required=self.action is not SocialAction.IGNORE,
+            required=(
+                self.action is not SocialAction.IGNORE and not proactive_group_reply
+            ),
             sorted_output=True,
         )
         object.__setattr__(self, "target_identity_refs", targets)

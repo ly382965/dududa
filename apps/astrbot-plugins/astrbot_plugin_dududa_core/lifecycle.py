@@ -24,14 +24,27 @@ class CoreLifecycleMixin:
     async def _handle_controlled_rollout(self, event: AstrMessageEvent) -> None:
         if not getattr(self, "enabled", False):
             return
+        if self._matches_registered_command(event):
+            return
         bridge = getattr(self, "rollout_bridge", None)
+        proactive = getattr(self, "proactive_talk", None)
+        if proactive is not None and await proactive.maybe_handle(event):
+            return
         if bridge is not None:
             await bridge.handle(event)
+
+    @staticmethod
+    def _matches_registered_command(event: AstrMessageEvent) -> bool:
+        get_extra = getattr(event, "get_extra", None)
+        if not callable(get_extra):
+            return False
+        return bool(get_extra("handlers_parsed_params", {}))
 
     async def terminate(self) -> None:
         if getattr(self, "_dududa_runtime_terminated", False):
             return
         bridge = getattr(self, "rollout_bridge", None)
+        self.proactive_talk = None
         assembly = getattr(self, "runtime_assembly", None)
         first_error: BaseException | None = None
         health_task = getattr(self, "_dududa_model_health_task", None)

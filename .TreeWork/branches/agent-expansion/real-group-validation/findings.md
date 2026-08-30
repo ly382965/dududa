@@ -4,6 +4,20 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 自动搭话频率不能复用 `replyIntensity`。前者控制真实抽样、冷却和每小时上限，
+  后者仍是单次 Run 的参与偏好；把两者合并会让管理员无法区分“更积极地表达”与
+  “更频繁地发送”。目标群因此使用独立 `proactiveTalk.frequency`。
+- 主动群聊不能通过伪造 `@Bot` 复用普通入口。NapCat 历史被投影为群级上下文后，
+  Runtime 保留 `explicit_interaction=false`，Social Decision 使用无个人 target 的
+  ACTIVE 群级路径；Tool、Memory 和个人 `@` 均关闭，最终仍复用 Canary、Output
+  Adapter 和 Delivery Receipt。
+- AstrBot 插件热重载只更新插件目录，不会更新镜像内已安装的 `dududa-agent`。
+  当本轮同时扩展 Core admission/context 签名，单独热重载会被 Bridge 的外部边界
+  捕获并静默退回 legacy。部署必须同时更新 Python package；本次用本地 wheel
+  离线增量镜像完成，只重建 AstrBot/Web，NapCat 保持运行并自动重连。
+- `astrbot_plugin_reread` 仍是独立 AstrBot handler，尚未读取 Agent Scope Policy。
+  `social.reread.auto=off` 当前不能按群关闭它；自动搭话已与其使用不同插件 ID 和
+  频率状态，但不能声称 Web 已拥有复读的群级执行控制。
 - 培养方案中的两位年级是领域实体，不是自由文本查询词。Planner 应先归一化
   `25级 -> 2025` 并保留横向比较的两个专业；MCP 边界仍要拒绝两位数字对子串代码
   的模糊命中，避免一次感知漏项演变成表面合理的无关事实。普通主修跨专业比较与
@@ -235,9 +249,10 @@ Branch: real-group-validation
   自动复读仍未消费 Web Policy。校园资讯、arXiv、行业和搜索来源继续显示不可用，
   不把查询型校园 MCP、fixture 或接口预留冒充主动资讯插件。
 - Agent 状态接口把 Policy 期望与实际行为分开：当前受支持的被动入站为
-  `rollout_mode=canary`、delivery enabled、kill switch inactive；主动参与仍仅为
-  `probe_shadow/NO SEND`。历史评测候选继续保持 `outputCalls=0`、`memoryWrites=0` 和
-  `toolCalls=0`，不能用它覆盖实时 Runtime 状态。
+  `rollout_mode=canary`、delivery enabled、kill switch inactive；主动执行器全局
+  online，只有目标 Scope 的 `social.proactive_talk=locked` 使其实际开启。历史评测
+  候选继续保持 `outputCalls=0`、`memoryWrites=0` 和 `toolCalls=0`，不能用它覆盖
+  实时 Runtime 状态。
 - Runtime 的 `DeliveryRequestBuilder` 只为合法、已验证的 LONG 授予
   `allow_forward_bundle`；AstrBot Output Adapter 再独立校验档位有效性、群聊、
   多纯文本 part 和无附件；定向目标保留在 Runtime 契约中，转发呈现不另发 `@`。

@@ -37,8 +37,10 @@ Last sync: unix:1786717871
   controlled proactive conversation probes, and opt-in campus/industry/arXiv
   digests. S15-S15E are now complete in their offline scopes: answer plans,
   proactive controls, durable scheduling, governed fixture sources, Digest
-  Shadow and deterministic group-level Probe Shadow exist; every real proactive
-  send remains absent.
+  Shadow and deterministic group-level Probe Shadow exist. S23 has additionally
+  enabled the first exact-Scope bounded-history automatic-talk Adapter for group
+  `419256533`; its real send path is live, but no naturally sampled Delivery has
+  yet been recorded as quality evidence.
 - S16 is complete and verified for the offline operations boundary: immutable
   releases, atomic state/receipts, read-only health, consistent SQLite backup,
   restore planning and failed-health rollback now exist. S19 closed the local
@@ -138,27 +140,22 @@ Last sync: unix:1786717871
 - Final real-group evidence requires environment-specific integration, explicit
   authorization and credentials. All accepted local predecessors are complete;
   S23 is paused/partial after completing its offline S23A--S23E milestone and
-  the configuration-driven inbound Runtime shape, isolated candidate startup,
-  three-tier Provider no-send sampling, default-off health-refresh
-  implementation, the Web internal-test evaluation Adapter and one local 2.0
-  natural-language iCourse success slice. It still needs
-  formal Endpoint Conformance, running AstrBot registration/deployment, enabled
-  continuous health and the live Source/Projection/Output composition required
-  by each separately authorized proactive stage. The Web result is not AstrBot
-  Runtime Shadow, Provider Conformance, real-group validation or a production
-  launch.
+  the deployed configuration-driven inbound Runtime, registered Luna/Terra/Sol,
+  continuous health refresh, campus query slices and the exact-Scope automatic-
+  talk Adapter for `419256533`. It still needs user-triggered inbound receipts,
+  one naturally sampled proactive Delivery with human review, live digest
+  Sources and closeout evidence. Historical Web no-send results remain separate
+  from live Runtime evidence.
 - Real Web mutation evidence and a two-real-account manual run were not
   authorized/available; contract and two-transport tests cover those paths.
-- Real public-source/group-projection providers and proactive rollout evidence
-  remain unimplemented. S15C-S15E provide fixture/synthetic no-send candidates,
-  but add no live Adapter, durable Probe persistence, production composition or
-  send authority.
-- No real Provider Endpoint is currently enableable in the running AstrBot:
-  Luna/Terra/Sol must first be registered with actual Provider IDs, formally
-  conformant evidence must be bound, the candidate must be deployed, and the
-  implemented health refresher must be enabled/configured for continuous
-  observation. No second legal same-role/tier Endpoint, propensity log or
-  attributable reward exists for Bandit.
+- Real digest Source Providers and generic Probe persistence remain unimplemented.
+  S15C-S15E still provide fixture/synthetic no-send evidence, while S23 now has
+  one exact-Scope public-group-history automatic-talk Adapter and send authority;
+  an observed natural Delivery and its human quality review remain outstanding.
+- Luna/Terra/Sol are registered in the running AstrBot and serve the current
+  Runtime at fixed minimum reasoning depth; formal long-horizon Conformance and
+  quality calibration remain incomplete. No second legal same-role/tier Endpoint,
+  propensity log or attributable reward exists for Bandit.
 - The local and external static corpora have no human Gold. The 600-window
   Teacher sample is imbalanced Silver; a balanced 150--300-window Gold subset,
   a second annotator, profile examples and source/operator policy inputs are
@@ -198,10 +195,10 @@ Last sync: unix:1786717871
   checker and Chinese Runbook, then completed S23A--S23E over the separately
   authorized static export: deterministic intake/windowing, 600 Terra Silver
   labels, 464 compiled rows, group-isolated Student evaluation, 137,026 local
-  predictions and a private no-send Demo. It remains paused/partial before
-  current Dududa traffic, real Endpoint/deployment binding, live sources,
-  container change or send; `live_execution_authorized=false` remains
-  authoritative.
+  predictions and a private no-send Demo. It remains paused/partial after the
+  later 2.0 deployment and exact-Scope automatic-talk enablement because a
+  natural proactive Delivery, user-triggered acceptance samples, live digest
+  Sources and closeout are still missing.
 - The same S23 branch now provides the first bounded Web human-evaluation slice
   inside the existing Bot Control Plane: 300 de-identified windows are
   searchable without NapCat, one operator-triggered Terra candidate proved

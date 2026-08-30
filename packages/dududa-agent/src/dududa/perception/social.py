@@ -12,6 +12,7 @@ from dududa.ports.context import PortCallContext
 from .contracts import (
     ClarificationKey,
     DecisionSignals,
+    GroupInteractionMode,
     PerceptionResult,
     SocialAction,
     SocialDecision,
@@ -150,10 +151,17 @@ def _social_decision_values(
 ]:
     action: SocialAction
     reasons: tuple[str, ...]
+    proactive_group = (
+        not signals.explicit_interaction
+        and not signals.private_conversation
+        and signals.group_mode is GroupInteractionMode.ACTIVE
+    )
     if signals.duplicate_or_self_message:
         action = SocialAction.IGNORE
         reasons = ("duplicate_or_self_message",)
-    elif not signals.known_target or not perception.target_identity_refs:
+    elif not proactive_group and (
+        not signals.known_target or not perception.target_identity_refs
+    ):
         action = SocialAction.IGNORE
         reasons = ("unknown_response_target",)
     elif not signals.authorization.can_respond:
@@ -165,7 +173,11 @@ def _social_decision_values(
     elif signals.private_data_boundary:
         action = SocialAction.DEFER
         reasons = ("private_data_boundary",)
-    elif not signals.explicit_interaction and not signals.private_conversation:
+    elif (
+        not signals.explicit_interaction
+        and not signals.private_conversation
+        and not proactive_group
+    ):
         action = SocialAction.IGNORE
         reasons = ("no_explicit_interaction",)
     elif perception.need_tools:
@@ -199,10 +211,18 @@ def _social_decision_values(
             reasons = ("conflicting_evidence_without_clarification",)
         else:
             action = SocialAction.DIRECT_REPLY
-            reasons = ("explicit_direct_reply",)
+            reasons = (
+                ("proactive_group_direct_reply",)
+                if proactive_group
+                else ("explicit_direct_reply",)
+            )
 
     targets = (
-        perception.target_identity_refs if action is not SocialAction.IGNORE else ()
+        ()
+        if proactive_group
+        else perception.target_identity_refs
+        if action is not SocialAction.IGNORE
+        else ()
     )
     clarification_key = None
     if action is SocialAction.ASK_CLARIFICATION:

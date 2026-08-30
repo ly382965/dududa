@@ -106,7 +106,7 @@ describe('internal-test gateway', () => {
         },
         proactiveGroupParticipation: {
           actualEnabled: false,
-          state: 'shadow',
+          state: 'disabled',
           stage: 'probe_shadow',
           deliveryEnabled: false,
         },
@@ -430,11 +430,17 @@ describe('internal-test gateway', () => {
       { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
     ])
     expect(catalog.groupChatStyles).toEqual(['restrained', 'natural', 'lively', 'technical'])
-    expect(catalog.replyIntensityNotice).toContain('Rollout')
+    expect(catalog.replyIntensityNotice).toContain('主动搭话频率')
+    expect(catalog.proactiveFrequencies).toEqual([
+      { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
+      { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
+      { id: 'high', probability: 0.2, cooldownSeconds: 180, maximumPerHour: 8 },
+    ])
     expect(catalog.policyDefaults).toMatchObject({
       replyIntensity: { mode: 'adaptive', preferred: 'normal' },
       contextLength: { mode: 'adaptive', preferred: 'standard' },
       groupChatStyle: { mode: 'adaptive', preferred: 'natural' },
+      proactiveTalk: { frequency: 'low' },
       plugins: {
         'social.reread.auto': 'off',
         'sub2api.auto_query': 'off',
