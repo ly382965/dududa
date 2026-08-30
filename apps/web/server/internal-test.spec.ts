@@ -436,6 +436,11 @@ describe('internal-test gateway', () => {
       cooldownSeconds: { minimum: 5, maximum: 1_800, step: 5 },
       maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
     })
+    expect(catalog.proactiveFrequencies).toEqual([
+      { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
+      { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
+      { id: 'high', probability: 0.20, cooldownSeconds: 180, maximumPerHour: 8 },
+    ])
     expect(catalog.policyDefaults).toMatchObject({
       replyIntensity: { mode: 'adaptive', preferred: 'normal' },
       contextLength: { mode: 'adaptive', preferred: 'standard' },

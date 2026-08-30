@@ -4,6 +4,11 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-30 WebUI 跨版本空下拉修复：实际 Catalog 同时返回新版三滑块范围和
+  旧 `low/normal/high` additive 别名；旧 `high` PUT 迁移测试保持通过。Web Server
+  聚焦测试 9/9、TypeScript typecheck 和 build 通过。部署后 Playwright 在目标群
+  读取到三个 enabled range，值为 20/180/8；Web、AstrBot、NapCat 均 running，
+  后两者未重启。
 - 2026-08-30 连续主动频率更新：Python 主动搭话契约 6/6、Web Server 10/10、
   Workspace 12/12、TypeScript typecheck、production build、Ruff 和 whitespace
   检查通过。最大端点测试证明 100% 概率下 4.999 秒仍受冷却限制、5 秒可再次进入，

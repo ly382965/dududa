@@ -133,6 +133,12 @@ export interface InternalTestAgentCatalog {
   }>
   groupChatStyles: GroupChatStyle[]
   proactiveTalkLimits: typeof PROACTIVE_TALK_LIMITS
+  proactiveFrequencies?: Array<{
+    id: 'low' | 'normal' | 'high'
+    probability: number
+    cooldownSeconds: number
+    maximumPerHour: number
+  }>
   replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults
@@ -851,6 +857,12 @@ function buildAgentCatalog(
     contextLengths: CONTEXT_LENGTHS.map((id) => ({ id, ...CONTEXT_BUDGETS[id] })),
     groupChatStyles: [...GROUP_CHAT_STYLES],
     proactiveTalkLimits: PROACTIVE_TALK_LIMITS,
+    // Keep tabs loaded before the numeric-control rollout usable until refresh.
+    proactiveFrequencies: [
+      { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
+      { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
+      { id: 'high', probability: 0.20, cooldownSeconds: 180, maximumPerHour: 8 },
+    ],
     replyIntensityNotice: '本轮参与倾向；不会替代独立的主动搭话频率、冷却和每小时上限。',
     plugins: catalogPlugins(runtimeReady),
     policyDefaults: defaultPolicyDefaults(),

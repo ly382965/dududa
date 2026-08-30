@@ -143,6 +143,12 @@ export interface InternalTestAgentCatalog {
     cooldownSeconds: { minimum: number; maximum: number; step: number }
     maximumPerHour: { minimum: number; maximum: number; step: number }
   }
+  proactiveFrequencies?: Array<{
+    id: 'low' | 'normal' | 'high'
+    probability: number
+    cooldownSeconds: number
+    maximumPerHour: number
+  }>
   replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults

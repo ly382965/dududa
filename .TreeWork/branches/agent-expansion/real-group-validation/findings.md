@@ -4,6 +4,11 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 频率滑块部署后的空下拉不是 Runtime 失效，而是部署前已加载的旧 SPA 继续读取
+  新 Catalog：旧 JS 依赖 `proactiveFrequencies`，新接口只返回
+  `proactiveTalkLimits`。带哈希静态资源和 `index.html no-cache` 均工作正常，不能
+  替换浏览器内存中已运行的 JS。Catalog 因此暂时 additive 保留旧三档别名；新
+  数值契约仍是唯一 canonical 写入，普通刷新进入新滑块界面。
 - 自动搭话频率不能复用 `replyIntensity`。前者控制真实抽样、冷却和每小时上限，
   后者仍是单次 Run 的参与偏好；把两者合并会让管理员无法区分“更积极地表达”与
   “更频繁地发送”。目标群因此使用独立 `proactiveTalk` 数值策略；概率、冷却和
