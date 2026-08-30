@@ -151,6 +151,9 @@ class ProactiveChatter(Star):
         # 复读/+1/群接龙场景：不触发择机闲聊，交给复读插件
         if self._is_echo_flood(recent):
             return
+        # 其他机器人互动（打卡/运势等命令）：不参与
+        if self._is_bot_interaction(recent):
+            return
         context_text = self._build_context(recent)
 
         # 检测当前是否在明显讨论课程（选课/难度/老师）
@@ -189,6 +192,21 @@ class ProactiveChatter(Star):
         if echo_n / len(norm) >= 0.6:
             return True
         return False
+
+    def _is_bot_interaction(self, recent: list[dict[str, Any]]) -> bool:
+        """检测最近消息是否像其他机器人的互动（命令/打卡/运势等），是则返回 True（不参与）。"""
+        bot_signals = (
+            "/打卡", "打卡", "签到", "/签到", "/运势", "运势", "抽签", "/抽签", "塔罗",
+            "/塔罗", "今日运势", "/今日运势", "占卜", "/占卜", "骰子", "/骰子", "猜拳",
+            "/猜拳", "点歌", "/点歌", "答题", "/答题", "解签", "/解签", "许愿", "/许愿",
+            "/help", "/菜单", "菜单", "功能", "/功能",
+        )
+        sample = [m.get("text") or "" for m in recent[-8:] if (m.get("text") or "").strip()]
+        if not sample:
+            return False
+        n_bot = sum(1 for t in sample if any(sig in t for sig in bot_signals))
+        # 最近消息中命令式互动占比高，视为机器人互动场景
+        return n_bot / len(sample) >= 0.5
 
     def _build_context(self, recent: list[dict[str, Any]]) -> str:
         lines = []
