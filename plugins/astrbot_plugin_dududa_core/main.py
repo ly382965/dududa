@@ -188,7 +188,7 @@ class DududaCorePlugin(Star):
         if not query:
             if self._is_at_bot(event):
                 tc = self._extract_teacher_course(text)
-                if tc:
+                if tc and self._looks_like_course_intent(text, tc):
                     try:
                         reply = await self._answer_teacher_course_integrated(tc, text)
                     except Exception as exc:
@@ -321,19 +321,53 @@ class DududaCorePlugin(Star):
         if not text or text.startswith("/"):
             return None
         pure = re.sub(r"[\s，。！？、；：,.!?;:（）()【】\[\]\"'“”‘’@～~]+", "", text)
-        if not pure or len(pure) > 30:
+        if not pure or len(pure) > 40:
             return None
         # 排除纯问候/表情/管理话术
         if re.fullmatch(r"(你好|在吗|嗨|哈喽|hi|hello|早上好|晚上好|在不在|help|帮助|谢谢|再见|拜拜)[！!。？?，,~]?", pure, re.IGNORECASE):
             return None
-        if re.search(r"(admin|管理|插件|日志|重启|配置|权限|帮我|能不能|可以吗|说说看|讲个|天气|气温|多少度|几点起床|几点睡)", pure, re.IGNORECASE):
+        if re.search(r"(admin|管理|插件|日志|重启|配置|权限|天气|气温|多少度|几点起床|几点睡|帮我|能不能|可以吗|说说看|讲个)", pure, re.IGNORECASE):
             return None
         cleaned = DududaCorePlugin._clean_course_query_text(text)
+        # 剥离疑问/请求话术，只留下课程名/老师名
+        for phrase in (
+            "怎么学", "学谁", "谁比较好", "谁最好", "哪位老师好", "哪个老师好", "哪个好",
+            "推荐", "求推荐", "应该", "怎么样", "什么时候上", "什么时候上课", "什么时候",
+            "难不难", "难吗", "好不好", "如何", "给分", "作业多不多", "作业多吗", "在哪上",
+            "在哪上课", "在哪个教室", "上课时间", "课表", "怎么样学", "该不该选", "值得选吗",
+            "值不值得", "想选", "选课", "考试难不难", "考试", "怎么复习", "复习", "学得怎么样",
+            "比较好", "比较", "咋样", "咋学", "咋选", "呢", "呀",
+        ):
+            cleaned = cleaned.replace(phrase, " ")
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         if len(cleaned) < 2 or len(cleaned) > 30:
             return None
         # 老师名 + 课程名：返回完整清理串作为查询
         return cleaned[:80]
+
+    @staticmethod
+    def _looks_like_course_intent(text: str, tc: str) -> bool:
+        """判断 @bot 消息是否像在问课程/老师，避免干扰其他功能。"""
+        if not text:
+            return False
+        # 课程信号词：消息含这些词才认为是课程查询
+        signals = (
+            "课", "老师", "选课", "评课", "评价", "给分", "作业",
+            "难度", "难不难", "怎么学", "什么时候上", "上课", "怎么样", "好不好",
+            "考试", "学分", "学时", "哪位", "哪个", "班型", "系列", "教材", "先修",
+        )
+        if any(w in text for w in signals):
+            return True
+        # 提取词像课程名（含课程特征字）
+        if re.search(r"(分析|物理|数学|化学|英语|力学|结构|概论|导论|原理|方法|程序|语言|统计|概率|方程|实验|生物|经济|管理|哲学|历史|电路|信号|线代|代数)", tc):
+            return True
+        # 提取词像人名：2-3个汉字且以常见姓氏开头，才视为老师查询
+        surnames = (
+            "陈王李张刘罗吴徐孙程赵周黄杨朱何郑谢冯宋唐许邓韩曹彭肖田董袁潘蒋蔡余杜叶苏魏吕丁沈任姚卢姜崔钟谭陆汪范金石廖贾夏韦付方白邹孟熊秦邱江尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤"
+        )
+        if re.fullmatch(r"[\u4e00-\u9fff]{2,3}", tc) and tc[0] in surnames:
+            return True
+        return False
 
     @filter.command("help")
     async def help(self, event: AstrMessageEvent, module: str | None = None):
@@ -581,9 +615,17 @@ class DududaCorePlugin(Star):
         query: str,
         original_text: str,
     ) -> str:
-        """@bot 查询课程/老师时，聚合评课社区评价 + 开课数据，用 LLM 综合分析输出。"""
+        """@bot 查询课程/老师时，聚合评课社区评价 + 开课数据，用 LLM 按用户语义自由回答。"""
         result = await self._search_course_expanded(query)
         items = result.get("items") or []
+        if not items:
+            # 清理后关键词仍可能带疑问残余，用更短的前缀再试
+            for frag in (query[:4], query[:3], query[:2]):
+                if len(frag) >= 2 and frag != query:
+                    result = await self._search_course_expanded(frag)
+                    items = result.get("items") or []
+                    if items:
+                        break
         if not items:
             return f"没在评课社区找到「{query}」，换个课程全名或老师名试试~"
 
@@ -596,53 +638,18 @@ class DududaCorePlugin(Star):
                 card = item
             cards.append(card)
 
-        # 判断更像“老师查询”还是“课程查询”
-        teacher_like = self._looks_like_teacher_query(query, cards)
-        analysis = await self._analyze_course_cards(query, cards, teacher_like)
+        analysis = await self._analyze_course_cards(query, original_text, cards)
         if not analysis:
-            # LLM 失败时回退到简单罗列
             return self._format_simple_integrated(query, cards)
-
-        catalog_lines: list[str] = []
-        for card in cards[:4]:
-            name = card.get("name") or ""
-            if not name:
-                continue
-            cam = await self._catalog_lookup(name)
-            if cam:
-                cap = cam.get("limit_count")
-                std = cam.get("std_count")
-                cap_txt = f"{std}/{cap}" if cap is not None else "容量未知"
-                t = self._catalog_time_text(cam)
-                loc = cam.get("campus_zh") or ""
-                catalog_lines.append(f"{name}：{t}｜{loc}｜{cap_txt}")
-        if catalog_lines:
-            analysis += "\n\n🕐 开课信息：\n" + "\n".join(catalog_lines[:4])
         return analysis
-
-    def _looks_like_teacher_query(self, query: str, cards: list[dict[str, Any]]) -> bool:
-        """若结果里多个课程集中在同一位老师、且查询词像人名，则按老师查询。"""
-        if not cards:
-            return False
-        teacher_names = [self._teacher_names(c) for c in cards if self._teacher_names(c)]
-        if not teacher_names:
-            return False
-        # 只出现在课程名里的次数判断：若查询词命中老师名字，视为老师查询
-        q = DududaCorePlugin._teacher_normalize(query)
-        for t in teacher_names:
-            if q and (q in DududaCorePlugin._teacher_normalize(t) or DududaCorePlugin._teacher_normalize(t) in q):
-                return True
-        # 若老师完全一致且不止一门课
-        uniq = {DududaCorePlugin._teacher_normalize(t) for t in teacher_names}
-        return len(uniq) == 1 and len(cards) >= 2
 
     async def _analyze_course_cards(
         self,
         query: str,
+        original_text: str,
         cards: list[dict[str, Any]],
-        teacher_query: bool,
     ) -> str | None:
-        """把多门课的评课数据喂给 LLM，用嘟嘟哒口吻输出综合分析、推荐与学习建议。"""
+        """把用户完整问句 + 评课数据 + 开课数据交给 LLM，按语义自由理解并回答。"""
         records: list[str] = []
         for idx, card in enumerate(cards, start=1):
             name = card.get("name") or "未知课程"
@@ -672,24 +679,47 @@ class DududaCorePlugin(Star):
                 + ("\n".join(review_lines) if review_lines else "（暂无可见评论正文）")
             )
 
-        mode_text = (
-            "用户查的是「这位老师」，请综合 TA 在各门课里的评价，总结这位老师的教学风格、给分、作业量、口碑，"
-            "再给出是否推荐选 TA 的课。"
-            if teacher_query
-            else "用户查的是「这门课程」，请按不同老师分别总结评价，对比后给出推荐（选哪位老师的课），"
-            "并给一些学习建议（如先修课程、平时怎么学）。"
-        )
+        # 开课数据并入数据块
+        catalog_lines: list[str] = []
+        for card in cards[:6]:
+            name = card.get("name") or ""
+            if not name:
+                continue
+            cam = await self._catalog_lookup(name)
+            if cam:
+                cap = cam.get("limit_count")
+                std = cam.get("std_count")
+                cap_txt = f"{std}/{cap}" if cap is not None else "容量未知"
+                t = self._catalog_time_text(cam)
+                loc = cam.get("campus_zh") or ""
+                catalog_lines.append(f"{name}：{t}｜{loc}｜已选/容量 {cap_txt}")
 
+        user_sentence = (original_text or query).strip()
         prompt = (
-            "[CourseData]\n" + "\n\n".join(records) + "\n[/CourseData]\n\n"
-            f"用户查询：{query}\n"
-            f"{mode_text}\n"
+            "[CourseData]\n" + "\n\n".join(records) + "\n[/CourseData]\n"
+        )
+        if catalog_lines:
+            prompt += "[OpenData]\n" + "\n".join(catalog_lines) + "\n[/OpenData]\n"
+        prompt += (
+            f"\n用户这样问你：{user_sentence}\n\n"
+            "请你像一个熟悉评课的学长/学姐一样，先理解用户这句话到底想问什么，再只根据上面两段数据回答。\n"
+            "根据用户问法，你可能需要回答下面一种或几种内容（由你自己判断，不用每种都答）：\n"
+            "- 选谁比较好：对比不同老师的评价，给出明确推荐和理由；\n"
+            "- 怎么学/难不难：结合难度、给分、作业等，给学习方法和建议（如先修课、平时练习、注意事项）；\n"
+            "- 什么时候上/在哪上/容量：客观给出上课时间地点和选课容量信息，不要臆测“有没有人抢”“还来不来得及”等；\n"
+            "- 某位老师怎么样：综合这位老师各门课的评价，总结教学风格、给分、作业量和口碑；\n"
+            "- 给分/作业/考试：针对用户关心的维度重点回答；\n"
+            "- 课程总体情况：综合评价、适合人群等。\n\n"
+            "重要注意：\n"
+            "- [CourseData] 是评课社区的历史评价（可能跨多个学期、多个班型），[OpenData] 是当前学期的开课信息；\n"
+            "  两者里的老师和班型可能对不上，这是正常的。回答时分别说明：评价上谁口碑好、这学期实际开课的有谁；\n"
+            "  不要推断“其他老师这学期没开课”或“只有某一位老师能选”这种结论，除非开课数据确实只列了一位。\n"
+            "- 老师名字要写全，不要省略或合并班型（A1/B3 等是不同班，别混为一谈）。\n"
             "要求：\n"
-            "1. 只根据 [CourseData] 里的公开评课内容，不要编造任何信息；\n"
-            "2. 用嘟嘟哒的口吻（可爱、轻松、聪明、认真），像给群友讲选课经验一样自然；\n"
-            "3. 简短，控制在 200 字以内，不需要列表堆砌，像聊天一样说完；\n"
-            "4. 数据不足时诚实说“公开评价还不多”，不要硬编；\n"
-            "5. 输出纯文字，不要 Markdown、不要 emoji 堆砌。"
+            "1. 只根据上面的公开数据回答，不要编造数据里没有的信息；数据不足就诚实说“公开评价还不多”；\n"
+            "2. 用嘟嘟哒的口吻（可爱、轻松、聪明、认真，偶尔带点小俏皮），像给群友分享经验一样自然；\n"
+            "3. 内容可以丰富一些，把该讲清楚的地方讲清楚，但不要啰嗦重复；\n"
+            "4. 输出纯文字，可以分段，不要 Markdown 符号，不要堆叠 emoji。"
         )
         try:
             provider = self.context.get_using_provider()
@@ -698,7 +728,7 @@ class DududaCorePlugin(Star):
             response = await provider.text_chat(
                 prompt=prompt,
                 system_prompt="你是嘟嘟哒，一个可爱、聪明、认真又有点早熟的小小 USTC 预备役，帮群友分析评课和选课。",
-                max_tokens=700,
+                max_tokens=900,
                 temperature=0.5,
             )
             text = (getattr(response, "completion_text", "") or "").strip()
