@@ -573,8 +573,21 @@ Branch: real-group-validation
   active timeout is 60 seconds. A group `419256533` Runtime preview returned HTTP 200 through Luna in
   23.516 seconds with a non-empty candidate, `delivery_ready`, `explicit_direct_reply`, zero Tool calls and
   `outputCalls=0`; `model_route_not_found` was absent.
-- Evidence boundary: this closes the model-route failure and proves no-send execution only. No new natural
-  message arrived in the target group during verification, so a real proactive QQ Delivery remains pending.
+- Evidence boundary: this closes the model-route failure and proves no-send execution only. Later natural
+  target-group attempts reached model completion but were suppressed as `rollout_admission_changed`, exposing
+  the independent Canary Send Guard defect recorded below.
+- Recorded: 2026-08-30
+
+- Command: `uv run --locked python -m unittest tests.unit.rollout.test_controlled_execution tests.contracts.test_astrbot_rollout`
+- Result: 15 focused tests passed in 1.998 seconds; focused Ruff and whitespace checks passed.
+- Evidence: a non-mentioned group request with the deterministic `proactive_group_participation` flag now
+  remains admitted through the persistent pre-send guard and records one successful delivery in the Fake
+  Output. The existing in-flight kill-switch case still suppresses delivery with zero sends.
+- Live deployment: the fixed package module was hot-loaded into the running Core and a replacement
+  `dududa/astrbot:local` image was built. AstrBot and NapCat both remained running with restart count 0.
+- Evidence boundary: three target-group messages immediately after reload landed before the first model
+  health refresh and failed without delivery. No later target-group message arrived during this verification
+  window, so a post-fix natural QQ Delivery receipt remains pending; no artificial group message was sent.
 - Recorded: 2026-08-30
 
 - Evidence source: isolated fixed AstrBot 4.26.2 candidate startup associated

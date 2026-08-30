@@ -383,8 +383,9 @@ Last sync: unix:1786706085
 - 随后用一条真实群内明确 @ 纯文本闭合 QQ 入站、2.0 claim、模型/MCP、单次 Delivery 和
   LONG 合并转发证据；readiness 与 Provider 单次成功不能代替这条用户可见验收。
 - 私聊、附件和其他群的未 `@` 主动参与继续保持静默且禁止回退 1.0。目标群的
-  bounded-history 自动搭话已接通，但尚未观察到一次自然概率命中的真实 Delivery；
-  Digest Source/Projection 和通用 Probe 仍需各自授权后实现。
+  bounded-history 自动搭话、模型健康和 Canary 发送复验已接通，但发送复验修复部署后
+  目标群暂时没有新消息，尚未观察到一次修复后的真实 Delivery；Digest Source/Projection
+  和通用 Probe 仍需各自授权后实现。
 - 继续观察 900 秒健康刷新周期；探测超时已从 15 秒提高到 60 秒，临时 `UNKNOWN` 不再覆盖
   TTL 内最后一次可用证据。当前思考深度仍是每个 Endpoint 的固定最低 `light/low`，不是同
   Endpoint 动态切换。

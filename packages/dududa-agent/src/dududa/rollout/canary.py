@@ -526,6 +526,10 @@ class _PersistentCanarySendGuard:
             admission = decide_rollout_admission(
                 self._request.connector_result,
                 control,
+                allow_proactive_group=self._request.options.feature_flags.get(
+                    "proactive_group_participation",
+                    False,
+                ),
             )
         except Exception:  # noqa: BLE001 - malformed live config denies send
             return "rollout_config_invalid"

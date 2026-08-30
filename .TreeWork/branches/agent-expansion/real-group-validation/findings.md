@@ -368,6 +368,11 @@ Branch: real-group-validation
   TTL 内的健康证据，导致 Static Router 暂时没有合法候选。Core 现在使用 60 秒探测超时，
   并在新探测仅为 `UNKNOWN` 时沿用尚未过期的最后可用证据；显式 `UNAVAILABLE` 和 TTL
   到期仍会正常撤销资格，没有放宽 Router 的资格过滤。
+- 路由恢复后，Rollout Ledger 将失败从毫秒级 `runtime_failed_without_delivery` 推进到模型
+  完成后的 `rollout_admission_changed`。初次 Admission 已显式允许群级主动参与，但持久
+  Canary Send Guard 复验时遗漏了同一标志，于是把合法的非 `@` 主动回复重新当作普通入站
+  拒绝。Guard 现在从已绑定到 `RuntimeStartRequest` 的布尔 Feature Flag 恢复同一语义；
+  revision、Canary mode、kill switch、delivery enabled 和 allowlist 复验保持不变。
 - 三档当前都固定为最低 `light/low`。没有证据支持 medium/high/xhigh 的运行质量，也没有
   实现同一 Endpoint 的逐请求动态思考深度切换。
 - 注入的 no-send 失败样本只证明收据脱敏和零 Output 行为，不代表真实 Endpoint

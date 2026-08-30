@@ -222,6 +222,40 @@ class ControlledExecutionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(runtime.run_calls, 1)
         self.assertEqual(runtime.ack_calls, 1)
 
+    async def test_proactive_canary_keeps_its_admission_at_send_guard(self) -> None:
+        fixture = OrchestratorFixture()
+        request, call = fixture.start(
+            mentioned=False,
+            feature_flags={"proactive_group_participation": True},
+        )
+        config = control(
+            allowlisted_group_ids=frozenset(
+                {request.connector_result.message.group_id}
+            )
+        )
+        controls = _MutableControls(config)
+        runtime = _RuntimeProxy(fixture.runtime)
+        coordinator = CanaryCoordinator(
+            runtime,
+            controls,
+            ledger(self.path, clock=lambda: NOW),
+            InMemoryRolloutMetrics(),
+            clock=lambda: NOW,
+        )
+        admission = decide_rollout_admission(
+            request.connector_result,
+            config,
+            allow_proactive_group=True,
+        )
+        claim = coordinator.claim(admission, request)
+        output = _OutputFactory()
+
+        result = await coordinator.execute(claim, request, output, call=call)
+
+        self.assertIs(result.disposition, CanaryExecutionDisposition.DELIVERED)
+        self.assertIs(result.ownership.state, RolloutOwnershipState.SUCCEEDED)
+        self.assertEqual(output.send_calls, 1)
+
     async def test_no_reply_keeps_its_reason_instead_of_generic_no_delivery(
         self,
     ) -> None:
