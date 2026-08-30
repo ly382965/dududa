@@ -96,14 +96,14 @@ describe('internal-test agent routes', () => {
         contextLengths: [
           { id: 'compact', messageLimit: 12, characterLimit: 6_000 },
           { id: 'standard', messageLimit: 30, characterLimit: 18_000 },
-          { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
+          { id: 'extended', messageLimit: 100, characterLimit: 36_000 },
         ],
         groupChatStyles: ['restrained', 'natural', 'lively', 'technical'],
-        proactiveFrequencies: [
-          { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
-          { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
-          { id: 'high', probability: 0.2, cooldownSeconds: 180, maximumPerHour: 8 },
-        ],
+        proactiveTalkLimits: {
+          probabilityPercent: { minimum: 0, maximum: 100, step: 1 },
+          cooldownSeconds: { minimum: 5, maximum: 1_800, step: 5 },
+          maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
+        },
         replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
         plugins: [],
         policyDefaults: {
@@ -114,7 +114,7 @@ describe('internal-test agent routes', () => {
           replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
           contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
           groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
-          proactiveTalk: { frequency: 'low' },
+          proactiveTalk: { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 },
           plugins: {},
         },
       }),
@@ -128,7 +128,7 @@ describe('internal-test agent routes', () => {
         replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
         contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
         groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
-        proactiveTalk: { frequency: 'low' },
+        proactiveTalk: { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 },
         plugins: {},
       }),
       saveAgentConfig: async (body) => ({
@@ -141,7 +141,7 @@ describe('internal-test agent routes', () => {
         replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
         contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
         groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
-        proactiveTalk: { frequency: 'low' },
+        proactiveTalk: { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 },
         plugins: {},
       }),
       respond,

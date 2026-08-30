@@ -38,7 +38,7 @@ import type {
   InternalTestEffectiveSelection,
   InternalTestGroupChatStyle,
   InternalTestPluginMode,
-  InternalTestProactiveFrequency,
+  InternalTestProactiveTalkSettings,
   InternalTestReasoningLevel,
   InternalTestReplyIntensity,
   InternalTestSelectionMode,
@@ -227,12 +227,6 @@ const groupChatStyleLabels: Record<InternalTestGroupChatStyle, string> = {
   technical: '技术型',
 }
 
-const proactiveFrequencyLabels: Record<InternalTestProactiveFrequency, string> = {
-  low: '低频',
-  normal: '正常',
-  high: '高频',
-}
-
 const tabs = [
   { id: 'conversation', label: '对话', icon: MessageSquareText },
   { id: 'run', label: '运行', icon: Activity },
@@ -396,9 +390,17 @@ function emitPolicy(patch: Partial<InternalTestAgentPolicy>): void {
   })
 }
 
-function updateProactiveFrequency(frequency: InternalTestProactiveFrequency): void {
+function updateProactiveTalk(
+  field: keyof InternalTestProactiveTalkSettings,
+  value: string,
+): void {
   if (!props.policy) return
-  emitPolicy({ proactiveTalk: { frequency } })
+  emitPolicy({
+    proactiveTalk: {
+      ...props.policy.proactiveTalk,
+      [field]: Number(value),
+    },
+  })
 }
 
 function updateAdaptiveMode(axis: AdaptiveAxis, mode: InternalTestSelectionMode): void {
@@ -899,26 +901,46 @@ watch(
               <div><dt>当前阶段</dt><dd>{{ runtimeControls.proactiveGroupParticipation.stage === 'probe_shadow' ? 'Probe Shadow' : 'Proactive Canary' }}</dd></div>
               <div><dt>消息交付</dt><dd>{{ runtimeControls.proactiveGroupParticipation.deliveryEnabled ? '已开启' : '关闭 / NO SEND' }}</dd></div>
               <div><dt>真实主动发言</dt><dd>{{ proactiveActuallyEnabled ? '已接通' : '未接通' }}</dd></div>
-              <div>
-                <dt>主动频率</dt>
-                <dd>
-                  <select
-                    :value="policy?.proactiveTalk.frequency ?? 'low'"
-                    :disabled="!policyEditable"
-                    aria-label="主动搭话频率"
-                    @change="updateProactiveFrequency(($event.target as HTMLSelectElement).value as InternalTestProactiveFrequency)"
-                  >
-                    <option
-                      v-for="frequency in catalog?.proactiveFrequencies ?? []"
-                      :key="frequency.id"
-                      :value="frequency.id"
-                    >
-                      {{ proactiveFrequencyLabels[frequency.id] }} · {{ Math.round(frequency.probability * 100) }}% · 冷却 {{ Math.round(frequency.cooldownSeconds / 60) }} 分钟 · {{ frequency.maximumPerHour }}/小时
-                    </option>
-                  </select>
-                </dd>
-              </div>
             </dl>
+            <label class="range-row">
+              <span>触发概率<strong>{{ policy?.proactiveTalk.probabilityPercent ?? 2 }}%</strong></span>
+              <input
+                type="range"
+                :min="catalog?.proactiveTalkLimits.probabilityPercent.minimum ?? 0"
+                :max="catalog?.proactiveTalkLimits.probabilityPercent.maximum ?? 100"
+                :step="catalog?.proactiveTalkLimits.probabilityPercent.step ?? 1"
+                :value="policy?.proactiveTalk.probabilityPercent ?? 2"
+                :disabled="!policyEditable"
+                aria-label="主动搭话触发概率"
+                @input="updateProactiveTalk('probabilityPercent', ($event.target as HTMLInputElement).value)"
+              >
+            </label>
+            <label class="range-row">
+              <span>冷却时间<strong>{{ policy?.proactiveTalk.cooldownSeconds ?? 1800 }} 秒</strong></span>
+              <input
+                type="range"
+                :min="catalog?.proactiveTalkLimits.cooldownSeconds.minimum ?? 5"
+                :max="catalog?.proactiveTalkLimits.cooldownSeconds.maximum ?? 1800"
+                :step="catalog?.proactiveTalkLimits.cooldownSeconds.step ?? 5"
+                :value="policy?.proactiveTalk.cooldownSeconds ?? 1800"
+                :disabled="!policyEditable"
+                aria-label="主动搭话冷却时间"
+                @input="updateProactiveTalk('cooldownSeconds', ($event.target as HTMLInputElement).value)"
+              >
+            </label>
+            <label class="range-row">
+              <span>每小时上限<strong>{{ policy?.proactiveTalk.maximumPerHour ?? 1 }} 次</strong></span>
+              <input
+                type="range"
+                :min="catalog?.proactiveTalkLimits.maximumPerHour.minimum ?? 1"
+                :max="catalog?.proactiveTalkLimits.maximumPerHour.maximum ?? 500"
+                :step="catalog?.proactiveTalkLimits.maximumPerHour.step ?? 1"
+                :value="policy?.proactiveTalk.maximumPerHour ?? 1"
+                :disabled="!policyEditable"
+                aria-label="主动搭话每小时上限"
+                @input="updateProactiveTalk('maximumPerHour', ($event.target as HTMLInputElement).value)"
+              >
+            </label>
             <p>{{ runtimeControls.proactiveGroupParticipation.summary }}</p>
           </article>
         </div>

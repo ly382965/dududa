@@ -131,7 +131,7 @@ Luna/Terra/Sol 也只能作为默认偏好，不能固化为 SHORT/MEDIUM/LONG �
 
 “上下文长度（运行预算）”只限制本轮送入模型的近期群聊历史，不是模型厂商声明的最大
 Context Window。`compact`、`standard`、`extended` 分别限制为 12 条/6,000 字符、
-30 条/18,000 字符、60 条/36,000 字符；每次 Run 的 `contextUsage` 返回
+30 条/18,000 字符、100 条/36,000 字符；每次 Run 的 `contextUsage` 返回
 `messageLimit`、`characterLimit`、`messagesRead` 和 `charactersRead`，同时解释预算上限和实际
 读取量。Run 还返回六项管理员初值、合法范围、实际选择、改选原因和实际调用插件；回答长度按钮
 只作为一次性 Run Hint，不写回长期模型策略。
@@ -407,7 +407,7 @@ Console 则是控制后台的正式配置与观测面；其配置必须由服务
 并按 `accountId + conversationId` 保存和恢复 Scope Policy。六项设置保持正交，管理员为各项
 配置初值、`allowed[]` 和 mode；`adaptive`、`preferred` 允许 Agent 每轮在合法范围内改选，
 只有显式 `locked` 才固定。上下文 `compact/standard/extended` 三档分别为 12/6,000、
-30/18,000、60/36,000 条消息/字符的运行预算，而不是模型最大 Context Window；每次 Run 返回
+30/18,000、100/36,000 条消息/字符的运行预算，而不是模型最大 Context Window；每次 Run 返回
 `contextUsage.messageLimit/characterLimit/messagesRead/charactersRead`、六项有效选择、reason
 codes 和实际插件状态。回复强度只影响候选决策，不能替代真实发送授权。
 
@@ -937,7 +937,7 @@ Tree revision 4 已完成以下 S21 变更；此列表保留为完成记录。S2
 9. Agent 超级工作台自适应纵切已完成：动态 Catalog、Scope Policy，以及模型档位、推理强度、
    回答长度、回复强度、上下文长度（运行预算）、群聊风格六项正交配置已接入前后端。管理员设置
    初值、`allowed[]` 和 mode，`adaptive/preferred` 允许每轮合法改选，只有 `locked` 固定；
-   上下文三档预算为 12/6,000、30/18,000、60/36,000 条消息/字符，并返回预算上限与实际读取量。
+   上下文三档预算为 12/6,000、30/18,000、100/36,000 条消息/字符，并返回预算上限与实际读取量。
    插件 `off/auto/on/locked` 及每轮有效选择解释也已接入；自动复读与现有 `/sub2api 自动查询`
    已完成默认关闭的源码、配置面和 Compose 装配；自动复读的 Web Policy Adapter 仍未接通；
    `/sub2api` 已解析在线 Scope；Reread 与 Sub2API 均由唯一 2.0 AstrBot 宿主加载，但不会因此

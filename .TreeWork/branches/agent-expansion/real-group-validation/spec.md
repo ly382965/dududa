@@ -138,7 +138,7 @@ provider's declared maximum Context Window. The initial budgets are:
 
 - `compact`: at most 12 recent messages and 6,000 characters;
 - `standard`: at most 30 recent messages and 18,000 characters;
-- `extended`: at most 60 recent messages and 36,000 characters.
+- `extended`: at most 100 recent messages and 36,000 characters.
 
 The server applies both limits, returns the selected budget and reports actual
 `messagesRead` and `charactersRead` usage. These values are operational
@@ -340,12 +340,14 @@ sampling decision, then enters the existing 2.0 Runtime with
 ResponsePlan override. The existing Canary ownership, authorization, Output
 Adapter and delivery receipt remain the only send path.
 
-`proactiveFrequency` is the separate operator frequency control for this slice;
-`replyIntensity` remains a per-Run participation preference and is not reused
-as a send probability. Initial pilot values are deliberately observable rather
-than learned: `low` uses a 2% sample, 30-minute cooldown and at most 1
-message/hour; `normal` uses 8%, 10 minutes and 3/hour; `high` uses 20%, 3
-minutes and 8/hour. `contextLength` selects the recent-message budget,
+`proactiveTalk.probabilityPercent`, `cooldownSeconds` and `maximumPerHour` are
+separate continuous operator controls for this slice; `replyIntensity` remains
+a per-Run participation preference and is not reused as a send probability.
+Their configured ranges are 0--100%, 5--1,800 seconds and 1--500 successful
+messages/hour. Existing `low/normal/high` records are migrated at the read
+boundary to 2%/1,800s/1, 8%/600s/3 and 20%/180s/8 respectively. The maximum
+endpoint is 100%/5s/500; it is an operator value, not a learned production
+default. `contextLength` selects the recent-message budget,
 additionally capped by the existing rollout text-byte limit. `groupChatStyle`
 is supplied as expression context. These settings do not alter facts,
 permissions or the send target. Automatic talk is always SHORT and group-level,

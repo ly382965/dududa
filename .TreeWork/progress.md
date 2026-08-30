@@ -11,6 +11,10 @@ Last sync: unix:1786717871
 
 ## Global Reality (current project reality and material corrections; not a branch table)
 
+- S23 的群级自动搭话控制已由固定 `low/normal/high` 改为可分别拖动的触发概率、
+  冷却和每小时上限，允许最大 100%/5 秒/500 次；主动历史扩展档最多读取 100 条。
+  `419256533` 保留旧 high 的等价 20%/180 秒/8 次并切到 extended，没有因开放
+  上限而自动采用最大值。旧档位仅作为现有持久配置的读取迁移输入。
 - S01-S11 foundations/runtime are integrated on `codex/s08-s11`; the Work Tree
   has also integrated and verified Production Shape, additive semantics, S12
   Unified MCP, S13 Capability, S14 Memory, S15 response/persona, S15A-S15E

@@ -138,7 +138,7 @@ describe('internal-test gateway', () => {
       contextLength: 'extended',
       groupChatStyle: 'technical',
       contextUsage: {
-        messageLimit: 60,
+        messageLimit: 100,
         characterLimit: 36_000,
         messagesRead: 2,
       },
@@ -427,20 +427,20 @@ describe('internal-test gateway', () => {
     expect(catalog.contextLengths).toEqual([
       { id: 'compact', messageLimit: 12, characterLimit: 6_000 },
       { id: 'standard', messageLimit: 30, characterLimit: 18_000 },
-      { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
+      { id: 'extended', messageLimit: 100, characterLimit: 36_000 },
     ])
     expect(catalog.groupChatStyles).toEqual(['restrained', 'natural', 'lively', 'technical'])
     expect(catalog.replyIntensityNotice).toContain('主动搭话频率')
-    expect(catalog.proactiveFrequencies).toEqual([
-      { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
-      { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
-      { id: 'high', probability: 0.2, cooldownSeconds: 180, maximumPerHour: 8 },
-    ])
+    expect(catalog.proactiveTalkLimits).toEqual({
+      probabilityPercent: { minimum: 0, maximum: 100, step: 1 },
+      cooldownSeconds: { minimum: 5, maximum: 1_800, step: 5 },
+      maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
+    })
     expect(catalog.policyDefaults).toMatchObject({
       replyIntensity: { mode: 'adaptive', preferred: 'normal' },
       contextLength: { mode: 'adaptive', preferred: 'standard' },
       groupChatStyle: { mode: 'adaptive', preferred: 'natural' },
-      proactiveTalk: { frequency: 'low' },
+      proactiveTalk: { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 },
       plugins: {
         'social.reread.auto': 'off',
         'sub2api.auto_query': 'off',
@@ -450,12 +450,14 @@ describe('internal-test gateway', () => {
     await expect(gateway.saveAgentConfig({
       scope: { accountId: 'bot-1', conversationId: 'group-42' },
       policy: {
+        proactiveTalk: { frequency: 'high' },
         plugins: {
           'social.reread.auto': 'auto',
           'sub2api.auto_query': 'on',
         },
       },
     })).resolves.toMatchObject({
+      proactiveTalk: { probabilityPercent: 20, cooldownSeconds: 180, maximumPerHour: 8 },
       plugins: {
         'social.reread.auto': 'auto',
         'sub2api.auto_query': 'on',
@@ -472,6 +474,7 @@ describe('internal-test gateway', () => {
         replyIntensity: { mode: 'preferred', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
         contextLength: { mode: 'locked', preferred: 'compact', allowed: ['compact', 'standard'] },
         groupChatStyle: { mode: 'locked', preferred: 'restrained', allowed: ['restrained', 'natural'] },
+        proactiveTalk: { probabilityPercent: 100, cooldownSeconds: 5, maximumPerHour: 500 },
         plugins: {
           'icourse.read': 'off',
           'image.generate.gpt-image-2': 'off',
@@ -489,6 +492,7 @@ describe('internal-test gateway', () => {
       replyIntensity: { mode: 'preferred', preferred: 'normal' },
       contextLength: { mode: 'locked', preferred: 'compact' },
       groupChatStyle: { mode: 'locked', preferred: 'restrained' },
+      proactiveTalk: { probabilityPercent: 100, cooldownSeconds: 5, maximumPerHour: 500 },
       plugins: {
         'icourse.read': 'off',
         'social.reread.auto': 'auto',
@@ -496,6 +500,11 @@ describe('internal-test gateway', () => {
       },
       updatedAt: '2026-08-17T08:00:00.000Z',
     })
+
+    await expect(reloaded.saveAgentConfig({
+      scope: { accountId: 'bot-1', conversationId: 'group-42' },
+      policy: { proactiveTalk: { probabilityPercent: 101 } },
+    })).rejects.toThrow('proactiveTalk.probabilityPercent 参数无效')
 
     await expect(reloaded.respond({
       accountId: 'bot-1',

@@ -4,6 +4,13 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-30 连续主动频率更新：Python 主动搭话契约 6/6、Web Server 10/10、
+  Workspace 12/12、TypeScript typecheck、production build、Ruff 和 whitespace
+  检查通过。最大端点测试证明 100% 概率下 4.999 秒仍受冷却限制、5 秒可再次进入，
+  扩展档向 NapCat 请求最多 100 条。Core 单插件热重载成功；AstrBot 与 NapCat
+  `RestartCount` 均保持 0。Web 单独重建后 Catalog 返回 0-100% / 5-1,800 秒 /
+  1-500 次三条滑块范围。目标 Scope 已迁移为 20%/180 秒/8 次每小时并切到
+  `extended`；本次未发送 QQ 测试消息。
 - 2026-08-30 自动搭话聚焦验证：Admission、Context、Social、Runtime、Rollout、
   历史投影与频率 46/46 通过；Web Workspace 12/12、Server 10/10、TypeScript
   typecheck 和 production build 通过。真实 AstrBot `Plain` 事件投影 smoke 通过，
@@ -453,7 +460,7 @@ Branch: real-group-validation
   Workspace QQ `sendMessage()` path.
 - Evidence: **上下文长度（运行预算）** applies the configured recent-history
   limits: compact 12 messages/6,000 characters, standard 30/18,000 and extended
-  60/36,000. The response reports `messagesRead` and `charactersRead`, and the
+  100/36,000. The response reports `messagesRead` and `charactersRead`, and the
   Console renders both the selected limit and actual usage. This is a per-Run
   history budget, not the Provider model's maximum Context Window.
 - Historical evidence at 2026-08-17: the Runtime status distinguished administrator intent from actual

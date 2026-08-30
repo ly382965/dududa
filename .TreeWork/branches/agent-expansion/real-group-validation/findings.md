@@ -6,7 +6,11 @@ Branch: real-group-validation
 
 - 自动搭话频率不能复用 `replyIntensity`。前者控制真实抽样、冷却和每小时上限，
   后者仍是单次 Run 的参与偏好；把两者合并会让管理员无法区分“更积极地表达”与
-  “更频繁地发送”。目标群因此使用独立 `proactiveTalk.frequency`。
+  “更频繁地发送”。目标群因此使用独立 `proactiveTalk` 数值策略；概率、冷却和
+  每小时上限由管理员分别拖动，旧 `low/normal/high` 只在读取边界迁移。
+- 主动控制器原有独立的 60 秒尝试间隔会让 5 秒冷却永远无法生效。尝试间隔现取
+  `min(60s, cooldownSeconds)`：普通配置仍不会因每条入站消息密集重试，最快配置
+  则可在 5 秒后再次尝试；每小时上限继续只统计成功发送。
 - 主动群聊不能通过伪造 `@Bot` 复用普通入口。NapCat 历史被投影为群级上下文后，
   Runtime 保留 `explicit_interaction=false`，Social Decision 使用无个人 target 的
   ACTIVE 群级路径；Tool、Memory 和个人 `@` 均关闭，最终仍复用 Canary、Output
@@ -133,7 +137,7 @@ Branch: real-group-validation
   合法候选或偏好，不能授予 Capability，也不意味着每轮必须调用。
 - 配置名统一为“上下文长度（运行预算）”。它只限制本轮送入模型的近期群聊历史，
   不是模型最大 Context Window；`compact/standard/extended` 分别应用
-  12/6,000、30/18,000、60/36,000 条消息/字符双上限，并用
+  12/6,000、30/18,000、100/36,000 条消息/字符双上限，并用
   `messagesRead/charactersRead` 报告本轮实际读取量。
 - Workspace SSE 采用单调 ID 加最近 512 条内存事件的有限补放即可解决本轮
   重连丢失；无需把内测 Web 扩展成持久消息队列。`Last-Event-ID` 可用时按序

@@ -123,15 +123,19 @@ class ProactiveTalkTests(unittest.IsolatedAsyncioTestCase):
                             },
                             "contextLength": {
                                 "mode": "locked",
-                                "preferred": "standard",
-                                "allowed": ["standard"],
+                                "preferred": "extended",
+                                "allowed": ["extended"],
                             },
                             "groupChatStyle": {
                                 "mode": "locked",
                                 "preferred": "natural",
                                 "allowed": ["natural"],
                             },
-                            "proactiveTalk": {"frequency": "normal"},
+                            "proactiveTalk": {
+                                "probabilityPercent": 8,
+                                "cooldownSeconds": 600,
+                                "maximumPerHour": 3,
+                            },
                             "plugins": {"social.proactive_talk": "locked"},
                         }
                     },
@@ -166,7 +170,7 @@ class ProactiveTalkTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(delivered)
         self.assertFalse(repeated)
         self.assertTrue(event.stopped)
-        self.assertEqual(history.calls, [(30, 6_500)])
+        self.assertEqual(history.calls, [(100, 7_500)])
         self.assertEqual(len(bridge.calls), 1)
         runtime_event, proactive = bridge.calls[0]
         self.assertTrue(proactive)
@@ -190,7 +194,56 @@ class ProactiveTalkTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(flags["response_profile.force_long"])
         self.assertFalse(flags["response_profile.force_short"])
         self.assertTrue(proactive.enabled)
-        self.assertEqual(proactive.frequency, "normal")
+        self.assertEqual(proactive.probability_percent, 8)
+        self.assertEqual(proactive.cooldown_seconds, 600)
+        self.assertEqual(proactive.maximum_per_hour, 3)
+
+    async def test_maximum_controls_allow_a_second_attempt_after_five_seconds(
+        self,
+    ) -> None:
+        payload = json.loads(self.path.read_text(encoding="utf-8"))
+        payload["policies"]["target"]["proactiveTalk"] = {
+            "probabilityPercent": 100,
+            "cooldownSeconds": 5,
+            "maximumPerHour": 500,
+        }
+        self.path.write_text(json.dumps(payload), encoding="utf-8")
+        history = _History()
+        bridge = _Bridge()
+        clock = _Clock()
+        controller = ProactiveTalkController(
+            bridge,
+            FileScopeAgentPolicyResolver(self.path),
+            history=history,
+            random_value=lambda: 0.999,
+            monotonic=clock,
+            event_factory=_ProactiveEvent,
+        )
+
+        first = await controller.maybe_handle(_Event())
+        clock.value += 4.999
+        too_soon = await controller.maybe_handle(_Event())
+        clock.value += 0.001
+        second = await controller.maybe_handle(_Event())
+
+        self.assertTrue(first)
+        self.assertFalse(too_soon)
+        self.assertTrue(second)
+        self.assertEqual(history.calls, [(100, 7_500), (100, 7_500)])
+
+    def test_legacy_frequency_is_migrated_at_the_read_boundary(self) -> None:
+        payload = json.loads(self.path.read_text(encoding="utf-8"))
+        payload["policies"]["target"]["proactiveTalk"] = {"frequency": "high"}
+        self.path.write_text(json.dumps(payload), encoding="utf-8")
+
+        proactive = FileScopeAgentPolicyResolver(self.path).proactive_talk_policy(
+            bot_id="bot-1",
+            group_id="group-1",
+        )
+
+        self.assertEqual(proactive.probability_percent, 20)
+        self.assertEqual(proactive.cooldown_seconds, 180)
+        self.assertEqual(proactive.maximum_per_hour, 8)
 
     def test_history_projection_is_ordered_bounded_and_deidentified(self) -> None:
         messages = [

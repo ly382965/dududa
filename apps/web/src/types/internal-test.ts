@@ -6,7 +6,6 @@ export type InternalTestPluginMode = 'off' | 'auto' | 'on' | 'locked'
 export type InternalTestReplyIntensity = 'quiet' | 'normal' | 'active'
 export type InternalTestContextLength = 'compact' | 'standard' | 'extended'
 export type InternalTestGroupChatStyle = 'restrained' | 'natural' | 'lively' | 'technical'
-export type InternalTestProactiveFrequency = 'low' | 'normal' | 'high'
 export type InternalTestVerdict = 'accepted' | 'rejected' | 'needs_review'
 
 export interface InternalTestAdaptiveSetting<T extends string> {
@@ -20,6 +19,12 @@ export interface InternalTestAgentScope {
   conversationId: string
 }
 
+export interface InternalTestProactiveTalkSettings {
+  probabilityPercent: number
+  cooldownSeconds: number
+  maximumPerHour: number
+}
+
 export interface InternalTestAgentPolicyDefaults {
   enabled: boolean
   modelTier: InternalTestAdaptiveSetting<InternalTestTier>
@@ -28,9 +33,7 @@ export interface InternalTestAgentPolicyDefaults {
   replyIntensity: InternalTestAdaptiveSetting<InternalTestReplyIntensity>
   contextLength: InternalTestAdaptiveSetting<InternalTestContextLength>
   groupChatStyle: InternalTestAdaptiveSetting<InternalTestGroupChatStyle>
-  proactiveTalk: {
-    frequency: InternalTestProactiveFrequency
-  }
+  proactiveTalk: InternalTestProactiveTalkSettings
   plugins: Record<string, InternalTestPluginMode>
 }
 
@@ -135,12 +138,11 @@ export interface InternalTestAgentCatalog {
     characterLimit: number
   }>
   groupChatStyles: InternalTestGroupChatStyle[]
-  proactiveFrequencies: Array<{
-    id: InternalTestProactiveFrequency
-    probability: number
-    cooldownSeconds: number
-    maximumPerHour: number
-  }>
+  proactiveTalkLimits: {
+    probabilityPercent: { minimum: number; maximum: number; step: number }
+    cooldownSeconds: { minimum: number; maximum: number; step: number }
+    maximumPerHour: { minimum: number; maximum: number; step: number }
+  }
   replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults

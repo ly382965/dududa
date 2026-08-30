@@ -12,10 +12,12 @@ Last sync: unix:1786706085
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
 - 2026-08-30 已在唯一 2.0 宿主为 `qq-3296147894:group:419256533`
-  启用 `social.proactive_talk`。每条合格普通群消息按独立频率抽样；命中后读取
-  NapCat 最近 12/30/60 条群历史并做群级别名投影，再以
-  `explicit_interaction=false` 进入现有 Runtime。目标群当前为 `normal`
-  （8%、10 分钟冷却、最多 3 次/小时）、`standard` 上下文和 `natural` 风格。
+  启用 `social.proactive_talk`。每条合格普通群消息按独立数值策略抽样；命中后读取
+  NapCat 最近 12/30/100 条群历史并做群级别名投影，再以
+  `explicit_interaction=false` 进入现有 Runtime。Web 已将固定频率档改为触发概率、
+  冷却秒数和每小时上限三条连续滑块，范围分别为 0-100%、5-1,800 秒和
+  1-500 次。目标群保留原 `high` 的等价值 20%/180 秒/8 次每小时，仅将上下文
+  改为 `extended`，群聊风格仍为 `natural`。
   主动路径固定 SHORT、关闭 Tool/Memory、无个人 `@`；普通明确 `@Bot` 路径在
   该 Scope 锁定 LONG。Web 显示执行器 online 和“本群已开启”。
 - 校车已从 `ustc-shuttle` MCP 迁移为 `astrbot_plugin_ustc_shuttle` 本地 owned
@@ -146,7 +148,7 @@ Last sync: unix:1786706085
   `off/auto/on/locked`，不因此获得 Capability 或强制每轮调用。
 - “上下文长度（运行预算）”控制本轮近期群聊历史，而不是模型最大 Context
   Window。`compact/standard/extended` 的消息/字符预算分别为
-  12/6,000、30/18,000 和 60/36,000；服务端同时返回 `messagesRead` 与
+  12/6,000、30/18,000 和 100/36,000；服务端同时返回 `messagesRead` 与
   `charactersRead`，前端展示预算上限和实际读取量。
 - 每次 Console Run 现在返回六项实际选择、reason codes、上下文使用量和插件
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
@@ -301,7 +303,7 @@ Last sync: unix:1786706085
   写入、Tool 调用或 Bandit 学习。
 - 完成实时 Agent Console 超级工作台纵切：新增动态 Catalog、Scope Policy 的
   读取/保存、六项正交配置、插件四态、实际 Runtime 行为状态和每轮有效选择解释；
-  上下文预算按 12/6,000、30/18,000、60/36,000 三档裁剪并回传实际使用量。
+  上下文预算按 12/6,000、30/18,000、100/36,000 三档裁剪并回传实际使用量。
   Workspace 聚焦测试 12 项、服务端聚焦测试 5 项、TypeScript 类型检查和 Web
   production build 均通过；build 仅保留既有 large-chunk warning。候选链继续
   报告 `outputCalls=0`、`memoryWrites=0`、`toolCalls=0`，未向 QQ 发送消息。

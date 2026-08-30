@@ -797,14 +797,14 @@ describe('useWorkspace account-scoped state', () => {
       contextLengths: [
         { id: 'compact', messageLimit: 12, characterLimit: 6_000 },
         { id: 'standard', messageLimit: 30, characterLimit: 18_000 },
-        { id: 'extended', messageLimit: 60, characterLimit: 36_000 },
+        { id: 'extended', messageLimit: 100, characterLimit: 36_000 },
       ],
       groupChatStyles: ['restrained', 'natural', 'lively', 'technical'],
-      proactiveFrequencies: [
-        { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
-        { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
-        { id: 'high', probability: 0.20, cooldownSeconds: 180, maximumPerHour: 8 },
-      ],
+      proactiveTalkLimits: {
+        probabilityPercent: { minimum: 0, maximum: 100, step: 1 },
+        cooldownSeconds: { minimum: 5, maximum: 1_800, step: 5 },
+        maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
+      },
       replyIntensityNotice: '候选决策初值；当前运行态为 NO SEND，不控制真实消息发送概率。',
       plugins: [{
         id: 'icourse',
@@ -827,7 +827,7 @@ describe('useWorkspace account-scoped state', () => {
         replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
         contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
         groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
-        proactiveTalk: { frequency: 'low' },
+        proactiveTalk: { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 },
         plugins: { icourse: 'off' },
       },
     }
@@ -841,7 +841,7 @@ describe('useWorkspace account-scoped state', () => {
       replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['quiet', 'normal', 'active'] },
       contextLength: { mode: 'preferred', preferred: 'standard', allowed: ['compact', 'standard', 'extended'] },
       groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['restrained', 'natural', 'lively', 'technical'] },
-      proactiveTalk: { frequency: 'normal' },
+      proactiveTalk: { probabilityPercent: 8, cooldownSeconds: 600, maximumPerHour: 3 },
       plugins: { icourse: 'auto' },
     }
     const response: InternalTestAgentResponse = {
@@ -855,7 +855,7 @@ describe('useWorkspace account-scoped state', () => {
       contextLength: 'extended',
       groupChatStyle: 'technical',
       contextUsage: {
-        messageLimit: 60,
+        messageLimit: 100,
         characterLimit: 36_000,
         messagesRead: 42,
         charactersRead: 8_640,
@@ -871,7 +871,7 @@ describe('useWorkspace account-scoped state', () => {
         contextLength: 'extended',
         groupChatStyle: 'technical',
         contextUsage: {
-          messageLimit: 60,
+          messageLimit: 100,
           characterLimit: 36_000,
           messagesRead: 42,
           charactersRead: 8_640,
@@ -972,8 +972,8 @@ describe('useWorkspace account-scoped state', () => {
       answerProfile: 'short',
     }))
     const request = respond.mock.calls[0]?.[0]
-    expect(request?.messages).toHaveLength(60)
-    expect(request?.messages[0]?.content).toBe('真实消息 11')
+    expect(request?.messages).toHaveLength(70)
+    expect(request?.messages[0]?.content).toBe('真实消息 1')
     expect(request?.messages.at(-1)?.content).toBe('真实消息 70')
     expect(workspace.answerProfileHint.value).toBeUndefined()
     expect(workspace.conversationSessions.value).toHaveLength(1)

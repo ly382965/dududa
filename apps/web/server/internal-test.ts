@@ -28,12 +28,16 @@ const PLUGIN_MODES = ['off', 'auto', 'on', 'locked'] as const
 const REPLY_INTENSITIES = ['quiet', 'normal', 'active'] as const
 const CONTEXT_LENGTHS = ['compact', 'standard', 'extended'] as const
 const GROUP_CHAT_STYLES = ['restrained', 'natural', 'lively', 'technical'] as const
-const PROACTIVE_FREQUENCIES = ['low', 'normal', 'high'] as const
 const CONTEXT_BUDGETS = {
   compact: { messageLimit: 12, characterLimit: 6_000 },
   standard: { messageLimit: 30, characterLimit: 18_000 },
-  extended: { messageLimit: 60, characterLimit: 36_000 },
+  extended: { messageLimit: 100, characterLimit: 36_000 },
 } as const satisfies Record<ContextLength, { messageLimit: number; characterLimit: number }>
+const PROACTIVE_TALK_LIMITS = {
+  probabilityPercent: { minimum: 0, maximum: 100, step: 1 },
+  cooldownSeconds: { minimum: 5, maximum: 1_800, step: 5 },
+  maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
+} as const
 
 export type ModelTier = 'haiku' | 'sonnet' | 'opus'
 export type AnswerProfile = keyof typeof PROFILE_TOKEN_LIMITS
@@ -43,7 +47,6 @@ export type PluginMode = typeof PLUGIN_MODES[number]
 export type ReplyIntensity = typeof REPLY_INTENSITIES[number]
 export type ContextLength = typeof CONTEXT_LENGTHS[number]
 export type GroupChatStyle = typeof GROUP_CHAT_STYLES[number]
-export type ProactiveFrequency = typeof PROACTIVE_FREQUENCIES[number]
 type ConversationType = 'group' | 'private'
 type FeedbackVerdict = 'accepted' | 'rejected' | 'needs_review'
 
@@ -58,6 +61,12 @@ export interface InternalTestAgentScope {
   conversationId: string
 }
 
+export interface ProactiveTalkSettings {
+  probabilityPercent: number
+  cooldownSeconds: number
+  maximumPerHour: number
+}
+
 export interface InternalTestAgentPolicyDefaults {
   enabled: boolean
   modelTier: AdaptiveSetting<ModelTier>
@@ -66,9 +75,7 @@ export interface InternalTestAgentPolicyDefaults {
   replyIntensity: AdaptiveSetting<ReplyIntensity>
   contextLength: AdaptiveSetting<ContextLength>
   groupChatStyle: AdaptiveSetting<GroupChatStyle>
-  proactiveTalk: {
-    frequency: ProactiveFrequency
-  }
+  proactiveTalk: ProactiveTalkSettings
   plugins: Record<string, PluginMode>
 }
 
@@ -125,12 +132,7 @@ export interface InternalTestAgentCatalog {
     characterLimit: number
   }>
   groupChatStyles: GroupChatStyle[]
-  proactiveFrequencies: Array<{
-    id: ProactiveFrequency
-    probability: number
-    cooldownSeconds: number
-    maximumPerHour: number
-  }>
+  proactiveTalkLimits: typeof PROACTIVE_TALK_LIMITS
   replyIntensityNotice: string
   plugins: InternalTestCatalogPlugin[]
   policyDefaults: InternalTestAgentPolicyDefaults
@@ -615,7 +617,9 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
       allowed: ['restrained', 'natural', 'lively', 'technical'],
     },
     proactiveTalk: {
-      frequency: 'low',
+      probabilityPercent: 2,
+      cooldownSeconds: 1_800,
+      maximumPerHour: 1,
     },
     plugins: {
       'icourse.read': 'off',
@@ -846,11 +850,7 @@ function buildAgentCatalog(
     replyIntensities: [...REPLY_INTENSITIES],
     contextLengths: CONTEXT_LENGTHS.map((id) => ({ id, ...CONTEXT_BUDGETS[id] })),
     groupChatStyles: [...GROUP_CHAT_STYLES],
-    proactiveFrequencies: [
-      { id: 'low', probability: 0.02, cooldownSeconds: 1_800, maximumPerHour: 1 },
-      { id: 'normal', probability: 0.08, cooldownSeconds: 600, maximumPerHour: 3 },
-      { id: 'high', probability: 0.20, cooldownSeconds: 180, maximumPerHour: 8 },
-    ],
+    proactiveTalkLimits: PROACTIVE_TALK_LIMITS,
     replyIntensityNotice: '本轮参与倾向；不会替代独立的主动搭话频率、冷却和每小时上限。',
     plugins: catalogPlugins(runtimeReady),
     policyDefaults: defaultPolicyDefaults(),
@@ -1134,24 +1134,69 @@ function normalizeAgentPolicy(
       GROUP_CHAT_STYLES,
       'groupChatStyle',
     ),
-    proactiveTalk: {
-      frequency: proactiveFrequency(
-        objectValue(policy.proactiveTalk ?? policy.proactive_talk)?.frequency,
-        current.proactiveTalk.frequency,
-      ),
-    },
+    proactiveTalk: proactiveTalkSettings(
+      policy.proactiveTalk ?? policy.proactive_talk,
+      current.proactiveTalk,
+    ),
     plugins,
     ...(updatedAt ? { updatedAt } : {}),
   }
 }
 
-function proactiveFrequency(value: unknown, fallback: ProactiveFrequency): ProactiveFrequency {
-  const frequency = stringValue(value)?.toLowerCase()
-  if (!frequency) return fallback
-  if (PROACTIVE_FREQUENCIES.includes(frequency as ProactiveFrequency)) {
-    return frequency as ProactiveFrequency
+function proactiveTalkSettings(
+  value: unknown,
+  fallback: ProactiveTalkSettings,
+): ProactiveTalkSettings {
+  const proactive = objectValue(value)
+  if (!proactive) return fallback
+  const legacy = legacyProactiveTalkSettings(proactive.frequency)
+  return {
+    probabilityPercent: proactiveInteger(
+      proactive.probabilityPercent,
+      legacy?.probabilityPercent ?? fallback.probabilityPercent,
+      PROACTIVE_TALK_LIMITS.probabilityPercent,
+      'probabilityPercent',
+    ),
+    cooldownSeconds: proactiveInteger(
+      proactive.cooldownSeconds,
+      legacy?.cooldownSeconds ?? fallback.cooldownSeconds,
+      PROACTIVE_TALK_LIMITS.cooldownSeconds,
+      'cooldownSeconds',
+    ),
+    maximumPerHour: proactiveInteger(
+      proactive.maximumPerHour,
+      legacy?.maximumPerHour ?? fallback.maximumPerHour,
+      PROACTIVE_TALK_LIMITS.maximumPerHour,
+      'maximumPerHour',
+    ),
   }
-  throw new InternalTestError('proactiveTalk.frequency 参数无效')
+}
+
+function legacyProactiveTalkSettings(value: unknown): ProactiveTalkSettings | undefined {
+  const frequency = stringValue(value)?.toLowerCase()
+  if (frequency === 'low') return { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 }
+  if (frequency === 'normal') return { probabilityPercent: 8, cooldownSeconds: 600, maximumPerHour: 3 }
+  if (frequency === 'high') return { probabilityPercent: 20, cooldownSeconds: 180, maximumPerHour: 8 }
+  return undefined
+}
+
+function proactiveInteger(
+  value: unknown,
+  fallback: number,
+  limits: { minimum: number; maximum: number; step: number },
+  label: string,
+): number {
+  if (value === undefined || value === null) return fallback
+  if (
+    typeof value !== 'number'
+    || !Number.isInteger(value)
+    || value < limits.minimum
+    || value > limits.maximum
+    || (value - limits.minimum) % limits.step !== 0
+  ) {
+    throw new InternalTestError(`proactiveTalk.${label} 参数无效`)
+  }
+  return value
 }
 
 function feedbackVerdict(value: unknown): FeedbackVerdict {

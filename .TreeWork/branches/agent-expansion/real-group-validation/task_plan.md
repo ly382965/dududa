@@ -117,7 +117,7 @@ Title: S23 Authorized Real-Group Validation
   和 `allowed`，不会永久固定 Agent，只有显式 `locked` 才禁止本轮改选。
 - [x] 上下文长度仅控制本轮送入模型的近期群聊历史预算，不表示模型最大 Context
   Window；`compact/standard/extended` 分别限制为 12/6,000、30/18,000、
-  60/36,000 条消息/字符，并回传 `messagesRead` 与 `charactersRead`。
+  100/36,000 条消息/字符，并回传 `messagesRead` 与 `charactersRead`。
 - [x] 插件统一支持 `off/auto/on/locked`；状态只改变通过 Core 资格过滤后的候选
   集合或偏好，不授予 Capability，也不要求每轮调用。
 - [x] 六项设置保持正交；每次 Run 返回管理员初值、`allowed`、实际选择、上下文
@@ -166,8 +166,8 @@ Title: S23 Authorized Real-Group Validation
   target/mention, Memory access, auto-follow-up or send after no response.
 - [x] The authorized `419256533` pilot Scope can enable Dududa 2.0 automatic
   group participation independently of automatic reread. It reads bounded
-  NapCat history, uses separate `proactiveFrequency` sampling/cooldown/hourly
-  quota without changing `replyIntensity`,
+  NapCat history, uses separately adjustable probability/cooldown/hourly quota
+  without changing `replyIntensity`,
   fixes proactive output to SHORT without a personal mention, and keeps LONG
   available only on the explicit `@Bot` entrypoint.
 - [ ] Every safety maximum remains zero; frozen latency/cost/quality measures,

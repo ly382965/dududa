@@ -7,7 +7,6 @@ import random
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any
 
 from dududa.rollout import CanaryExecutionDisposition
@@ -18,22 +17,10 @@ from .agent_policy import FileScopeAgentPolicyResolver, GroupProactiveTalkPolicy
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class ProactiveFrequencyBudget:
-    probability: float
-    cooldown_seconds: float
-    maximum_per_hour: int
-
-
-_FREQUENCY_BUDGETS = {
-    "low": ProactiveFrequencyBudget(0.02, 30 * 60, 1),
-    "normal": ProactiveFrequencyBudget(0.08, 10 * 60, 3),
-    "high": ProactiveFrequencyBudget(0.20, 3 * 60, 8),
-}
 _CONTEXT_BUDGETS = {
     "compact": (12, 3_500),
     "standard": (30, 6_500),
-    "extended": (60, 7_500),
+    "extended": (100, 7_500),
 }
 _ATTACHMENT_COMPONENTS = frozenset({"Image", "Record", "Video", "File"})
 
@@ -151,7 +138,8 @@ class ProactiveTalkController:
         )
         if not policy.enabled:
             return False
-        budget = _FREQUENCY_BUDGETS[policy.frequency]
+        probability = policy.probability_percent / 100
+        attempt_interval = min(60.0, float(policy.cooldown_seconds))
         now = self._monotonic()
         async with self._lock:
             sent = self._sent_at[group_id]
@@ -159,10 +147,11 @@ class ProactiveTalkController:
                 sent.popleft()
             if (
                 group_id in self._in_flight
-                or len(sent) >= budget.maximum_per_hour
-                or (sent and now - sent[-1] < budget.cooldown_seconds)
-                or now - self._last_attempt.get(group_id, float("-inf")) < 60
-                or self._random_value() >= budget.probability
+                or len(sent) >= policy.maximum_per_hour
+                or (sent and now - sent[-1] < policy.cooldown_seconds)
+                or now - self._last_attempt.get(group_id, float("-inf"))
+                < attempt_interval
+                or self._random_value() >= probability
             ):
                 return False
             self._in_flight.add(group_id)
@@ -196,9 +185,9 @@ class ProactiveTalkController:
             if callable(stop_event):
                 stop_event()
             logger.info(
-                "Dududa 2.0 proactive talk delivered: group=%s frequency=%s history=%d",
+                "Dududa 2.0 proactive talk delivered: group=%s probability=%d history=%d",
                 group_id,
-                policy.frequency,
+                policy.probability_percent,
                 len(lines),
             )
             return True
@@ -336,7 +325,6 @@ def _integer(value: object) -> int:
 
 __all__ = [
     "AstrBotGroupHistoryProvider",
-    "ProactiveFrequencyBudget",
     "ProactiveTalkController",
     "ProactiveTalkEvent",
     "proactive_prompt",

@@ -13,7 +13,6 @@ SCOPE_AGENT_ENABLED_FLAG = "scope_agent_enabled"
 PROACTIVE_TALK_PLUGIN_ID = "social.proactive_talk"
 _ENABLED_PLUGIN_MODES = frozenset({"auto", "on", "locked"})
 _ANSWER_PROFILES = frozenset({"short", "medium", "long"})
-_PROACTIVE_FREQUENCIES = frozenset({"low", "normal", "high"})
 _CONTEXT_LENGTHS = frozenset({"compact", "standard", "extended"})
 _GROUP_CHAT_STYLES = frozenset({"restrained", "natural", "lively", "technical"})
 _PLUGIN_CAPABILITY_CATEGORIES: Mapping[str, str] = {
@@ -28,7 +27,9 @@ _PLUGIN_CAPABILITY_CATEGORIES: Mapping[str, str] = {
 @dataclass(frozen=True, slots=True)
 class GroupProactiveTalkPolicy:
     enabled: bool
-    frequency: str
+    probability_percent: int
+    cooldown_seconds: int
+    maximum_per_hour: int
     context_length: str
     group_chat_style: str
 
@@ -74,7 +75,14 @@ class FileScopeAgentPolicyResolver:
         bot_id: str,
         group_id: str,
     ) -> GroupProactiveTalkPolicy:
-        disabled = GroupProactiveTalkPolicy(False, "low", "compact", "natural")
+        disabled = GroupProactiveTalkPolicy(
+            False,
+            probability_percent=2,
+            cooldown_seconds=1_800,
+            maximum_per_hour=1,
+            context_length="compact",
+            group_chat_style="natural",
+        )
         try:
             payload = json.loads(self._path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
@@ -91,10 +99,24 @@ class FileScopeAgentPolicyResolver:
         proactive = record.get("proactiveTalk")
         if not isinstance(proactive, dict):
             proactive = {}
-        frequency = _choice(
-            proactive.get("frequency"),
-            _PROACTIVE_FREQUENCIES,
-            "low",
+        legacy_defaults = _legacy_proactive_defaults(proactive.get("frequency"))
+        probability_percent = _bounded_integer(
+            proactive.get("probabilityPercent"),
+            default=legacy_defaults[0],
+            minimum=0,
+            maximum=100,
+        )
+        cooldown_seconds = _bounded_integer(
+            proactive.get("cooldownSeconds"),
+            default=legacy_defaults[1],
+            minimum=5,
+            maximum=1_800,
+        )
+        maximum_per_hour = _bounded_integer(
+            proactive.get("maximumPerHour"),
+            default=legacy_defaults[2],
+            minimum=1,
+            maximum=500,
         )
         context_length = _adaptive_preferred(
             record.get("contextLength"),
@@ -108,7 +130,9 @@ class FileScopeAgentPolicyResolver:
         )
         return GroupProactiveTalkPolicy(
             True,
-            frequency,
+            probability_percent,
+            cooldown_seconds,
+            maximum_per_hour,
             context_length,
             group_chat_style,
         )
@@ -184,6 +208,26 @@ def _adaptive_preferred(
 def _choice(value: object, choices: frozenset[str], default: str) -> str:
     normalized = str(value or "").strip().lower()
     return normalized if normalized in choices else default
+
+
+def _legacy_proactive_defaults(value: object) -> tuple[int, int, int]:
+    return {
+        "low": (2, 1_800, 1),
+        "normal": (8, 600, 3),
+        "high": (20, 180, 8),
+    }.get(str(value or "").strip().lower(), (2, 1_800, 1))
+
+
+def _bounded_integer(
+    value: object,
+    *,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return default
+    return value if minimum <= value <= maximum else default
 
 
 __all__ = [
