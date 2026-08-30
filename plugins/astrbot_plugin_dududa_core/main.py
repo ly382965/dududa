@@ -189,6 +189,9 @@ class DududaCorePlugin(Star):
             if self._is_at_bot(event):
                 tc = self._extract_teacher_course(text)
                 if tc and self._looks_like_course_intent(text, tc):
+                    # AI 审查：确认这真的是课程/老师查询，避免"有课表了吗"等闲聊误触发
+                    if not await self._ai_confirm_course_intent(text):
+                        return
                     try:
                         reply = await self._answer_teacher_course_integrated(tc, text)
                     except Exception as exc:
@@ -350,11 +353,13 @@ class DududaCorePlugin(Star):
         """判断 @bot 消息是否像在问课程/老师，避免干扰其他功能。"""
         if not text:
             return False
-        # 课程信号词：消息含这些词才认为是课程查询
+        # 精准信号：双字以上的课程查询意图词（去掉单个"课"字，避免"课表/上课/下课"误触发）
         signals = (
-            "课", "老师", "选课", "评课", "评价", "给分", "作业",
-            "难度", "难不难", "怎么学", "什么时候上", "上课", "怎么样", "好不好",
-            "考试", "学分", "学时", "哪位", "哪个", "班型", "系列", "教材", "先修",
+            "选课", "选什么课", "哪门课", "这门课", "那个课", "评课", "评价",
+            "给分", "作业多", "作业少", "难度", "难不难", "怎么学", "什么时候上",
+            "上课时间", "考试", "学分", "学时", "哪位老师", "哪个老师", "老师好",
+            "老师怎么样", "推荐老师", "班型", "系列", "教材", "先修", "好不好过",
+            "学谁", "谁教", "谁教得好", "怎么样",
         )
         if any(w in text for w in signals):
             return True
@@ -368,6 +373,32 @@ class DududaCorePlugin(Star):
         if re.fullmatch(r"[\u4e00-\u9fff]{2,3}", tc) and tc[0] in surnames:
             return True
         return False
+
+    async def _ai_confirm_course_intent(self, text: str) -> bool:
+        """AI 审查：确认消息真的是在问课程/老师，而不是闲聊。"""
+        prompt = (
+            f'用户消息："{text}"\n\n'
+            "请判断这条消息是不是在向机器人查询课程相关信息（例如：问某门课怎么样、"
+            "选哪位老师好、上课时间地点、课程难度给分、某位老师的评价等）。\n"
+            "如果是在问课程/老师，只回复「是」；如果是闲聊、寒暄、询问课表有无、"
+            "或其他与课程查询无关的内容，只回复「否」。\n"
+            "只回复一个字。"
+        )
+        try:
+            provider = self.context.get_using_provider()
+            if not provider:
+                return True
+            response = await provider.text_chat(
+                prompt=prompt,
+                system_prompt="你是意图判断器，只回复「是」或「否」。",
+                max_tokens=10,
+                temperature=0,
+            )
+            result = (getattr(response, "completion_text", "") or "").strip()
+            return result.startswith("是")
+        except Exception as exc:
+            logger.warning("Course intent AI review failed: %s", exc)
+            return True
 
     @filter.command("help")
     async def help(self, event: AstrMessageEvent, module: str | None = None):
