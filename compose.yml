@@ -26,6 +26,7 @@ services:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ./plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
       - ./plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
+      - ./plugins/astrbot_plugin_reply_review:/AstrBot/data/plugins/astrbot_plugin_reply_review:ro
       - ./plugins/astrbot_plugin_target_talk:/AstrBot/data/plugins/astrbot_plugin_target_talk:ro
       - ./plugins/astrbot_plugin_proactive_chatter:/AstrBot/data/plugins/astrbot_plugin_proactive_chatter:ro
       - ./plugins/astrbot_plugin_weather:/AstrBot/data/plugins/astrbot_plugin_weather:ro
