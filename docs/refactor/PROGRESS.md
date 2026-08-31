@@ -7,8 +7,8 @@
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
 - S01–S22 的既定本地/离线范围均已完成并验证；S23A–S23E 私有历史语料离线 Demo 已完成。
-  S23 现已进入首个实时入站切换阶段，但整体仍为部分完成，分支尚未合并，真实 QQ 端到端
-  回复与人工体验仍待验证。
+  S23 现已进入首个实时入站切换阶段；相关 2.0 代码已进入本地 `main`，但整体仍为部分完成，
+  真实 QQ 端到端回复与人工体验仍待验证。
 - 2026-08-26 已将 Dududa 1.0 AstrBot 完全移出运行面；它只以私有备份/回滚资产存在，不再
   作为 `off/shadow` 兼容所有者。`dududa-astrbot-1` 是唯一 Agent Runtime 宿主，Canary 的
   持久 claim 只用于 2.0 的单一发送所有权，不代表新旧 Runtime 并行。
@@ -172,7 +172,7 @@ digest、离线能力）在 PR 前提交 `2b23a62` 已可复现；`joblib` 缺�
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 75 题 Runtime/Fake Delivery 为 75/75、宿主内存入口为 75/75、人工终审 49/75 完整；三模型在运行宿主可调用；目标群五项校园查询已启用并完成 no-send 耦合抽样 | 先处理并验证宿主并发顺序，再用一条真实群消息闭合 QQ 端到端收发和 LONG 转发；随后补多步 Tool 与可信失败。私聊、附件、未 @ 主动参与、真实来源/日报/Probe、Memory、在线 Bandit 仍未接通 |
+| S23 Real Group Validation | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 75 题 Runtime/Fake Delivery 为 75/75、宿主内存入口为 75/75、人工终审 49/75 完整；三模型在运行宿主可调用；目标群五项校园查询已启用并完成 no-send 耦合抽样；相关 2.0 代码已进入本地 `main` | 先处理并验证宿主并发顺序，再用一条真实群消息闭合 QQ 端到端收发和 LONG 转发；随后补多步 Tool 与可信失败。私聊、附件、未 @ 主动参与、真实来源/日报/Probe、Memory、在线 Bandit 仍未接通 |
 
 ## 产品模块完成度
 

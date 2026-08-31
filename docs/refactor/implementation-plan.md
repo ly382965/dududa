@@ -273,7 +273,7 @@ Memory、附件和生产 Tool Rollout 仍按各模块独立门禁判断。授权
 | S19、S22 | **均已完成并验证（离线）** | S19 18/18 gate 通过；S22 删除十个路径别名和专用 iCourse Client，保留七个 live surface，并冻结精确 S19 归档 | Manifest v2、真实 Provider/source/QQ 和人工质量继续作为独立门禁 |
 | S20 | **已完成（离线）** | Decision/execution/feedback 绑定、完整 behavior/evaluation action support、Router planned baseline、严格 propensity、Decimal IPS/SNIPS/DR/ESS 和四样本可重放 Golden 已通过 | 不训练、不接生产 Worker、不做 Shadow/live exploration，且不阻塞 S23 |
 | S21 | **已完成、已验证（离线）** | Foundation、Group Onboarding、Governed Operations 与 Completion Audit 均通过；管理员可用 Fake join/service 选择初始 Profile，Runtime 读取不可变 Assignment，运维页只呈现 Core 投影，Agent 路径不直发 NapCat | 生产 HTTP/身份、真实健康、真实 Provider/Source/Projection/Output、人工质量和真实 QQ 操作仍属于 S23 外部门禁 |
-| S23 | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 既有 manifest/Demo/Console/iCourse 纵切之上，三模型真实可调用；75 题 Runtime/Fake Delivery 为 75/75，AstrBot 内存宿主入口 75/75，人工终审 49/75 完整；所有群明确 `@Bot` 的受支持消息由 2.0 接管，五项校园查询已完成 no-send 单步耦合抽样 | 分支尚未合并；先修复/验证宿主并发顺序，再补一条真实 QQ 端到端回复/合并转发证据。Capability 多步/跨能力规划、可信失败、私聊、附件、未 @ 主动参与、真实来源、日报/Probe、`gpt-image-2` 和在线 Bandit 仍未完成 |
+| S23 | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 既有 manifest/Demo/Console/iCourse 纵切之上，三模型真实可调用；75 题 Runtime/Fake Delivery 为 75/75，AstrBot 内存宿主入口 75/75，人工终审 49/75 完整；所有群明确 `@Bot` 的受支持消息由 2.0 接管，五项校园查询已完成 no-send 单步耦合抽样；相关 2.0 代码已进入本地 `main` | 先修复/验证宿主并发顺序，再补一条真实 QQ 端到端回复/合并转发证据。Capability 多步/跨能力规划、可信失败、私聊、附件、未 @ 主动参与、真实来源、日报/Probe、`gpt-image-2` 和在线 Bandit 仍未完成 |
 
 ### 公共开工门禁
 
