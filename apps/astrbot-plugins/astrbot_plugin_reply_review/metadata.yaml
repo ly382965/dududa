@@ -1,12 +1,11 @@
 name: astrbot_plugin_reply_review
-display_name: 发言审查
-desc: 在机器人发言发送前审查是否符合上下文语境，不合适则用 LLM 改写后再发送。
+display_name: 回复审校策略
+desc: Dududa 2.0 无副作用审校策略资产；等待受预算的 secondary-review Port 接入
 help: |
-  插件挂载在结果装饰阶段，覆盖所有机器人发言（闲聊、课程回复、日程提醒等）。
-  审查通过则原样发送，不通过则改写为更贴合语境的内容。
-  可在插件配置页调整开关、审查长度范围和改写温度。
-version: v0.1.0
+  当前版本不监听消息、不直接调用模型，也不改写 AstrBot 结果链。
+  它仅提供候选判定、保守审校请求和失败时保留原答的纯策略接口。
+version: v0.2.0
 author: mmdustc
-repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_reply_review
+repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_reply_review
 support_platforms:
   - aiocqhttp

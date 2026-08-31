@@ -14,8 +14,11 @@ CORE_CONFIG = "astrbot_plugin_dududa_core_config.json"
 REREAD_CONFIG = "astrbot_plugin_reread_config.json"
 PLUGIN_SET = [
     "astrbot_plugin_dududa_core",
+    "astrbot_plugin_proactive_chatter",
+    "astrbot_plugin_reply_review",
     "astrbot_plugin_sub2api_readonly",
     "astrbot_plugin_reread",
+    "astrbot_plugin_weather",
 ]
 MODELS = (
     (

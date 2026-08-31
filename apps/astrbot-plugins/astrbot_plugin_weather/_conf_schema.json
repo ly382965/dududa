@@ -1,27 +1,8 @@
 {
   "enabled": {
-    "description": "??????",
+    "description": "允许加载天气只读适配器资产",
     "type": "bool",
-    "default": false
-  },
-  "xingning_group": {
-    "description": "?????????????",
-    "type": "string",
-    "default": "901226396"
-  },
-  "extra_groups": {
-    "description": "???????",
-    "type": "list",
-    "item_type": "string",
-    "default": []
-  },
-  "xingning_groups": {
-    "description": "???????????????",
-    "type": "list",
-    "item_type": "string",
-    "default": [
-      "901226396",
-      "1061090893"
-    ]
+    "default": false,
+    "hint": "默认关闭；启用插件不等于授予 Dududa Capability，实际可用范围由 2.0 Runtime 策略决定。"
   }
 }

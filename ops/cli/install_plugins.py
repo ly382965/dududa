@@ -13,9 +13,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 LOCK_PATH = REPO_ROOT / "third_party" / "plugins.lock.json"
 OWNED_PLUGIN_PATHS = (
     "apps/astrbot-plugins/astrbot_plugin_dududa_core",
+    "apps/astrbot-plugins/astrbot_plugin_proactive_chatter",
     "apps/astrbot-plugins/astrbot_plugin_reread",
+    "apps/astrbot-plugins/astrbot_plugin_reply_review",
     "apps/astrbot-plugins/astrbot_plugin_sub2api_readonly",
     "apps/astrbot-plugins/astrbot_plugin_ustc_shuttle",
+    "apps/astrbot-plugins/astrbot_plugin_weather",
 )
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 MARKER_PATH_ALIASES = {

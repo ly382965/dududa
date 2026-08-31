@@ -15,6 +15,11 @@ from astrbot_plugin_dududa_core.adapters.proactive_talk import (
     project_history_lines,
 )
 from astrbot_plugin_dududa_core.rollout_bridge import AstrBotBridgeAction
+from astrbot_plugin_proactive_chatter.policy import (
+    BOT_INTERACTION,
+    ECHO_FLOOD,
+    proactive_context_skip_reason,
+)
 from dududa.rollout import CanaryExecutionDisposition
 
 from tests.unit.rollout.helpers import connector
@@ -29,12 +34,17 @@ class _Clock:
 
 
 class _History:
-    def __init__(self) -> None:
+    def __init__(self, lines: tuple[str, ...] | None = None) -> None:
         self.calls: list[tuple[int, int]] = []
+        self.lines = lines or (
+            "成员1：明天早八",
+            "成员2：太痛苦了",
+            "成员1：还是得起床",
+        )
 
     async def recent_lines(self, event, *, message_limit, byte_limit):
         self.calls.append((message_limit, byte_limit))
-        return ("成员1：明天早八", "成员2：太痛苦了", "成员1：还是得起床")
+        return self.lines
 
 
 class _Bridge:
@@ -297,6 +307,42 @@ class ProactiveTalkTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("不要@任何人", prompt)
         self.assertIn("成员2：晚上好", prompt)
         self.assertIn("群聊表达风格：natural", prompt)
+
+    def test_context_policy_classifies_echo_and_other_bot_interaction(self) -> None:
+        self.assertEqual(
+            proactive_context_skip_reason(
+                ("成员1：+1", "成员2：+1", "成员3：+1")
+            ),
+            ECHO_FLOOD,
+        )
+        self.assertEqual(
+            proactive_context_skip_reason(
+                ("成员1：/签到", "成员2：今日运势", "成员3：/抽签")
+            ),
+            BOT_INTERACTION,
+        )
+        self.assertIsNone(
+            proactive_context_skip_reason(
+                ("成员1：明天早八", "成员2：太痛苦了", "成员1：还是得起床")
+            )
+        )
+
+    async def test_context_policy_stops_echo_before_entering_runtime(self) -> None:
+        history = _History(("成员1：+1", "成员2：+1", "成员3：+1"))
+        bridge = _Bridge()
+        controller = ProactiveTalkController(
+            bridge,
+            FileScopeAgentPolicyResolver(self.path),
+            history=history,
+            random_value=lambda: 0.0,
+            event_factory=_ProactiveEvent,
+        )
+
+        delivered = await controller.maybe_handle(_Event())
+
+        self.assertFalse(delivered)
+        self.assertEqual(history.calls, [(100, 7_500)])
+        self.assertEqual(bridge.calls, [])
 
 
 if __name__ == "__main__":

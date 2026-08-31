@@ -167,6 +167,15 @@ class ProactiveTalkController:
             )
             if len(lines) < 3:
                 return False
+            skip_reason = proactive_context_skip_reason(lines)
+            if skip_reason is not None:
+                logger.info(
+                    "Dududa 2.0 proactive talk skipped by context policy: "
+                    "group=%s reason=%s",
+                    group_id,
+                    skip_reason,
+                )
+                return False
             prompt = proactive_prompt(lines, policy)
             result = await self._bridge.handle(
                 self._event_factory(event, prompt),
@@ -268,6 +277,31 @@ def proactive_prompt(
     )
 
 
+def proactive_context_skip_reason(lines: tuple[str, ...]) -> str | None:
+    """Consult the optional side-effect-free proactive context extension."""
+
+    try:
+        from astrbot_plugin_proactive_chatter.policy import (
+            proactive_context_skip_reason as extension_policy,
+        )
+    except ModuleNotFoundError as exc:
+        if exc.name != "astrbot_plugin_proactive_chatter":
+            raise
+        try:
+            from data.plugins.astrbot_plugin_proactive_chatter.policy import (
+                proactive_context_skip_reason as extension_policy,
+            )
+        except ModuleNotFoundError as nested:
+            if nested.name not in {
+                "data",
+                "data.plugins",
+                "data.plugins.astrbot_plugin_proactive_chatter",
+            }:
+                raise
+            return None
+    return extension_policy(lines)
+
+
 def _eligible_event(event: object) -> bool:
     bot_id = _safe_call(event, "get_self_id")
     sender_id = _safe_call(event, "get_sender_id")
@@ -334,10 +368,11 @@ def _integer(value: object) -> int:
 
 
 __all__ = [
-    "AstrBotGroupHistoryProvider",
     "PROACTIVE_GROUP_PROMPT_MARKER",
+    "AstrBotGroupHistoryProvider",
     "ProactiveTalkController",
     "ProactiveTalkEvent",
+    "proactive_context_skip_reason",
     "proactive_prompt",
     "project_history_lines",
 ]

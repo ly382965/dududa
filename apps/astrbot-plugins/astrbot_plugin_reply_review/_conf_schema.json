@@ -1,35 +1,24 @@
 {
   "enabled": {
-    "description": "??????",
+    "description": "记录启用审校策略的期望状态",
     "type": "bool",
-    "default": false
+    "default": false,
+    "hint": "当前仅提供 Dududa 2.0 策略资产，尚未接入受预算的 secondary-review Port；此开关不会拦截或改写线上消息"
   },
   "min_chars": {
-    "description": "???????????",
+    "description": "允许进入审校候选的最短纯文本字符数",
     "type": "int",
     "default": 2
   },
   "max_chars": {
-    "description": "???????????(??????)",
+    "description": "允许进入审校候选的最长纯文本字符数",
     "type": "int",
     "default": 2000
   },
-  "temperature": {
-    "description": "????(0-1)",
-    "type": "float",
-    "default": 0.4
-  },
-  "skip_patterns": {
-    "description": "?????????(??????)",
-    "type": "list",
-    "item_type": "string",
-    "default": [
-      "???????????",
-      "???????",
-      "??????",
-      "??????",
-      "???",
-      "???"
-    ]
+  "max_output_tokens": {
+    "description": "未来由 Runtime 预留审校预算时的建议输出上限",
+    "type": "int",
+    "default": 600,
+    "hint": "这里只声明请求预算，不会直接调用任何模型 Provider"
   }
 }

@@ -1,12 +1,13 @@
 name: astrbot_plugin_weather
-display_name: 天气播报
-desc: 每天早上8点自动向已加入群播报当天天气预报；指定群901226396播报广东梅州兴宁，其余群播报合肥。
+display_name: 天气数据适配器
+desc: 为 Dududa 2.0 Runtime 提供按城市显式调用的只读天气数据，不自行调度或发送消息。
+short_desc: Dududa 2.0 只读天气 Source/Capability 资产。
 help: |
-  插件启动后，会记录给它发过消息的群，并在每天早上8:00(北京时间)向这些群推送天气。
-  群901226396播报广东梅州兴宁天气，其他群播报合肥天气。
-  配置项：xingning_group(兴宁播报群号,默认901226396)、extra_groups(额外群列表)。
-version: v0.1.0
+  本插件不注册消息命令或被动监听器。
+  天气查询由 Dududa 2.0 Runtime 通过受治理 Capability 调用，调用时必须显式提供城市。
+version: v2.0.0
 author: mmdustc
-repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_weather
+repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_weather
+astrbot_version: ">=4.26.2,<5"
 support_platforms:
   - aiocqhttp

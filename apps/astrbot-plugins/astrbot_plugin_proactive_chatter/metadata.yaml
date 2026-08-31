@@ -1,13 +1,11 @@
 name: astrbot_plugin_proactive_chatter
-display_name: 择机闲聊
-desc: 检测群里热闹程度，低频率主动插话；结合嘟嘟哒人设与活跃群友风格生成贴合话题的简短发言。
+display_name: 主动搭话上下文策略
+desc: 为嘟嘟哒 2.0 Runtime 提供复读、接龙和其他机器人互动场景的静默策略。
 help: |
-  插件持续记录群消息，当某群在窗口时间内(默认2分钟)消息数达到阈值(默认15条)时，
-  以较低概率主动插入一句贴合当前话题的话，并带一点点最活跃群友的风格。
-  全局最低间隔默认6分钟，每群至少10分钟才可能再发言，避免刷屏。
-  可在插件配置页调整触发概率、热闹阈值、冷却时间和启停。
-version: v0.1.0
+  本插件仅提供无副作用的上下文策略，不监听消息、不调用模型或 MCP，也不自行发送消息。
+  主动搭话的启用、概率、冷却、上下文长度和每小时上限由嘟嘟哒 2.0 管理后台统一配置。
+version: v0.2.0
 author: mmdustc
-repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_proactive_chatter
+repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_proactive_chatter
 support_platforms:
   - aiocqhttp
