@@ -167,11 +167,13 @@ def format_today(
         f"Token：{number(total_tokens)}",
         f"请求：{number(stats.get('today_requests'))}",
         f"费用：{money(stats.get('today_actual_cost'))}",
-        "Token 构成："
-        f"输入 {number(stats.get('today_input_tokens'))} / "
-        f"输出 {number(stats.get('today_output_tokens'))} / "
-        f"缓存写入 {number(stats.get('today_cache_creation_tokens'))} / "
-        f"缓存读取 {number(stats.get('today_cache_read_tokens'))}",
+        (
+            "Token 构成："
+            f"输入 {number(stats.get('today_input_tokens'))} / "
+            f"输出 {number(stats.get('today_output_tokens'))} / "
+            f"缓存写入 {number(stats.get('today_cache_creation_tokens'))} / "
+            f"缓存读取 {number(stats.get('today_cache_read_tokens'))}"
+        ),
         "",
         "今日 Token 用户排名",
     ]
@@ -212,11 +214,13 @@ def _format_overview_usage(
         f"Token：{number(total_tokens)}",
         f"请求：{number(usage_stats.get('total_requests'))}",
         f"费用：{money(usage_stats.get('total_actual_cost'))}",
-        "Token 构成："
-        f"输入 {number(usage_stats.get('total_input_tokens'))} / "
-        f"输出 {number(usage_stats.get('total_output_tokens'))} / "
-        f"缓存写入 {number(usage_stats.get('total_cache_creation_tokens'))} / "
-        f"缓存读取 {number(usage_stats.get('total_cache_read_tokens'))}",
+        (
+            "Token 构成："
+            f"输入 {number(usage_stats.get('total_input_tokens'))} / "
+            f"输出 {number(usage_stats.get('total_output_tokens'))} / "
+            f"缓存写入 {number(usage_stats.get('total_cache_creation_tokens'))} / "
+            f"缓存读取 {number(usage_stats.get('total_cache_read_tokens'))}"
+        ),
         f"平均响应：{duration_ms(usage_stats.get('average_duration_ms'))}",
         "",
         ranking_title,
@@ -341,8 +345,10 @@ def format_user_ranking(
     totals = usage_stats or ranking
     lines = [
         f"Sub2API 用户 Token 排名（{period.start} 至 {period.end}）",
-        f"区间合计：{number(totals.get('total_tokens'))} Token / "
-        f"{number(totals.get('total_requests'))} 请求 / {money(totals.get('total_actual_cost'))}",
+        (
+            f"区间合计：{number(totals.get('total_tokens'))} Token / "
+            f"{number(totals.get('total_requests'))} 请求 / {money(totals.get('total_actual_cost'))}"
+        ),
     ]
     if not rows:
         lines.append("暂无用量。")
@@ -401,11 +407,13 @@ def format_range(
         f"Token：{number(total_tokens)}",
         f"请求：{number(total_requests)}",
         f"费用：{money(total_cost)}",
-        "Token 构成："
-        f"输入 {number(usage_stats.get('total_input_tokens'))} / "
-        f"输出 {number(usage_stats.get('total_output_tokens'))} / "
-        f"缓存写入 {number(usage_stats.get('total_cache_creation_tokens'))} / "
-        f"缓存读取 {number(usage_stats.get('total_cache_read_tokens'))}",
+        (
+            "Token 构成："
+            f"输入 {number(usage_stats.get('total_input_tokens'))} / "
+            f"输出 {number(usage_stats.get('total_output_tokens'))} / "
+            f"缓存写入 {number(usage_stats.get('total_cache_creation_tokens'))} / "
+            f"缓存读取 {number(usage_stats.get('total_cache_read_tokens'))}"
+        ),
         f"平均响应：{duration_ms(usage_stats.get('average_duration_ms'))}",
         "",
         format_user_ranking(
@@ -560,8 +568,10 @@ def format_account(
         ]
     lines = [
         title,
-        f"平台/类型：{_clean_text(account.get('platform') or 'unknown', 30)} / "
-        f"{_clean_text(account.get('type') or 'unknown', 30)}",
+        (
+            f"平台/类型：{_clean_text(account.get('platform') or 'unknown', 30)} / "
+            f"{_clean_text(account.get('type') or 'unknown', 30)}"
+        ),
         "注册邮箱："
         + (
             mask_identifier(
@@ -573,8 +583,10 @@ def format_account(
         f"状态：{_account_state(account)}",
         f"并发：{number(account.get('current_concurrency'))}/{number(account.get('concurrency'))}",
         f"优先级：{number(account.get('priority'))}；倍率：{_float(account.get('rate_multiplier')):g}",
-        f"今日：{number(today_stats.get('tokens'))} Token / "
-        f"{number(today_stats.get('requests'))} 请求 / {money(today_stats.get('cost'))}",
+        (
+            f"今日：{number(today_stats.get('tokens'))} Token / "
+            f"{number(today_stats.get('requests'))} 请求 / {money(today_stats.get('cost'))}"
+        ),
     ]
     if group_names:
         lines.append("账号组：" + "、".join(group_names[:10]))

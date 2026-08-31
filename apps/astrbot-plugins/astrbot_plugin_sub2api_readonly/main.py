@@ -161,7 +161,6 @@ class Sub2APIReadonlyPlugin(Star):
     @filter.command_group("sub2api", alias={"sub2", "用量"})
     def sub2api(self):
         """Sub2API 只读统计命令组"""
-        pass
 
     @sub2api.command("help", alias={"帮助"})
     async def sub2api_help(self, event: AstrMessageEvent):
