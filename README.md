@@ -1,184 +1,212 @@
-# dududa
+# Dududa 2.0
 
-嘟嘟哒 QQ Agent 的独立协作仓库。仓库只管理 Bot 组件：AstrBot、NapCat、
-自研插件、第三方插件版本锁和 USTC 校园查询 MCP。LLM 网关、数据库、反向代理
-与主站基础设施不在本仓库中。
+**Dududa is a governed group-context adaptive Agent Runtime.** It keeps a small,
+non-removable governance core and composes reversible, observable, scope-bound
+capability assets around it. The current repository is an **active internal
+canary**, not a production-ready release.
 
-## Architecture
+The repository contains the framework-neutral runtime, AstrBot/NapCat adapters,
+campus MCP services, the bot control plane, and reproducible offline tests. It
+does not contain provider credentials, QQ login state, runtime databases, or
+production conversation data.
 
-```text
-QQ / QQ Group
-      |
-    NapCat
-      | OneBot v11
-      +---------------------- Dududa Web multi-account workspace
-      |
-    AstrBot ---------------- External OpenAI-compatible provider
-      |
-      +-- Dududa Core
-      +-- Reply Polish ------- default-off LONG compatibility layer
-      +-- Sub2API Readonly ---- Sub2API admin UI read-only JSON endpoints
-      +-- locked third-party plugins
-      +-- Unified MCP -------- iCourse / second-class / academic / curriculum
-      +-- Shuttle Plugin ----- versioned local timetable Capability
-```
-
-Bot 和 NapCat 默认加入外部 Docker 网络 `mmdustc-edge`，并保留原主站使用的
-网络别名。没有主站网关时，两个管理页面仍可通过本机回环端口使用。
-
-## Repository Layout
+## Design
 
 ```text
-apps/astrbot-plugins/          # 嘟嘟哒自研 AstrBot 插件
-apps/web/                      # Mew/NapCat 多账号 Web 工作台
-packages/dududa-agent/         # 框架无关的 Dududa 2.0 核心契约包
-services/mcp/                  # iCourse、USTC campus 与隔离 Unified MCP worker
-configs/                       # 可提交、无凭据的配置模板
-deploy/                        # Compose、Dockerfile 与环境模板
-ops/                           # 管理入口、CLI 和运维工具
-third_party/                   # v1 lock、patch 与必要 vendor 源码
-docs/                          # 项目设计、开发与运维文档
-manage.sh / compose.yml        # 稳定的根操作入口
-third_party/plugins.lock.json  # 第三方插件唯一 v1 安装权威
+QQ / group message
+        |
+   NapCat OneBot v11
+        |
+ AstrBot Connector
+        |
+ MessageEnvelope -> scoped context -> perception
+        |             (rules + Haiku schema candidate)
+        v
+ deterministic eligibility / authorization / budget
+        |
+ Static Model Router (Haiku / Sonnet / Opus)
+        |
+ Capability Retrieval -> bounded Planner -> Executor -> Validator
+        |                         |
+        |                    Unified MCP or Builtin Provider
+        v
+ Observation -> Direct Chat -> ResponsePlan -> Persona -> final validation
+        |
+ Output Adapter -> DeliveryReceipt
 ```
 
-S22 已移除旧目录 symlink；代码、测试和文档只使用上面的 canonical 路径。根
-`manage.sh` 与 `compose.yml` 仍是稳定操作入口。Manifest v2 尚未启用。
+The model proposes categories, entities, tool candidates, and wording. It does
+not own identity, scope, permissions, budgets, capability grants, routing
+eligibility, or side effects. Deterministic code owns those decisions. MCP is a
+transport boundary; it does not grant a capability, schedule a task, choose a
+recipient, or send a message.
 
-## Dududa 2.0 Refactor
+The three important model dimensions are independent:
 
-Phase 0–1 的审计与目标设计见
-[Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)。S01–S16 的既定本地/离线范围已沿
-既有 Tree 完成并验证，覆盖核心契约、安全边界、静态路由、离线 Runtime、统一 MCP、
-Capability Runtime、Memory 生命周期/检索、三档回答、默认关闭的主动出站链和离线运维事务。
-S17 路径迁移已完成、验证并合并，canonical 目录现在是主仓权威；S18 已建立统一离线
-Eval catalog、低敏 receipt、Runtime phase Trace 和双锁 CI；S19 已完成完整候选审计，
-S22 已完成有证据的路径与专用 iCourse Client 清理。Dududa 2.0 已闭合第一条自然语言
-iCourse Capability 本地纵切，并以确定性 Rule 保证显式“评课社区”在合法运行条件下进入
-Capability；75 条案例已完成 Runtime/MCP dispatch 验证，但复杂任务严格语义仍为 `0/75`。
-每条 Tool 计划最多调用一次；无显式档位时 Tool 回答默认 LONG，实际多段群聊 LONG 合并为一次转发投递，
-SHORT/MEDIUM 和单段 LONG 保持普通消息。
-旧 AstrBot Handler 只在当前运行部署的 `off/shadow` 模式下作为兼容/回滚入口，不是 2.0
-架构依据。Memory v2 尚未接入 Context Builder 或生产命令。当前实现证据、
-残余边界和下一步以 [重构进度](docs/refactor/PROGRESS.md) 和
-[阶段报告](docs/refactor/checkpoint-report-2026-08-10.md) 为准；真实质量和生产阶段需要的资料
-见 [外部输入准备清单](docs/refactor/external-input-checklist.md)。S19 候选发布审计的本地命令、
-pilot SLO 与无网镜像边界见 [候选发布审计](docs/operations/release-candidate-audit.md)。
+- `Tier`: `haiku`, `sonnet`, or `opus` (capability and cost);
+- `Reasoning`: `off`, `light`, `balanced`, `deep`, or `maximum`;
+- `AnswerProfile`: `short`, `medium`, or `long` (visible output budget).
 
-## Requirements
+An internal deployment commonly maps Luna/Terra/Sol to Haiku/Sonnet/Opus. The
+model IDs, endpoint URL, and credentials are private runtime configuration and
+are not repository guarantees. A static router filters for eligibility first;
+quality or cost preferences are applied only after the hard constraints pass.
 
-- Linux host with Docker Engine and Docker Compose v2
-- uv 0.12.1 with the locked Python 3.10.20/3.12.13 development matrix
-- Node.js 22.18.0 and npm 10.9.3 for Web development
-- Git, for installing locked upstream plugins
-- An external OpenAI-compatible model provider
+## Runtime and control plane
 
-Provider URL and API key must be configured in the AstrBot WebUI after startup.
-They belong in private runtime data, never in this repository.
+`packages/dududa-agent` is framework-neutral. AstrBot, MCP SDKs, model SDKs, and
+the Vue/Node web application implement ports around it. The Web application is
+the Bot Control Plane (the administrator's workbench), not a second Agent
+Runtime. It writes typed Core commands and reads projected Runtime state.
 
-The example environment pins the production-tested image digests through a
-DaoCloud mirror. Teams may replace only the registry prefix in private `.env`
-files while retaining the digest.
+After a bot joins a group, an authorized administrator can choose a versioned
+`GroupServiceProfile` initial value. `adaptive` and `preferred` settings let the
+Agent choose only within an administrator-approved range; `locked` prevents a
+per-turn change. A Web setting never creates a model, grants a capability, or
+bypasses Core authorization.
 
-## Quick Start
+## Capabilities and MCP
 
-The full-stack command below is for a clean host that does not already run an
-AstrBot/NapCat stack. On the current development machine, use only the Web or
-local test commands: the legacy stack already owns ports 6185/6099 and the
-compatibility aliases on `mmdustc-edge`. See the
-[production-shape preflight](docs/research/production-shape-preflight.md).
+Each service has a separate server identity, session lifecycle, schema snapshot,
+health state, and capability mapping. Adding a future server should require
+configuration plus mappings, not a change to Domain or Runtime code.
+
+| Service | Kind | Current scope |
+| --- | --- | --- |
+| iCourse / 评课社区 | Unified MCP | Anonymous public course, teacher, review, ranking, and statistics reads. This is the primary real MCP path. |
+| USTC Young / 二课 | Unified MCP | `pyustc`-based activity search, facets, details, and connection status. Apply/cancel/applicant operations are not exposed as public capabilities. |
+| USTC Academic / 教务处 | Unified MCP | Public semester, lesson, exam, and teaching-calendar reads. |
+| USTC Curriculum / 培养方案 | Unified MCP | Read-only queries over the documented research snapshot at `docs.mmdustc.top/curriculum`; not a live graduation audit. |
+| USTC Shuttle / 校车 | Builtin Capability | Versioned local timetable data; no MCP session and no network crawl. |
+| Weather | Candidate Source/Capability adapter | `WttrWeatherSource` and provider contracts exist, but no production composition or daily subscription is enabled. |
+| Campus, arXiv, and industry feeds | Reserved interface | Source contracts and fixtures exist; no claim of a live server or live digest. |
+
+The Web MCP console accepts an approved capability ID and input schema. It does
+not expose arbitrary `server/tool` passthrough. Discovery updates facts only;
+it never grants permission.
+
+## Plugins and local assets
+
+| Component | Status in 2.0 |
+| --- | --- |
+| `astrbot_plugin_dududa_core` | Active AstrBot adapter for the single 2.0 Agent Runtime, command boundaries, Runtime composition, and delivery. |
+| `astrbot_plugin_sub2api_readonly` | Explicit administrator-only read-only commands. `overview` produces one four-section merged forward (today, current billing cycle, history, upstream accounts). It is an independent host plugin, not automatic Agent tool routing. |
+| `astrbot_plugin_proactive_chatter` | Side-effect-free policy extension consumed by Core before Bridge admission. It detects echo/robot-interaction contexts and can recommend silence; it does not listen, call a model, or send. Default off. |
+| `astrbot_plugin_reply_review` | Conservative review policy asset. It never intercepts messages or calls a Provider by itself; `production_wired=false` until a Runtime secondary-review port is connected. |
+| `astrbot_plugin_weather` | Read-only weather source/provider asset. Default off and not registered in production composition. |
+| `astrbot_plugin_arc_proxy` | Governed local B50 renderer/provider asset. The caller supplies structured scores; Core owns authorization and delivery. Default off and not in production composition. |
+| `astrbot_plugin_ustc_shuttle` | Local timetable Capability Provider used by the Runtime. |
+| `astrbot_plugin_reread` | Legacy-compatible standalone plugin, default off and separately scoped; it is not the Agent's social decision layer. |
+| `astrbot_plugin_reply_polish` | Legacy LONG-only compatibility layer, default off. The 2.0 Output path owns merged-forward decisions. |
+
+The vendored Better Reminder, ChatSummary, and Iris sources remain under
+`third_party/` for migration or rollback evidence. Their historical handlers,
+SQLite state, and direct scheduling/sending are not 2.0 Runtime capabilities.
+They must not be presented as active 2.0 features or used as a second control
+plane. The old iCourse-specific client and the PR's iCourse implementation are
+not part of this integration; iCourse is served through the Unified MCP path.
+
+The standalone `apps/b50-renderer` tool is offline and has no AstrBot or network
+dependency. It produces a `1920x1750` PNG from structured or local fixture data;
+it does not fetch scores or send media.
+
+## Repository layout
+
+```text
+packages/dududa-agent/       # framework-neutral 2.0 contracts and Runtime
+apps/astrbot-plugins/        # AstrBot adapters and capability assets
+apps/b50-renderer/            # offline B50 renderer
+apps/web/                     # Vue/Node Bot Control Plane
+services/mcp/icourse/         # iCourse MCP server
+services/mcp/ustc-campus/     # Young, Academic, and Curriculum MCP server
+services/mcp/console/         # MCP registry/capability console
+configs/                      # credential-free server and capability mappings
+deploy/                       # Compose and derived images
+ops/                          # bootstrap, installation, and verification tools
+third_party/                  # pinned compatibility sources and patches
+docs/                         # design, research, and progress records
+```
+
+## Quick start
+
+Requirements: Linux, Docker Compose v2, `uv 0.12.1`, Python 3.10/3.12, Node.js
+22, npm 10, and an OpenAI-compatible provider configured privately in AstrBot.
 
 ```bash
 cp deploy/env/.env.example .env
 chmod 600 .env
-./manage.sh up
+./manage.sh init
+./manage.sh plugins
+./manage.sh web-up
 ```
 
-`up` performs the complete clean-clone bootstrap:
+Default loopback endpoints are:
 
-1. Creates private runtime directories under `data/`.
-2. Mounts the three default owned plugins read-only from the repository:
-   Dududa Core, Reply Polish and Sub2API Readonly.
-3. Installs third-party plugins at the commits in `third_party/plugins.lock.json`.
-4. Builds AstrBot with the `icourse-mcp` Python dependencies.
-5. Starts AstrBot and NapCat.
-6. Seeds the `dududa` persona and the `icourse` MCP definition.
-
-Local management URLs:
-
+- Web Control Plane: `http://127.0.0.1:5173`
 - AstrBot: `http://127.0.0.1:6185`
 - NapCat: `http://127.0.0.1:6099`
-- Dududa Web: `http://127.0.0.1:5173`
 
-NapCat requires an interactive QQ login. Its login state remains under
-`data/napcat/` and is ignored by Git.
-
-Dududa 1.0 的 Meme Manager、Reread、PokePro 和 Target Talk 不再进入 2.0
-默认安装路径；其历史源码或已有运行数据仅用于兼容、迁移和回滚。显式 `/image`
-图片生成能力仍保留。
-
-## Operations
+`./manage.sh up` builds the full local stack. It may recreate the local
+AstrBot/Web services; it does not put credentials or QQ login state in Git.
+NapCat must be logged in separately. For a Web-only development session:
 
 ```bash
-./manage.sh config
-./manage.sh ps
-./manage.sh logs astrbot
-./manage.sh logs napcat
-./manage.sh web-up
-./manage.sh web-connect
-./manage.sh restart
-./manage.sh upgrade
-./manage.sh down
+cd apps/web
+npm ci
+npm run dev
 ```
 
-`upgrade` never deletes runtime data. Review changes to `third_party/plugins.lock.json` and
-the Iris privacy patch before forcing any plugin replacement.
+Use `python ops/cli/install_plugins.py --owned-only` when testing only the
+repository-owned 2.0 assets. The lock file under `third_party/` is retained for
+compatibility and migration work; a locked source is not automatically an
+Agent capability.
 
-## Existing Deployment
+## Verification
 
-Production data is intentionally not copied into Git. To reuse an existing data
-directory, back it up first and set an absolute `STACK_DATA_ROOT` in `.env`.
-Run `./manage.sh sync` to merge the `icourse` MCP entry. `./manage.sh plugins`
-atomically installs owned and locked plugins into `runtime/astrbot-plugins`, the
-single Dududa 2.0 plugin root mounted by AstrBot. The command does not copy
-provider credentials, databases or QQ login state.
-
-## External Contracts
-
-- LLM: any OpenAI-compatible provider configured privately in AstrBot.
-- Gateway: optional external `mmdustc-edge` network. Stable aliases are
-  `bot-astrbot-qq-astrbot:6185` and `bot-astrbot-qq-napcat:6099`.
-- Course data: public pages from `https://icourse.club/`, with a local SQLite
-  cache excluded from Git.
-- Sub2API statistics: optional access to the same read-only JSON endpoints used
-  by the Sub2API admin UI. Credentials live only in private runtime config; QQ
-  commands are denied unless their group or private user is explicitly allowed.
-
-Sub2API, PostgreSQL, Redis, xray, Caddy and Authelia are explicitly outside this
-repository. See [architecture.md](docs/architecture.md) for the ownership
-boundary.
-
-## Development
-
-For the reproducible Ubuntu setup and troubleshooting steps, see
-[本地开发环境](docs/development/local-environment.md).
+The repository favors representative, executable checks over speculative gates:
 
 ```bash
-./ops/cli/setup_dev.sh
 uv lock --check
 uv run --locked python -m compileall -q packages apps services ops tests
 uv run --locked python -m unittest discover -s tests -t .
 uv run --locked python ops/cli/check_secrets.py
-docker compose --env-file deploy/env/.env.example config --quiet
+cd apps/web && npm run typecheck && npm run test && npm run build
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch and review workflow.
+Focused plugin checks include the 2.0 proactive policy, conservative review
+policy, weather source, local B50 provider, Sub2API overview, and MCP contract
+fixtures. Real QQ sending, live source freshness, human quality labels, online
+Bandit exploration, and large-scale group rollout remain external acceptance
+work.
 
-## Security And Privacy
+## Data, privacy, and learning boundaries
 
-No runtime database, conversation, memory, QQ identifier list, provider key,
-Cookie, token or private key belongs in Git. The Iris plugin is pinned and
-patched to preserve per-user L2 memory and per-group L3 graph isolation.
+Do not commit `.env` files, API keys, cookies, tokens, QQ login directories,
+databases, conversation exports, Memory records, generated runtime artifacts,
+or private provider evidence. Runtime data belongs under ignored private data
+roots. Memory v2 currently has offline lifecycle/retrieval and deletion-boundary
+evidence, but is not enabled as production Context Builder or automatic writer.
 
-Report security issues according to [SECURITY.md](SECURITY.md). Third-party
-components retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+S20 provides offline Bandit decision/feedback contracts and synthetic IPS,
+SNIPS, and DR evaluation. There is no training worker, live exploration, or
+production reward loop. Any future learning must rank only already-authorized,
+security-equivalent candidates and remain observable and reversible.
+
+## Documentation
+
+- [Dududa 2.0 design overview](docs/design/dududa-2.0-overview.md)
+- [Runtime progress ledger](docs/refactor/PROGRESS.md)
+- [Model routing](docs/design/model-routing.md)
+- [Capability and MCP design](docs/design/capability-and-mcp.md)
+- [Bot Control Plane](docs/design/bot-control-plane.md)
+- [Local development](docs/development/local-environment.md)
+- [Chinese README](README.zh-CN.md)
+
+See `docs/refactor/PROGRESS.md` for the evidence-backed completion table and
+the explicit external gates. The project is not described as production-ready
+until those gates have evidence.
+
+## License
+
+Original Dududa code and documentation are MIT licensed. Third-party components
+retain their upstream licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

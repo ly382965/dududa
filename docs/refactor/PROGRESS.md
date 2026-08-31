@@ -1,6 +1,6 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-29
+更新时间：2026-08-31
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
@@ -54,6 +54,29 @@
   校准，采用五小时硬时间盒：20--24 条先测吞吐，Luna 主样本默认 250/最多 350，Terra 复核
   最多 50，Sol 抽查最多 15，T+3.5 小时停止新请求，并按群隔离 train/dev/test。
 - 独立可选 S20 不属于主动出站、群服务 Profile 或 S23 的发布前置。
+
+## 2026-08-31 PR #5 与本地集成状态
+
+本地集成分支已将 PR #5 中除评课社区旧实现外的可用内容合入，并按 Dududa 2.0 Runtime
+重新收口（插件适配提交 `7094663`，集成提交 `3c9b360`）：
+
+- `astrbot_plugin_proactive_chatter` 现在是由 Core 消费的无副作用策略扩展；删除独立监听、
+  SQLite、模型直调、MCP 直调和发送。
+- `astrbot_plugin_reply_review` 现在只提供保守策略资产，`production_wired=false`，等待
+  Runtime secondary-review Port，不拦截线上结果。
+- `astrbot_plugin_weather` 只提供 Source/Capability Adapter，默认关闭，尚未进入生产
+  Composition 或日报调度。
+- 本地 B50 渲染器及 `ArcB50CapabilityProvider` 已加入，调用方提供结构化数据，Core 才拥有
+  授权和投递；默认关闭，尚未进入生产 Composition。
+- 标准 owned-plugin 安装清单已包含上述 2.0 资产；旧 Better Reminder 等 vendor 仍仅作
+  迁移/回滚输入，不能作为 2.0 Agent 或第二控制面。
+- `Sub2API overview` 使用当前计费轮精确边界、四段合并转发和管理员 Scope 逻辑；旧根工作树
+  中的 v0.6.2 回退副本未纳入。
+
+本阶段聚焦验证：PR 插件与 Core 合计 `33` 个 Python 单元测试通过，B50 渲染抽样 `1` 个
+通过，Arc B50 Provider `5` 个通过，Ruff 与 `git diff --check` 通过。该证据不扩大 S23 的
+真实 QQ、实时来源、人工质量或在线 Bandit 范围；本地 `main` 前移后以本节和本文件其余
+证据为准。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
 - 2026-08-09 新增的短/中/长回答已完成 S15 离线机械范围，主动出站已完成 S15A 契约、
   S15B 持久调度、S15C 来源框架/合成 fixture、S15D fixture 日报和 S15E synthetic group
