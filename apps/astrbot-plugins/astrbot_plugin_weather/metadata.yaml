@@ -1,0 +1,12 @@
+name: astrbot_plugin_weather
+display_name: 天气播报
+desc: 每天早上8点自动向已加入群播报当天天气预报；指定群901226396播报广东梅州兴宁，其余群播报合肥。
+help: |
+  插件启动后，会记录给它发过消息的群，并在每天早上8:00(北京时间)向这些群推送天气。
+  群901226396播报广东梅州兴宁天气，其他群播报合肥天气。
+  配置项：xingning_group(兴宁播报群号,默认901226396)、extra_groups(额外群列表)。
+version: v0.1.0
+author: mmdustc
+repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_weather
+support_platforms:
+  - aiocqhttp

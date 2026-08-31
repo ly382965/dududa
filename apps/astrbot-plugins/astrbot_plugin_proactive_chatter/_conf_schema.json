@@ -1,0 +1,38 @@
+{
+  "enabled": {
+    "description": "是否启用插件",
+    "type": "bool",
+    "default": false
+  },
+  "window_seconds": {
+    "description": "热闹度统计窗口(秒)，默认900(15分钟)",
+    "type": "int",
+    "default": 900
+  },
+  "activity_threshold": {
+    "description": "窗口内至少多少条才考虑接话，默认1(15分钟有一句就可能接)",
+    "type": "int",
+    "default": 1
+  },
+  "trigger_probability": {
+    "description": "符合条件时随机接话概率(0-1)，默认0.3(不句句接)",
+    "type": "float",
+    "default": 0.3
+  },
+  "global_cooldown_seconds": {
+    "description": "全局接话最低间隔(秒)，默认1800(30分钟)",
+    "type": "int",
+    "default": 1800
+  },
+  "group_cooldown_seconds": {
+    "description": "每群接话最低间隔(秒)，默认1800(30分钟)",
+    "type": "int",
+    "default": 1800
+  },
+  "group_whitelist": {
+    "description": "仅在这些群生效(为空则全部)",
+    "type": "list",
+    "item_type": "str",
+    "default": []
+  }
+}
