@@ -11,6 +11,15 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- 2026-08-31 已定位并修复目标群主动搭话间歇性无输出。旧运行 wheel 在模型将一次
+  主动机会判断为需 Tool、澄清、冲突或私密边界时，先清空群级个人 target，再构造
+  `DEFER/USE_TOOLS/ASK_CLARIFICATION`，触发
+  `empty_collection(social_target_identity_refs)`。源码 Core Social Policy 现将这些
+  非直接聊天机会确定性降为 `IGNORE`。当前运行镜像仍加载旧 wheel，因此主动入口另以
+  稳定标记声明“仅群聊接话”，Production Rule Perception 与 Merger 在 Social Policy
+  前清除 Tool、澄清、冲突和个人 target 候选，旧、新 Core 均收到合法的群级
+  `DIRECT_REPLY`。完整 Production Runtime 聚焦测试和 Core 单插件热重载已完成，
+  AstrBot/NapCat 容器均未重启。热重载后的自然群消息证据仍待出现，不提前声明成功发送。
 - 2026-08-31 已修复目标群“查看明天校车”无回复：自然语言路由与本地 Capability
   原本均成功，失败发生在 32 条泛查询结果超过 DirectChat 16,384-byte Tool Context
   上限。校车 Provider 现返回按时间排序的前 24 条并提示补充校区/路线/时间；同句
@@ -28,8 +37,8 @@ Last sync: unix:1786706085
   NapCat 最近 12/30/100 条群历史并做群级别名投影，再以
   `explicit_interaction=false` 进入现有 Runtime。Web 已将固定频率档改为触发概率、
   冷却秒数和每小时上限三条连续滑块，范围分别为 0-100%、5-1,800 秒和
-  1-500 次。目标群保留原 `high` 的等价值 20%/180 秒/8 次每小时，仅将上下文
-  改为 `extended`，群聊风格仍为 `natural`。
+  1-500 次。目标群当前按管理员后续选择使用 100%/5 秒/500 次每小时，上下文为
+  `extended`，群聊风格仍为 `natural`。
   主动路径固定 SHORT、关闭 Tool/Memory、无个人 `@`；普通明确 `@Bot` 路径在
   该 Scope 锁定 LONG。Web 显示执行器 online 和“本群已开启”。
 - 校车已从 `ustc-shuttle` MCP 迁移为 `astrbot_plugin_ustc_shuttle` 本地 owned

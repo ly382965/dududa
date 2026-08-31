@@ -4,6 +4,18 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-31 主动搭话 Social 修复：旧策略最小复现准确返回
+  `empty_collection / social_target_identity_refs`；修复后 Social 与
+  `ProactiveTalkEvent -> Connector -> Production Runtime`、主动 Controller 和
+  Rollout Bridge 聚焦验证共 24/24、9 个 subtest 通过。Social 单测覆盖非聊天机会
+  `IGNORE + zero send`；Production 纵切覆盖含校车关键词和普通聊天两种主动输入，
+  均先归一化为 chat-only Runtime，再各完成一次 Fake Delivery，四次 Fake 模型调用
+  均为最低 `low`。Ruff F/I 与 whitespace 检查通过。
+- 运行样本在修复前记录 25 次主动尝试：22 次上述契约失败、两次 QQ 已出现消息但
+  回执为 `UNKNOWN`、一次回执成功；真实群历史可见三条对应短回复。主动入口标记和
+  Production Perception 归一化已同步到运行副本，Core API 热重载返回 HTTP 200；
+  AstrBot/NapCat 的容器 ID、StartedAt 与 `RestartCount=0` 均未变化。热重载后的自然
+  消息尚未采到，因此这里不把旧样本冒充修复后证据。
 - 2026-08-31 校车无回复修复：20 条既有校车事实/Schema 用例和新增泛查询大小回归
   3/3 通过；Production Composition 校车 2.0 Runtime 聚焦测试通过。热重载校车和
   Core 后，原句“查看明天校车”经 Web -> 已安装 Runtime 返回 Terra `low`、LONG、

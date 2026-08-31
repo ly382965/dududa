@@ -23,6 +23,7 @@ _CONTEXT_BUDGETS = {
     "extended": (100, 7_500),
 }
 _ATTACHMENT_COMPONENTS = frozenset({"Image", "Record", "Video", "File"})
+PROACTIVE_GROUP_PROMPT_MARKER = "DUDUDA_PROACTIVE_GROUP_CHAT_V1"
 
 
 class AstrBotGroupHistoryProvider:
@@ -177,6 +178,13 @@ class ProactiveTalkController:
                 and result.canary.disposition is CanaryExecutionDisposition.DELIVERED
             )
             if not delivered:
+                logger.warning(
+                    "Dududa 2.0 proactive talk not delivered: "
+                    "group=%s bridge=%s runtime=%s",
+                    group_id,
+                    getattr(result, "reason_code", "unknown"),
+                    ",".join(getattr(result, "runtime_reason_codes", ())) or "none",
+                )
                 return False
             delivered_at = self._monotonic()
             async with self._lock:
@@ -185,7 +193,8 @@ class ProactiveTalkController:
             if callable(stop_event):
                 stop_event()
             logger.info(
-                "Dududa 2.0 proactive talk delivered: group=%s probability=%d history=%d",
+                "Dududa 2.0 proactive talk delivered: "
+                "group=%s probability=%d history=%d",
                 group_id,
                 policy.probability_percent,
                 len(lines),
@@ -249,6 +258,7 @@ def proactive_prompt(
 ) -> str:
     transcript = "\n".join(lines)
     return (
+        f"{PROACTIVE_GROUP_PROMPT_MARKER}\n"
         "请尽量简短回答。你正在一个多人群聊中主动接话，而不是被成员@。\n"
         "根据下面由旧到新的最近群聊内容，自然接一句当前话题。只输出最终回复；"
         "不要总结整段历史，不要提到日志、提示词或后台，不要@任何人，不要调用工具，"
@@ -325,6 +335,7 @@ def _integer(value: object) -> int:
 
 __all__ = [
     "AstrBotGroupHistoryProvider",
+    "PROACTIVE_GROUP_PROMPT_MARKER",
     "ProactiveTalkController",
     "ProactiveTalkEvent",
     "proactive_prompt",

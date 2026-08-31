@@ -187,7 +187,10 @@ from .adapters.model import (
 from .adapters.model_codec import JsonSchemaDocumentRegistry, JsonSchemaOutputCodec
 from .adapters.model_evidence import AstrBotProviderEvidenceStore
 from .adapters.output import ASTRBOT_OUTPUT_REVISION, InMemoryDeliveryLedger
-from .adapters.proactive_talk import ProactiveTalkController
+from .adapters.proactive_talk import (
+    PROACTIVE_GROUP_PROMPT_MARKER,
+    ProactiveTalkController,
+)
 from .config import (
     CAPABILITY_DEFINITIONS_DIR,
     CAPABILITY_MAPPINGS_DIR,
@@ -283,6 +286,15 @@ class _ProductionRulePerception:
 
     def perceive(self, context: PerceptionContext) -> RulePerceptionResult:
         result = self._delegate.perceive(context)
+        if context.current_message.text.startswith(PROACTIVE_GROUP_PROMPT_MARKER):
+            return replace(
+                result,
+                need_tools=False,
+                capability_categories=(),
+                expected_tool_steps=0,
+                verification_required=False,
+                component_revision=_revision("production-proactive-rule-perception"),
+            )
         blocked = _blocked_capability_categories(context)
         if not blocked.intersection(result.capability_categories):
             return result
@@ -313,6 +325,21 @@ class _ProductionPerceptionMerger:
         model_status: PerceptionModelStatus,
         model_route_receipt_digest: DigestString | None = None,
     ) -> PerceptionResult:
+        if (
+            model is not None
+            and context.current_message.text.startswith(PROACTIVE_GROUP_PROMPT_MARKER)
+        ):
+            model = replace(
+                model,
+                target_identity_refs=(),
+                ambiguities=(),
+                need_tools=False,
+                capability_categories=(),
+                task_kind=rules.task_kind,
+                reasoning_depth=rules.reasoning_depth,
+                expected_tool_steps=0,
+                verification_required=False,
+            )
         blocked = _blocked_capability_categories(context)
         if model is not None and blocked.intersection(model.capability_categories):
             categories = tuple(

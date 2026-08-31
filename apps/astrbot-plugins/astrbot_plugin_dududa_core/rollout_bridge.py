@@ -65,6 +65,7 @@ class AstrBotBridgeResult:
     runtime_owner: bool
     reason_code: str
     canary: CanaryExecutionResult | None = None
+    runtime_reason_codes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -437,6 +438,10 @@ class AstrBotRolloutBridge:
             ),
             call=call,
         )
+        runtime_reason_codes = await self._runtime_reason_codes(
+            result.run_id,
+            call=call,
+        )
         action = (
             AstrBotBridgeAction.CANARY_FAILED
             if result.disposition is CanaryExecutionDisposition.FAILED
@@ -449,7 +454,23 @@ class AstrBotRolloutBridge:
             True,
             result.reason_code,
             result,
+            runtime_reason_codes,
         )
+
+    async def _runtime_reason_codes(
+        self,
+        run_id: str,
+        *,
+        call: PortCallContext,
+    ) -> tuple[str, ...]:
+        if self._state_store is None:
+            return ()
+        try:
+            checkpoint = await self._state_store.load(run_id, call=call)
+        except Exception:  # noqa: BLE001 - diagnostics must not alter execution
+            return ()
+        pending = checkpoint.state.pending_result if checkpoint is not None else None
+        return pending.reason_codes if pending is not None else ()
 
     async def close(self) -> None:
         await self._shadow.close()

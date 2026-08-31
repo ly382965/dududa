@@ -4,6 +4,13 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 主动群聊没有个人 target，因此只有 `DIRECT_REPLY` 可以进入可见输出；模型提出
+  Tool、澄清、冲突或私密边界候选时应直接跳过该机会，不能构造依赖个人 target 的
+  Social Action。运行容器仍加载旧 `dududa-agent` wheel，而插件热重载不卸载该包；
+  为避免重启在线 AstrBot，主动合成输入带有仅供 Runtime 识别的稳定标记，Production
+  Perception 在进入旧 Social Policy 前把它归一化为无 Tool、无歧义、无个人 target 的
+  群级聊天任务。该处理位于任务语义边界，而不是异常包装器；下一次镜像安装修复后的
+  wheel 后仍可保留，确保主动搭话不会因历史中的 Tool 关键词偏离为工具任务。
 - 本地只读 Tool 的泛查询也必须在 Provider 输出边界控制 Observation 大小。校车故障
   不是模型上下文总量不足，而是无路线条件时一次返回 32 条重复结构超过既有 16 KiB
   契约；保留全局上限并将该查询压到 24 条，比整体提高 Tool Context 更符合有界执行。

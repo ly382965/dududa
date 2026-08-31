@@ -170,6 +170,18 @@ def _social_decision_values(
     elif signals.rate_limited:
         action = SocialAction.IGNORE
         reasons = ("interaction_rate_limited",)
+    elif proactive_group and signals.private_data_boundary:
+        action = SocialAction.IGNORE
+        reasons = ("proactive_group_private_data_skipped",)
+    elif proactive_group and perception.need_tools:
+        action = SocialAction.IGNORE
+        reasons = ("proactive_group_tool_use_skipped",)
+    elif proactive_group and perception.ambiguities:
+        action = SocialAction.IGNORE
+        reasons = ("proactive_group_clarification_skipped",)
+    elif proactive_group and perception.conflicting_evidence:
+        action = SocialAction.IGNORE
+        reasons = ("proactive_group_conflict_skipped",)
     elif signals.private_data_boundary:
         action = SocialAction.DEFER
         reasons = ("private_data_boundary",)

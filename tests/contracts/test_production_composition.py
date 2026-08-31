@@ -3,12 +3,13 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import sys
 import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from astrbot_plugin_dududa_core import audit, composition, config
@@ -20,6 +21,10 @@ from astrbot_plugin_dududa_core.adapters.model import (
     AstrBotProviderBindingEvidence,
 )
 from astrbot_plugin_dududa_core.adapters.output import AstrBotOutputAdapter
+from astrbot_plugin_dududa_core.adapters.proactive_talk import (
+    PROACTIVE_GROUP_PROMPT_MARKER,
+    ProactiveTalkEvent,
+)
 from astrbot_plugin_dududa_core.composition import (
     ProductionRuntimeAssembly,
     install_production_runtime,
@@ -277,6 +282,60 @@ class _ScriptedAstrBotProvider(_AstrBotProvider):
                 "数据，而不是凭空扩写。这个长回复测试还会验证群聊输出被拆成多个"
                 "文本分片后，只打包发送一条 QQ 合并转发消息。"
             )
+        return SimpleNamespace(
+            completion_text=completion,
+            usage=SimpleNamespace(input_other=32, input_cached=0, output=24),
+        )
+
+
+class _ProactiveAstrBotProvider(_AstrBotProvider):
+    async def text_chat(self, **kwargs: object) -> object:
+        self.calls.append(dict(kwargs))
+        system_prompt = str(kwargs["system_prompt"])
+        prompt = str(kwargs["prompt"])
+        if "语义感知器" in system_prompt:
+            marker = "context_json:\n"
+            start = prompt.index(marker) + len(marker)
+            end = prompt.index("\n[/DUDUDA_USER_INPUT]", start)
+            context = json.loads(prompt[start:end])
+            current_ref = context["current_message_ref"]
+            current = next(
+                item
+                for item in context["messages"]
+                if item["message_ref"] == current_ref
+            )
+            needs_tool = "校车" in str(current["text"])
+            completion = json.dumps(
+                {
+                    "schema_version": 1,
+                    "target_identity_refs": [current["author_identity_ref"]],
+                    "speech_acts": ["statement"],
+                    "topics": [],
+                    "intents": [],
+                    "entities": [],
+                    "references": [],
+                    "ambiguities": [],
+                    "need_tools": needs_tool,
+                    "capability_categories": (
+                        ["campus.shuttle"] if needs_tool else []
+                    ),
+                    "task_kind": "shallow_conversation",
+                    "reasoning_depth": "shallow",
+                    "expected_tool_steps": 1 if needs_tool else 0,
+                    "verification_required": False,
+                    "complexity_signals": [
+                        {
+                            "code": "shallow_conversation",
+                            "confidence": 0.98,
+                            "evidence_refs": [current_ref],
+                        }
+                    ],
+                    "confidence": 0.98,
+                },
+                ensure_ascii=False,
+            )
+        else:
+            completion = "那就十二点五十一起回高新吧。"
         return SimpleNamespace(
             completion_text=completion,
             usage=SimpleNamespace(input_other=32, input_cached=0, output=24),
@@ -1890,6 +1949,97 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await plugin.terminate()
         self.assertTrue(recording_mcp.closed)
+
+    async def test_proactive_event_normalizes_to_chat_only_runtime(
+        self,
+    ) -> None:
+        provider = _ProactiveAstrBotProvider()
+        plugin = self._production_plugin(provider)
+        values = self._runtime_config(rollout_mode="canary")
+        values.update(
+            {
+                "rollout_delivery_enabled": True,
+                "rollout_kill_switch": False,
+                "rollout_tools_enabled": True,
+            }
+        )
+        self._initialize(plugin, values, "production-proactive-talk")
+        plugin.rollout_bridge._output_factory = (
+            lambda event, ledger, guard: AstrBotOutputAdapter(
+                event,
+                ledger,
+                component_factory=_ComponentFactory(),
+                send_guard=guard,
+            )
+        )
+        observed_at = datetime.now(timezone.utc)
+        await plugin.runtime_assembly.publish_model_health(
+            (self._healthy_evidence(plugin.runtime_assembly, observed_at),),
+            call=replace(self.call, deadline=observed_at + timedelta(minutes=1)),
+        )
+        try:
+            tool_source = _Event(
+                message_id="proactive-tool-source",
+                message_str="普通消息",
+            )
+            chat_source = _Event(
+                message_id="proactive-chat-source",
+                message_str="普通消息",
+            )
+            astrbot_module = ModuleType("astrbot")
+            api_module = ModuleType("astrbot.api")
+            components_module = ModuleType("astrbot.api.message_components")
+            components_module.Plain = Plain
+            astrbot_module.api = api_module
+            api_module.message_components = components_module
+            with patch.dict(
+                sys.modules,
+                {
+                    "astrbot": astrbot_module,
+                    "astrbot.api": api_module,
+                    "astrbot.api.message_components": components_module,
+                },
+            ):
+                tool_event = ProactiveTalkEvent(
+                    tool_source,
+                    f"{PROACTIVE_GROUP_PROMPT_MARKER}\n"
+                    "最近大家在问校车时间，接一句话。",
+                )
+                chat_event = ProactiveTalkEvent(
+                    chat_source,
+                    f"{PROACTIVE_GROUP_PROMPT_MARKER}\n"
+                    "最近大家在说十二点五十回高新，接一句话。",
+                )
+            tool_chat = await plugin.rollout_bridge.handle(
+                tool_event,
+                proactive_group_participation=True,
+            )
+            delivered = await plugin.rollout_bridge.handle(
+                chat_event,
+                proactive_group_participation=True,
+            )
+
+            self.assertIs(tool_chat.action, AstrBotBridgeAction.CANARY_COMPLETED)
+            self.assertEqual(
+                tool_chat.runtime_reason_codes,
+                ("delivery_ready", "proactive_group_direct_reply"),
+            )
+            self.assertEqual(tool_source.stop_calls, 0)
+            self.assertEqual(tool_source.send_calls, 1)
+            self.assertIs(delivered.action, AstrBotBridgeAction.CANARY_COMPLETED)
+            self.assertEqual(delivered.canary.disposition.value, "delivered")
+            self.assertEqual(
+                delivered.runtime_reason_codes,
+                ("delivery_ready", "proactive_group_direct_reply"),
+            )
+            self.assertEqual(chat_source.stop_calls, 0)
+            self.assertEqual(chat_source.send_calls, 1)
+            self.assertEqual(len(provider.calls), 4)
+            self.assertTrue(
+                all(call["reasoning_effort"] == "low" for call in provider.calls)
+            )
+        finally:
+            await plugin.terminate()
 
     async def test_shuttle_questions_use_local_plugin_provider_in_2_0_runtime(
         self,

@@ -171,6 +171,10 @@ Title: S23 Authorized Real-Group Validation
   without changing `replyIntensity`,
   fixes proactive output to SHORT without a personal mention, and keeps LONG
   available only on the explicit `@Bot` entrypoint.
+- [x] 主动 Social Policy 对需 Tool、澄清、冲突或私密边界的无个人 target 机会返回
+  可解释的 `IGNORE`，不再以 `empty_collection` 失败；直接聊天机会继续通过同一
+  Production Runtime 和 Canary Delivery。主动入口标记及 Production Perception
+  归一化保证运行中的旧 wheel 也只接收合法的群级聊天任务，不增加异常兼容包装器。
 - [ ] Every safety maximum remains zero; frozen latency/cost/quality measures,
   kill-switch and exact rollback evidence are recorded without post-hoc
   threshold changes.

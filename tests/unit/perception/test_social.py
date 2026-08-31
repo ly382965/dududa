@@ -92,6 +92,63 @@ class DeterministicSocialDecisionPolicyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(decision.reason_codes, ("proactive_group_direct_reply",))
         self.assertEqual(decision.target_identity_refs, ())
 
+    async def test_active_proactive_group_skips_non_chat_opportunities(self) -> None:
+        authorized = AuthorizationView(1, True, True, ("bounded_tools",))
+        cases = (
+            (
+                _perception(
+                    context(),
+                    model_payload(
+                        need_tools=True,
+                        capability_categories=["search"],
+                        expected_tool_steps=1,
+                    ),
+                ),
+                _signals(
+                    authorization=authorized,
+                    tools_enabled=False,
+                    private_data_boundary=False,
+                ),
+                "proactive_group_tool_use_skipped",
+            ),
+            (
+                _perception(
+                    context(),
+                    model_payload(
+                        ambiguities=[
+                            {
+                                "ambiguity_id": "ambiguity:task",
+                                "kind": "task",
+                                "clarification_key": "clarify.task",
+                                "confidence": 0.9,
+                                "evidence_refs": ["message:current"],
+                            }
+                        ]
+                    ),
+                ),
+                _signals(),
+                "proactive_group_clarification_skipped",
+            ),
+        )
+        for perception, signals, expected_reason in cases:
+            proactive = _signals(
+                authorization=signals.authorization,
+                explicit_interaction=False,
+                known_target=False,
+                group_mode=GroupInteractionMode.ACTIVE,
+                private_data_boundary=signals.private_data_boundary,
+                tools_enabled=signals.tools_enabled,
+            )
+            with self.subTest(reason=expected_reason):
+                decision = await _policy().decide(
+                    perception,
+                    proactive,
+                    call=_call(),
+                )
+                self.assertIs(decision.action, SocialAction.IGNORE)
+                self.assertEqual(decision.reason_codes, (expected_reason,))
+                self.assertEqual(decision.target_identity_refs, ())
+
     async def test_hard_ignore_gates_precede_soft_semantics(self) -> None:
         perception = _perception(context())
         cases = (
