@@ -1,0 +1,8 @@
+{
+  "enabled": {
+    "description": "允许加载 Arcaea B50 本地渲染资产",
+    "type": "bool",
+    "default": false,
+    "hint": "默认关闭；启用插件不等于授予 Capability，实际可用范围由 Dududa 2.0 Runtime 策略决定。"
+  }
+}
