@@ -80,37 +80,45 @@ class ReplyReview(Star):
 
     @staticmethod
     def _get_context(event: AstrMessageEvent) -> str:
+        msg = ""
         try:
-            msg = getattr(event, "message_str", "") or ""
+            msg = event.get_message_str() or ""
         except Exception:
-            msg = ""
+            pass
         if not msg:
             try:
                 msg = event.get_message_outline() or ""
             except Exception:
-                msg = ""
-        try:
-            session = getattr(event, "session", None)
-            if session is None:
-                session = getattr(event, "message_obj", None)
-        except Exception:
-            session = None
+                pass
         group_id = ""
         try:
             group_id = str(event.get_group_id())
         except Exception:
             pass
-        return f"群:{group_id} 用户消息:{msg}"
+        sender = ""
+        try:
+            sender = str(event.get_sender_name() or "")
+        except Exception:
+            pass
+        return f"群:{group_id} 用户:{sender} 用户消息:{msg}"
 
     async def _review(self, context: str, reply: str) -> str | None:
         prompt = (
             f"上下文：{context}\n"
             f"机器人准备发送的回复：{reply}\n\n"
-            "请检查这条回复是否符合作息上下文语境（话题是否对得上、语气是否合适、"
-            "有没有答非所问或自说自话、有没有说了不该说的）。\n"
-            "如果回复完全合适，请原样返回这条回复，不要改动任何字；\n"
-            "如果不合适，请改写这条回复，让它更贴合上下文、更自然，但保留原本要表达的核心意思和事实，"
-            "不要添加新的虚假信息，风格上贴近一个可爱、聪明的少女（嘟嘟哒）。\n"
+            "请检查这条回复有没有明显的问题。\n"
+            "只在以下情况才需要改写：\n"
+            "1. 回复明显答非所问（上下文问课程/老师，回复却在说完全不相关的事）；\n"
+            "2. 回复里有事实错误或编造的信息；\n"
+            "3. 回复语气冒犯、说了不该说的话；\n"
+            "4. 回复明显机械、混乱、不像一句正常的话。\n\n"
+            "注意：\n"
+            "- 上下文信息可能不完整（比如只有一个名字），不要因为\"觉得信息少\"就改回复；\n"
+            "- 如果回复本身是一段通顺、合理、自洽的内容（例如在介绍某位老师、某门课），即使你"
+            "无法完全确认它和上下文的关系，也要原样返回，不要改动；\n"
+            "- 大多数情况下应该原样返回。\n\n"
+            "如果回复没有上述问题，请原样返回这条回复，不要改动任何字；\n"
+            "如果确实有问题，请改写，保留原本要表达的核心意思和事实，风格贴近可爱聪明的嘟嘟哒。\n"
             "只输出最终的回复内容本身，不要任何解释、引号、前缀或 Markdown。"
         )
         try:
