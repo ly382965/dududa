@@ -13,6 +13,7 @@ from typing import Any
 CORE_CONFIG = "astrbot_plugin_dududa_core_config.json"
 REREAD_CONFIG = "astrbot_plugin_reread_config.json"
 PLUGIN_SET = [
+    "astrbot_plugin_arc_proxy",
     "astrbot_plugin_dududa_core",
     "astrbot_plugin_proactive_chatter",
     "astrbot_plugin_reply_review",

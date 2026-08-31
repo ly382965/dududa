@@ -11,8 +11,6 @@ from io import BytesIO
 from pathlib import Path
 
 import httpx
-from PIL import Image
-
 from astrbot_plugin_sub2api_readonly.charts import (
     cumulative_user_series,
     linear_axis_bounds,
@@ -30,6 +28,7 @@ from astrbot_plugin_sub2api_readonly.client import (
     Sub2APIConfigError,
     Sub2APIRequestError,
     access_error,
+    fallback_cost_overview,
     fetch_cost_overview,
     is_sub2api_command,
     is_sub2api_event_command,
@@ -50,6 +49,7 @@ from astrbot_plugin_sub2api_readonly.formatters import (
     mask_identifier,
 )
 from astrbot_plugin_sub2api_readonly.policy import resolve_plugin_policy
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,6 +63,32 @@ def login_response() -> httpx.Response:
 
 
 class Sub2APIUtilityTests(unittest.TestCase):
+    def test_cost_overview_fallback_uses_current_account_window(self) -> None:
+        fallback = fallback_cost_overview(
+            [
+                {
+                    "id": 42,
+                    "platform": "openai",
+                    "status": "active",
+                    "last_used_at": "2026-08-24T10:00:00+08:00",
+                    "extra": {
+                        "codex_7d_used_percent": 10,
+                        "codex_7d_reset_at": "2099-08-31T08:42:00+08:00",
+                        "codex_7d_window_minutes": 10080,
+                    },
+                }
+            ],
+            timezone="Asia/Shanghai",
+        )
+        self.assertEqual(fallback["period_start"], "2026-08-13 14:00")
+        self.assertEqual(fallback["source"], "sub2api-account-fallback")
+        self.assertEqual(fallback["pro_estimate"]["account_id"], 42)
+        self.assertEqual(fallback["pro_estimate"]["used_percent"], 10)
+        self.assertEqual(
+            fallback["pro_estimate"]["cycle_started_at"],
+            "2099-08-24T08:42:00+08:00",
+        )
+
     def test_normalize_base_url_accepts_dashboard_and_api_urls(self) -> None:
         self.assertEqual(
             normalize_base_url("https://example.invalid/admin/dashboard"),
@@ -540,12 +566,14 @@ class Sub2APIUtilityTests(unittest.TestCase):
         cost_text = format_cost_overview_snapshot(
             {
                 "period_start": "2026-08-13 14:00",
-                "period_end": "2026-08-14",
+                "period_end": "2026-08-24",
+                "synced_at": "2026-08-24T10:00:00+08:00",
                 "pro_estimate": {
                     "used_percent": 9,
                     "cycle_actual_cost": 30,
                     "estimated_quota": 333.3333,
-                    "resets_at": "2026-08-20T14:00:00+08:00",
+                    "cycle_started_at": "2026-08-24T08:42:00+08:00",
+                    "resets_at": "2026-08-31T08:42:00+08:00",
                 },
             },
             {
@@ -570,7 +598,7 @@ class Sub2APIUtilityTests(unittest.TestCase):
             ranking_limit=10,
         )
         self.assertIn(
-            "当前计费轮累计（2026-08-13 14:00 至 2026-08-14）",
+            "当前计费轮累计（2026-08-13 14:00 至 2026-08-24）",
             cost_text,
         )
         self.assertIn("当前计费轮 Token 用户排名", cost_text)
@@ -581,6 +609,61 @@ class Sub2APIUtilityTests(unittest.TestCase):
             cost_text.index("low@example.invalid"),
         )
         self.assertIn("已用：9.0%", cost_text)
+        self.assertIn("本轮额度估算：$333.3333", cost_text)
+        self.assertIn("当前轮重置估算：3 次", cost_text)
+        self.assertIn("1. 2026-08-13 14:00", cost_text)
+        self.assertIn("2. 2026-08-20 14:14", cost_text)
+        self.assertIn("3. 2026-08-24 08:42", cost_text)
+        self.assertIn("下次重置：2026-08-31 08:42", cost_text)
+
+        latest_reset_text = format_cost_overview_snapshot(
+            {
+                "period_start": "2026-08-13 14:00",
+                "period_end": "2026-08-30",
+                "synced_at": "2026-08-30T06:00:00+08:00",
+                "pro_estimate": {
+                    "used_percent": 10,
+                    "cycle_started_at": "2026-08-30T05:27:00+08:00",
+                    "resets_at": "2026-09-06T05:27:00+08:00",
+                },
+            },
+            {"users": []},
+            ranking_limit=10,
+        )
+        self.assertIn("当前轮重置估算：5 次", latest_reset_text)
+        self.assertIn("4. 2026-08-28 00:27", latest_reset_text)
+        self.assertIn("5. 2026-08-30 05:27", latest_reset_text)
+
+        today_reset_text = format_cost_overview_snapshot(
+            {
+                "period_start": "2026-08-13 14:00",
+                "period_end": "2026-08-31",
+                "synced_at": "2026-08-31T14:30:00+08:00",
+                "pro_estimate": {
+                    "used_percent": 6,
+                    "cycle_started_at": "2026-08-31T10:27:02+08:00",
+                    "resets_at": "2026-09-07T10:27:02+08:00",
+                },
+            },
+            {"users": []},
+            ranking_limit=10,
+        )
+        self.assertIn("当前轮重置估算：6 次", today_reset_text)
+        self.assertIn("5. 2026-08-30 05:27", today_reset_text)
+        self.assertIn("6. 2026-08-31 10:27", today_reset_text)
+
+        reset_only_text = format_cost_overview_snapshot(
+            {
+                "period_start": "2026-08-13 14:00",
+                "period_end": "2026-08-24",
+                "synced_at": "2026-08-24T12:00:00+08:00",
+                "pro_estimate": None,
+            },
+            {"users": []},
+            ranking_limit=10,
+        )
+        self.assertIn("当前轮重置估算：3 次", reset_only_text)
+        self.assertNotIn("下次重置：", reset_only_text)
 
     def test_identifier_masking(self) -> None:
         self.assertEqual(mask_identifier("ab@example.com"), "ab***@example.com")
@@ -691,38 +774,100 @@ class Sub2APIClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(COST_OVERVIEW_TIMEOUT_SECONDS, 60.0)
 
     async def test_current_cycle_usage_is_aggregated_after_exact_cutoff(self) -> None:
+        requested_paths: list[str] = []
+
         def handler(request: httpx.Request) -> httpx.Response:
             if request.method == "POST":
                 return login_response()
+            requested_paths.append(request.url.path)
+            if request.url.path.endswith("/usage/stats"):
+                return response(
+                    {
+                        "total_tokens": 2258,
+                        "total_requests": 4,
+                        "total_actual_cost": 2002,
+                        "total_input_tokens": 2148,
+                        "total_output_tokens": 30,
+                        "total_cache_tokens": 80,
+                        "total_cache_creation_tokens": 5,
+                        "total_cache_read_tokens": 75,
+                        "average_duration_ms": 375,
+                    }
+                )
+            if request.url.path.endswith("/dashboard/user-breakdown"):
+                return response(
+                    {
+                        "users": [
+                            {
+                                "user_id": 1,
+                                "email": "before@example.invalid",
+                                "requests": 1,
+                                "total_tokens": 999,
+                                "actual_cost": 999,
+                            },
+                            {
+                                "user_id": 3,
+                                "email": "after@example.invalid",
+                                "requests": 1,
+                                "total_tokens": 999,
+                                "actual_cost": 999,
+                            },
+                            {
+                                "user_id": 2,
+                                "email": "full@example.invalid",
+                                "requests": 2,
+                                "total_tokens": 260,
+                                "actual_cost": 4,
+                            },
+                        ]
+                    }
+                )
             self.assertEqual(request.url.path, "/api/v1/admin/usage")
-            self.assertEqual(request.url.params["start_date"], "2026-08-13")
-            self.assertEqual(request.url.params["end_date"], "2026-08-14")
+            if request.url.params["sort_order"] == "asc":
+                self.assertEqual(request.url.params["start_date"], "2026-08-13")
+                return response(
+                    {
+                        "items": [
+                            {
+                                "user_id": 1,
+                                "created_at": "2026-08-13T13:59:59+08:00",
+                                "input_tokens": 999,
+                                "actual_cost": 999,
+                                "user": {
+                                    "id": 1,
+                                    "email": "before@example.invalid",
+                                },
+                            },
+                            {
+                                "user_id": 2,
+                                "created_at": "2026-08-13T14:00:00+08:00",
+                                "input_tokens": 100,
+                                "output_tokens": 20,
+                                "cache_creation_tokens": 5,
+                                "cache_read_tokens": 75,
+                                "actual_cost": 2.5,
+                                "duration_ms": 1000,
+                                "user": {
+                                    "id": 2,
+                                    "email": "full@example.invalid",
+                                    "username": "full-user",
+                                },
+                            },
+                        ]
+                    }
+                )
+            self.assertEqual(request.url.params["start_date"], "2026-08-14")
             return response(
                 {
                     "items": [
                         {
-                            "user_id": 1,
-                            "created_at": "2026-08-13T13:59:59+08:00",
+                            "user_id": 3,
+                            "created_at": "2026-08-14T12:00:01+08:00",
                             "input_tokens": 999,
                             "actual_cost": 999,
                             "user": {
-                                "id": 1,
-                                "email": "before@example.invalid",
-                            },
-                        },
-                        {
-                            "user_id": 2,
-                            "created_at": "2026-08-13T14:00:00+08:00",
-                            "input_tokens": 100,
-                            "output_tokens": 20,
-                            "cache_creation_tokens": 5,
-                            "cache_read_tokens": 75,
-                            "actual_cost": 2.5,
-                            "duration_ms": 1000,
-                            "user": {
-                                "id": 2,
-                                "email": "full@example.invalid",
-                                "username": "full-user",
+                                "id": 3,
+                                "email": "after@example.invalid",
                             },
                         },
                         {
@@ -736,16 +881,6 @@ class Sub2APIClientTests(unittest.IsolatedAsyncioTestCase):
                                 "id": 2,
                                 "email": "full@example.invalid",
                                 "username": "full-user",
-                            },
-                        },
-                        {
-                            "user_id": 3,
-                            "created_at": "2026-08-14T12:00:01+08:00",
-                            "input_tokens": 999,
-                            "actual_cost": 999,
-                            "user": {
-                                "id": 3,
-                                "email": "after@example.invalid",
                             },
                         },
                     ]
@@ -768,6 +903,50 @@ class Sub2APIClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage["average_duration_ms"], 750)
         self.assertEqual(usage["users"][0]["email"], "full@example.invalid")
         self.assertEqual(usage["users"][0]["total_tokens"], 260)
+        self.assertEqual(requested_paths.count("/api/v1/admin/usage"), 2)
+
+    async def test_pro_quota_estimate_matches_website_formula(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "POST":
+                return login_response()
+            self.assertEqual(request.url.params["account_id"], "42")
+            if request.url.path.endswith("/usage/stats"):
+                self.assertEqual(request.url.params["start_date"], "2026-08-24")
+                self.assertEqual(request.url.params["end_date"], "2026-08-28")
+                return response({"total_actual_cost": 30})
+            self.assertEqual(request.url.path, "/api/v1/admin/usage")
+            self.assertEqual(request.url.params["start_date"], "2026-08-24")
+            self.assertEqual(request.url.params["end_date"], "2026-08-24")
+            return response(
+                {
+                    "items": [
+                        {
+                            "created_at": "2026-08-24T08:00:00+08:00",
+                            "actual_cost": 5,
+                        },
+                        {
+                            "created_at": "2026-08-24T08:42:00+08:00",
+                            "actual_cost": 10,
+                        },
+                    ]
+                }
+            )
+
+        client = self._client(handler)
+        try:
+            estimate = await client.get_pro_quota_estimate(
+                {
+                    "account_id": 42,
+                    "used_percent": 10,
+                    "cycle_started_at": "2026-08-24T08:42:00+08:00",
+                    "resets_at": "2026-08-31T08:42:00+08:00",
+                },
+                synced_at="2026-08-28T12:00:00+08:00",
+            )
+        finally:
+            await client.close()
+        self.assertEqual(estimate["cycle_actual_cost"], 25)
+        self.assertEqual(estimate["estimated_quota"], 250)
 
     async def test_cost_overview_uses_public_website_snapshot_without_auth(
         self,

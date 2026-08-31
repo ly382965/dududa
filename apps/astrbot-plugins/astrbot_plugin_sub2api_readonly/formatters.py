@@ -1,11 +1,24 @@
 from __future__ import annotations
 
-from collections import Counter
-from datetime import datetime, timezone
 import re
-from typing import Any, Iterable
+from collections import Counter
+from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
+from typing import Any
+from zoneinfo import ZoneInfo
 
 from .client import DateRange
+
+COST_TIMEZONE = ZoneInfo("Asia/Shanghai")
+# The upstream exposes only the current window, so retain confirmed events for this billing round.
+CURRENT_BILLING_RESET_ESTIMATES = (
+    datetime(2026, 8, 13, 14, 0, tzinfo=COST_TIMEZONE),
+    datetime(2026, 8, 20, 14, 14, 48, tzinfo=COST_TIMEZONE),
+    datetime(2026, 8, 24, 8, 42, tzinfo=COST_TIMEZONE),
+    datetime(2026, 8, 28, 0, 27, tzinfo=COST_TIMEZONE),
+    datetime(2026, 8, 30, 5, 27, tzinfo=COST_TIMEZONE),
+    datetime(2026, 8, 31, 10, 27, tzinfo=COST_TIMEZONE),
+)
 
 
 def _int(value: Any) -> int:
@@ -59,6 +72,48 @@ def _future_timestamp(value: Any) -> str:
     if parsed.tzinfo is None:
         return ""
     return text if parsed.astimezone(timezone.utc) > datetime.now(timezone.utc) else ""
+
+
+def _snapshot_timestamp(value: Any) -> datetime | None:
+    text = _clean_text(value, 60)
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=COST_TIMEZONE)
+    return parsed.astimezone(COST_TIMEZONE)
+
+
+def _current_cycle_reset_points(
+    snapshot: dict[str, Any], estimate: dict[str, Any]
+) -> list[datetime]:
+    period_start = _snapshot_timestamp(snapshot.get("period_start"))
+    synced_at = _snapshot_timestamp(snapshot.get("synced_at"))
+    cycle_started_at = _snapshot_timestamp(estimate.get("cycle_started_at"))
+    if not period_start or not synced_at:
+        return []
+
+    points = [
+        point
+        for point in CURRENT_BILLING_RESET_ESTIMATES
+        if period_start <= point <= synced_at
+    ]
+    if (
+        cycle_started_at
+        and period_start <= cycle_started_at <= synced_at
+        and not any(
+            abs(cycle_started_at - point) < timedelta(minutes=5) for point in points
+        )
+    ):
+        points.append(cycle_started_at)
+    return sorted(points)
+
+
+def _format_reset_point(value: datetime) -> str:
+    return value.astimezone(COST_TIMEZONE).strftime("%Y-%m-%d %H:%M")
 
 
 def number(value: Any) -> str:
@@ -217,17 +272,36 @@ def format_cost_overview_snapshot(
         ranking_limit=ranking_limit,
     )
 
-    estimate = snapshot.get("pro_estimate")
-    if isinstance(estimate, dict):
-        text += "\n\n" + "\n".join(
-            (
-                "Pro 周额度观测",
-                f"已用：{_float(estimate.get('used_percent')):.1f}%",
-                f"本轮 actual_cost：{money(estimate.get('cycle_actual_cost'))}",
-                f"线性估算单次额度：{money(estimate.get('estimated_quota'))}",
-                f"重置时间：{_clean_text(estimate.get('resets_at'), 60) or '未知'}",
+    raw_estimate = snapshot.get("pro_estimate")
+    estimate = raw_estimate if isinstance(raw_estimate, dict) else {}
+    reset_points = _current_cycle_reset_points(snapshot, estimate)
+    if reset_points or estimate:
+        next_reset = _snapshot_timestamp(estimate.get("resets_at"))
+        observation = [
+            "Pro 周额度观测",
+            f"当前轮重置估算：{len(reset_points)} 次",
+        ]
+        if reset_points:
+            observation.append("估算时间点（Asia/Shanghai）：")
+            observation.extend(
+                f"{index}. {_format_reset_point(point)}"
+                for index, point in enumerate(reset_points, 1)
             )
-        )
+        else:
+            observation.append("重置时间点：暂不可用")
+        if _float(estimate.get("used_percent")) > 0:
+            observation.append(f"已用：{_float(estimate.get('used_percent')):.1f}%")
+        if _float(estimate.get("cycle_actual_cost")) > 0:
+            observation.append(
+                f"本轮 actual_cost：{money(estimate.get('cycle_actual_cost'))}"
+            )
+        if _float(estimate.get("estimated_quota")) > 0:
+            observation.append(
+                f"本轮额度估算：{money(estimate.get('estimated_quota'))}"
+            )
+        if next_reset:
+            observation.append(f"下次重置：{_format_reset_point(next_reset)}")
+        text += "\n\n" + "\n".join(observation)
     return text.strip()
 
 

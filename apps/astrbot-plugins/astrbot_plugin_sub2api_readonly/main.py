@@ -19,6 +19,7 @@ from .client import (
     Sub2APIError,
     Sub2APIRequestError,
     access_error,
+    fallback_cost_overview,
     fetch_cost_overview,
     is_sub2api_event_command,
     overview_history_period,
@@ -65,7 +66,7 @@ HELP_TEXT = """Sub2API 只读查询
     "astrbot_plugin_sub2api_readonly",
     "mmdustc",
     "通过管理网页同款只读接口查询 Sub2API 用量和账号状态",
-    "0.6.3",
+    "0.6.4",
 )
 class Sub2APIReadonlyPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -108,7 +109,7 @@ class Sub2APIReadonlyPlugin(Star):
                 password=self._setting("SUB2API_ADMIN_PASSWORD", "admin_password", ""),
                 timezone=self.timezone,
                 timeout_seconds=self._clamp_float(
-                    self.config.get("request_timeout_seconds", 15), 15, 3, 60
+                    self.config.get("request_timeout_seconds", 30), 30, 3, 60
                 ),
                 cache_ttl_seconds=self._clamp_float(
                     self.config.get("cache_ttl_seconds", 30), 30, 0, 600
@@ -192,11 +193,34 @@ class Sub2APIReadonlyPlugin(Star):
             ) = await asyncio.gather(
                 client.get_stats(),
                 client.get_user_ranking(today_period, limit=self.ranking_limit),
-                fetch_cost_overview(),
+                self._fetch_cost_overview_optional(),
                 client.get_usage_stats(history_period),
                 client.get_user_ranking(history_period, limit=self.ranking_limit),
                 client.get_accounts(),
             )
+            if cost_overview is None:
+                logger.warning(
+                    "Sub2API cost overview unavailable; using account metadata fallback"
+                )
+                cost_overview = fallback_cost_overview(
+                    accounts,
+                    timezone=self.timezone,
+                )
+                estimate = cost_overview.get("pro_estimate")
+                if isinstance(estimate, dict):
+                    try:
+                        cost_overview["pro_estimate"] = (
+                            await client.get_pro_quota_estimate(
+                                estimate,
+                                synced_at=str(cost_overview.get("synced_at") or "")
+                                or None,
+                            )
+                        )
+                    except Sub2APIError as exc:
+                        logger.warning(
+                            "Sub2API Pro quota fallback unavailable: %s",
+                            type(exc).__name__,
+                        )
             cycle_usage = await client.get_usage_ranking_since(
                 str(cost_overview.get("period_start") or ""),
                 str(cost_overview.get("period_end") or ""),
@@ -542,6 +566,13 @@ class Sub2APIReadonlyPlugin(Star):
     def _today_period(self) -> DateRange:
         today = today_in_timezone(self.timezone)
         return DateRange(start=today, end=today)
+
+    @staticmethod
+    async def _fetch_cost_overview_optional() -> dict[str, Any] | None:
+        try:
+            return await fetch_cost_overview()
+        except Sub2APIRequestError:
+            return None
 
     def _period(self, start_date: str, end_date: str) -> DateRange:
         return parse_date_range(
