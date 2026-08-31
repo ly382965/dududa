@@ -36,5 +36,9 @@ htmlcov/
 build/
 dist/
 
+# Optional local font used by the standalone B50 renderer.
+apps/b50-renderer/fonts/NotoSansCJKsc-Regular.otf
+apps/b50-renderer/example_b50.png
+
 node_modules/
 .next/

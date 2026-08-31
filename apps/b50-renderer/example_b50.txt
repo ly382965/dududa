@@ -1,0 +1,3 @@
+Synthetic Aurora [FTR] 10.7: 9943293 (12.416) FAR 12 LOST 1 小P 150
+Synthetic Orbit [ETR] 10.5: 9972055 (12.360)
+Synthetic Resonance [BYD] 10.8: 9908019 (12.340)
