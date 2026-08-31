@@ -11,6 +11,18 @@ Last sync: unix:1786706085
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- 2026-08-31 已修复目标群“查看明天校车”无回复：自然语言路由与本地 Capability
+  原本均成功，失败发生在 32 条泛查询结果超过 DirectChat 16,384-byte Tool Context
+  上限。校车 Provider 现返回按时间排序的前 24 条并提示补充校区/路线/时间；同句
+  Web -> 已安装 2.0 Runtime no-send 复测得到一次 Tool、Terra `low`、非空 LONG
+  总结，`outputCalls=0 / memoryWrites=0`，不再出现 `runtime_tool_context_too_large`。
+- Web 历史不再用 NapCat 返回页长判断终点。服务端从本页边界游标做 2 条只读探测，
+  前端同时拒绝重复游标和零新增消息；目标群首页 95 条、第二页 93 条均正确报告
+  `hasMoreBefore=true`。SSE 进程内重放窗口由 512 提升到 4096 条，仍不冒充持久日志。
+- Core Output Adapter 对普通文本/回复的 NapCat 发送异常不做重发；它只读查询同会话
+  最近历史，并以 Bot 身份、发送开始时间和精确正文核对。命中后补记 `SUCCEEDED`
+  与平台消息 ID，未命中及合并转发继续保持 `UNKNOWN`。聚焦 Fake 已覆盖两条分支；
+  尚未人为制造真实 QQ 发送故障。
 - 2026-08-30 已在唯一 2.0 宿主为 `qq-3296147894:group:419256533`
   启用 `social.proactive_talk`。每条合格普通群消息按独立数值策略抽样；命中后读取
   NapCat 最近 12/30/100 条群历史并做群级别名投影，再以

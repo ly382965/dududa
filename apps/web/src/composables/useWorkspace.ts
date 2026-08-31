@@ -515,12 +515,23 @@ export function useWorkspace(
     if (!conversation) return
     const state = historyStates.value[conversation.id]
     if (!state?.beforeCursor || !state.hasMoreBefore || state.loadingBefore) return
+    const requestedCursor = state.beforeCursor
+    const knownMessages = new Set(
+      (snapshot.value.messages[conversation.id] ?? []).map((item) => messageIdentity(item)),
+    )
     state.loadingBefore = true
     try {
-      const page = await adapter.loadHistory(conversation, { limit: 50, before: state.beforeCursor })
+      const page = await adapter.loadHistory(conversation, { limit: 50, before: requestedCursor })
       if (selectedConversationId.value !== conversation.id) return
+      const madeProgress = page.messages.some((item) => !knownMessages.has(messageIdentity(item)))
       mergeMessages(conversation.id, page.messages, 'before')
-      applyHistoryPage(conversation.id, page, 'before')
+      applyHistoryPage(
+        conversation.id,
+        page.beforeCursor !== requestedCursor && madeProgress
+          ? page
+          : { ...page, hasMoreBefore: false },
+        'before',
+      )
     } catch (error) {
       notify(error instanceof Error ? error.message : '更早消息加载失败')
     } finally {

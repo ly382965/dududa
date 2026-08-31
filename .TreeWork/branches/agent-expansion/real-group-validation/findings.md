@@ -4,6 +4,15 @@ Branch: real-group-validation
 
 ## Decisions (conclusions or decision changes learned during implementation; planned pre-coding design belongs in spec.md)
 
+- 本地只读 Tool 的泛查询也必须在 Provider 输出边界控制 Observation 大小。校车故障
+  不是模型上下文总量不足，而是无路线条件时一次返回 32 条重复结构超过既有 16 KiB
+  契约；保留全局上限并将该查询压到 24 条，比整体提高 Tool Context 更符合有界执行。
+- NapCat 历史 API 返回不足 `count` 不代表到达历史终点，且 `message_seq` 是短 ID
+  映射，不能数值比较。页边界的两条只读探测提供终点事实，客户端的“新游标 + 新消息”
+  条件只负责终止重复页；两者无需持久分页状态或第二套消息存储。
+- `EventChecker Failed/result=120` 可能发生在 QQ 已接受消息之后。此时自动重试会制造
+  重复外部消息，所以 Core 只允许发送后协调：普通文本按 Scope、Bot、时间和精确正文
+  查最近历史；证据匹配才把 UNKNOWN 提升为成功，无法匹配和合并转发保持 UNKNOWN。
 - 频率滑块部署后的空下拉不是 Runtime 失效，而是部署前已加载的旧 SPA 继续读取
   新 Catalog：旧 JS 依赖 `proactiveFrequencies`，新接口只返回
   `proactiveTalkLimits`。带哈希静态资源和 `index.html no-cache` 均工作正常，不能
@@ -144,8 +153,8 @@ Branch: real-group-validation
   不是模型最大 Context Window；`compact/standard/extended` 分别应用
   12/6,000、30/18,000、100/36,000 条消息/字符双上限，并用
   `messagesRead/charactersRead` 报告本轮实际读取量。
-- Workspace SSE 采用单调 ID 加最近 512 条内存事件的有限补放即可解决本轮
-  重连丢失；无需把内测 Web 扩展成持久消息队列。`Last-Event-ID` 可用时按序
+- Workspace SSE 采用单调 ID 加最近 4096 条内存事件的有限补放，覆盖当前高流量群
+  超过 512 条的短时断线；无需把内测 Web 扩展成持久消息队列。`Last-Event-ID` 可用时按序
   补放，不可用时回到权威 Snapshot/History 的 `workspace.refresh`。
 - 客户端消息顺序由 `timestampMs`、无损十进制 sequence 和稳定消息 ID 共同
   决定；sequence 不再转成 JavaScript `Number`，因此大于 `2^53` 的 NapCat
@@ -335,7 +344,7 @@ Branch: real-group-validation
   Gold set is required before threshold calibration or production integration.
 - 2.0 AstrBot 已完成运行替换，NapCat 保持原实例。当前残余风险是宿主并发入队可乱序，且
   缺少用户触发的真实 QQ 端到端回复 Receipt，而不是候选尚未部署。
-- 512 条 SSE 重放是断线恢复窗口而非持久日志；服务进程重启或客户端落后超过
+- 4096 条 SSE 重放是断线恢复窗口而非持久日志；服务进程重启或客户端落后超过
   窗口时只能刷新 Snapshot/History。当前修复减少可观察丢失，不构成跨进程
   exactly-once 保证。
 - Persona 接线只证明配置、channel rule 和回答档位进入生成链路；真实中文群聊

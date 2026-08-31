@@ -114,6 +114,25 @@ class UstcShuttlePluginTests(unittest.TestCase):
         )
         self.assertFalse((ROOT / "configs" / "mcp" / "servers" / "ustc-shuttle.json").exists())
 
+    def test_unscoped_tomorrow_query_stays_within_runtime_tool_context(self) -> None:
+        result = self.schedule.query(
+            "查看明天校车",
+            at=datetime.fromisoformat("2026-08-30T20:08:26+08:00"),
+        )
+
+        self.assertEqual(result["total"], 24)
+        self.assertLess(
+            len(
+                json.dumps(
+                    result,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ),
+            14_000,
+        )
+        self.assertIn("补充校区、起终点或时间", "\n".join(result["notices"]))
+
 
 if __name__ == "__main__":
     unittest.main()

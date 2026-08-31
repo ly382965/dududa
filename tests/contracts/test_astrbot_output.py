@@ -96,11 +96,13 @@ class FakeEvent:
         fail_on_call: int | None = None,
         cancel: bool = False,
         group_id: str | None = "g-1",
+        history_messages: list[dict[str, object]] | None = None,
     ) -> None:
         self.fail_on_call = fail_on_call
         self.cancel = cancel
         self.group_id = group_id
         self.sent: list[object] = []
+        self.bot = FakeBot(history_messages) if history_messages is not None else None
 
     def get_platform_id(self):
         return "qq-adapter-1"
@@ -120,6 +122,16 @@ class FakeEvent:
             raise asyncio.CancelledError
         if self.fail_on_call == len(self.sent):
             raise RuntimeError("response lost")
+
+
+class FakeBot:
+    def __init__(self, messages: list[dict[str, object]]) -> None:
+        self.messages = messages
+        self.calls: list[dict[str, object]] = []
+
+    async def call_action(self, **kwargs: object) -> dict[str, object]:
+        self.calls.append(kwargs)
+        return {"messages": self.messages}
 
 
 class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
@@ -424,6 +436,37 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(receipt.status, DeliveryStatus.UNKNOWN)
         self.assertEqual(receipt, duplicate)
         self.assertEqual(len(event.sent), 1)
+
+    async def test_send_exception_reconciles_exact_recent_bot_message(self) -> None:
+        event = FakeEvent(
+            fail_on_call=1,
+            history_messages=[
+                {
+                    "time": int(self.now.timestamp()),
+                    "message_id": "platform-9001",
+                    "user_id": "bot-1",
+                    "group_id": "g-1",
+                    "sender": {"user_id": "bot-1"},
+                    "message": [{"type": "text", "data": {"text": "hello"}}],
+                }
+            ],
+        )
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+        )
+
+        receipt = await adapter.deliver(self.request(), call=self.call)
+
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(event.sent), 1)
+        self.assertEqual(event.bot.calls[0]["action"], "get_group_msg_history")
+        self.assertEqual(
+            receipt.parts[0].platform_message_ref.message_id,
+            "platform-9001",
+        )
 
     async def test_run_id_and_idempotency_key_conflicts_never_send(self) -> None:
         event = FakeEvent()

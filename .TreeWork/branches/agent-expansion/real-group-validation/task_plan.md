@@ -85,10 +85,11 @@ Title: S23 Authorized Real-Group Validation
 - [x] 操作员可显式触发一次服务端 `no_send` 候选生成并提交人工评价；响应
   明确记录 tier/model/answer profile、延迟和 `output_calls=0`，反馈只写入
   配置的仓库外 JSONL，浏览器与日志均不包含 Provider Secret。
-- [x] Workspace SSE 使用单调事件 ID 和最近 512 条有界内存重放；浏览器重连
+- [x] Workspace SSE 使用单调事件 ID 和最近 4096 条有界内存重放；浏览器重连
   可通过 `Last-Event-ID` 按序补放，ID 无效、过旧或服务重启时回退到
   `workspace.refresh`。前端按 `timestampMs`、无损十进制 sequence、消息 ID
-  稳定排序，并重放初始快照期间收到的实时事件。
+  稳定排序，并重放初始快照期间收到的实时事件。NapCat 历史页以游标边界探测
+  判断是否还有更早记录，不再把不足请求条数误判为终页；前端对重复游标/消息停止翻页。
 - [x] 历史语料 Evaluation Adapter 的首版候选生成可显式选择 SHORT/MEDIUM/LONG；生成指令复用
   `configs/personas/registry-v1/dududa.json`，按群聊/私聊规则调整表达，同时保持
   NO SEND、NO MEMORY WRITE、NO TOOL CALL、NO BANDIT。该历史候选不等同于当前

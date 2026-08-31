@@ -76,7 +76,7 @@ const contentTypes: Record<string, string> = {
   '.webp': 'image/webp',
 }
 
-const workspaceEventReplayLimit = 512
+const workspaceEventReplayLimit = 4_096
 
 interface ReplayableWorkspaceEvent {
   id: number

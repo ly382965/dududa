@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 _LOCAL_TIMEZONE = ZoneInfo("Asia/Shanghai")
 _DATA_PATH = Path(__file__).with_name("data") / "timetable.v1.json"
+_MAX_RETURNED_TRIPS = 24
 _STATION_ALIASES = {
     "太湖路园区": "太湖路园区",
     "太湖路": "太湖路园区",
@@ -135,9 +136,12 @@ class ShuttleSchedule:
 
         items.sort(key=_trip_sort_key)
         items = _apply_time_selection(items, time_request, selector)
-        if len(items) > 32:
-            items = items[:32]
-            notices.append("匹配班次较多，仅返回按时间排序后的前 32 条。")
+        if len(items) > _MAX_RETURNED_TRIPS:
+            items = items[:_MAX_RETURNED_TRIPS]
+            notices.append(
+                f"匹配班次较多，仅返回按时间排序后的前 {_MAX_RETURNED_TRIPS} 条；"
+                "请补充校区、起终点或时间以缩小范围。"
+            )
         if origin == "北区" or destination == "北区":
             notices.append("北区仅标为途经站，当前时刻表没有给出北区固定到发时间。")
 

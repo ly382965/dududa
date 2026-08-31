@@ -1186,14 +1186,33 @@ export class OneBotHub extends EventEmitter {
         : mappedMessages
     const firstSeq = messages.find((message) => message.messageSeq)?.messageSeq
     const lastSeq = [...messages].reverse().find((message) => message.messageSeq)?.messageSeq
+    const boundarySeq = direction === 'before' ? firstSeq : lastSeq
+    let hasMoreInDirection = mappedMessages.length > count
+    if (!hasMoreInDirection && boundarySeq) {
+      try {
+        const adjacent = await state.connection.request<{ messages?: OneBotMessage[] }>(action, {
+          [key]: peerId,
+          count: 2,
+          message_seq: boundarySeq,
+          reverse_order: direction === 'before',
+          disable_get_url: true,
+          parse_mult_msg: false,
+        })
+        hasMoreInDirection = (adjacent.messages ?? []).some((message) => {
+          const sequence = String(message.message_seq ?? message.real_seq ?? '')
+          return Boolean(sequence) && sequence !== boundarySeq
+        })
+      } catch (error) {
+        // A transient boundary read must not hide a page that was already loaded.
+        hasMoreInDirection = !(error instanceof Error && /不存在|not found/i.test(error.message))
+      }
+    }
     return {
       messages,
       beforeCursor: firstSeq ? this.encodeHistoryCursor(account, type, peerId, firstSeq) : undefined,
       afterCursor: lastSeq ? this.encodeHistoryCursor(account, type, peerId, lastSeq) : undefined,
-      hasMoreBefore:
-        direction === 'before' && (mappedMessages.length > count || rawMessages.length >= requestCount),
-      hasMoreAfter:
-        direction === 'after' && (mappedMessages.length > count || rawMessages.length >= requestCount),
+      hasMoreBefore: direction === 'before' && hasMoreInDirection,
+      hasMoreAfter: direction === 'after' && hasMoreInDirection,
     }
   }
 

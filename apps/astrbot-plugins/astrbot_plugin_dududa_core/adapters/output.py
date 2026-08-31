@@ -18,6 +18,7 @@ from dududa.domain.delivery import (
     DeliveryRequest,
     DeliveryStatus,
 )
+from dududa.domain.message import MessageReference
 from dududa.domain.primitives import ComponentRevision, DigestString, Outcome
 from dududa.errors import ErrorCategory, error
 from dududa.ports.context import PortCallContext
@@ -296,6 +297,7 @@ class AstrBotOutputAdapter:
                     "delivery_cancelled_before_part",
                 )
             send_started = False
+            send_started_at: datetime | None = None
             try:
                 components: list[object] = []
                 if reply_to is not None:
@@ -332,6 +334,7 @@ class AstrBotOutputAdapter:
                         guard_reason,
                     )
                 send_started = True
+                send_started_at = self._clock()
                 await self._event.send(chain)
             except asyncio.CancelledError:
                 receipts.append(
@@ -355,6 +358,27 @@ class AstrBotOutputAdapter:
                 self._ledger.store(receipt)
                 raise
             except Exception:  # noqa: BLE001 - normalize platform boundary failures
+                reconciled = (
+                    await self._reconcile_text_send(
+                        request,
+                        text=text,
+                        started_at=send_started_at,
+                    )
+                    if send_started and send_started_at is not None
+                    else None
+                )
+                if reconciled is not None:
+                    receipts.append(
+                        DeliveryPartReceipt(
+                            1,
+                            part_id,
+                            digest,
+                            DeliveryPartStatus.SUCCEEDED,
+                            reconciled,
+                            None,
+                        )
+                    )
+                    continue
                 part_status = (
                     DeliveryPartStatus.UNKNOWN
                     if send_started
@@ -404,6 +428,83 @@ class AstrBotOutputAdapter:
             tuple(receipts),
             self._clock(),
             None,
+        )
+
+    async def _reconcile_text_send(
+        self,
+        request: DeliveryRequest,
+        *,
+        text: str,
+        started_at: datetime,
+    ) -> MessageReference | None:
+        bot = getattr(self._event, "bot", None)
+        call_action = getattr(bot, "call_action", None)
+        if not callable(call_action):
+            return None
+        group_id = request.scope.group_id
+        if group_id is not None:
+            action = "get_group_msg_history"
+            peer_key = "group_id"
+            peer_id = group_id
+        else:
+            action = "get_friend_msg_history"
+            peer_key = "user_id"
+            peer_id = _safe_call(self._event, "get_sender_id")
+        if not peer_id:
+            return None
+        bot_id = request.scope.bot_id
+        params: dict[str, object] = {
+            peer_key: int(peer_id) if peer_id.isdigit() else peer_id,
+            "count": 30,
+            "reverse_order": False,
+            "disable_get_url": True,
+            "parse_mult_msg": False,
+        }
+        if bot_id.isdigit():
+            params["self_id"] = int(bot_id)
+        try:
+            result = await asyncio.wait_for(
+                call_action(action=action, **params),
+                timeout=3.0,
+            )
+        except Exception:  # noqa: BLE001 - an unreadable receipt remains UNKNOWN
+            return None
+        messages = result.get("messages") if isinstance(result, dict) else None
+        if not isinstance(messages, list):
+            return None
+        started_second = int(started_at.timestamp())
+        candidates: list[tuple[int, str]] = []
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            sender = message.get("sender")
+            sender_id = (
+                sender.get("user_id")
+                if isinstance(sender, dict)
+                else message.get("user_id")
+            )
+            if str(sender_id or "") != bot_id:
+                continue
+            if group_id is not None and str(message.get("group_id") or "") != group_id:
+                continue
+            timestamp = _integer(message.get("time"))
+            message_id = str(message.get("message_id") or "").strip()
+            if (
+                timestamp is None
+                or timestamp < started_second
+                or not message_id
+                or _onebot_text(message.get("message")) != text
+            ):
+                continue
+            candidates.append((timestamp, message_id))
+        if not candidates:
+            return None
+        _, message_id = max(candidates)
+        return MessageReference(
+            request.scope.platform,
+            bot_id,
+            request.scope.conversation_id,
+            message_id,
         )
 
     def _can_send_forward_bundle(self, request: DeliveryRequest) -> bool:
@@ -565,6 +666,26 @@ def _safe_call(value: object, name: str) -> str:
         return str(getattr(value, name)() or "").strip()
     except Exception:  # noqa: BLE001 - platform accessors are untrusted callbacks
         return ""
+
+
+def _integer(value: object) -> int | None:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _onebot_text(value: object) -> str:
+    if not isinstance(value, list):
+        return ""
+    parts: list[str] = []
+    for segment in value:
+        if not isinstance(segment, dict) or segment.get("type") != "text":
+            continue
+        data = segment.get("data")
+        if isinstance(data, dict):
+            parts.append(str(data.get("text") or ""))
+    return "".join(parts)
 
 
 def _output_error(code: str):

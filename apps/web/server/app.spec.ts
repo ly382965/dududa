@@ -173,6 +173,7 @@ interface FakeNapCatOptions {
   selfMemberGroupId?: string
   groupFileCount?: number
   customFaceUrls?: string[]
+  groupHistory?: (request: ActionRequest) => unknown[]
 }
 
 interface FakeNapCatState {
@@ -291,7 +292,11 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         data = options.customFaceUrls ?? ['https://gchat.qpic.cn/gchatpic_new/0/0-0-FAVORITE/0']
         break
       case 'get_group_msg_history':
-        data = { messages: [realGroupMessage('来自真实 NapCat 的消息', { self_id: Number(connectionSelfId) })] }
+        data = {
+          messages: options.groupHistory?.(request) ?? [
+            realGroupMessage('来自真实 NapCat 的消息', { self_id: Number(connectionSelfId) }),
+          ],
+        }
         break
       case 'get_group_member_list':
         data = [
@@ -578,17 +583,18 @@ describe('Dududa NapCat gateway', () => {
     expect(first).toContain('id: 1')
     expect(first).not.toContain('"type":"workspace.refresh"')
 
-    hub.emit('workspace-event', workspaceMessageEvent(2))
-    hub.emit('workspace-event', workspaceMessageEvent(3))
+    for (let messageId = 2; messageId <= 600; messageId += 1) {
+      hub.emit('workspace-event', workspaceMessageEvent(messageId))
+    }
     const replayed = await readSseUntil(
       `${baseUrl}/api/events`,
       { 'Last-Event-ID': '1' },
-      (body) => body.includes('"messageId":"3"'),
+      (body) => body.includes('"messageId":"600"'),
     )
     expect(replayed).not.toContain('"messageId":"1"')
     expect(replayed).toContain('"messageId":"2"')
-    expect(replayed).toContain('"messageId":"3"')
-    expect(replayed.indexOf('id: 2')).toBeLessThan(replayed.indexOf('id: 3'))
+    expect(replayed).toContain('"messageId":"600"')
+    expect(replayed.indexOf('id: 2')).toBeLessThan(replayed.indexOf('id: 600'))
   })
 
   it('maps account identity and proxies typed control-plane queries and commands', async () => {
@@ -896,7 +902,7 @@ describe('Dududa NapCat gateway', () => {
     expect(first.messages[0]).toMatchObject({ messageSeq: '101', segments: [{ type: 'text' }] })
     expect(first.beforeCursor).toBeTruthy()
     expect(first.afterCursor).toBeTruthy()
-    expect(first.hasMoreBefore).toBe(true)
+    expect(first.hasMoreBefore).toBe(false)
     expect(first.hasMoreAfter).toBe(false)
 
     const older = await fetch(`${messageUrl}?limit=1&before=${encodeURIComponent(first.beforeCursor)}`)
@@ -944,6 +950,55 @@ describe('Dududa NapCat gateway', () => {
     })
     expect(malformed.status).toBe(400)
     expect(napcat.actions.filter((item) => item.action === 'send_group_msg')).toHaveLength(1)
+    napcat.socket.close()
+  })
+
+  it('keeps paging when NapCat returns an underfilled intermediate history page', async () => {
+    const historyMessage = (sequence: number) => realGroupMessage(`历史 ${sequence}`, {
+      time: 1_785_742_400 + sequence,
+      message_id: sequence,
+      message_seq: sequence,
+      real_id: sequence,
+    })
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, {
+      groupHistory: (request) => {
+        const anchor = String(request.params.message_seq ?? '')
+        const count = Number(request.params.count)
+        if (!anchor) return [8, 9, 10].map(historyMessage)
+        if (count === 2 && anchor === '8') return [7, 8].map(historyMessage)
+        if (count === 2 && anchor === '4') return [3, 4].map(historyMessage)
+        if (count === 2 && anchor === '1') return [1].map(historyMessage)
+        if (anchor === '8') return [4, 5, 6, 7, 8].map(historyMessage)
+        if (anchor === '4') return [1, 2, 3, 4].map(historyMessage)
+        return []
+      },
+    })
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => (await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)).ok)
+    const messageUrl = `${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`
+
+    const first = (await (await fetch(`${messageUrl}?limit=100`)).json()) as {
+      messages: Array<{ messageSeq: string }>
+      beforeCursor: string
+      hasMoreBefore: boolean
+    }
+    expect(first.messages.map((item) => item.messageSeq)).toEqual(['8', '9', '10'])
+    expect(first.hasMoreBefore).toBe(true)
+
+    const second = (await (
+      await fetch(`${messageUrl}?limit=100&before=${encodeURIComponent(first.beforeCursor)}`)
+    ).json()) as typeof first
+    expect(second.messages.map((item) => item.messageSeq)).toEqual(['4', '5', '6', '7'])
+    expect(second.hasMoreBefore).toBe(true)
+
+    const finalPage = (await (
+      await fetch(`${messageUrl}?limit=100&before=${encodeURIComponent(second.beforeCursor)}`)
+    ).json()) as typeof first
+    expect(finalPage.messages.map((item) => item.messageSeq)).toEqual(['1', '2', '3'])
+    expect(finalPage.hasMoreBefore).toBe(false)
     napcat.socket.close()
   })
 

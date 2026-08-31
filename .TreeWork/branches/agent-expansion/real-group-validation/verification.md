@@ -4,6 +4,19 @@ Branch: real-group-validation
 
 ## Latest Verification
 
+- 2026-08-31 校车无回复修复：20 条既有校车事实/Schema 用例和新增泛查询大小回归
+  3/3 通过；Production Composition 校车 2.0 Runtime 聚焦测试通过。热重载校车和
+  Core 后，原句“查看明天校车”经 Web -> 已安装 Runtime 返回 Terra `low`、LONG、
+  `toolCalls=1`、非空总结、`outputCalls=0 / memoryWrites=0`，耗时 44,417 ms；
+  Capability 仅为 `ustc.shuttle.public-query.v1`，原上下文溢出原因码消失。
+- 2026-08-31 Web 历史/SSE 修复：Server 37/37、Workspace 13/13、TypeScript
+  typecheck 和 production build 通过。600 条事件重放用例证明超过旧 512 窗口仍从
+  ID 2 连续补放；不足请求数的中间页、终页探测和重复游标均有聚焦覆盖。部署后目标群
+  首页/第二页实际返回 95/93 条，二者 `hasMoreBefore=true` 且游标前进。
+- Output Adapter 17/17 与 Ruff E/F/I 通过。发送异常后的精确近期 Bot 消息可协调为
+  `SUCCEEDED` 并绑定平台消息 ID；无可读历史仍为 `UNKNOWN`，没有重试发送，合并转发
+  行为未改变。本轮未故意触发真实 QQ 外部发送。Core/校车均为插件热重载，Web 单独
+  重建；AstrBot 与 NapCat 容器 ID、StartedAt、`RestartCount=0` 保持不变。
 - 2026-08-30 WebUI 跨版本空下拉修复：实际 Catalog 同时返回新版三滑块范围和
   旧 `low/normal/high` additive 别名；旧 `high` PUT 迁移测试保持通过。Web Server
   聚焦测试 9/9、TypeScript typecheck 和 build 通过。部署后 Playwright 在目标群

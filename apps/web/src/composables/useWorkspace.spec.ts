@@ -181,6 +181,61 @@ describe('useWorkspace account-scoped state', () => {
     wrapper.unmount()
   })
 
+  it('stops older-history paging when a page repeats the same cursor and messages', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const repeated = message(target)
+    const snapshot: WorkspaceSnapshot = {
+      runtime: { status: 'connected', message: 'connected', reverseWebSocketPath: '/onebot/v11/ws' },
+      accounts: [owner],
+      capabilities: {},
+      conversations: [target],
+      messages: {},
+      sessions: [],
+      agentMessages: {},
+      runs: [],
+      configs: {},
+    }
+    const loadHistory = vi.fn()
+      .mockResolvedValueOnce({
+        messages: [repeated],
+        beforeCursor: 'same-cursor',
+        afterCursor: 'after',
+        hasMoreBefore: true,
+        hasMoreAfter: false,
+      })
+      .mockResolvedValue({
+        messages: [repeated],
+        beforeCursor: 'same-cursor',
+        afterCursor: 'after',
+        hasMoreBefore: true,
+        hasMoreAfter: false,
+      })
+    const adapter = {
+      load: vi.fn(async () => snapshot),
+      loadCachedMessages: vi.fn(async () => []),
+      loadHistory,
+      loadDraft: vi.fn(async () => undefined),
+      markRead: vi.fn(async () => undefined),
+      subscribe: vi.fn(() => () => undefined),
+    } as unknown as WorkspaceAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({
+      setup() {
+        workspace = useWorkspace(adapter)
+        return () => h('div')
+      },
+    }))
+    await flushPromises()
+
+    await workspace.loadOlderMessages()
+    await workspace.loadOlderMessages()
+
+    expect(loadHistory).toHaveBeenCalledTimes(2)
+    expect(workspace.chatHistory.value.hasMoreBefore).toBe(false)
+    wrapper.unmount()
+  })
+
   it('orders cached and history messages by timestamp, full-precision sequence, and identity', async () => {
     const owner = account('qq-111111111')
     const target = conversation(owner, '345678901')
