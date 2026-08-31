@@ -8,6 +8,7 @@ import time
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from datetime import timezone as datetime_timezone
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -28,6 +29,7 @@ READ_ONLY_PATHS = frozenset(
 )
 ACCOUNT_TODAY_STATS_PATH = re.compile(r"^/admin/accounts/[1-9][0-9]*/today-stats$")
 OVERVIEW_HISTORY_START = date(2026, 7, 13)
+CURRENT_BILLING_PERIOD_START = "2026-08-13 14:00"
 COST_OVERVIEW_URL = "https://mmdustc.top/api/projects/cost/overview"
 COST_OVERVIEW_TIMEOUT_SECONDS = 60.0
 SUB2API_COMMAND_RE = re.compile(
@@ -210,6 +212,71 @@ async def fetch_cost_overview(
     return payload
 
 
+def fallback_cost_overview(
+    accounts: Iterable[dict[str, Any]], *, timezone: str
+) -> dict[str, Any]:
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError as exc:
+        raise Sub2APIConfigError(f"未知时区：{timezone}") from exc
+    now = datetime.now(zone)
+    candidates: list[tuple[datetime, dict[str, Any], float, datetime]] = []
+    for account in accounts:
+        if account.get("platform") != "openai" or account.get("status") != "active":
+            continue
+        extra = account.get("extra") if isinstance(account.get("extra"), dict) else {}
+        try:
+            used_percent = float(extra.get("codex_7d_used_percent") or 0)
+            resets_at = datetime.fromisoformat(
+                str(extra.get("codex_7d_reset_at") or "").replace("Z", "+00:00")
+            ).astimezone(zone)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(used_percent) or not 0 < used_percent <= 100:
+            continue
+        if resets_at <= now:
+            continue
+        last_used_at = datetime.min.replace(tzinfo=datetime_timezone.utc)
+        try:
+            last_used_at = datetime.fromisoformat(
+                str(account.get("last_used_at") or "").replace("Z", "+00:00")
+            )
+            if last_used_at.tzinfo is None:
+                last_used_at = last_used_at.replace(tzinfo=zone)
+        except ValueError:
+            pass
+        candidates.append((last_used_at, account, used_percent, resets_at))
+
+    estimate = None
+    if candidates:
+        _, account, used_percent, resets_at = max(
+            candidates, key=lambda item: item[0]
+        )
+        extra = account.get("extra")
+        extra = extra if isinstance(extra, dict) else {}
+        try:
+            window_minutes = int(extra.get("codex_7d_window_minutes") or 7 * 24 * 60)
+        except (TypeError, ValueError):
+            window_minutes = 7 * 24 * 60
+        cycle_started_at = resets_at - timedelta(minutes=max(1, window_minutes))
+        estimate = {
+            "account_id": account.get("id"),
+            "used_percent": used_percent,
+            "cycle_started_at": cycle_started_at.isoformat(timespec="seconds"),
+            "resets_at": resets_at.isoformat(timespec="seconds"),
+        }
+
+    return {
+        "source": "sub2api-account-fallback",
+        "period_start": CURRENT_BILLING_PERIOD_START,
+        "period_end": now.date().isoformat(),
+        "synced_at": now.isoformat(timespec="seconds"),
+        "members": [],
+        "total_actual_cost": 0,
+        "pro_estimate": estimate,
+    }
+
+
 def access_error(
     *,
     enabled: bool,
@@ -371,6 +438,96 @@ class Sub2APIClient:
             await self._get("/admin/usage/stats", params=period.as_params())
         )
 
+    async def get_pro_quota_estimate(
+        self,
+        estimate: dict[str, Any],
+        *,
+        synced_at: str | None = None,
+    ) -> dict[str, Any]:
+        try:
+            account_id = int(estimate.get("account_id") or 0)
+        except (TypeError, ValueError) as exc:
+            raise Sub2APIConfigError("Pro 额度观测缺少上游账号 ID。") from exc
+        if account_id <= 0:
+            raise Sub2APIConfigError("Pro 额度观测缺少上游账号 ID。")
+        used_percent = self._as_nonnegative_float(estimate.get("used_percent"))
+        if not 0 < used_percent <= 100:
+            raise Sub2APIConfigError("Pro 额度已用比例格式不兼容。")
+
+        cycle_started_at = self._parse_timestamp(estimate.get("cycle_started_at"))
+        observed_at = (
+            self._parse_timestamp(synced_at)
+            if synced_at
+            else datetime.now(ZoneInfo(self.timezone))
+        )
+        stats = self._expect_dict(
+            await self._get(
+                "/admin/usage/stats",
+                params={
+                    "account_id": account_id,
+                    "start_date": cycle_started_at.date().isoformat(),
+                    "end_date": observed_at.date().isoformat(),
+                },
+                use_cache=False,
+            )
+        )
+        pre_reset_cost = await self._get_pre_reset_actual_cost(
+            account_id,
+            cycle_started_at,
+        )
+        cycle_actual_cost = max(
+            0.0,
+            self._as_nonnegative_float(stats.get("total_actual_cost"))
+            - pre_reset_cost,
+        )
+        if cycle_actual_cost <= 0:
+            return dict(estimate)
+        estimated_quota = cycle_actual_cost / (used_percent / 100.0)
+        if not math.isfinite(estimated_quota) or estimated_quota <= 0:
+            return dict(estimate)
+        return {
+            **estimate,
+            "cycle_actual_cost": cycle_actual_cost,
+            "estimated_quota": estimated_quota,
+        }
+
+    async def _get_pre_reset_actual_cost(
+        self,
+        account_id: int,
+        cycle_started_at: datetime,
+    ) -> float:
+        total = 0.0
+        start_date = cycle_started_at.date().isoformat()
+        for page in range(1, 101):
+            payload = self._expect_dict(
+                await self._get(
+                    "/admin/usage",
+                    params={
+                        "account_id": account_id,
+                        "start_date": start_date,
+                        "end_date": start_date,
+                        "page": page,
+                        "page_size": 1000,
+                        "sort_by": "created_at",
+                        "sort_order": "asc",
+                        "exact_total": False,
+                    },
+                    use_cache=False,
+                )
+            )
+            items = payload.get("items") or []
+            if not isinstance(items, list):
+                raise Sub2APIRequestError("Sub2API 用量明细响应格式不兼容。")
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                if self._parse_timestamp(item.get("created_at")) >= cycle_started_at:
+                    return total
+                total += self._as_nonnegative_float(item.get("actual_cost"))
+            if len(items) < 1000:
+                return total
+        raise Sub2APIRequestError("Pro 周期起点明细超过安全扫描上限。")
+
     async def get_usage_ranking_since(
         self,
         period_start: str,
@@ -400,29 +557,140 @@ class Sub2APIClient:
         if isinstance(cached, dict):
             return cached
 
-        users: dict[str, dict[str, Any]] = {}
-        totals = {
-            "total_tokens": 0,
-            "total_requests": 0,
-            "total_actual_cost": 0.0,
-            "total_input_tokens": 0,
-            "total_output_tokens": 0,
-            "total_cache_creation_tokens": 0,
-            "total_cache_read_tokens": 0,
+        effective_end = min(end_date, upper_bound.date()) if upper_bound else end_date
+        if effective_end < cutoff.date() or (upper_bound and upper_bound < cutoff):
+            raise Sub2APIConfigError("当前轮同步时间不能早于计费起点。")
+
+        period = DateRange(start=cutoff.date(), end=effective_end)
+        stats, ranking_payload, excluded = await asyncio.gather(
+            self.get_usage_stats(period),
+            self.get_user_ranking(period, limit=100),
+            self._get_usage_boundary_exclusions(cutoff, upper_bound, effective_end),
+        )
+        result = dict(stats)
+        users = {
+            str(item.get("user_id")): dict(item)
+            for item in ranking_payload.get("users") or []
+            if isinstance(item, dict) and item.get("user_id")
         }
-        duration_sum = 0.0
-        duration_count = 0
+        total_requests = self._as_nonnegative_int(result.get("total_requests"))
+        duration_sum = (
+            self._as_nonnegative_float(result.get("average_duration_ms"))
+            * total_requests
+        )
+        for item in excluded:
+            token_fields = {
+                "input_tokens": self._as_nonnegative_int(item.get("input_tokens")),
+                "output_tokens": self._as_nonnegative_int(item.get("output_tokens")),
+                "cache_creation_tokens": self._as_nonnegative_int(
+                    item.get("cache_creation_tokens")
+                ),
+                "cache_read_tokens": self._as_nonnegative_int(
+                    item.get("cache_read_tokens")
+                ),
+            }
+            tokens = sum(token_fields.values())
+            actual_cost = self._as_nonnegative_float(item.get("actual_cost"))
+            result["total_tokens"] = max(
+                0, self._as_nonnegative_int(result.get("total_tokens")) - tokens
+            )
+            result["total_requests"] = max(
+                0, self._as_nonnegative_int(result.get("total_requests")) - 1
+            )
+            result["total_actual_cost"] = max(
+                0.0,
+                self._as_nonnegative_float(result.get("total_actual_cost"))
+                - actual_cost,
+            )
+            for field, value in token_fields.items():
+                total_field = f"total_{field}"
+                result[total_field] = max(
+                    0, self._as_nonnegative_int(result.get(total_field)) - value
+                )
+            if "total_cache_tokens" in result:
+                result["total_cache_tokens"] = max(
+                    0,
+                    self._as_nonnegative_int(result.get("total_cache_tokens"))
+                    - token_fields["cache_creation_tokens"]
+                    - token_fields["cache_read_tokens"],
+                )
+            duration_sum = max(
+                0.0,
+                duration_sum
+                - self._as_nonnegative_float(item.get("duration_ms")),
+            )
+
+            user = item.get("user") if isinstance(item.get("user"), dict) else {}
+            user_id = item.get("user_id") or user.get("id")
+            row = users.get(str(user_id))
+            if row is None:
+                continue
+            row["total_tokens"] = max(
+                0, self._as_nonnegative_int(row.get("total_tokens")) - tokens
+            )
+            row["requests"] = max(
+                0, self._as_nonnegative_int(row.get("requests")) - 1
+            )
+            row["actual_cost"] = max(
+                0.0,
+                self._as_nonnegative_float(row.get("actual_cost")) - actual_cost,
+            )
+
+        remaining_requests = self._as_nonnegative_int(result.get("total_requests"))
+        result["average_duration_ms"] = (
+            duration_sum / remaining_requests if remaining_requests else 0
+        )
+        result["users"] = sorted(
+            users.values(),
+            key=lambda item: self._as_nonnegative_int(item.get("total_tokens")),
+            reverse=True,
+        )[:safe_limit]
+        await self._put_cached(cache_key, result)
+        return result
+
+    async def _get_usage_boundary_exclusions(
+        self,
+        cutoff: datetime,
+        upper_bound: datetime | None,
+        end_date: date,
+    ) -> list[dict[str, Any]]:
+        scans: list[Any] = []
+        if cutoff.time() != datetime.min.time():
+            scans.append(
+                self._scan_usage_boundary(
+                    cutoff.date(), boundary=cutoff, before=True
+                )
+            )
+        if upper_bound and upper_bound.date() == end_date:
+            scans.append(
+                self._scan_usage_boundary(
+                    upper_bound.date(), boundary=upper_bound, before=False
+                )
+            )
+        if not scans:
+            return []
+        return [item for rows in await asyncio.gather(*scans) for item in rows]
+
+    async def _scan_usage_boundary(
+        self,
+        boundary_date: date,
+        *,
+        boundary: datetime,
+        before: bool,
+    ) -> list[dict[str, Any]]:
+        excluded: list[dict[str, Any]] = []
+        sort_order = "asc" if before else "desc"
         for page in range(1, 101):
             payload = self._expect_dict(
                 await self._get(
                     "/admin/usage",
                     params={
-                        "start_date": cutoff.date().isoformat(),
-                        "end_date": end_date.isoformat(),
+                        "start_date": boundary_date.isoformat(),
+                        "end_date": boundary_date.isoformat(),
                         "page": page,
                         "page_size": 1000,
                         "sort_by": "created_at",
-                        "sort_order": "asc",
+                        "sort_order": sort_order,
                         "exact_total": False,
                     },
                     use_cache=False,
@@ -435,67 +703,13 @@ class Sub2APIClient:
                 if not isinstance(item, dict):
                     continue
                 created_at = self._parse_timestamp(item.get("created_at"))
-                if created_at < cutoff or (upper_bound and created_at > upper_bound):
-                    continue
-                user = item.get("user") if isinstance(item.get("user"), dict) else {}
-                user_id = item.get("user_id") or user.get("id")
-                key = str(user_id or "").strip()
-                if not key:
-                    continue
-                token_fields = {
-                    "input_tokens": self._as_nonnegative_int(item.get("input_tokens")),
-                    "output_tokens": self._as_nonnegative_int(item.get("output_tokens")),
-                    "cache_creation_tokens": self._as_nonnegative_int(
-                        item.get("cache_creation_tokens")
-                    ),
-                    "cache_read_tokens": self._as_nonnegative_int(
-                        item.get("cache_read_tokens")
-                    ),
-                }
-                tokens = sum(token_fields.values())
-                actual_cost = self._as_nonnegative_float(item.get("actual_cost"))
-                row = users.setdefault(
-                    key,
-                    {
-                        "user_id": user_id,
-                        "email": str(user.get("email") or "").strip(),
-                        "username": str(user.get("username") or "").strip(),
-                        "total_tokens": 0,
-                        "requests": 0,
-                        "actual_cost": 0.0,
-                    },
-                )
-                row["total_tokens"] += tokens
-                row["requests"] += 1
-                row["actual_cost"] += actual_cost
-                totals["total_tokens"] += tokens
-                totals["total_requests"] += 1
-                totals["total_actual_cost"] += actual_cost
-                for field, value in token_fields.items():
-                    totals[f"total_{field}"] += value
-                duration = self._as_nonnegative_float(item.get("duration_ms"))
-                if duration > 0:
-                    duration_sum += duration
-                    duration_count += 1
+                is_excluded = created_at < boundary if before else created_at > boundary
+                if not is_excluded:
+                    return excluded
+                excluded.append(item)
             if len(items) < 1000:
-                break
-        else:
-            raise Sub2APIRequestError("当前轮用量明细超过安全扫描上限。")
-
-        ranking = sorted(
-            users.values(),
-            key=lambda item: int(item["total_tokens"]),
-            reverse=True,
-        )[:safe_limit]
-        result = {
-            **totals,
-            "average_duration_ms": duration_sum / duration_count
-            if duration_count
-            else 0,
-            "users": ranking,
-        }
-        await self._put_cached(cache_key, result)
-        return result
+                return excluded
+        raise Sub2APIRequestError("当前轮边界明细超过安全扫描上限。")
 
     async def get_accounts(self, *, page_size: int = 100) -> list[dict[str, Any]]:
         size = max(1, min(int(page_size), 100))
@@ -757,6 +971,7 @@ class Sub2APIClient:
                 "codex_primary_reset_at",
                 "codex_7d_used_percent",
                 "codex_7d_reset_at",
+                "codex_7d_window_minutes",
                 "codex_usage_updated_at",
             }
             result["extra"] = {
