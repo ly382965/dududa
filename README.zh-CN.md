@@ -144,11 +144,15 @@ python ops/cli/install_plugins.py --plugins-root ./runtime/astrbot-plugins --own
 
 ```bash
 uv lock --check
+uv sync --project services/mcp/unified-worker --locked --python 3.12.13
 uv run --locked python -m compileall -q packages apps services ops tests
 uv run --locked python -m unittest discover -s tests -t .
 uv run --locked python ops/cli/check_secrets.py
 cd apps/web && npm run typecheck && npm run test && npm run build
 ```
+
+Unified MCP worker 的 `.venv` 是本地忽略产物，不提交到 Git；首次运行依赖 worker 的测试前需执行上面的
+`uv sync`。完整汇总可能包含仍在 S23/历史基线中的失败，先看 `docs/refactor/PROGRESS.md` 的验证边界。
 
 聚焦插件检查覆盖 2.0 主动搭话策略、保守审校、天气 Source、本地 B50 Provider、Sub2API overview 和 MCP
 契约 fixture。真实 QQ 发送、实时来源新鲜度、人工质量标注、Bandit 在线探索和大规模群聊放量仍是外部验收工作。

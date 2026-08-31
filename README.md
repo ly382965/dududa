@@ -167,11 +167,16 @@ The repository favors representative, executable checks over speculative gates:
 
 ```bash
 uv lock --check
+uv sync --project services/mcp/unified-worker --locked --python 3.12.13
 uv run --locked python -m compileall -q packages apps services ops tests
 uv run --locked python -m unittest discover -s tests -t .
 uv run --locked python ops/cli/check_secrets.py
 cd apps/web && npm run typecheck && npm run test && npm run build
 ```
+
+The Unified MCP worker `.venv` is an ignored local build artifact and must not be committed. Run the `uv sync`
+step before worker-dependent tests. The full suite may still include S23 or historical-baseline failures; see
+`docs/refactor/PROGRESS.md` for the evidence boundary before interpreting the summary.
 
 Focused plugin checks include the 2.0 proactive policy, conservative review
 policy, weather source, local B50 provider, Sub2API overview, and MCP contract

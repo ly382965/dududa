@@ -73,8 +73,15 @@
 - `Sub2API overview` 使用当前计费轮精确边界、四段合并转发和管理员 Scope 逻辑；旧根工作树
   中的 v0.6.2 回退副本未纳入。
 
-本阶段聚焦验证：PR 插件与 Core 合计 `33` 个 Python 单元测试通过，B50 渲染抽样 `1` 个
-通过，Arc B50 Provider `5` 个通过，Ruff 与 `git diff --check` 通过。该证据不扩大 S23 的
+本阶段聚焦验证：PR 插件与 Core 相关集合共 `109` 个 Python 测试（55 + 54）通过，B50
+渲染抽样 `1` 个通过，Arc B50 Provider `5` 个通过，Ruff 与 `git diff --check` 通过。完整
+Python 汇总在补齐被忽略的 Unified MCP worker 环境后为 `816` tests / `6` failures /
+`4` errors / `2` skips（473.6 秒）；其中 iCourse/二课生产参数化用例在 worker 缺失时会
+产生 145 个环境假失败，临时指向已初始化 worker 后自然语言 iCourse `1/1`、二课 75 条
+`1/1` 通过。其余 8 个核心断言问题（能力目录、评估快照、导出列表、健康刷新、Schema
+digest、离线能力）在 PR 前提交 `2b23a62` 已可复现；`joblib` 缺失是私有语料可选依赖环境
+问题，worker 取消后的 journal 竞态仍待后续处理。它们不属于本次 PR 插件改造，未在本轮
+扩大修复范围。worker `.venv` 仅为本地构建产物，已被 Git 忽略。该证据不扩大 S23 的
 真实 QQ、实时来源、人工质量或在线 Bandit 范围；本地 `main` 前移后以本节和本文件其余
 证据为准。
 - S04、S06、S07、S14 新路径默认关闭；未迁移、改写或读取生产 Memory。
