@@ -2596,6 +2596,7 @@ class DududaCorePlugin(Star):
             ("学姐", "xm学姐"),
             ("没课", "xm没课"),
             ("翘课", "xm翘课"),
+            ("没早八", "xm"),
         ]
         for kw, reply in kw_map:
             if kw in text:
