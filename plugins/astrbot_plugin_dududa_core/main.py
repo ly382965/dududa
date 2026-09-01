@@ -2658,6 +2658,8 @@ class DududaCorePlugin(Star):
             ("没课", "xm没课"),
             ("翘课", "xm翘课"),
             ("没早八", "xm"),
+            ("区", "？！区区？！"),
+            ("猪", "？！猪猪？！"),
         ]
         for kw, reply in kw_map:
             if kw in text:
