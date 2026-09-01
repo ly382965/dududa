@@ -2433,9 +2433,9 @@ class DududaCorePlugin(Star):
         rec["cp_interactions"] = cp_data
         self._save_group_state()
 
-        # 每30次互动调侃一次
+        # 每3次@互动调侃一次
         count = cp_data[pair_key]
-        if count % 30 == 0 and count >= 30:
+        if count % 3 == 0 and count >= 3:
             import random as _r
             teases = [
                 f"我注意到 {pair[0]} 和 {pair[1]} 已经互动 {count} 次了，什么情况呀～",
