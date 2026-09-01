@@ -202,6 +202,67 @@ def create_mcp(config: AppConfig) -> FastMCP:
         }
 
     @mcp.tool()
+    def search_place(keyword: str, city: str = "合肥") -> dict[str, Any]:
+        """Search a place by keyword using Amap POI API.
+
+        keyword: place name, e.g. '老乡鸡金寨路店' or '科大东区'.
+        city: city name (default 合肥).
+        Returns top 3 matches with name, address, phone, location, and a map link.
+        """
+        import os
+        import json as _json
+        from urllib.request import Request, urlopen
+        from urllib.parse import quote
+
+        api_key = os.environ.get("AMAP_API_KEY", "")
+        if not api_key:
+            return {"schema_version": 1, "ok": False, "error": "no_amap_key",
+                    "hint": "Set AMAP_API_KEY environment variable."}
+
+        url = (
+            f"https://restapi.amap.com/v3/place/text"
+            f"?key={api_key}&keywords={quote(keyword)}"
+            f"&city={quote(city)}&citylimit=true&offset=3&page=1&extensions=base"
+        )
+        try:
+            req = Request(url, headers={"User-Agent": "dududa/1.0"})
+            with urlopen(req, timeout=10) as resp:
+                data = _json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            return {"schema_version": 1, "ok": False, "error": str(exc)}
+
+        if data.get("status") != "1":
+            return {"schema_version": 1, "ok": False, "error": data.get("info", "unknown")}
+
+        pois = data.get("pois") or []
+        results = []
+        for poi in pois[:3]:
+            name = poi.get("name", "")
+            address = poi.get("address", "")
+            adname = poi.get("adname", "")
+            tel = poi.get("tel", "")
+            location = poi.get("location", "")
+            location_str = f"{adname}{address}".strip("[]") if address else adname
+            map_link = ""
+            if location:
+                lng, lat = (location.split(",") + ["", ""])[:2]
+                map_link = f"https://uri.amap.com/marker?position={lng},{lat}&name={quote(name)}"
+            results.append({
+                "name": name,
+                "address": location_str,
+                "tel": tel if tel and tel != "[]" else "",
+                "location": location,
+                "map_link": map_link,
+            })
+
+        return {
+            "schema_version": 1,
+            "ok": True,
+            "keyword": keyword,
+            "results": results,
+        }
+
+    @mcp.tool()
     def add_recommendation(
         kind: str,
         name: str,

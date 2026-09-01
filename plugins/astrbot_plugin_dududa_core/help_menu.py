@@ -35,6 +35,7 @@ def user_help() -> str:
 
 吃什么：
 /eat [校区] [价位] /foodmap [校区]
+/where <地点名>（查地址）
 
 工具：
 /remind <时间> <内容>

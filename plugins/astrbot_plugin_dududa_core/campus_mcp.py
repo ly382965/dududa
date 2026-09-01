@@ -296,3 +296,22 @@ def format_food_recommendation(result: dict[str, Any]) -> str:
         lines.append(f"  地图：{map_link}")
 
     return "\n".join(lines)
+
+
+def format_place_search(result: dict[str, Any]) -> str:
+    """格式化高德地址搜索结果。"""
+    if not result.get("ok"):
+        return "地址搜索暂时不可用（可能未配置高德地图 API key）。"
+    results = result.get("results") or []
+    if not results:
+        return "没找到这个地点，换个关键词试试？"
+    lines = [f"找到 {len(results)} 个结果："]
+    for i, r in enumerate(results, 1):
+        lines.append(f"\n{i}. {r.get('name', '')}")
+        if r.get("address"):
+            lines.append(f"   地址：{r['address']}")
+        if r.get("tel"):
+            lines.append(f"   电话：{r['tel']}")
+        if r.get("map_link"):
+            lines.append(f"   地图：{r['map_link']}")
+    return "\n".join(lines)

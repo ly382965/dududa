@@ -43,6 +43,7 @@ from .campus_mcp import (
     format_library_stats,
     format_majors,
     format_opening_hours,
+    format_place_search,
     format_plan_stats,
     format_terms,
     library_client,
@@ -94,6 +95,7 @@ class DududaCorePlugin(Star):
         self.group_state_path = PLUGIN_DATA_DIR / "group_state.json"
         self.user_state = load_json(self.user_state_path, {})
         self.group_state = load_json(self.group_state_path, {})
+        self._meal_pushed: dict[str, str] = {}
         logger.info("DududaCore loaded: enabled=%s", self.enabled)
 
     def _blocked(self, event: AstrMessageEvent) -> str | None:
@@ -1279,6 +1281,53 @@ class DududaCorePlugin(Star):
             yield event.plain_result(f"推荐服务调用失败：{type(exc).__name__}")
         event.stop_event()
 
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=7)
+    async def natural_food_query(self, event: AstrMessageEvent):
+        """自然语言'吃什么'拦截：直接推荐，不让 LLM 处理。"""
+        blocked = self._blocked(event)
+        if blocked:
+            return
+        text = (event.message_str or event.get_message_outline() or "").strip()
+        if not text or text.startswith("/"):
+            return
+
+        lower = text.lower().replace(" ", "")
+        food_triggers = ("吃什么", "吃啥", "不知道吃啥", "不知道吃什么", "中午吃啥",
+                         "晚上吃啥", "早上吃啥", "夜宵吃啥", "午餐吃啥", "晚餐吃啥",
+                         "早饭吃啥", "午饭吃啥", "晚饭吃啥", "饿了", "想吃", "吃啥好",
+                         "什么好吃", "推荐吃的", "推荐吃")
+        if not any(t in lower for t in food_triggers):
+            return
+
+        # 解析校区和价位
+        campus = ""
+        price = ""
+        campus_map = {"东区": "东区", "西区": "西区", "中区": "中区", "南区": "南区", "肥西": "肥西路"}
+        for kw, val in campus_map.items():
+            if kw in text:
+                campus = val
+                break
+        price_map = {"平价": "平价", "便宜": "平价", "实惠": "平价",
+                     "中档": "中档", "中等": "中档",
+                     "略贵": "略贵", "贵": "略贵", "高档": "略贵"}
+        for kw, val in price_map.items():
+            if kw in text:
+                price = val
+                break
+
+        args: dict[str, Any] = {}
+        if campus:
+            args["campus"] = campus
+        if price:
+            args["price_level"] = price
+        try:
+            result = await self.local_recs.call("random_food", args)
+            yield event.plain_result(format_food_recommendation(result))
+        except Exception as exc:
+            logger.warning("Food query failed: %s", exc)
+            return
+        event.stop_event()
+
     @filter.command("foodmap")
     async def foodmap(self, event: AstrMessageEvent, campus: str | None = None):
         """生成科大附近美食地图链接。用法：/foodmap | /foodmap 西区"""
@@ -1293,6 +1342,136 @@ class DududaCorePlugin(Star):
         except Exception as exc:
             yield event.plain_result(f"地图服务调用失败：{type(exc).__name__}")
         event.stop_event()
+
+    @filter.command("where")
+    async def where(self, event: AstrMessageEvent, keyword: GreedyStr):
+        """查地址。用法：/where 老乡鸡金寨路店"""
+        q = str(keyword).strip()
+        if not q:
+            yield event.plain_result("用法：/where <地点名>")
+            event.stop_event()
+            return
+        try:
+            result = await self.local_recs.call("search_place", {"keyword": q})
+            yield event.plain_result(format_place_search(result))
+        except Exception as exc:
+            yield event.plain_result(f"地址搜索失败：{type(exc).__name__}")
+        event.stop_event()
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=6)
+    async def natural_place_query(self, event: AstrMessageEvent):
+        """自然语言'XX在哪/怎么去XX'拦截：调高德地图搜索。"""
+        blocked = self._blocked(event)
+        if blocked:
+            return
+        text = (event.message_str or event.get_message_outline() or "").strip()
+        if not text or text.startswith("/"):
+            return
+
+        import re as _re
+        patterns = [
+            r"(.+?)在哪里",
+            r"(.+?)在哪",
+            r"怎么去(.+)",
+            r"怎么走到(.+)",
+            r"(.+?)怎么走",
+            r"(.+?)的地址",
+            r"(.+?)地址是什么",
+            r"找一下(.+)",
+            r"帮我找(.+)",
+            r"(.+?)在哪儿",
+        ]
+        keyword = None
+        for pattern in patterns:
+            m = _re.search(pattern, text)
+            if m:
+                keyword = m.group(1).strip()
+                break
+        if not keyword or len(keyword) > 30:
+            return
+
+        try:
+            result = await self.local_recs.call("search_place", {"keyword": keyword})
+            if not result.get("ok") or not result.get("results"):
+                return
+            yield event.plain_result(format_place_search(result))
+            event.stop_event()
+        except Exception as exc:
+            logger.warning("Place query failed: %s", exc)
+            return
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
+    async def meal_time_push(self, event: AstrMessageEvent):
+        """饭点主动推送：群活跃时到了饭点自动推荐。不拦截其他处理。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        import datetime
+        now = datetime.datetime.now()
+        hour_min = now.hour * 100 + now.minute
+        today_key = now.strftime("%Y%m%d")
+
+        meal_windows = [
+            (1100, 1115, "午餐", f"lunch_{today_key}"),
+            (1725, 1740, "晚餐", f"dinner_{today_key}"),
+            (2155, 2210, "夜宵", f"night_{today_key}"),
+        ]
+
+        meal_time = ""
+        push_key = ""
+        for start, end, label, key in meal_windows:
+            if start <= hour_min <= end:
+                meal_time = label
+                push_key = key
+                break
+
+        if not push_key:
+            return
+        if self._meal_pushed.get(group_id) == push_key:
+            return
+
+        self._meal_pushed[group_id] = push_key
+
+        try:
+            result = await self.local_recs.call("random_food", {"meal_time": meal_time})
+            if not result.get("ok"):
+                return
+            rec = result.get("recommendation") or {}
+            name = rec.get("name", "")
+            detail = rec.get("detail", "")
+            location = rec.get("location", "")
+            map_link = result.get("map_link", "")
+
+            push_templates = {
+                "午餐": [
+                    f"到饭点啦！今天中午不如试试{name}？{detail}",
+                    f"咕咕咕～肚子叫了，推荐{name}！{location}",
+                    f"午饭时间到～{name}看起来不错哦，要不要去尝尝？",
+                ],
+                "晚餐": [
+                    f"傍晚了，晚饭吃什么呢？不如试试{name}～{detail}",
+                    f"今天辛苦啦，晚餐推荐{name}！{location}",
+                    f"晚饭时间～{name}安排上了吗？{detail}",
+                ],
+                "夜宵": [
+                    f"夜宵时间到！{name}走起～{detail}",
+                    f"深夜放毒～{name}要不要来一份？{location}",
+                    f"这个点还不睡，是不是饿了？试试{name}吧～",
+                ],
+            }
+            import random as _r
+            templates = push_templates.get(meal_time, [f"推荐：{name}"])
+            msg = _r.choice(templates)
+            if map_link:
+                msg += f"\n地图：{map_link}"
+
+            yield event.plain_result(msg)
+        except Exception as exc:
+            logger.warning("Meal push failed: %s", exc)
+            return
 
     @filter.command_group("admin")
     def admin(self):

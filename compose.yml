@@ -23,6 +23,7 @@ services:
       CAMPUS_EVENTS_MCP_DB_PATH: /AstrBot/data/campus-events-cache/campus-events.sqlite3
       ACADEMIC_CALENDAR_MCP_DB_PATH: /AstrBot/data/academic-calendar-cache/calendar.sqlite3
       LOCAL_RECS_MCP_DB_PATH: /AstrBot/data/local-recs-cache/local-recs.sqlite3
+      AMAP_API_KEY: ${AMAP_API_KEY:-2bcd735137ffc3f1d886a57a4e0f0ce3}
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
