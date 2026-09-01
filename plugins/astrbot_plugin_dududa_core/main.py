@@ -2575,11 +2575,11 @@ class DududaCorePlugin(Star):
             self._chain_buffer[group_id] = buf
             event.stop_event()
 
-    # ==================== 被夸回复 ====================
+    # ==================== 被夸/被谢回复 ====================
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=4)
     async def compliment_reply(self, event: AstrMessageEvent):
-        """被夸时回复 嘻嘻 (●'◡'●)。"""
+        """被夸或被谢时回复。夸机器人→嘻嘻；夸别人→谢谢夸奖不管就是在夸我。"""
         group_id = self._group(event)
         if not group_id:
             return
@@ -2590,21 +2590,27 @@ class DududaCorePlugin(Star):
         if not text or text.startswith("/"):
             return
 
-        # 纯夸赞短句（2-10字），排除包含其他意图的
-        pure_compliments = {
-            "可爱", "好可爱", "太可爱了", "真可爱", "你好可爱",
-            "厉害", "好厉害", "太厉害了", "真厉害", "牛逼", "nb", "NB",
-            "牛", "好牛", "太牛了", "666", "6", "66",
-            "聪明", "好聪明", "真聪明",
-            "棒", "好棒", "太棒了", "真棒",
-            "贴贴", "摸摸", "真好", "好乖", "乖",
-            "爱了", "好喜欢", "喜欢你", "好爱",
-            "真不错", "不错",
-        }
-        if text not in pure_compliments:
+        lower = text.lower().replace(" ", "")
+
+        praise_kw = ("可爱", "厉害", "牛", "nb", "666", "棒", "聪明", "乖",
+                     "贴贴", "摸摸", "好棒", "喜欢", "爱了", "不错", "谢谢",
+                     "感谢", "谢了", "多谢", "thx", "thanks", "thank", "真不错",
+                     "好可爱", "太可爱", "好厉害", "太厉害", "好聪明", "真好")
+        if not any(kw in lower for kw in praise_kw):
             return
 
-        yield event.plain_result("嘻嘻 (●'◡'●)")
+        # 判断是在夸机器人还是在夸别人
+        bot_kw = ("嘟嘟哒", "机器人", "bot", "你", "哒")
+        someone_kw = ("他", "她", "它", "学长", "学姐", "老师", "同学",
+                      "室友", "朋友", "哥", "姐", "妈", "爸", "老板")
+
+        is_to_bot = any(kw in lower for kw in bot_kw)
+        is_to_someone = any(kw in lower for kw in someone_kw)
+
+        if is_to_bot and not is_to_someone:
+            yield event.plain_result("嘻嘻 (●'◡'●)")
+        else:
+            yield event.plain_result("谢谢夸奖，不管就是在夸我")
         event.stop_event()
 
     # ==================== 关键词自动回复（xm朋友/xm学长/xm学姐/xm没课/xm翘课） ====================
