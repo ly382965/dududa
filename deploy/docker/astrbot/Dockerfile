@@ -8,6 +8,7 @@ RUN cd /AstrBot \
 
 COPY packages/dududa-agent /opt/dududa/dududa-agent
 COPY services/mcp/icourse /opt/dududa/icourse-mcp
+COPY services/mcp/notifai /opt/dududa/notifai-mcp
 COPY services/mcp/ustc-campus /opt/dududa/ustc-campus-mcp
 COPY services/mcp/console /opt/dududa/mcp-console
 COPY services/mcp/unified-worker /opt/dududa/unified-mcp-worker
@@ -18,6 +19,7 @@ RUN python -m pip install --no-cache-dir \
     -r /opt/dududa/dududa-core-requirements.txt \
     /opt/dududa/dududa-agent \
     /opt/dududa/icourse-mcp \
+    /opt/dududa/notifai-mcp \
     /opt/dududa/ustc-campus-mcp \
     /opt/dududa/mcp-console \
     && uv sync --project /opt/dududa/unified-mcp-worker \

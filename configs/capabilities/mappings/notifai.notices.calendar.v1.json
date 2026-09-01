@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:45b51ea44c835d84a87140c825133706c012ce4ba81ce3bf5a57ae6e3c9605b2",
+  "capability_id": "notifai.notices.calendar.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.notifai.get_notice_calendar.input:v1:sha-256:dd58b0a12dd641de218aa72f5c7e0f94f8ec138fe46c7513c8e55a78e29b50f7",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.notifai.get_notice_calendar.output:v1:sha-256:907e71b9e481602b77ad19b9a2f89acb3d218f7250e474ac29489b43fac3cada",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:a1edf242bfb29cd53a19ab73e5afe4f23fb1c9c88c7490fe25ea1efb1284c5b2",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "notifai",
+  "tool_name": "get_notice_calendar"
+}

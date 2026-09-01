@@ -91,6 +91,42 @@ _ACADEMIC_SEMESTER_ID_RE = re.compile(
 )
 _ACADEMIC_SEMESTER_TERM_RE = re.compile(r"20\d{2}\s*年?\s*[春夏秋](?:季)?(?:学期)?")
 _ACADEMIC_DATE_RE = re.compile(r"20\d{2}-\d{2}-\d{2}")
+NOTIFAI_SEARCH_CAPABILITY_ID = "notifai.notices.search.v1"
+NOTIFAI_GET_CAPABILITY_ID = "notifai.notices.get.v1"
+NOTIFAI_CALENDAR_CAPABILITY_ID = "notifai.notices.calendar.v1"
+NOTIFAI_DEADLINES_CAPABILITY_ID = "notifai.notices.deadlines.v1"
+NOTIFAI_SOURCES_CAPABILITY_ID = "notifai.sources.list.v1"
+NOTIFAI_CATEGORIES_CAPABILITY_ID = "notifai.categories.list.v1"
+NOTIFAI_STATS_CAPABILITY_ID = "notifai.stats.read.v1"
+NOTIFAI_INTENT_CAPABILITIES = {
+    "notifai.notice.search": NOTIFAI_SEARCH_CAPABILITY_ID,
+    "notifai.notice.get": NOTIFAI_GET_CAPABILITY_ID,
+    "notifai.notice.calendar": NOTIFAI_CALENDAR_CAPABILITY_ID,
+    "notifai.notice.deadlines": NOTIFAI_DEADLINES_CAPABILITY_ID,
+    "notifai.source.list": NOTIFAI_SOURCES_CAPABILITY_ID,
+    "notifai.category.list": NOTIFAI_CATEGORIES_CAPABILITY_ID,
+    "notifai.stats.read": NOTIFAI_STATS_CAPABILITY_ID,
+}
+NOTIFAI_RUNTIME_CAPABILITY_IDS = frozenset(NOTIFAI_INTENT_CAPABILITIES.values())
+_NOTIFAI_GENERIC_TERMS = frozenset(
+    {
+        "校园通知",
+        "通知查询",
+        "通知",
+        "公告",
+        "校园公告",
+        "截止提醒",
+        "来源",
+        "分类",
+        "统计",
+    }
+)
+_NOTIFAI_NOTICE_ID_RE = re.compile(
+    r"(?:通知\s*(?:id|编号)|notice[-_\s]?id)\s*(?:为|是|[:：#])?\s*([A-Za-z0-9][A-Za-z0-9._:-]{2,199})",
+    re.IGNORECASE,
+)
+_NOTIFAI_MONTH_RE = re.compile(r"20\d{2}-\d{2}")
+_NOTIFAI_WEEK_RE = re.compile(r"20\d{2}-W\d{2}", re.IGNORECASE)
 YOUNG_SEARCH_CAPABILITY_ID = "ustc.young.activities.search.v1"
 YOUNG_ACTIVITY_CAPABILITY_ID = "ustc.young.activity.get.v1"
 YOUNG_FACETS_CAPABILITY_ID = "ustc.young.facets.list.v1"
@@ -187,6 +223,7 @@ class EntityQueryToolPlanner:
         curriculum_operation = _curriculum_operation(request.query.intent_ids)
         young_capability_id = _young_capability(request.query.intent_ids)
         academic_capability_id = _academic_capability(request.query.intent_ids)
+        notifai_capability_id = _notifai_capability(request.query.intent_ids)
         shuttle_requested = (
             "campus.shuttle" in request.query.preferred_categories
             or any(
@@ -205,6 +242,7 @@ class EntityQueryToolPlanner:
             curriculum_operation is None
             and young_capability_id is None
             and academic_capability_id is None
+            and notifai_capability_id is None
             and icourse_operation is None
             and "campus.curriculum" in request.query.preferred_categories
         ):
@@ -219,6 +257,17 @@ class EntityQueryToolPlanner:
             and "campus.academic" in request.query.preferred_categories
         ):
             academic_capability_id = _academic_capability_from_goal(
+                request.query.natural_language_goal
+            )
+        if (
+            academic_capability_id is None
+            and notifai_capability_id is None
+            and young_capability_id is None
+            and curriculum_operation is None
+            and icourse_operation is None
+            and "campus.notifications" in request.query.preferred_categories
+        ):
+            notifai_capability_id = _notifai_capability_from_goal(
                 request.query.natural_language_goal
             )
         candidates = request.retrieval.candidates
@@ -239,6 +288,12 @@ class EntityQueryToolPlanner:
                 item
                 for item in candidates
                 if item.capability_id == academic_capability_id
+            )
+        elif notifai_capability_id is not None:
+            candidates = tuple(
+                item
+                for item in candidates
+                if item.capability_id == notifai_capability_id
             )
         elif curriculum_operation is not None:
             candidates = tuple(
@@ -302,6 +357,21 @@ class EntityQueryToolPlanner:
                     continue
                 schema = self._registry.get_schema(catalog, candidate.input_schema)
                 projected = _academic_arguments(
+                    candidate.capability_id,
+                    schema.document,
+                    request,
+                    self._ignored_entity_terms,
+                )
+                if projected is not None:
+                    selected = candidate
+                    arguments = projected
+                    break
+                continue
+            if candidate.capability_id in NOTIFAI_RUNTIME_CAPABILITY_IDS:
+                if candidate.capability_id != notifai_capability_id:
+                    continue
+                schema = self._registry.get_schema(catalog, candidate.input_schema)
+                projected = _notifai_arguments(
                     candidate.capability_id,
                     schema.document,
                     request,
@@ -524,6 +594,13 @@ def supports_production_query_schema(
         ACADEMIC_LESSONS_CAPABILITY_ID: frozenset(),
         ACADEMIC_EXAMS_CAPABILITY_ID: frozenset(),
         ACADEMIC_CALENDAR_CAPABILITY_ID: frozenset(),
+        NOTIFAI_SEARCH_CAPABILITY_ID: frozenset(),
+        NOTIFAI_GET_CAPABILITY_ID: frozenset({"notice_id"}),
+        NOTIFAI_CALENDAR_CAPABILITY_ID: frozenset(),
+        NOTIFAI_DEADLINES_CAPABILITY_ID: frozenset(),
+        NOTIFAI_SOURCES_CAPABILITY_ID: frozenset(),
+        NOTIFAI_CATEGORIES_CAPABILITY_ID: frozenset(),
+        NOTIFAI_STATS_CAPABILITY_ID: frozenset(),
         YOUNG_SEARCH_CAPABILITY_ID: frozenset(),
         YOUNG_ACTIVITY_CAPABILITY_ID: frozenset({"activity_id"}),
         YOUNG_FACETS_CAPABILITY_ID: frozenset({"facet"}),
@@ -566,6 +643,80 @@ def _academic_capability_from_goal(goal: str) -> str:
     if any(value in compact for value in ("开课", "教学班", "课程表", "任课老师")):
         return ACADEMIC_LESSONS_CAPABILITY_ID
     return ACADEMIC_SEMESTERS_CAPABILITY_ID
+
+
+def _notifai_capability(intent_ids: tuple[str, ...]) -> str | None:
+    for intent_id in intent_ids:
+        capability_id = NOTIFAI_INTENT_CAPABILITIES.get(intent_id)
+        if capability_id is not None:
+            return capability_id
+    if any(intent_id.startswith("notifai.") for intent_id in intent_ids):
+        return NOTIFAI_SEARCH_CAPABILITY_ID
+    return None
+
+
+def _notifai_capability_from_goal(goal: str) -> str:
+    compact = _normalize_term(goal)
+    if any(value in compact for value in ("统计", "数量", "总数")):
+        return NOTIFAI_STATS_CAPABILITY_ID
+    if "来源" in compact:
+        return NOTIFAI_SOURCES_CAPABILITY_ID
+    if "分类" in compact:
+        return NOTIFAI_CATEGORIES_CAPABILITY_ID
+    if any(value in compact for value in ("截止", "到期")):
+        return NOTIFAI_DEADLINES_CAPABILITY_ID
+    if "通知日历" in compact or "通知月历" in compact:
+        return NOTIFAI_CALENDAR_CAPABILITY_ID
+    if _NOTIFAI_NOTICE_ID_RE.search(goal):
+        return NOTIFAI_GET_CAPABILITY_ID
+    return NOTIFAI_SEARCH_CAPABILITY_ID
+
+
+def _notifai_arguments(
+    capability_id: str,
+    document: Mapping[str, JsonValue],
+    request: ToolPlanningRequest,
+    ignored_entity_terms: frozenset[str],
+) -> Mapping[str, JsonValue] | None:
+    goal = request.query.natural_language_goal.strip()
+    if capability_id in {
+        NOTIFAI_SOURCES_CAPABILITY_ID,
+        NOTIFAI_CATEGORIES_CAPABILITY_ID,
+        NOTIFAI_STATS_CAPABILITY_ID,
+    }:
+        return _declared_arguments(document, {})
+    if capability_id == NOTIFAI_CALENDAR_CAPABILITY_ID:
+        values: dict[str, JsonValue] = {}
+        month = _NOTIFAI_MONTH_RE.search(goal)
+        week = _NOTIFAI_WEEK_RE.search(goal)
+        if month:
+            values["month"] = month.group(0)
+        elif week:
+            values["week"] = week.group(0).upper()
+        else:
+            return None
+        return _declared_arguments(document, values)
+    if capability_id == NOTIFAI_DEADLINES_CAPABILITY_ID:
+        match = re.search(r"(?:未来|最近|接下来)\s*(\d{1,3})\s*天", goal)
+        days = max(1, min(int(match.group(1)), 365)) if match else 7
+        return _declared_arguments(document, {"days": days, "page_size": 10})
+    if capability_id == NOTIFAI_GET_CAPABILITY_ID:
+        match = _NOTIFAI_NOTICE_ID_RE.search(goal)
+        if match is None:
+            return None
+        return _declared_arguments(document, {"notice_id": match.group(1)})
+    if capability_id != NOTIFAI_SEARCH_CAPABILITY_ID:
+        return None
+    terms = tuple(
+        value.strip()
+        for value in request.query.entity_terms
+        if value.strip()
+        and _normalize_term(value) not in ignored_entity_terms
+        and _normalize_term(value) not in _NOTIFAI_GENERIC_TERMS
+        and not _is_year_term(value)
+    )
+    keyword = terms[0] if terms else ""
+    return _declared_arguments(document, {"keyword": keyword, "light": True, "page_size": 10})
 
 
 def _academic_arguments(
@@ -827,6 +978,8 @@ __all__ = [
     "CURRICULUM_INTENT_OPERATIONS",
     "CURRICULUM_PUBLIC_QUERY_CAPABILITY_ID",
     "ICOURSE_INTENT_OPERATIONS",
+    "NOTIFAI_INTENT_CAPABILITIES",
+    "NOTIFAI_RUNTIME_CAPABILITY_IDS",
     "YOUNG_INTENT_CAPABILITIES",
     "YOUNG_RUNTIME_CAPABILITY_IDS",
     "EntityQueryToolPlanner",

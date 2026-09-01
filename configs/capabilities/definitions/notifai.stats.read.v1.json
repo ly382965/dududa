@@ -1,0 +1,164 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "notifai.stats.read.v1",
+  "category": "campus.notifications",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:32123897617a183b99e87713c740906b724687821fd2a4be8d10e8dc48d202fb",
+  "description": "Read aggregate counts and the latest synchronization time for public campus notices.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.stats.read.v1.input:v1:sha-256:f9cef9776a6031e03c87bf54351380beb87fbbd0c57b4baa4fdcd877f1093b6b",
+    "document": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "get_notice_statsArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.stats.read.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read notice statistics",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.stats.read.v1.output:v1:sha-256:f6d08cf5cc38f2e4bd5d1ff4ce797d1891409a59626143c23f3075fc2d4092a0",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": false,
+          "properties": {
+            "last24hNew": {
+              "type": "integer"
+            },
+            "last7DaysDdl": {
+              "type": "integer"
+            },
+            "lastCrawlAt": {
+              "maxLength": 80,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourceCount": {
+              "type": "integer"
+            },
+            "total": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "total",
+            "sourceCount",
+            "last7DaysDdl",
+            "last24hNew",
+            "lastCrawlAt"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "observed_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "const": "notifai",
+          "maxLength": 32,
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "data",
+        "error",
+        "source",
+        "observed_at",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.stats.read.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.notifai",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:bd8beaf051159c86ab6753745fd9582568de527c65d10aba95021470a50b471a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "notifai-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.notifai.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "campus",
+    "notice",
+    "notifai",
+    "statistics"
+  ]
+}
