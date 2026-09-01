@@ -2511,3 +2511,53 @@ class DududaCorePlugin(Star):
         ]
         yield event.plain_result(_r.choice(comforts))
         event.stop_event()
+
+    # ==================== 接龙跟读 ====================
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=5)
+    async def chain_follow(self, event: AstrMessageEvent):
+        """3个不同的人发了相同的短句，机器人也跟一句，用书名号框住。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        text = (event.message_str or "").strip()
+        if not text or text.startswith("/"):
+            return
+
+        # 只接短句（2-15字），排除纯表情/图片/含@的
+        if len(text) < 2 or len(text) > 15:
+            return
+        if "@" in text or "[image" in text.lower() or "[face" in text.lower():
+            return
+
+        sender = self._sender(event)
+        self._chain_buffer = getattr(self, "_chain_buffer", {})
+        buf: dict[str, list] = self._chain_buffer.get(group_id, {})
+
+        # 清理过期记录（超过1分钟的）
+        now = time.time()
+        for key in list(buf):
+            if now - buf[key][-1].get("ts", 0) > 60:
+                del buf[key]
+
+        normalized = text.strip()
+        if normalized not in buf:
+            buf[normalized] = []
+        senders = buf[normalized]
+
+        # 同一人只算一次
+        if sender not in [s.get("uid") for s in senders]:
+            senders.append({"uid": sender, "ts": now})
+
+        self._chain_buffer[group_id] = buf
+
+        if len(senders) >= 3:
+            # 跟读，用书名号框住
+            yield event.plain_result(f"《{normalized}》")
+            # 清掉这条的记录，避免重复触发
+            del buf[normalized]
+            self._chain_buffer[group_id] = buf
+            event.stop_event()
