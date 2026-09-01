@@ -1,20 +1,10 @@
 # 嘟嘟哒 DUDUDA 项目文档
 
-- 版本：v0.7
+- 版本：v0.5
 - 范围：`.`
-- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处和培养方案研究四个只读 MCP 与本地校车插件已接入，真实群聊风格仍待人工校准。
+- 状态：MVP 核心插件已落地；评课社区 `icourse` MCP 已接入 AstrBot 统一运行环境，默认模型为 `openai/gpt-5.5`，教务系统仍列为 TODO。
 
-Dududa 2.0 当前说明（2026-08-29）：
-
-- 系统定位为“受治理的群体情境适应 Runtime”：最小治理内核持有身份、Scope、权限和副作用，Persona 与群体情境只在这些事实不变的前提下适应表达。
-- WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
-- Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效。人格通过措辞、节奏、关注点和信息取舍自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情证明人格。
-- SHORT、MEDIUM 始终作为普通 QQ 消息发送；LONG 单段仍是普通消息，群聊中实际拆成至少两个纯文本 part 且没有附件时使用合并转发。定向目标继续保留在 Runtime 语义中，但合并转发不额外发送 `@` 组件。
-- Meme Manager、PokePro 和旧 Target Talk 已退出 Dududa 2.0 默认 Compose；自动复读仅以独立、默认关闭、按 Scope 配置的插件保留。
-- iCourse、二课、培养方案研究和教务的自然语言路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；校车在同一主链使用本地 Builtin Provider；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
-- 本轮已通过单插件 API 热重载 Dududa Core，AstrBot 与 NapCat 均未重启；运行实例继续只使用 Dududa 2.0 Agent Runtime。
-
-以下为 Dududa 1.0 工程状态快照（2026-07-06）：
+本轮工程状态（2026-07-06）：
 
 - `astrbot_plugin_dududa_core` 已创建并加载成功。
 - AstrBot 默认 persona 为 `dududa`，并已补充行为边界与隐私边界。
@@ -83,75 +73,73 @@ cd .
 - `data_v4.db`：AstrBot 主数据。
 - `knowledge_base/kb.db`：知识库数据库。
 - `cmd_config.json`：命令配置，已有多份备份。
-- `mcp_server.json`：MCP 配置文件，已接入 iCourse、二课、教务和培养方案研究四个查询 Server。
-- `apps/astrbot-plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
-- `apps/astrbot-plugins/astrbot_plugin_ustc_shuttle/`：版本化本地校车时刻表 Capability 插件。
-- `apps/astrbot-plugins/astrbot_plugin_sub2api_readonly/`：Sub2API 用量、排名和账号状态只读查询。
+- `mcp_server.json`：MCP 配置文件，已接入 `icourse` 评课社区 MCP。
+- `plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
 - `skills/`、`skills.json`：AstrBot skills 资源。
 - `t2i_templates/`：文本转图片模板。
 - `webchat/`、`workspaces/`：WebChat 与工作区数据。
 - `attachments/`、`temp/`：附件与临时文件目录。
 - 本地生成的历史备份。
 
-`./manage.sh plugins` 会将 Dududa Core、校车、Reread 和 Sub2API Readonly 从权威源码
-原子安装到 `runtime/astrbot-plugins`，并按 `third_party/plugins.lock.json` 安装以下
-锁定第三方插件：
+`./manage.sh plugins` 会按 `plugins.lock.json` 安装以下第三方插件：
 
 - `astrbot_plugin_iris_chat_memory`
 - `astrbot_plugin_better_reminder`
 - `astrbot_plugin_chatsummary_v2`
-
-默认 Compose 只挂载这一整个 Dududa 2.0 插件根目录，不再用单插件源码挂载覆盖运行态。
-Meme Manager、PokePro、ReplyPolish 和 Target Talk 不进入干净安装集合。私有运行目录中可能仍
-保留旧插件数据；本轮不恢复 Dududa 1.0 runtime。
+- `astrbot_plugin_pokepro`
+- `astrbot_plugin_reread`
+- `astrbot_plugin_target_talk`
+- `astrbot_plugin_reply_polish`
+- `meme_manager`
 
 ### 2.3 已有插件能力整合
 
-| 插件/模块 | Dududa 2.0 默认状态 | 资产处理 | 未来归属 |
+| 模块 | 当前资源 | 状态 | 用途 |
 | --- | --- | --- | --- |
-| Meme Manager | deprecated，不再默认安装，不自动发表情 | 本轮不主动清理；若私有运行目录中存在图库、配置或源码则原状保留 | 用户显式触发的 Meme Capability |
-| Reread | 兼容插件，安装于 2.0 plugin root，行为由私有配置控制 | 保留既有配置和数据 | 后续迁移为显式交互 Capability |
-| PokePro | deprecated，不再默认安装，不自动戳一戳 | 本轮不主动清理私有运行目录中的既有配置或数据 | 可选显式交互 Capability |
-| Target Talk | 退出默认 Compose 和入站路径 | 源码、配置保留 | S15E Governed Probe / 主动 Runtime |
-| ReplyPolish | 1.0 LONG-only 兼容层，默认关闭 | 源码保留 | LONG-only legacy output |
-| Iris Memory | 不拥有 2.0 Core Memory 控制面 | 既有数据保留 | S14 Memory 迁移或只读来源 |
-| ChatSummary | 自动循环不进入 2.0 默认能力 | 历史数据保留 | 显式 Summary Capability |
-| Better Reminder | 不拥有 2.0 Scheduler | 历史提醒数据保留 | S15B Scheduler / Capability |
-| Dududa Core | 保留 | 源码、配置保留 | Dududa 2.0 AstrBot Adapter |
-| Sub2API Readonly | 保留 | 源码、配置保留 | 显式只读 Capability |
+| 长短期记忆 | `astrbot_plugin_iris_chat_memory` | 已安装，配置可读 | 群聊记忆、用户画像、L1/L2/L3 记忆与知识图谱 |
+| 群隔离 | Iris 配置 | 已启用 | 防止 A 群记忆串到 B 群 |
+| 本地向量 | `BAAI/bge-small-zh-v1.5` | 已配置 | 本地 embedding，降低外部依赖 |
+| 聊天总结 | `astrbot_plugin_chatsummary_v2` | 已安装 | 群聊阶段总结、长上下文压缩 |
+| 提醒 | `astrbot_plugin_better_reminder` | 已安装 | DDL、日程、复习提醒 |
+| 戳一戳 | `astrbot_plugin_pokepro` | 已安装 | 轻量互动 |
+| 复读 | `astrbot_plugin_reread` | 已安装 | 群聊娱乐、氛围参与 |
+| 主动发言 | `astrbot_plugin_target_talk` | 已安装 | 低频主动参与或定向对话 |
+| 回复润色 | `astrbot_plugin_reply_polish` | 已安装 | 统一嘟嘟哒口吻 |
+| 表情包 | `meme_manager` | 已安装 | 表情包管理、随机图、关键词图 |
 
-### 2.4 USTC 校园查询能力
+### 2.4 pksq / icourse MCP 资源
 
-当前通过 `McpServerRegistry` 和 `UnifiedMcpClient` 管理四个独立只读 Server，并让
-本地插件实现同一个 Capability Provider Port：
+`services/icourse-mcp/` 目录中已有面向 AstrBot 的 USTC 评课社区 MCP Server：
 
-- `icourse`：实时访问评课社区公开页面，向 Capability 层开放统一公开查询及统计、课程搜索、课程详情和评价 5 项读取。
-- `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索、活动详情和筛选项 4 项公共观察；不提供登录或本人活动工具。
-- `ustc-academic`：提供学期、开课、考试和教学日历 4 项官方公开查询。
-- `ustc-curriculum`：基于 `docs.mmdustc.top/curriculum/data/` 的公开研究快照提供
-  方案、课程、逐年变化、横向对照、替代、共享课和专业历史查询；不直连实时教务，
-  不能代替毕业审核。
-- `astrbot_plugin_ustc_shuttle`：以版本化静态数据提供校园、高新校区和太湖路园区
-  校车查询；它是本地 `BUILTIN` Capability，不联网、不创建 MCP Session，也不独立抢占消息。
+- 数据源：`https://icourse.club/` 公开页面。
+- 数据库：运行时私有路径 `/AstrBot/data/icourse-cache/icourse.sqlite3`
+- MCP 启动脚本：`services/icourse-mcp/run_icourse_mcp.py`
+- 自检脚本：`services/icourse-mcp/scripts/check_mcp.py`
+- Linux 配置示例：`services/icourse-mcp/astrbot-mcp.example.linux.json`
+- Windows 配置示例：`services/icourse-mcp/astrbot-mcp.example.windows.json`
+- 工具能力：
+  - `icourse_stats`
+  - `search_courses`
+  - `get_course`
+  - `get_reviews`
+  - `crawl_course`
+  - `crawl_courses`
+  - `crawl_latest_reviews`
+  - `check_robots`
+  - `export_dataset`
 
 当前仓库状态：
 
-- `services/mcp/icourse/` 保留既有评课实现；`services/mcp/ustc-campus/` 通过
-  `--service academic|curriculum|young` 启动三个独立逻辑 Server。
-- 二课依赖固定为 `pyustc@f16d9465fd572463cb1b239d310e02010593386c`，规避 1.1.1 的异步登录缺陷。
-- 本机既有 `credentials.toml` 以只读方式挂入独立 MCP Console，再由 SecretRef
-  仅向二课子进程注入以建立上游 CAS 会话；这不是用户登录能力，凭据、Cookie 和
-  TGC 不写入仓库或 Web 返回值。
-- WebUI 的 `MCP 工作台` 展示四个 Server 和 14 个 MCP Capability，`super_admin`
-  只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
-- 校车在“插件与能力”中显示为本地只读插件，群级默认关闭；启用后自然语言查询仍进入
-  唯一 Dududa 2.0 Runtime。20/20 固定问题与 3 条原生消息抽样已经通过。
-- 群 `364894085` 已将评课、二课、培养方案、教务和校车五项查询设为 `on`。no-send
-  耦合抽样中，每类问题只选择自己的 Provider，普通聊天为零 Tool 调用；教务开课查询
-  已把“2026 秋”解析为官方 `semester_id=461`。这些证据没有发送 QQ 消息。
-- 已验证 iCourse、公开教务、培养方案研究快照、校车和二课查询；自然语言查询进入唯一
-  Dududa 2.0 Runtime，本轮模拟不发送 QQ，也不经过 1.0 handler 或 Web search。
-- 这些是按需查询能力，不等于校园资讯、arXiv 或行业日报 Source 已接入。
+- MCP 项目源码已纳入仓库；缓存库在首次运行时写入私有数据目录。
+- AstrBot 已通过 Compose 将 `services/icourse-mcp/` 挂载到容器内 `/AstrBot/data/icourse-mcp`。
+- `config/astrbot/mcp_server.json` 提供只包含 `icourse` 的脱敏模板，启动时合并到运行态配置。
+- MCP 使用 AstrBot 容器统一 Python：`/usr/local/bin/python`。
+- Python 依赖走 AstrBot 统一插件环境：`PYTHONPATH=/AstrBot/data/site-packages`。
+- 不再为该 MCP 维护单独的 Linux 虚拟环境。
+- 已验证工具：`icourse_stats`、`search_courses`、`get_course`、`get_reviews`。
+- AstrBot 重启后已成功连接 `icourse` MCP。
+- 嘟嘟哒核心插件已封装 `/course stats/search/review/compare/refresh`；`/course <自然语言评课需求>` 可由 LLM 抽取课程关键词，非 slash 自然语言仅保留“评课社区搜索 <关键词>”口令。
+- icourse MCP 已新增 `search_site_courses`：按需通过评课社区公开站内搜索扩展缓存，可抓取 top 课程详情；`refresh` 对 trusted/admin 开放并带冷却。
 
 ## 3. 项目文件树
 
@@ -163,12 +151,12 @@ Meme Manager、PokePro、ReplyPolish 和 Target Talk 不进入干净安装集合
 ├── docs/DUDUDA.md                    # 本项目文档
 ├── compose.yml                       # AstrBot + NapCat
 ├── manage.sh                         # 唯一运维入口
-├── apps/astrbot-plugins/             # 四个自研插件源码
-├── configs/                          # 脱敏人格与 MCP 模板
-├── deploy/                           # Compose、镜像与环境模板
-├── ops/                              # 管理入口和运维 CLI
-├── services/mcp/                     # iCourse、USTC Campus 与 Web MCP Console
-├── third_party/                      # 精确 lock、Iris patch 与 vendor 源码
+├── plugins.lock.json                 # 第三方插件精确版本
+├── config/                           # 脱敏人格与 MCP 模板
+├── plugins/                          # 三个自研插件源码
+├── patches/                          # Iris 记忆隔离补丁
+├── services/icourse-mcp/             # 评课 MCP 源码
+├── vendor/                           # 受上游许可证约束的依赖源码
 └── data/                             # 私有运行态，Git 永久忽略
     ├── astrbot/                      # 配置、数据库、记忆与插件数据
     └── napcat/                       # NapCat 配置和 QQ 登录态
@@ -184,13 +172,10 @@ NapCat
 AstrBot
     ├── 嘟嘟哒人格与回复策略
     ├── 嘟嘟哒核心插件：/help、权限、确认、审计、课程、管理入口
-    ├── Sub2API 只读插件：/sub2api 用量、排名和账号状态
     ├── 记忆系统：Iris Chat Memory
     ├── 群聊总结：ChatSummary v2
     ├── 提醒系统：Better Reminder
-    ├── 显式能力：图片、课程、提醒、总结及后续 Capability
-    ├── 受治理主动参与：S15E Probe / 主动 Runtime（默认关闭）
-    ├── 旧插件兼容资产：保留迁移与回滚材料，不进入 2.0 默认执行链
+    ├── 娱乐互动：Reread / PokePro / Target Talk / Meme Manager
     ├── 课程查询：pksq icourse MCP
     ├── 后续校园 MCP：通知、教学日历、考试、课表
     ├── 后续管理插件：权限、配置、日志、插件开关
@@ -199,8 +184,8 @@ AstrBot
 
 设计原则：
 
-1. 外部框架和旧插件只实现 Port 或提供迁移资产，不形成第二套控制面。
-2. 自动表情、概率复读、自动戳一戳等 1.0 行为不再作为默认群聊风格机制。
+1. 先复用已有插件，避免重复造轮子。
+2. 记忆、提醒、表情、复读等能力优先用现有插件配置统一起来。
 3. pksq 评课 MCP 是课程查询第一阶段，不直接做全站高频抓取。
 4. 管理命令单独设计权限层，不混入普通用户命令。
 5. 高风险操作一律二次确认。
@@ -249,16 +234,6 @@ AstrBot
 
 嘟嘟哒在 QQ 中默认不使用大段 Markdown，不刷屏，不写小作文。群聊回答应短、软、像群友；私聊和技术场景可以更完整。
 
-Persona 是稳定身份、价值观和表达倾向；群聊风格是随群体情境变化的语气、长度、用词和节奏。
-两者与 AnswerProfile 在生成前形成一次表达指导，不在生成后追加固定人设话术、概率表情或随机
-Prompt。表达可以适应当前群，但事实、权限、人格身份和任务要求保持不变。
-
-| AnswerProfile | QQ 发送形态 |
-| --- | --- |
-| SHORT | 始终普通消息，即使文本较长 |
-| MEDIUM | 始终普通消息，即使文本较长 |
-| LONG | 单段仍为普通消息；群聊中实际拆成至少两个纯文本 part 且无附件时合并转发；定向目标不另发 `@` |
-
 总体风格：
 
 - 亲切、可爱、轻松。
@@ -266,9 +241,6 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 - 技术问题认真可靠。
 - 情绪问题温柔但不说教。
 - 不强行把话题拉回人设。
-- 不复述角色档案、不无关自我介绍、不套固定口号。
-- 不每条刻意卖萌，不为证明人格随机追加表情。
-- 不模仿某个具体群成员的身份、隐私或口头禅。
 - 不在群里公开处理私人信息。
 
 普通群聊示例：
@@ -429,7 +401,7 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 - USTC 学校通知搜索。
 - 学院通知搜索。
 - 教学日历查询。
-- 培养方案研究快照查询（已接入；非实时教务，不能代替毕业审核）。
+- 培养方案查询。
 - 公开课程信息查询。
 - 讲座、活动、竞赛通知。
 - 图书馆开放时间和公开馆藏查询。
@@ -481,13 +453,24 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 4. 不恶搞真实同学照片，除非本人明确同意且内容安全。
 5. 涉及身份证、学生证、成绩单、聊天记录等敏感图片时，不保存，不传播。
 
-## 10. 显式能力与旧自动行为退场
+## 10. 娱乐与群聊互动
 
-- `/image <描述>` 是用户显式调用的图像生成 Capability，继续保留；它与自动发表情包无关。
-- 未来若恢复 Meme，应作为用户显式触发、可授权、可关闭的 Capability，而不是用概率向普通回复随机插图。
-- 概率复读、自动戳一戳和 Meme Manager Prompt 注入不进入 Dududa 2.0 默认执行链。
-- 旧 Target Talk 不再默认挂载；主动探测由 S15E Governed Probe 和主动 Runtime 承担，默认关闭并受群级服务配置约束。
-- Better Reminder、ChatSummary 和 Iris 可以作为迁移来源或显式 Capability，但不拥有 2.0 的 Scheduler、Memory 或决策控制面。
+当前已有资源可支撑：
+
+- `astrbot_plugin_reread`：复读。
+- `astrbot_plugin_pokepro`：戳一戳互动。
+- `astrbot_plugin_target_talk`：主动搭话。
+- `meme_manager`：表情包管理。
+- `astrbot_plugin_better_reminder`：提醒。
+
+目标策略：
+
+1. 娱乐功能默认低频。
+2. 每个群可以设置安静、普通、活跃三种模式。
+3. 不复读隐私、人身攻击或敏感内容。
+4. 表情包按群配置风格和概率。
+5. 主动发言必须有限流，不能刷屏。
+6. 群小游戏只做轻量玩法。
 
 可选小游戏：
 
@@ -585,7 +568,7 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 /summary [数量]     总结最近聊天
 /remind <时间> <内容>
 /reminders          查看我的提醒
-/image <描述>       显式生成图片
+/meme [关键词]      来一张表情包
 
 管理员可发送 /help admin 查看管理指令
 ```
@@ -649,11 +632,13 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 
 | 指令 | 权限 | 场景 | 说明 |
 | --- | --- | --- | --- |
+| `/meme [关键词]` | 全员 | 群/私聊 | 发一张表情包 |
+| `/meme random` | 全员 | 群/私聊 | 随机表情包，TODO |
 | `/image <描述>` | trusted/admin | 群/私聊 | 使用 gpt-image-2 生成图片；默认等待超时 420 秒 |
 | `/fortune` | 全员 | 群/私聊 | 今日运势 |
 | `/draw <主题>` | 全员 | 群/私聊 | 抽签 |
-
-`/meme`、`/poke`、`/reread` 只保留 Dududa 1.0 停用兼容提示，不调用旧插件，也不在普通帮助菜单中宣传。
+| `/poke` | 全员 | 群 | 戳一戳互动 |
+| `/reread` | 全员 | 群 | 查看复读状态 |
 
 ### 12.8 管理员指令
 
@@ -668,6 +653,7 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 | `/admin plugin reload <插件>` | admin | 私聊 | TODO，重载插件，需确认 |
 | `/admin group mode <quiet|normal|active>` | admin | 群/私聊 | 设置本群模式 |
 | `/admin group reply-rate <0-100>` | admin | 群/私聊 | 设置回复频率 |
+| `/admin group meme-rate <0-100>` | admin | 群/私聊 | 设置表情包概率 |
 | `/admin memory summary` | admin | 群/私聊 | 查看本群长期记忆摘要 |
 | `/admin memory clear-short` | admin | 群/私聊 | 清理短期记忆 |
 | `/admin memory delete <ID>` | admin | 私聊 | TODO，删除指定记忆 |
@@ -817,9 +803,10 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 
 ### 15.6 娱乐与多模态阶段
 
-- [x] Meme Manager、概率复读和自动戳一戳退出 Dududa 2.0 默认安装路径。
-- [x] 旧 Target Talk 退出默认 Compose；主动参与迁移到受治理的 Probe/主动 Runtime。
-- [x] `/meme`、`/poke`、`/reread` 降级为停用兼容提示。
+- [x] 表情包命令统一到 `/meme`。
+- [x] 复读命令统一到 `/reread`。
+- [x] 戳一戳命令统一到 `/poke`。
+- [ ] 每群娱乐概率独立配置。
 - [ ] 图片理解能力接入。
 - [x] 表情包生成能力接入。（`/image` 入口已实现，gpt-image-2 已通过最小请求验证，默认等待超时 420 秒）
 - [x] 真实人物图片安全策略落地。

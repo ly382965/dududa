@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "academic-calendar-mcp"
+version = "0.1.0"
+description = "MCP server for public academic calendar data published by USTC Office of Academic Affairs"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "httpx>=0.27.0",
+    "mcp>=1.2.0,<2",
+]
+
+[project.scripts]
+academic-calendar-mcp = "academic_calendar_mcp.server:main"
+academic-calendar-mcp-cli = "academic_calendar_mcp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

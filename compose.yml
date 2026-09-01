@@ -1,5 +1,85 @@
 name: ${COMPOSE_PROJECT_NAME:-dududa}
 
-include:
-  - path: ./deploy/compose/compose.yml
-    project_directory: .
+services:
+  astrbot:
+    build:
+      context: .
+      dockerfile: docker/astrbot/Dockerfile
+      args:
+        ASTRBOT_BASE_IMAGE: ${ASTRBOT_BASE_IMAGE}
+    image: ${DUDUDA_ASTRBOT_IMAGE:-dududa/astrbot:local}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      PYTHONDONTWRITEBYTECODE: "1"
+      HF_HOME: /AstrBot/data/model_cache/huggingface
+      HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
+      ICOURSE_MCP_DB_PATH: /AstrBot/data/icourse-cache/icourse.sqlite3
+      COLLEGE_NOTICE_MCP_DB_PATH: /AstrBot/data/college-notice-cache/college-notice.sqlite3
+      TRAINING_PLAN_MCP_DB_PATH: /AstrBot/data/training-plan-cache/training-plan.sqlite3
+      LIBRARY_MCP_DB_PATH: /AstrBot/data/library-cache/library.sqlite3
+      CAMPUS_EVENTS_MCP_DB_PATH: /AstrBot/data/campus-events-cache/campus-events.sqlite3
+      ACADEMIC_CALENDAR_MCP_DB_PATH: /AstrBot/data/academic-calendar-cache/calendar.sqlite3
+    ports:
+      - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
+        published: "${ASTRBOT_WEBUI_PORT:-6185}"
+        target: 6185
+        protocol: tcp
+    volumes:
+      - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
+      - ./plugins/astrbot_plugin_dududa_core:/AstrBot/data/plugins/astrbot_plugin_dududa_core:ro
+      - ./plugins/astrbot_plugin_reply_polish:/AstrBot/data/plugins/astrbot_plugin_reply_polish:ro
+      - ./plugins/astrbot_plugin_target_talk:/AstrBot/data/plugins/astrbot_plugin_target_talk:ro
+      - ./services/icourse-mcp:/AstrBot/data/icourse-mcp:ro
+      - ./services/college-notice-mcp:/AstrBot/data/college-notice-mcp:ro
+      - ./services/training-plan-mcp:/AstrBot/data/training-plan-mcp:ro
+      - ./services/library-mcp:/AstrBot/data/library-mcp:ro
+      - ./services/campus-events-mcp:/AstrBot/data/campus-events-mcp:ro
+      - ./services/academic-calendar-mcp:/AstrBot/data/academic-calendar-mcp:ro
+      - ./services/ustc-notice-mcp:/AstrBot/data/ustc-notice-mcp:ro
+      - ./config:/opt/dududa/config:ro
+      - ./scripts:/opt/dududa/scripts:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      bot_net:
+      edge:
+        aliases:
+          - dududa-astrbot
+          - bot-astrbot-qq-astrbot
+
+  napcat:
+    image: ${NAPCAT_IMAGE}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      NAPCAT_UID: ${NAPCAT_UID:-1000}
+      NAPCAT_GID: ${NAPCAT_GID:-1000}
+      MODE: astrbot
+    ports:
+      - host_ip: ${NAPCAT_WEBUI_HOST:-127.0.0.1}
+        published: "${NAPCAT_WEBUI_PORT:-6099}"
+        target: 6099
+        protocol: tcp
+    volumes:
+      - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
+      - ${STACK_DATA_ROOT:-./data}/napcat/config:/app/napcat/config
+      - ${STACK_DATA_ROOT:-./data}/napcat/ntqq:/app/.config/QQ
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      bot_net:
+      edge:
+        aliases:
+          - dududa-napcat
+          - bot-astrbot-qq-napcat
+    depends_on:
+      - astrbot
+
+networks:
+  bot_net:
+    driver: bridge
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-mmdustc-edge}

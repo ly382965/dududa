@@ -1,0 +1,69 @@
+{
+  "mcpServers": {
+    "icourse": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/icourse-mcp/run_icourse_mcp.py",
+        "--db-path",
+        "/AstrBot/data/icourse-cache/icourse.sqlite3",
+        "--request-delay",
+        "1.0"
+      ],
+      "disabled": false
+    },
+    "college_notice": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/college-notice-mcp/run_college_notice_mcp.py",
+        "--db-path",
+        "/AstrBot/data/college-notice-cache/college-notice.sqlite3"
+      ],
+      "disabled": false
+    },
+    "training_plan": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/training-plan-mcp/run_training_plan_mcp.py",
+        "--db-path",
+        "/AstrBot/data/training-plan-cache/training-plan.sqlite3"
+      ],
+      "disabled": false
+    },
+    "library": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/library-mcp/run_library_mcp.py",
+        "--db-path",
+        "/AstrBot/data/library-cache/library.sqlite3"
+      ],
+      "disabled": false
+    },
+    "campus_events": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/campus-events-mcp/run_campus_events_mcp.py",
+        "--db-path",
+        "/AstrBot/data/campus-events-cache/campus-events.sqlite3"
+      ],
+      "disabled": false
+    },
+    "academic_calendar": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/academic-calendar-mcp/run_academic_calendar_mcp.py",
+        "--db-path",
+        "/AstrBot/data/academic-calendar-cache/calendar.sqlite3"
+      ],
+      "disabled": false
+    },
+    "ustc_notice": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/ustc-notice-mcp/run_ustc_notice_mcp.py",
+        "--db-path",
+        "/AstrBot/data/ustc-notice-cache/ustc-notice.sqlite3"
+      ],
+      "disabled": false
+    }
+  }
+}
