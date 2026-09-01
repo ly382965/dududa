@@ -2579,22 +2579,5 @@ class DududaCorePlugin(Star):
         if "朋友" not in text:
             return
 
-        sender = self._sender(event)
-        self._friend_cooldown = getattr(self, "_friend_cooldown", {})
-        key = f"{group_id}_{sender}"
-        if time.time() - self._friend_cooldown.get(key, 0) < 30:
-            return
-        self._friend_cooldown[key] = time.time()
-
-        # 取sender昵称前2-3个字符作为"xm"
-        nick = ""
-        try:
-            nick = str(event.get_sender_name() or sender)
-        except Exception:
-            nick = sender
-        xm = nick[:3] if len(nick) >= 3 else nick
-        if not xm:
-            xm = sender[:3]
-
-        yield event.plain_result(f"{xm}朋友")
+        yield event.plain_result("xm朋友")
         event.stop_event()
