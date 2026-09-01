@@ -2607,6 +2607,18 @@ class DududaCorePlugin(Star):
         is_to_bot = any(kw in lower for kw in bot_kw)
         is_to_someone = any(kw in lower for kw in someone_kw)
 
+        # @机器人也算夸自己
+        if not is_to_bot:
+            try:
+                raw = event.get_messages() or []
+                for comp in raw:
+                    comp_text = str(comp)
+                    if "qq" in comp_text.lower() and ("at" in comp_text.lower() or "mention" in comp_text.lower()):
+                        is_to_bot = True
+                        break
+            except Exception:
+                pass
+
         if is_to_bot and not is_to_someone:
             yield event.plain_result("嘻嘻 (●'◡'●)")
         else:
