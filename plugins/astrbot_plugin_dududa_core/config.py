@@ -54,6 +54,13 @@ ACADEMIC_CALENDAR_DB = Path(
         str(DATA_ROOT / "academic-calendar-cache" / "calendar.sqlite3"),
     )
 )
+LOCAL_RECS_ROOT = DATA_ROOT / "local-recs-mcp"
+LOCAL_RECS_DB = Path(
+    os.environ.get(
+        "LOCAL_RECS_MCP_DB_PATH",
+        str(DATA_ROOT / "local-recs-cache" / "local-recs.sqlite3"),
+    )
+)
 
 
 def ensure_dirs() -> None:

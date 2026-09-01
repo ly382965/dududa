@@ -1,0 +1,12 @@
+name: astrbot_plugin_dududa_core
+display_name: 嘟嘟哒核心
+desc: 嘟嘟哒统一命令、权限、课程查询、管理入口和审计骨架。
+help: |
+  /help 或 /dududa help 查看嘟嘟哒命令菜单。
+  /course search <关键词> 查询评课社区缓存。
+  /admin status 查看管理状态。
+version: v0.1.0
+author: mmdustc
+repo: https://github.com/ly382965/dududa/tree/main/plugins/astrbot_plugin_dududa_core
+support_platforms:
+  - aiocqhttp

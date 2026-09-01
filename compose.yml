@@ -22,6 +22,7 @@ services:
       LIBRARY_MCP_DB_PATH: /AstrBot/data/library-cache/library.sqlite3
       CAMPUS_EVENTS_MCP_DB_PATH: /AstrBot/data/campus-events-cache/campus-events.sqlite3
       ACADEMIC_CALENDAR_MCP_DB_PATH: /AstrBot/data/academic-calendar-cache/calendar.sqlite3
+      LOCAL_RECS_MCP_DB_PATH: /AstrBot/data/local-recs-cache/local-recs.sqlite3
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
@@ -39,6 +40,7 @@ services:
       - ./services/campus-events-mcp:/AstrBot/data/campus-events-mcp:ro
       - ./services/academic-calendar-mcp:/AstrBot/data/academic-calendar-mcp:ro
       - ./services/ustc-notice-mcp:/AstrBot/data/ustc-notice-mcp:ro
+      - ./services/local-recs-mcp:/AstrBot/data/local-recs-mcp:ro
       - ./config:/opt/dududa/config:ro
       - ./scripts:/opt/dududa/scripts:ro
       - /etc/localtime:/etc/localtime:ro

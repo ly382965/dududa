@@ -64,6 +64,15 @@
         "/AstrBot/data/ustc-notice-cache/ustc-notice.sqlite3"
       ],
       "disabled": false
+    },
+    "local_recs": {
+      "command": "/usr/local/bin/python",
+      "args": [
+        "/AstrBot/data/local-recs-mcp/run_local_recs_mcp.py",
+        "--db-path",
+        "/AstrBot/data/local-recs-cache/local-recs.sqlite3"
+      ],
+      "disabled": false
     }
   }
 }

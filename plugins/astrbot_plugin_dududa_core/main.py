@@ -39,12 +39,14 @@ from .campus_mcp import (
     format_current_term,
     format_events,
     format_event_stats,
+    format_food_recommendation,
     format_library_stats,
     format_majors,
     format_opening_hours,
     format_plan_stats,
     format_terms,
     library_client,
+    local_recs_client,
     training_plan_client,
 )
 from .help_menu import admin_help, module_help, user_help
@@ -85,6 +87,7 @@ class DududaCorePlugin(Star):
         self.library = library_client()
         self.campus_events = campus_events_client()
         self.academic_calendar = academic_calendar_client()
+        self.local_recs = local_recs_client()
         self.pending: dict[str, PendingAction] = {}
         self.course_refresh_at: dict[str, float] = {}
         self.user_state_path = PLUGIN_DATA_DIR / "user_state.json"
@@ -1254,6 +1257,43 @@ class DududaCorePlugin(Star):
             yield event.plain_result(f"教学日历 MCP 调用失败：{type(exc).__name__}")
         event.stop_event()
 
+    @filter.command("eat")
+    async def eat(self, event: AstrMessageEvent, campus: str | None = None, price_level: str | None = None):
+        """吃什么？根据当前时间随机推荐，可指定校区和价位。
+        用法：/eat | /eat 西区 | /eat 西区 平价"""
+        c = str(campus or "").strip()
+        p = str(price_level or "").strip()
+        valid_campuses = {"东区", "西区", "中区", "南区", "肥西路", "校内", "校外"}
+        if c and c not in valid_campuses:
+            p = c
+            c = ""
+        args: dict[str, Any] = {}
+        if c:
+            args["campus"] = c
+        if p:
+            args["price_level"] = p
+        try:
+            result = await self.local_recs.call("random_food", args)
+            yield event.plain_result(format_food_recommendation(result))
+        except Exception as exc:
+            yield event.plain_result(f"推荐服务调用失败：{type(exc).__name__}")
+        event.stop_event()
+
+    @filter.command("foodmap")
+    async def foodmap(self, event: AstrMessageEvent, campus: str | None = None):
+        """生成科大附近美食地图链接。用法：/foodmap | /foodmap 西区"""
+        c = str(campus or "").strip()
+        try:
+            result = await self.local_recs.call("generate_food_map", {"campus": c} if c else {})
+            link = result.get("map_link") or ""
+            if link:
+                yield event.plain_result(f"科大附近美食地图（15km）：\n{link}")
+            else:
+                yield event.plain_result("地图生成失败。")
+        except Exception as exc:
+            yield event.plain_result(f"地图服务调用失败：{type(exc).__name__}")
+        event.stop_event()
+
     @filter.command_group("admin")
     def admin(self):
         """管理员命令组"""
@@ -1268,7 +1308,7 @@ class DududaCorePlugin(Star):
             event.stop_event()
             return
         cfg = load_astrbot_config()
-        mcp_names = ["icourse", "college_notice", "training_plan", "library", "campus_events", "academic_calendar"]
+        mcp_names = ["icourse", "college_notice", "training_plan", "library", "campus_events", "academic_calendar", "local_recs"]
         yield event.plain_result(
             "管理状态\n"
             f"default_provider_id: {cfg.get('provider_settings', {}).get('default_provider_id')}\n"
@@ -1308,6 +1348,7 @@ class DududaCorePlugin(Star):
             "library": (self.library, "library-mcp"),
             "campus_events": (self.campus_events, "campus-events-mcp"),
             "academic_calendar": (self.academic_calendar, "academic-calendar-mcp"),
+            "local_recs": (self.local_recs, "local-recs-mcp"),
         }
         if action == "list":
             lines = ["MCP 列表："]
@@ -1339,6 +1380,7 @@ class DududaCorePlugin(Star):
                 "library": ("refresh_hours", {}),
                 "campus_events": ("refresh_lists", {"only_refresh": False}),
                 "academic_calendar": ("get_current_term", {"refresh": True}),
+                "local_recs": ("recs_stats", {}),
             }
             if key not in refresh_ops:
                 yield event.plain_result(f"未知 MCP：{key}。可用 refresh：{', '.join(refresh_ops)}")

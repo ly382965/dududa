@@ -1,0 +1,67 @@
+{
+  "enabled": {
+    "description": "启用插件",
+    "type": "bool",
+    "default": true
+  },
+  "owners": {
+    "description": "全局 owner QQ 号",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": [],
+    "hint": "留空时会回退使用 AstrBot 全局 admins_id。"
+  },
+  "global_admins": {
+    "description": "全局 admin QQ 号",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": []
+  },
+  "trusted_users": {
+    "description": "可信用户 QQ 号",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": []
+  },
+  "muted_users": {
+    "description": "禁用用户 QQ 号",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": []
+  },
+  "group_admins": {
+    "description": "群级管理员 JSON，格式为 {\"群号\": [\"QQ号\"]}",
+    "type": "text",
+    "default": "{}"
+  },
+  "course_refresh_cooldown_seconds": {
+    "description": "课程刷新冷却秒数",
+    "type": "int",
+    "default": 600
+  },
+  "default_model_id": {
+    "description": "默认聊天模型 ID",
+    "type": "string",
+    "default": "openai/gpt-5.5"
+  },
+  "image_model_id": {
+    "description": "图像生成模型 ID",
+    "type": "string",
+    "default": "gpt-image-2",
+    "hint": "当前标记为可用但较慢，默认谨慎调用。"
+  },
+  "image_timeout_seconds": {
+    "description": "图像生成等待超时秒数",
+    "type": "int",
+    "default": 420,
+    "hint": "gpt-image-2 可能较慢；运行时会限制在 60-900 秒之间。"
+  }
+}

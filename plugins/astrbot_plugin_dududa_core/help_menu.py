@@ -33,6 +33,9 @@ def user_help() -> str:
 /events list [类别] /events search <关键词> /events stats
 /calendar today /calendar date <日期> /calendar search <关键词> /calendar terms
 
+吃什么：
+/eat [校区] [价位] /foodmap [校区]
+
 工具：
 /remind <时间> <内容>
 /reminders
@@ -101,7 +104,7 @@ def module_help(module: str) -> str:
 评课社区搜索 数据结构A
 
 当前只使用评课社区公开页面；会通过站内搜索扩展缓存，教务系统仍是 TODO。"""
-    if key in {"campus", "校园", "notice", "通知", "plan", "培养", "library", "图书馆", "events", "活动", "calendar", "日历", "教学日历"}:
+    if key in {"campus", "校园", "notice", "通知", "plan", "培养", "library", "图书馆", "events", "活动", "calendar", "日历", "教学日历", "eat", "吃", "美食", "吃什么"}:
         return """校园信息指令
 
 学院通知：
@@ -129,6 +132,10 @@ def module_help(module: str) -> str:
 /calendar today
 /calendar date <日期>
 /calendar search <关键词>
+
+吃什么：
+/eat [校区] [价位]
+/foodmap [校区]
 
 数据来自学校公开页面缓存，管理员可用 /admin mcp refresh <name> 更新。"""
     if key in {"memory", "记忆"}:

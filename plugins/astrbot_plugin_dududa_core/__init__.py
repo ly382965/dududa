@@ -1,0 +1,1 @@
+"""Dududa core AstrBot plugin."""

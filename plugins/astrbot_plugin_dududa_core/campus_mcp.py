@@ -15,6 +15,8 @@ from .config import (
     COLLEGE_NOTICE_ROOT,
     LIBRARY_DB,
     LIBRARY_ROOT,
+    LOCAL_RECS_DB,
+    LOCAL_RECS_ROOT,
     TRAINING_PLAN_DB,
     TRAINING_PLAN_ROOT,
 )
@@ -23,16 +25,16 @@ from .config import (
 class McpClient:
     """通用 stdio MCP 客户端，复刻 ICourseClient 的连接方式。"""
 
-    def __init__(self, root, db_path, script_name: str, timeout_hint: float = 30.0):
+    def __init__(self, root, db_path, script_name: str, timeout_hint: float = 30.0, extra_args: list[str] | None = None):
         self.timeout_hint = timeout_hint
         self.command = "/usr/local/bin/python"
         self.args = [
             str(root / script_name),
             "--db-path",
             str(db_path),
-            "--request-delay",
-            "1.0",
         ]
+        if extra_args:
+            self.args.extend(extra_args)
 
     async def call(self, tool: str, args: dict[str, Any] | None = None) -> Any:
         params = StdioServerParameters(command=self.command, args=self.args, env=dict(os.environ))
@@ -81,6 +83,10 @@ def academic_calendar_client() -> McpClient:
     return McpClient(
         ACADEMIC_CALENDAR_ROOT, ACADEMIC_CALENDAR_DB, "run_academic_calendar_mcp.py"
     )
+
+
+def local_recs_client() -> McpClient:
+    return McpClient(LOCAL_RECS_ROOT, LOCAL_RECS_DB, "run_local_recs_mcp.py")
 
 
 # ---------- college notice ----------
@@ -247,4 +253,46 @@ def format_calendar_events(result: dict[str, Any]) -> str:
         lines.append(f"- [{term}] {week} {title}".rstrip())
     if len(events) > 15:
         lines.append(f"... 共 {len(events)} 条")
+    return "\n".join(lines)
+
+
+def format_food_recommendation(result: dict[str, Any]) -> str:
+    """格式化'吃什么'推荐结果。"""
+    if not result.get("ok"):
+        return "暂时没有推荐数据，可让管理员用 /admin mcp refresh 补充。"
+    rec = result.get("recommendation") or {}
+    name = rec.get("name") or "?"
+    detail = rec.get("detail") or ""
+    location = rec.get("location") or ""
+    proximity = rec.get("proximity") or ""
+    score = rec.get("score") or 0
+    meal_time = result.get("meal_time") or ""
+    is_thursday = result.get("is_thursday") or False
+    opening = result.get("opening_hours") or {}
+    map_link = result.get("map_link") or ""
+    price = rec.get("price_level") or ""
+
+    lines = []
+    if is_thursday:
+        lines.append(f"今天是星期四！{name} 疯狂星期四，快去！")
+    else:
+        emoji_map = {"早餐": "早餐", "午餐": "午餐", "晚餐": "晚餐", "夜宵": "夜宵"}
+        lines.append(f"今日{emoji_map.get(meal_time, meal_time)}推荐：{name}")
+
+    if detail:
+        lines.append(f"  {detail}")
+    if location:
+        lines.append(f"  位置：{location}")
+    if proximity:
+        lines.append(f"  距离：{proximity}")
+    if price:
+        lines.append(f"  价位：{price}")
+    if score:
+        lines.append(f"  评分：{score}")
+    if opening:
+        hours_str = " / ".join(f"{k}{v}" for k, v in opening.items())
+        lines.append(f"  营业：{hours_str}")
+    if map_link:
+        lines.append(f"  地图：{map_link}")
+
     return "\n".join(lines)
