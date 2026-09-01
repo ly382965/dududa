@@ -34,6 +34,7 @@ from .runtime_servers import RuntimeServerOverlay
 
 SERVER_NAMES = {
     "icourse": "评课社区",
+    "notifai": "校园通知",
     "ustc-academic": "教务处",
     "ustc-curriculum": "培养方案",
     "ustc-young": "二课",

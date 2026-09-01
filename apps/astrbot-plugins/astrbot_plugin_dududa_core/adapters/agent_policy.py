@@ -17,6 +17,7 @@ _CONTEXT_LENGTHS = frozenset({"compact", "standard", "extended"})
 _GROUP_CHAT_STYLES = frozenset({"restrained", "natural", "lively", "technical"})
 _PLUGIN_CAPABILITY_CATEGORIES: Mapping[str, str] = {
     "icourse.read": "campus.course-review",
+    "notifai.read": "campus.notifications",
     "ustc.young.read": "campus.second-class",
     "ustc.academic.read": "campus.academic",
     "ustc.curriculum.read": "campus.curriculum",

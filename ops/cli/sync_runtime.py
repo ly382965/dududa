@@ -8,6 +8,9 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+RETIRED_DIRECT_MCP_SERVERS = frozenset({"catalog", "notifai"})
+
+
 def merge_mcp_config(data_root: Path) -> None:
     template_path = REPO_ROOT / "configs" / "astrbot" / "mcp_server.json"
     target_path = data_root / "astrbot" / "mcp_server.json"
@@ -26,6 +29,8 @@ def merge_mcp_config(data_root: Path) -> None:
     template_servers = template.get("mcpServers", {})
     if not isinstance(template_servers, dict):
         raise TypeError(f"expected mcpServers to be an object in {template_path}")
+    for server_id in RETIRED_DIRECT_MCP_SERVERS:
+        servers.pop(server_id, None)
     for server_id, definition in template_servers.items():
         servers[server_id] = definition
 

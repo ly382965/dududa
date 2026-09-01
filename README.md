@@ -76,6 +76,7 @@ configuration plus mappings, not a change to Domain or Runtime code.
 | iCourse / 评课社区 | Unified MCP | Anonymous public course, teacher, review, ranking, and statistics reads. This is the primary real MCP path. |
 | USTC Young / 二课 | Unified MCP | `pyustc`-based activity search, facets, details, and connection status. Apply/cancel/applicant operations are not exposed as public capabilities. |
 | USTC Academic / 教务处 | Unified MCP | Public semester, lesson, exam, and teaching-calendar reads. |
+| NotifAI / 校园通知 | Unified MCP | Public notice search, details, calendar, deadlines, sources, categories, and statistics. |
 | USTC Curriculum / 培养方案 | Unified MCP | Read-only queries over the documented research snapshot at `docs.mmdustc.top/curriculum`; not a live graduation audit. |
 | USTC Shuttle / 校车 | Builtin Capability | Versioned local timetable data; no MCP session and no network crawl. |
 | Weather | Candidate Source/Capability adapter | `WttrWeatherSource` and provider contracts exist, but no production composition or daily subscription is enabled. |
@@ -118,6 +119,7 @@ apps/astrbot-plugins/        # AstrBot adapters and capability assets
 apps/b50-renderer/            # offline B50 renderer
 apps/web/                     # Vue/Node Bot Control Plane
 services/mcp/icourse/         # iCourse MCP server
+services/mcp/notifai/         # NotifAI campus-notice MCP server
 services/mcp/ustc-campus/     # Young, Academic, and Curriculum MCP server
 services/mcp/console/         # MCP registry/capability console
 configs/                      # credential-free server and capability mappings
