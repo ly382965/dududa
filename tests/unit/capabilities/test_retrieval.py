@@ -341,25 +341,51 @@ async def run_retrieval(
     health_status: CapabilityHealthStatus = CapabilityHealthStatus.HEALTHY,
     mapping_enabled: bool = True,
     call: PortCallContext | None = None,
-    provider_cap: int = 4,
-    category_cap: int = 4,
+    provider_cap: int | None = 4,
+    category_cap: int | None = 4,
 ):
     registry, catalog = catalog_for(definitions, mapping_enabled=mapping_enabled)
     authorization = authorization_for(definitions)
+    retriever_kwargs = {}
+    if provider_cap is not None:
+        retriever_kwargs["provider_cap"] = provider_cap
+    if category_cap is not None:
+        retriever_kwargs["category_cap"] = category_cap
     retriever = DeterministicCapabilityRetriever(
         registry,
         StaticHealthRegistry(health_for(catalog, status=health_status)),
         authorization,
         authorization,
         clock=lambda: NOW,
-        provider_cap=provider_cap,
-        category_cap=category_cap,
+        **retriever_kwargs,
     )
     result = await retriever.retrieve(request, call=call or retrieval_call())
     return result, authorization
 
 
 class CapabilityRetrievalTests(unittest.IsolatedAsyncioTestCase):
+    async def test_default_caps_include_all_notifai_capabilities(self) -> None:
+        _, base, _ = catalog_fixture()
+        definitions = tuple(
+            revised_definition(
+                base,
+                capability_id=f"notifai.notices.fixture{index}.v1",
+                category="campus.notifications",
+                provider=base.provider,
+                name=f"NotifAI notice capability {index}",
+                description="Read a public campus notice.",
+                tags=frozenset({"campus", "notifications", "notifai"}),
+            )
+            for index in range(7)
+        )
+        result, _ = await run_retrieval(
+            definitions,
+            request_for(definitions[0], limit=8),
+            provider_cap=None,
+            category_cap=None,
+        )
+        self.assertEqual(len(result.candidates), 7)
+
     async def test_eligible_candidate_uses_one_exact_request_per_permission(
         self,
     ) -> None:

@@ -1,2 +1,4 @@
 httpx>=0.28.1,<0.29
 mcp==1.29.0
+# MCP 1.29 emits an unresolved lifespan warning with pydantic-settings 2.15.x.
+pydantic-settings>=2.14.2,<2.15.0

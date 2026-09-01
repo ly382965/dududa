@@ -629,6 +629,7 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
     },
     plugins: {
       'icourse.read': 'off',
+      'notifai.read': 'off',
       'ustc.young.read': 'off',
       'ustc.curriculum.read': 'off',
       'ustc.academic.read': 'off',
@@ -657,6 +658,21 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'agent_capability',
       description: '复用现有匿名 iCourse 服务查询课程与公开评价；超级管理员可在 MCP 工作台直接调用。',
+    },
+    {
+      id: 'notifai.read',
+      displayName: 'USTC 校园通知',
+      kind: 'mcp',
+      installed: true,
+      available: true,
+      builtIn: true,
+      policyManaged: true,
+      requiredRole: 'super_admin',
+      executionRole: 'admin',
+      runtimeTarget: 'astrbot',
+      runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'agent_capability',
+      description: '通过 NotifAI 查询公开校园通知、截止提醒、通知日历、来源分类和统计；只读，不保存通知正文。',
     },
     {
       id: 'ustc.young.read',
@@ -1696,6 +1712,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
       }
       const selectedPluginIds = new Set<string>(runtime.capabilityIds.map((capabilityId) => {
         if (capabilityId.startsWith('icourse.')) return 'icourse.read'
+        if (capabilityId.startsWith('notifai.')) return 'notifai.read'
         if (capabilityId.startsWith('ustc.young.')) return 'ustc.young.read'
         if (capabilityId.startsWith('ustc.curriculum.')) return 'ustc.curriculum.read'
         if (capabilityId.startsWith('ustc.academic.')) return 'ustc.academic.read'

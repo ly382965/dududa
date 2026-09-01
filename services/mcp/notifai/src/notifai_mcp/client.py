@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Iterable
 from datetime import date, datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit, urlunsplit
 
 import httpx
 
@@ -14,6 +15,49 @@ from .errors import NotifAIError, NotifAIValidationError
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _WEEK_RE = re.compile(r"^\d{4}-W\d{2}$")
+_HTTP_URL_RE = re.compile(r"(?i)https?://[^\s\"'<>]+")
+
+
+class _HttpxQueryRedactionFilter(logging.Filter):
+    """Keep HTTPX diagnostics useful without copying request query data to logs."""
+
+    _notifai_query_redaction_filter = True
+
+    def filter(self, record: Any) -> bool:
+        try:
+            rendered = record.getMessage()
+        except (AttributeError, TypeError, ValueError):  # pragma: no cover
+            return True
+        redacted = _HTTP_URL_RE.sub(_redact_logged_url, rendered)
+        if redacted != rendered:
+            # The message has already been rendered, so clear args to avoid a
+            # second %-format pass by handlers.
+            record.msg = redacted
+            record.args = ()
+        return True
+
+
+def _redact_logged_url(match: re.Match[str]) -> str:
+    value = match.group(0)
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return "[URL]"
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return "[URL]"
+    # Query strings contain free-form user input (for example `keyword`) and
+    # must not be copied into the MCP process logs.
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+
+
+def _install_httpx_query_redaction() -> None:
+    for name in ("httpx", "httpcore"):
+        logger = logging.getLogger(name)
+        if not any(
+            getattr(item, "_notifai_query_redaction_filter", False)
+            for item in logger.filters
+        ):
+            logger.addFilter(_HttpxQueryRedactionFilter())
 
 
 def _text(value: str | None, name: str, *, max_length: int, required: bool = False) -> str | None:
@@ -147,6 +191,7 @@ class NotifAIClient:
         http_client: httpx.Client | None = None,
     ) -> None:
         self.config = config
+        _install_httpx_query_redaction()
         self._http = http_client or httpx.Client(
             timeout=config.timeout,
             transport=transport,

@@ -11,6 +11,9 @@ from dududa.errors import DududaError
 from dududa.mcp import ConfigMcpServerRegistry
 
 from ops.cli.generate_icourse_capability_config import rendered_documents
+from ops.cli.generate_notifai_capability_config import (
+    rendered_documents as rendered_notifai_documents,
+)
 from ops.cli.generate_ustc_campus_capability_config import (
     rendered_documents as rendered_campus_documents,
 )
@@ -46,7 +49,11 @@ def capability_snapshot(root: Path, suffix: str):
 
 class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
     def test_production_config_matches_content_addressed_generators(self) -> None:
-        expected = {**rendered_documents(), **rendered_campus_documents()}
+        expected = {
+            **rendered_documents(),
+            **rendered_campus_documents(),
+            **rendered_notifai_documents(),
+        }
         actual_paths = {
             path.relative_to(ROOT)
             for directory in (
@@ -71,13 +78,14 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
             tuple(item.server_id for item in transport.definitions),
             (
                 "icourse",
+                "notifai",
                 "ustc-academic",
                 "ustc-curriculum",
                 "ustc-young",
             ),
         )
         catalog = capability_snapshot(PRODUCTION_CAPABILITIES, "production")
-        self.assertEqual(len(catalog.definitions), 15)
+        self.assertEqual(len(catalog.definitions), 22)
         by_tool = {item.tool_name: item for item in catalog.mcp_mappings}
         self.assertEqual(
             set(by_tool),
@@ -96,6 +104,13 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                 "young_search_activities",
                 "young_get_activity",
                 "young_list_facets",
+                "search_notices",
+                "get_notice",
+                "get_notice_calendar",
+                "get_notice_deadlines",
+                "list_notice_sources",
+                "list_notice_categories",
+                "get_notice_stats",
             },
         )
         for mapping in by_tool.values():
@@ -171,6 +186,7 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                 (
                     "fake-b",
                     "icourse",
+                    "notifai",
                     "ustc-academic",
                     "ustc-curriculum",
                     "ustc-young",
@@ -183,16 +199,17 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
                 (
                     "mcp.fake-b",
                     "mcp.icourse",
+                    "mcp.notifai",
                     "mcp.ustc-academic",
                     "mcp.ustc-curriculum",
                     "mcp.ustc-young",
                     "plugin.ustc-shuttle",
                 ),
             )
-            self.assertEqual(len(catalog.definitions), 16)
+            self.assertEqual(len(catalog.definitions), 23)
 
         production = capability_snapshot(PRODUCTION_CAPABILITIES, "still-production")
-        self.assertEqual(len(production.definitions), 15)
+        self.assertEqual(len(production.definitions), 22)
         for relative in (
             "packages/dududa-agent/src/dududa/capabilities/mcp_provider.py",
             "packages/dududa-agent/src/dududa/capabilities/runtime.py",

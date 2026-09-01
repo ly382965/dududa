@@ -69,8 +69,11 @@ class DeterministicCapabilityRetriever:
         *,
         clock: Callable[[], datetime] | None = None,
         revision: ComponentRevision | None = None,
-        provider_cap: int = 4,
-        category_cap: int = 4,
+        # The default retrieval K is eight (see capability-and-mcp.md).  Keep
+        # enough room for a provider's complete read-only surface: NotifAI
+        # currently publishes seven capabilities in one category.
+        provider_cap: int = 8,
+        category_cap: int = 8,
     ) -> None:
         if not 1 <= provider_cap <= MAX_CAPABILITY_CANDIDATES:
             raise ValueError("provider_cap is outside the retrieval ceiling")

@@ -263,6 +263,67 @@ describe('internal-test gateway', () => {
     })
   })
 
+  it('maps a NotifAI runtime capability to the managed console plugin', async () => {
+    const root = await fixtureRoot()
+    const scope = {
+      accountId: 'qq-notifai',
+      conversationId: 'qq-notifai:group:1',
+    }
+    const preview = vi.fn(async () => ({
+      runId: 'runtime-preview-notifai',
+      candidate: '已找到校园通知。',
+      tier: 'sonnet' as const,
+      model: 'gpt-5.6-terra',
+      reasoning: 'medium' as const,
+      answerProfile: 'medium' as const,
+      reasonCodes: ['delivery_ready', 'runtime.preview.no_send'],
+      latencyMs: 123,
+      generatedAt: '2026-08-28T09:00:00.000Z',
+      messagesRead: 0,
+      charactersRead: 0,
+      outputCalls: 0 as const,
+      memoryWrites: 0 as const,
+      toolCalls: 1,
+      capabilityIds: ['notifai.notices.search.v1'],
+    }))
+    const gateway = new FileInternalTestGateway({
+      dataRoot: root,
+      providerBaseUrl: 'https://provider.invalid',
+      providerApiKey: 'test-key',
+      runtimePreview: { preview },
+    })
+    const policy = await gateway.agentConfig(scope)
+    expect(policy.plugins['notifai.read']).toBe('off')
+    await gateway.saveAgentConfig({
+      scope,
+      policy: {
+        ...policy,
+        plugins: { ...policy.plugins, 'notifai.read': 'on' },
+      },
+    })
+
+    await expect(gateway.respond({
+      ...scope,
+      conversationName: '通知测试群',
+      conversationType: 'group',
+      prompt: '查询校园通知',
+      messages: [],
+    })).resolves.toMatchObject({
+      effectiveSelection: {
+        plugins: {
+          'notifai.read': {
+            mode: 'on',
+            available: true,
+            selectedForRun: true,
+            applicable: true,
+            triggerMatched: true,
+            selectionReason: 'trigger_matched',
+          },
+        },
+      },
+    })
+  })
+
   it('does not report an active Runtime before the assembly is ready', async () => {
     const root = await fixtureRoot()
     const runtimeConfigPath = join(root, 'runtime.json')
@@ -381,6 +442,17 @@ describe('internal-test gateway', () => {
         executionKind: 'agent_capability',
         kind: 'mcp',
       }),
+      expect.objectContaining({
+        id: 'notifai.read',
+        displayName: 'USTC 校园通知',
+        available: true,
+        installed: true,
+        policyManaged: true,
+        runtimeTarget: 'astrbot',
+        runtimeReadiness: 'configured',
+        executionKind: 'agent_capability',
+        kind: 'mcp',
+      }),
       expect.objectContaining({ id: 'ustc.young.read', available: true, kind: 'mcp' }),
       expect.objectContaining({ id: 'ustc.academic.read', available: true, kind: 'mcp' }),
       expect.objectContaining({ id: 'ustc.shuttle.read', available: true, kind: 'readonly_query' }),
@@ -447,6 +519,7 @@ describe('internal-test gateway', () => {
       groupChatStyle: { mode: 'adaptive', preferred: 'natural' },
       proactiveTalk: { probabilityPercent: 2, cooldownSeconds: 1_800, maximumPerHour: 1 },
       plugins: {
+        'notifai.read': 'off',
         'social.reread.auto': 'off',
         'sub2api.auto_query': 'off',
       },

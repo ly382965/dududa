@@ -205,11 +205,16 @@ def _run(fetch: Callable[[], Any], transform: Callable[[Any], tuple[Any, list[st
         return _failure(NotifAIError("internal_error", "NotifAI MCP operation failed."))
 
 
-def _transform_search(payload: Any, *, max_items: int) -> tuple[dict[str, Any], list[str]]:
+def _transform_search(
+    payload: Any,
+    *,
+    max_items: int,
+    include_content: bool = False,
+) -> tuple[dict[str, Any], list[str]]:
     payload = _dict_payload(payload)
     items, warnings = _list_items(
         payload.get("items", []),
-        lambda value: _notice(value, include_content=False),
+        lambda value: _notice(value, include_content=include_content),
         max_items=max_items,
     )
     total = payload.get("total", len(items))
@@ -339,7 +344,11 @@ def create_mcp(config: AppConfig, *, client: NotifAIClient | None = None) -> Fas
                 page=page,
                 page_size=page_size,
             ),
-            lambda payload: _transform_search(payload, max_items=config.max_items),
+            lambda payload: _transform_search(
+                payload,
+                max_items=config.max_items,
+                include_content=not light,
+            ),
         )
 
     @mcp.tool()

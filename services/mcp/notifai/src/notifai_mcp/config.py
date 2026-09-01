@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 DEFAULT_BASE_URL = "https://notifai-api.enthusjast.cc/api"
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_MAX_ITEMS = 100
+MAX_ITEMS = 100
 
 
 def normalize_base_url(value: str) -> str:
@@ -32,8 +33,8 @@ class AppConfig:
         object.__setattr__(self, "base_url", normalize_base_url(self.base_url))
         if not 1 <= float(self.timeout) <= 120:
             raise ValueError("timeout must be between 1 and 120 seconds")
-        if not 1 <= int(self.max_items) <= 500:
-            raise ValueError("max_items must be between 1 and 500")
+        if not 1 <= int(self.max_items) <= MAX_ITEMS:
+            raise ValueError(f"max_items must be between 1 and {MAX_ITEMS}")
         object.__setattr__(self, "timeout", float(self.timeout))
         object.__setattr__(self, "max_items", int(self.max_items))
 
