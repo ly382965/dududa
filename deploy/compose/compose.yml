@@ -14,6 +14,7 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
       DUDUDA_WEB_BIND: 0.0.0.0
       DUDUDA_WEB_INTERNAL_PORT: 8000
+      DUDUDA_WEB_PUBLIC_ORIGIN: ${DUDUDA_WEB_PUBLIC_ORIGIN:-}
       DUDUDA_ONEBOT_TOKEN_FILE: /run/secrets/onebot_access_token
       DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
       DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1

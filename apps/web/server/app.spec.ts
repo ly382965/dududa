@@ -42,9 +42,15 @@ function realGroupMessage(content = '来自真实 NapCat 的消息', overrides: 
 async function startTestServer(
   options: Omit<HubOptions, 'token'> = {},
   controlPlane?: ControlPlaneClient,
+  publicOrigin?: string,
 ) {
   const hub = new OneBotHub({ token, actionTimeoutMs: 2_000, ...options })
-  const server = createDududaServer({ hub, publicDir: '/tmp/dududa-web-does-not-exist', controlPlane })
+  const server = createDududaServer({
+    hub,
+    publicDir: '/tmp/dududa-web-does-not-exist',
+    publicOrigin,
+    controlPlane,
+  })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const port = (server.address() as AddressInfo).port
   const baseUrl = `http://127.0.0.1:${port}`
@@ -784,6 +790,48 @@ describe('Dududa NapCat gateway', () => {
     )
     expect(hostileOrigin.status).toBe(403)
     expect(napcat.actions.some((item) => item.action === 'send_group_msg')).toBe(false)
+    napcat.socket.close()
+  })
+
+  it('accepts only the configured public HTTPS origin for browser reads and writes', async () => {
+    const publicOrigin = 'https://console.mmdustc.top'
+    const { hub, server, port } = await startTestServer({}, undefined, publicOrigin)
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+
+    const workspace = await rawHttpRequest(port, '/api/workspace', {
+      host: 'console.mmdustc.top',
+    })
+    expect(workspace.status).toBe(200)
+
+    const account = `qq-${selfId}`
+    const accepted = await rawHttpRequest(
+      port,
+      `/api/accounts/${account}/conversations/group/345678901/messages`,
+      {
+        method: 'POST',
+        host: 'console.mmdustc.top',
+        origin: publicOrigin,
+        body: JSON.stringify({ content: '来自受保护公网控制台' }),
+      },
+    )
+    expect(accepted.status).toBe(201)
+    expect(napcat.actions.filter((item) => item.action === 'send_group_msg')).toHaveLength(1)
+
+    const rejected = await rawHttpRequest(
+      port,
+      `/api/accounts/${account}/conversations/group/345678901/messages`,
+      {
+        method: 'POST',
+        host: 'console.mmdustc.top',
+        origin: 'https://attacker.example',
+        body: JSON.stringify({ content: '不应发送的跨站消息' }),
+      },
+    )
+    expect(rejected.status).toBe(403)
+    expect(napcat.actions.filter((item) => item.action === 'send_group_msg')).toHaveLength(1)
     napcat.socket.close()
   })
 

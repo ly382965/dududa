@@ -54,6 +54,7 @@ import { readBrowserUpload } from './uploads'
 export interface DududaServerOptions {
   hub: OneBotHub
   publicDir: string
+  publicOrigin?: string
   controlPlane?: ControlPlaneClient
   internalTest?: InternalTestGateway
   mcpConsole?: McpConsoleClient
@@ -162,12 +163,41 @@ function trustedLoopbackHost(value: string | undefined): boolean {
   }
 }
 
-function sameOrigin(request: IncomingMessage): boolean {
+function configuredPublicOrigin(value: string | undefined): URL | undefined {
+  if (!value?.trim()) return undefined
+  const parsed = new URL(value)
+  if (
+    parsed.protocol !== 'https:' ||
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== '/' ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error('DUDUDA_WEB_PUBLIC_ORIGIN 必须是无路径的 HTTPS Origin')
+  }
+  return parsed
+}
+
+function trustedRequestHost(value: string | undefined, publicOrigin: URL | undefined): boolean {
+  if (trustedLoopbackHost(value)) return true
+  if (!value || !publicOrigin) return false
+  try {
+    return new URL(`http://${value}`).host === publicOrigin.host
+  } catch {
+    return false
+  }
+}
+
+function sameOrigin(request: IncomingMessage, publicOrigin: URL | undefined): boolean {
   const origin = request.headers.origin
-  if (!origin || !trustedLoopbackHost(request.headers.host)) return false
+  if (!origin || !trustedRequestHost(request.headers.host, publicOrigin)) return false
   try {
     const parsed = new URL(origin)
-    return ['http:', 'https:'].includes(parsed.protocol) && parsed.host === request.headers.host
+    if (trustedLoopbackHost(request.headers.host)) {
+      return ['http:', 'https:'].includes(parsed.protocol) && parsed.host === request.headers.host
+    }
+    return parsed.origin === publicOrigin?.origin && request.headers.host === publicOrigin.host
   } catch {
     return false
   }
@@ -392,6 +422,7 @@ async function serveStatic(response: ServerResponse, pathname: string, publicDir
 
 export function createDududaServer(options: DududaServerOptions) {
   const maxRequestBytes = options.maxRequestBytes ?? 64 * 1024
+  const publicOrigin = configuredPublicOrigin(options.publicOrigin)
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const internalTest = options.internalTest ?? createInternalTestGateway(process.env, options.runtimePreview)
   const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
@@ -418,8 +449,8 @@ export function createDududaServer(options: DududaServerOptions) {
     const method = request.method ?? 'GET'
     const url = new URL(request.url ?? '/', 'http://localhost')
     try {
-      if (!trustedLoopbackHost(request.headers.host)) {
-        json(response, 421, { error: '请求 Host 不在本地服务允许范围内' })
+      if (!trustedRequestHost(request.headers.host, publicOrigin)) {
+        json(response, 421, { error: '请求 Host 不在服务允许范围内' })
         return
       }
       if (method === 'GET' && url.pathname === '/api/health') {
@@ -451,7 +482,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/internal-test/mcp/invoke') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源超级管理员页面调用 MCP Capability' })
           return
         }
@@ -464,7 +495,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/mcp/install') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源超级管理员页面接入 MCP Server' })
           return
         }
@@ -481,7 +512,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/plugins/install/github') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源超级管理员页面安装插件' })
           return
         }
@@ -498,7 +529,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/plugins/install/upload') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源超级管理员页面安装插件' })
           return
         }
@@ -512,7 +543,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'PUT' && url.pathname === '/api/internal-test/agent/config') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源管理员页面修改 Agent 配置' })
           return
         }
@@ -520,7 +551,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/internal-test/agent/respond') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源内测页面生成 Agent 候选回答' })
           return
         }
@@ -528,7 +559,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/internal-test/generate') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源内测页面生成候选回答' })
           return
         }
@@ -536,7 +567,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'POST' && url.pathname === '/api/internal-test/feedback') {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源内测页面提交反馈' })
           return
         }
@@ -591,7 +622,7 @@ export function createDududaServer(options: DududaServerOptions) {
         url.pathname,
       )
       if (method === 'POST' && controlPlaneGroupRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源控制后台提交命令' })
           return
         }
@@ -680,7 +711,7 @@ export function createDududaServer(options: DududaServerOptions) {
         url.pathname,
       )
       if (method === 'POST' && notificationActionRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -718,7 +749,7 @@ export function createDududaServer(options: DududaServerOptions) {
       const groupMemberAdminRoute =
         /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members\/([^/]+)\/admin$/.exec(url.pathname)
       if (method === 'PUT' && groupMemberAdminRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -739,7 +770,7 @@ export function createDududaServer(options: DududaServerOptions) {
       const groupMemberCardRoute =
         /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members\/([^/]+)\/card$/.exec(url.pathname)
       if (method === 'PUT' && groupMemberCardRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -759,7 +790,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupMemberRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/members\/([^/]+)$/.exec(url.pathname)
       if (method === 'DELETE' && groupMemberRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -773,7 +804,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupMuteRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/mute-all$/.exec(url.pathname)
       if (method === 'PUT' && groupMuteRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -792,7 +823,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)$/.exec(url.pathname)
       if (method === 'PATCH' && groupRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -810,7 +841,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'DELETE' && groupRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -848,7 +879,7 @@ export function createDududaServer(options: DududaServerOptions) {
       const announcementRoute =
         /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/announcements\/([^/]+)$/.exec(url.pathname)
       if (method === 'DELETE' && announcementRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -881,7 +912,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupFilesUploadRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/files\/uploads$/.exec(url.pathname)
       if (method === 'POST' && groupFilesUploadRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -916,7 +947,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupFileRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/files\/([^/]+)$/.exec(url.pathname)
       if (method === 'PATCH' && groupFileRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -935,7 +966,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'DELETE' && groupFileRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -949,7 +980,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupFoldersRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/folders$/.exec(url.pathname)
       if (method === 'POST' && groupFoldersRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -968,7 +999,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const groupFolderRoute = /^\/api\/accounts\/([^/]+)\/groups\/([^/]+)\/folders\/([^/]+)$/.exec(url.pathname)
       if (method === 'DELETE' && groupFolderRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -1028,7 +1059,7 @@ export function createDududaServer(options: DududaServerOptions) {
           return
         }
         if (method === 'POST') {
-          if (!sameOrigin(request)) {
+          if (!sameOrigin(request, publicOrigin)) {
             json(response, 403, { error: '跨站写请求已拒绝' })
             return
           }
@@ -1047,7 +1078,7 @@ export function createDududaServer(options: DududaServerOptions) {
         url.pathname,
       )
       if (method === 'POST' && uploadsRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -1081,7 +1112,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'DELETE' && messageActionRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -1099,7 +1130,7 @@ export function createDududaServer(options: DududaServerOptions) {
           url.pathname,
         )
       if (method === 'POST' && forwardActionRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -1140,7 +1171,7 @@ export function createDududaServer(options: DududaServerOptions) {
         url.pathname,
       )
       if (method === 'POST' && nudgeRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
@@ -1178,7 +1209,7 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       const readRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/read$/.exec(url.pathname)
       if (method === 'POST' && readRoute) {
-        if (!sameOrigin(request)) {
+        if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '跨站写请求已拒绝' })
           return
         }
