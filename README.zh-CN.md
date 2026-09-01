@@ -64,6 +64,7 @@ Core 授权。
 | iCourse / 评课社区 | Unified MCP | 匿名公开查询课程、教师、评价、排行榜和统计，是当前主要真实 MCP 路径。 |
 | USTC Young / 二课 | Unified MCP | 复用 `pyustc` 查询活动、筛选项、详情和连接状态；报名、取消报名、申请人等操作不作为公开能力。 |
 | USTC Academic / 教务处 | Unified MCP | 公开学期、开课、考试和教学日历查询。 |
+| NotifAI / 校园通知 | Unified MCP | 公开通知搜索、详情、日历、截止提醒、来源、分类和统计；只读，不保存正文。 |
 | USTC Curriculum / 培养方案 | Unified MCP | 查询 `docs.mmdustc.top/curriculum` 的研究快照，不是实时毕业审核。 |
 | USTC Shuttle / 校车 | Builtin Capability | 版本化本地时刻表，不建立 MCP Session，不联网抓取。 |
 | Weather | 候选 Source/Capability Adapter | 已有 `WttrWeatherSource` 和 Provider 契约，但尚未接入生产组合或日报订阅。 |
@@ -101,6 +102,7 @@ apps/astrbot-plugins/        # AstrBot 适配器和能力资产
 apps/b50-renderer/            # 离线 B50 渲染器
 apps/web/                     # Vue/Node Bot Control Plane
 services/mcp/icourse/         # 评课社区 MCP
+services/mcp/notifai/         # 校园通知 MCP
 services/mcp/ustc-campus/     # 二课、教务处、培养方案 MCP
 services/mcp/console/         # MCP Registry/Capability 控制台
 configs/                      # 不含凭据的 Server 与 Capability mapping

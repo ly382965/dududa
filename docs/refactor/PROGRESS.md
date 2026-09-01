@@ -1,6 +1,6 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-08-31
+更新时间：2026-09-02
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
@@ -22,6 +22,10 @@
 - 当前 2.0 配置接管所有群内明确 `@Bot` 的纯文本、无附件消息：
   `runtime_enabled=true`、`rollout_mode=canary`、群范围 `*`、delivery 开启、kill switch 关闭。
   私聊、附件和未 @ 的普通群消息静默且不回退 1.0；未 @ 主动参与仍只有 Probe Shadow/NO SEND。
+- 2026-09-02 已将 PR #9（NotifAI 校园通知只读 MCP）合并到本地 `main`，并补齐能力契约、
+  Provider 日志脱敏、Web 插件目录/策略、正文投影和 Registry 测试。当前 Registry 为 5 个
+  独立 MCP Server、21 个 MCP capability mapping 与 1 个本地校车 Builtin；NotifAI 的 7 个
+  只读能力已进入配置和组合，具体群服务仍由健康、授权和 rollout 计算 Effective。
 - S23 分支已闭合 Dududa 2.0 自然语言 iCourse 五操作纵切：Luna/Haiku Hybrid
   Perception 提议 category/entity/标准 intent，确定性代码完成资格、授权、预算和单步 Schema
   Planner，一等 Unified MCP 调用 `icourse/icourse_public_query`，operation 可为
@@ -146,8 +150,8 @@ digest、离线能力）在 PR 前提交 `2b23a62` 已可复现；`joblib` 缺�
 
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
-| S12 Unified MCP | 已完成（基础设施与四个只读查询 Server） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker 和共享 Contract；iCourse、二课、教务、培养方案研究独立注册，iCourse facade 只借用共享 Client；校车已迁移到本地插件 | 校园资讯/arXiv/行业 Source 仍不存在；新 Server 仍需独立 Capability mapping，用户触发的真实 QQ Tool/Delivery Receipt 未完成 |
-| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、14 个 MCP 映射与 1 个校车 Builtin 已完成；2.0 Runtime 已闭环 iCourse、二课、培养方案研究、教务和校车 | 可信失败用户答复、近期多轮上下文、真实 QQ Receipt 与高风险/写能力未完成 |
+| S12 Unified MCP | 已完成（基础设施与五个只读查询 Server） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker 和共享 Contract；iCourse、NotifAI、二课、教务、培养方案研究独立注册，iCourse facade 只借用共享 Client；校车已迁移到本地插件 | 校园资讯/arXiv/行业 Source 仍不存在；用户触发的真实 QQ Tool/Delivery Receipt 未完成 |
+| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、21 个 MCP mapping 与 1 个校车 Builtin 已完成；2.0 Runtime 已闭环 iCourse、二课、培养方案研究、教务和校车 | 可信失败用户答复、近期多轮上下文、真实 QQ Receipt 与高风险/写能力未完成 |
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 | S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
 | S15A Proactive Contracts | 已完成（离线） | initiated-run/Target/Grant/Trigger/Subscription/Preview/Dispatch/Receipt v1 契约、当前 Actor 解析、默认拒绝策略、global/Scope quota、metadata-only Preview、稳定幂等、crash recovery、双 Python 590 项全仓测试 | 持久 Scheduler、真实来源、模型合成、生产 Registry/Output、QQ 发送和真实群证据 |
@@ -185,12 +189,12 @@ digest、离线能力）在 PR 前提交 `2b23a62` 已可复现；`joblib` 缺�
 | 插件拆分 | 部分完成 | 源码拆分与 priority-100 rollout handler 已验证；旧 Handler、ReplyPolish 和 1.0 Agent 已退出运行面，Sub2API/Reread 作为独立 2.0 宿主能力保留 | 可组合治理 Plugin Runtime 仍未实现；宿主插件不自动等于 Agent Capability |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 Composer/Renderer 与 S23 Hybrid Perception -> Static Router -> Capability/DirectChat 纵切已实现；Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用，三档采用最低 `light/low`；模型只提议 category/entity，确定性代码拥有资格、Plan 和执行 | 仍缺人工 Gold、近期群聊 Context、完整 Persona 资产、多轮/附件语义和长期 Provider 质量/故障观测 |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；LONG 中文断词分片缺陷已修复 | 75 题实际为 LONG 73、SHORT 1、MEDIUM 0，三档真实体验仍未校准 |
-| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、四个真实只读 MCP Server、14 个 MCP 映射与 1 个校车 Builtin 已完成；iCourse、二课、培养方案研究、教务和校车单步操作已接入；校车 20/20 固定题与 3 条 Runtime 抽样通过 | 完整人工质量与真实 QQ 证据、通用 Capability 失败答复及实时 Source 仍待补 |
+| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、五个真实只读 MCP Server、21 个 MCP mapping 与 1 个校车 Builtin 已完成；iCourse、NotifAI、二课、培养方案研究、教务和校车单步操作已接入；校车 20/20 固定题与 3 条 Runtime 抽样通过 | 完整人工质量与真实 QQ 证据、通用 Capability 失败答复及实时 Source 仍待补 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
 | Group Context / 关系证据 / Skill 演化 | 设计方向已确认、工程未开始 | 已确认群级弱先验、Memory、关系证据、候选 Skill/Prompt/Style 与 Bandit 分权；尚无 DTO、Projection、候选流水线、授权数据或 Eval |
-| Mew/NapCat WebUI / Bot Control Plane | QQ 客户端、S21 离线范围和超级工作台纵切已完成 | Web 已提供群服务初始化、六项正交自适应配置、插件四态、四个 MCP Schema 直调、校车本地插件、插件安装与 MCP 登记；当前从 Core config/status 读取实际 Runtime readiness，并显示 `actualEnabled=true` 与 1/1 QQ 在线 | 远程管理员认证和更多真实 Agent Run/Receipt 仍未完成；Web 配置不授予 Capability 或发送权限 |
+| Mew/NapCat WebUI / Bot Control Plane | QQ 客户端、S21 离线范围和超级工作台纵切已完成 | Web 已提供群服务初始化、六项正交自适应配置、插件四态、五个 MCP Schema 直调、校车本地插件、插件安装与 MCP 登记；当前从 Core config/status 读取实际 Runtime readiness，并显示 `actualEnabled=true` 与 1/1 QQ 在线 | 远程管理员认证和更多真实 Agent Run/Receipt 仍未完成；Web 配置不授予 Capability 或发送权限 |
 | 真实群聊放量 | S23 部分完成；首个实时入站切换已开始 | 1.0 已退出运行面，2.0 是唯一 Agent Runtime；所有群明确 `@Bot` 的纯文本、无附件消息已进入 Canary/Delivery，Luna/Terra/Sol 与健康刷新在运行宿主可用 | 先由用户发送一条明确 @ 消息闭合 QQ 收发与合并转发证据；私聊、附件、未 @ 主动参与、真实 Source/日报/Probe 和大规模 Debug 仍未开始 |
 
 ## 2026-08-14 长程设计整合状态

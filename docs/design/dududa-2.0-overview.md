@@ -1,10 +1,11 @@
 # Dududa 2.0 Design Overview
 
-状态：S01–S22 的既定本地/离线范围与 S21 Bot Control Plane 已实现并验证。暂停中的 S23
-已完成历史语料 no-send Demo、控制台内测、候选模型工程和第一条 Dududa 2.0 自然语言
-iCourse 本地纵切；真实 Endpoint Conformance、运行中部署、单群 Shadow/Canary、真实来源、
-人工质量、发送和在线 Bandit 尚未完成。插件 Runtime 与长期群体情境学习仍是设计方向。
-当前证据以 `../refactor/PROGRESS.md` 为准。
+状态：S01–S22 的既定本地/离线范围与 S21 Bot Control Plane 已实现并验证。S23 已完成历史
+语料 no-send Demo、控制台内测、候选模型工程和第一条 Dududa 2.0 自然语言 iCourse 本地
+纵切，并进入群内明确 @ 的实时入站 Canary；Memory 生产读写、主动发送、在线 Bandit、完整
+人工质量和真实 QQ 端到端回执仍按各模块边界推进。NotifAI 已在当前 main 纳入独立 MCP
+Server、7 个 capability mapping 和 Web 目录。当前证据以 `../refactor/PROGRESS.md` 及
+`dududa-2.0-design-report.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository
