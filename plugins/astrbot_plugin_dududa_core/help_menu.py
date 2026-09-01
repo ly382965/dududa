@@ -51,6 +51,12 @@ def user_help() -> str:
 /poke
 /reread
 
+群互动：
+/birthday set 0315 /birthday list
+/sleep（睡觉排行榜）
+/vote start <主题> /vote join /vote end
+/cp（互动排行榜）
+
 管理员发送 /help admin 查看管理指令。"""
 
 

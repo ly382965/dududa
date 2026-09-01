@@ -2094,3 +2094,420 @@ class DududaCorePlugin(Star):
         if any(term in lowered for term in unsafe_terms):
             return "这个图片请求不适合生成，我不能帮忙做色情、低龄角色、擦边或伪造证件/成绩单/官方通知类图片。可以改成 Q版小精灵、卡通角色或原创吉祥物。"
         return None
+
+    # ==================== 生日提醒 ====================
+
+    @filter.command("birthday")
+    async def birthday_cmd(self, event: AstrMessageEvent, action: str = "list", date: str | None = None):
+        """设置/查看群友生日。用法：/birthday set 0315 | /birthday list"""
+        group_id = self._group(event)
+        if not group_id:
+            yield event.plain_result("生日提醒只在群聊中有效。")
+            event.stop_event()
+            return
+
+        rec = self._group_record(event)
+        birthdays: dict[str, str] = rec.get("birthdays", {})
+        sender = self._sender(event)
+
+        if action == "set" and date:
+            clean = re.sub(r"\D", "", date)
+            if len(clean) == 4:
+                clean = "0" + clean
+            if len(clean) == 4:
+                mm, dd = clean[:2], clean[2:]
+                if 1 <= int(mm) <= 12 and 1 <= int(dd) <= 31:
+                    birthdays[sender] = f"{mm}-{dd}"
+                    rec["birthdays"] = birthdays
+                    self._save_group_state()
+                    yield event.plain_result(f"已设置你的生日为 {mm}月{dd}日，到时候会有惊喜哦～")
+                    event.stop_event()
+                    return
+            yield event.plain_result("日期格式不对，用 /birthday set 0315（3月15日）这样的格式。")
+            event.stop_event()
+        elif action == "del" or action == "delete":
+            if sender in birthdays:
+                del birthdays[sender]
+                rec["birthdays"] = birthdays
+                self._save_group_state()
+                yield event.plain_result("已删除你的生日记录。")
+            else:
+                yield event.plain_result("你还没有设置过生日。")
+            event.stop_event()
+        else:
+            if not birthdays:
+                yield event.plain_result("本群还没有人设置生日。用 /birthday set 0315 来设置吧～")
+            else:
+                lines = ["本群生日名单："]
+                for uid, bd in sorted(birthdays.items(), key=lambda x: x[1]):
+                    lines.append(f"- {uid}: {bd[:2]}月{bd[3:]}日")
+                lines.append("\n当天会自动发祝福哦～")
+                yield event.plain_result("\n".join(lines))
+            event.stop_event()
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=2)
+    async def birthday_check(self, event: AstrMessageEvent):
+        """每天首次群消息时检查今天是否有人过生日。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        import datetime
+        today = datetime.date.today()
+        today_key = today.strftime("birthday_%Y%m%d")
+        rec = self._group_record(event)
+
+        if rec.get(today_key):
+            return
+        rec[today_key] = True
+        self._save_group_state()
+
+        today_md = today.strftime("%m-%d")
+        birthdays: dict[str, str] = rec.get("birthdays", {})
+        celebrators = [uid for uid, bd in birthdays.items() if bd == today_md]
+        if not celebrators:
+            return
+
+        import random as _r
+        wishes = [
+            "今天是大宝贝 {} 的生日！大家一起祝ta生日快乐吧～",
+            "叮咚～今天是 {} 的生日！快去轰炸祝福！",
+            "全体注意！{} 今天过生日！祝福刷起来～",
+            "{} 生日快乐呀！新的一岁也要元气满满～",
+        ]
+        wish = _r.choice(wishes).format(" 和 ".join(celebrators))
+        yield event.plain_result(wish)
+        event.stop_event()
+
+    # ==================== 睡觉排行榜 ====================
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=3)
+    async def sleep_tracker(self, event: AstrMessageEvent):
+        """检测'困了/睡了/晚安'等关键词，记录睡觉时间。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        text = (event.message_str or "").strip()
+        if not text or text.startswith("/"):
+            return
+
+        lower = text.lower().replace(" ", "")
+        sleep_kw = ("困了", "困死", "好困", "睡了", "睡觉了", "晚安", "先睡了",
+                    "去睡了", "准备睡了", "该睡了", "撑不住了", "眼皮打架",
+                    "哈欠", "瞌睡了", "困得不行")
+        if not any(kw in lower for kw in sleep_kw):
+            return
+
+        sender = self._sender(event)
+        import datetime
+        now = datetime.datetime.now()
+        month_key = now.strftime("sleep_%Y%m")
+        hour = now.hour
+
+        rec = self._group_record(event)
+        sleep_log: dict[str, list] = rec.get(month_key, {})
+        user_logs = sleep_log.get(sender, [])
+
+        # 同一天只记一次
+        today_str = now.strftime("%Y%m%d")
+        if user_logs and user_logs[-1].get("date") == today_str:
+            return
+
+        user_logs.append({
+            "date": today_str,
+            "time": now.strftime("%H:%M"),
+            "hour": hour,
+        })
+        sleep_log[sender] = user_logs
+        rec[month_key] = sleep_log
+        self._save_group_state()
+
+        if hour >= 23 or hour < 1:
+            emoji_reply = random.choice([
+                f"{sender} 这个点才睡，卷王本卷了！早点休息呀～",
+                f"{hour}点了才睡！{sender} 注意身体啊！",
+            ])
+        elif hour >= 1 and hour < 5:
+            emoji_reply = random.choice([
+                f"凌晨{hour}点！{sender} 你是要修仙吗？！快去睡！",
+                f"{sender} 这个点还没睡？修仙大队长非你莫属！",
+            ])
+        else:
+            emoji_reply = random.choice([
+                f"{sender} 晚安好梦～",
+                f"早点休息呀 {sender}，明天也要元气满满！",
+                f"{sender} 睡个好觉～",
+            ])
+        yield event.plain_result(emoji_reply)
+        event.stop_event()
+
+    @filter.command("sleep")
+    async def sleep_rank(self, event: AstrMessageEvent, period: str | None = None):
+        """查看睡觉排行榜。用法：/sleep | /sleep month"""
+        group_id = self._group(event)
+        if not group_id:
+            yield event.plain_result("睡觉排行榜只在群聊中有效。")
+            event.stop_event()
+            return
+
+        import datetime
+        now = datetime.datetime.now()
+        month_key = (period or now.strftime("sleep_%Y%m")).strip()
+        if not month_key.startswith("sleep_"):
+            month_key = "sleep_" + month_key
+
+        rec = self._group_record(event)
+        sleep_log: dict[str, list] = rec.get(month_key, {})
+        if not sleep_log:
+            yield event.plain_result("本群这个月还没有睡觉记录。说'困了/睡了'就会自动记录哦～")
+            event.stop_event()
+            return
+
+        stats = []
+        for uid, logs in sleep_log.items():
+            if not logs:
+                continue
+            avg_hour = sum(l.get("hour", 0) for l in logs) / len(logs)
+            latest = logs[-1].get("time", "?")
+            stats.append((uid, len(logs), avg_hour, latest))
+
+        # 按平均睡觉时间排序（越晚越前）
+        stats.sort(key=lambda x: x[2], reverse=True)
+
+        lines = [f"睡觉排行榜（{month_key.replace('sleep_', '')}月）："]
+        medals = ["修仙大队长", "熬夜冠军", "夜猫子", "普通夜行者", "早睡达人"]
+        for i, (uid, count, avg_h, latest) in enumerate(stats[:10]):
+            avg_str = f"{int(avg_h):02d}:{int((avg_h % 1) * 60):02d}"
+            if avg_h >= 2:
+                tag = "修仙"
+            elif avg_h >= 1:
+                tag = "熬夜"
+            elif avg_h >= 23:
+                tag = "夜猫"
+            elif avg_h >= 0:
+                tag = "正常"
+            else:
+                tag = "早睡"
+            lines.append(f"{i+1}. {uid} — 睡了{count}天，平均{avg_str}入睡 [{tag}]")
+
+        lines.append("\n越早睡越健康哦，别卷了快去睡！")
+        yield event.plain_result("\n".join(lines))
+        event.stop_event()
+
+    # ==================== 自动投票/接龙 ====================
+
+    @filter.command("vote")
+    async def vote_cmd(self, event: AstrMessageEvent, action: str = "start", topic: GreedyStr | None = None):
+        """群投票/接龙。用法：/vote start 周末聚餐 | /vote join | /vote end"""
+        group_id = self._group(event)
+        if not group_id:
+            yield event.plain_result("投票只在群聊中有效。")
+            event.stop_event()
+            return
+
+        rec = self._group_record(event)
+        votes: dict[str, Any] = rec.get("active_vote", {})
+        sender = self._sender(event)
+
+        if action == "start" and topic:
+            votes = {
+                "topic": str(topic).strip(),
+                "creator": sender,
+                "participants": [],
+                "started_at": time.time(),
+            }
+            rec["active_vote"] = votes
+            self._save_group_state()
+            yield event.plain_result(
+                f"投票开始！\n主题：{votes['topic']}\n参与请发：/vote join\n"
+                f"结束请发：/vote end\n发起人：{sender}"
+            )
+            event.stop_event()
+        elif action == "join":
+            if not votes.get("topic"):
+                yield event.plain_result("当前没有进行中的投票。用 /vote start <主题> 发起一个。")
+                event.stop_event()
+                return
+            participants = votes.get("participants", [])
+            if sender not in participants:
+                participants.append(sender)
+                votes["participants"] = participants
+                rec["active_vote"] = votes
+                self._save_group_state()
+            count = len(participants)
+            yield event.plain_result(
+                f"{sender} 已加入「{votes['topic']}」！\n当前 {count} 人参与：{', '.join(participants)}"
+            )
+            event.stop_event()
+        elif action == "end" or action == "result":
+            if not votes.get("topic"):
+                yield event.plain_result("当前没有进行中的投票。")
+                event.stop_event()
+                return
+            participants = votes.get("participants", [])
+            lines = [
+                f"投票结束！\n主题：{votes['topic']}",
+                f"参与人数：{len(participants)}",
+                f"参与名单：{', '.join(participants) if participants else '无人参与'}",
+            ]
+            rec.pop("active_vote", None)
+            self._save_group_state()
+            yield event.plain_result("\n".join(lines))
+            event.stop_event()
+        else:
+            if votes.get("topic"):
+                participants = votes.get("participants", [])
+                yield event.plain_result(
+                    f"当前投票：{votes['topic']}\n参与 {len(participants)} 人：{', '.join(participants)}\n"
+                    f"/vote join 参与 | /vote end 结束"
+                )
+            else:
+                yield event.plain_result("用法：/vote start <主题> | /vote join | /vote end")
+            event.stop_event()
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=4)
+    async def auto_vote_detect(self, event: AstrMessageEvent):
+        """检测'聚餐/约/一起'等关键词，提示发起投票。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        text = (event.message_str or "").strip()
+        if not text or text.startswith("/"):
+            return
+
+        rec = self._group_record(event)
+        if rec.get("active_vote", {}).get("topic"):
+            return
+
+        keywords = ("聚餐", "约饭", "一起吃", "组局", "团建", "约不约",
+                    "有人去", "一起去看", "约电影", "组队", "开黑吗")
+        if not any(kw in text for kw in keywords):
+            return
+
+        self._auto_vote_hinted = getattr(self, "_auto_vote_hinted", {})
+        hint_key = f"{group_id}_{int(time.time() // 300)}"
+        if self._auto_vote_hinted.get(hint_key):
+            return
+        self._auto_vote_hinted[hint_key] = True
+
+        yield event.plain_result(
+            "看起来有人想约！要不要发起一个投票？发 /vote start <主题> 就行～"
+        )
+        event.stop_event()
+
+    # ==================== CP检测器 ====================
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=5)
+    async def cp_detector(self, event: AstrMessageEvent):
+        """统计群友互动（@某人/回复某人），偶尔调侃。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        sender = self._sender(event)
+        text = event.message_str or ""
+
+        # 找被@的人或被回复的人
+        import re as _re
+        at_targets = _re.findall(r"@(\d+)", text)
+        target = at_targets[0] if at_targets else ""
+
+        if not target or target == sender:
+            return
+
+        rec = self._group_record(event)
+        cp_data: dict[str, dict] = rec.get("cp_interactions", {})
+        pair = tuple(sorted([sender, target]))
+        pair_key = f"{pair[0]}_{pair[1]}"
+        cp_data[pair_key] = cp_data.get(pair_key, 0) + 1
+        rec["cp_interactions"] = cp_data
+        self._save_group_state()
+
+        # 每30次互动调侃一次
+        count = cp_data[pair_key]
+        if count % 30 == 0 and count >= 30:
+            import random as _r
+            teases = [
+                f"我注意到 {pair[0]} 和 {pair[1]} 已经互动 {count} 次了，什么情况呀～",
+                f"{pair[0]} 和 {pair[1]} 的互动次数达到 {count} 了，群里的CP粉开始站队了！",
+                f"统计显示 {pair[0]} → {pair[1]} 互动 {count} 次，这是要修成正果的节奏？",
+                f"{count} 次互动！{pair[0]} 和 {pair[1]} 你们是不是该请群友吃顿饭了？",
+            ]
+            yield event.plain_result(_r.choice(teases))
+            event.stop_event()
+
+    @filter.command("cp")
+    async def cp_rank(self, event: AstrMessageEvent):
+        """查看本群互动排行榜。"""
+        group_id = self._group(event)
+        if not group_id:
+            yield event.plain_result("CP检测只在群聊中有效。")
+            event.stop_event()
+            return
+
+        rec = self._group_record(event)
+        cp_data: dict[str, int] = rec.get("cp_interactions", {})
+        if not cp_data:
+            yield event.plain_result("本群还没有足够的互动数据，多聊聊就有啦～")
+            event.stop_event()
+            return
+
+        ranked = sorted(cp_data.items(), key=lambda x: x[1], reverse=True)[:5]
+        lines = ["本群互动排行榜："]
+        for i, (pair_key, count) in enumerate(ranked):
+            uid_a, uid_b = pair_key.split("_", 1)
+            lines.append(f"{i+1}. {uid_a} x {uid_b} — {count}次互动")
+        yield event.plain_result("\n".join(lines))
+        event.stop_event()
+
+    # ==================== 情绪雷达 ====================
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=4)
+    async def mood_radar(self, event: AstrMessageEvent):
+        """检测emo/负面情绪，自动发暖心话。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        text = (event.message_str or "").strip()
+        if not text or text.startswith("/"):
+            return
+
+        lower = text.lower().replace(" ", "")
+        sad_kw = ("emo", "难受", "好累", "不想活了", "崩溃", "想哭", "抑郁",
+                  "没意思", "烦死了", "压力好大", "撑不住了", "想放弃",
+                  "好孤单", "没人理", "被孤立", "焦虑", "失眠", "自闭了")
+        if not any(kw in lower for kw in sad_kw):
+            return
+
+        # 同一人10分钟内只安慰一次
+        sender = self._sender(event)
+        self._mood_cooldown = getattr(self, "_mood_cooldown", {})
+        cooldown_key = f"{group_id}_{sender}"
+        if time.time() - self._mood_cooldown.get(cooldown_key, 0) < 600:
+            return
+        self._mood_cooldown[cooldown_key] = time.time()
+
+        import random as _r
+        comforts = [
+            "抱抱，辛苦了。累了就歇一歇，没什么大不了的～",
+            "听说难过的时候吃点甜的会好一些，要不要试试 /eat 推荐个好去处？",
+            "别太难为自己了，你已经做得很好了。休息一下，明天又是新的一天～",
+            "给你一个虚拟拥抱！如果需要倾诉，群里的小伙伴都在的～",
+            "摸摸头，一切都会过去的。先去吃点好吃的犒劳自己吧～",
+            "辛苦啦，适当摸鱼也是生产力！别给自己太大压力～",
+        ]
+        yield event.plain_result(_r.choice(comforts))
+        event.stop_event()
