@@ -2407,7 +2407,7 @@ class DududaCorePlugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=5)
     async def cp_detector(self, event: AstrMessageEvent):
-        """统计群友互动（@某人/回复某人），偶尔调侃。"""
+        """统计两个人连续聊天互动，偶尔调侃。"""
         group_id = self._group(event)
         if not group_id:
             return
@@ -2415,33 +2415,46 @@ class DududaCorePlugin(Star):
             return
 
         sender = self._sender(event)
-        text = event.message_str or ""
-
-        # 找被@的人或被回复的人
-        import re as _re
-        at_targets = _re.findall(r"@(\d+)", text)
-        target = at_targets[0] if at_targets else ""
-
-        if not target or target == sender:
+        text = (event.message_str or "").strip()
+        if not text or text.startswith("/"):
+            return
+        if len(text) < 2:
             return
 
+        now = time.time()
+        self._cp_last_msg = getattr(self, "_cp_last_msg", {})
+        last = self._cp_last_msg.get(group_id)
+
+        self._cp_last_msg[group_id] = {"uid": sender, "ts": now}
+
+        if not last:
+            return
+        # 超过5分钟不算连续对话
+        if now - last.get("ts", 0) > 300:
+            return
+
+        prev_sender = last.get("uid", "")
+        if not prev_sender or prev_sender == sender:
+            return
+
+        # 两个人连续发消息 = 一次互动
         rec = self._group_record(event)
-        cp_data: dict[str, dict] = rec.get("cp_interactions", {})
-        pair = tuple(sorted([sender, target]))
+        cp_data: dict[str, int] = rec.get("cp_interactions", {})
+        pair = tuple(sorted([prev_sender, sender]))
         pair_key = f"{pair[0]}_{pair[1]}"
         cp_data[pair_key] = cp_data.get(pair_key, 0) + 1
         rec["cp_interactions"] = cp_data
         self._save_group_state()
 
-        # 每3次@互动调侃一次
+        # 每3次连续互动调侃一次
         count = cp_data[pair_key]
         if count % 3 == 0 and count >= 3:
             import random as _r
             teases = [
-                f"我注意到 {pair[0]} 和 {pair[1]} 已经互动 {count} 次了，什么情况呀～",
+                f"我注意到 {pair[0]} 和 {pair[1]} 聊了好久了，什么情况呀～",
                 f"{pair[0]} 和 {pair[1]} 的互动次数达到 {count} 了，群里的CP粉开始站队了！",
-                f"统计显示 {pair[0]} → {pair[1]} 互动 {count} 次，这是要修成正果的节奏？",
-                f"{count} 次互动！{pair[0]} 和 {pair[1]} 你们是不是该请群友吃顿饭了？",
+                f"统计显示 {pair[0]} 和 {pair[1]} 已经聊了 {count} 轮了，这是要修成正果的节奏？",
+                f"{count} 轮互动！{pair[0]} 和 {pair[1]} 你们是不是该请群友吃顿饭了？",
             ]
             yield event.plain_result(_r.choice(teases))
             event.stop_event()
@@ -2562,11 +2575,11 @@ class DududaCorePlugin(Star):
             self._chain_buffer[group_id] = buf
             event.stop_event()
 
-    # ==================== "xm朋友" ====================
+    # ==================== 关键词自动回复（xm朋友/xm学长/xm学姐/xm没课/xm翘课） ====================
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=5)
-    async def friend_detect(self, event: AstrMessageEvent):
-        """检测'朋友'关键词，回复 xm朋友。"""
+    async def keyword_replies(self, event: AstrMessageEvent):
+        """检测关键词，回复 xm+关键词。"""
         group_id = self._group(event)
         if not group_id:
             return
@@ -2576,8 +2589,23 @@ class DududaCorePlugin(Star):
         text = (event.message_str or "").strip()
         if not text or text.startswith("/"):
             return
-        if "朋友" not in text:
-            return
 
-        yield event.plain_result("xm朋友")
-        event.stop_event()
+        kw_map = [
+            ("朋友", "xm朋友"),
+            ("学长", "xm学长"),
+            ("学姐", "xm学姐"),
+            ("没课", "xm没课"),
+            ("翘课", "xm翘课"),
+        ]
+        for kw, reply in kw_map:
+            if kw in text:
+                # 每人每关键词30秒冷却
+                sender = self._sender(event)
+                self._kw_cooldown = getattr(self, "_kw_cooldown", {})
+                key = f"{group_id}_{sender}_{kw}"
+                if time.time() - self._kw_cooldown.get(key, 0) < 30:
+                    return
+                self._kw_cooldown[key] = time.time()
+                yield event.plain_result(reply)
+                event.stop_event()
+                return
