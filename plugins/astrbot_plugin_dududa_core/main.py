@@ -2405,7 +2405,7 @@ class DududaCorePlugin(Star):
 
     # ==================== CP检测器 ====================
 
-    @filter.event_message_type(filter.EventMessageType.ALL, priority=5)
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
     async def cp_detector(self, event: AstrMessageEvent):
         """统计两个人连续聊天互动，偶尔调侃。"""
         group_id = self._group(event)
@@ -2458,6 +2458,8 @@ class DududaCorePlugin(Star):
             ]
             yield event.plain_result(_r.choice(teases))
             event.stop_event()
+            return
+        # 不调侃时不停事件，让其他handler继续处理
 
     @filter.command("cp")
     async def cp_rank(self, event: AstrMessageEvent):
