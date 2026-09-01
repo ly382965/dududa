@@ -2561,3 +2561,40 @@ class DududaCorePlugin(Star):
             del buf[normalized]
             self._chain_buffer[group_id] = buf
             event.stop_event()
+
+    # ==================== "xm朋友" ====================
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=5)
+    async def friend_detect(self, event: AstrMessageEvent):
+        """检测'朋友'关键词，回复 xm朋友。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        if self._blocked(event):
+            return
+
+        text = (event.message_str or "").strip()
+        if not text or text.startswith("/"):
+            return
+        if "朋友" not in text:
+            return
+
+        sender = self._sender(event)
+        self._friend_cooldown = getattr(self, "_friend_cooldown", {})
+        key = f"{group_id}_{sender}"
+        if time.time() - self._friend_cooldown.get(key, 0) < 30:
+            return
+        self._friend_cooldown[key] = time.time()
+
+        # 取sender昵称前2-3个字符作为"xm"
+        nick = ""
+        try:
+            nick = str(event.get_sender_name() or sender)
+        except Exception:
+            nick = sender
+        xm = nick[:3] if len(nick) >= 3 else nick
+        if not xm:
+            xm = sender[:3]
+
+        yield event.plain_result(f"{xm}朋友")
+        event.stop_event()
