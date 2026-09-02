@@ -56,8 +56,9 @@ Core 授权。
 
 ## 能力与 MCP
 
-每个服务都有独立的 Server 身份、Session 生命周期、Schema 快照、健康状态和 Capability mapping。
-未来新增 MCP 应只增加配置和 mapping，不修改 Domain 或 Runtime。
+每个已进入生产 mapping 的服务都有独立的 Server 身份、Session 生命周期、Schema 快照、健康状态和
+Capability mapping。单独登记 Registry 不会授予 Capability。本次五个可选 Server 已打包并默认关闭，
+没有 Capability mapping，不进入 Planner 或生产 Provider health 组合。
 
 | 服务 | 类型 | 当前范围 |
 | --- | --- | --- |
@@ -67,6 +68,11 @@ Core 授权。
 | NotifAI / 校园通知 | Unified MCP | 公开通知搜索、详情、日历、截止提醒、来源、分类和统计；只读，不保存正文。 |
 | USTC Curriculum / 培养方案 | Unified MCP | 查询 `docs.mmdustc.top/curriculum` 的研究快照，不是实时毕业审核。 |
 | USTC Shuttle / 校车 | Builtin Capability | 版本化本地时刻表，不建立 MCP Session，不联网抓取。 |
+| Local Recommendations / 本地推荐 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询仓库种子驱动的餐饮、活动和学习缓存；工具调用不写入、不刷新、不搜索任意地图。 |
+| Training Plan / 专业设置 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询本科专业/院系年度缓存，不等同于实时培养方案审核。 |
+| Campus Events / 学校通知聚合 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询学校主页公开通知缓存；与 NotifAI 使用不同来源。 |
+| College Notice / 学院通知 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询已配置学院官网的公开通知缓存。 |
+| Library / 图书馆开放时间 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询图书馆官网各校区开放时间缓存。 |
 | Weather | 候选 Source/Capability Adapter | 已有 `WttrWeatherSource` 和 Provider 契约，但尚未接入生产组合或日报订阅。 |
 | 校园资讯、arXiv、行业来源 | 预留接口 | 只有来源契约和 fixture，不能宣称存在实时 Server 或实时日报。 |
 
@@ -86,6 +92,7 @@ Web MCP 控制台只接受批准的 Capability ID 和输入 Schema，不提供�
 | `astrbot_plugin_ustc_shuttle` | Runtime 使用的本地校车时刻表 Capability Provider。 |
 | `astrbot_plugin_reread` | 兼容性的独立复读插件，默认关闭、独立 Scope；不是 Agent 的社会决策层。 |
 | `astrbot_plugin_reply_polish` | 旧版 LONG-only 合并转发兼容层，默认关闭；2.0 Output 自己负责合并转发判断。 |
+| `astrbot_plugin_dududa_social` | PR #10 中非重复的社交规则策略资产；总开关、功能开关和群 allowlist 默认关闭，使用 `/dududa-social` 命名空间，不注册全局自动 Handler。 |
 
 `third_party/` 中的 Better Reminder、ChatSummary、Iris 仅作为迁移或回滚证据保留。它们的旧消息监听、
 SQLite 状态、独立调度和直接发送都不是 2.0 Runtime 能力，不应在文档中写成已启用功能，也不能形成第二套控制面。
@@ -104,6 +111,11 @@ apps/web/                     # Vue/Node Bot Control Plane
 services/mcp/icourse/         # 评课社区 MCP
 services/mcp/notifai/         # 校园通知 MCP
 services/mcp/ustc-campus/     # 二课、教务处、培养方案 MCP
+services/mcp/local-recs/      # 仅 Registry 的本地推荐 MCP（默认关闭）
+services/mcp/training-plan/   # 仅 Registry 的专业设置 MCP（默认关闭）
+services/mcp/campus-events/   # 仅 Registry 的学校通知 MCP（默认关闭）
+services/mcp/college-notice/  # 仅 Registry 的学院通知 MCP（默认关闭）
+services/mcp/library/         # 仅 Registry 的开放时间 MCP（默认关闭）
 services/mcp/console/         # MCP Registry/Capability 控制台
 configs/                      # 不含凭据的 Server 与 Capability mapping
 deploy/                       # Compose 与派生镜像
@@ -149,6 +161,11 @@ uv lock --check
 uv sync --project services/mcp/unified-worker --locked --python 3.12.13
 uv run --locked python -m compileall -q packages apps services ops tests
 uv run --locked python -m unittest discover -s tests -t .
+PYTHONPATH=services/mcp/campus-events/src:services/mcp/college-notice/src:services/mcp/library/src:services/mcp/local-recs/src:services/mcp/training-plan/src \
+  uv run --with pytest python -m pytest -q \
+    services/mcp/campus-events/tests services/mcp/college-notice/tests \
+    services/mcp/library/tests services/mcp/local-recs/tests services/mcp/training-plan/tests \
+    tests/test_social_plugin.py tests/test_install_plugins.py tests/test_repository_contract.py
 uv run --locked python ops/cli/check_secrets.py
 cd apps/web && npm run typecheck && npm run test && npm run build
 ```
@@ -156,8 +173,9 @@ cd apps/web && npm run typecheck && npm run test && npm run build
 Unified MCP worker 的 `.venv` 是本地忽略产物，不提交到 Git；首次运行依赖 worker 的测试前需执行上面的
 `uv sync`。完整汇总可能包含仍在 S23/历史基线中的失败，先看 `docs/refactor/PROGRESS.md` 的验证边界。
 
-聚焦插件检查覆盖 2.0 主动搭话策略、保守审校、天气 Source、本地 B50 Provider、Sub2API overview 和 MCP
-契约 fixture。真实 QQ 发送、实时来源新鲜度、人工质量标注、Bandit 在线探索和大规模群聊放量仍是外部验收工作。
+聚焦插件检查覆盖 2.0 主动搭话策略、保守审校、天气 Source、本地 B50 Provider、Sub2API overview、默认关闭的
+社交插件和五个 Registry-only MCP 契约 fixture。五个可选 MCP 在本版本没有进入 Planner Capability。真实 QQ
+发送、实时来源新鲜度、人工质量标注、Bandit 在线探索和大规模群聊放量仍是外部验收工作。
 
 ## 数据、隐私与学习边界
 
@@ -175,6 +193,7 @@ S20 只提供离线 Bandit 决策/反馈契约和合成 IPS、SNIPS、DR 评估�
 - [模型路由](docs/design/model-routing.md)
 - [Capability 与 MCP 设计](docs/design/capability-and-mcp.md)
 - [Bot Control Plane](docs/design/bot-control-plane.md)
+- [PR #10 选择性整合报告](docs/integrations/pr10-selective-integration.md)
 - [本地开发环境](docs/development/local-environment.md)
 - [English README](README.md)
 

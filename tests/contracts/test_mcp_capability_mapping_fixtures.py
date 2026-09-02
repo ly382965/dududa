@@ -77,8 +77,13 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
         self.assertEqual(
             tuple(item.server_id for item in transport.definitions),
             (
+                "campus-events",
+                "college-notice",
                 "icourse",
+                "library",
+                "local-recs",
                 "notifai",
+                "training-plan",
                 "ustc-academic",
                 "ustc-curriculum",
                 "ustc-young",
@@ -184,9 +189,14 @@ class McpCapabilityMappingFixtureContractTests(unittest.TestCase):
             self.assertEqual(
                 tuple(item.server_id for item in transport.definitions),
                 (
+                    "campus-events",
+                    "college-notice",
                     "fake-b",
                     "icourse",
+                    "library",
+                    "local-recs",
                     "notifai",
+                    "training-plan",
                     "ustc-academic",
                     "ustc-curriculum",
                     "ustc-young",

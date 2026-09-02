@@ -6,15 +6,18 @@
   S13 Capability Runtime 均已完成本地实现与验证；S15C 只批准 source-neutral Contract、Fake
   Provider 和本地固定 fixture，不包含真实主动日报来源 Adapter。
 - 目标代码：`packages/dududa-agent/src/dududa/capabilities/`。
-- 当前真实 MCP Server：`icourse`、`notifai`、`ustc-young`、`ustc-academic`、`ustc-curriculum`；
+- 当前已存在的真实 MCP Server：`icourse`、`notifai`、`ustc-young`、`ustc-academic`、`ustc-curriculum`；
   USTC Campus 的后三者共享 `services/mcp/ustc-campus/` 实现包，但拥有独立 Registry 身份和 Session。
-  `ustc-curriculum` 只读取公开的非官方培养方案研究快照，不访问实时教务。校车由
+  `ustc-curriculum` 只读取公开的非官方培养方案研究快照，不访问实时教务。PR #10 选择性整合的
+  `local-recs`、`training-plan`、`campus-events`、`college-notice` 和 `library` 是独立、默认关闭的
+  Registry-only 可选 Server；它们没有 Capability definition/mapping，不进入 Planner 或生产
+  Provider health，因此不计入当前生产 Capability 统计，也不改变上述既有服务。校车由
   `astrbot_plugin_ustc_shuttle` 的本地 Builtin Provider 提供，不占用 MCP Session。
 - 当前配置目录：`configs/capabilities/`、`configs/mcp/servers/`；旧路径只保留一 Release
   兼容链接。
 - 兼容来源：`astrbot_plugin_dududa_core/course.py`、AstrBot 当前 MCP 配置和 iCourse service。
 
-本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现通用闭环；五个查询 MCP 与一个本地校车 Capability 已接入 Registry/Composition。Dududa 2.0 Runtime 已闭环 iCourse、二课、培养方案研究、教务和校车的单步自然语言调用；NotifAI 已完成服务端、mapping 和契约集成，具体群服务仍由健康与授权计算 Effective；教务开课/考试在同一次 MCP 调用内解析官方学期 ID。本文不改变当前 `icourse` Server 名、SQLite 路径或作为兼容/诊断入口保留的 `/course` 命令。
+本文定义嘟嘟哒如何声明、检索、规划、执行和校验能力，以及如何通过统一 MCP Client 调用外部 MCP Server。S12/S13 已实现通用闭环；既有五个查询 MCP 与一个本地校车 Capability 已接入 Registry/Composition。本次整合新增五个独立、默认关闭、仅查询缓存的 Server 资产；它们目前只在 Server Registry 登记，尚未进入 Capability Catalog、Planner 或生产健康链，不宣称实时来源或自动推送已经启用。Dududa 2.0 Runtime 的既有 iCourse、二课、培养方案研究、教务和校车单步链路保持不变；NotifAI 继续由健康与授权计算 Effective。本文不改变当前 `icourse` Server 名、SQLite 路径或作为兼容/诊断入口保留的 `/course` 命令。
 
 接口权威以 `dududa/capabilities/contracts.py`、`dududa/ports/capabilities.py` 和严格 JSON
 配置为准；本文代码块用于展示稳定公共形状和所有权，不替代构造校验、摘要函数或 Contract
@@ -1070,7 +1073,9 @@ Client 与隔离 v2 worker；`ICourseClient` 只作为借用共享 Client 的兼
 已实现，当前为 21 个 MCP mapping 和 1 个校车 Builtin（22 个 capability definition）。2.0 Agent
 已自动规划 iCourse、二课、培养方案研究、教务和校车；NotifAI 已加入 Registry、mapping 和 Web
 目录，是否进入某个群由健康、授权和 rollout 计算。Discovery 仍不授予能力。可信失败用户答复和
-实时资讯 Source 尚未实现。
+实时资讯 Source 尚未实现。本次 PR #10 整合的五个 Registry-only Server 不在上述 21/22 统计中；
+它们保持 `enabled=false` 且没有 definition/mapping，因此不会成为 Planner 候选或 Provider health
+探测对象。
 
 后续新增校园通知或其他 MCP 时，必须复用本契约。每个 Server 可以拥有自己的领域模型和
 存储，但不得复制新的上层 MCP Client、权限体系或无限工具循环。

@@ -147,6 +147,15 @@ class SocialPolicyConfig:
             return scope.group_id in self.allowed_groups
         return self.allow_private
 
+    def allows_scope(self, scope: SocialScope) -> bool:
+        """Return whether the explicit command surface is enabled for a Scope."""
+
+        if not isinstance(scope, SocialScope) or not self.enabled:
+            return False
+        if scope.is_group:
+            return scope.group_id in self.allowed_groups
+        return self.allow_private
+
 
 def parse_birthday(value: object) -> str | None:
     """Parse ``MMDD`` (or a separator variant) into a canonical ``MM-DD``.

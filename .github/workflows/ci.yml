@@ -46,6 +46,14 @@ jobs:
             evals/suite-v1.json \
             --profile ci-python \
             --receipt "$RUNNER_TEMP/dududa-python-${{ matrix.python-version }}.json"
+      - name: Run default-off optional MCP contract tests
+        env:
+          PYTHONPATH: services/mcp/campus-events/src:services/mcp/college-notice/src:services/mcp/library/src:services/mcp/local-recs/src:services/mcp/training-plan/src
+        run: |
+          for service in campus-events college-notice library local-recs training-plan; do
+            .venv/bin/python -m unittest discover \
+              -s "services/mcp/$service/tests" -v
+          done
       - name: Run isolated MCP worker tests
         run: |
           services/mcp/unified-worker/.venv/bin/python \

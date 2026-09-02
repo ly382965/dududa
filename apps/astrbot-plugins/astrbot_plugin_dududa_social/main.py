@@ -81,13 +81,16 @@ class DududaSocialPlugin(Star):
             return None
         return scope
 
-    @filter.command_group("dududa-social", alias={"dududa_social", "社交"})
+    @filter.command_group("dududa-social")
     def dududa_social(self):
         """Dududa social commands; no implicit message listener is installed."""
 
     @dududa_social.command("help", alias={"帮助"})
     async def social_help(self, event: AstrMessageEvent):
         """Show the explicitly enabled social command surface."""
+        scope = self._scope(event)
+        if scope is None or not self.policy.allows_scope(scope):
+            return
         yield event.plain_result(
             "嘟嘟哒社交扩展（默认关闭）\n"
             "/dududa-social birthday set MMDD|list|delete\n"

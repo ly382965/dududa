@@ -55,14 +55,17 @@ class SocialPolicyTests(unittest.TestCase):
         self.assertNotEqual(group.key, other.key)
         disabled = SocialPolicyConfig()
         self.assertFalse(disabled.allows(group, SocialFeature.BIRTHDAY))
+        self.assertFalse(disabled.allows_scope(group))
         enabled = SocialPolicyConfig(
             enabled=True,
             allowed_groups=frozenset({"1"}),
             enabled_features=frozenset({SocialFeature.BIRTHDAY}),
         )
         self.assertTrue(enabled.allows(group, SocialFeature.BIRTHDAY))
+        self.assertTrue(enabled.allows_scope(group))
         self.assertFalse(enabled.allows(other, SocialFeature.BIRTHDAY))
         private = SocialScope("qq", "bot-1", "private:u1")
+        self.assertFalse(enabled.allows_scope(private))
         self.assertFalse(enabled.allows(private, SocialFeature.BIRTHDAY))
 
     def test_sleep_append_deduplicates_date_and_ranks_cross_midnight(self) -> None:
@@ -191,13 +194,14 @@ class SocialPluginSurfaceTests(unittest.TestCase):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             for decorator in node.decorator_list
         ]
-        self.assertTrue(any("command_group" in item for item in decorators))
+        self.assertIn("filter.command_group('dududa-social')", decorators)
         self.assertTrue(any("command(" in item for item in decorators))
         self.assertNotIn("event_message_type", source)
         self.assertNotIn("McpClient", source)
         self.assertNotIn("Scheduler", source)
         self.assertNotIn("text_chat", source)
         self.assertNotIn("event.send", source)
+        self.assertIn("self.policy.allows_scope(scope)", source)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,10 @@ MCP Server、模型 Provider、Memory 后端和 Web 控制台都是外围适配�
 MCP 基础设施、能力执行闭环、Memory v2 离线实现、Persona/ResponsePlan、主动消息 Shadow、
 Bot Control Plane 和可复现评测。iCourse、二课、教务、培养方案研究四类校园查询以及本地校车
 已经进入 2.0 能力组合；PR #9 新增的 NotifAI 公开通知 MCP 已合并到主分支，并完成七项能力
-的 Registry、Schema、映射和 Web 目录集成。真实 QQ 入站目前覆盖群内明确 @Bot 的纯文本、无
+的 Registry、Schema、映射和 Web 目录集成。PR #10 中不重复的社交规则已整理为独立、默认关闭、
+只响应显式命令的策略插件；本地推荐、专业设置、学校通知、学院通知和图书馆开放时间已整理为
+五个 Registry-only、cache-only 的可选 MCP Server。它们已打包但没有 Capability mapping，不进入
+Planner 或生产 Provider health。真实 QQ 入站目前覆盖群内明确 @Bot 的纯文本、无
 附件消息，运行实例使用 Luna/Terra/Sol 三档模型；Memory 生产读写、实时主动发送、在线 Bandit
 和部分多轮/附件能力仍按各自状态边界运行。
 
@@ -36,6 +39,7 @@ Bot Control Plane 和可复现评测。iCourse、二课、教务、培养方案�
 - [Bot Control Plane](bot-control-plane.md)
 - [在线学习](online-learning.md)
 - [安全与隐私](security.md)
+- [PR #10 选择性插件与 MCP 整合](../integrations/pr10-selective-integration.md)
 
 ## 1. 背景与要解决的问题
 
@@ -326,6 +330,7 @@ SHORT/MEDIUM 始终以普通 QQ 消息发送；LONG 单段也是普通消息，�
 | `astrbot_plugin_reply_review` | 保守审校资产，等待 secondary-review Port，当前不拦截线上结果 |
 | `astrbot_plugin_weather` | Source/Provider 资产，默认关闭，未进入生产组合 |
 | `astrbot_plugin_arc_proxy` / B50 | 受治理的本地渲染/Provider 资产，默认关闭 |
+| `astrbot_plugin_dududa_social` | PR #10 非重复社交规则；仅 `/dududa-social` 显式命令，总开关、feature 和群 allowlist 默认关闭，不注册普通消息 Handler |
 | `reply_polish` | 1.0 LONG-only 兼容层，默认关闭；2.0 Output 不依赖它 |
 | `target_talk` | 已退出 2.0 默认入站路径，保留迁移/回滚材料 |
 
@@ -470,7 +475,8 @@ Chat Completions 均有最小 HTTP 200 抽样；这证明模型绑定和调用�
 Capability 是可规划的业务原子能力，不等同于一个原始函数。定义至少包含稳定 ID、名称、输入
 输出 Schema、Provider、风险级别、隐私级别、允许会话类型、所需权限、成本/延迟提示、幂等性
 和副作用集合。当前主分支有 22 个定义文件、21 个 MCP mapping，以及 1 个没有 MCP mapping
-的本地校车 Builtin Provider。
+的本地校车 Builtin Provider。Server Registry 另登记五个 PR #10 可选 Server，但它们保持
+`enabled=false` 且没有 Capability definition/mapping，因此不计入上述 21/22 统计。
 
 发现和授权是两件事：MCP Discovery 只告诉系统“Server 提供了什么”；只有显式 mapping、
 Schema digest、健康快照、当前群策略和 Actor 授权全部通过，能力才进入 Planner 候选。Web
@@ -528,6 +534,22 @@ Output 模块。
 | USTC Curriculum / 培养方案 | `curriculum_public_query` | stdio MCP；读取 `docs.mmdustc.top/curriculum` 研究快照 | 2015–2026 范围的公开研究资料；不是实时 SIS 或毕业审核 |
 | NotifAI | 通知搜索、通知详情、月/周日历、截止提醒、来源、分类、统计 | stdio MCP；调用 `https://notifai-api.enthusjast.cc/api` 公开 API | PR #9 新增并已合入主分支；只读，不保存正文，不接受任意 URL/写操作 |
 | USTC Shuttle | `ustc.shuttle.public-query.v1` | 本地 JSON 版本化时刻表 Builtin，不联网 | 解析校区、起终点、日期和时间；数据更新需发布新快照 |
+
+PR #10 选择性整合另提供以下外围 Server 资产。它们与上表使用相同的 strict Server Registry 和
+stdio 传输形态，但当前只有 Server 配置，没有 Capability mapping；“可发现”不等于 Runtime
+“可调用”。每个 Server 的 MCP 面只有一个查询工具，抓取和写入只属于运维 CLI。
+
+| 可选 Server | 唯一 MCP Tool | 数据边界 | 当前状态 |
+| --- | --- | --- | --- |
+| Local Recommendations | `local_recommendations_public_query` | 仓库种子与本地运维缓存；查询不更新计数，不调用地图 | Registry-only、cache-only、默认关闭 |
+| Training Plan | `training_programs_public_query` | 教务处公开本科专业/院系年度一览缓存，不是毕业审核 | Registry-only、cache-only、默认关闭 |
+| Campus Events | `campus_events_public_query` | 中国科大主页通知公告缓存，来源与 NotifAI 不同 | Registry-only、cache-only、默认关闭 |
+| College Notice | `college_notices_public_query` | 已配置数学、计算机、物理学院 HTTPS 官网通知缓存 | Registry-only、cache-only、默认关闭 |
+| Library | `library_hours_public_query` | 图书馆各校区公开开放时间缓存 | Registry-only、cache-only、默认关闭 |
+
+这五个 Server 没有加入 `configs/astrbot/mcp_server.json`。当前生产 Capability 组合会为已映射
+Provider 建立 health；在可选 Provider 加载语义完善前，不以一个表面上的 disabled mapping 把
+外围资产带入生产启动和健康链。
 
 NotifAI 的七项稳定 capability ID 为：
 
@@ -914,6 +936,11 @@ operation ID、幂等键、DeliveryReceipt 和 reconciliation 区分“未发送
 - Capability Registry/Retrieval/Planner/Executor/Observation Validator；
 - 5 个独立 stdio MCP Server（iCourse、NotifAI、USTC Young、USTC Academic、USTC Curriculum），
   21 个映射和 1 个校车 Builtin；
+- 5 个独立、默认关闭、只查询缓存的 Registry-only MCP Server（Local Recommendations、
+  Training Plan、Campus Events、College Notice、Library），均只有一个 public query Tool，未进入
+  Capability Catalog/Planner/生产健康链；
+- 独立 `astrbot_plugin_dududa_social` 社交策略插件，只提供 namespaced 显式命令和纯规则 API，
+  不监听普通消息、不调用模型/MCP、不自动发送；
 - iCourse、二课、教务、培养方案、校车的单步自然语言主链；NotifAI 的服务端、Schema、mapping、
   registry 和 Web 目录；
 - Memory v2 生命周期、JSON v2、CJK BM25、删除/导出/恢复和离线评测；

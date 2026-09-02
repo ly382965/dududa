@@ -67,9 +67,11 @@ bypasses Core authorization.
 
 ## Capabilities and MCP
 
-Each service has a separate server identity, session lifecycle, schema snapshot,
-health state, and capability mapping. Adding a future server should require
-configuration plus mappings, not a change to Domain or Runtime code.
+Each production-mapped service has a separate server identity, session
+lifecycle, schema snapshot, health state, and capability mapping. A Registry
+entry alone does not grant a Capability. The five optional PR #10 services are
+packaged and registered default-off, but have no Capability mapping and are not
+visible to the Planner or production Provider-health composition.
 
 | Service | Kind | Current scope |
 | --- | --- | --- |
@@ -79,6 +81,11 @@ configuration plus mappings, not a change to Domain or Runtime code.
 | NotifAI / 校园通知 | Unified MCP | Public notice search, details, calendar, deadlines, sources, categories, and statistics. |
 | USTC Curriculum / 培养方案 | Unified MCP | Read-only queries over the documented research snapshot at `docs.mmdustc.top/curriculum`; not a live graduation audit. |
 | USTC Shuttle / 校车 | Builtin Capability | Versioned local timetable data; no MCP session and no network crawl. |
+| Local Recommendations | Optional MCP Server (Registry-only, default off) | Cache-only query over seeded food, activity, and study recommendations; no tool-call writes, refresh, or arbitrary map search. |
+| Training Plan | Optional MCP Server (Registry-only, default off) | Cache-only undergraduate college/major overview; not a live graduation audit. |
+| Campus Events | Optional MCP Server (Registry-only, default off) | Cache-only USTC home-site notice aggregate, separate from NotifAI's source. |
+| College Notice | Optional MCP Server (Registry-only, default off) | Cache-only public notices from configured college sites. |
+| Library | Optional MCP Server (Registry-only, default off) | Cache-only public library opening hours by campus. |
 | Weather | Candidate Source/Capability adapter | `WttrWeatherSource` and provider contracts exist, but no production composition or daily subscription is enabled. |
 | Campus, arXiv, and industry feeds | Reserved interface | Source contracts and fixtures exist; no claim of a live server or live digest. |
 
@@ -99,6 +106,7 @@ it never grants permission.
 | `astrbot_plugin_ustc_shuttle` | Local timetable Capability Provider used by the Runtime. |
 | `astrbot_plugin_reread` | Legacy-compatible standalone plugin, default off and separately scoped; it is not the Agent's social decision layer. |
 | `astrbot_plugin_reply_polish` | Legacy LONG-only compatibility layer, default off. The 2.0 Output path owns merged-forward decisions. |
+| `astrbot_plugin_dududa_social` | Non-duplicate PR #10 social policy asset. It uses the `/dududa-social` namespace, has empty allowlists by default, and does not register global automatic handlers. |
 
 The vendored Better Reminder, ChatSummary, and Iris sources remain under
 `third_party/` for migration or rollback evidence. Their historical handlers,
@@ -121,6 +129,11 @@ apps/web/                     # Vue/Node Bot Control Plane
 services/mcp/icourse/         # iCourse MCP server
 services/mcp/notifai/         # NotifAI campus-notice MCP server
 services/mcp/ustc-campus/     # Young, Academic, and Curriculum MCP server
+services/mcp/local-recs/       # Registry-only seeded recommendations MCP (default off)
+services/mcp/training-plan/    # Registry-only program overview MCP (default off)
+services/mcp/campus-events/    # Registry-only campus notices MCP (default off)
+services/mcp/college-notice/   # Registry-only college notices MCP (default off)
+services/mcp/library/          # Registry-only opening-hours MCP (default off)
 services/mcp/console/         # MCP registry/capability console
 configs/                      # credential-free server and capability mappings
 deploy/                       # Compose and derived images
@@ -172,6 +185,11 @@ uv lock --check
 uv sync --project services/mcp/unified-worker --locked --python 3.12.13
 uv run --locked python -m compileall -q packages apps services ops tests
 uv run --locked python -m unittest discover -s tests -t .
+PYTHONPATH=services/mcp/campus-events/src:services/mcp/college-notice/src:services/mcp/library/src:services/mcp/local-recs/src:services/mcp/training-plan/src \
+  uv run --with pytest python -m pytest -q \
+    services/mcp/campus-events/tests services/mcp/college-notice/tests \
+    services/mcp/library/tests services/mcp/local-recs/tests services/mcp/training-plan/tests \
+    tests/test_social_plugin.py tests/test_install_plugins.py tests/test_repository_contract.py
 uv run --locked python ops/cli/check_secrets.py
 cd apps/web && npm run typecheck && npm run test && npm run build
 ```
@@ -181,10 +199,11 @@ step before worker-dependent tests. The full suite may still include S23 or hist
 `docs/refactor/PROGRESS.md` for the evidence boundary before interpreting the summary.
 
 Focused plugin checks include the 2.0 proactive policy, conservative review
-policy, weather source, local B50 provider, Sub2API overview, and MCP contract
-fixtures. Real QQ sending, live source freshness, human quality labels, online
-Bandit exploration, and large-scale group rollout remain external acceptance
-work.
+policy, weather source, local B50 provider, Sub2API overview, the default-off
+social plugin, and the five Registry-only MCP contract fixtures. The optional
+MCP services are not Planner capabilities in this release. Real QQ sending,
+live source freshness, human quality labels, online Bandit exploration, and
+large-scale group rollout remain external acceptance work.
 
 ## Data, privacy, and learning boundaries
 
@@ -206,6 +225,7 @@ security-equivalent candidates and remain observable and reversible.
 - [Model routing](docs/design/model-routing.md)
 - [Capability and MCP design](docs/design/capability-and-mcp.md)
 - [Bot Control Plane](docs/design/bot-control-plane.md)
+- [PR #10 selective integration report](docs/integrations/pr10-selective-integration.md)
 - [Local development](docs/development/local-environment.md)
 - [Chinese README](README.zh-CN.md)
 

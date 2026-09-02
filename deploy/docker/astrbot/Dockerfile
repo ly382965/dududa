@@ -7,8 +7,13 @@ RUN cd /AstrBot \
     && rm /tmp/astrbot-openai-request-overrides.patch
 
 COPY packages/dududa-agent /opt/dududa/dududa-agent
+COPY services/mcp/campus-events /opt/dududa/campus-events-mcp
+COPY services/mcp/college-notice /opt/dududa/college-notice-mcp
 COPY services/mcp/icourse /opt/dududa/icourse-mcp
+COPY services/mcp/library /opt/dududa/library-mcp
+COPY services/mcp/local-recs /opt/dududa/local-recs-mcp
 COPY services/mcp/notifai /opt/dududa/notifai-mcp
+COPY services/mcp/training-plan /opt/dududa/training-plan-mcp
 COPY services/mcp/ustc-campus /opt/dududa/ustc-campus-mcp
 COPY services/mcp/console /opt/dududa/mcp-console
 COPY services/mcp/unified-worker /opt/dududa/unified-mcp-worker
@@ -18,8 +23,13 @@ RUN python -m pip install --no-cache-dir \
     "uv==0.12.1" \
     -r /opt/dududa/dududa-core-requirements.txt \
     /opt/dududa/dududa-agent \
+    /opt/dududa/campus-events-mcp \
+    /opt/dududa/college-notice-mcp \
     /opt/dududa/icourse-mcp \
+    /opt/dududa/library-mcp \
+    /opt/dududa/local-recs-mcp \
     /opt/dududa/notifai-mcp \
+    /opt/dududa/training-plan-mcp \
     /opt/dududa/ustc-campus-mcp \
     /opt/dududa/mcp-console \
     && uv sync --project /opt/dududa/unified-mcp-worker \
