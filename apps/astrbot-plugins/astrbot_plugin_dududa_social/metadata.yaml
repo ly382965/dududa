@@ -1,0 +1,12 @@
+name: astrbot_plugin_dududa_social
+display_name: 嘟嘟哒社交策略
+desc: 可选的、默认关闭的群互动策略与显式命令；不监听 ALL 事件，不调用模型或 MCP。
+help: |
+  通过 /dududa-social help 查看显式命令。
+  生日、睡眠、投票和互动统计需要在配置中同时打开功能并加入群白名单。
+  情绪、夸奖和关键词仅提供纯策略函数，不会自动发消息。
+version: v2.0.0
+author: mmdustc
+repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_dududa_social
+support_platforms:
+  - aiocqhttp
