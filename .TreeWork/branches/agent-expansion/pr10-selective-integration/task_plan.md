@@ -7,42 +7,50 @@ Title: PR10 Selective Plugin And MCP Integration
 ## Scope (owned work and boundary; not progress notes or implementation history)
 - Select and port only non-duplicate PR #10 MCP assets into canonical service
   directories.
-- Integrate bounded read-only Registry and Capability definitions/mappings,
-  default-off in deployment templates.
+- Integrate the non-duplicate social rules as an independent, explicit-command,
+  default-off AstrBot plugin.
+- Register bounded cache-only MCP Servers as default-off optional assets without
+  adding Planner-facing Capability definitions/mappings.
 - Add focused service/registry tests and update the technical/user-facing
   integration documentation.
-- Push the verified result to the repository's `main` branch.
--
+- Prepare the verified branch for Lead integration and push to `main`.
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] No PR #10 duplicate Core/plugin, old Compose, hard-coded credential, or
+- [x] No PR #10 duplicate Core/plugin, old Compose, hard-coded credential, or
       direct MCP client is present in the resulting diff.
-- [ ] Selected services build/import and expose only documented bounded tools.
-- [ ] Registry and Capability files validate, are default-off, and preserve the
-      existing four real MCP services and local shuttle plugin.
-- [ ] Focused tests and relevant repository contract tests pass.
-- [ ] Design, migration, and README/status documents describe the integrated
+- [x] Selected services build/import and expose only documented bounded tools.
+- [x] The social plugin uses only explicit namespaced commands, registers no
+      catch-all handler or automatic send path, and remains disabled by default.
+- [x] Registry files validate, are default-off, stay outside the Capability
+      Catalog/Planner, and preserve the existing production MCP and shuttle
+      composition.
+- [x] Focused tests and relevant repository contract tests pass.
+- [x] Design, migration, and README/status documents describe the integrated
       services and their limits accurately.
-- [ ] Changes are committed and pushed to `origin/main`.
+- [x] Branch changes and verification evidence are committed and ready for the
+      Lead to merge and push to `origin/main`.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Review current canonical services and PR #10 selection against the spec.
-- [ ] Port and adapt local-recs, training-plan, campus-events, college-notice,
+- [x] Review current canonical services and PR #10 selection against the spec.
+- [x] Port and adapt local-recs, training-plan, campus-events, college-notice,
       and library service code; remove unsafe refresh/write surfaces from the
       production tool allowlist.
-- [ ] Add canonical server configs, capability schemas/mappings and generation
-      or consistency checks.
-- [ ] Add focused contract tests and run them under the locked Python setup.
-- [ ] Update architecture, capability, deployment, migration, README and
+- [x] Integrate the social rules under an independent default-off plugin and add
+      it to the owned-plugin installer.
+- [x] Add canonical default-off Server configs without Capability schemas or
+      mappings; package and mount the optional services without enabling them.
+- [x] Add focused contract tests and run them under the locked Python setup.
+- [x] Update architecture, capability, deployment, migration, README and
       status documents.
-- [ ] Review diff, run secret scan and relevant full checks; commit, merge to
-      `main`, and push.
+- [x] Review the diff, run the secret scan and relevant integration checks, and
+      prepare the branch commit; Lead merge and push remain the next transition.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
-- PR #10's duplicate `astrbot_plugin_dududa_core` and social event monolith.
+- PR #10's duplicate `astrbot_plugin_dududa_core`, catch-all social event
+  monolith, and legacy short-command compatibility aliases.
 - Academic-calendar and generic USTC-notice duplicates.
 - Live crawler scheduling, proactive delivery, model/image API integration,
   AMap credential provisioning, or real-group rollout.

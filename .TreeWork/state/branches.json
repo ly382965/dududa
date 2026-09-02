@@ -729,10 +729,19 @@
       "title": "PR10 Selective Plugin And MCP Integration",
       "purpose": "Extract only non-duplicate PR10 capabilities into canonical, default-off plugin and Unified MCP boundaries while preserving the existing Core and deployment composition.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "in_progress",
+      "verification_status": "verified",
       "sync_status": "clean",
-      "last_sync": "unix:1788348291"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/pr10-selective-integration",
+        "git_branch": "treework/pr10-selective-integration",
+        "managed_by_treework": true,
+        "created_at": "unix:1788348428",
+        "last_entered_at": "unix:1788348428",
+        "last_status": "created managed worktree"
+      },
+      "last_sync": "unix:1788367575"
     },
     {
       "path": "real-group-validation",
