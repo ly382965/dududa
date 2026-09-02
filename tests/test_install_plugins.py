@@ -16,6 +16,10 @@ SPEC.loader.exec_module(MODULE)
 
 class InstallPluginsTests(unittest.TestCase):
     def test_owned_plugins_are_installed_into_the_runtime_root(self) -> None:
+        self.assertIn(
+            "apps/astrbot-plugins/astrbot_plugin_dududa_social",
+            MODULE.OWNED_PLUGIN_PATHS,
+        )
         with tempfile.TemporaryDirectory() as tmp:
             plugins_root = Path(tmp)
             for relative_path in MODULE.OWNED_PLUGIN_PATHS:

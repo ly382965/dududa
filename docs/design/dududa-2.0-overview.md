@@ -4,8 +4,11 @@
 语料 no-send Demo、控制台内测、候选模型工程和第一条 Dududa 2.0 自然语言 iCourse 本地
 纵切，并进入群内明确 @ 的实时入站 Canary；Memory 生产读写、主动发送、在线 Bandit、完整
 人工质量和真实 QQ 端到端回执仍按各模块边界推进。NotifAI 已在当前 main 纳入独立 MCP
-Server、7 个 capability mapping 和 Web 目录。当前证据以 `../refactor/PROGRESS.md` 及
-`dududa-2.0-design-report.md` 为准。
+Server、7 个 capability mapping 和 Web 目录。PR #10 的非重复规则已整理为默认关闭的
+`astrbot_plugin_dududa_social`，五个非重复校园信息服务已作为 Registry-only、cache-only、
+无 Capability mapping 的可选 Server 打包；它们不进入 Planner 或生产 health。当前证据以
+`../refactor/PROGRESS.md`、`dududa-2.0-design-report.md` 及
+`../integrations/pr10-selective-integration.md` 为准。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository
@@ -31,6 +34,7 @@ runtime, service, operation, and compatibility changes together.
 - Detailed old/new mapping: `../refactor/migration-map.md`
 - Reviewable phase plan: `../refactor/implementation-plan.md`
 - Governed adaptive-runtime evolution research: `../research/deepseek-harness-inspired-dududa-evolution.md`
+- PR #10 selective plugin/MCP integration: `../integrations/pr10-selective-integration.md`
 
 ## Non-Negotiable Boundaries
 

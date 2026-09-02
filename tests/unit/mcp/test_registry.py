@@ -55,13 +55,13 @@ def service_call() -> ServiceCallContext:
         trace=TraceContext("trace-mcp-registry"),
         deadline=NOW + timedelta(minutes=1),
         cancellation=NeverCancelled(),
-        budget=RuntimeBudget(0, 0, 0, 0, 0, Decimal("0")),
+        budget=RuntimeBudget(0, 0, 0, 0, 0, Decimal(0)),
         policy_snapshot_id="policy-v1",
     )
 
 
 class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
-    def test_repository_production_config_contains_five_mcp_servers(self) -> None:
+    def test_repository_config_contains_active_and_optional_mcp_servers(self) -> None:
         registry = ConfigMcpServerRegistry(
             ROOT / "configs" / "mcp" / "servers",
             clock=lambda: NOW,
@@ -71,13 +71,26 @@ class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             tuple(item.server_id for item in snapshot.definitions),
             (
+                "campus-events",
+                "college-notice",
                 "icourse",
+                "library",
+                "local-recs",
                 "notifai",
+                "training-plan",
                 "ustc-academic",
                 "ustc-curriculum",
                 "ustc-young",
             ),
         )
+        for server_id in (
+            "campus-events",
+            "college-notice",
+            "library",
+            "local-recs",
+            "training-plan",
+        ):
+            self.assertFalse(registry.resolve_server(snapshot, server_id).enabled)
         icourse = registry.resolve_server(snapshot, "icourse")
         self.assertEqual(icourse.maximum_concurrency, 1)
         self.assertEqual(

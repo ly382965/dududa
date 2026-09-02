@@ -68,9 +68,19 @@ services:
       NOTIFAI_API_TIMEOUT_SECONDS: ${NOTIFAI_API_TIMEOUT_SECONDS:-15}
       NOTIFAI_MAX_ITEMS: ${NOTIFAI_MAX_ITEMS:-100}
     volumes:
+      - ${STACK_DATA_ROOT:-./data}/astrbot/campus-events-cache:/AstrBot/data/campus-events-cache
+      - ${STACK_DATA_ROOT:-./data}/astrbot/college-notice-cache:/AstrBot/data/college-notice-cache
       - ${STACK_DATA_ROOT:-./data}/astrbot/icourse-cache:/AstrBot/data/icourse-cache
+      - ${STACK_DATA_ROOT:-./data}/astrbot/library-cache:/AstrBot/data/library-cache
+      - ${STACK_DATA_ROOT:-./data}/astrbot/local-recs-cache:/AstrBot/data/local-recs-cache
+      - ${STACK_DATA_ROOT:-./data}/astrbot/training-plan-cache:/AstrBot/data/training-plan-cache
+      - ./services/mcp/campus-events:/AstrBot/data/campus-events-mcp:ro
+      - ./services/mcp/college-notice:/AstrBot/data/college-notice-mcp:ro
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
+      - ./services/mcp/library:/AstrBot/data/library-mcp:ro
+      - ./services/mcp/local-recs:/AstrBot/data/local-recs-mcp:ro
       - ./services/mcp/notifai:/AstrBot/data/notifai-mcp:ro
+      - ./services/mcp/training-plan:/AstrBot/data/training-plan-mcp:ro
       - ./services/mcp/ustc-campus:/AstrBot/data/ustc-campus-mcp:ro
       - ./configs:/opt/dududa/config:ro
       - ${DUDUDA_MCP_RUNTIME_ROOT:-./runtime/mcp}:/var/lib/dududa/mcp
@@ -113,8 +123,13 @@ services:
     volumes:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ${DUDUDA_ASTRBOT_PLUGIN_ROOT:-./runtime/astrbot-plugins}:/AstrBot/data/plugins
+      - ./services/mcp/campus-events:/AstrBot/data/campus-events-mcp:ro
+      - ./services/mcp/college-notice:/AstrBot/data/college-notice-mcp:ro
       - ./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro
+      - ./services/mcp/library:/AstrBot/data/library-mcp:ro
+      - ./services/mcp/local-recs:/AstrBot/data/local-recs-mcp:ro
       - ./services/mcp/notifai:/AstrBot/data/notifai-mcp:ro
+      - ./services/mcp/training-plan:/AstrBot/data/training-plan-mcp:ro
       - ./services/mcp/ustc-campus:/AstrBot/data/ustc-campus-mcp:ro
       - ./configs:/opt/dududa/config:ro
       - ./ops/cli:/opt/dududa/scripts:ro

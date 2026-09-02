@@ -26,6 +26,14 @@
   Provider 日志脱敏、Web 插件目录/策略、正文投影和 Registry 测试。当前 Registry 为 5 个
   独立 MCP Server、21 个 MCP capability mapping 与 1 个本地校车 Builtin；NotifAI 的 7 个
   只读能力已进入配置和组合，具体群服务仍由健康、授权和 rollout 计算 Effective。
+- 2026-09-02 对 PR #10 完成选择性整合：生日/睡眠/投票/互动等非重复规则进入独立的
+  `astrbot_plugin_dududa_social`，仅提供默认关闭的 `/dududa-social` 显式命令和纯策略 API，
+  不注册普通消息 Handler、不调用模型/MCP、不自动发送。另将 `local-recs`、`training-plan`、
+  `campus-events`、`college-notice` 和 `library` 五个非重复服务放入 canonical
+  `services/mcp/`，并登记为 `enabled=false` 的 cache-only Registry 资产。它们没有
+  Capability definition/mapping，不进入 Planner 或生产 Provider health；这五项不计入上面
+  已映射的 21 个 capability mapping。完整筛选、部署和回滚边界见
+  [PR #10 选择性整合报告](../integrations/pr10-selective-integration.md)。
 - S23 分支已闭合 Dududa 2.0 自然语言 iCourse 五操作纵切：Luna/Haiku Hybrid
   Perception 提议 category/entity/标准 intent，确定性代码完成资格、授权、预算和单步 Schema
   Planner，一等 Unified MCP 调用 `icourse/icourse_public_query`，operation 可为

@@ -1,0 +1,71 @@
+{
+  "enabled": {
+    "description": "启用社交扩展",
+    "type": "bool",
+    "default": false,
+    "hint": "默认关闭；开启后仍必须配置群白名单。"
+  },
+  "group_allowlist": {
+    "description": "允许使用显式社交命令的群号",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "default": [],
+    "hint": "空列表表示不允许任何群，避免安装后扩大消息面。"
+  },
+  "allow_private": {
+    "description": "允许私聊命令",
+    "type": "bool",
+    "default": false,
+    "hint": "生日、睡眠和互动状态默认只在群 Scope 中保存。"
+  },
+  "features": {
+    "description": "逐项启用社交能力",
+    "type": "object",
+    "items": {
+      "birthday": {
+        "description": "生日记录命令",
+        "type": "bool",
+        "default": false
+      },
+      "sleep": {
+        "description": "睡眠记录/排行命令",
+        "type": "bool",
+        "default": false
+      },
+      "vote": {
+        "description": "显式投票状态机",
+        "type": "bool",
+        "default": false
+      },
+      "cp": {
+        "description": "互动排行查询",
+        "type": "bool",
+        "default": false
+      },
+      "mood": {
+        "description": "情绪分类策略（不自动回复）",
+        "type": "bool",
+        "default": false
+      },
+      "compliment": {
+        "description": "夸奖分类策略（不自动回复）",
+        "type": "bool",
+        "default": false
+      },
+      "keyword": {
+        "description": "关键词匹配策略（不自动回复）",
+        "type": "bool",
+        "default": false
+      }
+    },
+    "default": {}
+  },
+  "state_path": {
+    "description": "社交扩展 SQLite 状态路径",
+    "type": "string",
+    "default": "",
+    "hint": "留空使用插件私有 plugin_data 目录；文件仅用于显式命令。"
+  }
+}

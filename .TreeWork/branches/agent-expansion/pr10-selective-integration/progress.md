@@ -5,14 +5,54 @@
 Branch: pr10-selective-integration
 Parent: agent-expansion
 Status: in_progress
-Verification: unverified
-Last sync: unix:1788348428
+Verification: verified
+Last sync: unix:1788367575
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+The branch contains the bounded PR #10 selection: five cache-only MCP
+packages (`local-recs`, `training-plan`, `campus-events`, `college-notice`,
+and `library`) plus the independent default-off
+`astrbot_plugin_dududa_social` adapter. The optional servers are registered
+with `enabled=false` and are intentionally absent from the Capability Catalog,
+Planner mappings, and production Provider health composition. Existing Core,
+NotifAI, USTC services, Compose service names, and shuttle Builtin ownership
+remain unchanged.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+The services were moved to canonical `services/mcp/*` paths and reduced to one
+bounded public query tool each; crawler/refresh/write surfaces remain outside
+the MCP allowlist. The social rules were moved behind explicit
+`/dududa-social` commands and scoped SQLite state without a catch-all handler,
+model/MCP call, scheduler, or automatic delivery. Review also fixed social-help
+Scope gating, recommendation-ID upsert behavior, and source URL bounds before
+handoff. Registry, image, Compose, installer, CI, repository contracts, and the
+design/README reports were updated accordingly.
+
+Focused evidence currently passes: five service directories run 14 unittest
+cases in the CI-style loop; the repository/Registry/installer/social contract
+set runs 38 unittest cases; compile, Ruff, whitespace, JSON/Compose contracts,
+secret scan, lock checks, and all five stdio initialize/list/call smoke checks
+pass. Five package source distributions and wheels also build successfully.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- The historical full repository `unittest discover` suite is not green on the
+  current baseline (joblib/environment gaps and stale Runtime/evaluation
+  snapshots); representative failures reproduce on the pre-integration
+  control revision and are not attributed to this branch.
+- The optional servers have no live freshness, enabled Planner mapping,
+  proactive delivery, or real-group evidence. Their caches and the social
+  plugin remain default-off runtime assets.
+- The branch has not yet been merged to `main` or pushed; that is the Lead
+  transition after commit and TreeWork completion.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+Branch is ready for Lead review and integration. Preserve the Registry-only
+boundary, do not add the excluded PR10 paths or generated `.venv`/SQLite/lock
+artifacts, commit this worktree, then return to the control workspace for
+`tw verify`/`tw complete`, safe merge to `main`, remote divergence check, and
+push. Do not report the historical full suite as all-green.

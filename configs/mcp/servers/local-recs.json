@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "server_id": "local-recs",
+  "enabled": false,
+  "transport": "stdio",
+  "protocol_mode": "legacy",
+  "endpoint": {
+    "command": "/usr/local/bin/python",
+    "args": [
+      "/AstrBot/data/local-recs-mcp/run_local_recs_mcp.py",
+      "--db-path",
+      "/AstrBot/data/local-recs-cache/local-recs.sqlite3"
+    ],
+    "cwd": "/AstrBot/data/local-recs-mcp",
+    "env_allowlist": ["LANG", "LC_ALL", "PATH", "PYTHONPATH"]
+  },
+  "secret_refs": [],
+  "allowed_tools": ["local_recommendations_public_query"],
+  "denied_tools": ["add_recommendation", "search_place"],
+  "timeouts_seconds": {
+    "connect": 10,
+    "discovery": 10,
+    "call": 15,
+    "maximum_call": 30,
+    "close": 5
+  },
+  "retry": {"maximum_attempts": 1, "base_delay_ms": 100},
+  "circuit": {
+    "failure_threshold": 3,
+    "failure_window_seconds": 60,
+    "open_duration_seconds": 30
+  },
+  "maximum_concurrency": 2,
+  "schema_ttl_seconds": 300,
+  "config_revision": "local-recs-seed-read-v1"
+}

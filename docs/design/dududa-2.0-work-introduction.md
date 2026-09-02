@@ -45,6 +45,11 @@ NapCat 通过 OneBot v11 将 QQ 消息送入 AstrBot，`AstrBotInputConnector` �
 使用公开研究快照，不代替实时毕业审核；二课不提供报名、取消报名或个人学时等写入/个人记录
 操作；校园通知只读取公开资料，不保存通知正文。
 
+PR #10 选择性整合还交付五个外围 MCP Server：本地推荐、专业设置、学校主页通知、学院通知和
+图书馆开放时间。它们各自只暴露一个读取本地缓存的 `public_query` 工具，已进入 Server Registry
+但默认关闭；本轮没有创建 Capability mapping，因此 Planner 和当前生产 Runtime 看不到这些工具。
+抓取、缓存刷新和推荐数据维护只存在于运维 CLI，不属于 Agent 自动工具面。
+
 ### 3. 有性格但不越权的回答
 
 `dududa` Persona 定义中文语气、句式、技术问题的认真程度、群聊节奏和适量表情。Persona
@@ -190,7 +195,8 @@ Argument Binder、Executor、Observation Validator、Provider health 和 mapping
 `mcp` 包和 `services/mcp/unified-worker` 管理 Server Registry、stdio 生命周期、discovery、
 Schema TTL、并发、超时、取消、重试、熔断和错误映射。五个独立 Server（iCourse、NotifAI、
 USTC Young、USTC Academic、USTC Curriculum）各有自己的 session 和 revision；MCP 不负责
-权限、调度、目标选择或发送。
+权限、调度、目标选择或发送。另有五个 PR #10 Registry-only Server 作为默认关闭的可选资产；
+Registry discovery 不会自动生成 Capability 或授予 Planner 权限。
 
 ### Memory v2
 
@@ -222,6 +228,11 @@ AstrBot 插件负责适配和组合；NapCat 是 QQ Connector；Web Node 网关�
 反向 WebSocket 和受限 action；Vue 前端提供工作区和管理视图；Compose 管理容器网络；`ops/cli`
 提供安装、同步、Provider conformance、健康、评测、备份和回滚命令。
 
+PR #10 的非重复社交规则位于独立 `astrbot_plugin_dududa_social`。它只响应
+`/dududa-social` 显式命令，总开关、逐功能开关和群 allowlist 默认关闭；不注册普通消息 Handler，
+不调用模型/MCP，也不自动发送。生日、睡眠、投票和互动状态使用独立 SQLite，并按平台、Bot 和
+会话 Scope 隔离；情绪、夸奖和关键词只作为纯策略信号。
+
 ## 创新点
 
 1. **治理内核与能力资产分离。** 能力可以独立升级、Shadow 和回滚，模型不直接拥有系统权限。
@@ -236,7 +247,8 @@ AstrBot 插件负责适配和组合；NapCat 是 QQ Connector；Web Node 网关�
 6. **群服务 Profile 化。** 新群先进入 Pending，管理员以版本化 Profile 激活服务；群体情境和
    学习只能提供弱先验，不能暗中扩大服务范围。
 7. **校园服务的统一语义层。** iCourse、二课、教务、培养方案、通知和校车虽然来源、认证和
-   数据形态不同，但对 Runtime 都表现为相同的 CapabilityResult/Observation。
+   数据形态不同，但对 Runtime 都表现为相同的 CapabilityResult/Observation；新增外围 Server
+   可以先作为 default-off Registry 资产交付，经过来源与 mapping 审核后再进入 Planner。
 8. **从离线证据到真实群的渐进发布。** 固定 fixture、no-send Shadow、单群 Canary 和真实
    Delivery 使用同一契约，质量、权限和运维指标可以沿阶段比较。
 
@@ -249,6 +261,8 @@ AstrBot 插件负责适配和组合；NapCat 是 QQ Connector；Web Node 网关�
 - 75 条合法 OneBot JSON 均进入 AstrBot 内存入口的 no-send Runtime；
 - Luna/Terra/Sol 均完成 Provider Chat 调用抽样；
 - NotifAI PR #9 已合并，七项只读 capability、映射、Schema、Registry 和 Web 目录已纳入；
+- PR #10 中五个非重复 MCP 已收敛为单工具、cache-only、Registry-only 的默认关闭资产，独立社交
+  插件已加入 owned-plugin 安装流程且默认不接管普通群消息；
 - Memory、主动消息和 Bandit 的离线契约/评测已具备，但生产开关仍分别关闭或 shadow-only；
 - 当前 2.0 入站为群内明确 @ 的纯文本，真实 QQ 用户触发的人工端到端投递验收仍是下一步。
 
@@ -264,3 +278,6 @@ AstrBot 插件负责适配和组合；NapCat 是 QQ Connector；Web Node 网关�
 `QQ Agent`、`AstrBot`、`NapCat`、`OneBot v11`、`OpenAI-compatible API`、`Responses API`、
 `Chat Completions`、`MCP`、`Capability Runtime`、`Scope-first Memory`、`Persona Renderer`、
 `Bot Control Plane`、`Contextual Bandit`、`校园信息服务`
+
+详细的 PR #10 资产筛选、工具契约、部署接线和回滚方式见
+[PR #10 选择性整合报告](../integrations/pr10-selective-integration.md)。

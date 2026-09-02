@@ -19,9 +19,17 @@ the genuinely distinct public campus reference services: training-plan,
 campus-events, college-notice, and library. The academic-calendar and
 ustc-notice implementations are excluded because their responsibilities are
 already covered by the current academic and NotifAI services. All imported
-services use canonical `services/mcp/*` paths, explicit Registry entries, and
-remain disabled in the model-facing template until their Capability mappings
-and source review pass.
+services use canonical `services/mcp/*` paths and explicit Registry entries.
+They remain disabled and have no Capability definitions or mappings in this
+slice, so they are not visible to the Planner and do not join the production
+Provider health chain.
+
+The non-duplicate social rules are retained as a separate
+`astrbot_plugin_dududa_social` plugin. It owns only explicit
+`/dududa-social` commands, is globally disabled by default, has feature flags
+disabled by default, and registers no catch-all message handler, scheduler,
+model call, MCP call, or automatic delivery path. The PR's duplicate Core and
+social event monolith are not imported.
 
 ### Service Boundary
 
@@ -37,30 +45,41 @@ helper from PR #10 is not imported. No credential is committed, and no key is
 placed in a URL. A future place-search adapter must use a SecretRef and an
 explicit allowlist.
 
-### Registry And Capability Contract
+### Registry And Optional-Asset Contract
 
 Every selected MCP Server gets a canonical `configs/mcp/servers/<id>.json`
 entry with `enabled: false`, an explicit environment allowlist, bounded
-timeouts/concurrency, and an exact `allowed_tools` list. The AstrBot template
-also remains default-off. Capability definitions and mappings are generated
-from the server tool schemas with stable versioned IDs, public privacy, read
-only idempotency, bounded result fields, and `capability.<namespace>.read`
-permissions. The existing Unified MCP Client and Capability Provider are the
-only execution path.
+timeouts/concurrency, and an exact one-tool `allowed_tools` list. Each tool
+queries a bounded local cache and cannot refresh, crawl, write, or call an
+arbitrary URL. The services are packaged and available to Unified MCP Registry
+operators, but are intentionally absent from `configs/astrbot/mcp_server.json`
+and `configs/capabilities/*`.
+
+This separation is deliberate: the current production Capability composition
+builds Provider descriptors and health for configured mappings even when a
+definition is disabled. Adding mappings here would therefore make optional
+Servers participate in the existing health path. A later branch may add
+Capability definitions and mappings together with explicit source review and
+an optional-provider loading contract; this branch does not silently change
+Planner reachability or production health semantics.
 
 ### Compatibility And Rollback
 
 No current Core command, handler priority, Compose service, Web route, or data
 file is replaced. The owned-plugin installer continues to manage only
-`apps/astrbot-plugins/*`; this branch adds no duplicate Core plugin. Disabling
-the new Registry entries and removing their capability mappings is sufficient
-to roll back; the imported services have no migration of existing user state.
+`apps/astrbot-plugins/*`; this branch adds the separate social plugin but no
+duplicate Core plugin. Keeping the social plugin disabled and the five Registry
+entries disabled preserves the current runtime behavior. Removing those
+additions is sufficient to roll back; the imported services have no migration
+of existing user state.
 
 ### Verification Strategy
 
-Contract tests will prove tool discovery, input bounds, read-only allowlists,
-standard result envelopes, local seed queries, and capability-definition /
-mapping consistency. Repository tests will prove the existing service set and
-Compose include remain unchanged apart from explicitly disabled additions.
-Focused Python tests run before the broader repository checks. The branch does
-not claim live source freshness or production deployment evidence.
+Contract tests will prove tool discovery, input bounds, one-tool read-only
+allowlists, standard result envelopes, local seed queries, default-off Registry
+entries, and absence from the Planner-facing Capability catalog. Repository
+tests will prove the existing Core, Compose, Web console and Unified MCP
+services remain in place while packaging the optional additions. Focused
+Python tests run before the broader repository checks. The branch does not
+claim live source freshness, enabled production composition, proactive
+delivery, or real-group evidence.

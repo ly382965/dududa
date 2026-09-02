@@ -11,6 +11,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+OPTIONAL_PR10_MCP_SERVERS = {
+    "campus-events": "campus_events_public_query",
+    "college-notice": "college_notices_public_query",
+    "library": "library_hours_public_query",
+    "local-recs": "local_recommendations_public_query",
+    "training-plan": "training_programs_public_query",
+}
+
 
 class RepositoryContractTests(unittest.TestCase):
     def test_canonical_layout_and_removed_aliases_are_unambiguous(self) -> None:
@@ -161,6 +169,75 @@ class RepositoryContractTests(unittest.TestCase):
             )
         )
         self.assertEqual(registry["protocol_mode"], "legacy")
+
+    def test_pr10_mcp_servers_are_packaged_default_off_optional_assets(self) -> None:
+        registry_root = ROOT / "configs" / "mcp" / "servers"
+        mapping_root = ROOT / "configs" / "capabilities" / "mappings"
+        mapped_server_ids = {
+            json.loads(path.read_text(encoding="utf-8"))["server_id"]
+            for path in mapping_root.glob("*.json")
+        }
+        astrbot_template = json.loads(
+            (ROOT / "configs" / "astrbot" / "mcp_server.json").read_text(
+                encoding="utf-8"
+            )
+        )["mcpServers"]
+        compose = (ROOT / "deploy" / "compose" / "compose.yml").read_text(
+            encoding="utf-8"
+        )
+        dockerfile = (
+            ROOT / "deploy" / "docker" / "astrbot" / "Dockerfile"
+        ).read_text(encoding="utf-8")
+
+        self.assertTrue(
+            {
+                "icourse",
+                "notifai",
+                "ustc-academic",
+                "ustc-curriculum",
+                "ustc-young",
+            }
+            <= {path.stem for path in registry_root.glob("*.json")}
+        )
+        for server_id, tool_name in OPTIONAL_PR10_MCP_SERVERS.items():
+            service_root = ROOT / "services" / "mcp" / server_id
+            self.assertTrue(service_root.is_dir(), server_id)
+            definition = json.loads(
+                (registry_root / f"{server_id}.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(definition["server_id"], server_id)
+            self.assertFalse(definition["enabled"])
+            self.assertEqual(definition["protocol_mode"], "legacy")
+            self.assertEqual(definition["allowed_tools"], [tool_name])
+            self.assertNotIn(tool_name, definition["denied_tools"])
+            self.assertEqual(definition["secret_refs"], [])
+            self.assertEqual(
+                definition["endpoint"]["env_allowlist"],
+                ["LANG", "LC_ALL", "PATH", "PYTHONPATH"],
+            )
+            self.assertEqual(definition["maximum_concurrency"], 2)
+            self.assertNotIn(server_id, mapped_server_ids)
+            self.assertNotIn(server_id, astrbot_template)
+
+            image_path = f"/opt/dududa/{server_id}-mcp"
+            runtime_path = f"/AstrBot/data/{server_id}-mcp"
+            self.assertIn(
+                f"COPY services/mcp/{server_id} {image_path}", dockerfile
+            )
+            self.assertIn(image_path, dockerfile)
+            self.assertEqual(
+                compose.count(
+                    f"./services/mcp/{server_id}:{runtime_path}:ro"
+                ),
+                2,
+            )
+
+        capability_documents = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (ROOT / "configs" / "capabilities").rglob("*.json")
+        )
+        for server_id in OPTIONAL_PR10_MCP_SERVERS:
+            self.assertNotIn(f'"provider_id": "mcp.{server_id}"', capability_documents)
 
     def test_astrbot_runtime_config_defaults_are_safe(self) -> None:
         schema = json.loads(
