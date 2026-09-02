@@ -6,7 +6,7 @@ Branch: control-plane-foundation
 Parent: control-plane
 Status: complete
 Verification: verified
-Last sync: unix:1786708904
+Last sync: unix:1788348291
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

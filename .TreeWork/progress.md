@@ -4,9 +4,9 @@
 <!-- treework:root-status:start -->
 Stage: work_tree
 Lead cursor: control-plane
-Accepted tree revision: 4
+Accepted tree revision: 5
 Tree editing: closed
-Last sync: unix:1786717871
+Last sync: unix:1788348291
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)

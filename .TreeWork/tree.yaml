@@ -296,6 +296,15 @@ tree:
         spec: branches/agent-expansion/control-plane/control-plane-audit/spec.md
         depends_on:
         - governed-operations
+    - id: pr10-selective-integration
+      title: PR10 Selective Plugin And MCP Integration
+      purpose: >-
+        Extract only non-duplicate PR10 capabilities into canonical, default-off
+        plugin and Unified MCP boundaries while preserving the existing Core and
+        deployment composition.
+      spec: branches/agent-expansion/pr10-selective-integration/spec.md
+      depends_on:
+      - control-plane-audit
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

@@ -3,9 +3,9 @@
   "stage": "work_tree",
   "current_branch": "control-plane",
   "artifact_layout_version": 2,
-  "last_event_seq": 125,
-  "tree_revision": 4,
+  "last_event_seq": 127,
+  "tree_revision": 5,
   "tree_editing": null,
-  "tree_hash": "fnv1a64:96e27a63e47f9df1",
-  "last_sync": "unix:1786717871"
+  "tree_hash": "fnv1a64:77602dbbd22d2bd7",
+  "last_sync": "unix:1788348291"
 }

@@ -583,6 +583,22 @@
       "kind": "depends_on",
       "user_label": "group-onboarding depends on control-plane-foundation",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-74",
+      "from": "agent-expansion",
+      "to": "pr10-selective-integration",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains pr10-selective-integration",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-75",
+      "from": "pr10-selective-integration",
+      "to": "control-plane-audit",
+      "kind": "depends_on",
+      "user_label": "pr10-selective-integration depends on control-plane-audit",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

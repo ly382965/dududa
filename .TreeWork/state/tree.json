@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 4,
-  "source_hash": "fnv1a64:96e27a63e47f9df1",
-  "state_hash": "fnv1a64:edfe9ce67a01ba07",
-  "accepted_at": "unix:1786706085",
+  "revision": 5,
+  "source_hash": "fnv1a64:77602dbbd22d2bd7",
+  "state_hash": "fnv1a64:a3e2bc31e89b90d8",
+  "accepted_at": "unix:1788348291",
   "root": "root",
   "nodes": [
     {
@@ -403,12 +403,23 @@
       ]
     },
     {
+      "id": "pr10-selective-integration",
+      "parent": "agent-expansion",
+      "title": "PR10 Selective Plugin And MCP Integration",
+      "purpose": "Extract only non-duplicate PR10 capabilities into canonical, default-off plugin and Unified MCP boundaries while preserving the existing Core and deployment composition.",
+      "spec": "branches/agent-expansion/pr10-selective-integration/spec.md",
+      "sibling_order": 15,
+      "depends_on": [
+        "control-plane-audit"
+      ]
+    },
+    {
       "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "spec": "branches/agent-expansion/real-group-validation/spec.md",
-      "sibling_order": 15,
+      "sibling_order": 16,
       "depends_on": [
         "legacy-cleanup",
         "mew-parity-audit",
