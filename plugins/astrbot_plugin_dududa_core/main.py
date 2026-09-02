@@ -98,6 +98,22 @@ class DududaCorePlugin(Star):
         self._meal_pushed: dict[str, str] = {}
         logger.info("DududaCore loaded: enabled=%s", self.enabled)
 
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=0)
+    async def stale_group_filter(self, event: AstrMessageEvent):
+        """群聊过滤超过1分钟的旧消息（NapCat重连补发防护）。私聊不过滤。"""
+        group_id = self._group(event)
+        if not group_id:
+            return
+        try:
+            msg_ts = getattr(event.message_obj, "timestamp", 0)
+            if not msg_ts:
+                return
+            now = time.time()
+            if now - msg_ts > 60:
+                event.stop_event()
+        except Exception:
+            pass
+
     def _blocked(self, event: AstrMessageEvent) -> str | None:
         if not self.enabled:
             return "嘟嘟哒核心插件暂时关闭。"
