@@ -6,7 +6,7 @@ Stage: work_tree
 Lead cursor: pr10-selective-integration
 Accepted tree revision: 5
 Tree editing: closed
-Last sync: unix:1788367575
+Last sync: unix:1788367927
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)
