@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: pr10-selective-integration
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1788348291
+Status: in_progress
+Verification: verified
+Last sync: unix:1788367575
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

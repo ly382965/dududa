@@ -4,7 +4,23 @@ Branch: pr10-selective-integration
 
 ## Latest Verification
 
-- Command: `PYTHONPATH=<five optional service src paths> .venv/bin/python -m unittest discover -s services/mcp/<service>/tests -v` for each of the five services; focused repository unittest set; `compileall`; production Ruff; `git diff --check`; JSON/Compose/secret/lock checks; five `scripts/check_mcp.py` stdio probes; `uv build` for each optional package.
-- Result: Passed. The five CI-style service loops ran 14 tests total; the repository/Registry/installer/social focused set ran 38 tests. All five MCP probes completed initialize, list-tools, and the single public query. Five source distributions and wheels built. `docker compose config` and `compose-contract` passed, `check_secrets.py` reported repository safety passed, and no new generated runtime data is tracked.
-- Coverage gap: The historical full repository suite still has baseline/environment failures (including joblib and stale Runtime/evaluation snapshots) reproduced before this branch. Optional services remain disabled, cache-only, and unmapped; no live freshness, production Planner call, proactive delivery, or real-group evidence is claimed.
-- Recorded: 2026-09-03 in the branch worktree; branch is ready for Lead merge/push, not yet merged or pushed.
+- Command: `PR10 focused integration: 52 tests plus compile/Ruff/Compose/secret/stdio/build checks`
+- Result: passed
+- Coverage gap: Historical full-suite baseline failures remain; optional services have no live freshness or production Planner mapping
+- Recorded: unix:1788367575
+
+## Detailed Evidence
+
+- The five CI-style service loops ran 14 unittest cases: campus-events 4,
+  college-notice 4, library 2, local-recs 3, and training-plan 1.
+- The repository/Registry/installer/social focused set ran 38 unittest cases;
+  the combined pytest collection for this branch reports `52 passed`.
+- `compileall`, production-scope Ruff, `git diff --check`, JSON registry
+  parsing, `docker compose config`, `compose-contract`, `check_secrets.py`,
+  and both root/Unified-worker `uv lock --check` checks passed.
+- Each optional package built a source distribution and wheel. Each stdio
+  smoke script completed initialize, list-tools, and its one public query using
+  a temporary cache.
+- The historical full repository suite was intentionally not used as a green
+  signal: existing joblib/environment and stale Runtime/evaluation snapshot
+  failures reproduce on the pre-integration control revision.
