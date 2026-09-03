@@ -1071,9 +1071,12 @@ iCourse MCP v1 Server，不是第二套插件 Client。
 Client 与隔离 v2 worker；`ICourseClient` 只作为借用共享 Client 的兼容 facade。校车通过
 本地 Builtin Provider 接入。S13 通用 Catalog/Retrieval/Planner/Executor/Observation Validator
 已实现，当前为 21 个 MCP mapping 和 1 个校车 Builtin（22 个 capability definition）。2.0 Agent
-已自动规划 iCourse、二课、培养方案研究、教务和校车；NotifAI 已加入 Registry、mapping 和 Web
-目录，是否进入某个群由健康、授权和 rollout 计算。Discovery 仍不授予能力。可信失败用户答复和
-实时资讯 Source 尚未实现。本次 PR #10 整合的五个 Registry-only Server 不在上述 21/22 统计中；
+已自动规划 iCourse、NotifAI、二课、培养方案研究、教务和校车；NotifAI 的 7 项只读能力已
+进入 Registry、mapping、Capability Catalog 和 Web 目录，是否进入某个群由健康、授权和
+rollout 计算。Discovery 仍不授予能力。可信
+`FAILED/DEFERRED` Receipt 现沿 Composer、Persona、Final Validator 和授权 Delivery 生成固定
+不可用答复；未验证、取消、Runtime 异常和最终校验失败仍不发送。实时资讯 Source 尚未实现。
+本次 PR #10 整合的五个 Registry-only Server 不在上述 21/22 统计中；
 它们保持 `enabled=false` 且没有 definition/mapping，因此不会成为 Planner 候选或 Provider health
 探测对象。
 

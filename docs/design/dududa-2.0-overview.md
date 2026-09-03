@@ -1,6 +1,6 @@
 # Dududa 2.0 Design Overview
 
-状态：S01–S22 的既定本地/离线范围与 S21 Bot Control Plane 已实现并验证。S23 已完成历史
+状态（2026-09-03）：S01–S22 的既定本地/离线范围与 S21 Bot Control Plane 已实现并验证。S23 已完成历史
 语料 no-send Demo、控制台内测、候选模型工程和第一条 Dududa 2.0 自然语言 iCourse 本地
 纵切，并进入群内明确 @ 的实时入站 Canary；Memory 生产读写、主动发送、在线 Bandit、完整
 人工质量和真实 QQ 端到端回执仍按各模块边界推进。NotifAI 已在当前 main 纳入独立 MCP
@@ -9,6 +9,11 @@ Server、7 个 capability mapping 和 Web 目录。PR #10 的非重复规则已�
 无 Capability mapping 的可选 Server 打包；它们不进入 Planner 或生产 health。当前证据以
 `../refactor/PROGRESS.md`、`dududa-2.0-design-report.md` 及
 `../integrations/pr10-selective-integration.md` 为准。
+
+本日新增的 100 条原生消息 Runtime 模拟使用当前 Production Composition、Schema-accurate
+本地 MCP fixture 和 Fake Delivery 完成 94/100 条 2.0 接管，6 条按 Connector/Admission 边界
+保留 legacy；0 次真实 QQ 发送、0 次 Memory 写入、0 个未捕获异常。逐题结果和证据边界见
+`../refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`。
 
 Dududa 2.0 separates a framework-neutral Agent Runtime from AstrBot adapters,
 MCP servers, model Providers, memory backends, and deployment. The repository

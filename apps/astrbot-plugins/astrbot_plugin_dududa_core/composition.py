@@ -252,6 +252,29 @@ _CURRICULUM_OUT_OF_SCOPE_PATTERNS = (
     re.compile(r"(?:毕业后|就业|薪资|职业方向|行业去向)"),
 )
 
+# NotifAI is the aggregate campus-notice source.  A request explicitly scoped
+# to another site's cache or an individual college website must not be
+# widened into that aggregate source merely because the text contains the
+# generic word “通知”.
+_NOTIFAI_SOURCE_OUT_OF_SCOPE_PATTERNS = (
+    re.compile(r"(?:学校|校园)?主页(?:缓存|快照).{0,40}(?:通知|公告|科研)"),
+    re.compile(r"(?:学院|院系|学校).{0,20}(?:官网|官方网站).{0,32}(?:通知|公告)"),
+    re.compile(r"(?:官网|官方网站).{0,24}(?:通知|公告)"),
+)
+_CROSS_SCOPE_CONTEXT_PAIR_RE = re.compile(
+    r"群\s*[A-Za-z一二三四五六七八九十]\s*[^。！？]{0,48}"
+    r"群\s*[A-Za-z一二三四五六七八九十]\s*[^。！？]{0,32}"
+    r"(?:上下文|对话|记忆|引用)",
+    re.IGNORECASE,
+)
+_CROSS_SCOPE_CONTEXT_MARKERS = (
+    "跨群",
+    "另一个群",
+    "其他群",
+    "不同群",
+)
+_CONTEXT_REFERENCE_MARKERS = ("上下文", "对话", "记忆", "引用")
+
 
 def _is_young_account_bound(context: PerceptionContext) -> bool:
     return any(
@@ -267,6 +290,23 @@ def _is_curriculum_out_of_scope(context: PerceptionContext) -> bool:
     )
 
 
+def _is_notifai_source_out_of_scope(context: PerceptionContext) -> bool:
+    return any(
+        pattern.search(context.current_message.text)
+        for pattern in _NOTIFAI_SOURCE_OUT_OF_SCOPE_PATTERNS
+    )
+
+
+def _is_cross_scope_context_request(context: PerceptionContext) -> bool:
+    text = context.current_message.text
+    if not any(marker in text for marker in _CONTEXT_REFERENCE_MARKERS):
+        return False
+    return bool(
+        any(marker in text for marker in _CROSS_SCOPE_CONTEXT_MARKERS)
+        or _CROSS_SCOPE_CONTEXT_PAIR_RE.search(text)
+    )
+
+
 def _blocked_capability_categories(
     context: PerceptionContext,
 ) -> frozenset[str]:
@@ -275,7 +315,21 @@ def _blocked_capability_categories(
         blocked.add("campus.second-class")
     if _is_curriculum_out_of_scope(context):
         blocked.add("campus.curriculum")
+    if _is_notifai_source_out_of_scope(context):
+        blocked.add("campus.notifications")
+    if _is_cross_scope_context_request(context):
+        blocked.update(context.available_capability_categories)
     return frozenset(blocked)
+
+
+def _blocked_capability_intent(intent_id: str, blocked: frozenset[str]) -> bool:
+    """Keep intent-only model projections from bypassing a source boundary."""
+
+    return (
+        ("campus.second-class" in blocked and intent_id.startswith("ustc.young."))
+        or ("campus.curriculum" in blocked and intent_id.startswith("ustc.curriculum."))
+        or ("campus.notifications" in blocked and intent_id.startswith("notifai."))
+    )
 
 
 class _ProductionRulePerception:
@@ -294,6 +348,19 @@ class _ProductionRulePerception:
                 expected_tool_steps=0,
                 verification_required=False,
                 component_revision=_revision("production-proactive-rule-perception"),
+            )
+        # A question about moving context between scopes is a boundary
+        # question, even when it contains a capability keyword (for example,
+        # “校车”).  Keep the answer on the direct-chat path and do not let the
+        # keyword claim a production Capability.
+        if _is_cross_scope_context_request(context):
+            return replace(
+                result,
+                need_tools=False,
+                capability_categories=(),
+                expected_tool_steps=0,
+                verification_required=False,
+                component_revision=_revision("production-cross-scope-rule-perception"),
             )
         blocked = _blocked_capability_categories(context)
         if not blocked.intersection(result.capability_categories):
@@ -340,29 +407,47 @@ class _ProductionPerceptionMerger:
                 expected_tool_steps=0,
                 verification_required=False,
             )
+        if model is not None and _is_cross_scope_context_request(context):
+            # Clear intents as well as categories: the Shuttle planner can
+            # select a capability from an intent id even when categories are
+            # empty.  This keeps the scope boundary effective after the
+            # additive rule/model merge.
+            model = replace(
+                model,
+                need_tools=False,
+                capability_categories=(),
+                intents=(),
+                expected_tool_steps=0,
+                verification_required=False,
+            )
         blocked = _blocked_capability_categories(context)
-        if model is not None and blocked.intersection(model.capability_categories):
+        if model is not None and blocked:
             categories = tuple(
                 value for value in model.capability_categories if value not in blocked
             )
             intents = tuple(
                 value
                 for value in model.intents
-                if not (
-                    "campus.second-class" in blocked
-                    and value.intent_id.startswith("ustc.young.")
-                )
-                and not (
-                    "campus.curriculum" in blocked
-                    and value.intent_id.startswith("ustc.curriculum.")
-                )
+                if not _blocked_capability_intent(value.intent_id, blocked)
             )
+            if (
+                categories == model.capability_categories
+                and intents == model.intents
+            ):
+                return self._delegate.merge(
+                    context,
+                    rules,
+                    model,
+                    model_status=model_status,
+                    model_route_receipt_digest=model_route_receipt_digest,
+                )
             model = replace(
                 model,
                 need_tools=bool(categories),
                 capability_categories=categories,
                 intents=intents,
                 expected_tool_steps=1 if categories else 0,
+                verification_required=(model.verification_required if categories else False),
             )
         return self._delegate.merge(
             context,

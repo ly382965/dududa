@@ -2474,8 +2474,12 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         await plugin.rollout_bridge.close()
 
         self.assertIs(result.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
-        self.assertEqual(len(provider.calls), 1)
-        self.assertEqual(provider.calls[0]["reasoning_effort"], "low")
+        # Hybrid Perception + Direct Chat is the complete 2.0 shadow path;
+        # both calls use the endpoint's fixed reasoning profile.
+        self.assertEqual(len(provider.calls), 2)
+        self.assertTrue(
+            all(call["reasoning_effort"] == "low" for call in provider.calls)
+        )
         self.assertEqual(event.stop_calls, 0)
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
@@ -2508,7 +2512,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         first = await plugin.rollout_bridge.handle(_Event(message_id="healthy"))
         await plugin.rollout_bridge._shadow.drain()
         self.assertIs(first.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
-        self.assertEqual(len(provider.calls), 1)
+        self.assertEqual(len(provider.calls), 2)
 
         clock.now = observed_at + timedelta(seconds=6)
         snapshot = assembly.model_operational_registry.acquire_snapshot()
@@ -2520,7 +2524,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         await plugin.rollout_bridge.close()
 
         self.assertIs(second.action, AstrBotBridgeAction.SHADOW_SCHEDULED)
-        self.assertEqual(len(provider.calls), 1)
+        self.assertEqual(len(provider.calls), 2)
         await plugin.terminate()
 
     async def test_missing_or_unknown_provider_falls_back_to_legacy(self) -> None:

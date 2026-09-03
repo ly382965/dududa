@@ -210,14 +210,15 @@ Branch: real-group-validation
   共享 Client 的兼容消费者。Runtime 不得再从旧 facade 反向取得 MCP 基础设施。
 - Production 共享 Client 装配失败时，兼容 facade 必须同步 unavailable；立即重试并
   建立一个仅供旧入口使用的独立 Client 会重新制造第二条 MCP 所有权路径。
-- MCP 控制台可直接调用 14 个映射，不等于自然语言 Planner 已支持全部映射。
+- MCP 控制台当前可直接调用 21 个映射，不等于自然语言 Planner 已支持任意参数组合。
   iCourse 现公布 Schema-aware 高层 `icourse.public-query.v2`，二课公布搜索、详情、
   筛选项和连接状态四种公共观察；培养方案研究和教务只公布已有确定性投影的只读操作，
-  校车另由本地 Builtin Provider 执行。五类均已进入单步 Planner，公布范围必须与 Planner
-  实际投影能力一致；这不等于 14 个映射都支持任意自然语言参数组合。
-- 可信 Capability failure 目前在 Canary 已 claim 后 no-delivery；旧 handler 和 Web
-  search 不得接管。用户可见失败提示应沿 2.0 Composer、Persona、Final Validator
-  与授权 Delivery 的唯一输出路径实现。
+  校车另由本地 Builtin Provider 执行。六类均已进入单步 Planner，公布范围必须与 Planner
+  实际投影能力一致；这不等于 21 个映射都支持任意自然语言参数组合。
+- 可信 Capability `FAILED/DEFERRED` receipt 在 Canary 已 claim 后现沿 2.0
+  Composer、Persona、Final Validator 与授权 Delivery 的唯一输出路径生成固定不可用
+  答复；旧 handler 和 Web search 不得接管。未验证、取消、Runtime 异常或最终校验失败
+  仍保持 no-delivery。100 题 Case 80 已验证该分层。
 - Young 上游必须使用 CAS 会话，但部署 SecretRef 是 Server 连接事实，不是 QQ 用户身份。
   因此 MCP 只保留四个公共只读 Tool，并从 Schema、Capability、权限和 Observation 中移除
   `young_list_my_activities`、个人报名状态、联系方式、报名/取消和申请人数据。
@@ -261,10 +262,10 @@ Branch: real-group-validation
   产生 `scope_agent_enabled` 和 `capability.category.<id>` feature flags；
   `CurrentMessageContextBuilder` 只用这些 flags 缩小既有 Perception 类别。
   Web Catalog 的 `online` 表示对应路径已由 ready 的 2.0 Runtime 消费；当前 iCourse、
-  二课、培养方案研究、教务和校车均已接自然语言 Planner。
+  NotifAI、二课、培养方案研究、教务和校车均已接自然语言 Planner。
 - Catalog 由服务端动态返回六项正交配置、插件和 MCP Capability 事实，并区分源码
   已安装、配置/Compose 已装配、Runtime online 与本轮实际调用。Web MCP 工作台
-  只接受 14 个批准的 MCP Capability ID；校车的 1 个本地 Capability 通过 Agent
+  只接受 21 个批准的 MCP Capability ID；校车的 1 个本地 Capability 通过 Agent
   no-send 预览调用。输入控件来自 Capability schema，返回值投影到 Capability output schema，
   不开放任意 MCP Tool。`gpt-image-2` 仍是独立图片能力。自动复读
   和现有 `/sub2api 自动查询` 已恢复为独立 AstrBot 插件，默认 `off`，按
@@ -338,6 +339,19 @@ Branch: real-group-validation
 - Tool 调用不应通过重试堆叠召回率：当前 `maximum_attempts=1` 已足以把显式
   marker 约束为一次有界计划。`USE_TOOLS` 只在用户没有明确详略要求时默认 LONG；
   输出形态仍由实际分片决定，单段结果不为追求形式而包装成单节点转发。
+- 100 题链路复跑显示：94 条消息完成 2.0 Fake Delivery，6 条在 Connector/Admission
+  边界保持 legacy；53 次 MCP、187 次脚本模型调用和 0 次 Memory/真实 QQ 输出均与
+  预期一致。明确来源词（学校主页缓存、学院官网）若只靠“通知”泛关键词会误调用
+  NotifAI，因此生产 Rule/Model Merger 必须在资格过滤阶段同时执行来源边界；普通
+  聚合校园通知仍保留 NotifAI 资格。
+- 校车题的版本化 `capability_id` 是本地 Builtin 的稳定测试信号，不能只靠自然语言中是否
+  出现“校车”关键词判断；100 题 Runner 现让 51--60 全部经过单步
+  `ustc.shuttle.public-query.v1`，且保持 0 次 MCP。跨 Provider Case 72 仍遵循生产的
+  “最多一步”边界：规则类别最终选择一个 Shuttle 候选，DirectChat 明确要求拆分，不会
+  同时调用二课和校车。
+- Reply 组件只有在携带来源群元数据时才能证明引用 Scope；该元数据与当前群不一致时
+  Connector 直接拒绝，缺失元数据时保留宿主兼容路径，避免把推测性的跨群上下文检查
+  伪装成已验证事实。
 - LONG 合并转发原来按 UTF-8 字节硬切，能把“给分”“基础”等词拆到相邻节点。
   最小修复是保留字节上限、优先选择换行/句末/空格边界；无需引入新的渲染控制面。
 - aiocqhttp 对每个 WebSocket 帧创建独立任务，而 AstrBot 的 @ 转换还会异步查询成员；

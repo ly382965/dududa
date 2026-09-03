@@ -1767,7 +1767,19 @@ def _validate_response_and_delivery_bindings(state: RuntimeState) -> None:
             raise validation_error("draft_social_binding_mismatch")
         if draft.response_plan_digest != expected_plan_digest:
             raise validation_error("runtime_draft_response_plan_mismatch")
-        if social.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
+        if social.action is SocialAction.USE_TOOLS and _is_capability_failure_response(
+            state
+        ):
+            if (
+                draft.intent != "capability_unavailable"
+                or draft.refusal is None
+                or draft.refusal.reason_code != "capability_unavailable"
+                or len(draft.content_blocks) != 1
+                or draft.content_blocks[0].source_refs
+                != (context.perception.current_message_ref,)
+            ):
+                raise validation_error("runtime_capability_failure_draft_mismatch")
+        elif social.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
             direct = state.direct_chat_execution
             if direct is None or len(draft.content_blocks) != 1:
                 raise validation_error("direct_draft_content_missing")
@@ -1949,7 +1961,10 @@ def _validate_phase_payloads(state: RuntimeState) -> None:
         _require_tool_executed_prefix(state)
         return
     if state.phase is RuntimePhase.VALIDATED:
-        _require_validated_tool_prefix(state)
+        if _is_capability_failure_response(state):
+            _require_failed_tool_prefix(state)
+        else:
+            _require_validated_tool_prefix(state)
         return
     _require_composed_prefix(state)
     if state.phase is RuntimePhase.COMPOSED:
@@ -2045,13 +2060,63 @@ def _require_validated_tool_prefix(state: RuntimeState) -> None:
         raise validation_error("runtime_phase_missing_validated_tool_result")
 
 
+def _is_capability_failure_response(state: RuntimeState) -> bool:
+    """Return whether the state carries a verified, user-visible tool failure."""
+
+    social = state.social_decision
+    receipt = state.capability_run_receipt
+    return (
+        social is not None
+        and social.action is SocialAction.USE_TOOLS
+        and receipt is not None
+        and receipt.status
+        in {CapabilityRunStatus.DEFERRED, CapabilityRunStatus.FAILED}
+    )
+
+
+def _require_failed_tool_prefix(state: RuntimeState) -> None:
+    """Validate the prefix used by a deterministic Capability failure reply."""
+
+    _require_context_prefix(state)
+    _require_perceived_prefix(state)
+    _require_decided_prefix(state)
+    social = state.social_decision
+    receipt = state.capability_run_receipt
+    if (
+        social is None
+        or social.action is not SocialAction.USE_TOOLS
+        or state.capability_run_request is None
+        or receipt is None
+        or receipt.status
+        not in {CapabilityRunStatus.DEFERRED, CapabilityRunStatus.FAILED}
+    ):
+        raise validation_error("runtime_phase_missing_failed_tool_result")
+    # A failed Capability must never acquire a model route or execution receipt.
+    if any(
+        value is not None
+        for value in (
+            state.tier_selection_context,
+            state.tier_decision,
+            state.direct_route_decision,
+            state.direct_chat_execution,
+            state.direct_chat_failure,
+        )
+    ):
+        raise validation_error("runtime_failed_tool_has_model_execution")
+
+
 def _require_composed_prefix(state: RuntimeState) -> None:
     social = state.social_decision
     if social is None or state.draft_response is None:
         raise validation_error("runtime_phase_missing_draft")
-    if social.action in {SocialAction.DIRECT_REPLY, SocialAction.USE_TOOLS}:
-        if social.action is SocialAction.USE_TOOLS:
-            _require_validated_tool_prefix(state)
+    if social.action is SocialAction.DIRECT_REPLY:
+        if state.direct_route_decision is None or state.direct_chat_execution is None:
+            raise validation_error("runtime_phase_missing_direct_chat")
+    elif social.action is SocialAction.USE_TOOLS:
+        if _is_capability_failure_response(state):
+            _require_failed_tool_prefix(state)
+            return
+        _require_validated_tool_prefix(state)
         if state.direct_route_decision is None or state.direct_chat_execution is None:
             raise validation_error("runtime_phase_missing_direct_chat")
     elif social.action is SocialAction.ASK_CLARIFICATION:
@@ -2506,6 +2571,7 @@ _ALLOWED_TRANSITIONS: Mapping[RuntimePhase, frozenset[RuntimePhase]] = {
     RuntimePhase.DECIDED: frozenset(
         {
             RuntimePhase.TOOLS_PLANNED,
+            RuntimePhase.VALIDATED,
             RuntimePhase.COMPOSED,
             RuntimePhase.READY_TO_EMIT,
             RuntimePhase.MEMORY_EVALUATED,
@@ -2514,7 +2580,12 @@ _ALLOWED_TRANSITIONS: Mapping[RuntimePhase, frozenset[RuntimePhase]] = {
         }
     ),
     RuntimePhase.TOOLS_PLANNED: frozenset(
-        {RuntimePhase.TOOLS_EXECUTED, RuntimePhase.DEFERRED, RuntimePhase.FAILED}
+        {
+            RuntimePhase.TOOLS_EXECUTED,
+            RuntimePhase.VALIDATED,
+            RuntimePhase.DEFERRED,
+            RuntimePhase.FAILED,
+        }
     ),
     RuntimePhase.TOOLS_EXECUTED: frozenset(
         {RuntimePhase.VALIDATED, RuntimePhase.DEFERRED, RuntimePhase.FAILED}

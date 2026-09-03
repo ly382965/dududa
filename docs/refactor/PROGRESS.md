@@ -1,9 +1,25 @@
 # Dududa 2.0 重构进度
 
-更新时间：2026-09-02
+更新时间：2026-09-03
 历史基线：`main@2767cc9768d4bce63d4b4ee811add951ebce6870`
 
 ## 当前结论
+
+- 2026-09-03 完成 100 条原生消息的 Dududa 2.0 完整链路模拟。固定 OneBot-shaped
+  fixture 顺序经过 Production Composition、Hybrid Perception、单步 Capability
+  Runtime、五个 MCP/校车 Builtin、Direct Chat、Persona、Final Validator 和 Fake
+  Delivery：94/100 条完成 2.0 Delivery，6 条在自消息、未 @、附件或跨群 Reply 边界留在
+  legacy；模型调用 187（Perception 94、Direct Chat 93），MCP Tool 53，Fake Delivery
+  94，真实 QQ 0，Memory 写入 0，未捕获异常 0。动作、运行结果、Tool 数/名称、Delivery、
+  可选 PR10 MCP、重复重放和单步 Plan 断言全部通过。逐题记录见
+  `docs/refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`。
+- 同轮修复了三个会影响链路正确性的耦合错误：可信 Capability `FAILED/DEFERRED`
+  Receipt 现在通过 2.0 Composer/Persona/Final Validator/授权 Delivery 生成固定不可用
+  答复；带来源群的跨群 Reply 在 Connector 边界拒绝；明确指向学校主页缓存或学院官网的
+  通知问题不再被泛关键词误路由到 NotifAI。未验证/取消/异常路径仍不发送。
+- 本轮受影响的 Runtime/Capability/Connector/Source-guard 聚焦回归为 34 tests + 18
+  subtests；扩展 Runtime state/orchestrator 回归为 44 tests + 5 subtests；完整
+  Production Composition 回归为 30 tests + 159 subtests，均通过。
 
 - Phase 0–1 的审计、目标设计和迁移计划已完成。
 - S01–S22 的既定本地/离线范围均已完成并验证；S23A–S23E 私有历史语料离线 Demo 已完成。
@@ -159,7 +175,7 @@ digest、离线能力）在 PR 前提交 `2b23a62` 已可复现；`joblib` 缺�
 | 步骤 | 状态 | 已交付 | 明确未做 |
 | --- | --- | --- | --- |
 | S12 Unified MCP | 已完成（基础设施与五个只读查询 Server） | framework-neutral DTO/Port、严格 Registry、长生命周期 Client、隔离 v2 worker 和共享 Contract；iCourse、NotifAI、二课、教务、培养方案研究独立注册，iCourse facade 只借用共享 Client；校车已迁移到本地插件 | 校园资讯/arXiv/行业 Source 仍不存在；用户触发的真实 QQ Tool/Delivery Receipt 未完成 |
-| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、21 个 MCP mapping 与 1 个校车 Builtin 已完成；2.0 Runtime 已闭环 iCourse、二课、培养方案研究、教务和校车 | 可信失败用户答复、近期多轮上下文、真实 QQ Receipt 与高风险/写能力未完成 |
+| S13 Capability Runtime | 已完成（基础设施）；自然语言自动规划部分完成 | 分离的 Catalog/Retrieval/Planner/Executor/Observation Validator、21 个 MCP mapping 与 1 个校车 Builtin 已完成；2.0 Runtime 已闭环 iCourse、NotifAI、二课、培养方案研究、教务和校车；可信 `FAILED/DEFERRED` receipt 已通过 Composer/Persona/Final Validator 生成有界不可用答复 | 近期多轮上下文、真实 QQ Receipt 与高风险/写能力未完成 |
 | S14 Memory Lifecycle/Retrieval | 已完成（离线） | generation-bound 读取、CAS 删除/tombstone、scoped export、archive/restore、JSON v2 crash replay、正式 Retrieval Port、M0/M1/M2、纯 Python CJK BM25 与固定合成 Eval | Runtime/旧命令消费者迁移、真实 Iris、授权数据/人工质量、Embedding/Hybrid、自动写入和生产切流 |
 | S15 Response Profile/Persona | 已完成（离线） | SHORT/MEDIUM/LONG Plan、动态预算、Plan/Persona generation checkpoint、typed assets、Catalog CAS/LKG、最终机械 Validator 与 17-case 3x3 Eval | 真实 Provider tokenizer、人工中文/Profile/Persona 质量、最终预算校准和真实 QQ 体验 |
 | S15A Proactive Contracts | 已完成（离线） | initiated-run/Target/Grant/Trigger/Subscription/Preview/Dispatch/Receipt v1 契约、当前 Actor 解析、默认拒绝策略、global/Scope quota、metadata-only Preview、稳定幂等、crash recovery、双 Python 590 项全仓测试 | 持久 Scheduler、真实来源、模型合成、生产 Registry/Output、QQ 发送和真实群证据 |
@@ -184,20 +200,20 @@ digest、离线能力）在 PR 前提交 `2b23a62` 已可复现；`joblib` 缺�
 | S22 Legacy Cleanup | **已完成、已验证、已合并** | `88ec307` 删除十个别名并切换 canonical 消费者；`9f0ae9a` 删除专用 iCourse Client；`715ce5d` 完成控制分支合并；Python 3.12 651/2 skips、Python 3.10 风险样本 32/2 skips、无网镜像/Compose/package/secret 通过 | Manifest v2 和明确 retain surface 不在本阶段 |
 | S20 Offline Bandit | **已完成（离线）** | Framework-neutral DTO/digest、Router-planned baseline、完整动态 action support、执行/反馈绑定、propensity fail-closed、Decimal IPS/SNIPS/DR/ESS、4 样本固定 bundle 和 16 项双 Python聚焦测试通过 | 无训练、生产 Worker、Router/Runtime hook、Shadow/live exploration 或真实质量声明 |
 | S21 Bot Control Plane | **已完成、已验证（离线）** | operator session/RBAC、Profile/Assignment、pending/managed、Desired/Effective、完整生命周期、SQLite LKG/重启恢复、不可变 Runtime snapshot、六面运维投影、统一 command ID、写锁后 deadline 重验和 Python→Node→Vue 查询链均有证据；Agent 占位不发送或伪成功 | 生产 HTTP/身份、真实健康、Provider/Source/Projection/Output、人工质量和真实 QQ 留在 S23 外部门禁 |
-| S23 Real Group Validation | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 75 题 Runtime/Fake Delivery 为 75/75、宿主内存入口为 75/75、人工终审 49/75 完整；三模型在运行宿主可调用；目标群五项校园查询已启用并完成 no-send 耦合抽样；相关 2.0 代码已进入本地 `main` | 先处理并验证宿主并发顺序，再用一条真实群消息闭合 QQ 端到端收发和 LONG 转发；随后补多步 Tool 与可信失败。私聊、附件、未 @ 主动参与、真实来源/日报/Probe、Memory、在线 Bandit 仍未接通 |
+| S23 Real Group Validation | **部分完成；2.0 已成为唯一运行 Agent，首个实时入站切换已开始** | 75 题 Runtime/Fake Delivery 为 75/75，新增 100 题 Runtime 模拟为 94/100 完成 2.0 Fake Delivery；宿主内存入口为 75/75、人工终审 49/75 完整；三模型在运行宿主可调用；目标群五项校园查询已启用并完成 no-send 耦合抽样；可信 Capability 失败答复已由 100 题 Case 80 覆盖 | 先处理并验证宿主并发顺序，再用一条真实群消息闭合 QQ 端到端收发和 LONG 转发；随后补多步 Tool。私聊、附件、未 @ 主动参与、真实来源/日报/Probe、Memory、在线 Bandit 仍未接通 |
 
 ## 产品模块完成度
 
 | 模块 | 状态 | 判断依据 |
 | --- | --- | --- |
-| 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow 与 rollout Ports 已完成；配置驱动 2.0 Runtime 已作为唯一运行 Agent 装配，iCourse 单步 Tool 成功路径已有本地 Unified MCP 证据 | Memory/Attachment、完整 Tool 规划、近期群聊 Context 与真实 QQ 人工验收未完成 |
+| 核心 Package | 部分完成 | Package、DTO、Orchestrator、CAS Store、Delivery/reconciliation、Shadow 与 rollout Ports 已完成；配置驱动 2.0 Runtime 已作为唯一运行 Agent 装配，六类校园查询的单步 Tool 路径已有本地 Unified MCP/Builtin 证据，100 题 no-send 模拟已通过 | Memory/Attachment、完整 Tool 规划、近期群聊 Context 与真实 QQ 人工验收未完成 |
 | 安全组件 | 部分完成 | 授权、预算、内容安全、隐私、持久 claim 和发送前熔断已贯穿 S10/S11；旧命令兼容权限仍保留 |
 | Connector / Output / Attachment | 部分完成 | NapCat 未重启并保持 1/1 在线；合法 OneBot JSON 宿主入口 75/75，所有群明确 `@Bot` 的受支持消息已进入 2.0 Bridge/Output；LONG 分片已改为优先自然文本边界 | aiocqhttp 并发入队可乱序；仍需真实 QQ 回复 Receipt，私聊、附件与第二平台未接通 |
 | Memory | 部分完成 | S14 离线生命周期、删除/恢复、词法检索和合成安全/质量回归已完成；生产仍默认关闭；真实 Iris、Context Builder/旧命令迁移、授权数据人工 Eval、Embedding/Hybrid、shadow 与生产读写未完成 |
 | 插件拆分 | 部分完成 | 源码拆分与 priority-100 rollout handler 已验证；旧 Handler、ReplyPolish 和 1.0 Agent 已退出运行面，Sub2API/Reread 作为独立 2.0 宿主能力保留 | 可组合治理 Plugin Runtime 仍未实现；宿主插件不自动等于 Agent Capability |
 | 模型路由、语义理解、OC Runtime | 部分完成 | S08/S09、S10 Composer/Renderer 与 S23 Hybrid Perception -> Static Router -> Capability/DirectChat 纵切已实现；Luna/Terra/Sol 已在运行 AstrBot 注册并各完成一次真实 Chat 调用，三档采用最低 `light/low`；模型只提议 category/entity，确定性代码拥有资格、Plan 和执行 | 仍缺人工 Gold、近期群聊 Context、完整 Persona 资产、多轮/附件语义和长期 Provider 质量/故障观测 |
 | 回答档位 / ResponsePlan | 已完成（S15 离线范围） | SHORT/MEDIUM/LONG 与 Tier/Reasoning 正交，动态预算、Runtime/Composer/Persona/Delivery 绑定和 3x3 合成 Eval 已通过；LONG 中文断词分片缺陷已修复 | 75 题实际为 LONG 73、SHORT 1、MEDIUM 0，三档真实体验仍未校准 |
-| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、五个真实只读 MCP Server、21 个 MCP mapping 与 1 个校车 Builtin 已完成；iCourse、NotifAI、二课、培养方案研究、教务和校车单步操作已接入；校车 20/20 固定题与 3 条 Runtime 抽样通过 | 完整人工质量与真实 QQ 证据、通用 Capability 失败答复及实时 Source 仍待补 |
+| Unified MCP / Capability Runtime | 基础设施已完成；Agent 自动调用部分完成 | Unified Client/Registry、五个真实只读 MCP Server、21 个 MCP mapping 与 1 个校车 Builtin 已完成；iCourse、NotifAI、二课、培养方案研究、教务和校车单步操作已接入；校车 20/20 固定题与 100 题 Runtime 模拟通过；可信 `FAILED/DEFERRED` receipt 已沿 2.0 Composer/Persona/Final Validator/Delivery 生成固定不可用答复 | 完整人工质量与真实 QQ 证据、实时 Source 仍待补 |
 | 主动消息/订阅推送 | 部分完成（S15A-S15E 离线链完成） | initiated-run/默认拒绝、持久 Scheduler、受治理来源、fixture 日报和 synthetic group Probe no-send Shadow 已实现；Preview/Shadow state 隔离，普通 metadata 无正文；S19/S22 本地发布闭环完成 | 生产 Projection/Source/持久 Probe state/模型/Output、人工体验和真实发送仍待 S23 |
 | Bandit | 离线基础已完成（S20） | 决策、执行、延迟反馈、完整 support、propensity/OPE 和合成 Golden 已完成；当前仍无配置或生产执行 hook，禁止学习主动 send/skip、目标、日程、频率和 Answer Profile |
 | 可组合插件 Runtime | 设计方向已确认、工程未开始 | 已确认“不可卸载治理内核 + 可逆、分 Realm 能力插件”；尚无 Plugin Descriptor/Lifecycle Runtime、迁移或验证证据 |
@@ -456,11 +472,10 @@ Group Context 与 Skill 演化仍没有实现证据。S23A–S23E 离线里程�
 ## 下一步
 
 S17–S22、S21 和 S23A–S23E 离线范围均已完成；2.0 也已进入所有群明确 @ 纯文本的实时
-Canary/Delivery。下一步先修复或验证 AstrBot/aiocqhttp 并发入队顺序，再用一条用户消息验证真实
-QQ 收取、单次回复和 LONG 合并转发；随后优先补别名规范化、结构化筛选和有限多步查询，再处理
-可信失败答复与群聊风格人工反馈。私聊、附件和未 @ 主动参与另行接线；真实 Source 只在 Manual
-Digest 前接入，Probe 继续 NO SEND。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为
-开启探索。
+Canary/Delivery。100 题 no-send 模拟已覆盖可信失败答复、Provider 选择和插件边界；下一步仍是
+先修复或验证 AstrBot/aiocqhttp 并发入队顺序，再用一条用户消息验证真实 QQ 收取、单次回复和
+LONG 合并转发。私聊、附件和未 @ 主动参与另行接线；真实 Source 只在 Manual Digest 前接入，
+Probe 继续 NO SEND。Bandit 不是主动链路或群服务 Profile 前置，也不得对主动行为开启探索。
 
 后续分支采用风险分层验证：优先运行受影响 Contract、聚焦 warning-as-error 与抽样仓库回归；
 只有跨模块高风险变更或 S19/最终总集成才重复双 Python 全仓，避免每个 Sxx 重复执行同一套

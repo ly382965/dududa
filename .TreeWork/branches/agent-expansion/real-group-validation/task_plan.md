@@ -187,14 +187,14 @@ Title: S23 Authorized Real-Group Validation
 - [x] After the adaptive Agent Console slice is implemented and sampled,
   synchronize its Progress, Findings and Verification and create one local
   commit without push.
-- [x] iCourse、二课、教务处与培养方案研究作为四个独立 Registry Server 接入现有
-  Unified MCP；iCourse 继续匿名复用，二课通过 SecretRef 使用固定 pyustc 版本。
+- [x] iCourse、NotifAI、二课、教务处与培养方案研究作为五个独立 Registry Server 接入
+  现有 Unified MCP；iCourse/NotifAI 继续公开只读，二课通过 SecretRef 使用固定 pyustc 版本。
 - [x] 校车从 MCP 迁移为本地 owned 插件：版本化时刻表、Builtin Provider、自然语言
   Planner 和 20 题固定测试已闭环，旧 Server/mapping/网页抓取路径已移除。
 - [x] 教务学期、开课、考试和教学日历进入自然语言单步 Planner；开课/考试由
   Academic MCP 在同一次调用内把学期名称解析为官方 semester ID。目标群五项
   校园查询已启用并完成 no-send 耦合抽样。
-- [x] WebUI 展示四个 MCP 的健康、认证和 Capability 状态，并把校车显示为本地
+- [x] WebUI 展示五个已启用 MCP 的健康、认证和 Capability 状态，并把校车显示为本地
   `readonly_query` 插件；`super_admin` 可依据
   Capability input schema 直接调用并查看结构化结果、来源与抓取时间；不开放任意
   MCP tool 透传。
@@ -284,7 +284,7 @@ Title: S23 Authorized Real-Group Validation
   `ustc-young`, `ustc-academic` and `ustc-curriculum`; retain the existing
   `icourse` Server and compatibility path.
 - [x] Add read-only Capability definitions/mappings, deployment assembly and
-  runtime config sync for all four MCP Servers. Add shuttle through the existing
+  runtime config sync for all five enabled MCP Servers. Add shuttle through the existing
   Builtin Provider Port. A missing CAS SecretRef must degrade only the Young
   Server to an explicit unavailable state.
 - [x] Add the internal Capability Console API and schema-driven Agent Console
@@ -304,10 +304,11 @@ Title: S23 Authorized Real-Group Validation
   the natural-language iCourse vertical slice with focused Fakes.
 - [x] Connect the exact-Scope Web Agent Policy to the production Bridge and
   project its Agent switch plus MCP plugin modes into Perception eligibility;
-  expose the four campus MCPs and local shuttle plugin truthfully, then keep
+  expose the five enabled campus MCPs and local shuttle plugin truthfully, then keep
   each Capability unavailable to natural-language planning until its bounded
-  argument projection is implemented. All five campus query paths now have
-  that projection and report Runtime-online status.
+  argument projection is implemented. All six campus query paths now have
+  that projection; the 100-question fixture also exercises NotifAI under a
+  local enabled policy without claiming that the target group's policy enables it.
 - [x] Make the explicit `评课社区` marker a deterministic 2.0 Capability signal;
   execute all 75 benchmark messages through Runtime/MCP dispatch, add the three
   query-projection regressions, and measure all 75 once with real Luna `low`
@@ -337,9 +338,19 @@ Title: S23 Authorized Real-Group Validation
 - [x] 使用固定二课活动 fixture 完成 75/75 无 QQ 发送模拟；再以最小真实模型抽样
   检查 Perception、最终总结、过程隐藏和群聊表达，不把旁路 Reviewer 稿冒充
   Runtime 实际输出。
-- [ ] Route validated Capability failure through the governed Composer, Persona,
+- [x] Route validated Capability failure through the governed Composer, Persona,
   Final Validator and authorized Delivery path; do not fall back to the legacy
-  course handler, Web search or a Bridge-level second send path.
+  course handler, Web search or a Bridge-level second send path.  Unverified,
+  cancelled and composition-failure paths remain no-delivery.
+- [x] Build the versioned 100-question native-message fixture and run every case
+  through the complete production-shaped 2.0 Runtime with schema-introspected
+  MCP Fakes and in-memory Delivery.  Record per-case route, Runtime outcome,
+  selected tier/profile, Capability/Tool, trace, answer and no-send evidence;
+  assert one-step plans, zero Memory writes, zero optional-PR10 calls and zero
+  uncaught exceptions.
+- [x] Fix observed cross-module routing boundaries: reject Reply components
+  carrying a different group Scope at Connector, and prevent explicit
+  school-homepage/college-website sources from widening into aggregate NotifAI.
 - [ ] Connect automatic reread to the Web Policy separately; a matched Web
   trigger remains distinct from execution evidence.
 - [ ] Receive and privately bind the authorization, Endpoint, source, SLO and

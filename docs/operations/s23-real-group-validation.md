@@ -4,18 +4,21 @@
 
 S23 是发布前的真实证据阶段，不是全面上线。Dududa 2.0 已成为唯一运行 Agent，当前以
 Canary 接管群内明确 `@Bot` 的纯文本、无附件消息；旧 1.0 Agent 不再回退接管。群
-`364894085` 已将评课、二课、培养方案、教务和校车五项查询设为 `on`，五类输入均完成
-no-send 耦合抽样：每次只选择目标 Capability，普通聊天保持零 Tool 调用。
+`364894085` 当前策略快照已将评课、二课、培养方案、教务和校车五项查询设为 `on`（不据此
+宣称 NotifAI 已在该群启用）。本次 100 题本地 Runner 另以独立 fixture 策略覆盖 NotifAI，
+五类目标群输入均完成 no-send 耦合抽样：每次只选择目标 Capability，普通聊天保持零 Tool 调用。
 
-当前校园查询形状为四个 Unified MCP Server 加一个本地校车 Builtin 插件。教务学期、开课、
-考试和教学日历均已进入单步 Planner；开课/考试在同一次 MCP 调用内把学期名称解析为官方
-semester ID。该证据仍不等于用户触发的真实 QQ Tool/Delivery Receipt，以下门禁尚未关闭：
+当前校园查询形状为五个已启用的 Unified MCP Server（iCourse、NotifAI、二课、教务处、
+培养方案）加一个本地校车 Builtin 插件。教务学期、开课、考试和教学日历均已进入单步
+Planner；开课/考试在同一次 MCP 调用内把学期名称解析为官方 semester ID。该证据仍不等于
+用户触发的真实 QQ Tool/Delivery Receipt，以下门禁尚未关闭：
 
 - `configs/release/s19-pilot-slo-v1.json` 仍为 `s23_ready=false`；
 - 没有校园、arXiv 或行业资讯的 live Source Adapter；
 - 没有生产 Probe Projection/Output composition；
 - 没有五项校园查询的用户触发 QQ 端到端回执；
-- 没有近期多轮群聊 Context、生产 Memory、可信 Capability 失败答复或在线 Bandit。
+- 没有近期多轮群聊 Context、生产 Memory 或在线 Bandit；可信 Capability 失败答复已在
+  2.0 Composer/Persona/Final Validator/Delivery 链完成并由 100 题 no-send 案例覆盖。
 
 本 Runbook 的自动验证继续使用 no-send/Fake Output；不要由测试程序向 QQ 群发送消息，也不要
 把查询 MCP 误称为资讯日报来源。iCourse 是评课社区 MCP，校车是本地只读插件，两者都不是
@@ -29,9 +32,9 @@ semester ID。该证据仍不等于用户触发的真实 QQ Tool/Delivery Receip
   AstrBot Provider 管理；
 - Dududa Core 继续拥有 Tier、预算、Runtime 状态和 rollout 所有权；Provider 只实现模型调用 Port；
 - 2.0 主链使用 Luna/Haiku Hybrid Perception；规则感知只作降级组件。启用 Tool 时按类别
-  执行一次确定性单步 Capability：iCourse、二课、培养方案和教务经 Unified MCP，校车经
-  本地 Builtin Provider；随后只执行一次 DIRECT_CHAT。`off` 零 Provider 调用，no-send
-  预览不调用 QQ Output；
+  执行一次确定性单步 Capability：iCourse、NotifAI、二课、培养方案和教务经 Unified MCP，
+  校车经本地 Builtin Provider；随后只执行一次 DIRECT_CHAT。`off` 零 Provider 调用，
+  no-send 预览不调用 QQ Output；
 - Builder 优先解析 AstrBot Context 提供的 Provider Evidence；resolver 不存在或返回 `None` 时，
   才读取 `runtime_provider_evidence_path` 指向的仓库外私有 JSON。路径为空、文件非法或
   Provider/model 绑定不匹配时，Runtime 保持 unavailable 并回退 legacy；

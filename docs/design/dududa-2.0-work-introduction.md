@@ -254,7 +254,7 @@ PR #10 的非重复社交规则位于独立 `astrbot_plugin_dududa_social`。它
 
 ## 实现与验证概况
 
-截至 2026-09-02：
+截至 2026-09-03：
 
 - S01–S22 及 S23A–S23E 的既定离线范围已完成；
 - iCourse 75 条自然语言题完成 75/75 Runtime 和 Fake Delivery，显式站点 marker 19/19 正确；
@@ -263,6 +263,12 @@ PR #10 的非重复社交规则位于独立 `astrbot_plugin_dududa_social`。它
 - NotifAI PR #9 已合并，七项只读 capability、映射、Schema、Registry 和 Web 目录已纳入；
 - PR #10 中五个非重复 MCP 已收敛为单工具、cache-only、Registry-only 的默认关闭资产，独立社交
   插件已加入 owned-plugin 安装流程且默认不接管普通群消息；
+- 新增 100 条去重原生消息 fixture，并以完整 Production Composition 顺序模拟。94 条符合接管
+  条件的消息完成 Fake Delivery，6 条在自消息、未 @、附件或跨群 Reply 边界留在 legacy；校车
+  51--60 全部经过单步本地 Builtin，53 次 MCP、187 次脚本模型调用、0 次 Memory 写入和 0 次
+  真实 QQ 输出，所有单步、重复和可选插件边界断言通过。逐题问题、答案、Trace 与证据边界见
+  [100 题 Runtime 模拟报告](../refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md)；
+  该模拟使用脚本模型和本地 Schema Fixture，不替代真实 Provider 质量或 QQ 回执；
 - Memory、主动消息和 Bandit 的离线契约/评测已具备，但生产开关仍分别关闭或 shadow-only；
 - 当前 2.0 入站为群内明确 @ 的纯文本，真实 QQ 用户触发的人工端到端投递验收仍是下一步。
 

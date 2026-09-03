@@ -13,6 +13,7 @@ from dududa.domain.content import (
     ContentSafetyDecision,
     DraftResponse,
     FinalResponse,
+    Refusal,
     RenderedBlock,
     RenderedContent,
     RenderMetadata,
@@ -21,7 +22,12 @@ from dududa.domain.content import (
     ValidatedFinalResponse,
 )
 from dududa.domain.identity import Actor, ConversationScope
-from dududa.domain.primitives import ComponentRevision, JsonValue, freeze_json
+from dududa.domain.primitives import (
+    ComponentRevision,
+    JsonValue,
+    freeze_json,
+    require_non_empty,
+)
 from dududa.errors import validation_error
 from dududa.perception.contracts import ClarificationKey, SocialAction, SocialDecision
 from dududa.persona.contracts import PersonaRendererMode, PersonaResolution
@@ -47,6 +53,7 @@ class MinimalResponseComposerConfig:
     schema_version: int
     clarification_messages: Mapping[ClarificationKey, str]
     component_revision: ComponentRevision
+    capability_failure_message: str = "所需查询服务暂时不可用，请稍后再试。"
 
     def __post_init__(self) -> None:
         if type(self.schema_version) is not int or self.schema_version != 1:
@@ -66,6 +73,12 @@ class MinimalResponseComposerConfig:
         )
         if not isinstance(self.component_revision, ComponentRevision):
             raise validation_error("invalid_response_composer_revision")
+        if not isinstance(self.capability_failure_message, str):
+            raise validation_error("invalid_capability_failure_message")
+        require_non_empty(
+            self.capability_failure_message,
+            "capability_failure_message",
+        )
 
 
 class MinimalResponseComposer:
@@ -144,6 +157,53 @@ class MinimalResponseComposer:
             target_users=targets,
             immutable_constraints=decision.response_constraints,
             response_plan_digest=(expected_plan_digest),
+        )
+
+    def compose_capability_failure(
+        self,
+        context: CurrentMessageContext,
+        decision: SocialDecision,
+    ) -> DraftResponse:
+        """Compose a bounded user-facing answer for a verified tool failure.
+
+        A failed Capability receipt is still an authoritative Runtime outcome,
+        but it cannot provide facts for a model-generated answer.  Keep this
+        path deterministic and pass it through the same Draft/Persona/Final
+        validation chain as a normal response.  Provider error details and
+        reason codes remain Runtime evidence rather than user-visible text.
+        """
+
+        if not isinstance(context, CurrentMessageContext):
+            raise validation_error("invalid_composer_context")
+        if not isinstance(decision, SocialDecision):
+            raise validation_error("invalid_composer_social_decision")
+        if decision.action is not SocialAction.USE_TOOLS:
+            raise validation_error("capability_failure_requires_tool_decision")
+        current_ref = context.perception.current_message_ref
+        targets = tuple(
+            context.resolve(identity_ref)
+            for identity_ref in decision.target_identity_refs
+        )
+        response_id = self._id_factory()
+        return DraftResponse(
+            schema_version=1,
+            response_id=response_id,
+            producer=self._config.component_revision,
+            intent="capability_unavailable",
+            content_blocks=(
+                ContentBlock(
+                    block_id=f"{response_id}:text",
+                    kind="text",
+                    content=self._config.capability_failure_message,
+                    source_refs=(current_ref,),
+                ),
+            ),
+            refusal=Refusal(
+                reason_code="capability_unavailable",
+                public_message_key="service.unavailable",
+            ),
+            target_users=targets,
+            immutable_constraints=decision.response_constraints,
         )
 
 
