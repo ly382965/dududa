@@ -38,6 +38,17 @@ web_data_root() {
   fi
 }
 
+api_key_store_root() {
+  local root
+  root="${DUDUDA_API_KEY_STORE_ROOT:-$(env_value DUDUDA_API_KEY_STORE_ROOT "$ENV_FILE")}"
+  root="${root:-./runtime/web/api-keys}"
+  if [[ "$root" = /* ]]; then
+    printf '%s\n' "$root"
+  else
+    printf '%s\n' "$ROOT_DIR/${root#./}"
+  fi
+}
+
 astrbot_plugin_root() {
   local root
   root="${DUDUDA_ASTRBOT_PLUGIN_ROOT:-$(env_value DUDUDA_ASTRBOT_PLUGIN_ROOT "$ENV_FILE")}"
@@ -50,7 +61,7 @@ astrbot_plugin_root() {
 }
 
 ensure_web_secrets() {
-  local root token_file plugin_key_file
+  local root token_file plugin_key_file api_key_root api_key_file
   root="$(web_data_root)"
   mkdir -p "$root/secrets"
   chmod 700 "$root" "$root/secrets" 2>/dev/null || true
@@ -68,6 +79,14 @@ ensure_web_secrets() {
     : >"$plugin_key_file"
   fi
   chmod 600 "$plugin_key_file"
+  api_key_root="$(api_key_store_root)"
+  mkdir -p "$api_key_root"
+  chmod 700 "$api_key_root" 2>/dev/null || true
+  api_key_file="$api_key_root/api-keys.json"
+  if [[ ! -e "$api_key_file" ]]; then
+    printf '%s\n' '{"schemaVersion":1,"revision":1,"pools":{}}' >"$api_key_file"
+  fi
+  chmod 600 "$api_key_file"
 }
 
 project_name() {

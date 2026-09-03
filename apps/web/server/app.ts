@@ -488,7 +488,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'GET' && url.pathname === '/api/api-keys') {
-        json(response, 200, sanitizeApiKeySnapshot(await apiKeyPool.list()))
+        json(response, 200, sanitizeApiKeySnapshot(await apiKeyCall(() => apiKeyPool.list())))
         return
       }
       const apiKeyPoolRoute = /^\/api\/api-keys\/pools\/([^/]+)$/.exec(url.pathname)
@@ -503,6 +503,10 @@ export function createDududaServer(options: DududaServerOptions) {
           return
         }
         const body = await readJson(request, maxRequestBytes)
+        if (Object.prototype.hasOwnProperty.call(body, 'secret') || Object.prototype.hasOwnProperty.call(body, 'keys')) {
+          json(response, 400, { error: '池配置请求不接受明文密钥或 Key 列表' })
+          return
+        }
         json(response, 200, sanitizeApiKeyMutation(await apiKeyCall(() => apiKeyPool.updatePool(tier, body))))
         return
       }

@@ -7,6 +7,8 @@ import { HttpDududaRuntimePreviewClient } from './dududa-runtime'
 import { OneBotHub } from './onebot-hub'
 import { HttpMcpConsoleClient, UnavailableMcpConsoleClient } from './mcp-console'
 import { HttpAstrBotPluginManagerClient } from './plugin-manager'
+import { FileApiKeyPoolStore } from './model-keys'
+import { createHttpApiKeyProbe } from './provider-probe'
 
 function readToken(environmentName: string, fileEnvironmentName: string, defaultFile: string): string {
   const environmentToken = process.env[environmentName]?.trim()
@@ -41,6 +43,10 @@ const mcpConsole = mcpConsoleUrl
   : new UnavailableMcpConsoleClient()
 const pluginManager = new HttpAstrBotPluginManagerClient(astrBotPluginApiUrl, astrBotPluginApiKey)
 const runtimePreview = new HttpDududaRuntimePreviewClient(astrBotPluginApiUrl, astrBotPluginApiKey)
+// The Web gateway owns the write-only credential file.  Provider probes are
+// explicit operator actions; Runtime model selection still remains in
+// AstrBot/Dududa's existing TierPolicy path.
+const apiKeyPool = new FileApiKeyPoolStore({ probe: createHttpApiKeyProbe() })
 const server = createDududaServer({
   hub,
   publicDir,
@@ -49,6 +55,7 @@ const server = createDududaServer({
   mcpConsole,
   pluginManager,
   runtimePreview,
+  apiKeyPool,
 })
 
 server.listen(port, host, () => {

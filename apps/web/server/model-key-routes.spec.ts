@@ -113,6 +113,16 @@ describe('API Key pool HTTP boundary', () => {
     expect((await (await fetch(`${baseUrl}/api/api-keys`)).json() as { pools: Array<{ tier: string; keys: unknown[] }> }).pools.find((pool) => pool.tier === 'sonnet')?.keys).toEqual([])
   })
 
+  it('does not pass credential-shaped fields through the pool metadata route', async () => {
+    const { baseUrl } = await start()
+    const response = await fetch(`${baseUrl}/api/api-keys/pools/haiku`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ secret: `pool-secret-${randomUUID()}`, keys: [] }),
+    })
+    expect(response.status).toBe(400)
+  })
+
   it('returns bounded, sanitized probe results and rejects invalid tiers', async () => {
     const { baseUrl } = await start()
     const origin = { 'Content-Type': 'application/json', Origin: baseUrl }
@@ -134,4 +144,3 @@ describe('API Key pool HTTP boundary', () => {
     expect(secretProbe.status).toBe(400)
   })
 })
-

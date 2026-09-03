@@ -16,6 +16,7 @@ services:
       DUDUDA_WEB_INTERNAL_PORT: 8000
       DUDUDA_WEB_PUBLIC_ORIGIN: ${DUDUDA_WEB_PUBLIC_ORIGIN:-}
       DUDUDA_ONEBOT_TOKEN_FILE: /run/secrets/onebot_access_token
+      DUDUDA_API_KEY_STORE_PATH: /var/lib/dududa/api-keys/api-keys.json
       DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
       DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1
       DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE: /run/secrets/astrbot_plugin_api_key
@@ -29,6 +30,7 @@ services:
     volumes:
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/onebot_access_token:/run/secrets/onebot_access_token:ro
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/astrbot_plugin_api_key:/run/secrets/astrbot_plugin_api_key:ro
+      - ${DUDUDA_API_KEY_STORE_ROOT:-./runtime/web/api-keys}:/var/lib/dududa/api-keys:rw
       - ${STACK_DATA_ROOT:-./data}/astrbot/config:/run/dududa/astrbot-config:ro
       - ${STACK_DATA_ROOT:-./data}/astrbot/plugin_data/astrbot_plugin_dududa_core:/run/dududa/core-state:ro
     tmpfs:

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
-import { chmod, mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
+import { chmod, lstat, mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
 /**
@@ -375,7 +375,7 @@ export class FileApiKeyPoolStore implements ApiKeyPoolClient {
       const pool = this.requirePool(tier)
       const key = keyId ? this.requireKey(pool, keyId) : selectProbeKey(pool)
       const checkedAt = this.timestamp()
-      if (!key) return {
+      if (!key || !key.enabled || !key.secret) return {
         status: 'unavailable',
         message: '此 Provider 池没有可用的已启用 Key',
         latencyMs: 0,
@@ -473,6 +473,8 @@ export class FileApiKeyPoolStore implements ApiKeyPoolClient {
   private async load(): Promise<void> {
     let text: string
     try {
+      const info = await lstat(this.path)
+      if (info.isSymbolicLink() || !info.isFile()) throw new ApiKeyPoolError('API Key 存储路径必须是普通文件', 500)
       text = await readFile(this.path, 'utf8')
     } catch (error) {
       if (isMissingFile(error)) {
@@ -847,8 +849,14 @@ function applyPoolInput(pool: StoredPool, input: ApiKeyPoolUpdateInput): StoredP
   }
   if (input.displayName !== undefined) next.displayName = requiredText(input.displayName, '显示名称', 120)
   if (input.provider !== undefined) next.provider = requiredText(input.provider, 'Provider', 160)
-  if (input.providerType !== undefined) next.providerType = optionalText(input.providerType, 'Provider 类型', 120)
-  if (input.providerId !== undefined) next.providerId = optionalText(input.providerId, 'Provider ID', 160)
+  // PUT replaces pool metadata. The UI omits optional fields when an
+  // operator clears them, so absence intentionally clears the prior value.
+  next.providerType = input.providerType === undefined
+    ? undefined
+    : optionalText(input.providerType, 'Provider 类型', 120)
+  next.providerId = input.providerId === undefined
+    ? undefined
+    : optionalText(input.providerId, 'Provider ID', 160)
   if (input.baseUrl !== undefined) next.baseUrl = providerUrl(input.baseUrl)
   if (input.model !== undefined || input.modelId !== undefined) next.model = requiredText(input.model ?? input.modelId, '模型 ID', 256)
   if (input.protocol !== undefined) next.protocol = requiredText(input.protocol, '协议', 64)
@@ -950,15 +958,17 @@ function normalizePool(tier: ApiKeyTier, value: unknown, timestamp: string, idFa
 function normalizeKey(tier: ApiKeyTier, value: unknown, index: number, timestamp: string, idFactory: () => string): StoredKey | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
   const item = value as Record<string, unknown>
-  const secret = typeof item.secret === 'string' ? item.secret : ''
-  if (!secret) return undefined
+  const secret = typeof item.secret === 'string' ? item.secret.trim() : ''
   const id = safeText(item.id ?? item.keyId ?? item.key_id) || `${tier}-${idFactory()}`
+  const configuredSecretRef = safeText(item.secretRef ?? item.secret_ref)
   const enabled = typeof item.enabled === 'boolean' ? item.enabled : item.status !== 'disabled'
   return {
     id,
     name: safeText(item.name ?? item.displayName ?? item.display_name) || `Key ${index + 1}`,
     secret,
-    secretRef: safeText(item.secretRef ?? item.secret_ref) || `dududa/api-keys/${tier}/${id}`,
+    // SecretRef-only entries are valid for deployments where the concrete
+    // value is injected by AstrBot/environment rather than held by Node.
+    secretRef: configuredSecretRef || `dududa/api-keys/${tier}/${id}`,
     priority: boundedOrDefault(item.priority, 0, 0, 1_000_000),
     weight: boundedOrDefault(item.weight, 1, 1, 1_000),
     enabled,
