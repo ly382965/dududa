@@ -3,9 +3,9 @@
 <!-- treework:status:start -->
 Branch: api-key-pools
 Parent: agent-expansion
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1788428802
+Last sync: unix:1788428932
 <!-- treework:status:end -->
 
 ## Current Reality

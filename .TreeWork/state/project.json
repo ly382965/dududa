@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "real-group-validation",
+  "current_branch": "api-key-pools",
   "artifact_layout_version": 2,
-  "last_event_seq": 135,
+  "last_event_seq": 137,
   "tree_revision": 6,
   "tree_editing": null,
   "tree_hash": "fnv1a64:da0c26af09dd08b6",
-  "last_sync": "unix:1788428802"
+  "last_sync": "unix:1788456106"
 }
