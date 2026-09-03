@@ -1376,7 +1376,7 @@ class DududaCorePlugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL, priority=6)
     async def natural_place_query(self, event: AstrMessageEvent):
-        """自然语言'XX在哪/怎么去XX'拦截：调高德地图搜索。"""
+        """自然语言'XX在哪'拦截：调高德地图搜索。只回复具体地点，忽略抽象的'哪里'。"""
         blocked = self._blocked(event)
         if blocked:
             return
@@ -1385,16 +1385,11 @@ class DududaCorePlugin(Star):
             return
 
         import re as _re
+
+        # 只匹配"在哪里/在哪/在哪儿"，不匹配"怎么去"等（太宽泛）
         patterns = [
             r"(.+?)在哪里",
             r"(.+?)在哪",
-            r"怎么去(.+)",
-            r"怎么走到(.+)",
-            r"(.+?)怎么走",
-            r"(.+?)的地址",
-            r"(.+?)地址是什么",
-            r"找一下(.+)",
-            r"帮我找(.+)",
             r"(.+?)在哪儿",
         ]
         keyword = None
@@ -1406,11 +1401,50 @@ class DududaCorePlugin(Star):
         if not keyword or len(keyword) > 30:
             return
 
+        # 排除抽象/非地点的关键词
+        abstract_kw = ("假期", "未来", "人生", "世界", "爱情", "幸福", "快乐",
+                       "希望", "梦想", "远方", "灵魂", "意义", "生活", "自己",
+                       "我们", "你们", "他们", "大家", "谁", "什么", "哪",
+                       "怎么", "为什么", "为何", "到底", "究竟", "到底在哪",
+                       "我", "你", "他", "她", "它", "这", "那")
+        if keyword in abstract_kw or len(keyword) <= 1:
+            return
+
+        # 检查上下文：如果关键词本身不像是具体地名，尝试从最近消息找具体店名
+        # 如果关键词是代词或模糊词，从上下文找
+        fuzzy_kw = ("那", "这", "它", "那个", "这个", "刚才", "刚刚说的")
+        search_keyword = keyword
+        if keyword in fuzzy_kw:
+            # 从最近群消息上下文找具体地点
+            self._recent_msgs = getattr(self, "_recent_msgs", {})
+            group_id = self._group(event)
+            recent = self._recent_msgs.get(group_id or "private", [])
+            # 找最近10条里像店名的
+            place_hints = ("店", "餐厅", "食堂", "面馆", "鸡", "鸭", "粉",
+                          "面", "饭", "菜", "烤", "火锅", "奶茶", "咖啡",
+                          "超市", "楼", "馆", "院", "吧", "pub", "cafe")
+            for msg in reversed(recent[-10:]):
+                if any(h in msg for h in place_hints):
+                    search_keyword = msg[:20]
+                    break
+            if search_keyword == keyword:
+                return  # 上下文也没找到具体地点，不回复
+
+        # 只给一个链接，简洁回复
         try:
-            result = await self.local_recs.call("search_place", {"keyword": keyword})
+            result = await self.local_recs.call("search_place", {"keyword": search_keyword})
             if not result.get("ok") or not result.get("results"):
                 return
-            yield event.plain_result(format_place_search(result))
+            first = result["results"][0]
+            name = first.get("name", "")
+            address = first.get("address", "")
+            map_link = first.get("map_link", "")
+            reply_parts = [f"{name}"]
+            if address:
+                reply_parts.append(address)
+            if map_link:
+                reply_parts.append(map_link)
+            yield event.plain_result("\n".join(reply_parts))
             event.stop_event()
         except Exception as exc:
             logger.warning("Place query failed: %s", exc)
@@ -2419,63 +2453,62 @@ class DududaCorePlugin(Star):
         )
         event.stop_event()
 
-    # ==================== CP检测器 ====================
-
-    @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
-    async def cp_detector(self, event: AstrMessageEvent):
-        """统计两个人连续聊天互动，偶尔调侃。"""
-        group_id = self._group(event)
-        if not group_id:
-            return
-        if self._blocked(event):
-            return
-
-        sender = self._sender(event)
-        text = (event.message_str or "").strip()
-        if not text or text.startswith("/"):
-            return
-        if len(text) < 2:
-            return
-
-        now = time.time()
-        self._cp_last_msg = getattr(self, "_cp_last_msg", {})
-        last = self._cp_last_msg.get(group_id)
-
-        self._cp_last_msg[group_id] = {"uid": sender, "ts": now}
-
-        if not last:
-            return
-        # 超过5分钟不算连续对话
-        if now - last.get("ts", 0) > 300:
-            return
-
-        prev_sender = last.get("uid", "")
-        if not prev_sender or prev_sender == sender:
-            return
-
-        # 两个人连续发消息 = 一次互动
-        rec = self._group_record(event)
-        cp_data: dict[str, int] = rec.get("cp_interactions", {})
-        pair = tuple(sorted([prev_sender, sender]))
-        pair_key = f"{pair[0]}_{pair[1]}"
-        cp_data[pair_key] = cp_data.get(pair_key, 0) + 1
-        rec["cp_interactions"] = cp_data
-        self._save_group_state()
-
-        # 每3次连续互动调侃一次
-        count = cp_data[pair_key]
-        if count % 3 == 0 and count >= 3:
-            import random as _r
-            teases = [
-                f"我注意到 {pair[0]} 和 {pair[1]} 聊了好久了，什么情况呀～",
-                f"{pair[0]} 和 {pair[1]} 的互动次数达到 {count} 了，群里的CP粉开始站队了！",
-                f"统计显示 {pair[0]} 和 {pair[1]} 已经聊了 {count} 轮了，这是要修成正果的节奏？",
-                f"{count} 轮互动！{pair[0]} 和 {pair[1]} 你们是不是该请群友吃顿饭了？",
-            ]
-            yield event.plain_result(_r.choice(teases))
-            event.stop_event()
-            return
-        # 不调侃时不停事件，让其他handler继续处理
+    # ==================== CP检测器（已关闭） ====================
+    # @filter.event_message_type(filter.EventMessageType.ALL, priority=1)
+    # async def cp_detector(self, event: AstrMessageEvent):
+    #     """统计两个人连续聊天互动，偶尔调侃。"""
+    #     group_id = self._group(event)
+    #     if not group_id:
+    #         return
+    #     if self._blocked(event):
+    #         return
+    #
+    #     sender = self._sender(event)
+    #     text = (event.message_str or "").strip()
+    #     if not text or text.startswith("/"):
+    #         return
+    #     if len(text) < 2:
+    #         return
+    #
+    #     now = time.time()
+    #     self._cp_last_msg = getattr(self, "_cp_last_msg", {})
+    #     last = self._cp_last_msg.get(group_id)
+    #
+    #     self._cp_last_msg[group_id] = {"uid": sender, "ts": now}
+    #
+    #     if not last:
+    #         return
+    #     # 超过5分钟不算连续对话
+    #     if now - last.get("ts", 0) > 300:
+    #         return
+    #
+    #     prev_sender = last.get("uid", "")
+    #     if not prev_sender or prev_sender == sender:
+    #         return
+    #
+    #     # 两个人连续发消息 = 一次互动
+    #     rec = self._group_record(event)
+    #     cp_data: dict[str, int] = rec.get("cp_interactions", {})
+    #     pair = tuple(sorted([prev_sender, sender]))
+    #     pair_key = f"{pair[0]}_{pair[1]}"
+    #     cp_data[pair_key] = cp_data.get(pair_key, 0) + 1
+    #     rec["cp_interactions"] = cp_data
+    #     self._save_group_state()
+    #
+    #     # 每3次连续互动调侃一次
+    #     count = cp_data[pair_key]
+    #     if count % 3 == 0 and count >= 3:
+    #         import random as _r
+    #         teases = [
+    #             f"我注意到 {pair[0]} 和 {pair[1]} 聊了好久了，什么情况呀～",
+    #             f"{pair[0]} 和 {pair[1]} 的互动次数达到 {count} 了，群里的CP粉开始站队了！",
+    #             f"统计显示 {pair[0]} 和 {pair[1]} 已经聊了 {count} 轮了，这是要修成正果的节奏？",
+    #             f"{count} 轮互动！{pair[0]} 和 {pair[1]} 你们是不是该请群友吃顿饭了？",
+    #         ]
+    #         yield event.plain_result(_r.choice(teases))
+    #         event.stop_event()
+    #         return
+    #     # 不调侃时不停事件，让其他handler继续处理
 
     @filter.command("cp")
     async def cp_rank(self, event: AstrMessageEvent):
