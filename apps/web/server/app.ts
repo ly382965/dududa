@@ -49,6 +49,15 @@ import {
   UnavailablePluginManagerClient,
   type PluginManagerClient,
 } from './plugin-manager'
+import {
+  ApiKeyPoolError,
+  FileApiKeyPoolStore,
+  isApiKeyTier,
+  sanitizeApiKeyMutation,
+  sanitizeApiKeySnapshot,
+  sanitizeApiKeyTestResult,
+  type ApiKeyPoolClient,
+} from './model-keys'
 import { readBrowserUpload } from './uploads'
 
 export interface DududaServerOptions {
@@ -60,6 +69,9 @@ export interface DududaServerOptions {
   mcpConsole?: McpConsoleClient
   pluginManager?: PluginManagerClient
   runtimePreview?: DududaRuntimePreviewClient
+  /** Server-side provider credential pool.  `modelKeys` is a compatibility alias. */
+  apiKeyPool?: ApiKeyPoolClient
+  modelKeys?: ApiKeyPoolClient
   maxRequestBytes?: number
 }
 
@@ -128,6 +140,10 @@ function routeError(response: ServerResponse, error: unknown): void {
     json(response, error.status, { error: error.message })
     return
   }
+  if (error instanceof ApiKeyPoolError) {
+    json(response, error.status, { error: error.message })
+    return
+  }
   const message = error instanceof Error ? error.message : '请求失败'
   const status = /未连接|连接已断开/.test(message)
     ? 503
@@ -143,6 +159,17 @@ function routeError(response: ServerResponse, error: unknown): void {
         ? 400
         : 502
   json(response, status, { error: message })
+}
+
+async function apiKeyCall<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation()
+  } catch (error) {
+    if (error instanceof ApiKeyPoolError) throw error
+    // Third-party adapters must not be able to put an upstream exception (and
+    // possibly a credential) into the browser-facing error body.
+    throw new ApiKeyPoolError('API Key 操作失败', 502)
+  }
 }
 
 function operatorSession(request: IncomingMessage): string {
@@ -427,6 +454,9 @@ export function createDududaServer(options: DududaServerOptions) {
   const internalTest = options.internalTest ?? createInternalTestGateway(process.env, options.runtimePreview)
   const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
   const pluginManager = options.pluginManager ?? new UnavailablePluginManagerClient()
+  const apiKeyPool = options.apiKeyPool
+    ?? options.modelKeys
+    ?? new FileApiKeyPoolStore()
   const eventClients = new Set<ServerResponse>()
   const eventReplay: ReplayableWorkspaceEvent[] = []
   let nextWorkspaceEventId = 1
@@ -455,6 +485,89 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       if (method === 'GET' && url.pathname === '/api/health') {
         json(response, 200, options.hub.runtimeStatus())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/api-keys') {
+        json(response, 200, sanitizeApiKeySnapshot(await apiKeyPool.list()))
+        return
+      }
+      const apiKeyPoolRoute = /^\/api\/api-keys\/pools\/([^/]+)$/.exec(url.pathname)
+      if (method === 'PUT' && apiKeyPoolRoute) {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源管理员页面修改 API Key 池' })
+          return
+        }
+        const tier = decodeURIComponent(apiKeyPoolRoute[1]!)
+        if (!isApiKeyTier(tier)) {
+          json(response, 400, { error: 'API Key tier 无效' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        json(response, 200, sanitizeApiKeyMutation(await apiKeyCall(() => apiKeyPool.updatePool(tier, body))))
+        return
+      }
+      const apiKeyCreateRoute = /^\/api\/api-keys\/pools\/([^/]+)\/keys$/.exec(url.pathname)
+      if (method === 'POST' && apiKeyCreateRoute) {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源管理员页面登记 API Key' })
+          return
+        }
+        const tier = decodeURIComponent(apiKeyCreateRoute[1]!)
+        if (!isApiKeyTier(tier)) {
+          json(response, 400, { error: 'API Key tier 无效' })
+          return
+        }
+        // The create endpoint is the only route that accepts a new raw secret.
+        const body = await readJson(request, maxRequestBytes)
+        json(response, 201, sanitizeApiKeyMutation(await apiKeyCall(() => apiKeyPool.createKey(tier, body))))
+        return
+      }
+      const apiKeyKeyRoute = /^\/api\/api-keys\/pools\/([^/]+)\/keys\/([^/]+)$/.exec(url.pathname)
+      if ((method === 'PUT' || method === 'DELETE') && apiKeyKeyRoute) {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源管理员页面修改 API Key' })
+          return
+        }
+        const tier = decodeURIComponent(apiKeyKeyRoute[1]!)
+        const keyId = decodeURIComponent(apiKeyKeyRoute[2]!)
+        if (!isApiKeyTier(tier)) {
+          json(response, 400, { error: 'API Key tier 无效' })
+          return
+        }
+        if (method === 'PUT') {
+          // A missing or empty secret means “keep the existing secret” for a
+          // replacement.  The store owns that rule and never echoes it.
+          const body = await readJson(request, maxRequestBytes)
+          json(response, 200, sanitizeApiKeyMutation(await apiKeyCall(() => apiKeyPool.updateKey(tier, keyId, body))))
+        } else {
+          const body = await readJson(request, maxRequestBytes)
+          const mode = body.disable === true || url.searchParams.get('mode') === 'disable' ? 'disable' : 'remove'
+          json(response, 200, sanitizeApiKeyMutation(await apiKeyCall(() => apiKeyPool.deleteKey(tier, keyId, mode))))
+        }
+        return
+      }
+      const apiKeyTestRoute = /^\/api\/api-keys\/pools\/([^/]+)\/test$/.exec(url.pathname)
+      if (method === 'POST' && apiKeyTestRoute) {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源管理员页面探测 Provider' })
+          return
+        }
+        const tier = decodeURIComponent(apiKeyTestRoute[1]!)
+        if (!isApiKeyTier(tier)) {
+          json(response, 400, { error: 'API Key tier 无效' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        if (Object.prototype.hasOwnProperty.call(body, 'secret')) {
+          json(response, 400, { error: 'Provider 探测请求不接受明文密钥' })
+          return
+        }
+        const keyId = body.keyId === undefined ? undefined : body.keyId
+        if (keyId !== undefined && typeof keyId !== 'string') {
+          json(response, 400, { error: 'Provider 探测 Key 标识无效' })
+          return
+        }
+        json(response, 200, sanitizeApiKeyTestResult(await apiKeyCall(() => apiKeyPool.testPool(tier, keyId as string | undefined))))
         return
       }
       if (method === 'GET' && url.pathname === '/api/internal-test/status') {
