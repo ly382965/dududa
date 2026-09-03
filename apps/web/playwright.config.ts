@@ -22,6 +22,7 @@ export default defineConfig({
       VITE_PORT: '4174',
       DUDUDA_WEB_INTERNAL_PORT: '8180',
       DUDUDA_ONEBOT_TOKEN: 'playwright-only-onebot-token-32-chars',
+      DUDUDA_API_KEY_STORE_PATH: '/tmp/dududa-playwright-api-keys.json',
     },
   },
 })

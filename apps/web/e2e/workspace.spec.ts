@@ -177,11 +177,29 @@ test('desktop operator reads and sends through the NapCat action channel', async
   const composer = page.getByLabel('QQ 消息输入')
   await composer.fill('真实发送链路测试')
   await composer.press('Enter')
-  await expect(page.getByText('真实发送链路测试', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('聊天消息').getByText('真实发送链路测试', { exact: true })).toBeVisible()
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   expect(overflow).toBeLessThanOrEqual(0)
   if (process.env.DUDUDA_CAPTURE_SCREENSHOTS === '1') await page.screenshot({ path: '/tmp/dududa-chat-desktop.png' })
+})
+
+test('API Key workbench loads all three pools through the default browser adapter', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.stack || error.message))
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/')
+
+  const listed = page.waitForResponse((response) => response.url().endsWith('/api/api-keys'))
+  await page.getByRole('button', { name: 'API Key 池' }).click()
+  expect((await listed).ok()).toBe(true)
+  await expect(page.getByRole('heading', { name: 'API Key 池' })).toBeVisible()
+  await expect(page.locator('.pool-card')).toHaveCount(3)
+  await expect(page.getByText('API Key 管理接口不可用')).toHaveCount(0)
+  expect(pageErrors).toEqual([])
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+  if (process.env.DUDUDA_CAPTURE_SCREENSHOTS === '1') await page.screenshot({ path: '/tmp/dududa-api-key-pools.png', fullPage: true })
 })
 
 test('mobile navigation keeps real QQ chat separate from the unavailable Agent runtime', async ({ page }) => {
@@ -318,6 +336,11 @@ test('mobile management routes remain usable in portrait and short landscape vie
   await expect(page.getByRole('heading', { name: '通知' })).toBeVisible()
   await page.getByRole('tablist', { name: '通知类型' }).getByRole('button', { name: /群通知/ }).click()
   await expect(page.getByText(/真实入群申请/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Key 池', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'API Key 池' })).toBeVisible()
+  await expect(page.locator('.pool-card')).toHaveCount(3)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
 
   await page.getByRole('button', { name: '设置', exact: true }).click()
   await expect(page.getByRole('heading', { name: '设置' })).toBeVisible()

@@ -20,12 +20,14 @@ The page is reachable at `/api-keys` and has one pool for each logical tier:
 | `sonnet` | Terra / 标准推理 | tool-backed and medium-complexity work |
 | `opus` | Sol / 深度推理 | high-complexity or long-context work |
 
-Each pool contains Provider identity, OpenAI-compatible protocol settings,
-model ID, reasoning effort, timeout, output budget, enabled state, scheduling
-mode and a list of independently enabled key entries. A key entry has a stable
-ID, display name, SecretRef, priority/weight and operational state. The pool is
-the legal credential set for its tier; it is not a replacement for the Core
-`TierPolicy`, endpoint admission, health or rollout controls.
+Each pool contains Provider identity, supported protocol settings (OpenAI Chat
+Completions or Anthropic Messages), model ID, reasoning effort, timeout, output
+budget, enabled state, scheduling mode and a list of independently enabled key
+entries. A key entry has a stable ID, display name, SecretRef, priority/weight
+and operational state. The pool is the legal credential set for its tier; it is
+not a replacement for the Core `TierPolicy`, endpoint admission, health or
+rollout controls. Reasoning, budget, scheduling and weight are staging metadata
+until a deployment explicitly consumes them.
 
 The UI follows established AstrBot/Sub2API conventions: source/provider split,
 multiple keys, priority and health/failure state, explicit Base URL and model,
@@ -66,19 +68,21 @@ route that returns a raw key.
 
 ## Runtime Compatibility
 
-Pool metadata maps to the existing `runtime_models_json` tier descriptors and
-AstrBot `provider_sources[].key` list through deployment composition. A pool
-can be empty or unavailable without changing the deterministic tier decision;
-the Runtime reports provider-unavailable and uses its existing fallback/legacy
-behavior. Key rotation and scheduling are provider-credential concerns only;
-they cannot widen capabilities, change answer profile, select a cross-tier
-endpoint or grant delivery.
+The deployment adapter can map validated pool metadata to AstrBot
+`provider_sources[].key` and Provider records after separately checking the
+existing `runtime_models_json` descriptors and conformance evidence. This
+branch does not register a live reload hook. A pool can be empty or unavailable
+without changing the deterministic tier decision; the Runtime keeps its
+existing provider-unavailable/fallback behavior. Key rotation and scheduling
+are provider-credential concerns only; they cannot widen capabilities, change
+answer profile, select a cross-tier endpoint or grant delivery.
 
 ## Verification
 
-Focused tests cover schema validation, three-pool isolation, atomic persistence,
-masked GET responses, omitted-secret rotation semantics, same-origin writes,
-invalid tier/key rejection, bounded test results and absence of secret values
-from responses/log-shaped errors. Web tests cover navigation, CRUD states,
-mobile layout and accessible controls. Existing Runtime/Control Plane tests
-remain authoritative and are not duplicated by a broad new gate.
+Focused tests cover schema validation, three-pool isolation, transactional
+atomic persistence, private-mode loading, masked GET responses, omitted-secret
+rotation semantics, same-origin writes, invalid tier/key rejection, bounded
+test results and absence of secret values from responses/log-shaped errors.
+Web tests cover navigation, CRUD states, mobile layout and accessible controls.
+Existing Runtime/Control Plane tests remain authoritative and are not
+duplicated by a broad new gate.

@@ -16,6 +16,7 @@ services:
       DUDUDA_WEB_INTERNAL_PORT: 8000
       DUDUDA_WEB_PUBLIC_ORIGIN: ${DUDUDA_WEB_PUBLIC_ORIGIN:-}
       DUDUDA_ONEBOT_TOKEN_FILE: /run/secrets/onebot_access_token
+      DUDUDA_API_KEY_STORE_PATH: /var/lib/dududa/api-keys/api-keys.json
       DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
       DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1
       DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE: /run/secrets/astrbot_plugin_api_key
@@ -29,6 +30,7 @@ services:
     volumes:
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/onebot_access_token:/run/secrets/onebot_access_token:ro
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/astrbot_plugin_api_key:/run/secrets/astrbot_plugin_api_key:ro
+      - ${DUDUDA_API_KEY_STORE_ROOT:-../dududa-state/api-keys}:/var/lib/dududa/api-keys:rw
       - ${STACK_DATA_ROOT:-./data}/astrbot/config:/run/dududa/astrbot-config:ro
       - ${STACK_DATA_ROOT:-./data}/astrbot/plugin_data/astrbot_plugin_dududa_core:/run/dududa/core-state:ro
     tmpfs:
@@ -115,6 +117,7 @@ services:
       NOTIFAI_API_BASE_URL: ${NOTIFAI_API_BASE_URL:-https://notifai-api.enthusjast.cc/api}
       NOTIFAI_API_TIMEOUT_SECONDS: ${NOTIFAI_API_TIMEOUT_SECONDS:-15}
       NOTIFAI_MAX_ITEMS: ${NOTIFAI_MAX_ITEMS:-100}
+      DUDUDA_API_KEY_STORE_PATH: /run/dududa/api-keys/api-keys.json
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
@@ -134,6 +137,7 @@ services:
       - ./configs:/opt/dududa/config:ro
       - ./ops/cli:/opt/dududa/scripts:ro
       - ${USTC_CAS_CREDENTIALS_FILE_HOST:-${HOME}/Code/ustc-catalog-crawler/credentials.toml}:/run/secrets/ustc-cas.toml:ro
+      - ${DUDUDA_API_KEY_STORE_ROOT:-../dududa-state/api-keys}:/run/dududa/api-keys:ro
       - /etc/localtime:/etc/localtime:ro
     networks:
       bot_net:

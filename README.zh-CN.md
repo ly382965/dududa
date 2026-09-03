@@ -144,7 +144,12 @@ chmod 600 .env
 - NapCat：`http://127.0.0.1:6099`
 
 `./manage.sh up` 会构建完整本地栈，可能重建本地 AstrBot/Web 服务；不会把凭据或 QQ 登录态写进 Git。
-NapCat 需要单独完成登录。只测试仓库自有 2.0 资产时使用：
+NapCat 需要单独完成登录。示例 API Key Store 会解析到 checkout 同级的
+`../dududa-state/api-keys`；启动前可用 `./manage.sh api-key-store-path` 校验自定义
+路径。该凭据文件不进入普通 `backup/restore`，恢复时需从 Secret Manager 重新
+注入并轮换上游 Provider Key，详见部署文档。
+
+只测试仓库自有 2.0 资产时使用：
 
 ```bash
 python ops/cli/install_plugins.py --plugins-root ./runtime/astrbot-plugins --owned-only
@@ -193,6 +198,8 @@ S20 只提供离线 Bandit 决策/反馈契约和合成 IPS、SNIPS、DR 评估�
 - [模型路由](docs/design/model-routing.md)
 - [Capability 与 MCP 设计](docs/design/capability-and-mcp.md)
 - [Bot Control Plane](docs/design/bot-control-plane.md)
+- [API Key Pool 与 AstrBot 同步边界](docs/development/api-key-pool-runtime-sync.md)
+- [部署与凭据恢复](docs/operations/deployment.md)
 - [PR #10 选择性整合报告](docs/integrations/pr10-selective-integration.md)
 - [本地开发环境](docs/development/local-environment.md)
 - [English README](README.md)

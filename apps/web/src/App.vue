@@ -17,6 +17,7 @@ import ContactsView from './views/ContactsView.vue'
 import ControlPlaneView from './views/ControlPlaneView.vue'
 import InternalTestView from './views/InternalTestView.vue'
 import NotificationsView from './views/NotificationsView.vue'
+import ApiKeyPoolsView from './views/ApiKeyPoolsView.vue'
 import SettingsView from './views/SettingsView.vue'
 
 const route = useRoute()
@@ -29,9 +30,9 @@ const directoryStore = useQqDirectoryStore()
 const actingAccountId = ref('')
 const managedGroupId = ref('')
 const managedGroupAccountId = ref('')
-type WorkspaceRoute = 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'settings'
+type WorkspaceRoute = 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'api-keys' | 'settings'
 const activeRoute = computed<WorkspaceRoute>(() =>
-  route.meta.section === 'contacts' || route.meta.section === 'notifications' || route.meta.section === 'control-plane' || route.meta.section === 'internal-test' || route.meta.section === 'settings'
+  route.meta.section === 'contacts' || route.meta.section === 'notifications' || route.meta.section === 'control-plane' || route.meta.section === 'internal-test' || route.meta.section === 'api-keys' || route.meta.section === 'settings'
     ? route.meta.section
     : 'chat',
 )
@@ -98,7 +99,7 @@ function resolveActingAccount(): void {
 }
 
 function navigate(target: WorkspaceRoute): void {
-  if (target !== 'chat' && target !== 'internal-test') resolveActingAccount()
+  if (target !== 'chat' && target !== 'internal-test' && target !== 'api-keys') resolveActingAccount()
   if (target === 'chat') workspace.mobilePanel.value = 'inbox'
   void router.push({ name: target })
 }
@@ -281,14 +282,14 @@ watch(
 </script>
 
 <template>
-  <div v-if="workspace.loading.value && activeRoute !== 'internal-test'" class="startup-screen">
+  <div v-if="workspace.loading.value && activeRoute !== 'internal-test' && activeRoute !== 'api-keys'" class="startup-screen">
     <span class="startup-logo"><Bot :size="25" /></span>
     <LoaderCircle class="startup-spinner" :size="18" />
     <strong>嘟嘟哒工作台</strong>
   </div>
 
   <ConnectionScreen
-    v-else-if="activeRoute !== 'internal-test' && (workspace.connectionError.value || !workspace.accounts.value.length)"
+    v-else-if="activeRoute !== 'internal-test' && activeRoute !== 'api-keys' && (workspace.connectionError.value || !workspace.accounts.value.length)"
     :runtime="workspace.runtime.value"
     :error="workspace.connectionError.value"
     :theme="workspace.resolvedTheme.value"
@@ -386,13 +387,17 @@ watch(
 
     <section v-else class="management-panel">
       <ManagementAccountBar
-        v-if="activeRoute !== 'internal-test'"
+        v-if="activeRoute !== 'internal-test' && activeRoute !== 'api-keys'"
         :accounts="workspace.accounts.value"
         :account-id="actingAccountId"
         @select="selectManagementAccount"
       />
       <InternalTestView
         v-if="activeRoute === 'internal-test'"
+      />
+      <ApiKeyPoolsView
+        v-else-if="activeRoute === 'api-keys'"
+        @notify="workspace.notify"
       />
       <ContactsView
         v-else-if="activeRoute === 'contacts'"

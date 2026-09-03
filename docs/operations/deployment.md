@@ -234,9 +234,25 @@ STACK_DATA_ROOT/
 │   ├── staging/
 │   └── state.json
 └── backups/
+
+DUDUDA_API_KEY_STORE_ROOT/       # 必须位于 checkout 外
+└── api-keys.json                # UID 1000，0600；父目录 0700
 ```
 
 `.dududa` 和 `backups` 均为私有运行数据，必须加入 Git 和构建上下文排除规则。部署日志默认脱敏，不输出 QQ 标识列表、Token、Cookie、Provider Key 或完整 `.env`。
+
+API Key Store 默认是独立于 `STACK_DATA_ROOT` 的凭据根，标准
+`./manage.sh backup/restore` 不会自动收录它。这是有意的明文凭据边界：不要为了
+“完整备份”把原始 Provider Key 复制进普通备份集。灾难恢复时应：
+
+1. 在持久卷上重新创建仓库外目录，归属 UID 1000、模式 `0700`；
+2. 从部署侧 Secret Manager 或 `/api-keys` 管理页重新注入凭据，将文件保持为
+   `0600`，再运行 `./manage.sh api-key-store-path` 和启动 preflight；
+3. 在上游 Provider 轮换所有可能随旧主机丢失或暴露的 Key，并重新执行受控
+   AstrBot Provider 重载验证。
+
+如组织要求保留凭据备份，必须使用仓库外的专用加密 Secret 备份流程及独立访问
+审计；当前 S16 backup manifest 不对此作恢复性声明。
 
 当前 NapCat 共享挂载整个 AstrBot 数据目录。收窄前必须确认 `MODE=astrbot` 的最低文件契约并建立联调测试。没有证据前不得直接删挂载；确认后应按最小权限拆为专用集成配置。
 
