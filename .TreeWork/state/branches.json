@@ -749,19 +749,19 @@
       "title": "Three-Tier LLM API Key Pools",
       "purpose": "Add an independent Web credential workbench and server-side SecretRef-backed pools for the three Dududa reasoning tiers without changing tier policy, Runtime authority or existing Provider contracts.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/api-key-pools",
         "git_branch": "treework/api-key-pools",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788428932",
         "last_entered_at": "unix:1788428932",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788456106"
+      "last_sync": "unix:1788456356"
     },
     {
       "path": "real-group-validation",
