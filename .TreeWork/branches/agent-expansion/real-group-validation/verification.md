@@ -2,6 +2,52 @@
 
 Branch: real-group-validation
 
+## 2026-09-03 100-Question Runtime Simulation
+
+- Fixture contract: `tests/test_dududa_100_message_benchmark.py` passed 6 tests;
+  questions are non-empty, unique and numbered 1--100.  The fixture includes
+  explicit expected action/tool/outcome fields for the observed boundary and
+  Capability-failure cases.
+- Full command:
+  `uv run --locked python ops/cli/run_dududa_100_message_benchmark.py --json-output /tmp/dududa-100-runtime-final.json --report-output docs/refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`.
+- Result: 100/100 cases, 94 `canary_completed`, 6 intentional `legacy`, 187
+  scripted model calls (94 Perception/93 Direct Chat), 53 MCP calls, 693
+  schema discoveries, 11 local Builtin Shuttle plans, 94 Fake Deliveries,
+  0 real QQ sends, 0 Memory writes, 0 uncaught exceptions. Action, Runtime
+  outcome, Tool count/name, Delivery, optional-PR10, duplicate-replay and
+  one-step-plan invariants all reported 0 mismatches/violations. Cross-provider
+  boundary cases remain bounded to at most one selected provider; the report
+  records the deterministic candidate when a rule category wins. “一次业务调用”
+  refers to the bounded Planner step; transport-level retry remains governed by
+  each Server definition and was not triggered by this fixture.
+- Focused regression command:
+  `PYTHONPATH=packages/dududa-agent/src:apps/astrbot-plugins uv run --with pytest pytest -q tests/test_production_source_guards.py tests/test_dududa_100_message_benchmark.py tests/contracts/test_astrbot_connector.py tests/unit/runtime/test_tool_runtime.py tests/unit/runtime/test_capabilities.py`.
+  Result: 34 passed, 18 subtests passed. The verified-failure tests also cover
+  final-composition rejection, while tampered/oversized/cancelled paths remain
+  no-delivery; the source guards cover cross-group Reply rejection and the
+  intent-only NotifAI category filter.
+- Extended Runtime state/orchestrator regression:
+  `PYTHONPATH=packages/dududa-agent/src:apps/astrbot-plugins uv run --with pytest
+  pytest -q tests/contracts/test_astrbot_connector.py
+  tests/unit/runtime/test_tool_runtime.py tests/unit/runtime/test_capabilities.py
+  tests/unit/runtime/test_orchestrator.py tests/unit/runtime/test_state.py` —
+  44 passed and 5 subtests passed.
+- Evidence boundary: the runner is no-send and uses scripted model semantics,
+  local schema-accurate MCP results and an in-memory Output Adapter.  It does
+  not establish real Provider quality, live source freshness, NapCat/QQ
+  delivery or production concurrency ordering.
+- Production composition regression after updating stale Hybrid-path
+  expectations: `PYTHONPATH=packages/dududa-agent/src:apps/astrbot-plugins uv run
+  --with pytest pytest -q tests/contracts/test_production_composition.py` —
+  30 tests and 159 subtests passed.  The two shadow assertions now account for
+  the intentional Perception + Direct Chat pair and still verify no extra call
+  after health evidence expires.
+- Static checks after the final report/template update: changed-file `ruff --select F,I`,
+  `git diff --check`, `uv lock --check`, `uv run --locked python -m compileall
+  -q packages apps services ops tests`, and `uv run --locked python
+  ops/cli/check_secrets.py` all passed. The repository safety scan reported
+  1,214 files and no secret finding.
+
 ## Latest Verification
 
 - 2026-08-31 主动搭话 Social 修复：旧策略最小复现准确返回

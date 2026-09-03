@@ -758,11 +758,11 @@
         "git_branch": "treework/real-group-validation",
         "managed_by_treework": true,
         "created_at": "unix:1786381821",
-        "last_entered_at": "unix:1786381821",
-        "last_status": "created managed worktree"
+        "last_entered_at": "unix:1788403825",
+        "last_status": "reused existing worktree"
       },
-      "status_reason": "Offline S23 readiness is committed; live Preflight and the single-group ladder await the authorization, SecretRef, Endpoint, source and deployment packet.",
-      "last_sync": "unix:1788348291"
+      "status_reason": "100-question no-send Runtime simulation and required fixes are committed; S23 live QQ/NapCat and authorization-dependent gates remain open",
+      "last_sync": "unix:1788422628"
     }
   ]
 }

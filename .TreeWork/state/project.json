@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "pr10-selective-integration",
+  "current_branch": "real-group-validation",
   "artifact_layout_version": 2,
-  "last_event_seq": 130,
+  "last_event_seq": 133,
   "tree_revision": 5,
   "tree_editing": null,
   "tree_hash": "fnv1a64:77602dbbd22d2bd7",
-  "last_sync": "unix:1788367927"
+  "last_sync": "unix:1788422628"
 }
