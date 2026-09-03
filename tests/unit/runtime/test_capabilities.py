@@ -13,7 +13,7 @@ from dududa.capabilities.retrieval import DeterministicCapabilityRetriever
 from dududa.capabilities.runtime import DeterministicBoundedCapabilityRuntime
 from dududa.capabilities.validation import DeterministicToolResultValidator
 from dududa.domain.primitives import Outcome, PrivacyLevel, ResourceUsage, RuntimeBudget
-from dududa.runtime.budget import RuntimeToolBudgetPlan
+from dududa.runtime.budget import RuntimeModelBudgetPlan, RuntimeToolBudgetPlan
 from dududa.runtime.context import CurrentMessageContextBuilder
 from dududa.runtime.state import RuntimePhase
 
@@ -102,9 +102,37 @@ def _initial_budget(*, tool_cost: Decimal = Decimal(10)) -> RuntimeBudget:
         model_calls_remaining=2,
         tool_steps_remaining=4,
         retries_remaining=6,
-        input_tokens_remaining=4_000,
+        # The validated tool projection is included in the direct-chat input
+        # estimate.  Keep enough headroom for that projection in this fixture;
+        # production budgets are configured independently by composition.
+        input_tokens_remaining=5_000,
         output_tokens_remaining=700,
         cost_units_remaining=Decimal(4) + tool_cost,
+    )
+
+
+def _model_budget() -> RuntimeModelBudgetPlan:
+    """Budget reservations large enough for the fixture's tool projection."""
+
+    return RuntimeModelBudgetPlan(
+        schema_version=1,
+        perception_reservation=ResourceUsage(
+            schema_version=1,
+            model_calls=1,
+            retries=1,
+            input_tokens=1_000,
+            output_tokens=200,
+            cost_units=Decimal(1),
+        ),
+        direct_chat_reservation=ResourceUsage(
+            schema_version=1,
+            model_calls=1,
+            retries=1,
+            input_tokens=4_000,
+            output_tokens=500,
+            cost_units=Decimal(3),
+        ),
+        revision=revision("runtime-model-budget"),
     )
 
 
@@ -143,6 +171,7 @@ class OfflineRuntimeCapabilityTests(unittest.IsolatedAsyncioTestCase):
         fixture = OrchestratorFixture(
             perception_transform=_require_course_tool,
             context_builder=_public_context_builder(),
+            budget_plan=_model_budget(),
             tool_budget_plan=_tool_budget(cost=tool_cost),
             initial_budget=_initial_budget(tool_cost=tool_cost),
             capability_runtime=runtime,
@@ -262,7 +291,12 @@ class OfflineRuntimeCapabilityTests(unittest.IsolatedAsyncioTestCase):
         )
         checkpoint = await failed.store.load(failed_call.run_id, call=failed_call)
         self.assertIs(failed_result.outcome, Outcome.FAILED)
-        self.assertIsNone(failed_result.delivery_request)
+        # A verified provider failure is rendered as a bounded unavailable
+        # response and handed to the normal delivery authorization path.  It
+        # must not fall back to another model call, but it should still give
+        # the user a deterministic answer.
+        self.assertIsNotNone(failed_result.delivery_request)
+        self.assertIsNotNone(failed_result.final_response)
         self.assertEqual(failed_runtime.calls, 1)
         self.assertGreaterEqual(len(failed_capability.provider.requests), 1)
         self.assertEqual(failed.router.calls, 0)
@@ -285,6 +319,8 @@ class OfflineRuntimeCapabilityTests(unittest.IsolatedAsyncioTestCase):
         checkpoint = await fixture.store.load(call.run_id, call=call)
 
         self.assertIs(result.outcome, Outcome.FAILED)
+        self.assertIsNotNone(result.delivery_request)
+        self.assertIsNotNone(result.final_response)
         self.assertEqual(runtime.calls, 1)
         self.assertEqual(len(capability.provider.requests), 1)
         self.assertEqual(fixture.router.calls, 0)

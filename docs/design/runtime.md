@@ -1577,7 +1577,7 @@ AstrBot 兼容面按 Dududa 2.0 默认路径与历史迁移材料区分：
 | Runtime State/Orchestrator | S10 已实现显式 @ 闭环；S23 又闭合一条默认关闭的 iCourse 单步 Tool 路径 | 运行中部署、Memory/Attachment、其他 Tool Schema 和主动出站未闭合 |
 | Context Builder | S09/S10 有界当前消息 Context 已实现 | 可信多轮、附件与生产 Memory 接入未完成 |
 | Perception/Social Decision | S09 契约与策略已实现；S23 Production 使用 Luna/Haiku Hybrid Perception | 真实数据校准、近期群聊、多轮和附件证据仍缺 |
-| Tool Runtime | iCourse、二课、培养方案研究、教务与本地校车插件已通过确定性单步 Planner 执行；教务开课/考试在单次 MCP 调用内解析学期 | 通用失败答复和真实 QQ 验收未完成 |
+| Tool Runtime | iCourse、NotifAI、二课、培养方案研究、教务与本地校车插件已通过确定性单步 Planner 执行；教务开课/考试在单次 MCP 调用内解析学期；可信 Capability 失败沿 Composer/Persona/Final Validator/Delivery 生成固定不可用答复 | 真实 QQ 验收、近期多轮 Context 和生产 Memory 仍未完成 |
 | Response Composer/Persona | S15 已实现 ResponsePlan、typed 资产、generation-bound Persona 和 Validator；S23 Tool Observation 已进入 DirectChat/Persona 单次输出 | 多 Persona 产品资产和人工中文风格 Eval |
 | Trace/Rollout | S10 receipt 与 S11 脱敏指标/持久 claim 已实现 | 后续模块、真实 SLO 和最终授权证据 |
 | Proactive Orchestrator | S15A-S15E 离线 no-send 链已实现 | 真实 Source/Projection/Output 与授权发送未实现 |

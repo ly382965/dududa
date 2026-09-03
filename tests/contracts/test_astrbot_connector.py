@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+import unittest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
-import unittest
 
+from astrbot_plugin_dududa_core.adapters.message import AstrBotInputConnector
 from dududa.adapters.attachments import InMemoryAttachmentRepository
 from dududa.domain.primitives import ConversationType, RuntimeBudget, TraceContext
 from dududa.errors import DududaError
 from dududa.ports.context import NeverCancelled, ServiceCallContext, ServicePrincipal
-from astrbot_plugin_dududa_core.adapters.message import AstrBotInputConnector
 
 
 class Reply:
-    def __init__(self, message_id: str) -> None:
+    def __init__(self, message_id: str, group_id: str | None = None) -> None:
         self.id = message_id
+        self.group_id = group_id
 
 
 class At:
@@ -154,6 +155,18 @@ class AstrBotConnectorContractTests(unittest.IsolatedAsyncioTestCase):
                 FakeEvent(components=[], raw_segments=[{"type": "image", "data": {}}]),
                 operation=self.operation,
             )
+
+    async def test_cross_group_reply_is_rejected_when_source_scope_is_present(
+        self,
+    ) -> None:
+        event = FakeEvent(components=[Reply("m-0", group_id="other-group")])
+        with self.assertRaisesRegex(DududaError, "connector.message_rejected"):
+            await self.connector.convert(event, operation=self.operation)
+
+    async def test_scoped_reply_in_current_group_remains_supported(self) -> None:
+        event = FakeEvent(components=[Reply("m-0", group_id="g-1")])
+        result = await self.connector.convert(event, operation=self.operation)
+        self.assertEqual(result.message.reply_to.message_id, "m-0")  # type: ignore[union-attr]
 
 
 if __name__ == "__main__":

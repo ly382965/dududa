@@ -1,7 +1,7 @@
 # 嘟嘟哒 2.0 设计文档
 
 **文档性质：**作品技术设计报告
-**版本：**2.0 设计基线（2026-09-02）
+**版本：**2.0 设计基线（2026-09-03）
 **项目：**Dududa 2.0 受治理的群体情境适应 Agent Runtime
 
 ## 摘要
@@ -17,8 +17,8 @@ MCP Server、模型 Provider、Memory 后端和 Web 控制台都是外围适配�
 
 当前仓库已经形成框架无关的 Core 契约、Runtime 状态机、静态模型路由、感知与社交决策、统一
 MCP 基础设施、能力执行闭环、Memory v2 离线实现、Persona/ResponsePlan、主动消息 Shadow、
-Bot Control Plane 和可复现评测。iCourse、二课、教务、培养方案研究四类校园查询以及本地校车
-已经进入 2.0 能力组合；PR #9 新增的 NotifAI 公开通知 MCP 已合并到主分支，并完成七项能力
+Bot Control Plane 和可复现评测。iCourse、NotifAI 通知、二课、教务、培养方案研究五类校园查询
+以及本地校车已经进入 2.0 能力组合；PR #9 新增的 NotifAI 公开通知 MCP 已合并到主分支，并完成七项能力
 的 Registry、Schema、映射和 Web 目录集成。PR #10 中不重复的社交规则已整理为独立、默认关闭、
 只响应显式命令的策略插件；本地推荐、专业设置、学校通知、学院通知和图书馆开放时间已整理为
 五个 Registry-only、cache-only 的可选 MCP Server。它们已打包但没有 Capability mapping，不进入
@@ -830,7 +830,8 @@ restore，不在故障时自动覆盖线上状态。
 | Unit/Contract | DTO、Schema、Registry、Policy、CAS、错误映射 | Core 与 MCP/Capability 重点集合持续验证 |
 | Offline integration | Runtime、Planner、Memory、Scheduler、Control Plane | S01–S22 离线范围已完成；固定 fixture 可重放 |
 | Provider smoke | 三模型调用、模型 ID、usage、deadline | Luna/Terra/Sol 各完成真实 Chat 抽样，Responses 也有抽样 |
-| MCP vertical slice | Connector → Tool → Observation → Composer → Delivery | iCourse 75 题 Fake Delivery 75/75；二课/教务/培养方案/校车有单步证据 |
+| MCP vertical slice | Connector → Tool → Observation → Composer → Delivery | iCourse 75 题 Fake Delivery 75/75；二课/教务/培养方案/校车有单步证据；100 题原生消息模拟 94/100 完成 Fake Delivery、校车 10/10 单步 Builtin |
+| 100-question Runtime simulation | OneBot-shaped Event → Production Composition → Fake Delivery | 100/100 fixture 通过；94 `canary_completed`、6 边界 `legacy`；187 次脚本模型调用、53 次 MCP、11 次 Builtin、94 次 Fake Delivery；Memory/真实 QQ/未捕获异常均为 0 |
 | Host ingress | OneBot JSON → AstrBot Event → Runtime | 合法 75/75 进入宿主，QQ 发送为 0 的 no-send 验证 |
 | Human/live | 真实群消息、人工质量、长期 SLO | 真实 QQ 人工端到端仍需一条用户触发消息闭合 |
 
@@ -838,6 +839,12 @@ restore，不在故障时自动覆盖线上状态。
 
 - iCourse 75 条自然语言题：75/75 Bridge、75/75 Runtime completed、75/75 Fake Delivery，
   73 次 MCP，显式“评课社区”案例 19/19 正确命中；人工终审 49/75 完整。
+- 100 条原生消息：94/100 完成 2.0 Fake Delivery，6 条按自消息、未 @、附件或跨群 Reply
+  边界留在 legacy；Perception/Direct Chat 187 次，MCP 53 次，本地 Shuttle Builtin 11 次，
+  Memory 写入和真实 QQ 输出均为 0。所有动作、运行结果、Tool 数/名称、Delivery、重复重放、
+  可选 PR #10 Tool 和单步 Plan 断言通过。可信 `FAILED/DEFERRED` Receipt 以固定不可用答复
+  经过 Composer/Persona/Final Validator/Delivery；未验证、取消、Runtime 异常和最终校验失败
+  仍不发送。逐题记录见 [100 题 Runtime 模拟报告](../refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md)。
 - AstrBot 内存 WebSocket：75/75 合法 OneBot JSON 生成 Event 并进入 RequestFactory，发送为 0；
   50 ms 延迟测试暴露过 `1,2,3 → 2,3,1` 的入队乱序，故宿主并发顺序仍是已知待验项。
 - NotifAI/MCP/检索相关本轮聚焦测试 18/18 通过；Web 当前类型检查通过，前端/服务端聚焦集合
@@ -941,8 +948,7 @@ operation ID、幂等键、DeliveryReceipt 和 reconciliation 区分“未发送
   Capability Catalog/Planner/生产健康链；
 - 独立 `astrbot_plugin_dududa_social` 社交策略插件，只提供 namespaced 显式命令和纯规则 API，
   不监听普通消息、不调用模型/MCP、不自动发送；
-- iCourse、二课、教务、培养方案、校车的单步自然语言主链；NotifAI 的服务端、Schema、mapping、
-  registry 和 Web 目录；
+- iCourse、NotifAI、二课、教务、培养方案、校车的单步自然语言主链；
 - Memory v2 生命周期、JSON v2、CJK BM25、删除/导出/恢复和离线评测；
 - typed Persona、ResponsePlan、Fact Anchor、LONG 分片/合并转发规则；
 - S15A–S15E 主动消息契约、Scheduler、Source fixture、Digest/Probe Shadow；

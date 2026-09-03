@@ -11,6 +11,12 @@ Last sync: unix:1788422628
 
 ## Global Reality (current project reality and material corrections; not a branch table)
 
+- 2026-09-03 完成 100 条 Dududa 2.0 原生消息 no-send Runtime 模拟：94 条
+  `canary_completed`、6 条边界 `legacy`，187 次脚本模型调用、53 次 MCP Tool、11 次
+  Shuttle Builtin、94 次 Fake Delivery、0 次真实 QQ 发送、0 次 Memory 写入、0 个未捕获
+  异常；动作/Tool/Outcome/Delivery/可选插件/重复重放/单步 Plan 断言全部通过。可信
+  Capability 失败答复、跨群 Reply Scope 和 NotifAI 来源误路由三个实际耦合问题已修复。
+  逐题报告见 `docs/refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`。
 - S23 的群级自动搭话控制已由固定 `low/normal/high` 改为可分别拖动的触发概率、
   冷却和每小时上限，允许最大 100%/5 秒/500 次；主动历史扩展档最多读取 100 条。
   `419256533` 保留旧 high 的等价 20%/180 秒/8 次并切到 extended，没有因开放
@@ -81,7 +87,9 @@ Last sync: unix:1788422628
   NapCat/QQ end-to-end evidence. Shuttle now has a natural-language local-plugin
   Planner with 20/20 fixed questions and three native-message Runtime samples.
   Academic semester/lesson/exam/calendar planning now resolves semester labels
-  inside one MCP call; generic Capability failure composition remains open.
+  inside one MCP call; verified Capability failures now have a bounded Composer/
+  Persona/Final Validator/Delivery response, while unverified and cancelled paths
+  remain no-delivery.
   Tool execution remains one attempt per inbound plan; no-explicit-profile Tool
   answers default to LONG, and actual multi-part group LONG output is delivered
   as one merged-forward message.

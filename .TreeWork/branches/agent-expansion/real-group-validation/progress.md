@@ -9,6 +9,29 @@ Verification: partial
 Last sync: unix:1788422628
 <!-- treework:status:end -->
 
+## 2026-09-03 Runtime Simulation Update
+
+- 已新增版本化 fixture `tests/fixtures/mcp/dududa-100-native-message-cases.json`，含
+  连续且去重的 100 个问题，覆盖入站边界、iCourse、教务、培养方案、二课、校车
+  Builtin、NotifAI、跨 Provider、Prompt Injection、Context/Memory/Scope、模型档位、
+  Output 以及 Sub2API/Reread/ReplyPolish 等独立插件边界。
+- `ops/cli/run_dududa_100_message_benchmark.py` 以真实 Production Composition、
+  OneBot-shaped Event、FastMCP Schema introspection、本地 Unified MCP Fixture 和
+  内存 Fake Delivery 顺序执行全量案例。结果为 100/100 无未捕获异常，94 条
+  `canary_completed`、6 条按设计留在 `legacy`，187 次脚本模型调用（94 Perception、
+  93 Direct Chat）、53 次 MCP Tool、11 次本地 Shuttle Builtin、94 次 Fake Delivery、
+  0 次真实 QQ 发送、0 次 Memory 写入；所有预期动作、Tool 数、运行结果、Delivery 数、
+  可选 PR10 Tool 和单步 Plan 断言均通过。校车 51--60 均明确经过单步 Builtin，Case 86
+  跨群上下文保持 direct reply 而不触发能力。
+- 已修复三个实际耦合问题：可信 Capability `FAILED/DEFERRED` Receipt 进入同一
+  Composer/Persona/Final Validator/Delivery 链生成有界不可用答复；带来源群且跨群的
+  Reply 在 Connector 拒绝；“学校主页缓存/学院官网/官网通知”不再被泛词“通知”路由到
+  NotifAI 聚合能力。`CANCELLED`、未验证 Receipt、Runtime/Final Validator 异常仍不产生
+  可见发送。
+- 正式逐题报告：`docs/refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`。
+  该报告明确脚本模型、本地 MCP 样本和 Fake Output 的证据边界；不把结果表述为真实
+  模型质量或 QQ/NapCat 端到端验收。
+
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
 - 2026-08-31 已定位并修复目标群主动搭话间歇性无输出。旧运行 wheel 在模型将一次
@@ -174,9 +197,10 @@ Last sync: unix:1788422628
 - 每次 Console Run 现在返回六项实际选择、reason codes、上下文使用量和插件
   选择。回答长度按钮仍可作为一次性 Run Hint，不修改长期模型策略；回复强度是
   候选决策初值，不表示真实发送概率。服务端 Policy 是权威，浏览器不是权威。
-- Unified MCP 现已注册四个真实只读 Server：匿名 iCourse、认证二课、公开教务处
-  和培养方案研究，共映射 14 个受批准 MCP Capability；校车另由一个本地 Builtin
-  Provider 实现。Web 超级管理员工作台按 Capability ID
+- Unified MCP 现已注册五个真实只读 Server：匿名 iCourse、公开 NotifAI、认证二课、
+  公开教务处和培养方案研究，共映射 21 个受批准 MCP Capability；校车另由一个本地
+  Builtin Provider 实现。另有五个默认关闭的 Registry-only 可选 Server，不进入当前
+  Planner。Web 超级管理员工作台按 Capability ID
   和 input schema 直接调用，浏览器不接受任意 `server/tool` 透传。现有本机 CAS
   凭据文件以只读挂载复用，固定提交版 `pyustc` 已真实完成二课登录和查询；密码、
   Cookie、TGC 与本机路径不进入 Git、Web 响应或普通日志。校园资讯、arXiv 和行业
@@ -414,14 +438,14 @@ Last sync: unix:1788422628
   当前测试只证明结构接线，不能证明风格质量。
 - 为 Production `CurrentMessageContextBuilder` 接入受限、可解释的近期群聊情境
   投影；当前生产链路仍主要看到当前消息，尚不能声称长期群体情境适应完成。
-- `gpt-image-2` 仍需接入正式图片 Capability；四个查询 MCP 的 Web 直接调用已完成，
+- `gpt-image-2` 仍需接入正式图片 Capability；五个查询 MCP 的 Web 直接调用已完成，
   Agent 自然语言自动选择已闭环 iCourse、二课、培养方案研究、教务与校车单步。二课当前是手工 OneBot-shaped
   Event/Fake Delivery 证据，iCourse 已有 Web no-send Runtime/MCP 预览；两者仍缺用户触发的
   真实 QQ MCP/Delivery Receipt；教务和校车已有 no-send Runtime 证据，但仍没有用户
   触发的真实 QQ Receipt。
-- Capability/MCP 的可信失败 receipt 当前会在 Canary claim 后以 no-delivery 终止；
-  尚需在 2.0 Composer/Persona/Final Validator 内补用户可见失败回答，不能由旧 handler
-  或 Web search 接管。
+- Capability/MCP 的可信 `FAILED/DEFERRED` receipt 现已在 Canary claim 后进入 2.0
+  Composer/Persona/Final Validator 和授权 Delivery，生成固定不可用答复；未验证、取消、
+  Runtime 异常和最终校验失败仍保持 no-delivery。100 题 Case 80 已覆盖该失败路径。
 - Reread 与 `/sub2api 自动查询` 已由唯一 2.0 AstrBot 宿主加载。两者继续保持独立配置/Policy
   边界；仍需用户命令记录 Sub2API 的真实 QQ 端到端证据，加载状态本身不算调用证据。
 

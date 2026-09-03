@@ -2,16 +2,16 @@
 
 - 版本：v0.7
 - 范围：`.`
-- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、二课、教务处和培养方案研究四个只读 MCP 与本地校车插件已接入，真实群聊风格仍待人工校准。
+- 状态：Dududa 2.0 离线工程主链已形成，S23 内测分支仍为 `paused / partial`；iCourse、NotifAI、二课、教务处和培养方案研究五个只读 MCP 与本地校车插件已接入，真实群聊风格仍待人工校准。100 题 no-send Runtime 模拟已完成，结果见 `docs/refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`。
 
-Dududa 2.0 当前说明（2026-08-29）：
+Dududa 2.0 当前说明（2026-09-03）：
 
 - 系统定位为“受治理的群体情境适应 Runtime”：最小治理内核持有身份、Scope、权限和副作用，Persona 与群体情境只在这些事实不变的前提下适应表达。
 - WebUI 承载 Dududa 唯一的 Bot Control Plane；管理员可通过它为新入群 Bot 选择初始 `GroupServiceProfile`。其中 `#/internal-test` 只是该控制台中的 Evaluation Adapter。Web 不复制 Router、权限、Memory、Tool 或 Output 决策权，所有配置变更仍通过 Core Command、Audit 和 Receipt 生效。
 - Persona、群聊 channel rule 与 AnswerProfile 在一次生成中共同生效。人格通过措辞、节奏、关注点和信息取舍自然表现，不复述人设、不自我介绍、不套固定口号、不机械卖萌，也不靠随机表情证明人格。
 - SHORT、MEDIUM 始终作为普通 QQ 消息发送；LONG 单段仍是普通消息，群聊中实际拆成至少两个纯文本 part 且没有附件时使用合并转发。定向目标继续保留在 Runtime 语义中，但合并转发不额外发送 `@` 组件。
 - Meme Manager、PokePro 和旧 Target Talk 已退出 Dududa 2.0 默认 Compose；自动复读仅以独立、默认关闭、按 Scope 配置的插件保留。
-- iCourse、二课、培养方案研究和教务的自然语言路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；校车在同一主链使用本地 Builtin Provider；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
+- iCourse、NotifAI、二课、培养方案研究和教务的自然语言路径已按 `Hybrid Perception -> 确定性单步 Planner -> Unified MCP -> DirectChat -> Persona/Final Validator` 闭环；校车在同一主链使用本地 Builtin Provider；`/course` 和旧自然语言课程 handler 仅为兼容/诊断面。
 - 本轮已通过单插件 API 热重载 Dududa Core，AstrBot 与 NapCat 均未重启；运行实例继续只使用 Dududa 2.0 Agent Runtime。
 
 以下为 Dududa 1.0 工程状态快照（2026-07-06）：
@@ -83,7 +83,9 @@ cd .
 - `data_v4.db`：AstrBot 主数据。
 - `knowledge_base/kb.db`：知识库数据库。
 - `cmd_config.json`：命令配置，已有多份备份。
-- `mcp_server.json`：MCP 配置文件，已接入 iCourse、二课、教务和培养方案研究四个查询 Server。
+- `configs/astrbot/mcp_server.json`：旧 AstrBot 兼容配置，保留四个历史 MCP 入口；当前生产
+  Unified Registry 位于 `configs/mcp/servers/`，其中五个已启用查询 Server（含 NotifAI）与
+  五个默认关闭的 Registry-only 可选 Server 分开管理。
 - `apps/astrbot-plugins/astrbot_plugin_dududa_core/`：嘟嘟哒核心插件，统一命令、权限、确认、审计、课程和管理入口。
 - `apps/astrbot-plugins/astrbot_plugin_ustc_shuttle/`：版本化本地校车时刻表 Capability 插件。
 - `apps/astrbot-plugins/astrbot_plugin_sub2api_readonly/`：Sub2API 用量、排名和账号状态只读查询。
@@ -122,10 +124,12 @@ Meme Manager、PokePro、ReplyPolish 和 Target Talk 不进入干净安装集合
 
 ### 2.4 USTC 校园查询能力
 
-当前通过 `McpServerRegistry` 和 `UnifiedMcpClient` 管理四个独立只读 Server，并让
+当前通过 `McpServerRegistry` 和 `UnifiedMcpClient` 管理五个独立只读 Server，并让
 本地插件实现同一个 Capability Provider Port：
 
 - `icourse`：实时访问评课社区公开页面，向 Capability 层开放统一公开查询及统计、课程搜索、课程详情和评价 5 项读取。
+- `notifai`：读取校园通知聚合服务的公开通知、日历、截止提醒、来源、分类和统计；只读内容
+  经过资料边界处理，不把通知正文当作系统指令。
 - `ustc-young`：复用固定提交版 `pyustc`，提供二课连接状态、活动搜索、活动详情和筛选项 4 项公共观察；不提供登录或本人活动工具。
 - `ustc-academic`：提供学期、开课、考试和教学日历 4 项官方公开查询。
 - `ustc-curriculum`：基于 `docs.mmdustc.top/curriculum/data/` 的公开研究快照提供
@@ -142,7 +146,8 @@ Meme Manager、PokePro、ReplyPolish 和 Target Talk 不进入干净安装集合
 - 本机既有 `credentials.toml` 以只读方式挂入独立 MCP Console，再由 SecretRef
   仅向二课子进程注入以建立上游 CAS 会话；这不是用户登录能力，凭据、Cookie 和
   TGC 不写入仓库或 Web 返回值。
-- WebUI 的 `MCP 工作台` 展示四个 Server 和 14 个 MCP Capability，`super_admin`
+- WebUI 的 `MCP 工作台`展示五个已启用 Server 和 21 个 MCP Capability；另有五个默认关闭的
+  Registry-only Server 作为可选资产。`super_admin`
   只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
 - 校车在“插件与能力”中显示为本地只读插件，群级默认关闭；启用后自然语言查询仍进入
   唯一 Dududa 2.0 Runtime。20/20 固定问题与 3 条原生消息抽样已经通过。
@@ -192,7 +197,7 @@ AstrBot
     ├── 受治理主动参与：S15E Probe / 主动 Runtime（默认关闭）
     ├── 旧插件兼容资产：保留迁移与回滚材料，不进入 2.0 默认执行链
     ├── 课程查询：pksq icourse MCP
-    ├── 后续校园 MCP：通知、教学日历、考试、课表
+    ├── 当前校园能力：NotifAI 通知、Academic 教学日历、课程/二课/培养方案、校车
     ├── 后续管理插件：权限、配置、日志、插件开关
     └── 模型路由：AstrBot 中私有配置的外部 OpenAI 兼容 Provider
 ```
@@ -424,11 +429,12 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 
 ### 8.2 校园公开信息
 
-后续 TODO 能力：
+以下是 1.0 文档中的旧路线快照；2.0 自然语言查询已覆盖通知、教学日历和培养方案，个人课表/成绩等
+需要用户授权的能力仍未实现：
 
-- USTC 学校通知搜索。
-- 学院通知搜索。
-- 教学日历查询。
+- USTC 学校通知搜索（2.0 通过 NotifAI 聚合查询；学院官网等非聚合来源不会被泛关键词误路由）。
+- 学院通知搜索（未作为独立 Source Adapter 接入）。
+- 教学日历查询（2.0 Academic MCP 已接入）。
 - 培养方案研究快照查询（已接入；非实时教务，不能代替毕业审核）。
 - 公开课程信息查询。
 - 讲座、活动、竞赛通知。
@@ -629,8 +635,8 @@ Prompt。表达可以适应当前群，但事实、权限、人格身份和任�
 | `/course compare <A> <B>` | 全员 | 群/私聊 | 比较课程或老师 |
 | `/course refresh <课程ID>` | trusted/admin | 私聊 | 刷新单门课程缓存 |
 | `/course stats` | 全员 | 群/私聊 | 查看本地课程缓存规模 |
-| `/notice <关键词>` | 全员 | 群/私聊 | 查询公开通知，TODO |
-| `/calendar` | 全员 | 群/私聊 | 查询教学日历，TODO |
+| `/notice <关键词>` | 全员 | 群/私聊 | 旧命令未接入；请使用 2.0 自然语言通知查询 |
+| `/calendar` | 全员 | 群/私聊 | 旧命令未接入；请使用 2.0 自然语言教学日历查询 |
 | `/exam` | 本人授权 | 私聊 | 查询个人考试安排，TODO |
 | `/schedule` | 本人授权 | 私聊 | 查询个人课表，TODO |
 

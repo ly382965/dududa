@@ -343,7 +343,9 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(result.delivery_request)
         self.assertEqual(fixture.router.calls, 0)
 
-    async def test_noncompleted_receipts_never_reach_model_or_delivery(self) -> None:
+    async def test_verified_noncompleted_receipts_get_bounded_failure_delivery(
+        self,
+    ) -> None:
         for status in (
             CapabilityRunStatus.DEFERRED,
             CapabilityRunStatus.FAILED,
@@ -365,9 +367,31 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
                     else Outcome.FAILED
                 )
                 self.assertIs(result.outcome, expected)
-                self.assertIsNone(result.delivery_request)
                 self.assertEqual(len(runtime.calls), 1)
                 self.assertEqual(fixture.router.calls, 0)
+                if status is CapabilityRunStatus.CANCELLED:
+                    self.assertIsNone(result.delivery_request)
+                    self.assertIsNone(result.final_response)
+                    continue
+                self.assertIsNotNone(result.delivery_request)
+                self.assertIsNotNone(result.final_response)
+                assert result.final_response is not None
+                self.assertEqual(
+                    result.final_response.response.blocks[0].content.text,
+                    "所需查询服务暂时不可用，请稍后再试。",
+                )
+                assert result.final_response.response.refusal is not None
+                self.assertEqual(
+                    result.final_response.response.refusal.reason_code,
+                    "capability_unavailable",
+                )
+                assert result.delivery_request is not None
+                self.assertIs(result.delivery_request.outcome, expected)
+                checkpoint = await fixture.store.load(call.run_id, call=call)
+                assert checkpoint is not None
+                self.assertIs(checkpoint.state.phase, RuntimePhase.READY_TO_EMIT)
+                self.assertIsNone(checkpoint.state.direct_chat_execution)
+                self.assertIsNotNone(checkpoint.state.persona_resolution)
 
     async def test_tampered_receipt_fails_and_charges_tool_reservation(self) -> None:
         runtime = _DigestTamperingRuntime(self.runtime.inner)
@@ -395,6 +419,31 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
             checkpoint.state.charged_usage.tool_steps,
             self.tool_budget_plan.reservation.tool_steps,
         )
+
+    async def test_failure_composition_validation_stays_fail_closed(self) -> None:
+        runtime = _TerminalCapabilityRuntime(CapabilityRunStatus.FAILED)
+        fixture = self._fixture(
+            runtime,
+            record_phases=True,
+            final_validator=_FailingFinalValidator(),
+        )
+        request, call = fixture.start(
+            run_id="tools-failure-composition-validation",
+            feature_flags={"tools": True},
+        )
+
+        result = await fixture.runtime.run(request, call=call)
+        checkpoint = await fixture.store.load(call.run_id, call=call)
+
+        self.assertIs(result.outcome, Outcome.FAILED)
+        self.assertEqual(result.reason_codes, ("fixture_final_validation_failed",))
+        self.assertIsNone(result.final_response)
+        self.assertIsNone(result.delivery_request)
+        self.assertEqual(fixture.router.calls, 0)
+        assert checkpoint is not None
+        self.assertIs(checkpoint.state.phase, RuntimePhase.FAILED)
+        self.assertIsNone(checkpoint.state.draft_response)
+        self.assertIsNotNone(checkpoint.state.capability_run_receipt)
 
     async def test_projection_limit_fails_before_model_call(self) -> None:
         fixture = self._fixture(self.runtime, maximum_tool_context_bytes=1)
@@ -446,8 +495,16 @@ class OfflineToolRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 result = await fixture.runtime.run(request, call=call)
 
                 self.assertIs(result.outcome, Outcome.FAILED)
-                self.assertIsNone(result.delivery_request)
+                self.assertIsNotNone(result.delivery_request)
+                self.assertIsNotNone(result.final_response)
+                assert result.final_response is not None
+                self.assertEqual(
+                    result.final_response.response.blocks[0].content.text,
+                    "所需查询服务暂时不可用，请稍后再试。",
+                )
                 self.assertEqual(fixture.router.calls, 0)
+                assert result.delivery_request is not None
+                self.assertIs(result.delivery_request.outcome, Outcome.FAILED)
 
     async def test_insufficient_entry_budget_starts_no_runtime_work(self) -> None:
         insufficient = RuntimeBudget(

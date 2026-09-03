@@ -142,11 +142,18 @@ class DeliveryRequestBuilder:
         scope: ConversationScope,
         reply_to: MessageReference | None,
         policy_snapshot_id: str,
+        outcome: Outcome = Outcome.RESPONSE,
     ) -> DeliveryRequestPlan:
         if not isinstance(response, ValidatedFinalResponse):
             raise validation_error("invalid_delivery_plan_response")
         if not isinstance(actor, Actor) or not isinstance(scope, ConversationScope):
             raise validation_error("invalid_delivery_plan_identity")
+        if not isinstance(outcome, Outcome) or outcome not in {
+            Outcome.RESPONSE,
+            Outcome.DEFERRED,
+            Outcome.FAILED,
+        }:
+            raise validation_error("invalid_delivery_outcome")
         constraints = replace(
             self._config.constraints,
             allow_forward_bundle=(
@@ -195,7 +202,7 @@ class DeliveryRequestBuilder:
             payload_digest=payload_digest,
             idempotency_key=idempotency_key,
             attempt=1,
-            outcome=Outcome.RESPONSE,
+            outcome=outcome,
             scope=scope,
             reply_to=reply_to,
             constraints=constraints,

@@ -22,6 +22,8 @@ from dududa.domain.identity import ConversationScope
 from dududa.domain.primitives import (
     ComponentRevision,
     Outcome,
+    ResourceUsage,
+    RuntimeBudget,
     require_aware,
     require_non_empty,
 )
@@ -731,6 +733,18 @@ class OfflineRuntimeOrchestrator:
                         if terminal_phase is RuntimePhase.DEFERRED
                         else Outcome.FAILED
                     )
+                    if capability_receipt.status in {
+                        CapabilityRunStatus.DEFERRED,
+                        CapabilityRunStatus.FAILED,
+                    }:
+                        return await self._complete_capability_failure(
+                            checkpoint,
+                            capability_receipt,
+                            terminal_outcome,
+                            call=self._commit_call(call, budget_after_tools),
+                            charged_usage=tool_charge,
+                            budget=budget_after_tools,
+                        )
                     return await self._complete_terminal(
                         checkpoint,
                         terminal_phase,
@@ -1067,6 +1081,162 @@ class OfflineRuntimeOrchestrator:
         )
         if checkpoint.state.pending_result is None:
             raise validation_error("runtime_terminal_result_missing")
+        return checkpoint.state.pending_result
+
+    async def _complete_capability_failure(
+        self,
+        checkpoint: RuntimeCheckpoint,
+        capability_receipt: CapabilityRunReceipt,
+        outcome: Outcome,
+        *,
+        call: PortCallContext,
+        charged_usage: ResourceUsage,
+        budget: RuntimeBudget,
+    ) -> RuntimeResult:
+        """Emit a governed unavailable answer for a verified tool failure.
+
+        The Capability receipt remains the source of truth for the failed
+        operation.  No second Tool or model invocation is attempted; only the
+        deterministic Composer/Persona/Final Validator/Delivery chain runs.
+        """
+
+        if capability_receipt.status not in {
+            CapabilityRunStatus.DEFERRED,
+            CapabilityRunStatus.FAILED,
+        }:
+            raise validation_error("runtime_capability_failure_status_mismatch")
+        expected_outcome = (
+            Outcome.DEFERRED
+            if capability_receipt.status is CapabilityRunStatus.DEFERRED
+            else Outcome.FAILED
+        )
+        if outcome is not expected_outcome:
+            raise validation_error("runtime_capability_failure_outcome_mismatch")
+        context = checkpoint.state.current_context
+        social = checkpoint.state.social_decision
+        if context is None or social is None:
+            raise validation_error("runtime_capability_failure_context_missing")
+        if social.action is not SocialAction.USE_TOOLS:
+            raise validation_error("runtime_capability_failure_action_mismatch")
+        try:
+            persona_resolution = self._resolve_persona(checkpoint.state)
+            compose_failure = getattr(
+                self._composer,
+                "compose_capability_failure",
+                None,
+            )
+            if not callable(compose_failure):
+                raise validation_error(
+                    "runtime_capability_failure_composer_unavailable"
+                )
+            draft = compose_failure(context, social)
+            rendered = self._renderer.render(
+                draft,
+                None,
+                persona_resolution=persona_resolution,
+            )
+            final = await self._final_validator.validate(
+                draft,
+                rendered,
+                checkpoint.state.actor,
+                checkpoint.state.conversation_scope,
+                response_plan=None,
+                persona_resolution=persona_resolution,
+                call=self._call_with_budget(call, budget),
+            )
+            delivery_plan = self._delivery_builder.plan(
+                run_id=checkpoint.state.run_id,
+                response=final,
+                actor=checkpoint.state.actor,
+                scope=checkpoint.state.conversation_scope,
+                reply_to=context.current_message_reference,
+                policy_snapshot_id=checkpoint.state.policy_snapshot_id,
+                outcome=outcome,
+            )
+            send_authorization = await self._authorization_policy.decide(
+                delivery_plan.authorization_request,
+                call=self._call_with_budget(call, budget),
+            )
+            delivery = self._delivery_builder.finalize(
+                delivery_plan,
+                send_authorization,
+            )
+        except asyncio.CancelledError:
+            raise
+        except DududaError as failure:
+            return await self._complete_terminal(
+                checkpoint,
+                RuntimePhase.FAILED,
+                Outcome.FAILED,
+                (failure.info.code,),
+                call,
+                capability_retrieval=capability_receipt.retrieval,
+                tool_plan=capability_receipt.plan,
+                tool_observations=capability_receipt.observations,
+                tool_unobserved_attempts=capability_receipt.unobserved_attempts,
+                tool_validation=capability_receipt.validation,
+                capability_run_receipt=capability_receipt,
+                charged_usage=charged_usage,
+                budget=budget,
+            )
+        checkpoint = await self._commit_transition(
+            checkpoint,
+            RuntimePhase.VALIDATED,
+            call,
+            capability_retrieval=capability_receipt.retrieval,
+            tool_plan=capability_receipt.plan,
+            tool_observations=capability_receipt.observations,
+            tool_unobserved_attempts=capability_receipt.unobserved_attempts,
+            tool_validation=capability_receipt.validation,
+            capability_run_receipt=capability_receipt,
+            persona_resolution=persona_resolution,
+            charged_usage=charged_usage,
+            budget=budget,
+        )
+        checkpoint = await self._commit_transition(
+            checkpoint,
+            RuntimePhase.COMPOSED,
+            call,
+            draft_response=draft,
+        )
+        checkpoint = await self._commit_transition(
+            checkpoint,
+            RuntimePhase.RENDERED,
+            call,
+            final_response=final,
+        )
+        reason_codes = tuple(
+            sorted(
+                set(social.reason_codes)
+                | set(capability_receipt.reason_codes)
+                | {"delivery_ready"}
+            )
+        )
+        result = RuntimeResult(
+            schema_version=1,
+            run_id=checkpoint.state.run_id,
+            outcome=outcome,
+            final_response=final,
+            reaction=None,
+            delivery_request=delivery,
+            completion=None,
+            reason_codes=reason_codes,
+            trace_summary=self._trace_summary(
+                checkpoint.state,
+                RuntimePhase.READY_TO_EMIT,
+                reason_codes,
+            ),
+            selection_summary=None,
+        )
+        checkpoint = await self._commit_transition(
+            checkpoint,
+            RuntimePhase.READY_TO_EMIT,
+            call,
+            delivery_request=delivery,
+            pending_result=result,
+        )
+        if checkpoint.state.pending_result is None:
+            raise validation_error("runtime_capability_failure_result_missing")
         return checkpoint.state.pending_result
 
     async def _wait_for_result(

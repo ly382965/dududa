@@ -4,11 +4,22 @@ from collections.abc import AsyncIterator, Callable
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
-from dududa.contracts.canonical import canonical_digest
 from dududa.domain.attachments import AttachmentIngestRequest, AttachmentOrigin
 from dududa.domain.identity import Actor, ConversationScope
-from dududa.domain.message import AttachmentKind, AttachmentRef, Mention, MessageEnvelope, MessageReference
-from dududa.domain.primitives import ComponentRevision, ConversationType, DigestString, RoleId, Sensitivity
+from dududa.domain.message import (
+    AttachmentKind,
+    AttachmentRef,
+    Mention,
+    MessageEnvelope,
+    MessageReference,
+)
+from dududa.domain.primitives import (
+    ComponentRevision,
+    ConversationType,
+    DigestString,
+    RoleId,
+    Sensitivity,
+)
 from dududa.errors import ErrorCategory, error
 from dududa.ports.attachments import AttachmentRepository
 from dududa.ports.context import ServiceCallContext
@@ -211,6 +222,18 @@ def _reply_reference(
         ).strip()
         if not message_id:
             raise _connector_error("reply_message_id_missing")
+        # AstrBot's Reply component does not always carry source metadata.  In
+        # that common case preserve the existing same-scope behaviour.  When a
+        # component does expose a group, however, never turn a cross-group
+        # reference into a handle in the current conversation: the downstream
+        # Context Builder cannot safely dereference it.
+        source_group = getattr(component, "group_id", None)
+        if source_group is None:
+            source_group = getattr(component, "group", None)
+        if source_group is not None:
+            normalized_group = str(source_group).strip()
+            if normalized_group and normalized_group != conversation_id:
+                raise _connector_error("reply_scope_mismatch")
         return MessageReference(platform, bot_id, conversation_id, message_id)
     return None
 

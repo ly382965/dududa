@@ -177,10 +177,11 @@ or invocation is reported independently. Neither `installed` nor `configured`
 may be presented as an online executor or an actual call.
 
 The campus query expansion keeps the existing Unified MCP and Capability
-control plane. Four independently registered MCP Servers are exposed:
-`icourse`, `ustc-young`, `ustc-academic` and `ustc-curriculum`. The latter three
-share one implementation package but retain independent Registry identities,
-sessions, health and schema snapshots. Shuttle is instead a local owned plugin:
+control plane. Five independently registered MCP Servers are exposed:
+`icourse`, `notifai`, `ustc-young`, `ustc-academic` and `ustc-curriculum`. The
+campus servers share one implementation package where applicable but retain
+independent Registry identities, sessions, health and schema snapshots. Shuttle
+is instead a local owned plugin:
 its versioned JSON and `BUILTIN` Provider implement the existing Capability Port
 without network access or a message handler. Missing CAS credentials make only
 `ustc-young` unavailable and never block public or local campus sources.
@@ -265,10 +266,12 @@ activity is never sufficient by itself to prove registration difficulty.
 and diagnostics only. They do not establish 2.0 Agent Tool selection evidence,
 must not intercept the Runtime-owned path, and are excluded from the 2.0
 acceptance test. The path never falls back to Web search. The current success
-slice renders only the post-Observation synthesis. A validated MCP failure still
-terminates fail closed with no Delivery after Canary ownership; a user-visible
-Capability-unavailable response must later be implemented inside the governed
-Composer/Persona/Final Validator path, never in the legacy handler or Bridge.
+slice renders only the post-Observation synthesis. A validated Capability
+failure remains the authoritative Runtime outcome, then travels through the
+same governed Composer/Persona/Final Validator and authorized Delivery path as
+a fixed, bounded unavailable response. Unverified, cancelled, Runtime-error or
+composition-failure paths remain fail-closed with no Delivery; the legacy
+handler and Bridge never create a second failure-response path.
 
 ### Runtime MCP Server Registration
 
