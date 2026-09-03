@@ -109,7 +109,8 @@ class ApiKeyPool:
         """Return a stable order suitable for AstrBot's source key list.
 
         AstrBot rotates the list after provider failures.  Priority is sorted
-        descending so a larger value wins; ties use the stable key ID.  The
+        ascending so a smaller value wins (the same convention used by the Web
+        probe); ties prefer a larger weight and then use the stable key ID. The
         ``weight`` value remains metadata for schedulers that understand it and
         is not expanded into duplicate credentials here.
         """
@@ -117,7 +118,7 @@ class ApiKeyPool:
         return tuple(
             sorted(
                 (key for key in self.keys if key.usable),
-                key=lambda key: (-key.priority, key.id),
+                key=lambda key: (key.priority, -key.weight, key.id),
             )
         )
 

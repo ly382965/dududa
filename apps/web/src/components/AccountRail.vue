@@ -5,6 +5,7 @@ import {
   Contact,
   FlaskConical,
   Inbox,
+  KeyRound,
   MessageCircle,
   Moon,
   Plus,
@@ -25,7 +26,7 @@ defineProps<{
   mobilePanel: MobilePanel
   theme: ThemeMode
   agentActive: boolean
-  activeRoute: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'settings'
+  activeRoute: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'api-keys' | 'settings'
   notificationCount: number
 }>()
 
@@ -36,7 +37,7 @@ const emit = defineEmits<{
   openAgent: []
   openSettings: []
   addAccount: []
-  navigate: [route: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'settings']
+  navigate: [route: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'api-keys' | 'settings']
 }>()
 </script>
 
@@ -52,6 +53,7 @@ const emit = defineEmits<{
       <button class="rail-button" :class="{ active: activeRoute === 'contacts' }" type="button" title="联系人" aria-label="联系人" @click="emit('navigate', 'contacts')"><Contact :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'notifications' }" type="button" title="通知" aria-label="通知" @click="emit('navigate', 'notifications')"><Bell :size="19" /><span v-if="notificationCount" class="rail-badge">{{ notificationCount > 99 ? '99+' : notificationCount }}</span></button>
       <button class="rail-button" :class="{ active: activeRoute === 'control-plane' }" type="button" title="群服务" aria-label="群服务" @click="emit('navigate', 'control-plane')"><ShieldCheck :size="19" /></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'api-keys' }" type="button" title="API Key 池" aria-label="API Key 池" @click="emit('navigate', 'api-keys')"><KeyRound :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'internal-test' }" type="button" title="人工内测" aria-label="人工内测" @click="emit('navigate', 'internal-test')"><FlaskConical :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'settings' }" type="button" title="设置" aria-label="设置" @click="emit('navigate', 'settings')"><Settings :size="19" /></button>
     </nav>
@@ -121,6 +123,10 @@ const emit = defineEmits<{
       <button :class="{ active: activeRoute === 'control-plane' }" type="button" @click="emit('navigate', 'control-plane')">
         <ShieldCheck :size="21" />
         <span>服务</span>
+      </button>
+      <button :class="{ active: activeRoute === 'api-keys' }" type="button" @click="emit('navigate', 'api-keys')">
+        <KeyRound :size="21" />
+        <span>Key 池</span>
       </button>
       <button :class="{ active: activeRoute === 'internal-test' }" type="button" @click="emit('navigate', 'internal-test')">
         <FlaskConical :size="21" />
@@ -316,7 +322,7 @@ const emit = defineEmits<{
     display: grid;
     width: 100%;
     height: 100%;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
   .mobile-nav button {

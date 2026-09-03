@@ -72,7 +72,23 @@ def _document() -> dict[str, object]:
 
 class ApiKeyPoolAdapterContractTests(unittest.TestCase):
     def test_object_snapshot_projects_three_isolated_astrbot_sources(self) -> None:
-        snapshot = parse_api_key_pool_snapshot(_document())
+        document = _document()
+        # The Web store's probe uses the smallest priority value first.  The
+        # AstrBot source projection must preserve that same ordering when more
+        # than one active key is available.
+        document["pools"]["haiku"]["keys"].append(
+            {
+                "id": "haiku-secondary",
+                "name": "secondary",
+                "secretRef": "HAIKU_SECONDARY",
+                "secret": "haiku-secondary-secret",
+                "priority": 1,
+                "weight": 1,
+                "enabled": True,
+                "status": "active",
+            }
+        )
+        snapshot = parse_api_key_pool_snapshot(document)
         self.assertEqual(
             tuple(pool.tier for pool in snapshot.pools), ("haiku", "sonnet", "opus")
         )
@@ -87,7 +103,10 @@ class ApiKeyPoolAdapterContractTests(unittest.TestCase):
             [item.provider_id for item in projections],
             ["astrbot-haiku", "astrbot-sonnet", "astrbot-opus"],
         )
-        self.assertEqual(projections[0].keys, ("haiku-synthetic-secret",))
+        self.assertEqual(
+            projections[0].keys,
+            ("haiku-secondary-secret", "haiku-synthetic-secret"),
+        )
         self.assertTrue(projections[0].for_astrbot()["provider"]["enable"])
         self.assertEqual(
             projections[0].for_astrbot()["provider_source"]["timeout"], 120

@@ -86,7 +86,7 @@ Web Gateway 通过原子替换把快照写到仓库之外的私有 JSON 文件�
 | --- | --- | --- |
 | `sourceId` | `provider_source.id` | 默认 `dududa-{tier}-source` |
 | `baseUrl` | `provider_source.api_base` | 仅允许 HTTP(S)，去除尾部 `/`，拒绝凭据、查询串和片段 |
-| 可用 Key | `provider_source.key[]` | 过滤 disabled/unavailable/cooldown/error；按 priority 降序、ID 稳定排序 |
+| 可用 Key | `provider_source.key[]` | 过滤 disabled/unavailable/cooldown/error；按 priority 升序、weight 降序、ID 稳定排序（数值越小越优先） |
 | `customHeaders` | `provider_source.custom_headers` | 最多 32 个；Authorization、Token、Cookie 等认证 Header 必须走 SecretRef |
 | `timeoutMs` | `provider_source.timeout` | 向上取整为秒，限制在 1–900 秒 |
 | `protocol` | `provider_source.type` | 当前统一投影为 `openai_chat_completion`/`chat_completion` |
