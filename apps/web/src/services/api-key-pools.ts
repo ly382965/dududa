@@ -71,7 +71,7 @@ function array(value: unknown): unknown[] {
 }
 
 function sensitiveHeader(name: string): boolean {
-  return /authorization|api[-_]?key|token|secret|password|cookie/i.test(name)
+  return /authorization|api[-_]?key|token|secret|password|cookie|credential/i.test(name)
 }
 
 function parseHeaders(value: unknown): ApiKeyCustomHeader[] {
@@ -130,7 +130,7 @@ export function parseApiKeyPool(value: unknown): ApiKeyPool {
   return {
     ...fallback,
     displayName: firstText(item, 'displayName', 'display_name', 'name') || fallback.displayName,
-    provider: firstText(item, 'provider', 'providerName', 'provider_name', 'providerId', 'provider_id'),
+    provider: firstText(item, 'provider', 'providerName', 'provider_name'),
     ...(firstText(item, 'providerType', 'provider_type') ? { providerType: firstText(item, 'providerType', 'provider_type') } : {}),
     ...(firstText(item, 'providerId', 'provider_id') ? { providerId: firstText(item, 'providerId', 'provider_id') } : {}),
     ...(firstText(item, 'sourceId', 'source_id') ? { sourceId: firstText(item, 'sourceId', 'source_id') } : {}),
@@ -204,6 +204,7 @@ function parseTest(value: unknown): ApiKeyPoolTestResult {
     ...(typeof item.latencyMs === 'number' && Number.isFinite(item.latencyMs) && item.latencyMs >= 0 ? { latencyMs: Math.round(item.latencyMs) } : {}),
     ...(firstText(item, 'model', 'modelId', 'model_id') ? { model: firstText(item, 'model', 'modelId', 'model_id') } : {}),
     ...(firstText(item, 'checkedAt', 'checked_at') ? { checkedAt: firstText(item, 'checkedAt', 'checked_at') } : {}),
+    ...(item.revision !== undefined ? { revision: revision(item.revision) } : {}),
   }
 }
 
@@ -282,7 +283,11 @@ export class HttpApiKeyPoolsAdapter implements ApiKeyPoolsAdapter {
   private async request(path: string, init: RequestInit = {}): Promise<unknown> {
     let response: Response
     try {
-      response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      // Native browser fetch rejects an arbitrary receiver. Copy it to a local
+      // before calling so the default adapter does not invoke it as an object
+      // method (`this.fetchImpl(...)`).
+      const fetchImpl = this.fetchImpl
+      response = await fetchImpl(`${this.baseUrl}${path}`, {
         ...init,
         credentials: 'same-origin',
         headers: {

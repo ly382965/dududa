@@ -53,7 +53,7 @@ const emit = defineEmits<{
       <button class="rail-button" :class="{ active: activeRoute === 'contacts' }" type="button" title="联系人" aria-label="联系人" @click="emit('navigate', 'contacts')"><Contact :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'notifications' }" type="button" title="通知" aria-label="通知" @click="emit('navigate', 'notifications')"><Bell :size="19" /><span v-if="notificationCount" class="rail-badge">{{ notificationCount > 99 ? '99+' : notificationCount }}</span></button>
       <button class="rail-button" :class="{ active: activeRoute === 'control-plane' }" type="button" title="群服务" aria-label="群服务" @click="emit('navigate', 'control-plane')"><ShieldCheck :size="19" /></button>
-      <button class="rail-button" :class="{ active: activeRoute === 'api-keys' }" type="button" title="API Key 池" aria-label="API Key 池" @click="emit('navigate', 'api-keys')"><KeyRound :size="19" /></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'api-keys' }" type="button" title="API Key 池" aria-label="API Key 池" :aria-current="activeRoute === 'api-keys' ? 'page' : undefined" @click="emit('navigate', 'api-keys')"><KeyRound :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'internal-test' }" type="button" title="人工内测" aria-label="人工内测" @click="emit('navigate', 'internal-test')"><FlaskConical :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'settings' }" type="button" title="设置" aria-label="设置" @click="emit('navigate', 'settings')"><Settings :size="19" /></button>
     </nav>
@@ -124,7 +124,7 @@ const emit = defineEmits<{
         <ShieldCheck :size="21" />
         <span>服务</span>
       </button>
-      <button :class="{ active: activeRoute === 'api-keys' }" type="button" @click="emit('navigate', 'api-keys')">
+      <button :class="{ active: activeRoute === 'api-keys' }" type="button" :aria-current="activeRoute === 'api-keys' ? 'page' : undefined" @click="emit('navigate', 'api-keys')">
         <KeyRound :size="21" />
         <span>Key 池</span>
       </button>

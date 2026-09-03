@@ -487,6 +487,46 @@ class OperationsHardeningTests(unittest.TestCase):
         self.assertIn('if [[ "$#" -gt 0 ]]', manage)
         self.assertIn('"$0" plugins', manage)
         self.assertIn('"$0" sync', manage)
+        start_section = manage.split("  start)", 1)[1].split("    ;;", 1)[0]
+        self.assertLess(
+            start_section.index("ensure_web_secrets"),
+            start_section.index('${COMPOSE[@]}" up -d'),
+        )
+        upgrade_section = manage.split("  upgrade)", 1)[1].split("    ;;", 1)[0]
+        self.assertLess(
+            upgrade_section.index("ensure_web_secrets"),
+            upgrade_section.index('${COMPOSE[@]}" up -d --build'),
+        )
+        self.assertIn('api_key_root_uid" != "1000"', manage)
+        self.assertIn("../dududa-state/api-keys", compose)
+        self.assertNotIn("./runtime/web/api-keys", compose)
+
+    def test_api_key_store_path_must_resolve_outside_repository(self) -> None:
+        environment = dict(os.environ)
+        external = self.workspace / "api-keys"
+        environment["DUDUDA_API_KEY_STORE_ROOT"] = str(external)
+        accepted = subprocess.run(
+            [str(ROOT / "manage.sh"), "api-key-store-path"],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        self.assertEqual(Path(accepted.stdout.strip()), external.resolve())
+
+        environment["DUDUDA_API_KEY_STORE_ROOT"] = str(ROOT / "runtime" / "api-keys")
+        rejected = subprocess.run(
+            [str(ROOT / "manage.sh"), "api-key-store-path"],
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn("must resolve outside the repository", rejected.stderr)
 
     def _manifest(
         self,

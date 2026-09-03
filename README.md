@@ -163,7 +163,15 @@ Default loopback endpoints are:
 
 `./manage.sh up` builds the full local stack. It may recreate the local
 AstrBot/Web services; it does not put credentials or QQ login state in Git.
-NapCat must be logged in separately. For a Web-only development session:
+NapCat must be logged in separately.
+
+The example API Key store resolves to `../dududa-state/api-keys`, outside the
+checkout. Run `./manage.sh api-key-store-path` to validate an override before
+startup. This credential file is intentionally excluded from ordinary
+`backup/restore`; recover it from a Secret Manager and rotate Provider keys as
+described in the deployment guide.
+
+For a Web-only development session:
 
 ```bash
 cd apps/web
@@ -225,6 +233,8 @@ security-equivalent candidates and remain observable and reversible.
 - [Model routing](docs/design/model-routing.md)
 - [Capability and MCP design](docs/design/capability-and-mcp.md)
 - [Bot Control Plane](docs/design/bot-control-plane.md)
+- [API Key pool and AstrBot sync boundary](docs/development/api-key-pool-runtime-sync.md)
+- [Deployment and credential recovery](docs/operations/deployment.md)
 - [PR #10 selective integration report](docs/integrations/pr10-selective-integration.md)
 - [Local development](docs/development/local-environment.md)
 - [Chinese README](README.zh-CN.md)

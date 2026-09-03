@@ -24,8 +24,14 @@ Web Gateway 通过原子替换把快照写到仓库之外的私有 JSON 文件�
 2. 兼容旧部署的 `DUDUDA_API_KEYS_FILE`。
 
 路径必须是绝对路径、非符号链接的普通文件。默认要求文件权限不向 group/other
-开放（部署建议目录 `0700`、文件 `0600`）。文件过大、JSON 损坏、schema 版本不
+开放（部署建议目录 `0700`、文件 `0600`）。Web 写入端与 Python 读取端都使用 4 MiB
+上限。文件过大、JSON 损坏、schema 版本不
 支持或 pool 标识冲突时，适配器拒绝该快照；它不会尝试修补旧值。
+
+宿主机的 `DUDUDA_API_KEY_STORE_ROOT` 必须解析到 checkout 之外；示例配置使用同级
+`../dududa-state/api-keys`，生产环境建议改为持久卷上的绝对路径。可先运行
+`./manage.sh api-key-store-path` 查看并验证最终路径。官方启动命令会拒绝仓库内部
+路径，避免清理 checkout 或 TreeWork worktree 时连同凭据删除。
 
 文件顶层契约如下。`pools` 既可以是按 tier 索引的对象（Gateway 内部写入形状），
 也可以是包含 `tier` 字段的数组（便于导出和迁移）：
@@ -85,21 +91,30 @@ Web Gateway 通过原子替换把快照写到仓库之外的私有 JSON 文件�
 | Key Pool 字段 | AstrBot 字段 | 规则 |
 | --- | --- | --- |
 | `sourceId` | `provider_source.id` | 默认 `dududa-{tier}-source` |
+| `providerId` | `provider.id` | 默认复用既有 Runtime 绑定：Luna `astrbot-luna`、Terra `astrbot-terra`、Sol `astrbot-sol` |
 | `baseUrl` | `provider_source.api_base` | 仅允许 HTTP(S)，去除尾部 `/`，拒绝凭据、查询串和片段 |
 | 可用 Key | `provider_source.key[]` | 过滤 disabled/unavailable/cooldown/error；按 priority 升序、weight 降序、ID 稳定排序（数值越小越优先） |
 | `customHeaders` | `provider_source.custom_headers` | 最多 32 个；Authorization、Token、Cookie 等认证 Header 必须走 SecretRef |
 | `timeoutMs` | `provider_source.timeout` | 向上取整为秒，限制在 1–900 秒 |
-| `protocol` | `provider_source.type` | 当前统一投影为 `openai_chat_completion`/`chat_completion` |
+| `protocol` | `provider_source.type` | OpenAI Chat 使用 `openai_chat_completion`，Anthropic Messages 使用 `anthropic_chat_completion`；固定的 AstrBot 4.26.2 不注册 Responses Source，因此控制台首版不接受该协议 |
 | `providerId`、`model`、`enabled` | `provider` | 设置 `provider_source_id`、模型和文本模态；无可用 Key 时自动关闭 |
 
 `weight` 作为池元数据保留，不通过重复写入同一密钥来伪造权重；AstrBot 原生的
 429 轮换机制负责从 `key[]` 选择下一个凭据。若部署需要真正的加权调度，应在
 Provider Manager 层实现，而不是复制密钥或修改 Dududa 路由策略。
 
+当前页面中的字段分为两类：`sourceId`、`baseUrl`、Key、非认证 Header、协议和超时
+可直接进入未来的 Provider Source 重载；`provider`、`providerType`、
+`reasoningEffort`、`maxOutputTokens`、`schedulingMode` 与 `weight` 仅作为暂存/运维
+元数据。Web 页面不会声称后一类已经改变运行时。`providerId` 在页面中固定为既有
+Luna/Terra/Sol 绑定；`model` 在任何重载前都必须同时匹配 `runtime_models_json` 和
+当前 conformance evidence，否则部署侧必须拒绝新快照并保留 last-known-good。
+
 ## 生命周期与动态更新
 
-当前适配器是显式的启动/重载边界，不在模型调用热路径轮询文件。部署侧应在
-AstrBot Provider Manager 初始化或受控重载钩子中执行：
+当前适配器是显式的启动/重载边界，不在模型调用热路径轮询文件。本功能提供共享
+文件挂载和投影适配器，但不注册 AstrBot Provider Manager 钩子，也不会因控制台
+保存而自动重载正在运行的 Provider。部署侧接入初始化或受控重载钩子时可执行：
 
 ```python
 from astrbot_plugin_dududa_core.adapters.api_key_pools import (
@@ -113,16 +128,15 @@ for tier in ("haiku", "sonnet", "opus"):
     if pool is None:
         continue
     projection = project_pool_to_astrbot(pool)
-    astrbot_provider_manager.apply(
-        projection.for_astrbot()
-    )  # 仅在 AstrBot Source 边界内使用，随后丢弃 mapping
+    # 在确认 providerId/model 与 runtime_models_json 及 conformance evidence
+    # 一致后，将 projection.for_astrbot() 直接交给部署所用版本的 Provider
+    # Manager 重载入口；mapping 含原始 Key，只能在该边界内使用，随后丢弃。
 ```
 
-控制台创建、轮换、停用或删除 Key 后，Gateway 会递增快照 `revision`。部署编排
-应检测该版本并对 AstrBot 执行一次受控 Provider 重载；在重载完成前，页面显示
-`pending`，旧 Provider 继续提供服务。重载失败时保留旧的 last-known-good
-Provider，并把错误状态反馈给控制台。适配器本身不执行进程重启，也不会覆盖无关
-Provider。
+控制台创建、轮换、停用或删除 Key 后，Gateway 会递增快照 `revision`。已接入该
+边界的部署编排可检测版本并对 AstrBot 执行一次受控 Provider 重载；未接入时，页面
+只确认配置已持久化，不声称运行实例已经同步。适配器本身不执行进程重启，也不会
+覆盖无关 Provider。
 
 ## 安全与运维要求
 
@@ -138,6 +152,14 @@ Provider。
 - 更新池元数据不会自动改变 `ModelTier`、`TierPolicy`、Endpoint descriptor
   digest 或健康 TTL。池为空、Provider 不可用或重载暂挂时，Runtime 继续使用既有
   的 provider-unavailable/fallback 行为。
+- `ops/manage.sh start/up/web-up` 与无参数兼容 `upgrade` 会在启动或重建容器前创建
+  API Key 目录和文件，并检查其归属为 Web 镜像中 `node` 用户的 UID 1000；若旧的
+  Docker bind 目录由 root 创建，命令会先失败并要求修正归属，而不会带着不可写
+  存储继续启动。带参数的 S16 upgrade 委托 Operations Driver；未来 Driver 的 start
+  阶段必须执行同一 preflight 后才能声明支持该凭据根。
+- 该明文私有文件故意不进入 `./manage.sh backup/restore` 的普通运行数据备份；主机
+  恢复应从 Secret Manager 重新注入并轮换 Provider 凭据，具体步骤见
+  `docs/operations/deployment.md` 的“数据与权限”。
 
 契约测试位于 `tests/contracts/test_api_key_pools.py`，覆盖对象/数组快照、三档
 隔离、权限、脱敏表示、SecretRef 解析、停用 Key 过滤和非法配置拒绝。

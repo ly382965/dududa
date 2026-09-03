@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from '@lucide/vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 
 import { apiKeyPoolsAdapter } from '../services/api-key-pools'
 import type {
@@ -80,14 +80,19 @@ const poolEditorTier = ref<ApiKeyTier>()
 const poolDraft = ref<PoolForm>()
 const poolFormError = ref('')
 const poolSaving = ref(false)
-const keyEditor = ref<{ tier: ApiKeyTier; keyId?: string }>()
+const keyEditor = ref<{ tier: ApiKeyTier; keyId?: string; revision: number | string }>()
 const keyDraft = ref<KeyForm>()
 const keyFormError = ref('')
 const keySaving = ref(false)
 const pendingRemove = ref<{ tier: ApiKeyTier; keyId: string }>()
 const testingTier = ref<ApiKeyTier>()
 const testResults = ref<Partial<Record<ApiKeyTier, ApiKeyPoolTestResult>>>({})
+const poolDialog = ref<HTMLElement>()
+const keyDialog = ref<HTMLElement>()
 let loadGeneration = 0
+let dialogReturnFocus: HTMLElement | undefined
+
+const DIALOG_FOCUSABLE = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 const editingKey = computed(() => {
   const editor = keyEditor.value
@@ -154,6 +159,16 @@ function formatCooldown(key: ApiKeyEntry): string {
   return `冷却至 ${date.toLocaleTimeString('zh-CN', { hour12: false })}`
 }
 
+function keyHealthText(key: ApiKeyEntry): string {
+  const cooldown = formatCooldown(key)
+  if (cooldown) return cooldown
+  if (key.status === 'error' || key.status === 'unavailable') {
+    return `失败 ${formatTime(key.lastFailureAt ?? key.updatedAt)}`
+  }
+  if (!key.enabled || key.status === 'disabled') return `更新 ${formatTime(key.updatedAt)}`
+  return `成功 ${formatTime(key.lastSuccessAt)}`
+}
+
 function poolForm(pool: ApiKeyPool): PoolForm {
   return {
     displayName: pool.displayName,
@@ -190,6 +205,18 @@ function setNotice(message: string): void {
   error.value = ''
 }
 
+function invalidatePendingLoad(): void {
+  loadGeneration += 1
+  loading.value = false
+}
+
+function clearTestResult(tier: ApiKeyTier): void {
+  if (!testResults.value[tier]) return
+  const next = { ...testResults.value }
+  delete next[tier]
+  testResults.value = next
+}
+
 function applyPool(pool: ApiKeyPool): void {
   const index = pools.value.findIndex((item) => item.tier === pool.tier)
   if (index < 0) pools.value = [...pools.value, pool]
@@ -216,7 +243,7 @@ function parseHeaders(value: string): { headers?: ApiKeyCustomHeader[]; error?: 
     if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,127}$/.test(name)) {
       return { error: `自定义 Header 名称无效：${name}` }
     }
-    if (/authorization|api[-_]?key|token|secret|password|cookie/i.test(name)) {
+    if (/authorization|api[-_]?key|token|secret|password|cookie|credential/i.test(name)) {
       return { error: '认证 Header 必须通过 SecretRef 注入，不能在此填写' }
     }
     headers.push({ name, value: headerValue })
@@ -241,7 +268,15 @@ async function load(): Promise<void> {
     const response = await props.adapter.list()
     if (generation !== loadGeneration) return
     const byTier = new Map(response.pools.map((pool) => [pool.tier, pool]))
-    pools.value = API_KEY_TIERS.map((tier) => byTier.get(tier) ?? emptyApiKeyPool(tier))
+    const nextPools = API_KEY_TIERS.map((tier) => byTier.get(tier) ?? emptyApiKeyPool(tier))
+    const nextResults = { ...testResults.value }
+    for (const tier of API_KEY_TIERS) {
+      const result = nextResults[tier]
+      const nextPool = nextPools.find((pool) => pool.tier === tier)
+      if (result && (result.revision === undefined || result.revision !== nextPool?.revision)) delete nextResults[tier]
+    }
+    pools.value = nextPools
+    testResults.value = nextResults
   } catch (cause) {
     if (generation !== loadGeneration) return
     error.value = cause instanceof Error ? cause.message : 'API Key 池读取失败'
@@ -251,16 +286,21 @@ async function load(): Promise<void> {
 }
 
 function openPoolEditor(tier: ApiKeyTier): void {
+  if (loading.value) return
+  rememberDialogTrigger()
   poolEditorTier.value = tier
   poolDraft.value = poolForm(poolFor(tier))
   poolFormError.value = ''
   notice.value = ''
+  focusDialog(poolDialog)
 }
 
-function closePoolEditor(): void {
+function closePoolEditor(force = false): void {
+  if (poolSaving.value && !force) return
   poolEditorTier.value = undefined
   poolDraft.value = undefined
   poolFormError.value = ''
+  restoreDialogFocus()
 }
 
 async function savePool(): Promise<void> {
@@ -270,18 +310,29 @@ async function savePool(): Promise<void> {
   if (!tier || !draft || !current || poolSaving.value) return
   const displayName = draft.displayName.trim()
   const provider = draft.provider.trim()
+  const providerId = draft.providerId.trim()
+  const sourceId = draft.sourceId.trim()
   const baseUrl = draft.baseUrl.trim()
   const model = draft.model.trim()
   if (!displayName || !provider || !baseUrl || !model) {
     poolFormError.value = '显示名称、Provider、Base URL 和模型 ID 不能为空'
     return
   }
+  const runtimeIdPattern = /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$/
+  if (providerId && !runtimeIdPattern.test(providerId)) {
+    poolFormError.value = 'Provider ID 格式无效；仅允许字母、数字及 _ . : / -'
+    return
+  }
+  if (sourceId && !runtimeIdPattern.test(sourceId)) {
+    poolFormError.value = 'Source ID 格式无效；仅允许字母、数字及 _ . : / -'
+    return
+  }
   if (!validHttpUrl(baseUrl)) {
     poolFormError.value = 'Base URL 必须是无凭据、无查询参数的 HTTP(S) 地址'
     return
   }
-  if (!Number.isInteger(draft.timeoutMs) || draft.timeoutMs < 1_000 || draft.timeoutMs > 600_000) {
-    poolFormError.value = '超时必须在 1,000–600,000 ms 之间'
+  if (!Number.isInteger(draft.timeoutMs) || draft.timeoutMs < 1_000 || draft.timeoutMs > 900_000) {
+    poolFormError.value = '超时必须在 1,000–900,000 ms 之间'
     return
   }
   if (!Number.isInteger(draft.maxOutputTokens) || draft.maxOutputTokens < 1 || draft.maxOutputTokens > 1_000_000) {
@@ -295,12 +346,13 @@ async function savePool(): Promise<void> {
   }
   poolSaving.value = true
   poolFormError.value = ''
+  invalidatePendingLoad()
   const request: ApiKeyPoolUpdateRequest = {
     displayName,
     provider,
     ...(draft.providerType.trim() ? { providerType: draft.providerType.trim() } : {}),
-    ...(draft.providerId.trim() ? { providerId: draft.providerId.trim() } : {}),
-    ...(draft.sourceId.trim() ? { sourceId: draft.sourceId.trim() } : {}),
+    providerId,
+    sourceId,
     baseUrl,
     model,
     protocol: draft.protocol.trim() || 'openai_chat_completions',
@@ -310,7 +362,7 @@ async function savePool(): Promise<void> {
     enabled: draft.enabled,
     schedulingMode: draft.schedulingMode.trim() || 'round_robin',
     customHeaders: parsedHeaders.headers,
-    revision: current.revision,
+    revision: draft.revision,
   }
   try {
     const response = await props.adapter.updatePool(tier, request)
@@ -321,8 +373,9 @@ async function savePool(): Promise<void> {
       revision: typeof current.revision === 'number' ? current.revision + 1 : current.revision,
     }
     mergeMutationPool(response, fallback)
-    closePoolEditor()
-    setNotice(`${API_KEY_TIER_LABELS[tier]} 配置已保存`)
+    clearTestResult(tier)
+    closePoolEditor(true)
+    setNotice(`${API_KEY_TIER_LABELS[tier]} 配置已保存；部署侧可在下次受控重载时同步`)
   } catch (cause) {
     poolFormError.value = cause instanceof Error ? cause.message : 'Provider 池保存失败'
   } finally {
@@ -331,18 +384,70 @@ async function savePool(): Promise<void> {
 }
 
 function openKeyEditor(tier: ApiKeyTier, key?: ApiKeyEntry): void {
-  keyEditor.value = { tier, ...(key ? { keyId: key.id } : {}) }
+  if (loading.value) return
+  rememberDialogTrigger()
+  keyEditor.value = { tier, ...(key ? { keyId: key.id } : {}), revision: poolFor(tier).revision }
   keyDraft.value = keyForm(key)
   keyFormError.value = ''
   pendingRemove.value = undefined
   notice.value = ''
+  focusDialog(keyDialog)
 }
 
-function closeKeyEditor(): void {
+function closeKeyEditor(force = false): void {
+  if (keySaving.value && !force) return
   if (keyDraft.value) keyDraft.value.secret = ''
   keyEditor.value = undefined
   keyDraft.value = undefined
   keyFormError.value = ''
+  restoreDialogFocus()
+}
+
+function rememberDialogTrigger(): void {
+  dialogReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
+}
+
+function focusDialog(dialog: typeof poolDialog): void {
+  void nextTick(() => {
+    const element = dialog.value
+    const target = element?.querySelector<HTMLElement>(DIALOG_FOCUSABLE) ?? element
+    target?.focus()
+  })
+}
+
+function restoreDialogFocus(): void {
+  const target = dialogReturnFocus
+  dialogReturnFocus = undefined
+  void nextTick(() => {
+    if (target?.isConnected) target.focus()
+  })
+}
+
+function handleDialogKeydown(event: KeyboardEvent, close: () => void): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    close()
+    return
+  }
+  if (event.key !== 'Tab') return
+  const dialog = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined
+  const focusable = dialog
+    ? [...dialog.querySelectorAll<HTMLElement>(DIALOG_FOCUSABLE)].filter((item) => !item.hidden)
+    : []
+  if (!focusable.length) {
+    event.preventDefault()
+    dialog?.focus()
+    return
+  }
+  const first = focusable[0]!
+  const last = focusable[focusable.length - 1]!
+  if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 async function saveKey(): Promise<void> {
@@ -360,7 +465,7 @@ async function saveKey(): Promise<void> {
     keyFormError.value = '新 Key 必须填写密钥；已有 Key 留空表示保持不变'
     return
   }
-  if (secretRef && !/^[A-Za-z0-9][A-Za-z0-9._/-]{1,95}$/.test(secretRef)) {
+  if (secretRef && !/^[A-Za-z0-9][A-Za-z0-9._/-]{1,159}$/.test(secretRef)) {
     keyFormError.value = 'SecretRef ID 格式无效'
     return
   }
@@ -374,15 +479,17 @@ async function saveKey(): Promise<void> {
   }
   keySaving.value = true
   keyFormError.value = ''
+  invalidatePendingLoad()
   // Construct the request before clearing the input. The adapter serializes it
   // immediately; the component retains no secret while the network is pending.
   const request: ApiKeyCreateRequest | ApiKeyUpdateRequest = {
     name,
     ...(secret ? { secret } : {}),
-    ...(secretRef ? { secretRef } : {}),
+    ...(editor.keyId ? { secretRef } : secretRef ? { secretRef } : {}),
     priority: draft.priority,
     weight: draft.weight,
     enabled: draft.enabled,
+    ...(editor.keyId ? { revision: editor.revision } : {}),
   }
   draft.secret = ''
   try {
@@ -400,8 +507,9 @@ async function saveKey(): Promise<void> {
     } else {
       await load()
     }
-    closeKeyEditor()
-    setNotice(editor.keyId ? 'Provider Key 元数据已保存' : 'Provider Key 已登记；密钥不会再次显示')
+    clearTestResult(editor.tier)
+    closeKeyEditor(true)
+    setNotice(editor.keyId ? 'Provider Key 元数据已保存；部署侧可在下次受控重载时同步' : 'Provider Key 已登记；密钥不会再次显示，部署侧可在下次受控重载时同步')
   } catch (cause) {
     keyFormError.value = cause instanceof Error ? cause.message : 'Provider Key 保存失败；请重新输入密钥'
   } finally {
@@ -420,12 +528,15 @@ function requestRemove(tier: ApiKeyTier, keyId: string): void {
 }
 
 async function removeKey(tier: ApiKeyTier, keyId: string): Promise<void> {
+  if (loading.value) return
   pendingRemove.value = undefined
+  invalidatePendingLoad()
   try {
     const response = await props.adapter.deleteKey(tier, keyId)
     const current = poolFor(tier)
     if (response.pool) applyPool(response.pool)
     else applyPool({ ...current, keys: current.keys.filter((key) => key.id !== keyId) })
+    clearTestResult(tier)
     setNotice('Provider Key 已停用并从当前池移除')
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Provider Key 移除失败'
@@ -433,12 +544,15 @@ async function removeKey(tier: ApiKeyTier, keyId: string): Promise<void> {
 }
 
 async function toggleKey(tier: ApiKeyTier, key: ApiKeyEntry): Promise<void> {
+  if (loading.value) return
+  invalidatePendingLoad()
   try {
-    const response = await props.adapter.updateKey(tier, key.id, { enabled: !key.enabled })
     const current = poolFor(tier)
+    const response = await props.adapter.updateKey(tier, key.id, { enabled: !key.enabled, revision: current.revision })
     if (response.pool) applyPool(response.pool)
     else if (response.key) applyPool({ ...current, keys: current.keys.map((item) => item.id === key.id ? response.key! : item) })
     else applyPool({ ...current, keys: current.keys.map((item) => item.id === key.id ? { ...item, enabled: !key.enabled, status: !key.enabled ? 'active' : 'disabled' } : item) })
+    clearTestResult(tier)
     setNotice(key.enabled ? 'Provider Key 已停用' : 'Provider Key 已启用')
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : 'Provider Key 状态更新失败'
@@ -446,11 +560,22 @@ async function toggleKey(tier: ApiKeyTier, key: ApiKeyEntry): Promise<void> {
 }
 
 async function testPool(tier: ApiKeyTier): Promise<void> {
-  if (testingTier.value) return
+  if (testingTier.value || loading.value) return
+  invalidatePendingLoad()
   testingTier.value = tier
   try {
     const result = await props.adapter.testPool(tier)
     testResults.value = { ...testResults.value, [tier]: result }
+    // A probe records health timestamps server-side and therefore advances
+    // the pool revision. Keep the local editor's CAS token current so an
+    // immediate metadata edit does not fail with a stale-revision response.
+    if (result.revision !== undefined) {
+      const current = poolFor(tier)
+      applyPool({ ...current, revision: result.revision })
+    }
+    // The probe response is intentionally small and secret-free. Reload the
+    // public snapshot so the row reflects the health metadata just persisted.
+    await load()
     emit('notify', result.message)
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : 'Provider 探测失败'
@@ -484,7 +609,7 @@ onMounted(() => void load())
 
     <div class="security-note" role="note">
       <ShieldCheck :size="17" />
-      <span><strong>密钥边界：</strong>浏览器只在明确的添加或轮换动作中提交一次密钥。列表、运行时状态、剪贴板和本地存储均不保存明文；Runtime 继续通过 AstrBot Provider Source / SecretRef 接收凭据。</span>
+      <span><strong>密钥边界：</strong>浏览器只在明确的添加或轮换动作中提交一次密钥。列表、运行时状态、剪贴板和本地存储均不保存明文；本页保存配置，不会自动重载 AstrBot，部署侧可在受控重载时通过 Provider Source / SecretRef 同步。</span>
     </div>
 
     <p v-if="error" class="inline-error" role="alert"><CircleAlert :size="15" />{{ error }}</p>
@@ -518,10 +643,10 @@ onMounted(() => void load())
         </div>
 
         <div class="pool-actions">
-          <button type="button" :aria-label="`探测 ${API_KEY_TIER_LABELS[tier]} Provider`" :disabled="testingTier === tier" @click="testPool(tier)">
+          <button type="button" :aria-label="`探测 ${API_KEY_TIER_LABELS[tier]} Provider`" :disabled="Boolean(testingTier) || loading" @click="testPool(tier)">
             <LoaderCircle v-if="testingTier === tier" class="spin" :size="14" /><Activity v-else :size="14" />探测 Provider
           </button>
-          <button type="button" :aria-label="`编辑 ${API_KEY_TIER_LABELS[tier]} 池`" @click="openPoolEditor(tier)"><Pencil :size="14" />编辑池</button>
+          <button type="button" :aria-label="`编辑 ${API_KEY_TIER_LABELS[tier]} 池`" :disabled="loading" @click="openPoolEditor(tier)"><Pencil :size="14" />编辑池</button>
         </div>
         <div v-if="testResults[tier]" class="test-result" :class="testResultClass(testResults[tier])" role="status">
           <Check v-if="testResults[tier]?.status === 'ok'" :size="13" /><CircleAlert v-else :size="13" />
@@ -530,7 +655,7 @@ onMounted(() => void load())
 
         <div class="keys-heading">
           <div><h3>Key 列表</h3><span>{{ poolFor(tier).keys.length }} 个凭据 · 仅显示元数据</span></div>
-          <button class="add-key" type="button" @click="openKeyEditor(tier)"><Plus :size="14" />添加 Key</button>
+          <button class="add-key" type="button" :disabled="loading" @click="openKeyEditor(tier)"><Plus :size="14" />添加 Key</button>
         </div>
         <div v-if="!poolFor(tier).keys.length" class="keys-empty"><KeyRound :size="22" /><span>此池还没有 Key</span><small>添加后由服务端保存，列表不会返回明文。</small></div>
         <ul v-else class="key-list" :aria-label="`${API_KEY_TIER_LABELS[tier]} Key 列表`">
@@ -543,68 +668,67 @@ onMounted(() => void load())
             <div class="key-row__priority"><small>优先级 / 权重</small><span>{{ key.priority }} / {{ key.weight }}</span></div>
             <div class="key-row__health">
               <span class="status-chip" :class="statusClass(key.status)">{{ displayStatus(key.status) }}</span>
-              <small v-if="formatCooldown(key)">{{ formatCooldown(key) }}</small>
-              <small v-else>成功 {{ formatTime(key.lastSuccessAt) }}</small>
+              <small>{{ keyHealthText(key) }}</small>
             </div>
             <div class="key-row__actions">
-              <button type="button" :title="key.enabled ? '停用此 Key' : '启用此 Key'" :aria-label="`${key.enabled ? '停用' : '启用'} ${key.name}`" @click="toggleKey(tier, key)"><Power :size="14" />{{ key.enabled ? '停用' : '启用' }}</button>
-              <button type="button" :aria-label="`编辑 ${key.name}`" @click="openKeyEditor(tier, key)"><Pencil :size="14" />编辑</button>
-              <button class="danger" type="button" :aria-label="`移除 ${key.name}`" @click="requestRemove(tier, key.id)"><Trash2 :size="14" />{{ pendingRemove?.tier === tier && pendingRemove.keyId === key.id ? '再次确认' : '移除' }}</button>
+              <button type="button" :title="key.enabled ? '停用此 Key' : '启用此 Key'" :aria-label="`${key.enabled ? '停用' : '启用'} ${key.name}`" :disabled="loading" @click="toggleKey(tier, key)"><Power :size="14" />{{ key.enabled ? '停用' : '启用' }}</button>
+              <button type="button" :aria-label="`编辑 ${key.name}`" :disabled="loading" @click="openKeyEditor(tier, key)"><Pencil :size="14" />编辑</button>
+              <button class="danger" type="button" :aria-label="pendingRemove?.tier === tier && pendingRemove.keyId === key.id ? `确认移除 ${key.name}` : `移除 ${key.name}`" :disabled="loading" @click="requestRemove(tier, key.id)"><Trash2 :size="14" />{{ pendingRemove?.tier === tier && pendingRemove.keyId === key.id ? '再次确认' : '移除' }}</button>
             </div>
           </li>
         </ul>
       </article>
     </section>
 
-    <p class="page-footnote"><Clock3 :size="14" /> Key 的健康、冷却和调度状态来自服务端投影；本页面不直接调用 Provider，也不改变 Dududa 2.0 的 Capability、TierPolicy 或 Delivery 权限。</p>
+    <p class="page-footnote"><Clock3 :size="14" /> Key 的健康状态来自服务端探针。本版的推理强度、输出预算、调度模式和权重是暂存元数据；运行中 Dududa 仍以既有 runtime_models_json 与 conformance evidence 为准，本页不改变 Capability、TierPolicy 或 Delivery 权限。</p>
 
-    <div v-if="poolEditorTier && poolDraft" class="modal-backdrop" role="presentation" @click.self="closePoolEditor">
-      <section class="modal-card pool-editor" role="dialog" aria-modal="true" aria-labelledby="pool-editor-title">
+    <div v-if="poolEditorTier && poolDraft" class="modal-backdrop" role="presentation" @click.self="closePoolEditor()">
+      <section ref="poolDialog" class="modal-card pool-editor" role="dialog" aria-modal="true" aria-labelledby="pool-editor-title" tabindex="-1" @keydown="handleDialogKeydown($event, closePoolEditor)">
         <header class="modal-card__header">
           <div><small>POOL CONFIGURATION</small><h2 id="pool-editor-title">编辑 {{ API_KEY_TIER_LABELS[poolEditorTier] }}</h2></div>
-          <button class="icon-button" type="button" title="关闭" aria-label="关闭池配置" @click="closePoolEditor"><X :size="17" /></button>
+          <button class="icon-button" type="button" title="关闭" aria-label="关闭池配置" :disabled="poolSaving" @click="closePoolEditor()"><X :size="17" /></button>
         </header>
         <form class="editor-form" @submit.prevent="savePool">
           <div class="form-grid form-grid--two">
             <label>显示名称<input v-model="poolDraft.displayName" autocomplete="off" /></label>
             <label>Provider<input v-model="poolDraft.provider" autocomplete="off" placeholder="例如 OpenAI-compatible" /></label>
-            <label>Provider 类型（可选）<input v-model="poolDraft.providerType" autocomplete="off" placeholder="chat_completion" /></label>
-            <label>Provider ID（可选）<input v-model="poolDraft.providerId" autocomplete="off" placeholder="部署侧绑定 ID" /></label>
+            <label>Provider 类型（暂存元数据）<input v-model="poolDraft.providerType" autocomplete="off" placeholder="chat_completion" /></label>
+            <label>Provider ID（固定 Runtime 绑定）<input v-model="poolDraft.providerId" readonly autocomplete="off" placeholder="部署侧绑定 ID" /></label>
             <label>Source ID（可选）<input v-model="poolDraft.sourceId" autocomplete="off" placeholder="dududa-haiku-source" /></label>
-            <label class="form-grid__wide">Base URL<input v-model="poolDraft.baseUrl" type="url" autocomplete="off" placeholder="https://provider.example/v1" /></label>
-            <label>模型 ID<input v-model="poolDraft.model" autocomplete="off" placeholder="gpt-5.6-luna" /></label>
-            <label>协议<select v-model="poolDraft.protocol"><option value="openai_chat_completions">OpenAI Chat Completions</option><option value="openai_responses">OpenAI Responses</option><option value="anthropic_messages">Anthropic Messages</option></select></label>
-            <label>推理强度<select v-model="poolDraft.reasoningEffort"><option v-for="option in reasoningOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
-            <label>超时（ms）<input v-model.number="poolDraft.timeoutMs" type="number" min="1000" max="600000" step="1000" /></label>
-            <label>输出预算（tokens）<input v-model.number="poolDraft.maxOutputTokens" type="number" min="1" max="1000000" step="1" /></label>
-            <label>调度模式<select v-model="poolDraft.schedulingMode"><option v-for="option in schedulingOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
+            <label class="form-grid__wide">Base URL<input v-model="poolDraft.baseUrl" type="url" maxlength="512" autocomplete="off" placeholder="https://provider.example/v1" /></label>
+            <label>模型 ID（重载前需校验）<input v-model="poolDraft.model" autocomplete="off" placeholder="gpt-5.6-luna" /></label>
+            <label>协议<select v-model="poolDraft.protocol"><option value="openai_chat_completions">OpenAI Chat Completions</option><option value="anthropic_messages">Anthropic Messages</option></select></label>
+            <label>推理强度（暂存元数据）<select v-model="poolDraft.reasoningEffort"><option v-for="option in reasoningOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
+            <label>超时（ms）<input v-model.number="poolDraft.timeoutMs" type="number" min="1000" max="900000" step="1000" /></label>
+            <label>输出预算（暂存 tokens）<input v-model.number="poolDraft.maxOutputTokens" type="number" min="1" max="1000000" step="1" /></label>
+            <label>调度模式（暂存元数据）<select v-model="poolDraft.schedulingMode"><option v-for="option in schedulingOptions" :key="option.value" :value="option.value">{{ option.label }}</option></select></label>
             <label class="toggle-field"><input v-model="poolDraft.enabled" type="checkbox" /><span><strong>启用此池</strong><small>不影响 TierPolicy，只控制凭据池是否可用。</small></span></label>
             <label class="form-grid__wide">自定义 Header（非认证）<textarea v-model="poolDraft.customHeadersText" rows="3" placeholder="例如 X-Client-Name=dududa\n认证 Header 请改用 SecretRef" /></label>
           </div>
           <p v-if="poolFormError" class="form-error" role="alert">{{ poolFormError }}</p>
-          <footer class="modal-card__footer"><button type="button" @click="closePoolEditor">取消</button><button class="primary" type="submit" :disabled="poolSaving"><LoaderCircle v-if="poolSaving" class="spin" :size="14" /><Save v-else :size="14" />保存池配置</button></footer>
+          <footer class="modal-card__footer"><button type="button" :disabled="poolSaving" @click="closePoolEditor()">取消</button><button class="primary" type="submit" :disabled="poolSaving"><LoaderCircle v-if="poolSaving" class="spin" :size="14" /><Save v-else :size="14" />保存池配置</button></footer>
         </form>
       </section>
     </div>
 
-    <div v-if="keyEditor && keyDraft" class="modal-backdrop" role="presentation" @click.self="closeKeyEditor">
-      <section class="modal-card key-editor" role="dialog" aria-modal="true" aria-labelledby="key-editor-title">
+    <div v-if="keyEditor && keyDraft" class="modal-backdrop" role="presentation" @click.self="closeKeyEditor()">
+      <section ref="keyDialog" class="modal-card key-editor" role="dialog" aria-modal="true" aria-labelledby="key-editor-title" tabindex="-1" @keydown="handleDialogKeydown($event, closeKeyEditor)">
         <header class="modal-card__header">
           <div><small>WRITE-ONLY CREDENTIAL</small><h2 id="key-editor-title">{{ keyDialogTitle }}</h2><p>{{ API_KEY_TIER_LABELS[keyEditor.tier] }}</p></div>
-          <button class="icon-button" type="button" title="关闭" aria-label="关闭 Key 编辑" @click="closeKeyEditor"><X :size="17" /></button>
+          <button class="icon-button" type="button" title="关闭" aria-label="关闭 Key 编辑" :disabled="keySaving" @click="closeKeyEditor()"><X :size="17" /></button>
         </header>
         <form class="editor-form" @submit.prevent="saveKey">
           <div class="secret-boundary"><ShieldCheck :size="15" /><span>密钥只会随本次明确提交发送。提交后输入立即清空，服务端和 GET 列表只返回遮罩与 SecretRef。</span></div>
           <div class="form-grid form-grid--two">
             <label>显示名称<input v-model="keyDraft.name" autocomplete="off" placeholder="例如主 Key" /></label>
-            <label>SecretRef ID（可选）<input v-model="keyDraft.secretRef" autocomplete="off" placeholder="provider/luna-primary" /></label>
+            <label>SecretRef ID（可选）<input v-model="keyDraft.secretRef" maxlength="160" autocomplete="off" placeholder="provider/luna-primary" /></label>
             <label class="form-grid__wide">API Key <input v-model="keyDraft.secret" type="password" autocomplete="new-password" :placeholder="editingKey ? '留空保持现有密钥；填写则轮换' : '仅本次写入，不会再次显示'" /></label>
             <label>优先级<input v-model.number="keyDraft.priority" type="number" min="0" max="1000000" step="1" /></label>
-            <label>权重<input v-model.number="keyDraft.weight" type="number" min="1" max="1000" step="1" /></label>
+            <label>权重（同优先级排序）<input v-model.number="keyDraft.weight" type="number" min="1" max="1000" step="1" /></label>
             <label class="toggle-field"><input v-model="keyDraft.enabled" type="checkbox" /><span><strong>启用此 Key</strong><small>停用后不会参与池内调度。</small></span></label>
           </div>
           <p v-if="keyFormError" class="form-error" role="alert">{{ keyFormError }}</p>
-          <footer class="modal-card__footer"><button type="button" @click="closeKeyEditor">取消</button><button class="primary" type="submit" :disabled="keySaving"><LoaderCircle v-if="keySaving" class="spin" :size="14" /><Save v-else :size="14" />{{ editingKey ? '保存元数据' : '写入 Key' }}</button></footer>
+          <footer class="modal-card__footer"><button type="button" :disabled="keySaving" @click="closeKeyEditor()">取消</button><button class="primary" type="submit" :disabled="keySaving"><LoaderCircle v-if="keySaving" class="spin" :size="14" /><Save v-else :size="14" />{{ editingKey ? '保存元数据' : '写入 Key' }}</button></footer>
         </form>
       </section>
     </div>
@@ -622,7 +746,7 @@ onMounted(() => void load())
 .security-note strong { color: var(--brand-strong); }
 .inline-error { border-left-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .inline-notice { border-left-color: var(--success); color: var(--success-strong); background: var(--success-soft); }
-.pool-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.pool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; margin-top: 16px; }
 .pool-card { display: flex; min-width: 0; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: 0 5px 16px rgb(25 43 47 / 4%); }
 .pool-card--haiku { --tier-color: var(--brand); --tier-soft: var(--brand-soft); }
 .pool-card--sonnet { --tier-color: #8b6db1; --tier-soft: #f3eef9; }
@@ -647,7 +771,7 @@ onMounted(() => void load())
 .pool-actions button, .add-key, .key-row__actions button, .modal-card__footer button { display: inline-flex; height: 31px; cursor: pointer; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--border); border-radius: 5px; color: var(--text-secondary); background: var(--surface); padding: 0 9px; font-size: 9px; }
 .pool-actions button { flex: 1; }
 .pool-actions button:hover, .add-key:hover, .key-row__actions button:hover, .modal-card__footer button:hover { border-color: var(--border-strong); background: var(--surface-hover); }
-.pool-actions button:disabled, .modal-card__footer button:disabled { cursor: wait; opacity: .55; }
+.pool-actions button:disabled, .add-key:disabled, .key-row__actions button:disabled, .modal-card__footer button:disabled { cursor: wait; opacity: .55; }
 .test-result { display: flex; align-items: flex-start; gap: 5px; margin: 8px 10px 0; border-radius: 4px; padding: 6px 7px; font-size: 9px; line-height: 1.4; }
 .test-result--ok { color: var(--success-strong); background: var(--success-soft); }
 .test-result--error { color: var(--danger); background: var(--danger-soft); }

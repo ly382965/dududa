@@ -48,6 +48,15 @@ _PROTOCOL_ALIASES = {
     "openai_chat_completions": "openai_chat_completion",
     "chat_completion": "openai_chat_completion",
     "openai": "openai_chat_completion",
+    "anthropic": "anthropic_chat_completion",
+    "anthropic_message": "anthropic_chat_completion",
+    "anthropic_messages": "anthropic_chat_completion",
+}
+
+_DEFAULT_PROVIDER_IDS = {
+    "haiku": "astrbot-luna",
+    "sonnet": "astrbot-terra",
+    "opus": "astrbot-sol",
 }
 
 
@@ -180,9 +189,10 @@ class AstrBotProviderProjection:
             "provider_source_id": self.source_id,
             "model": self.model,
             "modalities": ["text"],
-            "custom_extra_body": {"store": False},
             "enable": self.enabled,
         }
+        if self.source_type == "openai_chat_completion":
+            provider["custom_extra_body"] = {"store": False}
         return {"provider_source": source, "provider": provider}
 
 
@@ -280,23 +290,27 @@ def parse_api_key_pool_snapshot(document: object) -> ApiKeyPoolSnapshot:
         raise ApiKeyPoolConfigError("API Key store pools must be an object or array")
 
     parsed: dict[str, ApiKeyPool] = {}
-    provider_ids: set[str] = set()
-    source_ids: set[str] = set()
     for value in entries:
         pool = _parse_pool(value)
         if pool.tier in parsed:
             raise ApiKeyPoolConfigError("duplicate API Key pool tier")
-        if pool.provider_id in provider_ids or pool.source_id in source_ids:
-            raise ApiKeyPoolConfigError("API Key provider/source IDs must be unique")
         parsed[pool.tier] = pool
-        provider_ids.add(pool.provider_id)
-        source_ids.add(pool.source_id)
 
     # Keep a deterministic three-tier projection even while a deployment is
     # being prepared.  Empty pools are inert and do not alter TierPolicy.
     pools = tuple(
         parsed.get(tier) or _empty_pool(tier, revision) for tier in API_KEY_POOL_TIERS
     )
+    # AstrBot indexes Provider and Source records by ID. Check the completed
+    # three-tier projection, not only explicitly supplied entries: a missing
+    # tier contributes a generated default ID that can collide with another
+    # pool's explicit binding.
+    provider_ids = [pool.provider_id for pool in pools]
+    source_ids = [pool.source_id for pool in pools]
+    if len(set(provider_ids)) != len(provider_ids) or len(set(source_ids)) != len(
+        source_ids
+    ):
+        raise ApiKeyPoolConfigError("API Key provider/source IDs must be unique")
     return ApiKeyPoolSnapshot(
         schema_version=schema_version, revision=revision, pools=pools
     )
@@ -322,10 +336,13 @@ def project_pool_to_astrbot(
             if not value and secret_resolver is not None and credential.secret_ref:
                 try:
                     value = str(secret_resolver(credential.secret_ref) or "").strip()
-                except Exception as exc:
+                # Resolver implementations are deployment-owned; normalize
+                # every failure here so their exception text cannot disclose
+                # a resolved credential through logs or API responses.
+                except Exception:  # noqa: BLE001
                     raise ApiKeyPoolConfigError(
                         "API Key SecretRef cannot be resolved"
-                    ) from exc
+                    ) from None
             if value:
                 keys.append(value)
 
@@ -334,7 +351,7 @@ def project_pool_to_astrbot(
         source_id=pool.source_id,
         provider_id=pool.provider_id,
         model=pool.model,
-        source_type="openai_chat_completion",
+        source_type=pool.protocol,
         provider_type="chat_completion",
         api_base=pool.base_url,
         timeout_seconds=max(1, min(900, math.ceil(pool.timeout_ms / 1_000))),
@@ -367,7 +384,7 @@ def _parse_pool(value: object) -> ApiKeyPool:
         default="chat_completion",
     )
     provider_id = _identifier(
-        item.get("providerId", item.get("provider_id", f"astrbot-{tier}")),
+        item.get("providerId", item.get("provider_id", _DEFAULT_PROVIDER_IDS[tier])),
         "provider_id",
     )
     source_id = _identifier(
@@ -527,7 +544,7 @@ def _empty_pool(tier: str, revision: int | str) -> ApiKeyPool:
         display_name=tier,
         provider="",
         provider_type="chat_completion",
-        provider_id=f"astrbot-{tier}",
+        provider_id=_DEFAULT_PROVIDER_IDS[tier],
         source_id=f"dududa-{tier}-source",
         base_url="",
         model="",
@@ -646,6 +663,13 @@ def _headers(value: object) -> tuple[tuple[str, str], ...]:
         ) is None or _SENSITIVE_HEADER_RE.search(header_name):
             raise ApiKeyPoolConfigError(
                 "API Key custom header cannot carry credentials"
+            )
+        if any(
+            ord(character) < 0x20 or ord(character) == 0x7F
+            for character in header_value
+        ):
+            raise ApiKeyPoolConfigError(
+                "API Key custom header value contains control characters"
             )
         pairs.append((header_name, header_value))
     if len(pairs) > 32:

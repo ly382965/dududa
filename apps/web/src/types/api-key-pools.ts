@@ -127,6 +127,8 @@ export interface ApiKeyPoolTestResult {
   latencyMs?: number
   model?: string
   checkedAt?: string
+  /** Latest pool revision after the server records health metadata. */
+  revision?: number | string
 }
 
 export interface ApiKeyPoolsAdapter {
@@ -152,12 +154,18 @@ export const API_KEY_TIER_DESCRIPTIONS: Record<ApiKeyTier, string> = {
   opus: '高复杂度或长上下文任务',
 }
 
+export const API_KEY_TIER_PROVIDER_IDS: Record<ApiKeyTier, string> = {
+  haiku: 'astrbot-luna',
+  sonnet: 'astrbot-terra',
+  opus: 'astrbot-sol',
+}
+
 export function emptyApiKeyPool(tier: ApiKeyTier): ApiKeyPool {
   return {
     tier,
     displayName: API_KEY_TIER_LABELS[tier],
     provider: '',
-    providerId: `astrbot-${tier}`,
+    providerId: API_KEY_TIER_PROVIDER_IDS[tier],
     sourceId: `dududa-${tier}-source`,
     baseUrl: '',
     model: '',

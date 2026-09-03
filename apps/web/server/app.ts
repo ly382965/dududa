@@ -240,7 +240,14 @@ async function readJson(request: IncomingMessage, limit: number): Promise<Record
     chunks.push(buffer)
   }
   if (!chunks.length) return {}
-  const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+  } catch {
+    // Native JSON parser errors can include a fragment of the request body.
+    // Keep the browser-facing diagnostic deterministic and credential-free.
+    throw new Error('请求正文 JSON 无效')
+  }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('请求正文必须是 JSON object')
   return parsed as Record<string, unknown>
 }
@@ -521,7 +528,8 @@ export function createDududaServer(options: DududaServerOptions) {
           json(response, 400, { error: 'API Key tier 无效' })
           return
         }
-        // The create endpoint is the only route that accepts a new raw secret.
+        // Creation requires a raw secret; the key PUT route accepts one only
+        // when the operator explicitly rotates an existing credential.
         const body = await readJson(request, maxRequestBytes)
         json(response, 201, sanitizeApiKeyMutation(await apiKeyCall(() => apiKeyPool.createKey(tier, body))))
         return

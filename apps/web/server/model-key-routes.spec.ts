@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { createDududaServer } from './app'
-import { FileApiKeyPoolStore } from './model-keys'
+import { FileApiKeyPoolStore, sanitizeApiKeySnapshot } from './model-keys'
 import { OneBotHub } from './onebot-hub'
 
 const token = `route-test-${randomUUID()}`
@@ -142,5 +142,43 @@ describe('API Key pool HTTP boundary', () => {
       method: 'POST', headers: origin, body: JSON.stringify({ secret: `should-not-${randomUUID()}` }),
     })
     expect(secretProbe.status).toBe(400)
+  })
+
+  it('does not expose credential-bearing Base URL query strings from an adapter', () => {
+    const snapshot = sanitizeApiKeySnapshot({
+      revision: 3,
+      pools: [{
+        tier: 'haiku',
+        baseUrl: 'https://provider.example/v1?api_key=should-not-leak',
+        keys: [],
+      }],
+    })
+    const pool = snapshot.pools.find((item) => item.tier === 'haiku')!
+    expect(pool.baseUrl).toBe('')
+    expect(JSON.stringify(snapshot)).not.toContain('should-not-leak')
+  })
+
+  it('fully hides a noncanonical masked value returned by an adapter', () => {
+    const marker = 'private-adapter-marker*'
+    const snapshot = sanitizeApiKeySnapshot({
+      pools: [{ tier: 'haiku', keys: [{ id: 'leaky-mask', masked: marker }] }],
+    })
+    const key = snapshot.pools.find((item) => item.tier === 'haiku')!.keys[0]
+    expect(key.masked).toBe('••••••••')
+    expect(JSON.stringify(snapshot)).not.toContain(marker)
+  })
+
+  it('does not echo malformed JSON fragments in an error response', async () => {
+    const { baseUrl } = await start()
+    const marker = `private-json-fragment-${randomUUID()}`
+    const response = await fetch(`${baseUrl}/api/api-keys/pools/haiku/keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: marker,
+    })
+    const body = await response.text()
+    expect(response.status).toBe(400)
+    expect(body).not.toContain(marker)
+    expect(body).toContain('请求正文 JSON 无效')
   })
 })

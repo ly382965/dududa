@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import traceback
 import unittest
 from pathlib import Path
 
@@ -14,6 +15,12 @@ from astrbot_plugin_dududa_core.adapters.api_key_pools import (
     project_pool_to_astrbot,
 )
 
+_PROVIDER_IDS = {
+    "haiku": "astrbot-luna",
+    "sonnet": "astrbot-terra",
+    "opus": "astrbot-sol",
+}
+
 
 def _pool(
     tier: str, *, key: str = "synthetic-key", enabled: bool = True
@@ -22,7 +29,7 @@ def _pool(
         "tier": tier,
         "displayName": f"{tier} pool",
         "provider": "synthetic-provider",
-        "providerId": f"astrbot-{tier}",
+        "providerId": _PROVIDER_IDS[tier],
         "sourceId": f"dududa-{tier}-source",
         "baseUrl": "https://provider.invalid/v1",
         "model": f"synthetic-{tier}",
@@ -101,7 +108,7 @@ class ApiKeyPoolAdapterContractTests(unittest.TestCase):
         )
         self.assertEqual(
             [item.provider_id for item in projections],
-            ["astrbot-haiku", "astrbot-sonnet", "astrbot-opus"],
+            ["astrbot-luna", "astrbot-terra", "astrbot-sol"],
         )
         self.assertEqual(
             projections[0].keys,
@@ -151,6 +158,20 @@ class ApiKeyPoolAdapterContractTests(unittest.TestCase):
             pool, secret_resolver=lambda ref: "resolved-value"
         )  # type: ignore[arg-type]
         self.assertEqual(projection.keys, ("resolved-value",))
+
+    def test_secret_ref_resolver_failure_does_not_chain_sensitive_details(self) -> None:
+        document = _document()
+        document["pools"]["haiku"]["keys"][1].pop("secret")
+        pool = parse_api_key_pool_snapshot(document).pool("haiku")
+
+        def fail_resolver(_reference: str) -> str:
+            raise RuntimeError("resolver-private-marker")
+
+        with self.assertRaises(ApiKeyPoolConfigError) as captured:
+            project_pool_to_astrbot(pool, secret_resolver=fail_resolver)  # type: ignore[arg-type]
+        rendered = "".join(traceback.format_exception(captured.exception))
+        self.assertNotIn("resolver-private-marker", rendered)
+        self.assertNotIn("resolver-private-marker", repr(captured.exception))
 
     def test_disabled_or_cooling_keys_are_not_materialized(self) -> None:
         document = _document()
@@ -203,6 +224,33 @@ class ApiKeyPoolAdapterContractTests(unittest.TestCase):
         document["pools"]["sonnet"]["sourceId"] = "dududa-haiku-source"
         with self.assertRaisesRegex(ApiKeyPoolConfigError, "unique"):
             parse_api_key_pool_snapshot(document)
+
+        document = _document()
+        document["pools"]["haiku"]["customHeaders"] = [
+            {"name": "X-Client-Name", "value": "safe\r\nX-Injected: yes"}
+        ]
+        with self.assertRaisesRegex(ApiKeyPoolConfigError, "control"):
+            parse_api_key_pool_snapshot(document)
+
+        # A missing tier is filled with generated IDs. Those defaults must
+        # participate in collision checks just like explicit bindings.
+        document = _document()
+        del document["pools"]["sonnet"]
+        document["pools"]["haiku"]["providerId"] = "astrbot-terra"
+        with self.assertRaisesRegex(ApiKeyPoolConfigError, "unique"):
+            parse_api_key_pool_snapshot(document)
+
+    def test_anthropic_message_protocol_keeps_its_astrbot_source_type(self) -> None:
+        document = _document()
+        document["pools"]["opus"]["protocol"] = "anthropic_messages"
+        pool = parse_api_key_pool_snapshot(document).pool("opus")
+        projection = project_pool_to_astrbot(pool)  # type: ignore[arg-type]
+        self.assertEqual(projection.source_type, "anthropic_chat_completion")
+        self.assertEqual(
+            projection.for_astrbot()["provider_source"]["type"],
+            "anthropic_chat_completion",
+        )
+        self.assertNotIn("custom_extra_body", projection.for_astrbot()["provider"])
 
 
 if __name__ == "__main__":

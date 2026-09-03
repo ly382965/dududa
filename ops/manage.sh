@@ -39,14 +39,21 @@ web_data_root() {
 }
 
 api_key_store_root() {
-  local root
+  local root candidate resolved repository_root
   root="${DUDUDA_API_KEY_STORE_ROOT:-$(env_value DUDUDA_API_KEY_STORE_ROOT "$ENV_FILE")}"
-  root="${root:-./runtime/web/api-keys}"
+  root="${root:-../dududa-state/api-keys}"
   if [[ "$root" = /* ]]; then
-    printf '%s\n' "$root"
+    candidate="$root"
   else
-    printf '%s\n' "$ROOT_DIR/${root#./}"
+    candidate="$ROOT_DIR/${root#./}"
   fi
+  resolved="$(realpath -m -- "$candidate")"
+  repository_root="$(realpath -m -- "$ROOT_DIR")"
+  if [[ "$resolved" == "/" || "$resolved" == "$repository_root" || "$resolved" == "$repository_root/"* ]]; then
+    printf 'DUDUDA_API_KEY_STORE_ROOT must resolve outside the repository: %s\n' "$resolved" >&2
+    return 1
+  fi
+  printf '%s\n' "$resolved"
 }
 
 astrbot_plugin_root() {
@@ -61,7 +68,7 @@ astrbot_plugin_root() {
 }
 
 ensure_web_secrets() {
-  local root token_file plugin_key_file api_key_root api_key_file
+  local root token_file plugin_key_file api_key_root api_key_file api_key_root_uid api_key_file_uid
   root="$(web_data_root)"
   mkdir -p "$root/secrets"
   chmod 700 "$root" "$root/secrets" 2>/dev/null || true
@@ -87,6 +94,12 @@ ensure_web_secrets() {
     printf '%s\n' '{"schemaVersion":1,"revision":1,"pools":{}}' >"$api_key_file"
   fi
   chmod 600 "$api_key_file"
+  api_key_root_uid="$(stat -c '%u' "$api_key_root")"
+  api_key_file_uid="$(stat -c '%u' "$api_key_file")"
+  if [[ "$api_key_root_uid" != "1000" || "$api_key_file_uid" != "1000" ]]; then
+    printf 'API Key store must be owned by UID 1000 for the Web container: %s\n' "$api_key_root" >&2
+    return 1
+  fi
 }
 
 project_name() {
@@ -145,6 +158,7 @@ usage() {
     '  init        Create private runtime directories and merge safe templates' \
     '  plugins     Install owned and locked plugins into the 2.0 runtime' \
     '  plugin-access  Provision the Web plugin-scope AstrBot API key' \
+    '  api-key-store-path  Validate and print the external API Key store root' \
     '  sync        Merge the icourse MCP template into runtime config' \
     '  seed        Install the Dududa persona and MCP config into AstrBot' \
     '  up          Build and start the complete AstrBot + NapCat + Web stack' \
@@ -203,6 +217,9 @@ case "$cmd" in
     trap - EXIT
     printf '%s\n' 'AstrBot plugin access configured.'
     ;;
+  api-key-store-path)
+    api_key_store_root
+    ;;
   sync)
     "$PYTHON" ops/cli/sync_runtime.py --data-root "$(data_root)" --force-config
     ;;
@@ -224,6 +241,7 @@ case "$cmd" in
     "${COMPOSE[@]}" restart astrbot
     ;;
   start)
+    ensure_web_secrets
     ensure_edge_network
     "${COMPOSE[@]}" up -d
     ;;
@@ -286,6 +304,7 @@ case "$cmd" in
     else
       "$0" plugins
       "$0" sync
+      ensure_web_secrets
       ensure_edge_network
       "${COMPOSE[@]}" pull --ignore-buildable
       "${COMPOSE[@]}" up -d --build
