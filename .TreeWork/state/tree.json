@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 5,
-  "source_hash": "fnv1a64:77602dbbd22d2bd7",
-  "state_hash": "fnv1a64:a3e2bc31e89b90d8",
-  "accepted_at": "unix:1788348291",
+  "revision": 6,
+  "source_hash": "fnv1a64:da0c26af09dd08b6",
+  "state_hash": "fnv1a64:2c8e4726dda19398",
+  "accepted_at": "unix:1788428802",
   "root": "root",
   "nodes": [
     {
@@ -414,12 +414,23 @@
       ]
     },
     {
+      "id": "api-key-pools",
+      "parent": "agent-expansion",
+      "title": "Three-Tier LLM API Key Pools",
+      "purpose": "Add an independent Web credential workbench and server-side SecretRef-backed pools for the three Dududa reasoning tiers without changing tier policy, Runtime authority or existing Provider contracts.",
+      "spec": "branches/agent-expansion/api-key-pools/spec.md",
+      "sibling_order": 16,
+      "depends_on": [
+        "control-plane-audit"
+      ]
+    },
+    {
       "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "spec": "branches/agent-expansion/real-group-validation/spec.md",
-      "sibling_order": 16,
+      "sibling_order": 17,
       "depends_on": [
         "legacy-cleanup",
         "mew-parity-audit",

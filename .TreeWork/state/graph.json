@@ -599,6 +599,22 @@
       "kind": "depends_on",
       "user_label": "pr10-selective-integration depends on control-plane-audit",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-76",
+      "from": "agent-expansion",
+      "to": "api-key-pools",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains api-key-pools",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-77",
+      "from": "api-key-pools",
+      "to": "control-plane-audit",
+      "kind": "depends_on",
+      "user_label": "api-key-pools depends on control-plane-audit",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

@@ -4,9 +4,9 @@
 <!-- treework:root-status:start -->
 Stage: work_tree
 Lead cursor: real-group-validation
-Accepted tree revision: 5
+Accepted tree revision: 6
 Tree editing: closed
-Last sync: unix:1788422628
+Last sync: unix:1788428802
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)

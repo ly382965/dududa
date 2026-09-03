@@ -305,6 +305,15 @@ tree:
       spec: branches/agent-expansion/pr10-selective-integration/spec.md
       depends_on:
       - control-plane-audit
+    - id: api-key-pools
+      title: Three-Tier LLM API Key Pools
+      purpose: >-
+        Add an independent Web credential workbench and server-side SecretRef-backed
+        pools for the three Dududa reasoning tiers without changing tier policy,
+        Runtime authority or existing Provider contracts.
+      spec: branches/agent-expansion/api-key-pools/spec.md
+      depends_on:
+      - control-plane-audit
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

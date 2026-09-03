@@ -6,7 +6,7 @@ Branch: perception-tiering
 Parent: model-selection
 Status: complete
 Verification: verified
-Last sync: unix:1788348291
+Last sync: unix:1788428802
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
