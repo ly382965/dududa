@@ -453,6 +453,15 @@ class DirectChatModelCall:
                 "selected_profile": response_plan.selected_profile,
                 "visible_token_limit": response_plan.visible_token_limit,
                 "visible_character_limit": response_plan.visible_character_limit,
+                "recommended_character_target": max(
+                    1, min(response_plan.visible_token_limit,
+                           response_plan.visible_character_limit) * 9 // 10
+                ),
+                "visible_unit_definition": (
+                    "Display units, not model/reasoning tokens: CJK characters and "
+                    "punctuation count 1 each; other words count 1. Keep final text "
+                    "below recommended_character_target including punctuation."
+                ),
                 "delivery_part_limit": response_plan.delivery_part_limit,
                 "instruction": (
                     _PROFILE_INSTRUCTIONS[response_plan.selected_profile.value]

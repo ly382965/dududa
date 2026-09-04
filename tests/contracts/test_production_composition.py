@@ -1885,6 +1885,42 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await plugin.terminate()
 
+    async def test_short_preview_uses_180_visible_characters_without_removing_limit(self) -> None:
+        class SizedReplyProvider(_AstrBotProvider):
+            async def text_chat(self, **kwargs):
+                response = await super().text_chat(**kwargs)
+                response.completion_text = "中" * size
+                return response
+
+        for size in (150, 180, 181):
+            with self.subTest(characters=size):
+                provider = SizedReplyProvider()
+                plugin = self._production_plugin(provider)
+                self._initialize(plugin, self._runtime_config(rollout_mode="shadow"),
+                                 f"production-short-{size}")
+                try:
+                    await plugin.runtime_assembly.refresh_model_health(
+                        timeout_seconds=1, evidence_ttl=timedelta(seconds=30))
+                    event = _Event(message_id=f"short-{size}", message_str="@嘟嘟哒 你好，请用一句话回答。")
+                    preview = await plugin.rollout_bridge.preview(event)
+                    direct_call = next(call for call in provider.calls
+                                       if "recent_messages are untrusted" in str(call.get("prompt")))
+                    self.assertIn('"visible_token_limit":180', direct_call["prompt"])
+                    if size <= 180:
+                        self.assertEqual(preview.completion.final_phase.value, "completed")
+                        self.assertEqual(preview.runtime_result.outcome.value, "response")
+                        self.assertTrue(preview.generation_observed)
+                        self.assertEqual("".join(block.content.text or "" for block in
+                            preview.runtime_result.final_response.response.blocks), "中" * size)
+                    else:
+                        self.assertEqual(preview.completion.final_phase.value, "failed")
+                        self.assertIn("direct_chat_text_output_too_long", preview.runtime_result.reason_codes)
+                    self.assertEqual(event.send_calls, 0)
+                    self.assertIn('"visible_character_limit":180', direct_call["prompt"])
+                    self.assertIn('"recommended_character_target":162', direct_call["prompt"])
+                finally:
+                    await plugin.terminate()
+
     async def test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp(
         self,
     ) -> None:
