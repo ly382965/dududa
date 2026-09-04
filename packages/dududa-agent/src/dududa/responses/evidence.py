@@ -61,6 +61,15 @@ _STRUCTURED_MULTI_ITEM_PATTERNS = (
     ),
 )
 
+_EXACT_LITERAL_REPLY = re.compile(
+    r"^\s*(?:这条\s*)?(?:请\s*)?只(?:回复|回答|输出)\s*[：:]?\s*"
+    r"(?:“(?P<curly>[^”\r\n]{1,160})”|"
+    r"「(?P<corner>[^」\r\n]{1,160})」|"
+    r"『(?P<white_corner>[^』\r\n]{1,160})』|"
+    r'"(?P<double>[^"\r\n]{1,160})"|'
+    r"'(?P<single>[^'\r\n]{1,160})')\s*[。.!！]?\s*$"
+)
+
 
 def is_history_summary_request(text: str) -> bool:
     """Only the leading request, not a summary instruction quoted as data."""
@@ -74,6 +83,20 @@ def is_structured_multi_item_request(text: str) -> bool:
 
     normalized = unicodedata.normalize("NFKC", text).casefold().strip()
     return any(pattern.search(normalized) for pattern in _STRUCTURED_MULTI_ITEM_PATTERNS)
+
+
+def requested_exact_literal(text: str, *, bot_mentioned: bool) -> str | None:
+    """Return a bounded exact reply only for a complete current-message directive."""
+
+    if not isinstance(text, str):
+        return None
+    current = text
+    if bot_mentioned:
+        current = re.sub(r"^\s*@\S{1,100}\s+", "", current, count=1)
+    match = _EXACT_LITERAL_REPLY.fullmatch(current)
+    if match is None:
+        return None
+    return next(value for value in match.groupdict().values() if value is not None)
 
 
 def detect_detail_preference(
@@ -116,4 +139,5 @@ __all__ = [
     "detect_detail_preference",
     "is_history_summary_request",
     "is_structured_multi_item_request",
+    "requested_exact_literal",
 ]

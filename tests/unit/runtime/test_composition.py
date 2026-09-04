@@ -189,7 +189,7 @@ class _ForgingSafetyPolicy:
 
 
 class CompositionTests(unittest.IsolatedAsyncioTestCase):
-    async def test_exact_literal_reply_is_rendered_without_model_punctuation(
+    async def test_exact_literal_reply_is_preserved_by_composer(
         self,
     ) -> None:
         context, _ = _context_with_text("这条请只回复“收到”。")
@@ -197,7 +197,7 @@ class CompositionTests(unittest.IsolatedAsyncioTestCase):
         draft = _composer().compose(
             context,
             _decision(context),
-            _direct(context, text="收到。"),
+            _direct(context, text="收到"),
         )
 
         self.assertEqual(draft.content_blocks[0].content, "收到")

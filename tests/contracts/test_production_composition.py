@@ -1980,6 +1980,54 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await plugin.terminate()
 
+    async def test_production_preview_exact_literal_ignores_mention_and_provider_punctuation(
+        self,
+    ) -> None:
+        from astrbot_plugin_dududa_core.web_runtime import WebRuntimePreviewEvent
+
+        class PunctuatedReplyProvider(_ProactiveAstrBotProvider):
+            async def text_chat(self, **kwargs):
+                if "语义感知器" in str(kwargs.get("system_prompt")):
+                    return await super().text_chat(**kwargs)
+                self.calls.append(dict(kwargs))
+                return SimpleNamespace(
+                    completion_text="收到。",
+                    usage=SimpleNamespace(input_other=8, input_cached=0, output=2),
+                )
+
+        provider = PunctuatedReplyProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(
+            plugin,
+            self._runtime_config(rollout_mode="shadow"),
+            "production-exact-literal-mention",
+        )
+        try:
+            await plugin.runtime_assembly.refresh_model_health(
+                timeout_seconds=1,
+                evidence_ttl=timedelta(seconds=30),
+            )
+            event = WebRuntimePreviewEvent(
+                bot_id="bot-1",
+                group_id="group-1",
+                prompt="这条请只回复“收到”。",
+            )
+
+            preview = await plugin.rollout_bridge.preview(event)
+
+            self.assertEqual(
+                preview.completion.final_phase.value,
+                "completed",
+                preview.runtime_result.reason_codes,
+            )
+            self.assertEqual(preview.runtime_result.outcome.value, "response")
+            response = preview.runtime_result.final_response
+            self.assertIsNotNone(response)
+            self.assertEqual(response.response.blocks[0].content.text, "收到")
+            self.assertEqual(preview.tool_calls, 0)
+        finally:
+            await plugin.terminate()
+
     async def test_multi_message_summary_auto_profile_respects_explicit_and_locked_limits(self) -> None:
         class SummaryProvider(_ProactiveAstrBotProvider):
             async def text_chat(self, **kwargs):
