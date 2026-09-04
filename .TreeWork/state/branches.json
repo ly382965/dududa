@@ -869,19 +869,19 @@
       "title": "Fixed Demo And Runtime Validation",
       "purpose": "Define a five-to-ten-minute full-product demonstration, run fixed known questions through the current no-send Runtime, repair reproduced defects, and publish an evidence-backed report.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/demo-runtime-validation",
         "git_branch": "treework/demo-runtime-validation",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788545134",
         "last_entered_at": "unix:1788545134",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788549178"
+      "last_sync": "unix:1788549294"
     },
     {
       "path": "real-group-validation",
