@@ -3,7 +3,7 @@ display_name: Arcaea 命令兼容与本地 B50
 desc: 显式授权的旧版 Arc 命令兼容通道，独立保留默认关闭的本地 B50 Capability。
 short_desc: Arc bind / b50 / info / chart 与本地渲染资产。
 help: |
-  兼容通道需单独开启并配置群白名单与既有上游，B50 保留原显式命令副作用。
+  兼容通道需单独开启并配置群白名单；B50 还需 b50_enabled，本次发布先跳过查分。
   本地 B50 Capability 的授权、网络与发送边界不变。
 version: v2.1.0
 author: mmdustc

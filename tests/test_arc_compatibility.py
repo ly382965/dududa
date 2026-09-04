@@ -178,6 +178,7 @@ class ArcCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.config = {
             "compatibility_enabled": True,
+            "b50_enabled": True,
             "allowed_group_ids": ["101"],
             "upstream_bot_id": "303",
             "state_root": self.temp.name,
@@ -263,10 +264,12 @@ class ArcCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         default = MAIN.ArcB50AssetPlugin(context=object(), config=config)
         self.assertFalse(default.enabled)
         self.assertFalse(default.compatibility_enabled)
+        self.assertFalse(default.b50_enabled)
         await default.terminate()
         config.update(self.config)
         plugin = MAIN.ArcB50AssetPlugin(context=object(), config=config)
         self.assertTrue(plugin.compatibility_enabled)
+        self.assertTrue(plugin.b50_enabled)
         self.assertFalse(plugin.enabled)
         self.assertEqual(plugin.allowed_group_ids, frozenset({"101"}))
         self.assertEqual(plugin.upstream_bot_id, "303")
@@ -276,6 +279,32 @@ class ArcCompatibilityTests(unittest.IsolatedAsyncioTestCase):
             plugin.renderer_assets_root, Path(self.temp.name) / "renderer-assets"
         )
         await plugin.terminate()
+
+    async def test_b50_off_rejects_before_binding_lookup_or_any_upstream_call(self):
+        self.plugin.b50_enabled = False
+        event = self.event()
+        result = await self.collect(self.plugin.arc_b50, event)
+        self.assertIn("查分暂未启用", result[0])
+        self.assertTrue(event.stopped)
+        self.plugin.bindings.get.assert_not_called()
+        self.bot.send_private.assert_not_awaited()
+        self.assertIsNone(self.plugin._active)
+        self.assertFalse(self.plugin._pending)
+
+    async def test_b50_off_keeps_bind_info_and_chart_available(self):
+        self.plugin.b50_enabled = False
+        result = await self.collect(
+            self.plugin.arc_bind, self.event("/arc bind"), FIXTURE_CODE
+        )
+        self.assertEqual(result, ["好友码已保存。"])
+        for command in ("info", "chart"):
+            result = await self.collect(
+                getattr(self.plugin, "arc_" + command),
+                self.event("/arc " + command),
+                "Fixture",
+            )
+            self.assertIsInstance(result[0][0], Image)
+        self.bot.send_private.assert_not_awaited()
 
     async def test_bind_valid_code_is_local_and_invalid_input_is_not_stored(self):
         event = self.event("/arc bind " + FIXTURE_CODE)
