@@ -9,7 +9,13 @@
     "description": "开启旧版 /arc 命令兼容通道",
     "type": "bool",
     "default": false,
-    "hint": "独立于本地 Capability；仅授权群的显式命令生效。B50 会向固定上游解绑、绑定、查询，再回传图片。启动和检查不会发送。"
+    "hint": "独立于本地 Capability；仅授权群的显式命令生效。查分还需单独开启 b50_enabled。启动和检查不会发送。"
+  },
+  "b50_enabled": {
+    "description": "单独开启 Arc B50 查分（本次发布先跳过）",
+    "type": "bool",
+    "default": false,
+    "hint": "关闭时明确提示查分暂未启用，不联系上游。开启后会向固定上游解绑、绑定、查询并回传图片；需另行确认上游状态。"
   },
   "allowed_group_ids": {"description": "兼容命令群白名单（空列表拒绝全部）", "type": "list", "default": []},
   "upstream_bot_id": {"description": "既有 B50 上游 Bot QQ（只在私有配置填写）", "type": "string", "default": ""},

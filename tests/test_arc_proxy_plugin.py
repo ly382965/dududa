@@ -182,6 +182,7 @@ class ArcB50AssetTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIs(schema["enabled"]["default"], False)
         self.assertIs(schema["compatibility_enabled"]["default"], False)
+        self.assertIs(schema["b50_enabled"]["default"], False)
         self.assertEqual(schema["allowed_group_ids"]["default"], [])
         self.assertEqual(schema["upstream_bot_id"]["default"], "")
         self.assertIn("version: v2.1.0", metadata)

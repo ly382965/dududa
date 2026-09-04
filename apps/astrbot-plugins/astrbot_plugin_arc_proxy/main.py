@@ -75,6 +75,7 @@ class ArcB50AssetPlugin(Star):
         # This existing switch remains exclusively about the local Capability.
         self.enabled = config.get("enabled", False) is True
         self.compatibility_enabled = config.get("compatibility_enabled", False) is True
+        self.b50_enabled = config.get("b50_enabled", False) is True
         groups = config.get("allowed_group_ids", [])
         self.allowed_group_ids = (
             frozenset(str(value) for value in groups if _ID.fullmatch(str(value)))
@@ -200,6 +201,11 @@ class ArcB50AssetPlugin(Star):
         if not self._authorized(event, "b50"):
             return
         event.stop_event()
+        if not self.b50_enabled:
+            yield event.plain_result(
+                "Arc 查分暂未启用，绑定、曲目信息和谱面命令仍可使用。"
+            )
+            return
         if not _ID.fullmatch(self.upstream_bot_id) or self.upstream_bot_id == str(
             event.get_self_id()
         ):

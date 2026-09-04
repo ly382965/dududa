@@ -14,6 +14,9 @@ Last sync: unix:1788531488
 - Canonical Arc v2.1 preserves `/arc bind`, `/arc b50`, `/arc info` and `/arc chart`
   behind a separate explicit compatibility switch and original-scope group allowlist.
   Local B50 Capability remains independently default-off with unchanged provider/renderer.
+- Latest operator scope change defers Arc score lookup: deploy compatibility on with
+  `b50_enabled=false`. The B50 command explicitly reports unavailable before binding reads,
+  queueing or upstream calls; bind/info/chart remain available. Real B50 acceptance is deferred.
 - Ready for Lead Review after branch-local commit; not deployed, not runtime-tested
   against real users or upstream. Lead owns actual config/state migration and old release freeze.
 
@@ -24,7 +27,7 @@ Last sync: unix:1788531488
   No deployed data or game assets were copied into Git.
 - Added bounded queue/transport/request deadlines, strict upstream-private/account checks,
   failure-message rejection and no-auto-advance quarantine for uncertain upstream state.
-- 28 Arc unit tests and one existing synthetic B50 PNG test pass. Owned changed Python
+- 30 Arc unit tests and one existing synthetic B50 PNG test pass. Owned changed Python
   lint, formatting and compilation pass; private-constant/data-copy scan passes.
 - Current AstrBot loader source inspected read-only: schema is recognized and config is
   injected as `context=..., config=...`; no container plugin import or live request occurred.
@@ -33,13 +36,14 @@ Last sync: unix:1788531488
 
 - Lead must migrate only the previous authorized groups/upstream and external asset/state
   paths, verify current container loading, then freeze the previous plugin source mount.
-  No real B50 send/bind verification is authorized in this worker's work.
+  Real B50 send/bind verification is operator-deferred, not a blocker for this reduced release.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - Integration should touch only canonical Arc, its two test files and this branch's docs.
   README contains the exact four catalog JSON filenames and external directory layout.
-- Before replacing/reloading either version, operator must confirm upstream has no in-flight
-  request. Timeout/send ambiguity pauses the process; do not blindly restart or auto-drain.
+- Current release keeps B50 off and does not require another upstream-idle inquiry. Restart
+  may cancel old in-flight requests; this is not a lossless B50 migration. A future re-enable
+  must address upstream uncertainty before allowing new B50 requests.
 - Preserve vendor LICENSE/attribution, including its additional spoken-use condition.
   Root/Lead performs protected verification/completion and deployment; this worker does not.

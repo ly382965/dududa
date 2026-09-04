@@ -18,6 +18,7 @@ Title: Current Arc Compatibility Release
 - [x] Inspect canonical and deployed plugin source only; map commands and dependencies.
 - [x] Port compatibility behavior with external config and no secrets in source.
 - [x] Run isolated plugin tests; document migration and commit.
+- [x] Apply operator scope change: independent default-off B50 switch, explicit disabled notice, other three commands retained; live B50 acceptance deferred.
 
 ## Out Of Scope
 
