@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: preview-context-repair
 Parent: bot-release-convergence
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1788531488
+Last sync: unix:1788531842
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
