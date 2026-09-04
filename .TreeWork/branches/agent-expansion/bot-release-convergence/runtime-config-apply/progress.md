@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: runtime-config-apply
 Parent: bot-release-convergence
-Status: paused
+Status: in_progress
 Verification: partial
-Last sync: unix:1788533670
+Last sync: unix:1788533816
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
@@ -16,6 +16,8 @@ Last sync: unix:1788533670
 - Failed retired-resource cleanup remains applied-with-warning and retains resources for lifecycle retry. Shutdown rejects late candidates; HTTP cancellation cannot abandon post-commit retirement.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Lead review follow-up isolated nested credential/header objects at all three host boundaries; its single targeted regression and changed-Python Ruff passed. No further full-suite rerun was needed for this bounded correction.
 
 - 32 focused Python tests passed, including application transactions, bridge behavior and production composition/lifecycle samples. Web UI 16, server 3, mobile-browser E2E 1 passed; frontend/server type checks, production build and changed-Python Ruff passed.
 - An initial full composition run failed because this fresh worktree lacked its MCP worker venv. Provisioned the existing locked worker locally; the representative previously failed iCourse case then passed. Full composition rerun is deferred to lead integration, not claimed as passing here.

@@ -11,6 +11,7 @@ Branch: runtime-config-apply
   Smallest sufficient control: reject active work, build a candidate, retain one private rollback copy, and exchange Core-owned references without an await.
   Stop/removal condition: controls exist only at the explicit configuration application boundary, not the model hot path beyond the entry counter.
 - Probe-only metadata revisions compare equal to applied semantics; changed active credentials do not. Stale UI GET responses are excluded by a local request generation counter.
+- Candidate Provider configuration, target rows copied into the host cache, and the remembered applied command are deep-copied independently. A regression exercises real candidate preparation with a fake Provider and mutates nested Key/Header lists in both the prepared command and Dashboard cache; live Provider arguments and applied-state comparison remain unchanged.
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 

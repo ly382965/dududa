@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import unittest
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from astrbot_plugin_dududa_core.runtime_admission import tracked_runtime_call
 from astrbot_plugin_dududa_core.runtime_config_apply import (
     RuntimeApplyError,
     RuntimeConfigApplyService,
+    _prepare,
     _write_private,
 )
 
@@ -131,6 +133,102 @@ class RuntimeConfigurationApplyTests(unittest.IsolatedAsyncioTestCase):
         first.client.close.assert_awaited_once()
         self.global_provider.client.close.assert_not_called()
         self.assertEqual(len(self.service.providers), 1)
+
+    async def test_nested_config_mutations_cannot_change_live_keys_or_applied_snapshot(
+        self,
+    ):
+        host = ModuleType("astrbot.core")
+        host.astrbot_config = json.loads(self.command_path.read_text())
+        captured = {}
+
+        class Provider:
+            def __init__(self, config, settings):
+                self.provider_config = config
+                self.client = SimpleNamespace(close=AsyncMock())
+
+            async def text_chat(self, **kwargs):
+                return SimpleNamespace(
+                    raw_completion=SimpleNamespace(model=kwargs["model"]),
+                    completion_text="OK",
+                    usage=SimpleNamespace(output=1),
+                )
+
+        provider_module = ModuleType("astrbot.core.provider.sources.openai_source")
+        provider_module.ProviderOpenAIOfficial = Provider
+        assembly = SimpleNamespace(
+            ready=True,
+            close=AsyncMock(),
+            refresh_model_health=AsyncMock(),
+            _usable_model_health_evidence={
+                p.provider_id: True for p in self.snapshot.pools
+            },
+        )
+
+        def install(candidate, *_args):
+            candidate.rollout_bridge = Bridge()
+            return candidate.rollout_bridge
+
+        async def prepare(plugin, command, core, snapshot, evidence):
+            captured["command"] = command
+            return await _prepare(plugin, command, core, snapshot, evidence)
+
+        self.service.prepare = prepare
+        self.patch_host.stop()
+        with (
+            patch.dict(
+                sys.modules,
+                {"astrbot.core": host, provider_module.__name__: provider_module},
+            ),
+            patch(
+                "astrbot_plugin_dududa_core.runtime_config_apply._host_evidence",
+                return_value={
+                    p.provider_id: {"conformance_revision": {}}
+                    for p in self.snapshot.pools
+                },
+            ),
+            patch(
+                "astrbot_plugin_dududa_core.runtime_config_apply._parse_evidence",
+                return_value=object(),
+            ),
+            patch(
+                "astrbot_plugin_dududa_core.composition.build_production_runtime",
+                return_value=assembly,
+            ),
+            patch(
+                "astrbot_plugin_dududa_core.composition.install_production_runtime",
+                side_effect=install,
+            ),
+        ):
+            self.assertEqual(
+                (await self.service.apply(self.snapshot.revision))["status"], "applied"
+            )
+
+        source_id = self.snapshot.pools[0].source_id
+
+        def source(command):
+            return next(
+                row for row in command["provider_sources"] if row["id"] == source_id
+            )
+
+        prepared = source(captured["command"])
+        cached = source(host.astrbot_config)
+        applied = source(self.service.applied_command)
+        live = self.service.providers[
+            self.snapshot.pools[0].provider_id
+        ].provider_config
+        expected_keys, expected_headers = (
+            list(live["key"]),
+            dict(live["custom_headers"]),
+        )
+        prepared["key"].append("synthetic-prepared-mutation")
+        prepared["custom_headers"]["X-Trace-Mode"] = "prepared-mutation"
+        self.assertEqual(cached["key"], expected_keys)
+        cached["key"].append("synthetic-dashboard-mutation")
+        cached["custom_headers"]["X-Trace-Mode"] = "dashboard-mutation"
+        self.assertEqual(live["key"], expected_keys)
+        self.assertEqual(live["custom_headers"], expected_headers)
+        self.assertEqual(applied["key"], expected_keys)
+        self.assertEqual(applied["custom_headers"], expected_headers)
 
     async def test_revision_and_active_calls_refused_without_probe(self):
         with self.assertRaisesRegex(RuntimeApplyError, "pool_revision_changed"):
