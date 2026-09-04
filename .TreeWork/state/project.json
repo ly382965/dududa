@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "arc-compat-migration",
+  "current_branch": "bot-release-convergence",
   "artifact_layout_version": 2,
-  "last_event_seq": 164,
+  "last_event_seq": 169,
   "tree_revision": 8,
   "tree_editing": null,
   "tree_hash": "fnv1a64:5290531cd32b308e",
-  "last_sync": "unix:1788531844"
+  "last_sync": "unix:1788533961"
 }
