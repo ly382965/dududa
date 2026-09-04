@@ -29,6 +29,7 @@ Reread whitelist no longer bypasses explicit Web group policy.
 ## Risks And Unknowns (latent hazards after branch work; not unfinished tasks)
 
 MCP healthy checks validate protocol/discovery, not every business result. Live
-message quality and B50 upstream behavior were not exercised. Public-domain 522
-is distinct from the healthy local Web and origin Auth entry and remains an
-external-network concern; this release does not change shared infrastructure.
+message quality and B50 upstream behavior were not exercised. Earlier public
+egress 522 was followed by successful Auth 302 with TLS validation and no shared
+infrastructure change; do not claim a root cause or a persistent outage from
+the transient result. No real QQ test send or B50 lookup occurred.

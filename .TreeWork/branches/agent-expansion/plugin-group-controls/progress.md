@@ -31,11 +31,12 @@ for the existing host installer; old release copies/images are inactive rollback
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-No unfinished PR/group-control or Bot artifact convergence item. External access
-is not fully verified: public egress request returned 522 and direct egress timed
-out, while the same vhost via local IPv6 origin returned Auth 302 (Origin CA
-trust bypass only in that local diagnostic). Shared DNS/Caddy/Auth/proxy changes
-are outside this branch; do not represent the origin check as a public success.
+No unfinished PR/group-control or Bot artifact convergence item. Final public
+egress retest returned Auth 302 with TLS validation; local IPv6 origin also
+returned 302. An earlier egress 522 and no-proxy timeout resolved on the existing
+default path without configuration changes; cause is not established. The local
+Origin CA trust bypass was diagnostic only, not used for the successful public
+TLS check. Shared infrastructure was not modified.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
@@ -45,3 +46,7 @@ private. Return to the control workspace for protected completion and publish
 the documentation/lifecycle commit; no further application rebuild is needed
 for documentation-only changes. Historical 100-question quality tuning remains
 outside this request, and B50 remains deferred by the user.
+
+Final process audit confirmed all 15 old Web/AstrBot/MCP host PIDs exited and
+their three old container IDs disappeared. No independent old Bot/test process
+or listener remains in the observed scope.
