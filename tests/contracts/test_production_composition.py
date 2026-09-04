@@ -1673,7 +1673,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(provider.calls[0]["model"], "gpt-5.6-luna")
         self.assertEqual(provider.calls[0]["max_tokens"], 8)
-        self.assertEqual(provider.calls[0]["request_max_retries"], 0)
+        self.assertEqual(provider.calls[0]["request_max_retries"], 1)
         self.assertNotIn("reasoning_effort", provider.calls[0])
 
         await plugin.terminate()
@@ -1707,7 +1707,7 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(len(provider.calls), 1)
-        self.assertEqual(provider.calls[0]["request_max_retries"], 0)
+        self.assertEqual(provider.calls[0]["request_max_retries"], 1)
         await plugin.terminate()
 
     async def test_transient_probe_timeout_keeps_unexpired_health_evidence(
