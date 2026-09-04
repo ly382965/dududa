@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: plugin-group-controls
 Parent: agent-expansion
-Status: in_progress
+Status: complete
 Verification: verified
-Last sync: unix:1788540990
+Last sync: unix:1788541026
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
@@ -42,10 +42,11 @@ TLS check. Shared infrastructure was not modified.
 
 Current private Compose manifest is under releases/bot-20260905, not the earlier
 bot-20260904 candidate. Keep both rollback manifests and the policy backup
-private. Return to the control workspace for protected completion and publish
-the documentation/lifecycle commit; no further application rebuild is needed
-for documentation-only changes. Historical 100-question quality tuning remains
-outside this request, and B50 remains deferred by the user.
+private. Protected completion succeeded in the control workspace; integration
+is on main. The clean worktree is retained without a TreeWork binding. No further
+application rebuild is needed for documentation-only changes. Historical
+100-question quality tuning remains outside this request, and B50 remains
+deferred by the user.
 
 Final process audit confirmed all 15 old Web/AstrBot/MCP host PIDs exited and
 their three old container IDs disappeared. No independent old Bot/test process

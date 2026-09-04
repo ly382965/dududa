@@ -849,19 +849,19 @@
       "title": "PR12 And Per-Group Plugin Controls",
       "purpose": "Merge Emoji Kitchen, connect group-level plugin switches to real execution, and deploy current Bot-only artifacts while retiring superseded running versions.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/plugin-group-controls",
         "git_branch": "treework/plugin-group-controls",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788539118",
         "last_entered_at": "unix:1788539118",
-        "last_status": "created managed worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788540990"
+      "last_sync": "unix:1788541026"
     },
     {
       "path": "real-group-validation",
