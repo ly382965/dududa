@@ -70,6 +70,7 @@ from dududa.responses.contracts import (
 from dududa.responses.evidence import (
     detect_detail_preference,
     is_history_summary_request,
+    is_structured_multi_item_request,
 )
 from dududa.security.digests import actor_digest, scope_digest
 from dududa.security.models import AuthorizationEffect
@@ -1508,6 +1509,17 @@ class OfflineRuntimeOrchestrator:
             evidence = replace(evidence, reason_codes=(
                 *evidence.reason_codes, "recent_history_summary",
             ))
+        if (
+            evidence.reason_codes == ("no_explicit_detail_preference",)
+            and is_structured_multi_item_request(text)
+        ):
+            evidence = replace(
+                evidence,
+                reason_codes=(
+                    *evidence.reason_codes,
+                    "structured_multi_item_response",
+                ),
+            )
         return evidence
 
     def _resolve_persona(self, state: RuntimeState) -> PersonaResolution:

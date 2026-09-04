@@ -47,12 +47,33 @@ _HISTORY_SUMMARY_PATTERNS = (
     ),
 )
 
+_STRUCTURED_MULTI_ITEM_PATTERNS = (
+    re.compile(
+        r"^(?:@\S+\s+)?(?:(?:请|麻烦|帮我|帮忙|能否|可以|给我)\s*)*"
+        r"(?:给|为|安排|设计|列出|制定).{0,40}"
+        r"(?:[3-9]|1[0-9]|[三四五六七八九十])\s*(?:名|位)?(?:人|成员|项|条|组)"
+        r".{0,80}(?:每(?:个)?人|每(?:一)?项|分别|逐一|各自)"
+    ),
+    re.compile(
+        r"^(?:please\s+)?(?:assign|design|list|plan|create).{0,50}"
+        r"(?:[3-9]|1[0-9])\s+(?:people|members|items|tasks|groups)\b"
+        r".{0,100}\b(?:each|every|individually)\b"
+    ),
+)
+
 
 def is_history_summary_request(text: str) -> bool:
     """Only the leading request, not a summary instruction quoted as data."""
     normalized = unicodedata.normalize("NFKC", text).casefold().strip()
     normalized = re.sub(r"(?<=\w)['’](?=\w)", "", normalized)
     return any(pattern.search(normalized) for pattern in _HISTORY_SUMMARY_PATTERNS)
+
+
+def is_structured_multi_item_request(text: str) -> bool:
+    """Identify a leading request that requires several individually useful items."""
+
+    normalized = unicodedata.normalize("NFKC", text).casefold().strip()
+    return any(pattern.search(normalized) for pattern in _STRUCTURED_MULTI_ITEM_PATTERNS)
 
 
 def detect_detail_preference(
@@ -91,4 +112,8 @@ def detect_detail_preference(
     )
 
 
-__all__ = ["detect_detail_preference", "is_history_summary_request"]
+__all__ = [
+    "detect_detail_preference",
+    "is_history_summary_request",
+    "is_structured_multi_item_request",
+]

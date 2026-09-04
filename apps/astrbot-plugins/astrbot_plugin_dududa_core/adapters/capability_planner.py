@@ -163,6 +163,11 @@ _ACTIVITY_ID_RE = re.compile(
     r"(?:活动\s*(?:id|编号)|\bid)\s*(?:为|是|[:：#])?\s*([A-Za-z0-9][A-Za-z0-9_-]{1,127})",
     re.IGNORECASE,
 )
+_RESULT_LIMIT_RE = re.compile(
+    r"(?:最多(?:列(?:出)?)?|只列(?:出)?|列(?:出)?前|前)\s*"
+    r"(?P<count>\d{1,2}|[一二两三四五六七八九十])\s*"
+    r"(?:个|项|条|门|场|份)?"
+)
 
 
 class EntityQueryToolPlanner:
@@ -422,9 +427,15 @@ class EntityQueryToolPlanner:
                     else None
                 ),
                 limit=(
-                    _ICOURSE_DEFAULT_LIMIT
+                    _requested_result_limit(
+                        request.query.natural_language_goal,
+                        _ICOURSE_DEFAULT_LIMIT,
+                    )
                     if is_icourse_public_query
-                    else _CURRICULUM_DEFAULT_LIMIT
+                    else _requested_result_limit(
+                        request.query.natural_language_goal,
+                        _CURRICULUM_DEFAULT_LIMIT,
+                    )
                     if is_curriculum_public_query
                     else None
                 ),
@@ -716,7 +727,14 @@ def _notifai_arguments(
         and not _is_year_term(value)
     )
     keyword = terms[0] if terms else ""
-    return _declared_arguments(document, {"keyword": keyword, "light": True, "page_size": 10})
+    return _declared_arguments(
+        document,
+        {
+            "keyword": keyword,
+            "light": True,
+            "page_size": _requested_result_limit(goal, 10),
+        },
+    )
 
 
 def _academic_arguments(
@@ -727,7 +745,13 @@ def _academic_arguments(
 ) -> Mapping[str, JsonValue] | None:
     goal = request.query.natural_language_goal.strip()
     if capability_id == ACADEMIC_SEMESTERS_CAPABILITY_ID:
-        return _declared_arguments(document, {"include_future": True, "limit": 20})
+        return _declared_arguments(
+            document,
+            {
+                "include_future": True,
+                "limit": _requested_result_limit(goal, 20),
+            },
+        )
     if capability_id == ACADEMIC_CALENDAR_CAPABILITY_ID:
         dates = _ACADEMIC_DATE_RE.findall(goal)
         values: dict[str, JsonValue] = {}
@@ -751,7 +775,7 @@ def _academic_arguments(
     values = {
         "query": terms[0] if terms else "",
         "semester": goal,
-        "limit": 10,
+        "limit": _requested_result_limit(goal, 10),
     }
     if match := _ACADEMIC_SEMESTER_ID_RE.search(goal):
         values["semester_id"] = int(match.group(1))
@@ -805,7 +829,7 @@ def _young_arguments(
     arguments: dict[str, JsonValue] = {
         "query": terms[0] if len(terms) == 1 else "",
         "state": _young_state(goal),
-        "limit": _YOUNG_DEFAULT_LIMIT,
+        "limit": _requested_result_limit(goal, _YOUNG_DEFAULT_LIMIT),
     }
     window = _young_time_window(goal, now)
     if window is not None:
@@ -878,6 +902,30 @@ def _small_day_count(value: str) -> int:
     names = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7}
     result = names.get(value, int(value) if value.isdigit() else 1)
     return max(1, min(result, 7))
+
+
+def _requested_result_limit(goal: str, default: int) -> int:
+    """Honor an explicit result count without widening a provider default."""
+
+    match = _RESULT_LIMIT_RE.search(_normalize_term(goal))
+    if match is None:
+        return default
+    raw = match.group("count")
+    names = {
+        "一": 1,
+        "二": 2,
+        "两": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+        "十": 10,
+    }
+    requested = int(raw) if raw.isdigit() else names[raw]
+    return max(1, min(requested, default))
 
 
 def _local_iso(value: datetime) -> str:

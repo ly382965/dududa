@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
@@ -46,6 +47,30 @@ from dududa.security.models import ContentSafetyRequest
 from dududa.security.ports import ContentSafetyPolicy
 
 from .contracts import CurrentMessageContext, DirectChatContent
+
+_EXACT_LITERAL_REPLY = re.compile(
+    r"^\s*(?:这条\s*)?(?:请\s*)?只(?:回复|回答|输出)\s*[：:]?\s*"
+    r"(?:“(?P<curly>[^”\r\n]{1,160})”|"
+    r"「(?P<corner>[^」\r\n]{1,160})」|"
+    r"『(?P<white_corner>[^』\r\n]{1,160})』|"
+    r'"(?P<double>[^"\r\n]{1,160})"|'
+    r"'(?P<single>[^'\r\n]{1,160})')\s*[。.!！]?\s*$"
+)
+
+
+def _requested_exact_literal(context: CurrentMessageContext) -> str | None:
+    """Return a bounded literal only for an unambiguous exact-reply request."""
+
+    current_ref = context.perception.current_message_ref
+    current_text = next(
+        message.text
+        for message in context.perception.messages
+        if message.message_ref == current_ref
+    )
+    match = _EXACT_LITERAL_REPLY.fullmatch(current_text)
+    if match is None:
+        return None
+    return next(value for value in match.groupdict().values() if value is not None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,7 +145,10 @@ class MinimalResponseComposer:
                 raise validation_error("composer_direct_response_plan_mismatch")
             if context.perception.current_message_ref not in direct_content.source_refs:
                 raise validation_error("direct_content_source_outside_context")
-            text = direct_content.text
+            # The model response remains bound by ``model_response_digest``;
+            # composition owns the visible format and therefore applies an
+            # explicit, bounded literal request deterministically.
+            text = _requested_exact_literal(context) or direct_content.text
             source_refs = direct_content.source_refs
             intent = (
                 "tool_assisted_chat"

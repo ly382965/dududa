@@ -29,7 +29,10 @@ from dududa.responses import (
     project_response_reservation,
     response_plan_digest,
 )
-from dududa.responses.evidence import is_history_summary_request
+from dududa.responses.evidence import (
+    is_history_summary_request,
+    is_structured_multi_item_request,
+)
 
 from tests.unit.models.test_tiering import (
     _assessment as tier_assessment,
@@ -169,6 +172,37 @@ class ResponseProfilePolicyTests(unittest.TestCase):
                      'Translate "summarize the group discussion" into Chinese.'):
             with self.subTest(text=text):
                 self.assertFalse(is_history_summary_request(text))
+
+    def test_structured_multi_item_request_gets_a_medium_floor(self) -> None:
+        for text in (
+            "给一个 6 人小组安排任务，要求每个人都有明确产出。",
+            "列出 5 项改进，并分别说明负责人。",
+            "Please assign 6 people and give each person a concrete deliverable.",
+        ):
+            with self.subTest(text=text):
+                self.assertTrue(is_structured_multi_item_request(text))
+
+        self.assertFalse(
+            is_structured_multi_item_request(
+                "请总结这段文字：‘给 6 人安排任务，要求每个人都有产出。’"
+            )
+        )
+        value = request(TaskComplexityLevel.LOW, None)
+        value = replace(
+            value,
+            detail_evidence=replace(
+                value.detail_evidence,
+                reason_codes=(
+                    *value.detail_evidence.reason_codes,
+                    "structured_multi_item_response",
+                ),
+            ),
+        )
+
+        plan = self.policy.select(value, now=NOW)
+
+        self.assertIs(plan.selected_profile, AnswerProfile.MEDIUM)
+        self.assertIn("structured_multi_item_response", plan.reason_codes)
 
     def test_required_tier_reasoning_profile_counterexamples_are_orthogonal(
         self,
