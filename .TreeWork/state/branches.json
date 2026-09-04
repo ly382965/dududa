@@ -778,11 +778,11 @@
         "git_branch": "treework/bot-release-convergence",
         "managed_by_treework": true,
         "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788528889",
+        "last_entered_at": "unix:1788530524",
         "last_status": "reused existing worktree"
       },
-      "status_reason": "MCP workbench layout delivered as Web31441a3; preserve broader Arc and preview/history gaps without claiming full release completion.",
-      "last_sync": "unix:1788529380"
+      "status_reason": "NotifAI mounted and verified in Console/AstrBot with public query success; preserve separate Arc/history/empty-preview gaps.",
+      "last_sync": "unix:1788531006"
     },
     {
       "path": "real-group-validation",
