@@ -96,9 +96,9 @@ def synthetic_context(case_id: int, previous: dict[int, str], day: datetime):
         }
         for i, (name, content) in enumerate(lines)
     ]
-    # The quoted target is explicit, not a fabricated server-side lookup.
+    # An explicit quoted fixture, not a fabricated native QQ reply or lookup.
     if reply:
-        prompt += f" 引用消息 ID：{reply}。"
+        prompt += f" 引用原文：『{lines[0][1]}』"
     return messages, prompt
 
 
