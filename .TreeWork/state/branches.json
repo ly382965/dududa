@@ -809,19 +809,19 @@
       "title": "One-Click External Model Configuration Apply",
       "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/runtime-config-apply",
         "git_branch": "treework/runtime-config-apply",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788531843",
         "last_entered_at": "unix:1788538412",
-        "last_status": "reused existing worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788538457"
+      "last_sync": "unix:1788538458"
     },
     {
       "path": "arc-compat-migration",
