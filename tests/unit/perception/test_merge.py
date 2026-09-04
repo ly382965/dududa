@@ -118,6 +118,33 @@ class DeterministicPerceptionMergerTests(unittest.TestCase):
         self.assertFalse(result.conflicting_evidence)
         self.assertIn("rule_model_merged", result.reason_codes)
 
+    def test_each_conflict_has_only_its_fixed_diagnostic_code(self) -> None:
+        base = context()
+        value = context(identities=(
+            *base.identities, PerceptionIdentity(1, "identity:other", False),
+        ))
+        cases = (
+            ("task_kind", {"task_kind": "bounded_transformation"},
+             {"task_kind": "credential_exfiltration"}),
+            ("targets", {}, {"target_identity_refs": ("identity:other",)}),
+            ("tools", {"need_tools": True, "capability_categories": ("search",),
+                       "expected_tool_steps": 1}, {}),
+            ("depth", {"reasoning_depth": TaskReasoningDepth.DEEP},
+             {"reasoning_depth": TaskReasoningDepth.SHALLOW}),
+        )
+        for field, rule_changes, model_changes in cases:
+            with self.subTest(field=field):
+                result = _merger().merge(
+                    value, replace(_rules(value), **rule_changes),
+                    replace(_projection(value), **model_changes),
+                    model_status=PerceptionModelStatus.VALID,
+                )
+                self.assertTrue(result.conflicting_evidence)
+                self.assertEqual(set(result.reason_codes), {
+                    "rule_evidence_applied", "rule_model_conflict",
+                    f"rule_model_conflict_{field}",
+                })
+
     def test_rule_only_fallback_is_confidence_capped(self) -> None:
         value = context()
         result = _merger().merge(

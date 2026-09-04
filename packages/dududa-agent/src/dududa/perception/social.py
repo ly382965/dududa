@@ -220,7 +220,16 @@ def _social_decision_values(
             reasons = ("bounded_clarification_required",)
         elif perception.conflicting_evidence:
             action = SocialAction.DEFER
-            reasons = ("conflicting_evidence_without_clarification",)
+            # Carry only fixed diagnostic codes into the terminal HTTP result.
+            reasons = (
+                "conflicting_evidence_without_clarification",
+                *(code for code in (
+                    "rule_model_conflict_task_kind",
+                    "rule_model_conflict_targets",
+                    "rule_model_conflict_tools",
+                    "rule_model_conflict_depth",
+                ) if code in perception.reason_codes),
+            )
         else:
             action = SocialAction.DIRECT_REPLY
             reasons = (
