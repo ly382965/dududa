@@ -8,6 +8,7 @@ from ops.cli.run_group_chat_question_preview import (
     questions,
     selected_ids,
     synthetic_context,
+    synthetic_window_start,
 )
 
 
@@ -39,6 +40,34 @@ class GroupChatQuestionPreviewTests(unittest.TestCase):
         self.assertEqual(len(messages), 2)
         self.assertIn("周六晚上八点", messages[-1]["content"])
         self.assertEqual(prompt, "最终几点开会？")
+
+    def test_daytime_window_prefers_ten_oclock(self) -> None:
+        now = datetime.fromisoformat("2026-09-04T17:23:45+08:00")
+        start = synthetic_window_start(now)
+        self.assertEqual(start.isoformat(), "2026-09-04T10:00:00+08:00")
+        messages, _ = synthetic_context(21, {}, start)
+        self.assertEqual(len(messages), 10)
+        self.assertEqual(messages[-1]["timestamp"], "2026-09-04T10:09:00+08:00")
+
+    def test_midnight_and_morning_windows_never_include_future_history(self) -> None:
+        cases = (
+            ("2026-09-05T00:00:30.123456+08:00", "2026-09-04T23:51:00+08:00"),
+            ("2026-09-05T00:08:12+08:00", "2026-09-04T23:59:00+08:00"),
+            ("2026-09-05T10:08:59+08:00", "2026-09-05T09:59:00+08:00"),
+            ("2026-09-05T10:09:00+08:00", "2026-09-05T10:00:00+08:00"),
+        )
+        for timestamp, expected in cases:
+            with self.subTest(timestamp=timestamp):
+                now = datetime.fromisoformat(timestamp)
+                start = synthetic_window_start(now)
+                self.assertEqual(start.isoformat(), expected)
+                messages, _ = synthetic_context(21, {}, start)
+                self.assertEqual(len(messages), 10)
+                self.assertEqual(messages[0]["timestamp"], expected)
+                self.assertTrue(all(
+                    datetime.fromisoformat(row["timestamp"]) <= now
+                    for row in messages
+                ))
 
     def test_follow_up_uses_only_earlier_generated_synthetic_answer(self) -> None:
         day = datetime(2026, 9, 4, 2, tzinfo=timezone.utc)

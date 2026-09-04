@@ -43,6 +43,13 @@ def questions(path: Path = TABLE) -> list[dict[str, object]]:
     return rows
 
 
+def synthetic_window_start(now: datetime) -> datetime:
+    """Prefer today's 10:00, keeping all ten minute-spaced records in the past."""
+    preferred = now.replace(hour=10, minute=0, second=0, microsecond=0)
+    latest = now.replace(second=0, microsecond=0) - timedelta(minutes=9)
+    return min(preferred, latest)
+
+
 def synthetic_context(case_id: int, previous: dict[int, str], day: datetime):
     lines: list[tuple[str, str]] = [
         ("小林", "会议周五晚上七点开始。"),
@@ -141,7 +148,7 @@ def main() -> int:
     api_key = args.api_key_file.read_text(encoding="utf-8").strip()
     if not api_key:
         parser.error("credential file is empty")
-    day = datetime.now(timezone(timedelta(hours=8))).replace(hour=10, minute=0, second=0, microsecond=0)
+    day = synthetic_window_start(datetime.now(timezone(timedelta(hours=8))))
     previous: dict[int, str] = {}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     # Each completed row is durable. Never record credentials, headers, group IDs,
