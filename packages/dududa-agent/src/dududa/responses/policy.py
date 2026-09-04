@@ -154,6 +154,7 @@ class DeterministicResponseProfilePolicy:
             or request.reasoning_depth is TaskReasoningDepth.MULTI_STEP
             or request.expected_tool_steps > 0
             or "recent_history_summary" in request.detail_evidence.reason_codes
+            or "structured_multi_item_response" in request.detail_evidence.reason_codes
         ):
             uncapped = AnswerProfile.MEDIUM
             reasons.add("task_requires_medium_response")
