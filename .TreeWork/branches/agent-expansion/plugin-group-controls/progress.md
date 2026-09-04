@@ -11,8 +11,37 @@ Last sync: unix:1788539118
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+PR12 head 67899a1 is an ancestor of published main c74b0dc. Integrated application
+revision 58e2bb0 runs in Web, AstrBot and MCP Console. NapCat remains verified
+stable 4.18.19, AstrBot 4.27.5. Six owned plugins load in the actual host.
+Existing policy fields and DeepSeek applied revision 14 remain unchanged.
+Arc absent fields are migrated only for two existing explicit legacy scopes;
+Emoji defaults off and B50 remains disabled. No real QQ test send occurred.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+Web 109 + server 118, browser 15, types/build and Python 79 passed. The same Python
+set passed in the network-isolated candidate image using its installed package.
+Actual AstrBot registered six plugins; Emoji GreedyStr and all 12 wrapped Sub2API
+signatures parsed correctly. Secret check passed 1,333 files. Live Web/QQ online,
+Runtime applied/ready and ten MCP connection checks healthy. Container comparison
+found only the three intended replacements; 28 unrelated/unchanged containers
+retain identity, image and start time. Versioned plugin mounts remain writable
+for the existing host installer; old release copies/images are inactive rollback.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+No unfinished PR/group-control or Bot artifact convergence item. External access
+is not fully verified: public egress request returned 522 and direct egress timed
+out, while the same vhost via local IPv6 origin returned Auth 302 (Origin CA
+trust bypass only in that local diagnostic). Shared DNS/Caddy/Auth/proxy changes
+are outside this branch; do not represent the origin check as a public success.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+Current private Compose manifest is under releases/bot-20260905, not the earlier
+bot-20260904 candidate. Keep both rollback manifests and the policy backup
+private. Return to the control workspace for protected completion and publish
+the documentation/lifecycle commit; no further application rebuild is needed
+for documentation-only changes. Historical 100-question quality tuning remains
+outside this request, and B50 remains deferred by the user.
