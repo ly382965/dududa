@@ -94,8 +94,8 @@ npx vitest run src/composables/useWorkspace.spec.ts -t 'uses explicit internal R
 36、37 仅验证显式引用文本，不是原生 QQ 引用事件。运行器不会修改策略或发送 QQ。
 私密 JSONL 留在仓库外；以下只发布题号、判定和不含凭据/真实群内容的摘要。
 
-“部分”也包含证据不足，并不等于已证明模型编造。只读查询的原始 Observation 未全部
-收入 JSONL；缺少可追溯来源时不额外保证当前活动、评价、馆舍等事实准确。
+“部分”也包含证据不足，并不等于已证明模型编造。JSONL 未保存原始工具 Observation，
+只保存能力 ID、调用次数及最终回答；缺少可追溯来源时不额外保证活动、评价、馆舍等事实准确。
 
 | 题号 | 判定 | 实际观察与边界 |
 |---|---|---|
@@ -212,7 +212,8 @@ npx vitest run src/composables/useWorkspace.spec.ts -t 'uses explicit internal R
 
 ### 297106e 定向复测（9 月 5 日）
 
-21、27、100 三题均恢复非空 `response`，耗时分别 42.278、15.037、38.625 秒，
+21、27、100 三题复测均返回非空 `response`，其中 100 由初测失败变为可生成；
+耗时分别 42.278、15.037、38.625 秒，
 输出和记忆写入仍均为零。午夜运行器已避免生成未来记录；本次十条合成历史真实覆盖
 9 月 4 日 23:52 至 9 月 5 日 00:01。三题语义均记为**部分**：
 
@@ -220,7 +221,7 @@ npx vitest run src/composables/useWorkspace.spec.ts -t 'uses explicit internal R
 - 27：说明跨午夜并排除闲聊，但主要归纳昨日内容，并把已定数学复习弱化为拟定。
 - 100：有完整小结；把末条 00:01 说成覆盖到 00:02，并可能把发言者误归为报告负责人。
 
-这说明生成链路修复有效，不说明时间筛选、归属与确定性问题已全部解决，也不覆盖初测失败。
+本次生成正常，不说明时间筛选、归属与确定性问题已全部解决，也不覆盖初测失败。
 另外通过正式 Web `POST /api/agent/respond` 做了一次独立同群验收：服务端实际取到
 16 条历史、`server_recent/partial/truncated`，自动 MEDIUM、非空 `response`，22.411 秒；
 工具、QQ 输出、Memory 写入均为零。该次只检查元数据，不记录或公开真实群正文，
