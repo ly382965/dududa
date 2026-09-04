@@ -5,8 +5,8 @@
 Branch: arc-compat-migration
 Parent: bot-release-convergence
 Status: in_progress
-Verification: unverified
-Last sync: unix:1788538482
+Verification: verified
+Last sync: unix:1788538550
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
@@ -17,11 +17,20 @@ Last sync: unix:1788538482
 - Latest operator scope change defers Arc score lookup: deploy compatibility on with
   `b50_enabled=false`. The B50 command explicitly reports unavailable before binding reads,
   queueing or upstream calls; bind/info/chart remain available. Real B50 acceptance is deferred.
-- Ready for Lead Review after branch-local commit; not deployed, not runtime-tested
-  against real users or upstream. Lead owns actual config/state migration and old release freeze.
+- Lead integrated this child in bot-release-convergence and accepted its scoped
+  release on 2026-09-05. Arc v2.1 loaded from the current immutable plugin source;
+  original group authorization, external assets and binding database were retained.
+  [The release report](../../../../../docs/operations/bot-stable-release.md) records
+  the deployment and private rollback retention; no live B50 operation is claimed.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Lead observed Arc v2.1 loaded with B50 disabled. Isolated read-only checks against
+  existing assets successfully queried a song and rendered a chart, without
+  upstream contact or QQ output; the binding database remained unchanged.
+- The integrated release passed final core 95, Web 104, server 117 and browser
+  13 tests. Only Web/AstrBot changed; the other 29 containers remained unchanged.
+  These are existing Lead records, not new closeout probes.
 - Reused legacy catalog, SQLite binding schema, chart renderer and licensed vendor;
   moved private identities and asset/state locations into AstrBot schema configuration.
   No deployed data or game assets were copied into Git.
@@ -34,16 +43,18 @@ Last sync: unix:1788538482
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Lead must migrate only the previous authorized groups/upstream and external asset/state
-  paths, verify current container loading, then freeze the previous plugin source mount.
-  Real B50 send/bind verification is operator-deferred, not a blocker for this reduced release.
+- No child engineering/integration gate remains. Real B50 send/bind verification
+  remains operator-deferred and disabled, outside this reduced release acceptance.
+  Real QQ delivery and the model-quality limitations in the [100-question report](../../../../../docs/operations/group-chat-100-question-results.md)
+  are not certified by this completion. Closeout made no production calls.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
-- Integration should touch only canonical Arc, its two test files and this branch's docs.
+- Integrated scope covered only canonical Arc, its tests and this branch's docs.
   README contains the exact four catalog JSON filenames and external directory layout.
 - Current release keeps B50 off and does not require another upstream-idle inquiry. Restart
   may cancel old in-flight requests; this is not a lossless B50 migration. A future re-enable
   must address upstream uncertainty before allowing new B50 requests.
 - Preserve vendor LICENSE/attribution, including its additional spoken-use condition.
-  Root/Lead performs protected verification/completion and deployment; this worker does not.
+  Lead has accepted integration and deployment; this delegated closeout records
+  protected completion, preserves the worktree and returns to control.
