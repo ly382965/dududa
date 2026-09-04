@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: runtime-config-apply
 Parent: bot-release-convergence
-Status: in_progress
+Status: paused
 Verification: partial
-Last sync: unix:1788533611
+Last sync: unix:1788533670
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
