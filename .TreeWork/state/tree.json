@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 6,
-  "source_hash": "fnv1a64:da0c26af09dd08b6",
-  "state_hash": "fnv1a64:2c8e4726dda19398",
-  "accepted_at": "unix:1788428802",
+  "revision": 7,
+  "source_hash": "fnv1a64:904317200c63ef9d",
+  "state_hash": "fnv1a64:d20ad2557f9d8d38",
+  "accepted_at": "unix:1788516355",
   "root": "root",
   "nodes": [
     {
@@ -425,12 +425,23 @@
       ]
     },
     {
+      "id": "bot-release-convergence",
+      "parent": "agent-expansion",
+      "title": "Bot Runtime Repair And Stable Release",
+      "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
+      "spec": "branches/agent-expansion/bot-release-convergence/spec.md",
+      "sibling_order": 17,
+      "depends_on": [
+        "api-key-pools"
+      ]
+    },
+    {
       "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "spec": "branches/agent-expansion/real-group-validation/spec.md",
-      "sibling_order": 17,
+      "sibling_order": 18,
       "depends_on": [
         "legacy-cleanup",
         "mew-parity-audit",

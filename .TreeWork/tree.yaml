@@ -314,6 +314,15 @@ tree:
       spec: branches/agent-expansion/api-key-pools/spec.md
       depends_on:
       - control-plane-audit
+    - id: bot-release-convergence
+      title: Bot Runtime Repair And Stable Release
+      purpose: >-
+        Repair the production control-plane connection and credential workflow,
+        converge only Bot services on verified stable releases, and retain private
+        rollback artifacts while publishing sanitized implementation evidence.
+      spec: branches/agent-expansion/bot-release-convergence/spec.md
+      depends_on:
+      - api-key-pools
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

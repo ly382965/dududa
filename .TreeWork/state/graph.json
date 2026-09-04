@@ -615,6 +615,22 @@
       "kind": "depends_on",
       "user_label": "api-key-pools depends on control-plane-audit",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-78",
+      "from": "agent-expansion",
+      "to": "bot-release-convergence",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains bot-release-convergence",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-79",
+      "from": "bot-release-convergence",
+      "to": "api-key-pools",
+      "kind": "depends_on",
+      "user_label": "bot-release-convergence depends on api-key-pools",
+      "interpreted_relation": "depends_on"
     }
   ]
 }
