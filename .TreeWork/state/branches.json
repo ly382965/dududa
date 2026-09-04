@@ -769,8 +769,8 @@
       "title": "Bot Runtime Repair And Stable Release",
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
-      "verification_status": "partial",
+      "status": "paused",
+      "verification_status": "failed",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -781,7 +781,8 @@
         "last_entered_at": "unix:1788516357",
         "last_status": "created managed worktree"
       },
-      "last_sync": "unix:1788517614"
+      "status_reason": "Bot-only release deployed; awaiting model endpoint/DeepSeek and legacy Arc choices. Upstream model generation returns HTTP503; do not change excluded proxies.",
+      "last_sync": "unix:1788519397"
     },
     {
       "path": "real-group-validation",
