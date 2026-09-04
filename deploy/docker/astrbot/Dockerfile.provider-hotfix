@@ -1,0 +1,8 @@
+# Use only when packages, MCP sources and dependency locks are unchanged from
+# the verified base release. The normal Dockerfile remains the full build.
+ARG DUDUDA_VERIFIED_BASE
+FROM ${DUDUDA_VERIFIED_BASE}
+COPY deploy/patches/astrbot/4.27.5-bounded-provider-request.patch /tmp/astrbot-bounded-provider-request.patch
+RUN cd /AstrBot \
+    && patch --batch --forward -p1 < /tmp/astrbot-bounded-provider-request.patch \
+    && rm /tmp/astrbot-bounded-provider-request.patch
