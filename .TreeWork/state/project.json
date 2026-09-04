@@ -3,9 +3,9 @@
   "stage": "work_tree",
   "current_branch": "preview-context-repair",
   "artifact_layout_version": 2,
-  "last_event_seq": 171,
+  "last_event_seq": 172,
   "tree_revision": 8,
   "tree_editing": null,
   "tree_hash": "fnv1a64:5290531cd32b308e",
-  "last_sync": "unix:1788538283"
+  "last_sync": "unix:1788538359"
 }
