@@ -344,6 +344,15 @@ tree:
       spec: branches/agent-expansion/plugin-group-controls/spec.md
       depends_on:
       - bot-release-convergence
+    - id: demo-runtime-validation
+      title: Fixed Demo And Runtime Validation
+      purpose: >-
+        Define a five-to-ten-minute full-product demonstration, run fixed known
+        questions through the current no-send Runtime, repair reproduced defects,
+        and publish an evidence-backed report.
+      spec: branches/agent-expansion/demo-runtime-validation/spec.md
+      depends_on:
+      - plugin-group-controls
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

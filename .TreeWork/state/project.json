@@ -3,9 +3,9 @@
   "stage": "work_tree",
   "current_branch": "real-group-validation",
   "artifact_layout_version": 2,
-  "last_event_seq": 189,
-  "tree_revision": 9,
+  "last_event_seq": 191,
+  "tree_revision": 10,
   "tree_editing": null,
-  "tree_hash": "fnv1a64:8612c1bfede2e668",
-  "last_sync": "unix:1788545078"
+  "tree_hash": "fnv1a64:3297862192898cd5",
+  "last_sync": "unix:1788545121"
 }

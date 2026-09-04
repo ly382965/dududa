@@ -671,6 +671,22 @@
       "kind": "depends_on",
       "user_label": "plugin-group-controls depends on bot-release-convergence",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-85",
+      "from": "agent-expansion",
+      "to": "demo-runtime-validation",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains demo-runtime-validation",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-86",
+      "from": "demo-runtime-validation",
+      "to": "plugin-group-controls",
+      "kind": "depends_on",
+      "user_label": "demo-runtime-validation depends on plugin-group-controls",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

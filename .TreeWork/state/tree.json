@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 9,
-  "source_hash": "fnv1a64:8612c1bfede2e668",
-  "state_hash": "fnv1a64:b0ebbfd97eb57bbb",
-  "accepted_at": "unix:1788539117",
+  "revision": 10,
+  "source_hash": "fnv1a64:3297862192898cd5",
+  "state_hash": "fnv1a64:a9fa17c008853e6f",
+  "accepted_at": "unix:1788545121",
   "root": "root",
   "nodes": [
     {
@@ -471,12 +471,23 @@
       ]
     },
     {
+      "id": "demo-runtime-validation",
+      "parent": "agent-expansion",
+      "title": "Fixed Demo And Runtime Validation",
+      "purpose": "Define a five-to-ten-minute full-product demonstration, run fixed known questions through the current no-send Runtime, repair reproduced defects, and publish an evidence-backed report.",
+      "spec": "branches/agent-expansion/demo-runtime-validation/spec.md",
+      "sibling_order": 19,
+      "depends_on": [
+        "plugin-group-controls"
+      ]
+    },
+    {
       "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "spec": "branches/agent-expansion/real-group-validation/spec.md",
-      "sibling_order": 19,
+      "sibling_order": 20,
       "depends_on": [
         "legacy-cleanup",
         "mew-parity-audit",
