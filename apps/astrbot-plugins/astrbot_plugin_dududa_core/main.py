@@ -9,6 +9,7 @@ from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F40
 from .commands.memory import CoreMemoryCommands
 from .composition import activate_runtime_after_host_start, initialize_plugin
 from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
+from .runtime_config_apply import runtime_config_apply_response, runtime_config_status_response
 from .web_runtime import (
     runtime_native_message_preview_response,
     runtime_preview_response,
@@ -37,6 +38,16 @@ class DududaCorePlugin(
         register_web_api = getattr(context, "register_web_api", None)
         if callable(register_web_api):
             register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/configuration",
+                self.runtime_configuration_status, ["GET"],
+                "Read sanitized external configuration application state",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/configuration/apply",
+                self.runtime_configuration_apply, ["POST"],
+                "Apply saved model pools to Dududa Runtime only",
+            )
+            register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/status",
                 self.runtime_status,
                 ["GET"],
@@ -57,6 +68,12 @@ class DududaCorePlugin(
 
     async def runtime_status(self):
         return await runtime_status_response(self)
+
+    async def runtime_configuration_status(self):
+        return await runtime_config_status_response(self)
+
+    async def runtime_configuration_apply(self):
+        return await runtime_config_apply_response(self)
 
     async def runtime_preview(self):
         """Execute the installed 2.0 Runtime without QQ delivery."""

@@ -132,12 +132,24 @@ export interface ApiKeyPoolTestResult {
 }
 
 export interface ApiKeyPoolsAdapter {
+  runtimeStatus?(): Promise<RuntimeConfigStatus>
+  applyRuntime?(revision: number | string): Promise<RuntimeConfigStatus>
   list(): Promise<ApiKeyPoolsResponse>
   updatePool(tier: ApiKeyTier, request: ApiKeyPoolUpdateRequest): Promise<ApiKeyMutationResponse>
   createKey(tier: ApiKeyTier, request: ApiKeyCreateRequest): Promise<ApiKeyMutationResponse>
   updateKey(tier: ApiKeyTier, keyId: string, request: ApiKeyUpdateRequest): Promise<ApiKeyMutationResponse>
   deleteKey(tier: ApiKeyTier, keyId: string): Promise<ApiKeyMutationResponse>
   testPool(tier: ApiKeyTier): Promise<ApiKeyPoolTestResult>
+}
+
+export interface RuntimeConfigStatus {
+  cleanupPending?: boolean
+  status: 'applied' | 'pending' | 'applying' | 'unavailable'
+  savedRevision: number | string | null
+  ready: boolean
+  message: string
+  checkedAt: string
+  scope: 'dududa_only'
 }
 
 export const API_KEY_TIERS: readonly ApiKeyTier[] = ['haiku', 'sonnet', 'opus']

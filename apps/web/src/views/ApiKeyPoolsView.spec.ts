@@ -356,6 +356,62 @@ describe('ApiKeyPoolsAdapter', () => {
   })
 })
 
+describe('Explicit Runtime application', () => {
+  it('ignores an older status response after a newer refresh', async () => {
+    const adapter = new FakeAdapter()
+    let finishOld: (value: unknown) => void = () => {}
+    const status = { status: 'pending', savedRevision: 1, ready: true, message: '新版等待应用', checkedAt: '', scope: 'dududa_only' }
+    const runtimeStatus = vi.fn()
+      .mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve }))
+      .mockResolvedValue(status)
+    Object.assign(adapter, { runtimeStatus })
+    const wrapper = mount(ApiKeyPoolsView, { props: { adapter } })
+    await flushPromises()
+    await wrapper.get('button[aria-label="刷新 API Key 池"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('新版等待应用')
+    finishOld({ ...status, status: 'applied', message: '过期响应显示已应用' })
+    await flushPromises()
+    expect(wrapper.text()).toContain('新版等待应用')
+    expect(wrapper.text()).not.toContain('过期响应显示已应用')
+    wrapper.unmount()
+  })
+
+  it('sends only the saved revision and shows actual apply success', async () => {
+    const adapter = new FakeAdapter()
+    const status = { status: 'pending' as const, savedRevision: 1, ready: true, message: '已保存，尚未应用', checkedAt: '', scope: 'dududa_only' as const }
+    const runtimeStatus = vi.fn(async () => status)
+    const applyRuntime = vi.fn(async () => ({ ...status, status: 'applied' as const, message: '已应用到当前 Dududa Runtime' }))
+    Object.assign(adapter, { runtimeStatus, applyRuntime })
+    const wrapper = mount(ApiKeyPoolsView, { props: { adapter } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('已保存，尚未应用')
+    await wrapper.get('.runtime-apply button').trigger('click')
+    await flushPromises()
+    expect(applyRuntime).toHaveBeenCalledExactlyOnceWith(1)
+    expect(wrapper.text()).toContain('已应用到当前 Dududa Runtime')
+    expect(wrapper.text()).toContain('其他 AstrBot 插件保持原配置直到冷重启')
+    wrapper.unmount()
+  })
+
+  it('prevents duplicate application while pending and displays failure without claiming success', async () => {
+    const adapter = new FakeAdapter()
+    let reject: (error: Error) => void = () => {}
+    const applyRuntime = vi.fn(() => new Promise((_resolve, fail) => { reject = fail }))
+    Object.assign(adapter, { applyRuntime })
+    const wrapper = mount(ApiKeyPoolsView, { props: { adapter } })
+    await flushPromises()
+    await wrapper.get('.runtime-apply button').trigger('click')
+    expect(wrapper.get('.runtime-apply button').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('正在验证并应用三档配置')
+    reject(new Error('Runtime 正在处理请求，请稍后重试'))
+    await flushPromises()
+    expect(wrapper.text()).toContain('Runtime 正在处理请求，请稍后重试')
+    expect(wrapper.text()).not.toContain('已应用到 Dududa Runtime；')
+    wrapper.unmount()
+  })
+})
+
 describe('AccountRail API Key route', () => {
   const account = {
     id: 'qq-123456789',

@@ -9,6 +9,7 @@ import { HttpMcpConsoleClient, UnavailableMcpConsoleClient } from './mcp-console
 import { HttpAstrBotPluginManagerClient } from './plugin-manager'
 import { FileApiKeyPoolStore } from './model-keys'
 import { createHttpApiKeyProbe } from './provider-probe'
+import { HttpRuntimeConfigClient } from './runtime-config'
 
 function readToken(environmentName: string, fileEnvironmentName: string, defaultFile: string): string {
   const environmentToken = process.env[environmentName]?.trim()
@@ -55,6 +56,7 @@ const server = createDududaServer({
   mcpConsole,
   pluginManager,
   runtimePreview,
+  runtimeConfig: new HttpRuntimeConfigClient(astrBotPluginApiUrl, astrBotPluginApiKey),
   apiKeyPool,
 })
 
