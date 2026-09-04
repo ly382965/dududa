@@ -11,7 +11,7 @@ Title: One-Click External Model Configuration Apply
 ## Acceptance
 
 - [x] Saved DeepSeek pools can be explicitly applied from the page; auth, stale revisions, concurrent/active calls, rollback and secret redaction are tested with isolated doubles.
-- [ ] Lead integration and scoped release verification are recorded separately from isolated worker verification.
+- [x] Lead integration and scoped release verification are recorded separately from isolated worker verification.
 
 ## Local Steps
 
