@@ -124,6 +124,19 @@ afterEach(() => {
 })
 
 describe('ApiKeyPoolsView', () => {
+  it('shows shared connection settings from the Key dialog and clears an abandoned secret', async () => {
+    const { wrapper, adapter } = mountView()
+    await flushPromises()
+    await wrapper.get('[data-tier="haiku"] .add-key').trigger('click')
+    expect(wrapper.get('.key-editor').text()).toContain('https://provider.example/v1')
+    await wrapper.get('.key-editor input[type="password"]').setValue('abandoned-secret-sentinel')
+    await wrapper.get('.key-editor .connection-help button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.key-editor').exists()).toBe(false)
+    expect((wrapper.get('input[type="url"]').element as HTMLInputElement).value).toBe('https://provider.example/v1')
+    expect(wrapper.html()).not.toContain('abandoned-secret-sentinel')
+    expect(adapter.creates).toHaveLength(0)
+  })
   it('renders three independent tier pools and never exposes a raw key from metadata', async () => {
     const { wrapper } = mountView()
     await flushPromises()

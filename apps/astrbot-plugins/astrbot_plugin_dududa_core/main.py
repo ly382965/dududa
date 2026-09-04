@@ -12,6 +12,7 @@ from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
 from .web_runtime import (
     runtime_native_message_preview_response,
     runtime_preview_response,
+    runtime_status_response,
 )
 
 
@@ -36,6 +37,12 @@ class DududaCorePlugin(
         register_web_api = getattr(context, "register_web_api", None)
         if callable(register_web_api):
             register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/status",
+                self.runtime_status,
+                ["GET"],
+                "Read sanitized live Dududa Runtime readiness",
+            )
+            register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/preview",
                 self.runtime_preview,
                 ["POST"],
@@ -47,6 +54,9 @@ class DududaCorePlugin(
                 ["POST"],
                 "Replay one NapCat message through Dududa 2.0 with no QQ output",
             )
+
+    async def runtime_status(self):
+        return await runtime_status_response(self)
 
     async def runtime_preview(self):
         """Execute the installed 2.0 Runtime without QQ delivery."""

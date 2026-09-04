@@ -35,8 +35,10 @@ import {
 } from './control-plane'
 import {
   createInternalTestGateway,
+  createAgentGateway,
   InternalTestError,
   type InternalTestGateway,
+  type AgentGateway,
 } from './internal-test'
 import type { DududaRuntimePreviewClient } from './dududa-runtime'
 import {
@@ -66,6 +68,7 @@ export interface DududaServerOptions {
   publicOrigin?: string
   controlPlane?: ControlPlaneClient
   internalTest?: InternalTestGateway
+  agent?: AgentGateway
   mcpConsole?: McpConsoleClient
   pluginManager?: PluginManagerClient
   runtimePreview?: DududaRuntimePreviewClient
@@ -459,6 +462,7 @@ export function createDududaServer(options: DududaServerOptions) {
   const publicOrigin = configuredPublicOrigin(options.publicOrigin)
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const internalTest = options.internalTest ?? createInternalTestGateway(process.env, options.runtimePreview)
+  const agent = options.agent ?? createAgentGateway(process.env, options.runtimePreview)
   const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
   const pluginManager = options.pluginManager ?? new UnavailablePluginManagerClient()
   const apiKeyPool = options.apiKeyPool
@@ -596,6 +600,28 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       if (method === 'GET' && url.pathname === '/api/internal-test/agent/status') {
         json(response, 200, await internalTest.agentStatus())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/agent/status') {
+        json(response, 200, await agent.agentStatus())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/agent/catalog') {
+        json(response, 200, await agent.agentCatalog())
+        return
+      }
+      if (method === 'GET' && url.pathname === '/api/agent/config') {
+        json(response, 200, await agent.agentConfig(Object.fromEntries(url.searchParams.entries())))
+        return
+      }
+      if ((method === 'PUT' && url.pathname === '/api/agent/config')
+        || (method === 'POST' && url.pathname === '/api/agent/respond')) {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源管理员页面操作 Agent' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        json(response, 200, method === 'PUT' ? await agent.saveAgentConfig(body) : await agent.respond(body))
         return
       }
       if (method === 'GET' && url.pathname === '/api/internal-test/agent/catalog') {

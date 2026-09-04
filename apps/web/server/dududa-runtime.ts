@@ -24,6 +24,14 @@ export interface DududaRuntimePreviewResult {
 
 export interface DududaRuntimePreviewClient {
   preview(request: DududaRuntimePreviewRequest): Promise<DududaRuntimePreviewResult>
+  status?(): Promise<DududaRuntimeStatus>
+}
+
+export interface DududaRuntimeStatus {
+  ready: boolean
+  modelMapping: Partial<Record<'haiku' | 'sonnet' | 'opus', string>>
+  controls: Record<string, unknown>
+  checkedAt: string
 }
 
 export class DududaRuntimePreviewClientError extends Error {
@@ -50,33 +58,58 @@ export class HttpDududaRuntimePreviewClient implements DududaRuntimePreviewClien
   }
 
   async preview(request: DududaRuntimePreviewRequest): Promise<DududaRuntimePreviewResult> {
+    return runtimePreviewResult(await this.request('preview', request))
+  }
+
+  async status(): Promise<DududaRuntimeStatus> {
+    const value = record(await this.request('status'))
+    if (!value || typeof value.ready !== 'boolean' || !record(value.controls) || !record(value.modelMapping)) {
+      throw new DududaRuntimePreviewClientError('Dududa Runtime 状态返回格式无效', 502)
+    }
+    const mapping = record(value.modelMapping)!
+    return {
+      ready: value.ready,
+      checkedAt: text(value.checkedAt),
+      modelMapping: Object.fromEntries(['haiku', 'sonnet', 'opus'].flatMap(tier => (
+        text(mapping[tier]) ? [[tier, text(mapping[tier])]] : []
+      ))),
+      controls: Object.fromEntries([
+        'runtime_enabled', 'rollout_mode', 'rollout_delivery_enabled',
+        'rollout_kill_switch', 'proactive_talk_enabled', 'all_groups',
+      ].map(key => [key, record(value.controls)![key]])),
+    }
+  }
+
+  private async request(path: 'status' | 'preview', request?: DududaRuntimePreviewRequest): Promise<unknown> {
     const apiKey = (typeof this.apiKey === 'function' ? this.apiKey() : this.apiKey).trim()
     if (!apiKey) throw new DududaRuntimePreviewClientError('AstrBot plugin scope API Key 未配置', 503)
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs)
+    const timer = setTimeout(() => controller.abort(), path === 'status' ? Math.min(5_000, this.timeoutMs) : this.timeoutMs)
     timer.unref?.()
     try {
       const response = await this.fetchImpl(
-        `${this.baseUrl}/plugins/extensions/astrbot_plugin_dududa_core/runtime/preview`,
+        `${this.baseUrl}/plugins/extensions/astrbot_plugin_dududa_core/runtime/${path}`,
         {
-          method: 'POST',
+          method: request ? 'POST' : 'GET',
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             'X-API-Key': apiKey,
           },
-          body: JSON.stringify(request),
+          ...(request ? { body: JSON.stringify(request) } : {}),
           signal: controller.signal,
         },
       )
       const envelope = await response.json().catch(() => ({})) as Record<string, unknown>
       if (!response.ok || envelope.status === 'error') {
         throw new DududaRuntimePreviewClientError(
-          text(envelope.message) || `Dududa 2.0 Runtime 预览失败: ${response.status}`,
+          response.status === 401 || response.status === 403
+            ? 'AstrBot Runtime 接口认证失败，请检查服务端 plugin scope 凭据'
+            : `Dududa Runtime 接口请求失败 (${response.status})`,
           response.ok ? 502 : response.status,
         )
       }
-      return runtimePreviewResult(envelope.data)
+      return envelope.data
     } catch (error) {
       if (error instanceof DududaRuntimePreviewClientError) throw error
       throw new DududaRuntimePreviewClientError(

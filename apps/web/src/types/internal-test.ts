@@ -255,6 +255,8 @@ export interface InternalTestStatus {
 }
 
 export interface InternalTestAgentStatus {
+  readinessReason?: string
+  checkedAt?: string
   available: boolean
   outputEnabled: false
   providerConfigured: boolean

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { appendFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
@@ -231,6 +231,8 @@ export interface InternalTestCandidate {
 }
 
 export interface InternalTestAgentStatus {
+  readinessReason?: string
+  checkedAt?: string
   available: boolean
   providerConfigured: boolean
   outputEnabled: false
@@ -319,7 +321,9 @@ interface PrivateProviderConfig {
 }
 
 export interface FileInternalTestGatewayOptions {
-  dataRoot: string
+  dataRoot?: string
+  /** Formal Agent APIs share policy/preview logic, never corpus or personal credentials. */
+  runtimeOnly?: boolean
   feedbackPath?: string
   policyPath?: string
   codexConfigPath?: string
@@ -811,7 +815,7 @@ function currentAgentRuntimeControls(
   const configuredGroups = Array.isArray(config.rollout_allowlisted_groups)
     ? config.rollout_allowlisted_groups
     : []
-  const allGroups = configuredGroups.includes('*')
+  const allGroups = config.all_groups === true || configuredGroups.includes('*')
   return {
     passiveAutoReply: {
       actualEnabled,
@@ -1279,8 +1283,8 @@ function feedbackCorrections(value: unknown): Record<string, string> | undefined
 }
 
 export class FileInternalTestGateway implements InternalTestGateway {
-  private readonly demoPath: string
-  private readonly feedbackPath: string
+  private readonly demoPath?: string
+  private readonly feedbackPath?: string
   private readonly policyPath: string
   private readonly codexConfigPath: string
   private readonly authPath: string
@@ -1290,21 +1294,22 @@ export class FileInternalTestGateway implements InternalTestGateway {
   private readonly now: () => Date
   private readonly models: Record<ModelTier, string>
   private cache?: { mtimeMs: number; projection: LoadedProjection }
+  private policyWrite: Promise<unknown> = Promise.resolve()
 
   constructor(private readonly options: FileInternalTestGatewayOptions) {
     const dataRoot = stringValue(options.dataRoot)
-    if (!dataRoot || !isAbsolute(dataRoot)) {
+    if ((!dataRoot && !options.runtimeOnly) || (dataRoot && !isAbsolute(dataRoot))) {
       throw new InternalTestError('DUDUDA_INTERNAL_TEST_DATA_ROOT 必须是私有绝对路径', 503)
     }
-    const feedbackPath = stringValue(options.feedbackPath) ?? resolve(dataRoot, 'internal-test/feedback.jsonl')
-    if (!isAbsolute(feedbackPath)) {
+    const feedbackPath = stringValue(options.feedbackPath) ?? (dataRoot ? resolve(dataRoot, 'internal-test/feedback.jsonl') : undefined)
+    if (feedbackPath && !isAbsolute(feedbackPath)) {
       throw new InternalTestError('DUDUDA_INTERNAL_TEST_FEEDBACK_PATH 必须是绝对路径', 503)
     }
-    const policyPath = stringValue(options.policyPath) ?? resolve(dataRoot, 'internal-test/agent-policies.json')
-    if (!isAbsolute(policyPath)) {
+    const policyPath = stringValue(options.policyPath) ?? (dataRoot ? resolve(dataRoot, 'internal-test/agent-policies.json') : undefined)
+    if (!policyPath || !isAbsolute(policyPath)) {
       throw new InternalTestError('DUDUDA_INTERNAL_TEST_POLICY_PATH 必须是绝对路径', 503)
     }
-    this.demoPath = resolve(dataRoot, 'demo/index.html')
+    this.demoPath = dataRoot ? resolve(dataRoot, 'demo/index.html') : undefined
     this.feedbackPath = feedbackPath
     this.policyPath = policyPath
     this.codexConfigPath = resolve(options.codexConfigPath ?? resolve(homedir(), '.codex/config.toml'))
@@ -1348,6 +1353,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   private async projection(): Promise<LoadedProjection> {
+    if (!this.demoPath) throw new InternalTestError('历史内测入口未配置', 503)
     let info
     try {
       info = await stat(this.demoPath)
@@ -1393,6 +1399,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   private async providerConfig(): Promise<PrivateProviderConfig> {
+    if (this.options.runtimeOnly) throw new InternalTestError('正式 Agent 只调用 AstrBot Runtime', 503)
     const explicitBaseUrl = stringValue(this.options.providerBaseUrl)
     const explicitApiKey = stringValue(this.options.providerApiKey)
     if (explicitBaseUrl && explicitApiKey) return { baseUrl: explicitBaseUrl, apiKey: explicitApiKey }
@@ -1509,6 +1516,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async progress(): Promise<InternalTestProgress> {
+    if (!this.feedbackPath) throw new InternalTestError('历史内测入口未配置', 503)
     const projection = await this.projection()
     const windowIds = new Set(projection.windows.map((window) => String(window.window_id)))
     const latestVerdict = new Map<string, FeedbackVerdict>()
@@ -1581,6 +1589,36 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async agentStatus(): Promise<InternalTestAgentStatus> {
+    if (this.options.runtimeOnly) {
+      try {
+        if (!this.options.runtimePreview?.status) throw new Error('missing runtime client')
+        const live = await this.options.runtimePreview.status()
+        const providerConfigured = Object.keys(live.modelMapping).length > 0
+        return {
+          available: live.ready,
+          providerConfigured,
+          outputEnabled: false,
+          modelMapping: { haiku: '', sonnet: '', opus: '', ...live.modelMapping },
+          runtimeControls: currentAgentRuntimeControls(live.controls, live.ready),
+          readinessReason: live.ready
+            ? 'Runtime 已连接；群聊预览不发送 QQ。模型调用健康以实际运行结果为准。'
+            : 'AstrBot 已连接，但 Dududa Runtime 尚未装配就绪，请检查模型绑定与运行配置。',
+          checkedAt: live.checkedAt,
+          warnings: ['CONTROL-PLANE PREVIEW NO SEND', 'NO MEMORY WRITE', 'NO BANDIT'],
+        }
+      } catch (error) {
+        return {
+          available: false,
+          providerConfigured: false,
+          outputEnabled: false,
+          modelMapping: { haiku: '', sonnet: '', opus: '' },
+          runtimeControls: currentAgentRuntimeControls({}, false),
+          readinessReason: error instanceof DududaRuntimePreviewClientError
+            ? error.message : 'AstrBot Runtime 状态接口未连接，请检查服务端连接配置。',
+          warnings: ['CONTROL-PLANE PREVIEW NO SEND', 'NO MEMORY WRITE', 'NO BANDIT'],
+        }
+      }
+    }
     let providerConfigured = true
     try {
       await this.providerConfig()
@@ -1624,6 +1662,12 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async agentCatalog(): Promise<InternalTestAgentCatalog> {
+    if (this.options.runtimeOnly) {
+      const status = await this.agentStatus()
+      const catalog = buildAgentCatalog(status.modelMapping, status.providerConfigured, status.available)
+      catalog.models = catalog.models.filter(model => Boolean(model.id))
+      return catalog
+    }
     let providerConfigured = true
     try {
       await this.providerConfig()
@@ -1642,22 +1686,39 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async saveAgentConfig(body: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
+    const operation = this.policyWrite.then(() => this.writeAgentConfig(body))
+    this.policyWrite = operation.catch(() => undefined)
+    return operation
+  }
+
+  private async writeAgentConfig(body: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
     const scope = agentScope(body)
     const records = await this.policyRecords()
     const current = await this.resolvedPolicy(scope)
     const updatedAt = this.now().toISOString()
     const policy = normalizeAgentPolicy(objectValue(body.policy) ?? body, current.policy, scope, updatedAt)
     records[policyKey(scope)] = policy
-    await mkdir(dirname(this.policyPath), { recursive: true })
-    await writeFile(this.policyPath, `${JSON.stringify({ schemaVersion: 1, policies: records }, null, 2)}\n`, {
-      encoding: 'utf8',
-      mode: 0o600,
-    })
+    await mkdir(dirname(this.policyPath), { recursive: true, mode: 0o700 })
+    const temporaryPath = `${this.policyPath}.${randomUUID()}.tmp`
+    try {
+      await writeFile(temporaryPath, `${JSON.stringify({ schemaVersion: 1, policies: records }, null, 2)}\n`, {
+        encoding: 'utf8', mode: 0o600, flag: 'wx',
+      })
+      await rename(temporaryPath, this.policyPath)
+    } finally {
+      await rm(temporaryPath, { force: true })
+    }
     return policy
   }
 
   async respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse> {
-    const scope = agentScope(body, false)
+    const scope = agentScope(body, this.options.runtimeOnly === true)
+    if (this.options.runtimeOnly && !this.options.runtimePreview) {
+      throw new InternalTestError('AstrBot Runtime 预览接口未配置', 503)
+    }
+    if (this.options.runtimeOnly && !scope.conversationId.includes(':group:')) {
+      throw new InternalTestError('当前 Runtime 预览仅支持已连接账号的群聊，不支持私聊。', 400)
+    }
     const resolved = await this.resolvedPolicy(scope)
     if (!resolved.policy.enabled) throw new InternalTestError('当前会话的 Agent 已关闭', 409)
     const conversationType = requestedConversationType(body.conversationType ?? body.conversation_type)
@@ -1831,6 +1892,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async feedback(body: Record<string, unknown>): Promise<InternalTestFeedbackResult> {
+    if (!this.feedbackPath) throw new InternalTestError('历史内测入口未配置', 503)
     const windowId = stringValue(body.windowId ?? body.window_id)
     const runId = stringValue(body.runId ?? body.run_id)
     if (!windowId || !runId) throw new InternalTestError('缺少 windowId 或 runId')
@@ -1921,6 +1983,19 @@ export class UnavailableInternalTestGateway implements InternalTestGateway {
   async feedback(): Promise<InternalTestFeedbackResult> {
     throw new InternalTestError('内测入口未配置', 503)
   }
+}
+
+export type AgentGateway = Pick<InternalTestGateway, 'agentStatus' | 'agentCatalog' | 'agentConfig' | 'saveAgentConfig' | 'respond'>
+
+export function createAgentGateway(
+  environment: NodeJS.ProcessEnv = process.env,
+  runtimePreview?: DududaRuntimePreviewClient,
+): AgentGateway {
+  return new FileInternalTestGateway({
+    runtimeOnly: true,
+    policyPath: environment.DUDUDA_AGENT_POLICY_PATH || '/var/lib/dududa/agent/agent-policies.json',
+    runtimePreview,
+  })
 }
 
 export function createInternalTestGateway(
