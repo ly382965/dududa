@@ -145,6 +145,17 @@ boundary before swapping the Dududa assembly; preserve external configurations
 and rollback on failed preparation. This does not authorize a generic host
 restart endpoint or browser access to credentials/Docker.
 
+Live integration follow-ups remain within the same repair: a historical context
+must survive Runtime checkpoint validation using the existing bounded builder,
+not a second history schema. Production SHORT output keeps its existing 180
+visible-character hard cap; its Unicode policy-unit cap is aligned to 180 so a
+Chinese response already inside that display bound is not rejected by a hidden
+128-unit limit. Do not truncate generated facts or increase reasoning budgets.
+Production perception instructions name the existing canonical transformation
+task kind for summarizing/rewriting untrusted quoted data. Preserve conflicting
+intent decisions and report only four fixed conflict-field reason codes, never
+raw model projections or prompt/configuration contents.
+
 ### MCP Frontend Layout Follow-up
 
 Repair only the workbench presentation: explicitly style the connection-check
