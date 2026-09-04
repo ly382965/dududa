@@ -188,6 +188,7 @@ export interface InternalTestContextUsage {
   characterLimit: number
   messagesRead: number
   charactersRead: number
+  coverage?: PreviewCoverage
 }
 
 export interface InternalTestPrediction<T> {
@@ -301,7 +302,7 @@ export interface InternalTestAgentRequest {
   answerProfile?: InternalTestAnswerProfile
 }
 
-export interface InternalTestAgentResponse {
+export interface InternalTestAgentResponse extends PreviewEvidence {
   runId: string
   candidate: string
   tier: InternalTestTier
@@ -388,3 +389,4 @@ export interface InternalTestFeedbackResult {
   feedbackId: string
   progress: InternalTestProgress
 }
+import type { PreviewCoverage, PreviewEvidence } from './preview'

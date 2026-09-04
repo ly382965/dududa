@@ -5,6 +5,7 @@ const selfId = '123456789'
 const token = 'playwright-only-onebot-token-32-chars'
 let napcat: WebSocket | undefined
 const extraNapcats: WebSocket[] = []
+let syntheticSendActions = 0
 
 function message(content: string, overrides: Record<string, unknown> = {}, ownerId = selfId) {
   return {
@@ -127,6 +128,7 @@ async function openFakeNapCat(ownerId = selfId, botName = '嘟嘟哒真实号', 
         data = { files: [], folders: [] }
         break
       case 'send_group_msg':
+        syntheticSendActions += 1
         lastSentText = String((request.params.message as Array<{ data?: { text?: string } }>)[0]?.data?.text ?? '')
         data = { message_id: 102 }
         break
@@ -156,6 +158,7 @@ async function openFakeNapCat(ownerId = selfId, botName = '嘟嘟哒真实号', 
 }
 
 test.beforeEach(async () => {
+  syntheticSendActions = 0
   napcat = await openFakeNapCat()
 })
 
@@ -164,6 +167,73 @@ test.afterEach(() => {
   napcat = undefined
   extraNapcats.splice(0).forEach((socket) => socket.close())
 })
+
+for (const width of [1280, 390]) {
+  test(`preview explains empty outcomes and zero probability without sending at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const scope = { accountId: `qq-${selfId}`, conversationId: `qq-${selfId}:group:345678901` }
+    const policy = {
+      schemaVersion: 1, scope, enabled: true,
+      modelTier: { mode: 'adaptive', preferred: 'haiku', allowed: ['haiku'] },
+      reasoning: { mode: 'adaptive', preferred: 'low', allowed: ['low'] },
+      answerProfile: { mode: 'adaptive', preferred: 'short', allowed: ['short'] },
+      replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['normal'] },
+      contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['standard'] },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['natural'] },
+      proactiveTalk: { probabilityPercent: 0, cooldownSeconds: 5, maximumPerHour: 500 },
+      plugins: { 'social.proactive_talk': 'on' },
+    }
+    await page.route('**/api/agent/status', route => route.fulfill({ json: {
+      available: true, outputEnabled: false, providerConfigured: true, modelMapping: { haiku: 'synthetic-model' }, warnings: [],
+      runtimeControls: {
+        passiveAutoReply: { actualEnabled: true, state: 'enabled', rolloutMode: 'canary', deliveryEnabled: true, killSwitch: false, summary: 'Synthetic' },
+        proactiveGroupParticipation: { actualEnabled: true, state: 'enabled', stage: 'proactive_canary', deliveryEnabled: true, summary: 'Synthetic' },
+      },
+    } }))
+    await page.route('**/api/agent/config**', route => route.fulfill({ json: policy }))
+    await page.route('**/api/agent/catalog', route => route.fulfill({ json: {
+      agent: { id: 'dududa', displayName: 'Dududa' }, selectionModes: ['adaptive'], pluginModes: ['off', 'on', 'auto'],
+      models: [{ id: 'synthetic-model', tier: 'haiku', displayName: 'Synthetic', available: true, modalities: ['text'], reasoningLevels: ['low'] }],
+      reasoningLevels: ['low'], answerProfiles: ['short'], replyIntensities: ['normal'], groupChatStyles: ['natural'],
+      contextLengths: [{ id: 'standard', messageLimit: 30, characterLimit: 18000 }],
+      proactiveTalkLimits: { probabilityPercent: { minimum: 0, maximum: 100, step: 1 }, cooldownSeconds: { minimum: 5, maximum: 1800, step: 5 }, maximumPerHour: { minimum: 1, maximum: 500, step: 1 } },
+      replyIntensityNotice: '', plugins: [], policyDefaults: policy,
+    } }))
+    await page.route('**/api/internal-test/mcp/catalog', route => route.fulfill({ json: { schemaVersion: 1, available: false, servers: [], capabilities: [] } }))
+    const coverage = { source: 'synthetic', partial: true, truncated: true, historyMessagesRead: 2, oldestAt: '2026-09-04T08:00:00Z', newestAt: '2026-09-04T08:01:00Z' }
+    const usage = { messageLimit: 31, characterLimit: 18000, messagesRead: 3, charactersRead: 80, coverage }
+    await page.route('**/api/agent/respond', async route => {
+      expect(route.request().postDataJSON().messages).toEqual([])
+      await route.fulfill({ json: {
+        runId: 'synthetic-empty', candidate: '', outcome: 'deferred', runtimeState: 'deferred', generationObserved: false,
+        tier: 'haiku', model: 'synthetic-model', reasoning: 'low', answerProfile: 'short', replyIntensity: 'normal', contextLength: 'standard', groupChatStyle: 'natural',
+        contextUsage: usage, effectiveSelection: { scope, policySource: 'saved', modelTier: 'haiku', model: 'synthetic-model', reasoning: 'low', answerProfile: 'short', replyIntensity: 'normal', contextLength: 'standard', groupChatStyle: 'natural', contextUsage: usage, plugins: {} },
+        reasonCodes: ['conflicting_evidence_without_clarification', 'runtime.preview.no_send'], latencyMs: 1,
+        generatedAt: '2026-09-04T09:00:00Z', outputCalls: 0, memoryWrites: 0, toolCalls: 0, runtimePath: 'dududa_2_preview',
+      } })
+    })
+    await page.goto('/')
+    await page.locator('.conversation-item').first().click()
+    await page.getByRole('button', { name: width > 860 ? '打开 Agent Console' : 'Agent', exact: true }).click()
+    const panel = page.getByRole('complementary', { name: 'Agent Console' })
+    await panel.getByLabel('Agent 指令输入').fill('总结这段合成讨论')
+    await panel.getByRole('button', { name: '发送给 Agent', exact: true }).click()
+    await expect(panel.locator('.agent-message--assistant')).toContainText('本次暂缓回复')
+    await expect(panel.locator('.agent-message--assistant')).toContainText('conflicting_evidence_without_clarification')
+    await expect(panel.locator('.agent-message--assistant .status-part--success')).toHaveCount(0)
+    await expect(panel.locator('.agent-message--assistant')).toContainText('仅最近 2 条历史（非全天，已截断）')
+    await page.screenshot({ path: testInfo.outputPath('preview-deferred.png') })
+    await panel.getByRole('button', { name: '配置', exact: true }).click()
+    await expect(panel.getByText('触发概率为 0，不会自动搭话；服务连接与其他回复功能不受影响。')).toBeVisible()
+    const probability = panel.locator('input[type=range]').filter({ visible: true }).first()
+    await probability.fill('1')
+    await probability.fill('0')
+    await expect(panel.getByText('未保存草稿：触发概率为 0，保存后不会自动搭话；当前生效值仍以已保存配置为准。')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('zero-probability-draft.png') })
+    expect(syntheticSendActions).toBe(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+  })
+}
 
 test('desktop operator reads and sends through the NapCat action channel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })

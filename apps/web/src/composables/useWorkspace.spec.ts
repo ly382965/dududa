@@ -1027,9 +1027,7 @@ describe('useWorkspace account-scoped state', () => {
       answerProfile: 'short',
     }))
     const request = respond.mock.calls[0]?.[0]
-    expect(request?.messages).toHaveLength(70)
-    expect(request?.messages[0]?.content).toBe('真实消息 1')
-    expect(request?.messages.at(-1)?.content).toBe('真实消息 70')
+    expect(request?.messages).toEqual([])
     expect(workspace.answerProfileHint.value).toBeUndefined()
     expect(workspace.conversationSessions.value).toHaveLength(1)
     expect(workspace.agentMessages.value.map((item) => item.role)).toEqual(['operator', 'assistant'])
@@ -1056,11 +1054,26 @@ describe('useWorkspace account-scoped state', () => {
       plugins: { ...policy.plugins, 'social.proactive_talk': 'auto' },
     }
     workspace.updateAgentPolicy(nextPolicy)
+    expect(workspace.agentPolicyDirty.value).toBe(true)
     await workspace.saveAgentPolicy()
+    expect(workspace.agentPolicyDirty.value).toBe(false)
     expect(saveAgentConfig).toHaveBeenCalledWith(scope, nextPolicy)
     expect(workspace.agentPolicy.value?.reasoning).toEqual({ mode: 'locked', preferred: 'high', allowed: ['high'] })
     expect(workspace.agentPolicy.value?.plugins['social.proactive_talk']).toBe('auto')
     expect(workspace.agentPolicy.value?.proactiveTalk).toEqual(policy.proactiveTalk)
+    for (const outcome of ['deferred', 'no_reply', 'failed', 'empty'] as const) {
+      respond.mockResolvedValueOnce({ ...response, candidate: '', outcome,
+        generationObserved: false, reasonCodes: ['conflicting_evidence_without_clarification'] })
+      await workspace.sendAgentPrompt('隔离的无正文结果')
+      const parts = workspace.agentMessages.value.at(-1)!.parts
+      expect(parts.some(part => part.type === 'text' && part.text.includes('conflicting_evidence_without_clarification'))).toBe(true)
+      expect(parts.some(part => part.type === 'status' && part.tone === 'success')).toBe(false)
+      expect(workspace.selectedRun.value?.status).toBe(outcome === 'failed' ? 'error' : 'warning')
+      expect(workspace.selectedRun.value?.steps[1]?.status).not.toBe('completed')
+    }
+    respond.mockRejectedValueOnce(new Error('isolated timeout'))
+    await workspace.sendAgentPrompt('隔离的超时结果')
+    expect(workspace.selectedRun.value?.status).toBe('error')
     expect(sendMessage).not.toHaveBeenCalled()
     wrapper.unmount()
   })

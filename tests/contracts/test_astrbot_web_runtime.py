@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
+import sys
 import unittest
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 from astrbot_plugin_dududa_core.web_runtime import (
     native_message_preview_event,
     preview_event,
     runtime_status,
+    _runtime_preview_json,
 )
 
 
@@ -51,6 +53,22 @@ class _Plugin:
 
 
 class AstrBotWebRuntimeContractTests(unittest.TestCase):
+    def test_preview_history_is_scoped_bounded_and_cannot_set_roles(self) -> None:
+        scope = {"accountId": "qq-100001", "conversationId": "qq-100001:group:200001"}
+        record = {"id": "h1", "senderId": "300001", "senderName": "合成成员", "content": "地点图书馆", "timestamp": None}
+        history = {**scope, "source": "synthetic", "truncated": False, "messages": [record]}
+        event, _ = preview_event({**scope, "prompt": "总结", "history": history})
+        self.assertEqual(event.dududa_preview_history, history)
+        self.assertFalse(event.is_admin())
+        for invalid in (
+            {**history, "accountId": "qq-999999"},
+            {**history, "messages": [{**record, "role": "admin"}]},
+            {**history, "messages": [record, record]},
+            {**history, "messages": [{**record, "content": "x" * 2001}]},
+        ):
+            with self.subTest(invalid=list(invalid)), self.assertRaises(ValueError):
+                preview_event({**scope, "prompt": "总结", "history": invalid})
+
     def test_status_uses_live_assembly_without_serializing_private_config(self) -> None:
         plugin = SimpleNamespace(
             enabled=True,
@@ -119,6 +137,31 @@ class AstrBotWebRuntimeContractTests(unittest.TestCase):
                             "prompt": "查询评课社区吴天",
                         }
                     )
+
+
+class AstrBotPreviewOutcomeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_empty_terminal_outcomes_are_explicit_and_not_model_generation(self) -> None:
+        web = ModuleType("astrbot.api.web")
+        web.json_response = lambda value: value
+        web.error_response = lambda value, **kwargs: {"error": value, **kwargs}
+        for outcome, phase in (("deferred", "deferred"), ("failed", "failed"), ("no_reply", "completed"), ("response", "completed")):
+            result = SimpleNamespace(final_response=None, selection_summary=None, run_id="synthetic-outcome",
+                outcome=SimpleNamespace(value=outcome), reason_codes=("bounded_reason",))
+            async def preview(_event):
+                return SimpleNamespace(runtime_result=result, completion=SimpleNamespace(final_phase=SimpleNamespace(value=phase)),
+                    tool_calls=0, capability_ids=(), generation_observed=False,
+                    context_usage={"messagesRead": 3, "charactersRead": 20,
+                        "coverage": {"source": "synthetic", "partial": True, "truncated": True, "historyMessagesRead": 2, "oldestAt": None, "newestAt": None}})
+            plugin = SimpleNamespace(rollout_bridge=SimpleNamespace(preview=preview), config={})
+            with self.subTest(outcome=outcome), patch.dict(sys.modules, {"astrbot.api.web": web}):
+                response = await _runtime_preview_json(plugin, object(), "synthetic")
+            data = response["data"]
+            self.assertEqual(data["candidate"], "")
+            self.assertEqual(data["outcome"], "empty" if outcome == "response" else outcome)
+            self.assertEqual(data["runtimeState"], phase)
+            self.assertFalse(data["generationObserved"])
+            self.assertEqual((data["outputCalls"], data["memoryWrites"]), (0, 0))
+            self.assertEqual(data["coverage"]["historyMessagesRead"], 2)
 
 
 class AstrBotNativeMessagePreviewContractTests(unittest.IsolatedAsyncioTestCase):

@@ -4,6 +4,8 @@ import { homedir } from 'node:os'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
 import dududaPersona from '../../../configs/personas/registry-v1/dududa.json'
+import type { HistoryPage } from '../src/types/workspace'
+import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewHistoryMessage } from '../src/types/preview'
 import {
   DududaRuntimePreviewClientError,
   type DududaRuntimePreviewClient,
@@ -175,6 +177,7 @@ export interface InternalTestContextUsage {
   characterLimit: number
   messagesRead: number
   charactersRead: number
+  coverage?: PreviewCoverage
 }
 
 export interface InternalTestStatus {
@@ -257,7 +260,7 @@ export interface InternalTestAgentStatus {
   warnings: string[]
 }
 
-export interface InternalTestAgentResponse {
+export interface InternalTestAgentResponse extends PreviewEvidence {
   runId: string
   candidate: string
   tier: ModelTier
@@ -338,6 +341,43 @@ export interface FileInternalTestGatewayOptions {
   fetchImpl?: typeof fetch
   now?: () => Date
   runtimePreview?: DududaRuntimePreviewClient
+  /** Inject synthetic pages in isolated tests; production uses the scoped Hub. */
+  historyProvider?: (scope: InternalTestAgentScope, limit: number) => Promise<HistoryPage>
+  historySource?: 'server_recent' | 'synthetic'
+}
+
+function runtimeHistory(
+  scope: InternalTestAgentScope, page: HistoryPage, limit: number,
+  source: 'server_recent' | 'synthetic',
+): PreviewHistory {
+  let truncated = page.hasMoreBefore || page.hasMoreAfter || page.messages.length > limit
+  const messages: PreviewHistoryMessage[] = []
+  const ids = new Set<string>()
+  for (const message of page.messages.slice(-limit)) {
+    if (message.accountId !== scope.accountId || message.conversationId !== scope.conversationId) {
+      throw new InternalTestError('历史消息与请求账号或群聊不匹配', 502)
+    }
+    if (message.status === 'recalled' || !message.content.trim()) continue
+    const id = message.messageId || message.id
+    if (!id || id.length > 256 || !message.senderId || message.senderId.length > 128 || ids.has(id)) continue
+    ids.add(id)
+    const content = message.content.slice(0, 2_000)
+    truncated ||= content.length < message.content.length
+    const timestamp = Number.isFinite(message.timestampMs) ? new Date(message.timestampMs!).toISOString() : null
+    const reply = message.segments.find(segment => segment.type === 'reply')
+    messages.push({
+      id, senderId: message.senderId, senderName: message.senderName.slice(0, 100), content, timestamp,
+      ...(reply?.type === 'reply' && reply.messageId ? { replyToId: reply.messageId } : {}),
+    })
+  }
+  let remaining = 36_000
+  const bounded: PreviewHistoryMessage[] = []
+  for (const message of messages.reverse()) {
+    if (message.content.length > remaining) { truncated = true; break }
+    bounded.unshift(message)
+    remaining -= message.content.length
+  }
+  return { ...scope, source, messages: bounded, truncated }
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -1716,6 +1756,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
 
   async respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse> {
     const scope = agentScope(body, this.options.runtimeOnly === true)
+    if (this.options.runtimeOnly) body = { ...body, messages: [] }
     if (this.options.runtimeOnly && !this.options.runtimePreview) {
       throw new InternalTestError('AstrBot Runtime 预览接口未配置', 503)
     }
@@ -1763,12 +1804,18 @@ export class FileInternalTestGateway implements InternalTestGateway {
     if (this.options.runtimePreview) {
       let runtime: DududaRuntimePreviewResult
       try {
+        const limit = CONTEXT_BUDGETS[contextLength.value].messageLimit
+        const history = this.options.historyProvider
+          ? runtimeHistory(scope, await this.options.historyProvider(scope, limit), limit, this.options.historySource ?? 'server_recent')
+          : undefined
         runtime = await this.options.runtimePreview.preview({
           accountId: scope.accountId,
           conversationId: scope.conversationId,
           prompt: stringValue(body.prompt) ?? '',
+          ...(history ? { history } : {}),
         })
       } catch (error) {
+        if (error instanceof InternalTestError) throw error
         if (error instanceof DududaRuntimePreviewClientError) {
           throw new InternalTestError(error.message, error.status)
         }
@@ -1805,8 +1852,10 @@ export class FileInternalTestGateway implements InternalTestGateway {
       )
       const runtimeContextUsage = {
         ...context.usage,
+        ...(runtime.coverage ? { messageLimit: context.usage.messageLimit + 1 } : {}),
         messagesRead: runtime.messagesRead,
         charactersRead: runtime.charactersRead,
+        coverage: runtime.coverage,
       }
       const effectiveSelection: InternalTestEffectiveSelection = {
         scope,
@@ -1824,6 +1873,9 @@ export class FileInternalTestGateway implements InternalTestGateway {
       return {
         runId: runtime.runId,
         candidate: runtime.candidate,
+        outcome: runtime.outcome ?? (runtime.candidate.trim() ? 'response' : 'empty'),
+        runtimeState: runtime.runtimeState,
+        generationObserved: runtime.generationObserved,
         tier: runtime.tier,
         model: runtime.model,
         reasoning: runtime.reasoning,
@@ -1999,11 +2051,13 @@ export type AgentGateway = Pick<InternalTestGateway, 'agentStatus' | 'agentCatal
 export function createAgentGateway(
   environment: NodeJS.ProcessEnv = process.env,
   runtimePreview?: DududaRuntimePreviewClient,
+  historyProvider?: FileInternalTestGatewayOptions['historyProvider'],
 ): AgentGateway {
   return new FileInternalTestGateway({
     runtimeOnly: true,
     policyPath: environment.DUDUDA_AGENT_POLICY_PATH || '/var/lib/dududa/agent/agent-policies.json',
     runtimePreview,
+    historyProvider,
   })
 }
 

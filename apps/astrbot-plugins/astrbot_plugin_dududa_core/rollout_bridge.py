@@ -75,6 +75,8 @@ class AstrBotRuntimePreviewResult:
     completion: CompletionReceipt
     tool_calls: int
     capability_ids: tuple[str, ...] = ()
+    context_usage: Mapping[str, object] | None = None
+    generation_observed: bool = False
 
 
 class AstrBotRuntimePreviewError(RuntimeError):
@@ -309,12 +311,40 @@ class AstrBotRolloutBridge:
             raise AstrBotRuntimePreviewError("runtime_preview_timeout") from exc
         completion = result.completion
         capability_ids: tuple[str, ...] = ()
+        history = getattr(event, "dududa_preview_history", None) or {}
+        context_usage: Mapping[str, object] | None = {
+            "messagesRead": 0, "charactersRead": 0,
+            "coverage": {"source": history.get("source", "unavailable"), "partial": True,
+                         "truncated": bool(history.get("messages")), "historyMessagesRead": 0,
+                         "oldestAt": None, "newestAt": None},
+        }
+        generation_observed = False
         if self._state_store is not None:
             checkpoint = await self._state_store.load(result.run_id, call=call)
-            if checkpoint is not None and checkpoint.state.tool_plan is not None:
-                capability_ids = tuple(
-                    step.capability_id for step in checkpoint.state.tool_plan.steps
-                )
+            if checkpoint is not None:
+                state = checkpoint.state
+                generation_observed = state.direct_chat_execution is not None
+                if state.tool_plan is not None:
+                    capability_ids = tuple(step.capability_id for step in state.tool_plan.steps)
+                if state.current_context is not None:
+                    perception = state.current_context.perception
+                    history = getattr(event, "dududa_preview_history", None) or {}
+                    records = history.get("messages", [])
+                    used = [records[int(item.message_ref.rsplit(":", 1)[1])]
+                            for item in perception.messages if item.message_ref.startswith("message:history:")]
+                    dates = sorted(item["timestamp"] for item in used if item.get("timestamp"))
+                    context_usage = {
+                        "messagesRead": len(perception.messages),
+                        "charactersRead": sum(len(item.text) for item in perception.messages),
+                        "coverage": {
+                            "source": history.get("source", "unavailable"), "partial": True,
+                            "truncated": bool(history.get("truncated")) or len(used) < len(records)
+                            or "preview_history_truncated" in perception.degraded_components,
+                            "historyMessagesRead": len(used),
+                            "oldestAt": dates[0] if dates else None,
+                            "newestAt": dates[-1] if dates else None,
+                        },
+                    }
         if result.delivery_request is not None:
             receipt = _preview_delivery_receipt(
                 result.delivery_request,
@@ -330,6 +360,8 @@ class AstrBotRolloutBridge:
                 1 if RuntimePhase.TOOLS_EXECUTED in result.trace_summary.phases else 0
             ),
             capability_ids=capability_ids,
+            context_usage=context_usage,
+            generation_observed=generation_observed,
         )
 
     @tracked_runtime_call

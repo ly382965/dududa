@@ -174,6 +174,8 @@ class AstrBotInputConnector:
             metadata={
                 "adapter_type": _safe_call(event, "get_platform_name"),
                 "message_type": str(_safe_call(event, "get_message_type")),
+                **({"preview_history": event.dududa_preview_history}
+                   if getattr(event, "dududa_preview_history", None) is not None else {}),
             },
         )
         return ConnectorResult(1, envelope, actor, now, self._revision)

@@ -87,7 +87,7 @@ class At:
 
 
 class WebRuntimePreviewEvent:
-    def __init__(self, *, bot_id: str, group_id: str, prompt: str) -> None:
+    def __init__(self, *, bot_id: str, group_id: str, prompt: str, history: dict | None = None) -> None:
         now = datetime.now(timezone.utc)
         self.message_str = f"@嘟嘟哒 {prompt}"
         self.message_obj = SimpleNamespace(
@@ -98,6 +98,7 @@ class WebRuntimePreviewEvent:
         )
         self._bot_id = bot_id
         self._group_id = group_id
+        self.dududa_preview_history = history
 
     def get_platform_id(self) -> str:
         return "aiocqhttp"
@@ -140,14 +141,57 @@ def preview_event(payload: object) -> tuple[WebRuntimePreviewEvent, str]:
         raise ValueError("invalid_scope")
     if not prompt or len(prompt) > 8_192:
         raise ValueError("invalid_prompt")
+    history = _preview_history(payload.get("history"), account_id, conversation_id)
     return (
         WebRuntimePreviewEvent(
             bot_id=account.group(1),
             group_id=conversation.group(2),
             prompt=prompt,
+            history=history,
         ),
         prompt,
     )
+
+
+def _preview_history(value: object, account_id: str, conversation_id: str) -> dict | None:
+    """Validate host-only context input; this grants no identity or delivery authority."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.get("accountId") != account_id or value.get("conversationId") != conversation_id:
+        raise ValueError("preview_history_scope_mismatch")
+    if value.get("source") not in {"server_recent", "synthetic"}:
+        raise ValueError("invalid_preview_history_source")
+    messages = value.get("messages")
+    if not isinstance(messages, list) or len(messages) > 100:
+        raise ValueError("invalid_preview_history_messages")
+    seen: set[str] = set()
+    total = 0
+    for item in messages:
+        if not isinstance(item, dict) or set(item) - {"id", "senderId", "senderName", "content", "timestamp", "replyToId"}:
+            raise ValueError("invalid_preview_history_record")
+        for key, maximum in (("id", 256), ("senderId", 128), ("senderName", 100), ("content", 2_000)):
+            field = item.get(key)
+            if not isinstance(field, str) or len(field) > maximum or (key != "senderName" and not field.strip()):
+                raise ValueError("invalid_preview_history_record")
+        if item["id"] in seen:
+            raise ValueError("duplicate_preview_history_message")
+        seen.add(item["id"])
+        timestamp = item.get("timestamp")
+        if timestamp is not None:
+            try:
+                parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                if parsed.tzinfo is None:
+                    raise ValueError
+                item["timestamp"] = parsed.astimezone(timezone.utc).isoformat()
+            except (ValueError, TypeError, AttributeError):
+                raise ValueError("invalid_preview_history_timestamp") from None
+        reply = item.get("replyToId")
+        if reply is not None and (not isinstance(reply, str) or len(reply) > 256):
+            raise ValueError("invalid_preview_history_reply")
+        total += len(item["content"])
+    if total > 36_000 or type(value.get("truncated")) is not bool:
+        raise ValueError("invalid_preview_history_limit")
+    return value
 
 
 async def runtime_preview_response(plugin: object):
@@ -345,7 +389,13 @@ async def _runtime_preview_json(
         "memoryWrites": 0,
         "toolCalls": preview.tool_calls,
         "capabilityIds": list(preview.capability_ids),
+        "outcome": result.outcome.value if candidate or result.outcome.value != "response" else "empty",
+        "runtimeState": preview.completion.final_phase.value,
+        "generationObserved": getattr(preview, "generation_observed", False),
     }
+    usage = getattr(preview, "context_usage", None)
+    if usage is not None:
+        data.update(usage)
     if source is not None:
         data["source"] = source
     return json_response({"status": "ok", "data": data})

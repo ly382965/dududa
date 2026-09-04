@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { HttpDududaRuntimePreviewClient } from './dududa-runtime'
 
 describe('Dududa Runtime preview client', () => {
+  it('rejects upstream side-effect counters rather than rewriting them to zero', async () => {
+    const client = new HttpDududaRuntimePreviewClient('http://synthetic.invalid', 'synthetic-key',
+      vi.fn(async () => new Response(JSON.stringify({ status: 'ok', data: {
+        runId: 'synthetic', candidate: '', tier: 'haiku', reasoning: 'low', answerProfile: 'short', outputCalls: 1, memoryWrites: 0,
+      } }))) as typeof fetch)
+    await expect(client.preview({ accountId: 'qq-100001', conversationId: 'qq-100001:group:200001', prompt: 'synthetic' })).rejects.toThrow('返回格式无效')
+  })
+
   it('uses the plugin credential for a live GET and strips unapproved fields', async () => {
     const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
       expect(init?.method).toBe('GET')

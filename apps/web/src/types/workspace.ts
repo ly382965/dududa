@@ -542,7 +542,7 @@ export interface AgentRunStep {
   id: string
   label: string
   detail: string
-  status: 'completed' | 'running' | 'waiting'
+  status: 'completed' | 'running' | 'waiting' | 'warning' | 'error'
   duration?: string
 }
 
@@ -550,7 +550,7 @@ export interface AgentRun {
   id: string
   conversationId: string
   sessionId: string
-  status: 'running' | 'waiting_approval' | 'completed'
+  status: 'running' | 'waiting_approval' | 'completed' | 'warning' | 'error'
   triggerSender: string
   triggerAvatar: string
   triggerContent: string

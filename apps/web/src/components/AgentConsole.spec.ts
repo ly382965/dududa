@@ -105,6 +105,18 @@ describe('group proactive participation switch', () => {
     expect(wrapper.text()).toContain('本群未开启')
   })
 
+  it('explains saved and draft zero-probability policies without changing them', async () => {
+    const zero = { ...policy('on'), proactiveTalk: { probabilityPercent: 0, cooldownSeconds: 5, maximumPerHour: 500 } }
+    const wrapper = render({ policy: zero })
+    expect(wrapper.text()).toContain('触发概率为 0，不会自动搭话')
+    expect(wrapper.text()).not.toContain('未保存草稿：')
+    expect(wrapper.emitted('updatePolicy')).toBeUndefined()
+    await wrapper.setProps({ policyDirty: true })
+    expect(wrapper.text()).toContain('未保存草稿：触发概率为 0，保存后不会自动搭话')
+    expect(wrapper.get<HTMLInputElement>(selector).element.checked).toBe(true)
+    expect(zero.proactiveTalk.probabilityPercent).toBe(0)
+  })
+
   it('checks a registered MCP and preserves empty-query results through catalog refresh', async () => {
     const server = { id: 'library', displayName: '图书馆', enabled: true, available: true,
       authentication: 'not_required' as const, health: 'initializing' as const,

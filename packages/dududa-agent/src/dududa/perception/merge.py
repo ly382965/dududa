@@ -168,7 +168,8 @@ class DeterministicPerceptionMerger:
                     task_conflict,
                     bool(model_targets) and model_targets != rule_targets,
                     rules.need_tools and not model.need_tools,
-                    rules.verification_required and not model.verification_required,
+                    # A monotone OR above already preserves required verification.
+                    # Disagreement on this flag alone is not unresolved evidence.
                     rules.reasoning_depth is TaskReasoningDepth.DEEP
                     and model.reasoning_depth is TaskReasoningDepth.SHALLOW,
                 )
@@ -223,6 +224,11 @@ class DeterministicPerceptionMerger:
 
 
 def _merge_task_kind(rule_kind: str, model_kind: str) -> tuple[str, bool]:
+    if rule_kind == "bounded_transformation" and model_kind in {
+        "summary", "summarization", "translation", "rewrite", "rewriting",
+        "formatting", "paraphrase", "text_transformation", "transformation",
+    }:
+        return rule_kind, False
     authoritative = {"explicit_command", "greeting", "bounded_transformation"}
     if rule_kind in authoritative:
         return rule_kind, rule_kind != model_kind
