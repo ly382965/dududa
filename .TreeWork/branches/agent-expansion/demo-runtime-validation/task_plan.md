@@ -10,16 +10,16 @@ Title: Fixed Demo And Runtime Validation
 
 ## Acceptance
 
-- [ ] One 5–10 minute storyboard covers every implemented user-facing function and the core design, with exact screen path, narration and timing.
-- [ ] Every feature has one fixed question/action, expected answer criteria and observed evidence from the correct current boundary.
-- [ ] Latest deployed Runtime message-flow cases are semantically reviewed and prove zero QQ Output/Memory writes; reproduced defects are repaired, regressed and redeployed.
-- [ ] Final report distinguishes known-set success from generalization and implemented functions from deferred design, with no secrets/private chat content.
+- [x] One 5–10 minute storyboard covers every implemented user-facing function and the core design, with exact screen path, narration and timing.
+- [x] Every feature has one fixed question/action, expected answer criteria and observed evidence from the correct current boundary.
+- [x] Latest deployed Runtime message-flow cases are semantically reviewed and prove zero QQ Output/Memory writes; reproduced defects are repaired, regressed and redeployed.
+- [x] Final report distinguishes known-set success from generalization and implemented functions from deferred design, with no secrets/private chat content.
 
 ## Local Steps
 
-- [ ] Inventory current functions and map a compact known demonstration set.
-- [ ] Execute current Runtime/UI/MCP/plugin simulations and review answers.
-- [ ] Repair and retest observed defects, then publish the report and verification evidence.
+- [x] Inventory current functions and map a compact known demonstration set.
+- [x] Execute current Runtime/UI/MCP/plugin simulations and review answers.
+- [x] Repair and retest observed defects, then publish the report and verification evidence.
 
 ## Out Of Scope
 
