@@ -17,6 +17,19 @@ SecretRef 可以留空，真实 Key 只在明确写入时提交。
 装配就绪不等于模型调用健康，`NO BANDIT` 不是连接失败原因。
 群聊预览调用现有 Runtime，保持 no-send/no-memory-write；当前不支持私聊预览。
 
+以下预览和一键应用说明对应当前源码；部署是否完成、线上是否通过应看独立验收记录。
+正式 Web 预览由服务端通过现有 Hub 获取同账号、同群的最近历史，不使用浏览器提交的
+聊天缓存；历史作为不可信数据进入感知和回答模型，当前指令保持独立。最多请求 100 条，
+Runtime 再按上下文预算选取最近窗口。页面显示实际历史条数、时间范围和截断情况；
+`messagesRead` 包含当前指令，`historyMessagesRead` 只数历史。`coverage.partial`
+始终为 true，“总结今天”不意味着已经读取全天记录。隔离测试可注入合成历史，但正式
+Web 不因此开放浏览器伪造历史的入口。
+
+HTTP 200、模型名称或耗时均不代表生成成功。只有 `outcome=response` 且正文非空才
+显示成功；`no_reply/deferred/reaction/empty` 显示非成功解释，`failed` 显示错误，
+并保留 Runtime 原因码。`generationObserved` 区分已观察到回答生成和仅有配置标签；
+`runtimeState` 表示实际终态。这些预览结果不发送到 QQ，也不写入正式记忆。
+
 群聊的 Agent「配置 → 运行行为 → 主动加入群聊」提供「在本群启用自动搭话」开关。
 开启使用自动参与模式，关闭停用；修改后点击底部「保存配置」生效。概率、冷却、
 每小时上限及其他群配置保持不变。私聊、策略加载中或保存中不可操作；会话 Agent
@@ -60,11 +73,11 @@ NotifAI 的 registry 启动脚本及 cwd 使用 `/AstrBot/data/notifai-mcp`；�
 
 ## 尚未等同于 Runtime 应用的操作
 
-API Key 的保存和显式探测不等于切换 Runtime 模型。现有池投影适配器不做
-Provider Manager 热重载：AstrBot 会先终止旧 Provider，而已装配 Runtime 仍持有
-旧对象。模型、Provider binding、conformance evidence 不一致时必须保持旧实例。
-任何受控应用须先验证这些绑定、保留 last-known-good，并重新装配 Runtime。
-不要复制旧模型证据给 DeepSeek 或把 pending 状态改成 synced。
+API Key 的保存和显式探测不等于切换 Runtime 模型。需要再点「应用到 Runtime」，
+完成同版本检查、候选 Provider 验证和 Runtime 实例交换。该路径不调用 AstrBot 全局
+Provider Manager 热重载；不关闭其他消费者正在使用的 Provider。模型、Provider
+binding、conformance evidence 验证失败则保留旧 Runtime。不要复制旧模型证据给
+DeepSeek，也不要手工把 pending 改成 applied 来替代实际应用。
 
 ## GitHub 边界
 
@@ -75,13 +88,26 @@ Provider Manager 热重载：AstrBot 会先终止旧 Provider，而已装配 Run
 
 Key、Base URL、模型名与推理设置属于外部配置，不是 Runtime 框架代码。
 网页写入独立 Key store；AstrBot 用 Source/Provider 注册连接；Runtime 在装配时
-通过 Provider ID 获取实例，只处理模型调用接口。过去缺少前两者的应用桥接，
-所以保存池不会更新已运行实例。换 Key/Base URL 本身不应要求重新构建镜像。
+通过 Provider ID 获取实例，只处理模型调用接口。保存池仍不会自动更新已运行实例，
+但显式应用现在会建立 Dududa-owned Provider generation，重新装配并交换 Dududa
+Runtime 引用。换受支持的 Key/Base URL 不需要重新构建镜像，也不需要重启整个宿主。
 应用后真实 Key 也会存在 AstrBot 私有数据目录的 `cmd_config.json` 中，供 Source
 创建客户端使用；并非整个服务端只存 SecretRef。两处凭据文件和备份均不得公开。
-当前网页没有一键应用或自动热更新链路，仍需下面的显式应用和冷启动。
 
-`ops/cli/apply_deepseek_runtime.py` 为本次明确授权的 DeepSeek 迁移提供两步操作：
+页面向同源 `POST /api/api-keys/runtime/apply` 只提交已保存的 `revision`。Web 和
+AstrBot 在准备前/提交前校验版本及宿主配置；变化时拒绝覆盖。候选探测期间旧 Runtime
+继续服务，有活动请求时应用会提示稍后重试。当前仅支持已验证的官方 DeepSeek Chat、
+固定三档 Provider ID、均启用且有可用 Key，以及已同意 CN/provider-managed 留存的
+配置。提交前验证失败保留旧 Runtime；私有文件写入失败执行回滚，回滚失败须停止重试
+并由管理员恢复。断连或超时后先查询 `GET /api/api-keys/runtime` 确认实际状态。
+
+成功只切换 Dududa 的自有实例，不热重载其他 AstrBot 消费者。持久配置和宿主配置缓存
+同步，其他消费者保留旧实例，冷启动后才读取新配置。没有保存即自动应用或文件轮询式
+热更新。详细限制、清理待重试和 last-known-good 恢复见
+[API Key Pool 同步边界](../development/api-key-pool-runtime-sync.md)。
+
+`ops/cli/apply_deepseek_runtime.py` 仍提供部署侧的显式准备/冷安装路径；它不是网页
+应用按钮的内部命令，也不允许在线跳过停机保护。两步操作如下：
 在已验证 AstrBot 镜像内用 `prepare --data <只读数据目录> --store <私有池文件>
 --candidate <新的私密目录> --expected-revision <池revision> --source-revision <代码提交>
 --accept-provider-retention` 生成候选；验证真实三档 Provider、参数、输出与健康探针，

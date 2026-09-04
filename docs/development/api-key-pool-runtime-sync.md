@@ -2,9 +2,17 @@
 
 ## 当前操作：显式应用到 Runtime
 
+本节描述当前源码提供的操作，不代表新版本已经部署或通过线上验收。
+
 API Key 页面上方提供 **应用到 Runtime** 按钮。先保存三档的连接参数和 Key，再点击
 按钮；保存本身不触发模型调用。按钮只提交当前保存版本 `revision`，由 Web 使用现有
 plugin-scope 凭据转交 AstrBot，浏览器不读取密钥，也不访问 Docker 或宿主命令。
+
+`GET /api/api-keys/runtime` 读取当前进程的 `pending/applying/applied/unavailable`
+状态；同源管理页面向 `POST /api/api-keys/runtime/apply` 只提交 `{ "revision": 42 }`
+这样的版本对象，不能附带 Key、路径或任意模型参数。Web 先比较当前保存版本，AstrBot
+在准备候选前和提交前再次比较同一版本；不一致返回 `pool_revision_changed`，刷新后再
+应用，不会把较新保存内容混入旧候选。应用期间宿主配置变更也会拒绝提交。
 
 本次应用支持已验证的官方 DeepSeek Chat 协议、三档均启用、有可用 Key、既有固定
 Provider ID，以及已明确接受的 CN/provider-managed 留存配置；不支持的协议、停用池、
@@ -21,11 +29,14 @@ Base URL、Key、模型、推理深度与输出上限都是外部配置，无需
 的版本变化不会误报未应用，Key/连接语义变化会显示待应用。它不保证上游永远健康，之后
 的供应商故障仍由既有 Runtime 健康策略处理。旧连接清理失败时显示“新配置已应用；旧连接
 清理待重试”，保留资源给生命周期清理重试，不把已完成切换伪装成失败。
+若浏览器断开或接口超时，应先刷新真实状态，不能仅凭网络错误断言回滚或立即重复应用。
 
 运行时挂载保持原样：Web 仅写外部 Key Store，AstrBot 只读该 Store；私有 command/Core/
 evidence 写入仅在 AstrBot 内完成。写入前在数据目录的
 `private/dududa-runtime-last-good/` 保存最后一份 command/core/evidence，目录 `0700`、
-文件 `0600`。正常失败自动回滚；若宿主在多个文件写入之间突然被杀死，应先停止 AstrBot，
+文件 `0600`。候选验证失败保留旧 Runtime；写入失败执行回滚，出现
+`configuration_rollback_failed` 时停止继续应用并交部署管理员处理。若宿主在多个文件
+写入之间突然被杀死，应先停止 AstrBot，
 由部署管理员从此私有副本恢复三份文件后冷启动。该目录含原始凭据，禁止加入 Git、普通
 备份导出或浏览器下载。它不是普通功能文档中的公开备份数据。
 
@@ -128,7 +139,7 @@ Web Gateway 通过原子替换把快照写到仓库之外的私有 JSON 文件�
 | 可用 Key | `provider_source.key[]` | 过滤 disabled/unavailable/cooldown/error；按 priority 升序、weight 降序、ID 稳定排序（数值越小越优先） |
 | `customHeaders` | `provider_source.custom_headers` | 最多 32 个；Authorization、Token、Cookie 等认证 Header 必须走 SecretRef |
 | `timeoutMs` | `provider_source.timeout` | 向上取整为秒，限制在 1–900 秒 |
-| `protocol` | `provider_source.type` | OpenAI Chat 使用 `openai_chat_completion`，Anthropic Messages 使用 `anthropic_chat_completion`；固定的 AstrBot 4.26.2 不注册 Responses Source，因此控制台首版不接受该协议 |
+| `protocol` | `provider_source.type` | OpenAI Chat 使用 `openai_chat_completion`，Anthropic Messages 使用 `anthropic_chat_completion`；控制台不接受 Responses 协议，且当前一键应用仅支持上文的官方 DeepSeek Chat 配置 |
 | `providerId`、`model`、`enabled` | `provider` | 设置 `provider_source_id`、模型和文本模态；无可用 Key 时自动关闭 |
 
 `weight` 作为池元数据保留，不通过重复写入同一密钥来伪造权重；AstrBot 原生的

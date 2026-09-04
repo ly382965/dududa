@@ -50,8 +50,12 @@ limit=1 的只读调用，核对非空条目和数据时间。仅检查容器存
 官方 V4 支持 `low/high/max`；Dududa 三档建议 Flash low、Flash high、Pro max。
 `maximum` 在 GPT 仍映射 `xhigh`，在 DeepSeek 映射 `max`。见
 [官方参数说明](https://api-docs.deepseek.com/guides/thinking_mode/)。
-保存 Key 池不会热更新 Runtime。需分别验证实际 Provider 请求、更新运行模型和
-独立证据、冷重启绑定并测试不发送 QQ 的 preview。
+保存 Key 池不会自动更新 Runtime。当前源码提供「应用到 Runtime」按钮：校验同一
+保存版本、实际 Provider 请求和独立证据后，只交换 Dududa 自有实例，不热重载其他
+AstrBot 消费者；失败保留旧 Runtime。部署侧 CLI 冷安装仍要求停止宿主。应用后还需
+独立验证 no-send preview，不能把探测成功等同于对话成功。详见
+[API Key Pool 同步边界](../development/api-key-pool-runtime-sync.md)；此处不声明
+新版已部署或已通过线上验收。
 
 DeepSeek 官方启用自动缓存，不能声称零留存。`runtime_allow_provider_retention`
 默认 false；使用 `provider_managed` 必须取得管理员知情确认，不能复制旧模型的
