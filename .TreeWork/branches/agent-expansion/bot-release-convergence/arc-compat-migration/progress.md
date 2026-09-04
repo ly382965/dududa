@@ -6,7 +6,7 @@ Branch: arc-compat-migration
 Parent: bot-release-convergence
 Status: in_progress
 Verification: unverified
-Last sync: unix:1788531844
+Last sync: unix:1788538482
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

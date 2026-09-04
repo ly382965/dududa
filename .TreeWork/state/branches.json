@@ -769,7 +769,7 @@
       "title": "Bot Runtime Repair And Stable Release",
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "paused",
+      "status": "in_progress",
       "verification_status": "partial",
       "sync_status": "clean",
       "isolation": {
@@ -778,10 +778,10 @@
         "git_branch": "treework/bot-release-convergence",
         "managed_by_treework": true,
         "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788532508",
+        "last_entered_at": "unix:1788538465",
         "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788538170"
+      "last_sync": "unix:1788538465"
     },
     {
       "path": "preview-context-repair",
@@ -838,10 +838,10 @@
         "git_branch": "treework/arc-compat-migration",
         "managed_by_treework": true,
         "created_at": "unix:1788531844",
-        "last_entered_at": "unix:1788531844",
-        "last_status": "created managed worktree"
+        "last_entered_at": "unix:1788538482",
+        "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788531844"
+      "last_sync": "unix:1788538482"
     },
     {
       "path": "real-group-validation",
