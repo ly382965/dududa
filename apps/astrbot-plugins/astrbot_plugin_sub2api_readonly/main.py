@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import os
+from functools import wraps
 from typing import Any
 
 from astrbot.api import logger
@@ -44,6 +45,29 @@ from .formatters import (
 from .policy import resolve_plugin_policy
 
 PLUGIN_POLICY_ID = "sub2api.auto_query"
+
+
+def group_output_guard(handler):
+    """Suppress managed-group commands revoked before or during a request."""
+
+    @wraps(handler)
+    async def guarded(self, event, *args, **kwargs):
+        def revoked():
+            return bool(
+                event.get_group_id() and self._policy_path()
+            ) and not self._policy_enabled(event)
+
+        if revoked():
+            event.stop_event()
+            return
+        async for result in handler(self, event, *args, **kwargs):
+            if revoked():
+                event.stop_event()
+                return
+            yield result
+
+    return guarded
+
 
 HELP_TEXT = """Sub2API 只读查询
 /sub2api overview - 今日、当前计费轮、7 月 13 日至今累计和上游账号状态
@@ -144,6 +168,9 @@ class Sub2APIReadonlyPlugin(Star):
         )
         group_id = event.get_group_id()
         policy_enabled = self._policy_enabled(event)
+        if is_command and group_id and self._policy_path() and not policy_enabled:
+            event.stop_event()
+            return
         if policy_enabled and should_block_exclusive_group(
             group_id=group_id,
             message=text,
@@ -163,6 +190,7 @@ class Sub2APIReadonlyPlugin(Star):
         """Sub2API 只读统计命令组"""
 
     @sub2api.command("help", alias={"帮助"})
+    @group_output_guard
     async def sub2api_help(self, event: AstrMessageEvent):
         """查看 Sub2API 查询帮助"""
         if error := self._access_error(event):
@@ -172,6 +200,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("overview", alias={"概览", "汇总"})
+    @group_output_guard
     async def overview(self, event: AstrMessageEvent):
         """以合并转发查看今日、当前轮、历史排名和上游账号状态"""
         if error := self._access_error(event):
@@ -208,12 +237,11 @@ class Sub2APIReadonlyPlugin(Star):
                 estimate = cost_overview.get("pro_estimate")
                 if isinstance(estimate, dict):
                     try:
-                        cost_overview["pro_estimate"] = (
-                            await client.get_pro_quota_estimate(
-                                estimate,
-                                synced_at=str(cost_overview.get("synced_at") or "")
-                                or None,
-                            )
+                        cost_overview[
+                            "pro_estimate"
+                        ] = await client.get_pro_quota_estimate(
+                            estimate,
+                            synced_at=str(cost_overview.get("synced_at") or "") or None,
                         )
                     except Sub2APIError as exc:
                         logger.warning(
@@ -274,6 +302,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("today", alias={"今日", "今天"})
+    @group_output_guard
     async def today(self, event: AstrMessageEvent):
         """查看今日 Token 与用户排名"""
         if error := self._access_error(event):
@@ -299,6 +328,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("total", alias={"历史", "累计"})
+    @group_output_guard
     async def total(self, event: AstrMessageEvent):
         """查看历史累计用量"""
         if error := self._access_error(event):
@@ -313,6 +343,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("range", alias={"范围", "区间"})
+    @group_output_guard
     async def usage_range(
         self, event: AstrMessageEvent, start_date: str, end_date: str
     ):
@@ -345,6 +376,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("trendtotal", alias={"trend", "总趋势"})
+    @group_output_guard
     async def trend_total(self, event: AstrMessageEvent, days: str | None = None):
         """生成指定天数内的总 Token 用量趋势图"""
         if error := self._access_error(event):
@@ -367,6 +399,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("trenduser", alias={"用户趋势"})
+    @group_output_guard
     async def trend_user(
         self,
         event: AstrMessageEvent,
@@ -404,6 +437,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("users", alias={"用户", "排名", "排行"})
+    @group_output_guard
     async def users(
         self,
         event: AstrMessageEvent,
@@ -435,6 +469,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("models", alias={"模型"})
+    @group_output_guard
     async def models(
         self,
         event: AstrMessageEvent,
@@ -456,6 +491,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("accounts", alias={"账号", "账户"})
+    @group_output_guard
     async def accounts(self, event: AstrMessageEvent):
         """查看上游账号状态"""
         if error := self._access_error(event):
@@ -476,6 +512,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("account", alias={"单账号", "单账户"})
+    @group_output_guard
     async def account(self, event: AstrMessageEvent, account_id: int):
         """查看单个上游账号状态与今日用量"""
         if error := self._access_error(event):
@@ -508,6 +545,7 @@ class Sub2APIReadonlyPlugin(Star):
         event.stop_event()
 
     @sub2api.command("status", alias={"状态", "连接"})
+    @group_output_guard
     async def status(self, event: AstrMessageEvent):
         """检查 Sub2API 连接和统计状态"""
         if error := self._access_error(event):

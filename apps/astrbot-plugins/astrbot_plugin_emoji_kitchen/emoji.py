@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import os
 from typing import Any
 
 from astrbot.api import logger
@@ -20,11 +21,27 @@ from .emoji_kitchen import (
 
 
 class EmojiKitchenCommands:
+    @staticmethod
+    def _emoji_group_enabled(event) -> bool:
+        if not os.environ.get("DUDUDA_AGENT_POLICY_PATH", "").strip():
+            return True
+        try:
+            from dududa.control_plane.plugin_policy import group_plugin_enabled
+        except ImportError:
+            return False
+        return group_plugin_enabled("emoji.kitchen", bot_id=str(event.get_self_id() or ""), group_id=str(event.get_group_id() or ""))
+
     async def emoji(self, event: AstrMessageEvent, arguments: GreedyStr):
+        if not self._emoji_group_enabled(event):
+            return
+        async for result in self._emoji_response(event, arguments):
+            if not self._emoji_group_enabled(event):
+                return
+            yield result
+
+    async def _emoji_response(self, event: AstrMessageEvent, arguments: GreedyStr):
         """合成两个 Unicode Emoji。"""
         if not self._emoji_kitchen_enabled():
-            yield event.plain_result("表情合成功能暂时关闭。")
-            event.stop_event()
             return
 
         try:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import gzip
 import os
 import sys
 import tempfile
@@ -23,10 +24,10 @@ from astrbot_plugin_emoji_kitchen.emoji_kitchen import (
     parse_metadata,
 )
 
-METADATA_URL = (
-    "https://raw.githubusercontent.com/xsalazar/emoji-kitchen-backend/main/app/metadata.json"
+METADATA_URL = "https://raw.githubusercontent.com/xsalazar/emoji-kitchen-backend/main/app/metadata.json"
+IMAGE_URL = (
+    "https://www.gstatic.com/android/keyboard/emojikitchen/20240101/1f600+1f622.png"
 )
-IMAGE_URL = "https://www.gstatic.com/android/keyboard/emojikitchen/20240101/1f600+1f622.png"
 PNG = b"\x89PNG\r\n\x1a\nfixture-image"
 
 
@@ -58,6 +59,53 @@ def metadata_payload(image_url: str = IMAGE_URL) -> dict[str, object]:
 
 
 class EmojiKitchenServiceTests(unittest.IsolatedAsyncioTestCase):
+    async def test_redirect_is_rejected_before_the_second_request(self) -> None:
+        requests = []
+
+        def handler(request):
+            requests.append(str(request.url))
+            return httpx.Response(302, headers={"location": "http://127.0.0.1/private"})
+
+        with tempfile.TemporaryDirectory() as raw:
+            service = EmojiKitchenService(
+                Path(raw), transport=httpx.MockTransport(handler)
+            )
+            with self.assertRaises(EmojiKitchenUnavailableError):
+                await service._fetch_bytes(
+                    IMAGE_URL,
+                    max_bytes=100,
+                    allowed_hosts=frozenset({"www.gstatic.com"}),
+                )
+        self.assertEqual(requests, [IMAGE_URL])
+
+    async def test_gzip_expansion_is_bounded(self) -> None:
+        class RawStream(httpx.AsyncByteStream):
+            async def __aiter__(self):
+                yield gzip.compress(b"x" * 1000)
+
+        with tempfile.TemporaryDirectory() as raw:
+            service = EmojiKitchenService(
+                Path(raw),
+                transport=httpx.MockTransport(
+                    lambda request: httpx.Response(
+                        200, stream=RawStream(), headers={"content-encoding": "gzip"}
+                    )
+                ),
+            )
+            with (
+                patch(
+                    "gzip.decompress",
+                    side_effect=AssertionError("unbounded decompression"),
+                ),
+                self.assertRaises(EmojiKitchenUnavailableError),
+            ):
+                await service._fetch_bytes(
+                    METADATA_URL,
+                    max_bytes=100,
+                    allowed_hosts=frozenset({"raw.githubusercontent.com"}),
+                    read_compressed=True,
+                )
+
     async def test_resolves_latest_combination_and_reuses_disk_cache(self) -> None:
         requests: list[str] = []
 
@@ -66,7 +114,9 @@ class EmojiKitchenServiceTests(unittest.IsolatedAsyncioTestCase):
             if str(request.url) == METADATA_URL:
                 return httpx.Response(200, json=metadata_payload())
             if str(request.url) == IMAGE_URL:
-                return httpx.Response(200, content=PNG, headers={"content-type": "image/png"})
+                return httpx.Response(
+                    200, content=PNG, headers={"content-type": "image/png"}
+                )
             raise AssertionError(request.url)
 
         with tempfile.TemporaryDirectory() as raw:
@@ -136,9 +186,11 @@ class EmojiKitchenServiceTests(unittest.IsolatedAsyncioTestCase):
                 root,
                 metadata_url=METADATA_URL,
                 transport=httpx.MockTransport(
-                    lambda request: httpx.Response(200, json=metadata_payload())
-                    if str(request.url) == METADATA_URL
-                    else httpx.Response(200, content=PNG)
+                    lambda request: (
+                        httpx.Response(200, json=metadata_payload())
+                        if str(request.url) == METADATA_URL
+                        else httpx.Response(200, content=PNG)
+                    )
                 ),
             )
             await initial.compose("😀 😭")
@@ -231,7 +283,9 @@ class EmojiKitchenServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(parsed.token_to_codepoint["😀"], "1f600")
         self.assertEqual(parsed.token_to_codepoint["❤"], "2764-fe0f")
 
-    def test_proxy_prefers_explicit_http_proxy_and_ignores_socks_only_proxy(self) -> None:
+    def test_proxy_prefers_explicit_http_proxy_and_ignores_socks_only_proxy(
+        self,
+    ) -> None:
         with patch.dict(
             os.environ,
             {
@@ -278,6 +332,7 @@ class EmojiKitchenServiceTests(unittest.IsolatedAsyncioTestCase):
             ast.unparse(command.decorator_list[0]),
             "filter.command('emoji', alias={'表情合成'})",
         )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -55,6 +55,27 @@ afterEach(async () => {
 })
 
 describe('internal-test gateway', () => {
+  it('persists new plugin modes per account and group without executing a provider', async () => {
+    const root = await fixtureRoot()
+    const provider = vi.fn(() => { throw new Error('no provider during configuration') })
+    const gateway = new FileInternalTestGateway({ dataRoot: root, fetchImpl: provider as typeof fetch })
+    const scope = { accountId: 'qq-707', conversationId: 'qq-707:group:101' }
+    await gateway.saveAgentConfig({ scope, policy: { plugins: { 'emoji.kitchen': 'on', 'arc.compat': 'locked' } } })
+    const restarted = new FileInternalTestGateway({ dataRoot: root, fetchImpl: provider as typeof fetch })
+    expect((await restarted.agentConfig({ scope })).plugins).toMatchObject({ 'emoji.kitchen': 'on', 'arc.compat': 'locked' })
+    for (const other of [
+      { accountId: 'qq-708', conversationId: 'qq-708:group:101' },
+      { accountId: 'qq-707', conversationId: 'qq-707:group:102' },
+    ]) expect((await restarted.agentConfig({ scope: other })).plugins['emoji.kitchen']).toBe('off')
+    await restarted.saveAgentConfig({ scope, policy: { plugins: { 'emoji.kitchen': 'off' } } })
+    expect((await restarted.agentConfig({ scope })).plugins).toMatchObject({ 'emoji.kitchen': 'off', 'arc.compat': 'locked' })
+    for (const id of ['emoji.kitchen', 'arc.compat', 'social.reread.auto']) {
+      await expect(restarted.saveAgentConfig({ scope: { accountId: 'qq-707', conversationId: 'qq-707:private:201' },
+        policy: { plugins: { [id]: 'on' } } })).rejects.toThrow('仅支持群聊')
+    }
+    expect(provider).not.toHaveBeenCalled()
+  })
+
   it('exposes a no-send agent runtime and returns a routed candidate for live workspace context', async () => {
     const root = await fixtureRoot()
     const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {

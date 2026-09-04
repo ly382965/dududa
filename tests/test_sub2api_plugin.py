@@ -368,6 +368,7 @@ class Sub2APIUtilityTests(unittest.TestCase):
                                     "conversationId": "qq-10001:group:20002",
                                 },
                                 "plugins": {"sub2api.auto_query": "locked"},
+                                "enabled": True,
                             }
                         },
                     }

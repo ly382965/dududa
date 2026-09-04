@@ -444,6 +444,11 @@ function updatePluginMode(pluginId: string, mode: InternalTestPluginMode): void 
   emitPolicy({ plugins: { ...props.policy.plugins, [pluginId]: mode } })
 }
 
+function toggleGroupPlugin(plugin: InternalTestCatalogPlugin, enabled: boolean): void {
+  if (!policyEditable.value || props.conversation?.type !== 'group' || !plugin.available || !plugin.policyManaged) return
+  updatePluginMode(plugin.id, enabled ? (plugin.executionKind === 'passive_behavior' ? 'auto' : 'on') : 'off')
+}
+
 function pluginModeOptions(plugin: InternalTestCatalogPlugin): InternalTestPluginMode[] {
   return plugin.available ? pluginModes.value : ['off']
 }
@@ -1055,7 +1060,8 @@ watch(
 
         <section class="settings-section">
           <div class="section-heading"><Wrench :size="15" /><span><strong>插件与能力</strong><small>DYNAMIC CATALOG</small></span></div>
-          <p class="settings-help">“偏好启用”不要求每轮调用；“锁定可用”只保证能力留在合法候选中。</p>
+          <p class="settings-help">开关仅影响当前账号的当前群，修改后点击底部「保存配置」生效。关闭后不参与；启用不要求每轮调用。</p>
+          <p class="settings-help">宿主全局停用、敏感查询白名单和 B50 暂停限制仍然有效。高级模式保留原有自适应设置。</p>
           <p v-if="catalog" class="settings-help">
             控制台身份：超级管理员；Bot 执行身份：普通管理员。这里设置每个群的初值，Agent 仍可在允许范围内自适应。
           </p>
@@ -1083,10 +1089,21 @@ watch(
                 <p>{{ plugin.description }}</p>
                 <em v-if="!plugin.available">{{ plugin.unavailableReason || '当前 Runtime 未接通该能力' }}</em>
               </div>
-              <select
-                v-if="plugin.policyManaged"
-                :value="plugin.available ? (policy.plugins[plugin.id] ?? 'off') : 'off'"
-                :disabled="!policyEditable || !plugin.available"
+              <div v-if="plugin.policyManaged" class="plugin-controls">
+                <label class="plugin-enable-control">
+                  <span>{{ (policy?.plugins[plugin.id] ?? 'off') !== 'off' ? '本群开启' : '本群关闭' }}</span>
+                  <span class="switch-control">
+                    <input type="checkbox" role="switch" :aria-label="`在本群启用${plugin.displayName}`"
+                      :checked="plugin.available && (policy?.plugins[plugin.id] ?? 'off') !== 'off'"
+                      :disabled="!policyEditable || !plugin.available || conversation?.type !== 'group'"
+                      @change="toggleGroupPlugin(plugin, ($event.target as HTMLInputElement).checked)" />
+                    <span />
+                  </span>
+                </label>
+                <small v-if="!policy?.enabled && (policy?.plugins[plugin.id] ?? 'off') !== 'off'">会话总开关已关闭，当前不生效</small>
+                <select
+                :value="plugin.available ? (policy?.plugins[plugin.id] ?? 'off') : 'off'"
+                :disabled="!policyEditable || !plugin.available || conversation?.type !== 'group'"
                 :aria-label="`${plugin.displayName} 使用模式`"
                 @change="updatePluginMode(plugin.id, ($event.target as HTMLSelectElement).value as InternalTestPluginMode)"
               >
@@ -1098,6 +1115,7 @@ watch(
                   {{ pluginModeLabels[mode] }}
                 </option>
               </select>
+              </div>
               <span v-else class="plugin-policy-note">只读状态，不可从本页修改</span>
             </article>
           </div>
@@ -2480,6 +2498,11 @@ textarea:disabled {
 .plugin-row > div {
   min-width: 0;
 }
+
+.plugin-controls { display: grid; gap: 8px; }
+.plugin-controls > small { color: var(--text-muted); font-size: 10px; }
+.plugin-enable-control { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+.plugin-enable-control .switch-control { width: 34px; flex-shrink: 0; }
 
 .plugin-title {
   display: flex;

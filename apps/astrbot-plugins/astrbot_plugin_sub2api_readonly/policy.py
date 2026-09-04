@@ -57,6 +57,8 @@ def resolve_plugin_policy(
             or str(scope.get("conversationId") or "").strip() != conversation
         ):
             continue
+        if record.get("enabled") is not True:
+            return PluginPolicyDecision(managed=True, mode="off")
         mode = str(plugins.get(plugin_id) or "off").strip().lower()
         if mode not in ENABLED_MODES and mode != "off":
             mode = "off"

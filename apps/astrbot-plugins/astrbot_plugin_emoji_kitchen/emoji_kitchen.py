@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import gzip
 import hashlib
+import io
 import json
 import os
 import re
@@ -245,7 +246,7 @@ class EmojiKitchenService:
         if self._metadata is not None and now - self._metadata_loaded_at < self.metadata_ttl_seconds:
             return self._metadata
 
-        cached = self._read_cached_metadata()
+        cached = await asyncio.to_thread(self._read_cached_metadata)
         if cached is not None:
             metadata, modified_at = cached
             if now - modified_at < self.metadata_ttl_seconds:
@@ -260,9 +261,7 @@ class EmojiKitchenService:
                 allowed_hosts=_METADATA_HOSTS,
                 read_compressed=True,
             )
-            payload = json.loads(raw.decode("utf-8-sig"))
-            metadata = parse_metadata(payload)
-            self._write_json_atomic(self.metadata_path, self._compact_metadata(metadata))
+            metadata = await asyncio.to_thread(self._parse_and_cache_metadata, raw)
             self._metadata = metadata
             self._metadata_loaded_at = self._clock()
             return metadata
@@ -282,6 +281,11 @@ class EmojiKitchenService:
             raise EmojiKitchenUnavailableError(
                 "Emoji Kitchen 数据暂时不可用。"
             ) from exc
+
+    def _parse_and_cache_metadata(self, raw: bytes) -> EmojiKitchenMetadata:
+        metadata = parse_metadata(json.loads(raw.decode("utf-8-sig")))
+        self._write_json_atomic(self.metadata_path, self._compact_metadata(metadata))
+        return metadata
 
     def _read_cached_metadata(self) -> tuple[EmojiKitchenMetadata, float] | None:
         try:
@@ -340,7 +344,7 @@ class EmojiKitchenService:
         try:
             proxy = self._http_proxy()
             async with httpx.AsyncClient(
-                follow_redirects=True,
+                follow_redirects=False,
                 proxy=proxy if self._transport is None else None,
                 timeout=self.timeout_seconds,
                 trust_env=False,
@@ -371,7 +375,8 @@ class EmojiKitchenService:
                         chunks.append(chunk)
                     body = b"".join(chunks)
                 if read_compressed and response.headers.get("content-encoding", "").lower() == "gzip":
-                    body = gzip.decompress(body)
+                    with gzip.GzipFile(fileobj=io.BytesIO(body)) as compressed:
+                        body = compressed.read(max_bytes + 1)
                     if len(body) > max_bytes:
                         raise EmojiKitchenUnavailableError(
                             "Emoji Kitchen resource is too large"

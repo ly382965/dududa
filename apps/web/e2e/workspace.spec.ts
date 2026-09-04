@@ -235,6 +235,64 @@ for (const width of [1280, 390]) {
   })
 }
 
+for (const width of [1280, 390]) {
+  test(`group plugin switches persist scoped policy without sending at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const scope = { accountId: `qq-${selfId}`, conversationId: `qq-${selfId}:group:345678901` }
+    let saved = {
+      schemaVersion: 1, scope, enabled: true,
+      modelTier: { mode: 'adaptive', preferred: 'haiku', allowed: ['haiku'] },
+      reasoning: { mode: 'adaptive', preferred: 'low', allowed: ['low'] },
+      answerProfile: { mode: 'adaptive', preferred: 'short', allowed: ['short'] },
+      replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['normal'] },
+      contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['standard'] },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['natural'] },
+      proactiveTalk: { probabilityPercent: 0, cooldownSeconds: 5, maximumPerHour: 500 },
+      plugins: { 'emoji.kitchen': 'off', 'arc.compat': 'off', 'social.reread.auto': 'off' },
+    }
+    const writes: Array<{ scope: typeof scope; policy: typeof saved }> = []
+    await page.route('**/api/agent/status', route => route.fulfill({ json: { available: true, providerConfigured: true, outputEnabled: false, modelMapping: {}, warnings: [] } }))
+    await page.route('**/api/agent/config**', async route => {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON()
+        writes.push(body)
+        saved = body.policy
+      }
+      await route.fulfill({ json: saved })
+    })
+    await page.route('**/api/agent/catalog', route => route.fulfill({ json: {
+      models: [], reasoningLevels: [], answerProfiles: [], replyIntensities: [], contextLengths: [], groupChatStyles: [],
+      selectionModes: ['adaptive'], pluginModes: ['off', 'auto', 'on', 'locked'],
+      proactiveTalkLimits: { probabilityPercent: { minimum: 0, maximum: 100, step: 1 }, cooldownSeconds: { minimum: 5, maximum: 1800, step: 5 }, maximumPerHour: { minimum: 1, maximum: 500, step: 1 } },
+      policyDefaults: saved,
+      plugins: [['emoji.kitchen', 'Emoji Kitchen 表情合成'], ['arc.compat', 'Arc 曲目与谱面'], ['social.reread.auto', '自动复读']].map(([id, displayName]) => ({
+        id, displayName, kind: 'readonly_query', installed: true, available: true, policyManaged: true,
+        runtimeTarget: 'astrbot', runtimeReadiness: 'online', executionKind: id === 'social.reread.auto' ? 'passive_behavior' : 'command_auto_reply', description: '仅本账号本群的显式开启权限',
+      })),
+    } }))
+    await page.goto('/')
+    await page.locator('.conversation-item').first().click()
+    await page.getByRole('button', { name: width > 860 ? '打开 Agent Console' : 'Agent', exact: true }).click()
+    const panel = page.getByRole('complementary', { name: 'Agent Console' })
+    await panel.getByRole('button', { name: '配置', exact: true }).click()
+    const control = panel.getByRole('switch', { name: '在本群启用Emoji Kitchen 表情合成', exact: true })
+    await control.check()
+    expect(writes).toHaveLength(0)
+    await panel.getByRole('button', { name: '保存配置', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(1)
+    expect(writes[0]!.scope).toEqual(scope)
+    expect(saved.plugins).toEqual({ 'emoji.kitchen': 'on', 'arc.compat': 'off', 'social.reread.auto': 'off' })
+    await panel.locator('.plugin-list').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath('group-plugin-controls.png') })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+    await control.uncheck()
+    await panel.getByRole('button', { name: '保存配置', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(2)
+    expect(saved.plugins['emoji.kitchen']).toBe('off')
+    expect(syntheticSendActions).toBe(0)
+  })
+}
+
 test('desktop operator reads and sends through the NapCat action channel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')

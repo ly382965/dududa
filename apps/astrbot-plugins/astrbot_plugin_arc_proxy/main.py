@@ -4,6 +4,7 @@
 # ruff: noqa: BLE001
 
 import asyncio
+import os
 import re
 from collections import deque
 from dataclasses import dataclass
@@ -124,12 +125,23 @@ class ArcB50AssetPlugin(Star):
         return (
             not self._closed
             and self.compatibility_enabled
+            and self._group_enabled(event)
             and isinstance(event, AiocqhttpMessageEvent)
             and str(event.get_group_id() or "") in self.allowed_group_ids
             and bool(_ID.fullmatch(str(event.get_sender_id() or "")))
             and str(event.get_sender_id()) != str(event.get_self_id())
             and bool(match and match.group(1).lower() == command)
         )
+
+    @staticmethod
+    def _group_enabled(event):
+        if not os.environ.get("DUDUDA_AGENT_POLICY_PATH", "").strip():
+            return True
+        try:
+            from dududa.control_plane.plugin_policy import group_plugin_enabled
+        except ImportError:
+            return False
+        return group_plugin_enabled("arc.compat", bot_id=str(event.get_self_id() or ""), group_id=str(event.get_group_id() or ""))
 
     def _bindings(self):
         if self.bindings is None:
@@ -278,7 +290,8 @@ class ArcB50AssetPlugin(Star):
             result = event.plain_result(
                 "曲目查询不可用（arc_catalog_unavailable），请检查本地资产。"
             )
-        yield result
+        if self._group_enabled(event):
+            yield result
 
     @arc.command("chart")
     async def arc_chart(self, event: AstrMessageEvent, query: GreedyStr = ""):
@@ -321,7 +334,8 @@ class ArcB50AssetPlugin(Star):
             result = event.plain_result(
                 "谱面渲染不可用（arc_chart_unavailable），请检查本地资产。"
             )
-        yield result
+        if self._group_enabled(event):
+            yield result
 
     @staticmethod
     def _candidates(matches):
@@ -393,10 +407,11 @@ class ArcB50AssetPlugin(Star):
             await self._notify(request, notice)
         elif images and self._phase in ("b50", "result_wait"):
             self._phase = "result_grace"
-            await asyncio.wait_for(
-                request.event.send(MessageChain([At(qq=request.user_id), *images])),
-                self.transport_timeout,
-            )
+            if self._group_enabled(request.event):
+                await asyncio.wait_for(
+                    request.event.send(MessageChain([At(qq=request.user_id), *images])),
+                    self.transport_timeout,
+                )
             self._spawn(self._finish_after_result(request))
 
     def _spawn(self, coroutine):
@@ -453,6 +468,8 @@ class ArcB50AssetPlugin(Star):
                 await self._pause()
 
     async def _send_upstream(self, event, command):
+        if not self._group_enabled(event):
+            raise ValueError("arc_group_disabled")
         await asyncio.wait_for(
             AiocqhttpMessageEvent.send_message(
                 bot=event.bot,
@@ -464,6 +481,8 @@ class ArcB50AssetPlugin(Star):
         )
 
     async def _notify(self, request, message):
+        if not self._group_enabled(request.event):
+            return
         await asyncio.wait_for(
             request.event.send(MessageChain([At(qq=request.user_id), Plain(message)])),
             self.transport_timeout,

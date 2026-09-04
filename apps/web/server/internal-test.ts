@@ -682,12 +682,30 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
       'social.proactive_talk': 'off',
       'social.reread.auto': 'off',
       'sub2api.auto_query': 'off',
+      'emoji.kitchen': 'off',
+      'arc.compat': 'off',
     },
   }
 }
 
 function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
   return [
+    {
+      id: 'emoji.kitchen', displayName: 'Emoji Kitchen 表情合成',
+      kind: 'image_generation', installed: true, available: true,
+      policyManaged: true, requiredRole: 'super_admin', executionRole: 'admin',
+      runtimeTarget: 'astrbot', runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'command_auto_reply',
+      description: '本群开启后响应 /emoji 或 /表情合成；按指令合成官方 Emoji，不调用 LLM。关闭时不下载、不回复。',
+    },
+    {
+      id: 'arc.compat', displayName: 'Arc 曲目与谱面',
+      kind: 'readonly_query', installed: true, available: true,
+      policyManaged: true, requiredRole: 'super_admin', executionRole: 'admin',
+      runtimeTarget: 'astrbot', runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'command_auto_reply',
+      description: '按群控制 /arc bind、info、chart；仍需宿主允许该群。B50 查分保持独立停用，本开关不会恢复查分。',
+    },
     {
       id: 'icourse.read',
       displayName: 'iCourse 评课社区',
@@ -1014,7 +1032,12 @@ function pluginRunSelection(
     }
   }
   if (plugin.executionKind === 'command_auto_reply') {
-    const matched = isSub2ApiCommand(body.prompt ?? body.command)
+    const command = stringValue(body.prompt ?? body.command) ?? ''
+    const matched = plugin.id === 'emoji.kitchen'
+      ? /^\/(?:emoji|表情合成)(?:\s|$)/iu.test(command)
+      : plugin.id === 'arc.compat'
+        ? /^\/arc\s+(?:bind|info|chart)(?:\s|$)/iu.test(command)
+        : isSub2ApiCommand(command)
     return {
       eligible: true,
       selectedForRun: false,
@@ -1162,6 +1185,13 @@ function normalizeAgentPolicy(
       const plugin = knownPlugins.get(id)
       if (!plugin) throw new InternalTestError(`未知插件: ${id}`)
       const requestedMode = pluginMode(mode)
+      if (requestedMode !== 'off' && ['emoji.kitchen', 'arc.compat'].includes(id)
+        && !scope.conversationId.startsWith(`${scope.accountId}:group:`)) {
+        throw new InternalTestError(`插件 ${id} 仅支持群聊`)
+      }
+      if (requestedMode !== 'off' && id === 'social.reread.auto' && scope.conversationId.includes(':private:')) {
+        throw new InternalTestError(`插件 ${id} 仅支持群聊`)
+      }
       if (requestedMode !== 'off' && !plugin.policyManaged) {
         throw new InternalTestError(`插件 ${id} 不允许通过普通 Scope Policy 启用`)
       }

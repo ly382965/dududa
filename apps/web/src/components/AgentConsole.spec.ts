@@ -52,6 +52,16 @@ function render(overrides: Partial<Props> = {}) {
 }
 const selector = 'input[role="switch"][aria-label="在本群启用自动搭话"]'
 
+const emoji = { id: 'emoji.kitchen', displayName: 'Emoji Kitchen 表情合成', kind: 'image_generation',
+  installed: true, available: true, policyManaged: true, executionKind: 'command_auto_reply',
+  runtimeTarget: 'astrbot', runtimeReadiness: 'online', description: '群级表情合成' } as const
+const pluginCatalog = { plugins: [emoji], pluginModes: ['off', 'auto', 'on', 'locked'], proactiveTalkLimits: {
+  probabilityPercent: { minimum: 0, maximum: 100, step: 1 },
+  cooldownSeconds: { minimum: 5, maximum: 1800, step: 5 },
+  maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
+} } as unknown as NonNullable<Props['catalog']>
+const emojiSwitch = 'input[role="switch"][aria-label="在本群启用Emoji Kitchen 表情合成"]'
+
 describe('group proactive participation switch', () => {
   beforeEach(() => {
     vi.spyOn(internalTestAdapter, 'mcpCatalog').mockResolvedValue({
@@ -61,6 +71,36 @@ describe('group proactive participation switch', () => {
   afterEach(() => {
     wrappers.splice(0).forEach(wrapper => wrapper.unmount())
     vi.restoreAllMocks()
+  })
+
+  it('toggles a group plugin without saving/sending and preserves other modes and scope', async () => {
+    const original = { ...policy(), plugins: { ...policy().plugins, 'emoji.kitchen': 'off' as const } }
+    const wrapper = render({ policy: original, catalog: pluginCatalog })
+    await wrapper.get(emojiSwitch).setValue(true)
+    const updated = wrapper.emitted('updatePolicy')![0]![0] as InternalTestAgentPolicy
+    expect(updated).toEqual({ ...original, plugins: { ...original.plugins, 'emoji.kitchen': 'on' } })
+    expect(wrapper.emitted('saveSettings')).toBeUndefined()
+    expect(wrapper.emitted('sendPrompt')).toBeUndefined()
+    await wrapper.setProps({ policy: updated })
+    await wrapper.get(emojiSwitch).setValue(false)
+    expect((wrapper.emitted('updatePolicy')![1]![0] as InternalTestAgentPolicy).plugins['emoji.kitchen']).toBe('off')
+    const other = { ...original, scope: { ...scope, conversationId: 'qq-100001:group:other' } }
+    await wrapper.setProps({ policy: other, conversation: { ...conversation, id: other.scope.conversationId, peerId: 'other' } })
+    expect(wrapper.get<HTMLInputElement>(emojiSwitch).element.checked).toBe(false)
+  })
+
+  it.each([
+    { policyLoading: true }, { policySaving: true }, { conversation: { ...conversation, type: 'private' as const } },
+  ])('disables group plugin switch for unavailable editing state %s', overrides => {
+    const wrapper = render({ ...overrides, catalog: pluginCatalog })
+    if ('policyLoading' in overrides) expect(wrapper.find(emojiSwitch).exists()).toBe(false)
+    else expect(wrapper.get<HTMLInputElement>(emojiSwitch).element.disabled).toBe(true)
+  })
+
+  it('does not hide a saved mode when the conversation master is off', () => {
+    const wrapper = render({ catalog: pluginCatalog, policy: { ...policy(), enabled: false, plugins: { 'emoji.kitchen': 'locked' } } })
+    expect(wrapper.get<HTMLInputElement>(emojiSwitch).element.checked).toBe(true)
+    expect(wrapper.text()).toContain('会话总开关已关闭，当前不生效')
   })
 
   it('edits only the proactive plugin and uses the existing explicit save action', async () => {
