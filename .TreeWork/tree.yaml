@@ -323,6 +323,19 @@ tree:
       spec: branches/agent-expansion/bot-release-convergence/spec.md
       depends_on:
       - api-key-pools
+      children:
+      - id: preview-context-repair
+        title: Group Context And Honest Preview Results
+        purpose: Connect bounded same-group history and explicit preview outcomes, correcting demonstrated perception conflicts without weakening safety.
+        spec: branches/agent-expansion/bot-release-convergence/preview-context-repair/spec.md
+      - id: runtime-config-apply
+        title: One-Click External Model Configuration Apply
+        purpose: Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.
+        spec: branches/agent-expansion/bot-release-convergence/runtime-config-apply/spec.md
+      - id: arc-compat-migration
+        title: Current Arc Compatibility Release
+        purpose: Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.
+        spec: branches/agent-expansion/bot-release-convergence/arc-compat-migration/spec.md
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

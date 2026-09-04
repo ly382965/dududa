@@ -631,6 +631,30 @@
       "kind": "depends_on",
       "user_label": "bot-release-convergence depends on api-key-pools",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-80",
+      "from": "bot-release-convergence",
+      "to": "preview-context-repair",
+      "kind": "parent_of",
+      "user_label": "bot-release-convergence contains preview-context-repair",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-81",
+      "from": "bot-release-convergence",
+      "to": "runtime-config-apply",
+      "kind": "parent_of",
+      "user_label": "bot-release-convergence contains runtime-config-apply",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-82",
+      "from": "bot-release-convergence",
+      "to": "arc-compat-migration",
+      "kind": "parent_of",
+      "user_label": "bot-release-convergence contains arc-compat-migration",
+      "interpreted_relation": "parent_of"
     }
   ]
 }
