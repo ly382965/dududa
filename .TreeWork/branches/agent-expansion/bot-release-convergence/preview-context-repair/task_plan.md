@@ -11,7 +11,7 @@ Title: Group Context And Honest Preview Results
 ## Acceptance
 
 - [x] History reaches perception and generation with bounded same-scope context; empty/deferred/error results display an explanation; isolated tests prove no sends or memory writes.
-- [ ] Lead integration and scoped release verification are recorded separately from isolated worker verification.
+- [x] Lead integration and scoped release verification are recorded separately from isolated worker verification.
 
 ## Local Steps
 
