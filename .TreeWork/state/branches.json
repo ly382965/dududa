@@ -798,10 +798,10 @@
         "git_branch": "treework/preview-context-repair",
         "managed_by_treework": true,
         "created_at": "unix:1788531842",
-        "last_entered_at": "unix:1788531842",
-        "last_status": "created managed worktree"
+        "last_entered_at": "unix:1788538283",
+        "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788531842"
+      "last_sync": "unix:1788538283"
     },
     {
       "path": "runtime-config-apply",

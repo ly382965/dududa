@@ -6,7 +6,7 @@ Branch: preview-context-repair
 Parent: bot-release-convergence
 Status: in_progress
 Verification: unverified
-Last sync: unix:1788531842
+Last sync: unix:1788538283
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
