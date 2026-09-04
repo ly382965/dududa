@@ -124,6 +124,11 @@ must not send messages or bind upstream accounts. The local Capability contract
 remains separate and default-off. Freeze the prior implementation privately after
 cutover rather than deleting command support or user data.
 
+The operator subsequently explicitly deferred Arc score lookup. Keep B50 disabled
+behind its separate flag in this release; no upstream binding/query or live B50
+acceptance is required or authorized. Preserve the implemented compatibility code
+for a later explicit enablement, and migrate the remaining local Arc commands.
+
 Lead integration verifies the newly authored 100-question Markdown separately
 from the older deterministic 100-message fixture. Record synthetic model-preview,
 isolated fault/proactive checks and live delivery evidence separately; do not
