@@ -3,9 +3,9 @@
   "stage": "work_tree",
   "current_branch": "runtime-config-apply",
   "artifact_layout_version": 2,
-  "last_event_seq": 174,
+  "last_event_seq": 175,
   "tree_revision": 8,
   "tree_editing": null,
   "tree_hash": "fnv1a64:5290531cd32b308e",
-  "last_sync": "unix:1788538412"
+  "last_sync": "unix:1788538457"
 }

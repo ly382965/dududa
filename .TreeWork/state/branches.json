@@ -810,7 +810,7 @@
       "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "in_progress",
-      "verification_status": "partial",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -821,7 +821,7 @@
         "last_entered_at": "unix:1788538412",
         "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788538412"
+      "last_sync": "unix:1788538457"
     },
     {
       "path": "arc-compat-migration",
