@@ -84,6 +84,11 @@ class AstrBotWebRuntimeContractTests(unittest.TestCase):
         plugin._dududa_runtime_terminated = False
         plugin.rollout_bridge = None
         self.assertFalse(runtime_status(plugin)["ready"])
+        plugin.rollout_controls.current = lambda: (_ for _ in ()).throw(ValueError("secret-sentinel"))
+        invalid = runtime_status(plugin)
+        self.assertEqual(invalid["controlReason"], "rollout_config_invalid")
+        self.assertTrue(invalid["controls"]["rollout_kill_switch"])
+        self.assertNotIn("secret-sentinel", json.dumps(invalid))
 
     def test_exact_group_scope_builds_explicit_mention_preview_event(self) -> None:
         event, prompt = preview_event(

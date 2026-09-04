@@ -29,6 +29,7 @@ export interface DududaRuntimePreviewClient {
 
 export interface DududaRuntimeStatus {
   ready: boolean
+  controlReason?: 'rollout_config_invalid' | 'rollout_config_current'
   modelMapping: Partial<Record<'haiku' | 'sonnet' | 'opus', string>>
   controls: Record<string, unknown>
   checkedAt: string
@@ -69,6 +70,8 @@ export class HttpDududaRuntimePreviewClient implements DududaRuntimePreviewClien
     const mapping = record(value.modelMapping)!
     return {
       ready: value.ready,
+      controlReason: value.controlReason === 'rollout_config_invalid'
+        ? 'rollout_config_invalid' : 'rollout_config_current',
       checkedAt: text(value.checkedAt),
       modelMapping: Object.fromEntries(['haiku', 'sonnet', 'opus'].flatMap(tier => (
         text(mapping[tier]) ? [[tier, text(mapping[tier])]] : []

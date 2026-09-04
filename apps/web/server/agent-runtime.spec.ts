@@ -51,6 +51,16 @@ describe('formal Agent Runtime without historical corpus', () => {
     expect((await createAgentGateway({}, client).agentCatalog()).models).toEqual([])
   })
 
+  it('does not mark preview available when current rollout configuration is invalid', async () => {
+    const client = runtime()
+    const live = await client.status!()
+    client.status = vi.fn(async () => ({ ...live, controlReason: 'rollout_config_invalid' as const }))
+    const status = await createAgentGateway({}, client).agentStatus()
+    expect(status.available).toBe(false)
+    expect(status.readinessReason).toContain('配置无效')
+    expect(status.runtimeControls.passiveAutoReply.actualEnabled).toBe(false)
+  })
+
   it('persists scoped policy and previews through the installed Runtime only', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'dududa-formal-agent-'))
     directories.push(directory)

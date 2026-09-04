@@ -1593,14 +1593,17 @@ export class FileInternalTestGateway implements InternalTestGateway {
       try {
         if (!this.options.runtimePreview?.status) throw new Error('missing runtime client')
         const live = await this.options.runtimePreview.status()
+        const controlsValid = live.controlReason !== 'rollout_config_invalid'
         const providerConfigured = Object.keys(live.modelMapping).length > 0
         return {
-          available: live.ready,
+          available: live.ready && controlsValid,
           providerConfigured,
           outputEnabled: false,
           modelMapping: { haiku: '', sonnet: '', opus: '', ...live.modelMapping },
-          runtimeControls: currentAgentRuntimeControls(live.controls, live.ready),
-          readinessReason: live.ready
+          runtimeControls: currentAgentRuntimeControls(live.controls, live.ready && controlsValid),
+          readinessReason: !controlsValid
+            ? 'AstrBot 已连接，但运行控制配置无效；预览与交付已关闭，请修正配置。'
+            : live.ready
             ? 'Runtime 已连接；群聊预览不发送 QQ。模型调用健康以实际运行结果为准。'
             : 'AstrBot 已连接，但 Dududa Runtime 尚未装配就绪，请检查模型绑定与运行配置。',
           checkedAt: live.checkedAt,
