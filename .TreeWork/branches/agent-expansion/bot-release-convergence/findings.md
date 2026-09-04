@@ -17,3 +17,5 @@ Branch: bot-release-convergence
 
 - Provider Manager hot reload terminates old providers while the Runtime retains their object references. Saved Key pools cannot honestly be called applied without controlled reassembly and binding verification.
 - An imported container rootfs omits bind mounts; separate consistent data backups remain essential to rollback.
+- Runtime assembly readiness is not model-call health. Live smoke found upstream HTTP 503 even for a bounded synthetic low-reasoning call; listing the model does not establish successful generation. Missing routes now produce an explicit Web error.
+- Preserved Arc downloads its missing OpenCV dependency on first new-host startup, delaying AstrBot HTTP readiness. Post-host activation successfully retries the initial pre-Provider Runtime assembly; no stale startup failure should override the later ready state.

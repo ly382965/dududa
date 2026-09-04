@@ -11,16 +11,17 @@ Title: Bot Runtime Repair And Stable Release
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
 - [ ] Live Agent status/config/preview work without private historical corpus; errors identify actual readiness, not NO BANDIT.
-- [ ] Base URL/model setup is discoverable from Key creation; secrets stay write-only and saved/applied state is honest.
+- [x] Base URL/model setup is discoverable from Key creation; secrets stay write-only and saved/applied state is honest.
 - [ ] Bot services run verified stable/source releases, old versions have private rollback artifacts, and excluded services remain unchanged.
 - [ ] Focused regression/build/deployed checks pass and sanitized implementation/documentation is pushed to GitHub.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
 - [x] Recover history and inspect actual production source/image mounts and upstream stable versions.
-- [ ] Repair and test production status/policy/preview and credential UX.
-- [ ] Build candidate artifacts; preserve state and old releases; upgrade existing containers sequentially.
+- [x] Repair and test production status/policy/preview and credential UX.
+- [x] Build candidate artifacts; preserve state and old releases; upgrade existing containers sequentially.
 - [ ] Verify public auth, Runtime and NapCat connections; publish sanitized evidence and close branch.
+- [ ] Resolve current model-upstream HTTP 503 or operator-approved DeepSeek migration; retain the old Arc until the compatibility choice is explicit.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

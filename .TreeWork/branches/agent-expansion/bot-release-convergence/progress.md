@@ -5,28 +5,30 @@
 Branch: bot-release-convergence
 Parent: agent-expansion
 Status: in_progress
-Verification: partial
-Last sync: unix:1788517614
+Verification: failed
+Last sync: unix:1788519366
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Implementation commit `49d950a` is pushed to `origin/treework/bot-release-convergence`.
+- Runtime implementation is `4068977`; deployed Web preview-error fix is `791eede`. The code and sanitized release record are ready for main-branch publication.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
-- Stable candidates are AstrBot 4.27.5 and NapCat 4.18.19, excluding the mislabeled latest beta. Web image is built; AstrBot/MCP image construction and private recovery preparation remain in progress.
-- Production services have not been replaced. A brief AstrBot pause/export recovered its root filesystem because missing old image layers made ordinary commit impossible; mounted data still require a stopped-writer backup.
+- AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
+- Live Runtime is ready; Web/QQ and MCP catalog are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers retain their prior IDs, images and start times. Existing Key pool revision 7 and one key per tier are preserved.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Web type/build passed; frontend 90, server 105, E2E 7 and affected Python 17 tests passed. Repository safety scan passed 1,240 files. Full Ruff on old plugin files has existing TRY004/BLE001/SIM117 findings; newly introduced import/status-boundary findings were addressed.
+- Web type/build passed; frontend 90, server 107, E2E 7 and affected Python 17 tests passed. Production composition/source guards passed 36 tests after provisioning the isolated MCP worker. Final repository safety scan passed 1,240 files. Full Ruff on old plugin files has existing TRY004/BLE001/SIM117 findings; newly introduced import/status-boundary findings were addressed.
 - Independent review found and fixed stale rollout status and shared-policy truncation/concurrent-update hazards.
+- Live no-send preview reached the Runtime with zero QQ output and Memory writes, but returned `model_route_not_found`. A bounded synthetic call to the current Luna Provider returned upstream HTTP 503/api_error even with 512 output tokens and low reasoning. The model remains listed upstream; a tiny health-probe budget alone does not explain this failure. Web now reports this condition as an error instead of a successful empty reply.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Finish immutable artifact preparation, data recovery point, sequential existing-container upgrades and deployed verification before merging/completing.
+- Model generation remains blocked by the current upstream Provider's HTTP 503. Do not modify excluded LLM proxy services or fabricate healthy evidence. A successful model-generated preview remains unverified.
 - Await operator choice for Arc: old QQ proxy commands versus the intentionally different default-off local Capability replacement. Do not silently remove commands or claim that preserved legacy Arc is upgraded.
 - Saved DeepSeek pools remain pending Runtime application; current Provider binding/evidence must not be forged by copying old model evidence. This release repairs connection/setup, not unvalidated model migration.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - Private deployment records stay outside Git under the external release/state root. Keep all Authentik/Caddy/other-site/LLM-proxy containers unchanged.
+- Do not mark complete: preserve the release and publish verified code, then resume once the operator resolves the model endpoint/DeepSeek application choice and Arc compatibility choice. Authentication redirect was verified; no password reset or new authenticated user session was created.
