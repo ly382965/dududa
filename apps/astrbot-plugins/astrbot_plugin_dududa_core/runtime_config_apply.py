@@ -69,6 +69,7 @@ def _sync_host_configuration(command: dict, snapshot) -> None:
     # Synchronize the host's configuration cache, not its Provider instances.
     # Otherwise a later ordinary Dashboard save could restore stale credentials.
     for key, wanted in _target_rows(command, snapshot).items():
+        wanted = copy.deepcopy(wanted)
         replacements = {row["id"]: row for row in wanted}
         current = astrbot_config.get(key, [])
         existing = {row["id"] for row in current}
@@ -170,7 +171,8 @@ async def _prepare(plugin, command, core, snapshot, evidence_document):
                 row for row in command["provider"] if row["id"] == pool.provider_id
             )
             provider = ProviderOpenAIOfficial(
-                {**source, **config}, command.get("provider_settings", {})
+                copy.deepcopy({**source, **config}),
+                command.get("provider_settings", {}),
             )
             providers[pool.provider_id] = provider
             response = await asyncio.wait_for(
@@ -434,7 +436,7 @@ class RuntimeConfigApplyService:
                     proactive or candidate.plugin.proactive_talk
                 )
                 self.providers = candidate.providers
-                self.applied_command = new_command
+                self.applied_command = copy.deepcopy(new_command)
                 self.last_error = None
                 candidate = None
             except BaseException as exc:
