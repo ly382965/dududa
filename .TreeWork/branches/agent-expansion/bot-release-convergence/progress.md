@@ -4,20 +4,22 @@
 <!-- treework:status:start -->
 Branch: bot-release-convergence
 Parent: agent-expansion
-Status: in_progress
+Status: paused
 Verification: failed
-Last sync: unix:1788520201
+Last sync: unix:1788520580
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Runtime implementation is `4068977`; deployed Web preview-error fix is `791eede`. The code and sanitized release record are ready for main-branch publication.
+- Runtime implementation is `4068977`; the previous release was published on main at `f9382fc`. Web update `b53f85a` is deployed with the group proactive switch. Live assets contain the switch and save hint; QQ remains connected and public Auth redirects are intact. AstrBot, NapCat and MCP were not restarted.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
 - Live Runtime is ready; Web/QQ and MCP catalog are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers retain their prior IDs, images and start times. Existing Key pool revision 7 and one key per tier are preserved.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- The proactive card now has a group-only accessible switch using existing `auto`/`off` plugin policy and explicit Save Configuration. Scope identity, rate settings and other plugins are preserved; no real group was enabled. Missing/loading/saving policy and private chats disable the switch. The active badge now also respects the conversation Agent master switch.
+- This UI change passed 99 frontend tests (including 22 focused component/workspace checks), typecheck, build and the 1,241-file repository safety scan. It does not resolve or retest the prior model-upstream failure.
 - Web type/build passed; frontend 90, server 107, E2E 7 and affected Python 17 tests passed. Production composition/source guards passed 36 tests after provisioning the isolated MCP worker. Final repository safety scan passed 1,240 files. Full Ruff on old plugin files has existing TRY004/BLE001/SIM117 findings; newly introduced import/status-boundary findings were addressed.
 - Independent review found and fixed stale rollout status and shared-policy truncation/concurrent-update hazards.
 - Live no-send preview reached the Runtime with zero QQ output and Memory writes, but returned `model_route_not_found`. A bounded synthetic call to the current Luna Provider returned upstream HTTP 503/api_error even with 512 output tokens and low reasoning. The model remains listed upstream; a tiny health-probe budget alone does not explain this failure. Web now reports this condition as an error instead of a successful empty reply.

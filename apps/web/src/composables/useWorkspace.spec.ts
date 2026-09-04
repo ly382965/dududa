@@ -1053,11 +1053,14 @@ describe('useWorkspace account-scoped state', () => {
     const nextPolicy: InternalTestAgentPolicy = {
       ...policy,
       reasoning: { mode: 'locked', preferred: 'high', allowed: ['high'] },
+      plugins: { ...policy.plugins, 'social.proactive_talk': 'auto' },
     }
     workspace.updateAgentPolicy(nextPolicy)
     await workspace.saveAgentPolicy()
     expect(saveAgentConfig).toHaveBeenCalledWith(scope, nextPolicy)
     expect(workspace.agentPolicy.value?.reasoning).toEqual({ mode: 'locked', preferred: 'high', allowed: ['high'] })
+    expect(workspace.agentPolicy.value?.plugins['social.proactive_talk']).toBe('auto')
+    expect(workspace.agentPolicy.value?.proactiveTalk).toEqual(policy.proactiveTalk)
     expect(sendMessage).not.toHaveBeenCalled()
     wrapper.unmount()
   })

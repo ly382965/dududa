@@ -17,6 +17,11 @@ SecretRef 可以留空，真实 Key 只在明确写入时提交。
 装配就绪不等于模型调用健康，`NO BANDIT` 不是连接失败原因。
 群聊预览调用现有 Runtime，保持 no-send/no-memory-write；当前不支持私聊预览。
 
+群聊的 Agent「配置 → 运行行为 → 主动加入群聊」提供「在本群启用自动搭话」开关。
+开启使用自动参与模式，关闭停用；修改后点击底部「保存配置」生效。概率、冷却、
+每小时上限及其他群配置保持不变。私聊、策略加载中或保存中不可操作；会话 Agent
+总开关和全局交付限制仍须满足，部署新开关不会自动启用任何群。
+
 Web 不再挂载整个 AstrBot 敏感配置目录。部署必须让 Web 与 AstrBot 共享独立的
 `DUDUDA_AGENT_POLICY_ROOT`，两端 `DUDUDA_AGENT_POLICY_PATH` 指向同一文件。
 Web 挂载可写、AstrBot 只读；目录属 UID 1000、权限 0700，文件 0600。

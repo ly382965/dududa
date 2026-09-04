@@ -24,6 +24,15 @@ Scope policy remains account/conversation isolated and consumed by the current
 Runtime. Do not make raw root-owned configuration readable by the browser/Web
 or widen rollout, tool, Memory or QQ-send authority to fix a status banner.
 
+The proactive participation card exposes an accessible group-only enable switch
+for the existing `social.proactive_talk` Scope plugin policy. Enable selects
+`auto`; disable selects `off`. Existing `on`/`locked` values display as enabled
+until explicitly changed. Use the normal draft/update and Save Configuration
+flow, with a visible save-required hint. Preserve all rate limits, other plugin
+settings, account/conversation identity and global delivery controls. Disable
+the switch while policy is absent/loading/saving or the conversation is private.
+Adding the control does not itself enable any production group or send QQ.
+
 ## Credential Workflow
 
 Make the shared per-tier Provider/Base URL/model settings discoverable from the

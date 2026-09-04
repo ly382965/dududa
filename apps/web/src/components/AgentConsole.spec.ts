@@ -1,0 +1,106 @@
+import { shallowMount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { internalTestAdapter } from '../services/internal-test'
+import type { InternalTestAgentPolicy, InternalTestPluginMode } from '../types/internal-test'
+import AgentConsole from './AgentConsole.vue'
+
+type Props = InstanceType<typeof AgentConsole>['$props']
+const scope = { accountId: 'qq-100001', conversationId: 'qq-100001:group:200001' }
+function policy(mode: InternalTestPluginMode = 'off'): InternalTestAgentPolicy {
+  return {
+    schemaVersion: 1, scope, enabled: true,
+    modelTier: { mode: 'adaptive', preferred: 'haiku', allowed: ['haiku'] },
+    reasoning: { mode: 'adaptive', preferred: 'low', allowed: ['low'] },
+    answerProfile: { mode: 'adaptive', preferred: 'short', allowed: ['short'] },
+    replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['normal'] },
+    contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['standard'] },
+    groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['natural'] },
+    proactiveTalk: { probabilityPercent: 8, cooldownSeconds: 600, maximumPerHour: 3 },
+    plugins: { 'social.proactive_talk': mode, 'icourse.read': 'on' },
+  }
+}
+const conversation: NonNullable<Props['conversation']> = {
+  id: scope.conversationId, accountId: scope.accountId, type: 'group', peerId: '200001',
+  name: '测试群', avatar: '', lastMessage: '', lastMessageAt: '', unread: 0,
+  pinned: false, muted: false, updatedAt: 0,
+}
+const runtimeControls: NonNullable<Props['runtimeControls']> = {
+  passiveAutoReply: {
+    actualEnabled: true, state: 'enabled', rolloutMode: 'canary',
+    deliveryEnabled: true, killSwitch: false, summary: 'Runtime online',
+  },
+  proactiveGroupParticipation: {
+    actualEnabled: true, state: 'enabled', stage: 'proactive_canary',
+    deliveryEnabled: true, summary: 'Only explicitly enabled groups participate',
+  },
+}
+
+const wrappers: Array<ReturnType<typeof shallowMount<typeof AgentConsole>>> = []
+function render(overrides: Partial<Props> = {}) {
+  const wrapper = shallowMount(AgentConsole, {
+    props: {
+      conversation, accounts: [], sessions: [], messages: [], policy: policy(),
+      policyLoading: false, policySaving: false, policyError: '', contextMessages: 0,
+      tab: 'settings', available: true, runtimeLoading: false, runtimeError: '',
+      runtimeWarning: '', runtimeControls, ...overrides,
+    },
+  })
+  wrappers.push(wrapper)
+  return wrapper
+}
+const selector = 'input[role="switch"][aria-label="在本群启用自动搭话"]'
+
+describe('group proactive participation switch', () => {
+  beforeEach(() => {
+    vi.spyOn(internalTestAdapter, 'mcpCatalog').mockResolvedValue({
+      schemaVersion: 1, available: false, servers: [], capabilities: [],
+    })
+  })
+  afterEach(() => {
+    wrappers.splice(0).forEach(wrapper => wrapper.unmount())
+    vi.restoreAllMocks()
+  })
+
+  it('edits only the proactive plugin and uses the existing explicit save action', async () => {
+    const original = policy()
+    const wrapper = render({ policy: original })
+    expect(wrapper.get<HTMLInputElement>(selector).element.checked).toBe(false)
+    await wrapper.get(selector).setValue(true)
+    const updated = wrapper.emitted('updatePolicy')![0]![0] as InternalTestAgentPolicy
+    expect(updated).toEqual({ ...original, plugins: { ...original.plugins, 'social.proactive_talk': 'auto' } })
+    expect(original.plugins['social.proactive_talk']).toBe('off')
+    expect(wrapper.emitted('saveSettings')).toBeUndefined()
+    expect(wrapper.text()).toContain('修改后点击底部「保存配置」生效')
+    await wrapper.setProps({ policy: updated })
+    expect(wrapper.get<HTMLInputElement>(selector).element.checked).toBe(true)
+    await wrapper.findAll('button').find(button => button.text() === '保存配置')!.trigger('click')
+    expect(wrapper.emitted('saveSettings')).toHaveLength(1)
+    expect(wrapper.emitted('sendPrompt')).toBeUndefined()
+  })
+
+  it.each(['auto', 'on', 'locked'] as const)('can disable existing %s mode', async mode => {
+    const original = policy(mode)
+    const wrapper = render({ policy: original })
+    expect(wrapper.get<HTMLInputElement>(selector).element.checked).toBe(true)
+    await wrapper.get(selector).setValue(false)
+    expect(wrapper.emitted('updatePolicy')![0]![0]).toEqual({
+      ...original, plugins: { ...original.plugins, 'social.proactive_talk': 'off' },
+    })
+  })
+
+  it.each([
+    ['missing policy', { policy: undefined }],
+    ['loading', { policyLoading: true }],
+    ['saving', { policySaving: true }],
+    ['private chat', { conversation: { ...conversation, type: 'private' } }],
+  ] as Array<[string, Partial<Props>]>)('disables the switch for %s', (_name, props) => {
+    expect(render(props).get<HTMLInputElement>(selector).element.disabled).toBe(true)
+  })
+
+  it('does not claim actual participation while the conversation Agent is disabled', () => {
+    const wrapper = render({ policy: { ...policy('auto'), enabled: false } })
+    expect(wrapper.text()).not.toContain('本群已开启')
+    expect(wrapper.text()).toContain('本群未开启')
+  })
+})
