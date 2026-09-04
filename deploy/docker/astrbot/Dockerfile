@@ -21,6 +21,8 @@ COPY apps/astrbot-plugins/astrbot_plugin_dududa_core/requirements.txt /opt/dudud
 RUN python -m pip install --no-cache-dir \
     "mcp==1.29.0" \
     "uv==0.12.1" \
+    "opencv-python-headless==4.14.0.94" \
+    "pyparsing==3.1.4" \
     -r /opt/dududa/dududa-core-requirements.txt \
     /opt/dududa/dududa-agent \
     /opt/dududa/campus-events-mcp \
@@ -37,3 +39,8 @@ RUN python -m pip install --no-cache-dir \
     && python -c 'import importlib.metadata; assert importlib.metadata.version("mcp") == "1.29.0"' \
     && /opt/dududa/unified-mcp-worker/.venv/bin/python -c \
         'import importlib.metadata; assert importlib.metadata.version("mcp") == "2.0.0"'
+
+COPY deploy/patches/astrbot/4.27.5-bounded-provider-request.patch /tmp/astrbot-bounded-provider-request.patch
+RUN cd /AstrBot \
+    && patch --batch --forward -p1 < /tmp/astrbot-bounded-provider-request.patch \
+    && rm /tmp/astrbot-bounded-provider-request.patch

@@ -1,0 +1,17 @@
+# Use with the verified unchanged application dependencies and an existing
+# compatible public-package artifact. Never copy data/config from that artifact.
+# The normal Dockerfile remains the complete network build.
+ARG DUDUDA_COMPAT_DEPS
+ARG DUDUDA_VERIFIED_BASE
+FROM ${DUDUDA_COMPAT_DEPS} AS compatibility_dependencies
+FROM ${DUDUDA_VERIFIED_BASE}
+COPY --from=compatibility_dependencies /usr/local/lib/python3.12/site-packages/cv2 /usr/local/lib/python3.12/site-packages/cv2
+COPY --from=compatibility_dependencies /usr/local/lib/python3.12/site-packages/opencv_python_headless.libs /usr/local/lib/python3.12/site-packages/opencv_python_headless.libs
+COPY --from=compatibility_dependencies /usr/local/lib/python3.12/site-packages/opencv_python_headless-4.14.0.94.dist-info /usr/local/lib/python3.12/site-packages/opencv_python_headless-4.14.0.94.dist-info
+COPY --from=compatibility_dependencies /usr/local/lib/python3.12/site-packages/pyparsing /usr/local/lib/python3.12/site-packages/pyparsing
+COPY --from=compatibility_dependencies /usr/local/lib/python3.12/site-packages/pyparsing-3.1.4.dist-info /usr/local/lib/python3.12/site-packages/pyparsing-3.1.4.dist-info
+RUN python -c 'import cv2, pyparsing; assert cv2.__version__ == "4.14.0"; assert pyparsing.__version__ == "3.1.4"'
+COPY deploy/patches/astrbot/4.27.5-bounded-provider-request.patch /tmp/astrbot-bounded-provider-request.patch
+RUN cd /AstrBot \
+    && patch --batch --forward -p1 < /tmp/astrbot-bounded-provider-request.patch \
+    && rm /tmp/astrbot-bounded-provider-request.patch

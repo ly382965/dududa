@@ -46,8 +46,9 @@ conformance evidence. Never synthesize green health or import personal keys.
 
 Inspect actual containers rather than relying on mutable local tags or stale
 worktree mounts. Select upstream stable releases excluding beta/RC tags even
-if incorrectly marked stable by a release API. Build Dududa components from
-one tested source revision. Preserve existing login state, external data,
+if incorrectly marked stable by a release API. Build changed Dududa components
+from a tested source revision; phased hotfixes may preserve unchanged services
+at their verified revision, with exact component identities recorded. Preserve existing login state, external data,
 private credentials, network aliases and authorization policy. Pin release
 artifacts and freeze the old images/configuration privately before each
 cutover; do not delete historical data or create a second NapCat instance.
@@ -88,6 +89,26 @@ The existing no-retention requirement must not be silently weakened: any
 provider-managed retention policy requires separate informed operator approval.
 Preserve provider evidence truth, source-specific model bindings, private rollback
 files and current group policies. No manual QQ test message is authorized.
+
+The operator subsequently explicitly approved provider-managed retention for all
+three DeepSeek tiers. Apply CN/provider_managed only to these endpoints, preserve
+unrelated Provider/Source records and group policy, and cold-recreate AstrBot to
+replace retained Provider instances. Prepare private candidate command/Core files
+and fresh model-bound evidence, then install while AstrBot is stopped with exact
+previous files retained for rollback. Do not publish keys or private evidence.
+
+Actual AstrBot 4.27.5 has SDK and outer recovery retries beneath Dududa's one-call
+contract. Patch only the explicitly bounded non-streaming request path to disable
+SDK retries and bypass outer recovery; sanitize completion/Key logs. Prove the
+real patched class with mock HTTP success/failure/deadline/cancellation tests,
+then each real DeepSeek tier with its output cap and effort. Evidence combines
+these distinct proofs with the official residency/retention policy and approval,
+not a blanket success flag copied from GPT. Use a reasoning reserve within the
+saved tier caps and validate a real no-send/no-memory-write Runtime preview.
+Keep the retained legacy Arc functional without first-start dependency downloads:
+pin its already installed public OpenCV/pyparsing distributions in the canonical
+image. A bounded hotfix may copy only those public package paths from the frozen
+compatibility image onto the verified current base; never copy its private data.
 
 ## General Verification
 

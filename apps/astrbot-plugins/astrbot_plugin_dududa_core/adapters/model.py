@@ -386,7 +386,7 @@ class AstrBotModelProviderAdapter:
                     system_prompt="Health check. Return only OK.",
                     model=endpoint.model_id,
                     max_tokens=256 if endpoint.model_id.startswith("deepseek-v4-") else 8,
-                    request_max_retries=0,
+                    request_max_retries=1,
                     **({"thinking": {"type": "disabled"}} if endpoint.model_id.startswith("deepseek-v4-") else {}),
                 )
             )

@@ -4,37 +4,42 @@
 <!-- treework:status:start -->
 Branch: bot-release-convergence
 Parent: agent-expansion
-Status: in_progress
+Status: paused
 Verification: partial
-Last sync: unix:1788526006
+Last sync: unix:1788528463
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Web and MCP Console are deployed from `cdbc5f0`; AstrBot Runtime/plugin implementation remains `4068977` (4.27.5), and NapCat remains 4.18.19. This follow-up recreated only Web and MCP; AstrBot and NapCat retained their existing containers/start times. The proactive switch and saved-versus-applied Key UI remain available.
+- AstrBot is deployed as `dududa/astrbot:0ef2a18-4.27.5`, with immutable Runtime/plugin source `5e243fd` (later changes only package/build definitions). Web and MCP Console remain `cdbc5f0`; NapCat remains 4.18.19. This follow-up recreated only AstrBot. The proactive switch and saved-versus-applied Key UI remain available.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
-- Live Runtime assembly is ready but still maps to GPT models; this is not proof of healthy model generation. Web/QQ and MCP catalog are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers retain their prior IDs, image IDs and start times. Key pool revision 11 has one enabled Key per tier; all three DeepSeek pools are enabled.
+- Live Runtime is configured and maps Haiku/Sonnet/Opus to DeepSeek Flash low / Flash high / Pro max. Pool revision 14 was applied with the explicitly approved provider-managed retention policy. An ordinary greeting generated a nonempty no-send Runtime preview in 10.732 seconds, with zero QQ outputs, Memory writes and tool calls. Web/QQ and the MCP catalog (10 servers/26 capabilities) are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers and the three unchanged Bot dependencies retain their IDs, image IDs and start times.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Added the missing external-pool application bridge: prepare verifies the actual AstrBot Provider and saves private candidates/backups; install checks for intervening configuration changes and updates the stopped host; restart reconstructs Provider instances. Key/Base URL remain external. The frontend still does not apply automatically on save or offer an apply button.
+- Verified all three real Provider calls and non-thinking health probes, plus nine offline SDK/Provider boundary cases for parameters, one-attempt behavior, redaction, errors, deadline and cancellation. The explicit bounded path now disables nested retries; configured total Runtime output reservations cover both perception and direct replies without changing legacy defaults.
+- This turn: migration/model tests 26 passed; full production composition exercised 32 cases with 30 passing and two stale retry-count assertions failing. Updated those assertions; both and the new budget/privacy case passed the focused three-case rerun. New CLI lint passed. Final live model preview succeeded; no real QQ test message was sent.
+- Repository safety scan passed all 1,262 tracked files, and `git diff --check` passed. Sanitized implementation and live deployment records were pushed to the GitHub feature branch through `ceb9137`; private credentials, candidates, backups and release manifests remain outside Git.
+- Canonical and incremental image builds now retain the installed public OpenCV/pyparsing versions required by legacy Arc, avoiding first-start downloads. The hotfix reuses verified unchanged dependencies; only public package artifacts, never old private configuration, were copied from the frozen image. Arc behavior remains the preserved legacy fork.
 - Deployed five console-only public MCP bindings, explicit connection checks and truthful statuses/source freshness. Public caches initialized outside Git: campus65 / college36 / library28 / programs326 / curated108. Through the deployed Web API, all five checks returned healthy and all five bounded queries returned HTTP 200, ok and one item. Catalog contains 10 servers/26 capabilities; curated data has no invented refresh timestamp.
 - Checks passed: Console14; frontend100/server107 plus type/build; E2E7; source/repository18; model adapter21; combined model/key/client48; production composition31. Both release images built successfully. No QQ test messages or unrelated service changes.
-- Read-only diagnosis confirmed the operator-selected group was already enabled (mode on). Eight recent proactive attempts failed with model_route_not_found; no group enablement change was made. User approved DeepSeek migration and enabling Sonnet; pool changes saved after private backup, but Runtime not switched while retention approval is pending.
+- Earlier read-only diagnosis confirmed the operator-selected group was already enabled (mode on). Eight proactive attempts had failed with model_route_not_found; no group enablement change was made. The operator subsequently approved DeepSeek migration, Sonnet enablement and default retention, and the Runtime migration above resolves that old route blocker.
 
 - The proactive card now has a group-only accessible switch using existing `auto`/`off` plugin policy and explicit Save Configuration. Scope identity, rate settings and other plugins are preserved; no real group was enabled. Missing/loading/saving policy and private chats disable the switch. The active badge now also respects the conversation Agent master switch.
 - This UI change passed 99 frontend tests (including 22 focused component/workspace checks), typecheck, build and the 1,241-file repository safety scan. It does not resolve or retest the prior model-upstream failure.
 - Web type/build passed; frontend 90, server 107, E2E 7 and affected Python 17 tests passed. Production composition/source guards passed 36 tests after provisioning the isolated MCP worker. Final repository safety scan passed 1,240 files. Full Ruff on old plugin files has existing TRY004/BLE001/SIM117 findings; newly introduced import/status-boundary findings were addressed.
 - Independent review found and fixed stale rollout status and shared-policy truncation/concurrent-update hazards.
-- Live no-send preview reached the Runtime with zero QQ output and Memory writes, but returned `model_route_not_found`. A bounded synthetic call to the current Luna Provider returned upstream HTTP 503/api_error even with 512 output tokens and low reasoning. The model remains listed upstream; a tiny health-probe budget alone does not explain this failure. Web now reports this condition as an error instead of a successful empty reply.
+- Historical, before DeepSeek application: no-send preview returned `model_route_not_found`; the old Luna Provider returned upstream HTTP 503/api_error even with 512 output tokens and low reasoning. Web reports this condition explicitly. The excluded proxy was not changed; the active Runtime now uses the verified DeepSeek configuration instead.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Model generation remains blocked by the current upstream Provider's HTTP 503. Do not modify excluded LLM proxy services or fabricate healthy evidence. A successful model-generated preview remains unverified.
 - Await operator choice for Arc: old QQ proxy commands versus the intentionally different default-off local Capability replacement. Do not silently remove commands or claim that preserved legacy Arc is upgraded.
-- Saved DeepSeek pools are Flash low (8192 output cap), Flash high (16384), Pro max (32768). All three synthetic official API probes passed; Sonnet is enabled. Runtime application still awaits informed approval to use provider-managed retention instead of the current no-retention requirement. Do not infer that approval from the earlier migration approval or copy old GPT evidence.
+- A synthetic fixed-output prompt containing the verification keyword “测试” deferred with `conflicting_evidence_without_clarification`; code inspection supports a rules/LLM verification disagreement, but the exact online conflicting field was not captured. An ordinary greeting succeeded. Do not weaken the conflict policy or claim every prompt/model-quality scenario is verified.
+- Future Key-pool edits still require a controlled application/reassembly step; automatic frontend apply/hot reload is not implemented. The successful no-send preview is not evidence of subsequent autonomous QQ delivery or human quality acceptance.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - Private deployment records stay outside Git under the external release/state root. Keep all Authentik/Caddy/other-site/LLM-proxy containers unchanged.
-- Do not mark complete: resume controlled DeepSeek Provider/Runtime reassembly only after the retention choice; preserve the separate Arc compatibility question. Source and deployment records are published in sanitized form. Authentication redirect was verified; no password reset or new authenticated user session was created.
+- DeepSeek application and no-send model generation are verified; do not mark the broader release branch complete while the separate Arc compatibility choice remains open. Keep its TreeWork verification partial and pause after sanitized publication. Authentication redirect was verified; no password reset or new authenticated user session was created.
