@@ -4,20 +4,22 @@
 <!-- treework:status:start -->
 Branch: bot-release-convergence
 Parent: agent-expansion
-Status: in_progress
+Status: paused
 Verification: partial
-Last sync: unix:1788530524
+Last sync: unix:1788531006
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Web is now `dududa/web:31441a3`, with the MCP workbench layout fix. AstrBot remains `dududa/astrbot:0ef2a18-4.27.5`, with immutable Runtime/plugin source `5e243fd` (later changes only package/build definitions). MCP Console remains `cdbc5f0`; NapCat remains 4.18.19. This latest follow-up recreated only Web; all 30 other containers retain their IDs, image IDs and start times. The proactive switch and saved-versus-applied Key UI remain available.
+- Web is `dududa/web:31441a3`, with the MCP workbench layout fix. AstrBot remains `dududa/astrbot:0ef2a18-4.27.5`, with immutable Runtime/plugin source `5e243fd` (later changes only package/build definitions). MCP Console remains `cdbc5f0`; NapCat remains 4.18.19. The latest notifai follow-up recreated only AstrBot and MCP Console with unchanged images; all 29 other containers retain their IDs, image IDs and start times. The proactive switch and saved-versus-applied Key UI remain available.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
 - Live Runtime is configured and maps Haiku/Sonnet/Opus to DeepSeek Flash low / Flash high / Pro max. Pool revision 14 was applied with the explicitly approved provider-managed retention policy. An ordinary greeting generated a nonempty no-send Runtime preview in 10.732 seconds, with zero QQ outputs, Memory writes and tool calls. Web/QQ and the MCP catalog (10 servers/26 capabilities) are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers and the three unchanged Bot dependencies retain their IDs, image IDs and start times.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Restored the two canonical read-only notifai mounts missing from the private release manifest, using each container's existing immutable source revision. No source/config/credential/model/image changes were necessary. Exact pre/post manifest comparison permits only those two added mounts; the old private manifest is retained.
+- Formal Web check now reports notifai healthy and all seven mapped tools discovered. A public `notifai.stats.read.v1` request succeeded at both transport and business-envelope levels, returning 1,396 notices from 24 sources. A separate configured-command stdio discovery inside AstrBot also found all seven tools without a business call. Both source snapshots passed the existing offline metadata generator `--check`; no schema drift. Web/QQ connected, Runtime ready with unchanged DeepSeek mappings, public Auth302 and all 29 non-target containers unchanged were verified. No QQ test message or group-policy change.
 - Fixed MCP controls that had a template class but no CSS: explicit styled/focus/disabled/pending check button; wrapped status/timestamps; vertically spaced cards with aligned actions; container-width-driven columns and an in-section sticky toolbar below Agent tabs. Connection/expiry semantics and authorization are unchanged, with no automatic checks.
 - Latest Web-only verification: frontend 100 and Playwright 10 passed (including 1280px desktop/382px panel, 390px and 320px); typecheck/build and canonical Node 22.18 image build passed. Browser checks cover no overflow/clipped metadata, styled controls, pending/disabled states, explicit checks and toolbar position; desktop/mobile screenshots were inspected. Live CSS exactly matches the verified build; health connected, Runtime configured, MCP10/26 and public Auth302 verified. The private pre-cutover manifest and old Web image remain available for rollback.
 - Added the missing external-pool application bridge: prepare verifies the actual AstrBot Provider and saves private candidates/backups; install checks for intervening configuration changes and updates the stopped host; restart reconstructs Provider instances. Key/Base URL remain external. The frontend still does not apply automatically on save or offer an apply button.
