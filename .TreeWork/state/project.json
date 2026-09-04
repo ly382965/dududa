@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "api-key-pools",
+  "current_branch": "bot-release-convergence",
   "artifact_layout_version": 2,
-  "last_event_seq": 140,
+  "last_event_seq": 142,
   "tree_revision": 7,
   "tree_editing": null,
   "tree_hash": "fnv1a64:904317200c63ef9d",
-  "last_sync": "unix:1788516355"
+  "last_sync": "unix:1788517614"
 }

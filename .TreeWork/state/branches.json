@@ -769,10 +769,19 @@
       "title": "Bot Runtime Repair And Stable Release",
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "pending",
-      "verification_status": "unverified",
+      "status": "in_progress",
+      "verification_status": "partial",
       "sync_status": "clean",
-      "last_sync": "unix:1788516355"
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bot-release-convergence",
+        "git_branch": "treework/bot-release-convergence",
+        "managed_by_treework": true,
+        "created_at": "unix:1788516357",
+        "last_entered_at": "unix:1788516357",
+        "last_status": "created managed worktree"
+      },
+      "last_sync": "unix:1788517614"
     },
     {
       "path": "real-group-validation",
