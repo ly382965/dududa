@@ -11,7 +11,7 @@ Last sync: unix:1788532508
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Web is `dududa/web:f6c158d`; AstrBot is `dududa/astrbot:4822903-4.27.5`, with matching immutable Runtime/plugin source. MCP Console remains `cdbc5f0` (its source is unchanged); NapCat remains 4.18.19. Only Web/AstrBot were replaced in this repair; the other 29 containers were unchanged at the first cutover. Final identity comparison follows the last Runtime smoke. Old private images, manifests, configuration and plugin snapshots remain available.
+- Web is `dududa/web:f6c158d`; AstrBot is `dududa/astrbot:8228da9-4.27.5`, with matching immutable Runtime/plugin source. MCP Console remains `cdbc5f0` (its source is unchanged); NapCat remains 4.18.19. Only Web/AstrBot were replaced in this repair; the other 29 containers were unchanged at the first cutover. Final identity comparison follows the last Runtime smoke. Old private images, manifests, configuration and plugin snapshots remain available.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
 - Live Runtime maps Haiku/Sonnet/Opus to DeepSeek Flash low / Flash high / Pro max. The new Web apply action successfully applied revision 14 with the existing approved provider-managed retention policy (HTTP 200/applied/ready, 6.312 seconds). Arc v2.1 loads with the original scope and binding database; B50 is explicitly disabled as requested. An offline read-only asset test successfully queried song information and rendered a chart, without QQ or upstream calls.
@@ -40,7 +40,7 @@ Last sync: unix:1788532508
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Finish corrected live history/quoted-summary smoke and execute/record the new question table. Do not count HTTP 200 or a configured model as a successful answer.
+- Live Q87 and Q100 now respond successfully; Q32/40 prove correct historical correction/count/coverage. Plain multi-message Q21 summary still selects SHORT and may exceed its 180-character hard bound; an automatic profile-selection fix is being prepared without expanding that bound. The 100-question diagnostic batch is running on `8228da9`; record actual versions/results and rerun affected cases after the profile fix, not HTTP-only success.
 - B50 score lookup is explicitly deferred by the operator, not an unresolved release choice. Real QQ test delivery and human model-quality acceptance remain separate from no-send engineering verification.
 - Current group proactive mode is on but probability is 0%; it intentionally does not trigger. Preserve the current operator settings and report the limit honestly.
 
