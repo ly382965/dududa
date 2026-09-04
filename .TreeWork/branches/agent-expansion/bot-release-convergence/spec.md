@@ -89,6 +89,22 @@ provider-managed retention policy requires separate informed operator approval.
 Preserve provider evidence truth, source-specific model bindings, private rollback
 files and current group policies. No manual QQ test message is authorized.
 
+The operator subsequently explicitly approved provider-managed retention for all
+three DeepSeek tiers. Apply CN/provider_managed only to these endpoints, preserve
+unrelated Provider/Source records and group policy, and cold-recreate AstrBot to
+replace retained Provider instances. Prepare private candidate command/Core files
+and fresh model-bound evidence, then install while AstrBot is stopped with exact
+previous files retained for rollback. Do not publish keys or private evidence.
+
+Actual AstrBot 4.27.5 has SDK and outer recovery retries beneath Dududa's one-call
+contract. Patch only the explicitly bounded non-streaming request path to disable
+SDK retries and bypass outer recovery; sanitize completion/Key logs. Prove the
+real patched class with mock HTTP success/failure/deadline/cancellation tests,
+then each real DeepSeek tier with its output cap and effort. Evidence combines
+these distinct proofs with the official residency/retention policy and approval,
+not a blanket success flag copied from GPT. Use a reasoning reserve within the
+saved tier caps and validate a real no-send/no-memory-write Runtime preview.
+
 ## General Verification
 
 Focused tests cover missing corpus configuration with a live Runtime, actual

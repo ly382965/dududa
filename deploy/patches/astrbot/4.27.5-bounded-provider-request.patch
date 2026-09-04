@@ -1,0 +1,78 @@
+diff --git a/astrbot/core/provider/sources/openai_source.py b/astrbot/core/provider/sources/openai_source.py
+--- a/astrbot/core/provider/sources/openai_source.py
++++ b/astrbot/core/provider/sources/openai_source.py
+@@ -565,9 +565,16 @@
+ 
+         self._sanitize_assistant_messages(payloads)
+ 
++        # Dududa explicitly owns retry/admission and cancels the HTTP task.
++        # Disable the SDK's hidden retries for its single-attempt requests.
++        request_client = (
++            self.client.with_options(max_retries=0)
++            if request_max_retries is not None and request_max_retries <= 1
++            else self.client
++        )
+         completion = await retry_provider_request(
+             "OpenAI",
+-            lambda: self.client.chat.completions.create(
++            lambda: request_client.chat.completions.create(
+                 **payloads,
+                 stream=False,
+                 extra_body=extra_body,
+@@ -577,10 +584,10 @@
+ 
+         if not isinstance(completion, ChatCompletion):
+             raise Exception(
+-                f"API 返回的 completion 类型错误：{type(completion)}: {completion}。",
++                "API returned an invalid completion type.",
+             )
+ 
+-        logger.debug(f"completion: {completion}")
++        logger.debug("OpenAI completion received.")
+ 
+         llm_response = await self._parse_openai_completion(completion, tools)
+ 
+@@ -762,7 +769,7 @@
+                 text_val = raw_content.get("text", "")
+                 return str(text_val) if text_val is not None else ""
+             # For other dict formats, return empty string and log
+-            logger.warning(f"Unexpected dict format content: {raw_content}")
++            logger.warning("Unexpected dict format content.")
+             return ""
+ 
+         if isinstance(raw_content, list):
+@@ -931,7 +938,7 @@
+             and not has_reasoning_output
+             and not llm_response.tools_call_args
+         ):
+-            logger.error(f"OpenAI completion has no usable output: {completion}.")
++            logger.error("OpenAI completion has no usable output.")
+             raise EmptyModelOutputError(
+                 "OpenAI completion has no usable output. "
+                 f"response_id={completion.id}, finish_reason={choice.finish_reason}"
+@@ -1088,7 +1095,7 @@
+         """处理API错误并尝试恢复"""
+         if "429" in str(e):
+             logger.warning(
+-                f"API 调用过于频繁，尝试使用其他 Key 重试。当前 Key: {chosen_key[:12]}",
++                "API 调用过于频繁，尝试使用其他 Key 重试。",
+             )
+             # 最后一次不等待
+             if retry_cnt < max_retries - 1:
+@@ -1218,6 +1225,16 @@
+         if func_tool and not func_tool.empty():
+             payloads["tool_choice"] = tool_choice
+ 
++        # The governed Runtime handles errors itself; do not recover by sending
++        # the request again, changing keys, dropping context or tool arguments.
++        if request_max_retries is not None and request_max_retries <= 1:
++            self.client.api_key = random.choice(self.api_keys)
++            return await self._query(
++                payloads,
++                func_tool,
++                request_max_retries=1,
++            )
++
+         llm_response = None
+         max_retries = 10
+         available_api_keys = self.api_keys.copy()

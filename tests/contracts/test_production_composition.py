@@ -39,6 +39,7 @@ from dududa.models.contracts import (
     ModelEndpointHealth,
     ModelProviderDescriptor,
     ModelProviderHealth,
+    ModelRetentionMode,
 )
 from dududa.models.health import ModelHealthEvidence
 from dududa.rollout import InMemoryRolloutMetrics, RolloutMode, SQLiteJournalMode
@@ -1336,6 +1337,25 @@ class _MutableClock:
 
 
 class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
+    async def test_approved_provider_retention_and_reasoning_budget_assemble(self) -> None:
+        values = self._runtime_config()
+        specs = json.loads(values["runtime_models_json"])
+        specs[0].update(model_id="deepseek-v4-flash", retention_mode="provider_managed",
+                        data_residency="CN", max_output_tokens=8192)
+        values.update(runtime_models_json=json.dumps(specs), runtime_allow_provider_retention=True,
+                      runtime_direct_output_tokens=8192, runtime_perception_output_tokens=4096,
+                      runtime_reasoning_output_reserve_tokens=4096)
+        assembly = composition.build_production_runtime(self._production_plugin(_AstrBotProvider()), values)
+        try:
+            self.assertTrue(assembly.ready)
+            endpoint = assembly._model_health_probes[0].descriptor.endpoints[0]
+            self.assertEqual(endpoint.available_data_residencies, frozenset({"CN"}))
+            self.assertEqual(endpoint.supported_retention_modes, frozenset({ModelRetentionMode.PROVIDER_MANAGED}))
+            self.assertEqual(composition._default_runtime_budget(values).output_tokens_remaining, 12288)
+            self.assertEqual(composition._default_runtime_budget().output_tokens_remaining, 8000)
+        finally:
+            await assembly.close()
+
     def test_provider_managed_retention_requires_explicit_approval(self) -> None:
         values = self._runtime_config()
         specs = json.loads(values["runtime_models_json"])

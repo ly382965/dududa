@@ -373,7 +373,7 @@ class AstrBotModelProviderContractTests(
         await adapter.probe_health(timeout_seconds=2, evidence_ttl=timedelta(minutes=5))
         self.assertEqual(raw.calls[0]["thinking"], {"type": "disabled"})
         self.assertEqual(raw.calls[0]["max_tokens"], 256)
-        self.assertEqual(raw.calls[0]["request_max_retries"], 0)
+        self.assertEqual(raw.calls[0]["request_max_retries"], 1)
 
     async def test_unknown_outcome_creates_idempotency_tombstone(self) -> None:
         raw = _StubbornThenSuccessProvider()

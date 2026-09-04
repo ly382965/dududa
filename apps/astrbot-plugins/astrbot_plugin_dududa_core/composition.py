@@ -1999,7 +1999,7 @@ def initialize_plugin(
     installed = install_production_runtime(
         plugin,
         assembly,
-        _default_runtime_budget(),
+        _default_runtime_budget(plugin.config),
         "production-shape-v1",
     )
     initially_ready = assembly.ready and installed is not None
@@ -2051,7 +2051,7 @@ async def activate_runtime_after_host_start(plugin: Any) -> bool:
         installed = install_production_runtime(
             plugin,
             assembly,
-            _default_runtime_budget(),
+            _default_runtime_budget(plugin.config),
             "production-shape-v1",
         )
     except Exception as exc:  # unavailable composition leaves the 1.0 owner disabled
@@ -2233,13 +2233,23 @@ class _NoopShadowSink:
         return None
 
 
-def _default_runtime_budget() -> RuntimeBudget:
+def _default_runtime_budget(config: dict[str, object] | None = None) -> RuntimeBudget:
+    values = config or {}
+    output_budgets = (
+        values.get("runtime_perception_output_tokens", 1536),
+        values.get("runtime_direct_output_tokens", 2048),
+    )
+    # Invalid output settings already make assembly unavailable. Preserve its
+    # inert installation; valid settings must cover both model reservations.
+    output_tokens = 8000
+    if all(type(value) is int and 0 < value <= 32768 for value in output_budgets):
+        output_tokens = max(output_tokens, sum(output_budgets))
     return RuntimeBudget(
         model_calls_remaining=2,
         tool_steps_remaining=1,
         retries_remaining=1,
         input_tokens_remaining=40_000,
-        output_tokens_remaining=8_000,
+        output_tokens_remaining=output_tokens,
         cost_units_remaining=None,
     )
 

@@ -63,6 +63,30 @@ Provider Manager 热重载：AstrBot 会先终止旧 Provider，而已装配 Run
 提交代码、测试、示例环境和脱敏操作记录；不提交 `.env`、密钥库、真实策略、
 容器完整 inspect、镜像导出、数据库备份、QQ 登录态、密码或 auth 会话。
 
+## 外部连接配置的受控应用
+
+Key、Base URL、模型名与推理设置属于外部配置，不是 Runtime 框架代码。
+网页写入独立 Key store；AstrBot 用 Source/Provider 注册连接；Runtime 在装配时
+通过 Provider ID 获取实例，只处理模型调用接口。过去缺少前两者的应用桥接，
+所以保存池不会更新已运行实例。换 Key/Base URL 本身不应要求重新构建镜像。
+
+`ops/cli/apply_deepseek_runtime.py` 为本次明确授权的 DeepSeek 迁移提供两步操作：
+在已验证 AstrBot 镜像内用 `prepare --data <只读数据目录> --store <私有池文件>
+--candidate <新的私密目录> --expected-revision <池revision> --source-revision <代码提交>
+--accept-provider-retention` 生成候选；验证真实三档 Provider、参数、输出与健康探针，
+并保存原配置。候选只替换指定三档 Provider/Source，保留其他配置和并发/速率限制。
+
+停止唯一 AstrBot 宿主后，以可写数据挂载执行同一工具的 `install --data ...
+--store ... --candidate ... --host-stopped`，随后冷启动。配置在准备后若被改动，
+安装会拒绝覆盖。回退使用候选目录的 `command.before.json`、`core.before.json`、
+`evidence.before.json` 和发布前镜像/插件清单；不要在运行中的宿主覆盖配置。
+不把私密候选或证据提交到 Git，也不把一次 Provider 成功等同于 Runtime 预览验收。
+
+镜像内的 `verify_astrbot_request_boundary.py` 使用 MockTransport，不访问真实服务，
+验证单请求、参数、异常脱敏、超时和取消。对应 AstrBot 补丁只绕过显式单次非流式
+调用的隐式重试，不改变其他调用默认策略。默认预算保持不变；配置较大推理预算时，
+Runtime 总输出额度同时覆盖感知与回答两份预留，避免在发请求前因固定额度被拒绝。
+
 ## 2026-09-04 部署实测（部分完成）
 
 - 已切换四个现有 Bot 容器：Web `791eede`、AstrBot/MCP `4068977`（AstrBot 4.27.5）、NapCat 4.18.19。两次代码提交间 AstrBot、插件、Agent 包和 MCP 源码无差异；仅 Web 补充无模型路由的错误提示。

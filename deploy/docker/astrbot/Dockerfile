@@ -37,3 +37,8 @@ RUN python -m pip install --no-cache-dir \
     && python -c 'import importlib.metadata; assert importlib.metadata.version("mcp") == "1.29.0"' \
     && /opt/dududa/unified-mcp-worker/.venv/bin/python -c \
         'import importlib.metadata; assert importlib.metadata.version("mcp") == "2.0.0"'
+
+COPY deploy/patches/astrbot/4.27.5-bounded-provider-request.patch /tmp/astrbot-bounded-provider-request.patch
+RUN cd /AstrBot \
+    && patch --batch --forward -p1 < /tmp/astrbot-bounded-provider-request.patch \
+    && rm /tmp/astrbot-bounded-provider-request.patch
