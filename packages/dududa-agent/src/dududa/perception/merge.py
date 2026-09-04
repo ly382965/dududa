@@ -225,7 +225,8 @@ class DeterministicPerceptionMerger:
 
 def _merge_task_kind(rule_kind: str, model_kind: str) -> tuple[str, bool]:
     if rule_kind == "bounded_transformation" and model_kind in {
-        "summary", "summarization", "translation", "rewrite", "rewriting",
+        "summary", "summarization", "text_summary", "text_summarization",
+        "translation", "rewrite", "rewriting",
         "formatting", "paraphrase", "text_transformation", "transformation",
     }:
         return rule_kind, False
