@@ -4,15 +4,29 @@
 <!-- treework:status:start -->
 Branch: bot-release-convergence
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1788516355
+Status: in_progress
+Verification: partial
+Last sync: unix:1788517614
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Implementation commit `49d950a` is pushed to `origin/treework/bot-release-convergence`.
+- Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
+- Stable candidates are AstrBot 4.27.5 and NapCat 4.18.19, excluding the mislabeled latest beta. Web image is built; AstrBot/MCP image construction and private recovery preparation remain in progress.
+- Production services have not been replaced. A brief AstrBot pause/export recovered its root filesystem because missing old image layers made ordinary commit impossible; mounted data still require a stopped-writer backup.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Web type/build passed; frontend 90, server 105, E2E 7 and affected Python 17 tests passed. Repository safety scan passed 1,240 files. Full Ruff on old plugin files has existing TRY004/BLE001/SIM117 findings; newly introduced import/status-boundary findings were addressed.
+- Independent review found and fixed stale rollout status and shared-policy truncation/concurrent-update hazards.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Finish immutable artifact preparation, data recovery point, sequential existing-container upgrades and deployed verification before merging/completing.
+- Await operator choice for Arc: old QQ proxy commands versus the intentionally different default-off local Capability replacement. Do not silently remove commands or claim that preserved legacy Arc is upgraded.
+- Saved DeepSeek pools remain pending Runtime application; current Provider binding/evidence must not be forged by copying old model evidence. This release repairs connection/setup, not unvalidated model migration.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Private deployment records stay outside Git under the external release/state root. Keep all Authentik/Caddy/other-site/LLM-proxy containers unchanged.
