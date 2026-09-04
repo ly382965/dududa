@@ -84,6 +84,7 @@ Web MCP 控制台只接受批准的 Capability ID 和输入 Schema，不提供�
 | 组件 | 2.0 状态 |
 | --- | --- |
 | `astrbot_plugin_dududa_core` | 唯一 2.0 Agent Runtime 的 AstrBot 适配器，负责命令边界、Runtime 组合和投递。 |
+| `astrbot_plugin_emoji_kitchen` | 独立的 Unicode Emoji Kitchen 表情合成插件，官方组合按需缓存。 |
 | `astrbot_plugin_sub2api_readonly` | 仅超级管理员可用的只读命令；`overview` 生成一条四段合并转发（今日、当前计费轮、历史、上游账号）。它是宿主独立插件，不是 Agent 自动工具路由。 |
 | `astrbot_plugin_proactive_chatter` | 由 Core 在 Bridge 前消费的无副作用策略扩展，识别复读/机器人互动并建议静默；不监听、不调用模型、不发送，默认关闭。 |
 | `astrbot_plugin_reply_review` | 保守审校策略资产，不拦截消息、不自行调用 Provider；接入 Runtime secondary-review Port 前保持 `production_wired=false`。 |

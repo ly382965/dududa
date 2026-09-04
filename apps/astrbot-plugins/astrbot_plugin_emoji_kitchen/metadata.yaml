@@ -1,0 +1,11 @@
+name: astrbot_plugin_emoji_kitchen
+display_name: Emoji Kitchen
+desc: 基于 Google Emoji Kitchen 官方数据的 Unicode 表情合成插件。
+help: |
+  /emoji <Emoji1> <Emoji2>
+  /表情合成 <Emoji1> <Emoji2>
+version: v1.0.0
+author: mmdustc
+repo: https://github.com/Enthusjast/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_emoji_kitchen
+support_platforms:
+  - aiocqhttp

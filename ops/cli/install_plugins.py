@@ -15,6 +15,7 @@ OWNED_PLUGIN_PATHS = (
     "apps/astrbot-plugins/astrbot_plugin_arc_proxy",
     "apps/astrbot-plugins/astrbot_plugin_dududa_core",
     "apps/astrbot-plugins/astrbot_plugin_dududa_social",
+    "apps/astrbot-plugins/astrbot_plugin_emoji_kitchen",
     "apps/astrbot-plugins/astrbot_plugin_proactive_chatter",
     "apps/astrbot-plugins/astrbot_plugin_reread",
     "apps/astrbot-plugins/astrbot_plugin_reply_review",
