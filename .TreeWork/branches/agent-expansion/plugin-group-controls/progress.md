@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: plugin-group-controls
 Parent: agent-expansion
-Status: pending
+Status: in_progress
 Verification: unverified
-Last sync: unix:1788539117
+Last sync: unix:1788539118
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)

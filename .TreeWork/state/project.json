@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "arc-compat-migration",
+  "current_branch": "plugin-group-controls",
   "artifact_layout_version": 2,
-  "last_event_seq": 184,
+  "last_event_seq": 185,
   "tree_revision": 9,
   "tree_editing": null,
   "tree_hash": "fnv1a64:8612c1bfede2e668",
-  "last_sync": "unix:1788539117"
+  "last_sync": "unix:1788539118"
 }
