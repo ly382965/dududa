@@ -26,6 +26,7 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Apply the explicitly approved DeepSeek migration and provider-managed retention, with fresh Provider evidence and a successful no-send Runtime preview.
 - [x] Publish the DeepSeek follow-up, retaining the broader branch as partial.
 - [x] Fix MCP workbench button/card/scroll layout and verify narrow/desktop browsers; Web `31441a3` deployed with unchanged dependent services.
+- [x] Restore missing read-only notifai mounts in Console/AstrBot; both discover all seven tools and the public stats query succeeds. Preserve private rollback and record sanitized evidence.
 - [ ] Close the broader release only after the separate legacy Arc compatibility choice is resolved.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)

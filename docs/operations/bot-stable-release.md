@@ -51,6 +51,13 @@ Web、AstrBot/MCP、自有插件使用明确记录的已验证 Git revision 发�
 每次使用精确服务名和 `--no-deps --pull never` 分批切换，验证 AstrBot API、
 Runtime、MCP、NapCat 登录/双向连接、Web 和公网 auth 跳转，再处理下一服务。
 
+NotifAI 的 registry 启动脚本及 cwd 使用 `/AstrBot/data/notifai-mcp`；镜像内
+`/opt/dududa/notifai-mcp` 有安装副本，不会自动补齐前一个路径。Canonical Compose
+已为 AstrBot 和 MCP Console 声明对应只读挂载；转换为私密发布清单时必须保留，
+并在两个容器内确认 `run_notifai_mcp.py` 可读。恢复挂载后验证工具发现及一条公开
+只读查询，不能用目录的“7 项能力”静态计数代替连接证据。查询还需检查业务层
+`data.ok`，不能只依据 HTTP 200 或外层 `ok`。
+
 ## 尚未等同于 Runtime 应用的操作
 
 API Key 的保存和显式探测不等于切换 Runtime 模型。现有池投影适配器不做
@@ -93,6 +100,8 @@ Runtime 总输出额度同时覆盖感知与回答两份预留，避免在发请
 
 ## 2026-09-04 当前部署：DeepSeek 已应用
 
+- 最新 notifai 部署修复：恢复 MCP Console 与 AstrBot 的 `/AstrBot/data/notifai-mcp` 只读挂载，分别指向既有 `cdbc5f0` / `5e243fd` 发布副本中的 `services/mcp/notifai`，不挂载开发工作树。两个镜像不变，仅重建这两个容器，其他 29 个容器身份/镜像/启动时间不变。旧私密发布清单保留用于回滚。
+- notifai 验收：Web「检测连接」为 healthy、七个工具完整；AstrBot 内按实际 registry 的 command/args/cwd 启动 stdio 也发现七个工具。公开统计查询的 HTTP、传输层 `ok` 和业务层 `data.ok` 全部成功，样本为 1,396 条通知、24 个来源。Web/QQ connected、Runtime DeepSeek 三档和公网 Auth302 均保持正常，未发送 QQ 测试消息。
 - 最新 Web-only 修复为 `dududa/web:31441a3`：MCP 检测按钮统一样式，检测中/禁用状态明确，状态与时间可换行，卡片随侧栏宽度调整，MCP 工具栏在本节滚动时保持可见。没有改变连接过期语义、自动检测或任何 Runtime 行为。以下其他组件版本不变。
 - 本次前端 100 项、浏览器 10 项、类型检查及构建通过；浏览器覆盖 1280px 桌面、390px 和 320px，检查按钮、长状态、滚动和无溢出。公网实际 CSS 与验证构建一致。仅 Web 重建，其余 30 个容器身份、镜像、启动时间不变；Web/QQ connected、Runtime 配置就绪、MCP10/26、未登录 Auth302 均通过。旧 Web 镜像和切换前私密清单保留。
 - AstrBot 当前镜像为 `dududa/astrbot:0ef2a18-4.27.5`，镜像摘要为 `sha256:2fb56b38ca111c315b111957b0b0c9b52378cd550c1e26bfa2fb6bcbc1cf6bdd`。挂载的独立 Runtime/插件源为 `5e243fd`；后续提交只修改构建依赖，不改变该运行时代码。Web 为上述 `31441a3`，MCP Console 保持 `cdbc5f0`，NapCat 保持 4.18.19。
