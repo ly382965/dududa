@@ -770,7 +770,7 @@
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "in_progress",
-      "verification_status": "partial",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -781,7 +781,7 @@
         "last_entered_at": "unix:1788538465",
         "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788538465"
+      "last_sync": "unix:1788538602"
     },
     {
       "path": "preview-context-repair",
