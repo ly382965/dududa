@@ -778,11 +778,11 @@
         "git_branch": "treework/bot-release-convergence",
         "managed_by_treework": true,
         "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788526006",
+        "last_entered_at": "unix:1788528889",
         "last_status": "reused existing worktree"
       },
-      "status_reason": "DeepSeek migration is live and published with actual no-send preview; preserve the broader legacy Arc compatibility handoff without claiming complete release.",
-      "last_sync": "unix:1788528463"
+      "status_reason": "MCP workbench layout delivered as Web31441a3; preserve broader Arc and preview/history gaps without claiming full release completion.",
+      "last_sync": "unix:1788529380"
     },
     {
       "path": "real-group-validation",
