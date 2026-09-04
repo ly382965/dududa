@@ -71,3 +71,14 @@ Provider Manager 热重载：AstrBot 会先终止旧 Provider，而已装配 Run
 - 验证通过：前端 90、服务端 107、E2E 7、相关 Python 17、生产装配/源码守卫 36 项，类型检查和构建通过。构建保留既有 bundle 大小警告。
 - 未解决：当前 Luna Provider 的合成调用返回上游 HTTP 503 `api_error`，虽然其模型 ID 仍在上游目录中。实际 Runtime 预览无可用模型路由；已改为明确报错，不能宣称模型回复验收通过。没有修改范围外 LLM 代理，也没有伪造健康证据。
 - 兼容性例外：旧 Arc 暂保留，等待操作者确认是否移除第三方 QQ 查分命令；不能声称所有旧插件已冻结。已保存的 DeepSeek Key 池仍未应用到 Runtime。
+
+### 同日 MCP 与推理挡位后续更新（部分完成）
+
+- Web 和 MCP Console 已切换到 `cdbc5f0`，使用独立发布副本；AstrBot Runtime/插件仍为 `4068977`，NapCat 仍为 4.18.19，本次未重启这两者。分阶段发布使用精确私密清单，不能用共享镜像变量的通用全栈命令覆盖当前混合版本。
+- 五个新增 MCP 仅接入控制台目录，不扩大群聊自动调用权限。线上目录为 10 个 Server、26 个 Capability；五项连接检测及五次各取一条的查询均 HTTP 200、成功且非空。
+- 仓库外缓存为校园活动 65、学院通知 36、图书馆 28、培养方案 326、本地推荐 108 条。本地推荐是历史整理数据，没有虚构抓取时间；图书馆为官网常规安排，不保证临时开放变化。页面显示检测状态、来源和缓存时间。
+- 公网未登录仍跳转 Auth，Web/QQ 状态 connected；27 个范围外容器的 ID、镜像 ID、启动时间未变。前一版 Web/MCP 镜像和切换前私密清单已保留，未删除数据。
+- 最新验证：前端 100、服务端 107、E2E 7、Console 14、来源/仓库 18、模型适配器 21、生产装配 31 项通过，类型检查和构建通过。另有模型/Key/MCP client 合并 48 项通过；这些测试集合部分重叠，不相加声称总数。
+- DeepSeek 池 revision 11：Haiku/Luna 使用 `deepseek-v4-flash` / `low` / 8192，Sonnet/Terra 使用 Flash / `high` / 16384，Opus/Sol 使用 `deepseek-v4-pro` / `max` / 32768（末项为输出 token 上限）。三池均启用，每池保留一个启用 Key；三次有界合成 API 请求均 HTTP 200 且有可见输出。
+- **保存和探测不等于 Runtime 切换。** Runtime 此时仍绑定 GPT 三档。用户已同意迁移及启用 Sonnet，但是否接受服务商默认留存仍待独立确认；现有零留存要求未放宽。DeepSeek [推理参数](https://api-docs.deepseek.com/guides/thinking_mode/)支持上述挡位；[自动缓存说明](https://api-docs.deepseek.com/news/news0802/)不能作为零留存证据。新适配代码已提交，尚未在 AstrBot 激活，不复制旧 GPT 验证记录。
+- 目标群的主动搭话策略原已开启，近期失败原因是 `model_route_not_found`，不是开关关闭。本次未改变群概率、冷却、限额或发送权限，也未发送 QQ 测试消息。实际模型回复及旧 Arc 兼容选择仍未验收。

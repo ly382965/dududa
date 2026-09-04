@@ -77,7 +77,8 @@ AstrBot 实际使用的 Chat Completions 路径也完成了普通请求和
 usage，单次延迟约 2.2--2.3 秒。这只证明两种协议的单次可达、模型绑定和基本输出，不是
 Endpoint Conformance、持续健康、质量、成本或生产可用性证据。
 
-当前运行中的 AstrBot 只注册了 `deepseek/deepseek-v4-pro`、
+以下 Provider 注册情况是本节 2026-08-15 抽样时的历史快照，不代表当前发布；当前版本以
+`bot-stable-release.md` 的最新部署记录为准。当时运行中的 AstrBot 只注册了 `deepseek/deepseek-v4-pro`、
 `deepseek_1/deepseek-v4-flash` 和 `openai/gpt-5.5`，三个 GPT-5.6 Endpoint 尚未成为 AstrBot
 Provider。固定版本候选镜像已用显式 allowlist 透传 `max_tokens` 和 `reasoning_effort`；
 隔离 payload 抽样保留了 `max_tokens=321`、`reasoning_effort=high`，且未放行无关插件参数。

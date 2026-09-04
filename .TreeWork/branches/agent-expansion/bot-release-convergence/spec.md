@@ -78,8 +78,6 @@ unchanged shared Runtime catalog, sanitized connection failures, same-origin and
 UI checks, deployed discovery/query counts and public auth. The pre-existing
 model-upstream/Arc decisions remain outside this MCP acceptance.
 
-## General Verification
-
 ## DeepSeek Migration Intake (operator approval, 2026-09-04)
 
 Operator explicitly approved applying the saved official DeepSeek pools, enabling
@@ -90,6 +88,8 @@ The existing no-retention requirement must not be silently weakened: any
 provider-managed retention policy requires separate informed operator approval.
 Preserve provider evidence truth, source-specific model bindings, private rollback
 files and current group policies. No manual QQ test message is authorized.
+
+## General Verification
 
 Focused tests cover missing corpus configuration with a live Runtime, actual
 unreachable/auth-failed Runtime, honest status messages, no-send preview and

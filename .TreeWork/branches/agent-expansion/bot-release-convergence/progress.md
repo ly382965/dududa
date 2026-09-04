@@ -11,15 +11,15 @@ Last sync: unix:1788520580
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Runtime implementation is `4068977`; the previous release was published on main at `f9382fc`. Web update `b53f85a` is deployed with the group proactive switch. Live assets contain the switch and save hint; QQ remains connected and public Auth redirects are intact. AstrBot, NapCat and MCP were not restarted.
+- Web and MCP Console are deployed from `cdbc5f0`; AstrBot Runtime/plugin implementation remains `4068977` (4.27.5), and NapCat remains 4.18.19. This follow-up recreated only Web and MCP; AstrBot and NapCat retained their existing containers/start times. The proactive switch and saved-versus-applied Key UI remain available.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
-- Live Runtime is ready; Web/QQ and MCP catalog are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers retain their prior IDs, images and start times. Existing Key pool revision 7 and one key per tier are preserved.
+- Live Runtime assembly is ready but still maps to GPT models; this is not proof of healthy model generation. Web/QQ and MCP catalog are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers retain their prior IDs, image IDs and start times. Key pool revision 11 has one enabled Key per tier; all three DeepSeek pools are enabled.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
-- Implemented five console-only public MCP bindings, explicit connection checks and truthful statuses/source freshness. Public caches initialized outside Git: campus65 / college36 / library28 / programs326 / curated108. Deployment/query-through-live-console still pending at this candidate checkpoint.
-- Focused checks passed: Console14; frontend100/server107 plus type/build; source/repository18; model adapter21; combined model/key/client48; generated catalog loads10servers/26capabilities. Broad production composition suite still running. No QQ test messages or unrelated service changes.
+- Deployed five console-only public MCP bindings, explicit connection checks and truthful statuses/source freshness. Public caches initialized outside Git: campus65 / college36 / library28 / programs326 / curated108. Through the deployed Web API, all five checks returned healthy and all five bounded queries returned HTTP 200, ok and one item. Catalog contains 10 servers/26 capabilities; curated data has no invented refresh timestamp.
+- Checks passed: Console14; frontend100/server107 plus type/build; E2E7; source/repository18; model adapter21; combined model/key/client48; production composition31. Both release images built successfully. No QQ test messages or unrelated service changes.
 - Read-only diagnosis confirmed the operator-selected group was already enabled (mode on). Eight recent proactive attempts failed with model_route_not_found; no group enablement change was made. User approved DeepSeek migration and enabling Sonnet; pool changes saved after private backup, but Runtime not switched while retention approval is pending.
 
 - The proactive card now has a group-only accessible switch using existing `auto`/`off` plugin policy and explicit Save Configuration. Scope identity, rate settings and other plugins are preserved; no real group was enabled. Missing/loading/saving policy and private chats disable the switch. The active badge now also respects the conversation Agent master switch.
@@ -32,9 +32,9 @@ Last sync: unix:1788520580
 
 - Model generation remains blocked by the current upstream Provider's HTTP 503. Do not modify excluded LLM proxy services or fabricate healthy evidence. A successful model-generated preview remains unverified.
 - Await operator choice for Arc: old QQ proxy commands versus the intentionally different default-off local Capability replacement. Do not silently remove commands or claim that preserved legacy Arc is upgraded.
-- Saved DeepSeek pools remain pending Runtime application; current Provider binding/evidence must not be forged by copying old model evidence. This release repairs connection/setup, not unvalidated model migration.
+- Saved DeepSeek pools are Flash low (8192 output cap), Flash high (16384), Pro max (32768). All three synthetic official API probes passed; Sonnet is enabled. Runtime application still awaits informed approval to use provider-managed retention instead of the current no-retention requirement. Do not infer that approval from the earlier migration approval or copy old GPT evidence.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - Private deployment records stay outside Git under the external release/state root. Keep all Authentik/Caddy/other-site/LLM-proxy containers unchanged.
-- Do not mark complete: preserve the release and publish verified code, then resume once the operator resolves the model endpoint/DeepSeek application choice and Arc compatibility choice. Authentication redirect was verified; no password reset or new authenticated user session was created.
+- Do not mark complete: resume controlled DeepSeek Provider/Runtime reassembly only after the retention choice; preserve the separate Arc compatibility question. Source and deployment records are published in sanitized form. Authentication redirect was verified; no password reset or new authenticated user session was created.
