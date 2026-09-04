@@ -20,6 +20,7 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Recover history and inspect actual production source/image mounts and upstream stable versions.
 - [x] Repair and test production status/policy/preview and credential UX.
 - [x] Build candidate artifacts; preserve state and old releases; upgrade existing containers sequentially.
+- [x] Add and test the explicit group proactive participation switch using existing scoped policy/save behavior without enabling any production group.
 - [ ] Verify public auth, Runtime and NapCat connections; publish sanitized evidence and close branch.
 - [ ] Resolve current model-upstream HTTP 503 or operator-approved DeepSeek migration; retain the old Arc until the compatibility choice is explicit.
 

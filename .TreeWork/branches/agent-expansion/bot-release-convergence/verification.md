@@ -4,7 +4,7 @@ Branch: bot-release-convergence
 
 ## Latest Verification
 
-- Command: `Web type/build; frontend90 server107 E2E7 Python17 production36; deployed Runtime/MCP/NapCat/auth; synthetic model call HTTP503`
+- Command: `Proactive switch: frontend99 including focused22; typecheck/build; secrets1241. Previous live model failure not retested.`
 - Result: failed
-- Coverage gap: Live model generation fails upstream HTTP503; Arc compatibility and DeepSeek application choices remain. Bot infrastructure and credential preservation verified.
-- Recorded: unix:1788519366
+- Coverage gap: Requested UI switch checks pass. Overall release retains prior model-upstream HTTP503 and pending Arc/DeepSeek choices; do not mark release complete.
+- Recorded: unix:1788520546
