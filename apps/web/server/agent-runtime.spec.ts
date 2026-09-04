@@ -77,4 +77,14 @@ describe('formal Agent Runtime without historical corpus', () => {
     expect(client.preview).toHaveBeenCalledWith({ ...scope, prompt: '你好' })
     await expect(gateway.respond({ ...scope, conversationId: 'qq-100001:private:200001', prompt: '你好' })).rejects.toThrow('不支持私聊')
   })
+
+  it('reports a missing model route instead of a successful empty preview', async () => {
+    const client = runtime()
+    const result = await client.preview({ accountId: 'qq-100001', conversationId: 'qq-100001:group:200001', prompt: '你好' })
+    client.preview = vi.fn(async () => ({ ...result, candidate: '', reasonCodes: ['model_route_not_found'] }))
+    await expect(createAgentGateway({}, client).respond({
+      accountId: 'qq-100001', conversationId: 'qq-100001:group:200001',
+      conversationName: '测试群', conversationType: 'group', prompt: '你好',
+    })).rejects.toMatchObject({ status: 503, message: expect.stringContaining('没有可用模型路由') })
+  })
 })

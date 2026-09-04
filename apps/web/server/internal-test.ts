@@ -1774,6 +1774,12 @@ export class FileInternalTestGateway implements InternalTestGateway {
         }
         throw new InternalTestError('Dududa 2.0 Runtime 预览失败', 503)
       }
+      if (runtime.reasonCodes.includes('model_route_not_found')) {
+        throw new InternalTestError(
+          'Runtime 已连接，但没有可用模型路由。请检查当前 Provider 连接与健康状态；仅保存 API Key 不会应用到 Runtime。',
+          503,
+        )
+      }
       const selectedPluginIds = new Set<string>(runtime.capabilityIds.map((capabilityId) => {
         if (capabilityId.startsWith('icourse.')) return 'icourse.read'
         if (capabilityId.startsWith('notifai.')) return 'notifai.read'
