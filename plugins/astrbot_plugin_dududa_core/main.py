@@ -172,6 +172,9 @@ class DududaCorePlugin(Star):
 
         open_query = self._extract_open_query(text)
         if open_query:
+            # AI 审查：确认真的是在查询开课信息，而不是"我们班还没开课"这类陈述
+            if not await self._ai_confirm_course_intent(text):
+                return
             try:
                 reply = await self._catalog_open(open_query)
             except Exception as exc:
@@ -189,15 +192,16 @@ class DududaCorePlugin(Star):
             if self._is_at_bot(event):
                 tc = self._extract_teacher_course(text)
                 if tc and self._looks_like_course_intent(text, tc):
-                    # AI 审查：确认这真的是课程/老师查询，避免"有课表了吗"等闲聊误触发
-                    if not await self._ai_confirm_course_intent(text):
-                        return
                     try:
+                        # 意图判断已合并进整合查询的 LLM 分析中（一次调用完成）
                         reply = await self._answer_teacher_course_integrated(tc, text)
                     except Exception as exc:
                         logger.warning("At-bot teacher/course failed: %s", exc)
                         yield event.plain_result(f"课程查询失败：{type(exc).__name__}")
                         event.stop_event()
+                        return
+                    if reply is None:
+                        # LLM 判定这不是课程查询（陈述/闲聊），放行给普通聊天
                         return
                     self.audit.write(event, "at_bot_course", {"query": tc[:60]})
                     yield event.plain_result(reply)
@@ -207,6 +211,8 @@ class DududaCorePlugin(Star):
         try:
             if self._looks_like_specific_lookup(text):
                 reply = await self._answer_teacher_course_integrated(query, text)
+                if reply is None:
+                    return
             else:
                 reply = await self._answer_natural_course_query(query, text, event)
         except Exception as exc:
@@ -379,9 +385,11 @@ class DududaCorePlugin(Star):
         prompt = (
             f'用户消息："{text}"\n\n'
             "请判断这条消息是不是在向机器人查询课程相关信息（例如：问某门课怎么样、"
-            "选哪位老师好、上课时间地点、课程难度给分、某位老师的评价等）。\n"
-            "如果是在问课程/老师，只回复「是」；如果是闲聊、寒暄、询问课表有无、"
-            "或其他与课程查询无关的内容，只回复「否」。\n"
+            "选哪位老师好、上课时间地点、课程难度给分、某位老师的评价、某门课什么时候开课等）。\n"
+            "注意区分查询和陈述：\n"
+            "- 查询：用户在问机器人要答案（如\"数学分析什么时候上课\"\"XX课在哪上\"\"查一下XX老师\"）；\n"
+            "- 陈述：用户只是在陈述自己的情况（如\"我们班还没开课\"\"我今天有课\"\"我们课表出来了\"），并不是在问机器人。\n"
+            "如果是查询，只回复「是」；如果是陈述、闲聊、寒暄、或与课程查询无关的内容，只回复「否」。\n"
             "只回复一个字。"
         )
         try:
@@ -645,8 +653,11 @@ class DududaCorePlugin(Star):
         self,
         query: str,
         original_text: str,
-    ) -> str:
-        """@bot 查询课程/老师时，聚合评课社区评价 + 开课数据，用 LLM 按用户语义自由回答。"""
+    ) -> str | None:
+        """@bot 查询课程/老师时，聚合评课社区评价 + 开课数据，用 LLM 按用户语义自由回答。
+
+        返回 None 表示这不是课程查询（LLM 判定为陈述/闲聊），调用方应放行给普通聊天。
+        """
         result = await self._search_course_expanded(query)
         items = result.get("items") or []
         if not items:
@@ -670,8 +681,8 @@ class DududaCorePlugin(Star):
             cards.append(card)
 
         analysis = await self._analyze_course_cards(query, original_text, cards)
-        if not analysis:
-            return self._format_simple_integrated(query, cards)
+        if analysis is None:
+            return None
         return analysis
 
     async def _analyze_course_cards(
@@ -732,8 +743,12 @@ class DududaCorePlugin(Star):
         if catalog_lines:
             prompt += "[OpenData]\n" + "\n".join(catalog_lines) + "\n[/OpenData]\n"
         prompt += (
-            f"\n用户这样问你：{user_sentence}\n\n"
-            "请你像一个熟悉评课的学长/学姐一样，先理解用户这句话到底想问什么，再只根据上面两段数据回答。\n"
+            f"\n用户消息：{user_sentence}\n\n"
+            "第一步，先判断：用户这句话是不是真的在向机器人查询课程/老师信息？\n"
+            "如果用户只是陈述自己的情况（如\"我们班还没开课\"\"我今天有课\"）、闲聊、或与课程查询无关，"
+            "请只回复特殊标记「NOT_COURSE_QUERY」，不要输出任何其他内容。\n"
+            "如果确实是课程查询（问某门课、某位老师、选课、上课时间等），再继续下面的任务。\n\n"
+            "第二步，像一个熟悉评课的学长/学姐一样，理解用户想问什么，再只根据上面两段数据回答。\n"
             "根据用户问法，你可能需要回答下面一种或几种内容（由你自己判断，不用每种都答）：\n"
             "- 选谁比较好：对比不同老师的评价，给出明确推荐和理由；\n"
             "- 怎么学/难不难：结合难度、给分、作业等，给学习方法和建议（如先修课、平时练习、注意事项）；\n"
@@ -763,7 +778,12 @@ class DududaCorePlugin(Star):
                 temperature=0.5,
             )
             text = (getattr(response, "completion_text", "") or "").strip()
-            return text or None
+            if not text:
+                return None
+            # 非课程查询：返回 None，由调用方放行给普通聊天
+            if text.startswith("NOT_COURSE_QUERY"):
+                return None
+            return text
         except Exception as exc:
             logger.warning("Course analysis LLM failed: %s", exc)
             return None

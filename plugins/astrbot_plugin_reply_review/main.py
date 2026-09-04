@@ -65,7 +65,11 @@ class ReplyReview(Star):
         if any(p in text for p in self.skip_patterns):
             return
 
-        context = self._get_context(event)
+        context, user_msg = self._get_context(event)
+        # 没有用户触发消息的主动发言（如择机闲聊），生成阶段已贴合语境，跳过审查
+        if not user_msg:
+            return
+
         reviewed = await self._review(context, text)
         if not reviewed or reviewed == text:
             return
@@ -79,7 +83,7 @@ class ReplyReview(Star):
         logger.info("ReplyReview: rewrote reply (%d -> %d chars)", len(text), len(reviewed))
 
     @staticmethod
-    def _get_context(event: AstrMessageEvent) -> str:
+    def _get_context(event: AstrMessageEvent) -> tuple[str, str]:
         msg = ""
         try:
             msg = event.get_message_str() or ""
@@ -100,7 +104,8 @@ class ReplyReview(Star):
             sender = str(event.get_sender_name() or "")
         except Exception:
             pass
-        return f"群:{group_id} 用户:{sender} 用户消息:{msg}"
+        user_msg = msg.strip()
+        return f"群:{group_id} 用户:{sender} 用户消息:{user_msg}", user_msg
 
     async def _review(self, context: str, reply: str) -> str | None:
         prompt = (
@@ -108,18 +113,18 @@ class ReplyReview(Star):
             f"机器人准备发送的回复：{reply}\n\n"
             "请检查这条回复有没有明显的问题。\n"
             "只在以下情况才需要改写：\n"
-            "1. 回复明显答非所问（上下文问课程/老师，回复却在说完全不相关的事）；\n"
-            "2. 回复里有事实错误或编造的信息；\n"
+            "1. 回复明显答非所问（用户问课程/老师，回复却在说完全不相关的事）；\n"
+            "2. 回复里有明显的事实错误或编造的信息；\n"
             "3. 回复语气冒犯、说了不该说的话；\n"
             "4. 回复明显机械、混乱、不像一句正常的话。\n\n"
             "注意：\n"
             "- 上下文信息可能不完整（比如只有一个名字），不要因为\"觉得信息少\"就改回复；\n"
             "- 如果回复本身是一段通顺、合理、自洽的内容（例如在介绍某位老师、某门课），即使你"
-            "无法完全确认它和上下文的关系，也要原样返回，不要改动；\n"
-            "- 大多数情况下应该原样返回。\n\n"
-            "如果回复没有上述问题，请原样返回这条回复，不要改动任何字；\n"
-            "如果确实有问题，请改写，保留原本要表达的核心意思和事实，风格贴近可爱聪明的嘟嘟哒。\n"
-            "只输出最终的回复内容本身，不要任何解释、引号、前缀或 Markdown。"
+            "无法完全确认它和上下文的关系，也要判定通过；\n"
+            "- 大多数情况下应该判定通过。\n\n"
+            "如果没有问题，只回复「PASS」，不要输出任何其他内容；\n"
+            "如果确实有问题，请输出改写后的回复（保留原本要表达的核心意思和事实，风格贴近可爱聪明的嘟嘟哒）。\n"
+            "只输出结果本身，不要任何解释、引号、前缀或 Markdown。"
         )
         try:
             provider = self.context.get_using_provider()
@@ -132,7 +137,9 @@ class ReplyReview(Star):
                 temperature=self.temperature,
             )
             content = (getattr(response, "completion_text", "") or "").strip().strip('"“”')
-            return content or None
+            if not content or content.upper() == "PASS":
+                return None
+            return content
         except Exception as exc:  # noqa: BLE001
             logger.warning("ReplyReview LLM failed: %s", exc)
             return None
