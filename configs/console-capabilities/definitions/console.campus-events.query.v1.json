@@ -1,0 +1,213 @@
+{
+  "allowed_contexts": [
+    "private"
+  ],
+  "capability_id": "console.campus-events.query.v1",
+  "category": "console.campus-events",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ba4f3f158e23be658e44730f89189bc810e93d49ca3a52b25e8e6d322679b207",
+  "description": "\u6821\u56ed\u516c\u544a\uff1a\u53ea\u8bfb\u7f13\u5b58\u67e5\u8be2\uff1bquery \u7559\u7a7a\u53ef\u6d4f\u89c8\u3002\u7ed3\u679c\u9644\u6570\u636e\u6765\u6e90\u548c\u65f6\u6548\u8bf4\u660e\uff0c\u4e0d\u81ea\u52a8\u6388\u6743\u7fa4\u804a\u3002",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.console.campus-events.query.v1.input:v1:sha-256:5ebbf230a5ed4d9886d2afc872b0a5815a212ebb874d8289e4e3ed211319ce26",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Category",
+          "type": "string"
+        },
+        "limit": {
+          "default": 10,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "query": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "campus_events_public_queryArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.console.campus-events.query.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 300,
+    "maximum_ms": 30000
+  },
+  "name": "\u6821\u56ed\u516c\u544a",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.console.campus-events.query.v1.output:v1:sha-256:7059e2c2b1a91c5c4c9fe9ba1979bae5fff5b26f059be2dbc95ac45b4fba8d3d",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "maxLength": 32,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "freshness_note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachments": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "maxLength": 240,
+                      "type": "string"
+                    },
+                    "url": {
+                      "maxLength": 2048,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "url"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              "category": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "event_id": {
+                "maxLength": 160,
+                "type": "string"
+              },
+              "observed_at": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "published_at": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "source_url": {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              "summary": {
+                "maxLength": 1600,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 500,
+                "type": "string"
+              }
+            },
+            "required": [
+              "title",
+              "published_at",
+              "summary",
+              "source_url",
+              "observed_at",
+              "attachments",
+              "event_id",
+              "category"
+            ],
+            "type": "object"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "query": {
+          "maxLength": 200,
+          "type": "string"
+        },
+        "returned": {
+          "maximum": 20,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "query",
+        "items",
+        "returned",
+        "source",
+        "source_url",
+        "fetched_at",
+        "freshness_note",
+        "category"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.console.campus-events.query.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.campus-events",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:01e1de7a1a4dab53c96d312f85a922c734f471a1501818acec80522bd0bed409",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "campus-events-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "console.campus-events.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "cache-only",
+    "console-only",
+    "read-only"
+  ]
+}

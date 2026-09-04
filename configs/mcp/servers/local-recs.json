@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "server_id": "local-recs",
-  "enabled": false,
+  "enabled": true,
   "transport": "stdio",
   "protocol_mode": "legacy",
   "endpoint": {
@@ -32,5 +32,5 @@
   },
   "maximum_concurrency": 2,
   "schema_ttl_seconds": 300,
-  "config_revision": "local-recs-seed-read-v1"
+  "config_revision": "local-recs-console-read-v2"
 }

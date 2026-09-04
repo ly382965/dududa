@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:edf344a8be76e4957ca6fe9e5a589591b2402fe04fa33852ef30f6912b77fb9f",
+  "capability_id": "console.local-recs.query.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.local-recs.local_recommendations_public_query.input:v1:sha-256:e24a87a66ee9c28c791af50641b870e811c2bf243440b0600d4e05b8b5905bbc",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.local-recs.local_recommendations_public_query.output:v1:sha-256:d1178dcd5e562db09b88777ad3d6d20ea367dc4be83a282f2204e5f066676623",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:19a7fc3365ef7f8dcb5bb39781a072df437e5d792ffb4d7007a53f892c36087b",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "local-recs",
+  "tool_name": "local_recommendations_public_query"
+}

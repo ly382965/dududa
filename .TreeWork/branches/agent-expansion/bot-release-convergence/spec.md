@@ -55,7 +55,41 @@ Upgrade sequentially and validate each dependent connection. Schema changes
 require compatible backups before activation. Never upload runtime snapshots,
 database backups, image exports, sessions or credentials to GitHub.
 
-## Verification
+## MCP Workbench Activation (2026-09-04)
+
+Complete the five existing cache-backed public read-only services: campus-events,
+college-notice, library, local-recs and training-plan. Supply production paths,
+bounded operator-refreshed public caches and one governed capability per service.
+Keep these additions in a console-only catalog so existing automatic Runtime
+provider discovery, group permissions and planner categories do not expand.
+No refresh/write tool, arbitrary URL, CAS credential or QQ delivery is exposed.
+Curated local recommendations are explicitly non-live, unverified reference data.
+
+Catalog reads must not launch sessions. Show disabled, unmapped, missing-secret,
+unverified, connected and failed states truthfully. A same-origin, registered-ID
+connection check performs bounded discovery only, not business queries. Display
+the real check timestamp, not the catalog polling timestamp. Successful discovery
+does not attest to cache freshness; query results expose source/cache provenance.
+Refresh official pages with bounded existing operator CLIs, preserving caches on
+empty/failed parses. Verify actual nonempty queries before public deployment.
+
+Acceptance includes source/parser tests, five generated schema/mapping contracts,
+unchanged shared Runtime catalog, sanitized connection failures, same-origin and
+UI checks, deployed discovery/query counts and public auth. The pre-existing
+model-upstream/Arc decisions remain outside this MCP acceptance.
+
+## General Verification
+
+## DeepSeek Migration Intake (operator approval, 2026-09-04)
+
+Operator explicitly approved applying the saved official DeepSeek pools, enabling
+Sonnet and setting reasoning tiers. Verify synthetic requests with Flash low,
+Flash high and Pro max before applying. Keep GPT effort mapping unchanged; map
+DeepSeek maximum to max and provide a bounded visible-output health probe.
+The existing no-retention requirement must not be silently weakened: any
+provider-managed retention policy requires separate informed operator approval.
+Preserve provider evidence truth, source-specific model bindings, private rollback
+files and current group policies. No manual QQ test message is authorized.
 
 Focused tests cover missing corpus configuration with a live Runtime, actual
 unreachable/auth-failed Runtime, honest status messages, no-send preview and

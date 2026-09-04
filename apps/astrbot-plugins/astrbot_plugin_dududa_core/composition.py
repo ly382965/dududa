@@ -512,6 +512,8 @@ class _RuntimeModelConfig:
     rpm_limit: int
     tpm_limit: int
     provider_wrapping_tokens: int
+    data_residency: str
+    retention_mode: ModelRetentionMode
 
 
 @dataclass(frozen=True, slots=True)
@@ -859,6 +861,8 @@ def _parse_runtime_models(config: dict[str, object]) -> tuple[_RuntimeModelConfi
                 model_id=_required_text(item, "model_id", index),
                 tier=tier,
                 reasoning_depth=reasoning_depth,
+                data_residency=str(item.get("data_residency", "global")),
+                retention_mode=ModelRetentionMode(item.get("retention_mode", "no_retention")),
                 max_context_tokens=max_context_tokens,
                 max_output_tokens=max_output_tokens,
                 max_concurrency=_positive_integer(
@@ -1039,6 +1043,18 @@ def build_production_runtime(
     """Build the smallest config-driven inbound production Runtime."""
 
     specs = _parse_runtime_models(config)
+    allow_provider_retention = config.get("runtime_allow_provider_retention") is True
+    if not allow_provider_retention and any(spec.retention_mode is not ModelRetentionMode.NO_RETENTION for spec in specs):
+        raise ValueError("provider_retention_requires_explicit_operator_approval")
+    allowed_residencies = frozenset(spec.data_residency for spec in specs)
+    reasoning_reserve = config.get("runtime_reasoning_output_reserve_tokens", 0)
+    direct_budget = config.get("runtime_direct_output_tokens", 2048)
+    perception_budget = config.get("runtime_perception_output_tokens", 1536)
+    for value in (reasoning_reserve, direct_budget, perception_budget):
+        if type(value) is not int or not 0 <= value <= 32768:
+            raise ValueError("invalid_runtime_output_budget")
+    if not direct_budget or not perception_budget:
+        raise ValueError("invalid_runtime_output_budget")
     provider_context = getattr(plugin, "context", None)
     get_provider = getattr(provider_context, "get_provider_by_id", None)
     if not callable(get_provider):
@@ -1148,8 +1164,8 @@ def build_production_runtime(
                 {PrivacyLevel.PUBLIC, PrivacyLevel.CONVERSATION}
             ),
             processing_boundary=ModelProcessingBoundary.EXTERNAL,
-            available_data_residencies=frozenset({"global"}),
-            supported_retention_modes=frozenset({ModelRetentionMode.NO_RETENTION}),
+            available_data_residencies=frozenset({spec.data_residency}),
+            supported_retention_modes=frozenset({spec.retention_mode}),
             quota_pool_id=f"{spec.provider_id}:{spec.endpoint_id}",
             traffic_policy=traffic_policy,
             enabled=True,
@@ -1465,7 +1481,7 @@ def build_production_runtime(
         reason_codes=("fixed_perception_haiku",),
     )
     perception_output_limit = min(
-        1_536,
+        perception_budget,
         *(
             endpoint.capabilities.max_output_tokens
             for endpoint in endpoints
@@ -1485,8 +1501,8 @@ def build_production_runtime(
                 max_output_tokens=perception_output_limit,
                 prompt_tokens_upper_bound=512,
                 allow_external_provider=True,
-                allowed_residencies=frozenset({"global"}),
-                allow_provider_retention=False,
+                allowed_residencies=allowed_residencies,
+                allow_provider_retention=allow_provider_retention,
             ),
             clock=effective_clock,
         ),
@@ -1495,7 +1511,7 @@ def build_production_runtime(
     )
 
     direct_output_limit = min(
-        2_048,
+        direct_budget,
         *(endpoint.capabilities.max_output_tokens for endpoint in endpoints),
     )
     budget_plan = RuntimeModelBudgetPlan(
@@ -1532,8 +1548,8 @@ def build_production_runtime(
             prompt_tokens_upper_bound=768,
             maximum_response_characters=6_000,
             allow_external_provider=True,
-            allowed_residencies=frozenset({"global"}),
-            allow_provider_retention=False,
+            allowed_residencies=allowed_residencies,
+            allow_provider_retention=allow_provider_retention,
             component_revision=_revision("direct-chat"),
         ),
         visible_token_counter=UnicodeVisibleTokenCounter(
@@ -1741,14 +1757,14 @@ def build_production_runtime(
                 128,
                 180,
                 2,
-                min(512, direct_output_limit),
+                min(512 + reasoning_reserve, direct_output_limit),
             ),
             AnswerProfile.MEDIUM: ResponseProfileLimits(
                 1,
                 512,
                 720,
                 6,
-                min(1_024, direct_output_limit),
+                min(1_024 + reasoning_reserve, direct_output_limit),
             ),
             AnswerProfile.LONG: ResponseProfileLimits(
                 1,

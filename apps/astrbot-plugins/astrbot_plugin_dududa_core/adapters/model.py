@@ -48,6 +48,13 @@ _REASONING_EFFORT_BY_DEPTH = {
 }
 
 
+def reasoning_effort_for_model(model_id: str, depth: ReasoningDepth) -> str | None:
+    effort = _REASONING_EFFORT_BY_DEPTH[depth]
+    if model_id.startswith("deepseek-v4-"):
+        return {"medium": "high", "xhigh": "max"}.get(effort, effort)
+    return effort
+
+
 @dataclass(frozen=True, slots=True)
 class _IdempotencyFailure:
     failure_kind: ModelFailureKind
@@ -378,8 +385,9 @@ class AstrBotModelProviderAdapter:
                     prompt="Reply with OK.",
                     system_prompt="Health check. Return only OK.",
                     model=endpoint.model_id,
-                    max_tokens=8,
+                    max_tokens=256 if endpoint.model_id.startswith("deepseek-v4-") else 8,
                     request_max_retries=0,
+                    **({"thinking": {"type": "disabled"}} if endpoint.model_id.startswith("deepseek-v4-") else {}),
                 )
             )
             done, _ = await asyncio.wait((task,), timeout=float(timeout_seconds))
@@ -470,9 +478,9 @@ class AstrBotModelProviderAdapter:
                 "max_tokens": request.max_output_tokens,
                 "request_max_retries": 1,
             }
-            reasoning_effort = _REASONING_EFFORT_BY_DEPTH[
-                request.reasoning_profile.depth
-            ]
+            reasoning_effort = reasoning_effort_for_model(request.model_id, request.reasoning_profile.depth)
+            if request.model_id.startswith("deepseek-v4-"):
+                provider_kwargs["thinking"] = {"type": "disabled" if reasoning_effort is None else "enabled"}
             if reasoning_effort is not None:
                 provider_kwargs["reasoning_effort"] = reasoning_effort
             provider_awaitable = text_chat(

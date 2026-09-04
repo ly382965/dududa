@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "server_id": "campus-events",
-  "enabled": false,
+  "enabled": true,
   "transport": "stdio",
   "protocol_mode": "legacy",
   "endpoint": {
@@ -36,5 +36,5 @@
   },
   "maximum_concurrency": 2,
   "schema_ttl_seconds": 300,
-  "config_revision": "campus-events-cache-read-v1"
+  "config_revision": "campus-events-console-read-v2"
 }

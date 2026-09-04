@@ -154,7 +154,7 @@ def create_mcp(
         items = [_public_item(item) for item in selected]
         return {
             "schema_version": 1,
-            "ok": True,
+            "ok": store.stats()["recs_total"] > 0,
             "query": query,
             "kind": kind or None,
             "campus": campus or None,
@@ -163,6 +163,9 @@ def create_mcp(
             "items": items,
             "returned": len(items),
             "source": "dududa-curated-local-recommendations-v1",
+            "source_url": None,
+            "fetched_at": None,
+            "freshness_note": "历史人工整理的校园生活参考，非实时地图；营业时间、价格和评分未实时核验。",
         }
 
     return mcp

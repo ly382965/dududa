@@ -1,7 +1,8 @@
-import { shallowMount } from '@vue/test-utils'
+import { flushPromises, shallowMount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { internalTestAdapter } from '../services/internal-test'
+import { mcpManagementAdapter } from '../services/mcp-management'
 import type { InternalTestAgentPolicy, InternalTestPluginMode } from '../types/internal-test'
 import AgentConsole from './AgentConsole.vue'
 
@@ -102,5 +103,39 @@ describe('group proactive participation switch', () => {
     const wrapper = render({ policy: { ...policy('auto'), enabled: false } })
     expect(wrapper.text()).not.toContain('本群已开启')
     expect(wrapper.text()).toContain('本群未开启')
+  })
+
+  it('checks a registered MCP and preserves empty-query results through catalog refresh', async () => {
+    const server = { id: 'library', displayName: '图书馆', enabled: true, available: true,
+      authentication: 'not_required' as const, health: 'initializing' as const,
+      readiness: 'unverified' as const, reason: '尚未检测连接', capabilityCount: 1 }
+    vi.mocked(internalTestAdapter.mcpCatalog).mockResolvedValue({
+      schemaVersion: 1, available: true, servers: [server], capabilities: [{
+        id: 'console.library.query.v1', serverId: 'library', toolName: 'library_hours_public_query',
+        name: '图书馆查询', description: '留空浏览', category: 'console.library', privacy: 'conversation',
+        allowedContexts: ['private'], authentication: 'not_required', available: true,
+        inputSchema: { type: 'object', properties: { query: { type: 'string', default: '' } }, required: ['query'] },
+      }],
+    })
+    const check = vi.spyOn(mcpManagementAdapter, 'check').mockResolvedValue({ ok: true,
+      server: { ...server, health: 'healthy', readiness: 'healthy', reason: '连接正常（不代表数据时效）' } })
+    const invoke = vi.spyOn(internalTestAdapter, 'invokeMcp').mockResolvedValue({
+      ok: true, capabilityId: 'console.library.query.v1', serverId: 'library', toolName: 'library_hours_public_query',
+      data: { source: 'official-cache', freshness_note: '日常时间，非假期公告', items: [] }, content: [], generation: 1,
+      fetchedAt: '2026-09-04T11:00:00Z',
+    })
+    const wrapper = render()
+    await flushPromises()
+    expect(wrapper.get('.mcp-server-grid').text()).toContain('尚未检测连接')
+    expect(wrapper.find('.mcp-server-grid span.available').exists()).toBe(false)
+    await wrapper.get('.mcp-check-button').trigger('click')
+    await flushPromises()
+    expect(check).toHaveBeenCalledExactlyOnceWith('library')
+    await wrapper.get('.mcp-invoke-button').trigger('click')
+    await flushPromises()
+    expect(invoke).toHaveBeenCalledExactlyOnceWith('console.library.query.v1', { query: '' })
+    expect(wrapper.get('.mcp-result').text()).toContain('official-cache')
+    expect(wrapper.get('.mcp-result').text()).toContain('缓存更新时间')
+    expect(wrapper.get('.mcp-result').text()).toContain('日常时间，非假期公告')
   })
 })

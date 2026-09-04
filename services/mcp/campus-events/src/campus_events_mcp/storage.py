@@ -93,10 +93,10 @@ class CampusEventStore:
                 INSERT INTO events(event_id, category, title, url, published_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(event_id) DO UPDATE SET
-                    category=excluded.category,
+                    category=CASE WHEN excluded.category='综合' THEN events.category ELSE excluded.category END,
                     title=excluded.title,
                     url=excluded.url,
-                    published_at=excluded.published_at,
+                    published_at=COALESCE(excluded.published_at, events.published_at),
                     updated_at=excluded.updated_at
                 """,
                 (item.event_id, item.category, item.title, item.url, item.published_at, now),
@@ -190,6 +190,7 @@ class CampusEventStore:
 
     def stats(self) -> dict[str, Any]:
         with self.connect() as conn:
+            observed = conn.execute("SELECT MAX(updated_at) FROM events").fetchone()[0]
             total = conn.execute("SELECT COUNT(*) AS c FROM events").fetchone()["c"]
             details = conn.execute("SELECT COUNT(*) AS c FROM events WHERE content_text != ''").fetchone()["c"]
             categories = conn.execute(
@@ -200,6 +201,7 @@ class CampusEventStore:
             ).fetchone()["t"]
         return {
             "events_known": total,
+            "last_fetched_at": observed,
             "events_detail_fetched": details,
             "categories": [dict(row) for row in categories],
             "latest_at": latest,

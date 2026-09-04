@@ -27,6 +27,7 @@ import {
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { internalTestAdapter } from '../services/internal-test'
+import { mcpManagementAdapter } from '../services/mcp-management'
 import type {
   InternalTestAdaptiveSetting,
   InternalTestAgentCatalog,
@@ -147,6 +148,8 @@ const runtimeDetail = computed(() => props.runtimeError || props.runtimeWarning 
 const policyEditable = computed(() => Boolean(props.policy) && !props.policyLoading && !props.policySaving)
 const mcpCatalog = ref<McpConsoleCatalog>()
 const mcpCatalogLoading = ref(false)
+const mcpChecking = ref<string[]>([])
+const mcpCheckError = ref('')
 const mcpCatalogError = ref('')
 const selectedMcpCapabilityId = ref('')
 const mcpArguments = ref<Record<string, unknown>>({})
@@ -509,11 +512,27 @@ async function loadMcpCatalog(force = false): Promise<void> {
     const selected = mcpCatalog.value.capabilities.find(item => item.id === selectedMcpCapabilityId.value)
       ?? mcpCatalog.value.capabilities.find(item => item.available)
       ?? mcpCatalog.value.capabilities[0]
-    if (selected) selectMcpCapability(selected.id)
+    if (selected && selected.id !== selectedMcpCapabilityId.value) selectMcpCapability(selected.id)
   } catch (error) {
     mcpCatalogError.value = error instanceof Error ? error.message : 'MCP Catalog 加载失败'
   } finally {
     mcpCatalogLoading.value = false
+  }
+}
+
+async function checkMcp(serverId: string): Promise<void> {
+  if (mcpChecking.value.includes(serverId)) return
+  mcpChecking.value.push(serverId)
+  mcpCheckError.value = ''
+  try {
+    const result = await mcpManagementAdapter.check(serverId)
+    if (mcpCatalog.value) {
+      mcpCatalog.value.servers = mcpCatalog.value.servers.map(server => server.id === serverId ? result.server : server)
+    }
+  } catch (error) {
+    mcpCheckError.value = error instanceof Error ? error.message : 'MCP 连接检测失败'
+  } finally {
+    mcpChecking.value = mcpChecking.value.filter(id => id !== serverId)
   }
 }
 
@@ -534,11 +553,19 @@ async function invokeMcp(): Promise<void> {
     mcpInvocationError.value = error instanceof Error ? error.message : 'MCP 调用失败'
   } finally {
     mcpInvoking.value = false
+    void loadMcpCatalog(true)
   }
 }
 
 function invocationText(value: unknown): string {
   return JSON.stringify(value, null, 2)
+}
+
+function resultMetadata(name: string): string {
+  const data = mcpInvocation.value?.data
+  if (!data || typeof data !== 'object') return ''
+  const value = (data as Record<string, unknown>)[name]
+  return typeof value === 'string' ? value : ''
 }
 
 function send(): void {
@@ -1086,13 +1113,19 @@ watch(
           <div v-if="mcpCatalogLoading && !mcpCatalog" class="settings-state"><RefreshCw :size="15" class="spinning" />正在读取 MCP Catalog</div>
           <div v-else-if="mcpCatalogError" class="settings-state settings-state--error"><Unplug :size="15" />{{ mcpCatalogError }}</div>
           <template v-else-if="mcpCatalog">
+            <p class="mcp-description">连接检测仅验证协议和工具发现；数据来源与缓存时间请查看调用结果。</p>
+            <div v-if="mcpCheckError" class="settings-state settings-state--error">{{ mcpCheckError }}</div>
             <div class="mcp-server-grid">
               <article v-for="server in mcpCatalog.servers" :key="server.id" :class="{ unavailable: !server.available }">
                 <header><strong>{{ server.displayName }}</strong><small>{{ server.id }}</small></header>
-                <span :class="server.available ? 'available' : 'unavailable'">
-                  {{ server.available ? '可调用' : server.reason || '不可用' }}
+                <span :class="server.readiness === 'healthy' ? 'available' : server.readiness === 'error' ? 'unavailable' : ''">
+                  {{ server.reason || '尚未检测连接' }}
                 </span>
-                <p>{{ server.capabilityCount }} 项能力 · {{ server.health }}</p>
+                <p>{{ server.capabilityCount }} 项能力</p>
+                <p v-if="server.checkedAt">检测于 {{ new Date(server.checkedAt).toLocaleString() }}</p>
+                <button type="button" class="mcp-check-button" :aria-label="`检测 ${server.displayName} 连接`" :disabled="!server.enabled || server.authentication === 'missing_secret' || mcpChecking.includes(server.id)" @click="checkMcp(server.id)">
+                  {{ mcpChecking.includes(server.id) ? '检测中…' : '检测连接' }}
+                </button>
               </article>
             </div>
 
@@ -1164,7 +1197,9 @@ watch(
                   <span>{{ mcpInvocation.ok ? '调用成功' : '上游返回错误' }} · generation {{ mcpInvocation.generation }}</span>
                   <a v-if="mcpInvocation.sourceUrl" :href="mcpInvocation.sourceUrl" target="_blank" rel="noreferrer" title="打开来源"><ExternalLink :size="13" /></a>
                 </header>
-                <small v-if="mcpInvocation.fetchedAt">{{ mcpInvocation.fetchedAt }}</small>
+                <small>数据来源：{{ resultMetadata('source') || '参见结果' }}</small>
+                <small>缓存更新时间：{{ mcpInvocation.fetchedAt || '未提供（不能视为实时数据）' }}</small>
+                <small v-if="resultMetadata('freshness_note')">{{ resultMetadata('freshness_note') }}</small>
                 <pre>{{ invocationText(mcpInvocation.data ?? mcpInvocation.content) }}</pre>
               </div>
             </div>

@@ -1,9 +1,11 @@
 import type {
+  McpServerCheckResult,
   McpServerInstallRequest,
   McpServerInstallResult,
 } from '../types/mcp-management'
 
 export interface McpManagementAdapter {
+  check(serverId: string): Promise<McpServerCheckResult>
   install(request: McpServerInstallRequest): Promise<McpServerInstallResult>
 }
 
@@ -12,6 +14,10 @@ export class HttpMcpManagementAdapter implements McpManagementAdapter {
 
   install(request: McpServerInstallRequest): Promise<McpServerInstallResult> {
     return this.request('/api/mcp/install', request)
+  }
+
+  check(serverId: string): Promise<McpServerCheckResult> {
+    return this.request('/api/mcp/check', { serverId })
   }
 
   private async request<T>(path: string, payload: object): Promise<T> {

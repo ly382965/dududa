@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:73fa6a5da573cf7c3467bd5f28df7ecab82aa5f66307a9906138cd7947762f8b",
+  "capability_id": "console.library.query.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.library.library_hours_public_query.input:v1:sha-256:de8a218d186d95a7eb904dccb3890992487d72d19453a5803162dcd52893f722",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.library.library_hours_public_query.output:v1:sha-256:56d64c7fa8627ff57cc12f4ee8535daa221430eff49e82acc9e9c66781675b89",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:dc818529bf649ea00863b0d8e125b640ae3e67238e87a3da0ffb275ce7dc477f",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "library",
+  "tool_name": "library_hours_public_query"
+}

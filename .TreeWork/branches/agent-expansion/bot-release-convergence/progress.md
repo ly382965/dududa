@@ -18,6 +18,10 @@ Last sync: unix:1788520580
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Implemented five console-only public MCP bindings, explicit connection checks and truthful statuses/source freshness. Public caches initialized outside Git: campus65 / college36 / library28 / programs326 / curated108. Deployment/query-through-live-console still pending at this candidate checkpoint.
+- Focused checks passed: Console14; frontend100/server107 plus type/build; source/repository18; model adapter21; combined model/key/client48; generated catalog loads10servers/26capabilities. Broad production composition suite still running. No QQ test messages or unrelated service changes.
+- Read-only diagnosis confirmed the operator-selected group was already enabled (mode on). Eight recent proactive attempts failed with model_route_not_found; no group enablement change was made. User approved DeepSeek migration and enabling Sonnet; pool changes saved after private backup, but Runtime not switched while retention approval is pending.
+
 - The proactive card now has a group-only accessible switch using existing `auto`/`off` plugin policy and explicit Save Configuration. Scope identity, rate settings and other plugins are preserved; no real group was enabled. Missing/loading/saving policy and private chats disable the switch. The active badge now also respects the conversation Agent master switch.
 - This UI change passed 99 frontend tests (including 22 focused component/workspace checks), typecheck, build and the 1,241-file repository safety scan. It does not resolve or retest the prior model-upstream failure.
 - Web type/build passed; frontend 90, server 107, E2E 7 and affected Python 17 tests passed. Production composition/source guards passed 36 tests after provisioning the isolated MCP worker. Final repository safety scan passed 1,240 files. Full Ruff on old plugin files has existing TRY004/BLE001/SIM117 findings; newly introduced import/status-boundary findings were addressed.

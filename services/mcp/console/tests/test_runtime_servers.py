@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from dududa.mcp import ConfigMcpServerRegistry, McpHealthStatus
 from dududa_mcp_console.runtime_servers import RuntimeServerOverlay
@@ -181,6 +182,9 @@ class RuntimeInstallTests(unittest.IsolatedAsyncioTestCase):
 class _RouteRuntime:
     def __init__(self) -> None:
         self.installed: dict[str, object] | None = None
+
+    async def check_server(self, request):
+        return {"ok": True, "server": {"id": request["serverId"]}}
 
     async def runtime_servers(self):
         return {"schemaVersion": 1, "servers": [{"id": "repository-server"}]}

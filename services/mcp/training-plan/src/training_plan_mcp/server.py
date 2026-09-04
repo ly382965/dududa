@@ -82,7 +82,7 @@ def create_mcp(config: AppConfig) -> FastMCP:
         items = [_public_item(item) for item in values[:limit]]
         return {
             "schema_version": 1,
-            "ok": True,
+            "ok": bool(store.list_years()),
             "query": query,
             "year": year,
             "college": college or None,
@@ -90,6 +90,8 @@ def create_mcp(config: AppConfig) -> FastMCP:
             "returned": len(items),
             "source": "ustc-training-program-overview-cache",
             "source_url": source_url,
+            "fetched_at": store.stats()["last_fetched_at"],
+            "freshness_note": "官方分年份本科专业设置一览；不是个人培养计划，停招状态未逐项核验，请查原表。",
         }
 
     return mcp

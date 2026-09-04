@@ -72,13 +72,15 @@ def create_mcp(config: AppConfig) -> FastMCP:
         items = [_public_item(item) for item in values[:limit]]
         return {
             "schema_version": 1,
-            "ok": True,
+            "ok": store.stats()["hours_rows"] > 0,
             "query": query,
             "campus": campus or None,
             "items": items,
             "returned": len(items),
             "source": "ustc-library-opening-hours-cache",
             "source_url": source_url,
+            "fetched_at": store.stats()["last_fetched_at"],
+            "freshness_note": "官网日常开放时间，不代表假期、考试周或临时调整；请以最新专项公告为准。",
         }
 
     return mcp

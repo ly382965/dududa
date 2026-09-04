@@ -1336,6 +1336,14 @@ class _MutableClock:
 
 
 class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
+    def test_provider_managed_retention_requires_explicit_approval(self) -> None:
+        values = self._runtime_config()
+        specs = json.loads(values["runtime_models_json"])
+        specs[0].update(retention_mode="provider_managed", data_residency="CN")
+        values["runtime_models_json"] = json.dumps(specs)
+        with self.assertRaisesRegex(ValueError, "explicit_operator_approval"):
+            composition.build_production_runtime(_Plugin(), values)
+
     def test_all_academic_read_schemas_are_plannable(self) -> None:
         for path in sorted(
             (ROOT / "configs" / "capabilities" / "definitions").glob(

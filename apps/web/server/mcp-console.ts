@@ -3,11 +3,13 @@ import type {
   McpConsoleInvocation,
 } from '../src/types/internal-test'
 import type {
+  McpServerCheckResult,
   McpServerInstallRequest,
   McpServerInstallResult,
 } from '../src/types/mcp-management'
 
 export interface McpConsoleClient {
+  checkServer(serverId: string): Promise<McpServerCheckResult>
   catalog(): Promise<McpConsoleCatalog>
   invoke(capabilityId: string, argumentsValue: Record<string, unknown>): Promise<McpConsoleInvocation>
   installServer(definition: McpServerInstallRequest): Promise<McpServerInstallResult>
@@ -34,6 +36,10 @@ export class UnavailableMcpConsoleClient implements McpConsoleClient {
   async installServer(): Promise<McpServerInstallResult> {
     throw new McpConsoleClientError(this.reason, 503)
   }
+
+  async checkServer(): Promise<McpServerCheckResult> {
+    throw new McpConsoleClientError(this.reason, 503)
+  }
 }
 
 export class HttpMcpConsoleClient implements McpConsoleClient {
@@ -56,6 +62,10 @@ export class HttpMcpConsoleClient implements McpConsoleClient {
 
   installServer(definition: McpServerInstallRequest): Promise<McpServerInstallResult> {
     return this.request('/v1/servers/install', definition)
+  }
+
+  checkServer(serverId: string): Promise<McpServerCheckResult> {
+    return this.request('/v1/servers/check', { serverId })
   }
 
   private async request<T>(path: string, payload?: object): Promise<T> {

@@ -645,6 +645,19 @@ export function createDududaServer(options: DududaServerOptions) {
         json(response, 200, await mcpConsole.invoke(body.capabilityId, body.arguments as Record<string, unknown>))
         return
       }
+      if (method === 'POST' && url.pathname === '/api/mcp/check') {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源超级管理员页面检测 MCP' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        if (Object.keys(body).length !== 1 || typeof body.serverId !== 'string' || !body.serverId.trim()) {
+          json(response, 400, { error: 'MCP 检测只接受已登记的 Server ID' })
+          return
+        }
+        json(response, 200, await mcpConsole.checkServer(body.serverId))
+        return
+      }
       if (method === 'POST' && url.pathname === '/api/mcp/install') {
         if (!sameOrigin(request, publicOrigin)) {
           json(response, 403, { error: '只允许同源超级管理员页面接入 MCP Server' })

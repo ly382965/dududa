@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:41bca70dcbe92d5ae88ab86d0b0ff0609b1793cc24dae5def6276c6de722cb6c",
+  "capability_id": "console.training-plan.query.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.training-plan.training_programs_public_query.input:v1:sha-256:1101bba69115563344d82692bedf8d5278066aae031e773d73cbd3c8a31a71f8",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.training-plan.training_programs_public_query.output:v1:sha-256:219d885dcc1c4e641dde32770e2ea3d01766d7490354c26b37901c34d622b618",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:baa980b995ef4998ff5855c6c5de4f6edd6ff543249eeb0207d2b797aec0382b",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "training-plan",
+  "tool_name": "training_programs_public_query"
+}

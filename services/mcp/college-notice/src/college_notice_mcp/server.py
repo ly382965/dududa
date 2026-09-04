@@ -60,7 +60,7 @@ def _public_item(value: dict[str, Any]) -> dict[str, Any]:
         "summary": _bounded_text(value.get("content_text")),
         "source_url": _source_url(value.get("url")),
         "attachments": attachments,
-        "observed_at": _bounded_text(value.get("fetched_at"), 64),
+        "observed_at": _bounded_text(value.get("fetched_at") or value.get("updated_at"), 64),
     }
 
 
@@ -99,12 +99,15 @@ def create_mcp(config: AppConfig) -> FastMCP:
         items = [_public_item(item) for item in values]
         return {
             "schema_version": 1,
-            "ok": True,
+            "ok": store.stats()["notices_known"] > 0,
             "query": query,
             "college_key": college_key or None,
             "items": items,
             "returned": len(items),
             "source": "ustc-college-notices-cache",
+            "source_url": None,
+            "fetched_at": store.stats()["last_fetched_at"],
+            "freshness_note": "数学、计算机、物理学院公开列表缓存；各条目附官网链接，非全校所有学院。",
         }
 
     return mcp

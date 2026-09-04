@@ -188,6 +188,7 @@ describe('internal-test agent routes', () => {
       message: 'MCP Server 已登记',
     }))
     const mcpConsole: McpConsoleClient = {
+      checkServer: vi.fn(async () => ({ ok: true, server: { id: 'ustc-academic', displayName: '教务处', enabled: true, available: true, authentication: 'not_required' as const, health: 'healthy' as const, capabilityCount: 6 } })),
       catalog: async () => ({
         schemaVersion: 1,
         available: true,
@@ -358,5 +359,23 @@ describe('internal-test agent routes', () => {
       capabilityGranted: false,
     })
     expect(installMcp).toHaveBeenCalledWith(installDefinition)
+    for (const origin of [undefined, 'https://wrong.example']) {
+      const check = await fetch(`${baseUrl}/api/mcp/check`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(origin ? { Origin: origin } : {}) },
+        body: JSON.stringify({ serverId: 'ustc-academic' }),
+      })
+      expect(check.status).toBe(403)
+    }
+    const invalidCheck = await fetch(`${baseUrl}/api/mcp/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ serverId: 'ustc-academic', url: 'https://wrong.example' }),
+    })
+    expect(invalidCheck.status).toBe(400)
+    const check = await fetch(`${baseUrl}/api/mcp/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ serverId: 'ustc-academic' }),
+    })
+    expect(check.status).toBe(200)
+    expect(mcpConsole.checkServer).toHaveBeenCalledExactlyOnceWith('ustc-academic')
   })
 })

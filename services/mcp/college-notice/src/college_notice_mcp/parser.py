@@ -71,6 +71,9 @@ def parse_notice_list(html: str, college: College) -> list[CollegeNoticeItem]:
         notice_id = notice_id_from_url(full_url)
         if notice_id is None:
             continue
+        # Physics lists include unrelated sidebar articles; only c3584 is notices.
+        if college.key == "physics" and not re.search(r"/c_?3584a_?\d+/", full_url):
+            continue
         title = _clean_title(anchor.get_text(" ", strip=True))
         if not title:
             continue
@@ -94,8 +97,8 @@ def parse_notice_list(html: str, college: College) -> list[CollegeNoticeItem]:
                 published_at=published_at,
             ),
         )
-    # 无发布日期的多为导航/栏目链接，剔除
-    return [item for item in found.values() if item.published_at]
+    # Valid article URLs may be featured without a date. Keep unknown dates unknown.
+    return list(found.values())
 
 
 def parse_notice_detail(

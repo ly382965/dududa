@@ -1,3 +1,10 @@
+import type { McpConsoleServer } from './internal-test'
+
+export interface McpServerCheckResult {
+  ok: boolean
+  server: McpConsoleServer
+}
+
 export type McpTransport = 'stdio' | 'streamable_http'
 export type McpProtocolMode = 'auto' | 'legacy'
 

@@ -37,7 +37,7 @@ class TrainingPlanCrawler:
 
         page = self.fetcher.fetch_overview()
         years, rows = parse_overview(page.text, self.config.base_url, source_hash=page.sha256)
-        if not years:
+        if not years or not rows:
             return {"ok": False, "error": "no_plan_tables_found", "source_url": page.url}
         summary = self.store.replace_all(years, rows, source_hash=page.sha256)
         self._set_meta("overview", {"latest_year": max(y.year for y in years), "sha256": page.sha256})

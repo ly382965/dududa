@@ -126,6 +126,7 @@ const reasoningOptions: Array<{ value: string; label: string }> = [
   { value: 'low', label: '低（low）' },
   { value: 'medium', label: '中（medium）' },
   { value: 'high', label: '高（high）' },
+  { value: 'max', label: '最高（max，DeepSeek）' },
 ]
 
 const schedulingOptions: Array<{ value: string; label: string }> = [

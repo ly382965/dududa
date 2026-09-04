@@ -20,6 +20,27 @@
     "default": "",
     "hint": "仅保存验证结论和模型绑定，不包含 API Key、Base URL、QQ 标识或聊天正文。"
   },
+  "runtime_allow_provider_retention": {
+    "description": "允许服务商默认留存（需管理员知情确认）",
+    "type": "bool",
+    "default": false,
+    "hint": "默认拒绝；仅在明确接受所选服务商数据策略后开启，不能作为零留存证据。"
+  },
+  "runtime_direct_output_tokens": {
+    "description": "回答总生成预算（包含推理）",
+    "type": "int",
+    "default": 2048
+  },
+  "runtime_perception_output_tokens": {
+    "description": "感知总生成预算（包含推理）",
+    "type": "int",
+    "default": 1536
+  },
+  "runtime_reasoning_output_reserve_tokens": {
+    "description": "短中回答额外推理预算（不增加可见回答长度）",
+    "type": "int",
+    "default": 0
+  },
   "runtime_health_probe_enabled": {
     "description": "启用生产 Runtime 模型健康主动刷新",
     "type": "bool",

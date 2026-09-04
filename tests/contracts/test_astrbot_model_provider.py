@@ -28,6 +28,7 @@ from astrbot_plugin_dududa_core.adapters.model import (
     AstrBotPromptArtifact,
     AstrBotProviderBindingEvidence,
     astrbot_prompt_artifact_digest,
+    reasoning_effort_for_model,
 )
 from astrbot_plugin_dududa_core.adapters.model_codec import (
     JsonSchemaDocumentRegistry,
@@ -353,6 +354,26 @@ class AstrBotModelProviderContractTests(
             self.assertEqual(raw.calls[-1]["reasoning_effort"], expected_effort)
 
         self.assertEqual(len(raw.calls), 4)
+
+    def test_deepseek_effort_mapping_preserves_gpt_maximum(self) -> None:
+        for model in ("deepseek-v4-flash", "deepseek-v4-pro"):
+            self.assertEqual(reasoning_effort_for_model(model, ReasoningDepth.LIGHT), "low")
+            self.assertEqual(reasoning_effort_for_model(model, ReasoningDepth.BALANCED), "high")
+            self.assertEqual(reasoning_effort_for_model(model, ReasoningDepth.DEEP), "high")
+            self.assertEqual(reasoning_effort_for_model(model, ReasoningDepth.MAXIMUM), "max")
+            self.assertIsNone(reasoning_effort_for_model(model, ReasoningDepth.OFF))
+        self.assertEqual(reasoning_effort_for_model("gpt-5.6-sol", ReasoningDepth.MAXIMUM), "xhigh")
+
+    async def test_deepseek_health_uses_bounded_non_thinking_probe(self) -> None:
+        raw = _AstrBotProvider()
+        descriptor = compatible_descriptor()
+        endpoint = replace(descriptor.endpoints[0], model_id="deepseek-v4-pro", descriptor_digest=DigestString("pending"))
+        endpoint = replace(endpoint, descriptor_digest=model_endpoint_descriptor_digest(endpoint))
+        adapter, _ = _adapter(raw, descriptor=replace(descriptor, endpoints=(endpoint,)))
+        await adapter.probe_health(timeout_seconds=2, evidence_ttl=timedelta(minutes=5))
+        self.assertEqual(raw.calls[0]["thinking"], {"type": "disabled"})
+        self.assertEqual(raw.calls[0]["max_tokens"], 256)
+        self.assertEqual(raw.calls[0]["request_max_retries"], 0)
 
     async def test_unknown_outcome_creates_idempotency_tombstone(self) -> None:
         raw = _StubbornThenSuccessProvider()
