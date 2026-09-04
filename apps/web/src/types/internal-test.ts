@@ -72,6 +72,7 @@ export interface InternalTestCatalogPlugin {
 }
 
 export type McpConsoleAuthentication = 'not_required' | 'configured' | 'missing_secret'
+export type McpReadiness = 'disabled' | 'unmapped' | 'missing_secret' | 'unverified' | 'healthy' | 'error' | 'stale'
 
 export interface McpConsoleServer {
   id: string
@@ -82,6 +83,8 @@ export interface McpConsoleServer {
   health: 'initializing' | 'healthy' | 'degraded' | 'stale' | 'unavailable' | 'circuit_open' | 'closed'
   reason?: string
   capabilityCount: number
+  readiness?: McpReadiness
+  checkedAt?: string | null
 }
 
 export interface McpConsoleCapability {

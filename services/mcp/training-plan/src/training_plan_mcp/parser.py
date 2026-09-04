@@ -9,8 +9,8 @@ from .models import PlanRow, PlanYear
 
 TABLE_RE = re.compile(r"table2|plan[-_]?table")
 YEAR_RE = re.compile(r"(\d{4})")
-CODE_RE = re.compile(r"^\s*(\d{5,7}[A-Z]*)\s*(?:\((\S+?)\))?\s*$")
-COLLEGE_CODE_RE = re.compile(r"^(.*?)\s*\((\d+)\)\s*$")
+CODE_RE = re.compile(r"^\s*(\d{5,7}[A-Z]*)\s*(?:[（(](\S+?)[）)])?\s*$")
+COLLEGE_CODE_RE = re.compile(r"^(.*?)\s*[（(](\d+)[）)]\s*$")
 DISCONTINUED_FOOTNOTE_RE = re.compile(r"已停止招生本科专业[：:]\s*(\d+)")
 
 
@@ -36,9 +36,7 @@ def parse_overview(html: str, base_url: str, source_hash: str | None = None) -> 
             if match:
                 years[-1].discontinued_count = int(match.group(1))
 
-        tbody = table.find("tbody")
-        if tbody is None:
-            continue
+        tbody = table.find("tbody") or table
         rows.extend(_rows_from_grid(*_expand_grid(tbody), year))
 
     return years, rows

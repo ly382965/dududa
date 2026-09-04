@@ -236,6 +236,16 @@ class ManagedUnifiedMcpClientTests(unittest.IsolatedAsyncioTestCase):
         health = await client.health("fake-a", call=caller())
         self.assertEqual(health.status.value, "closed")
 
+    async def test_closed_transport_is_immediately_unavailable(self) -> None:
+        client, _, factory, _, _ = self.fixture((FakeMcpSessionPlan(tools=(tool_descriptor(),)),))
+        await client.discover("fake-a", call=caller())
+        await factory.sessions[0].close()
+        health = await client.health("fake-a", call=caller())
+        self.assertEqual(health.status.value, "unavailable")
+        self.assertEqual(health.reason_codes, ("transport_session_closed",))
+        self.assertEqual(len(factory.open_calls), 1)
+        await client.close()
+
     async def test_invalid_discovery_closes_unpublished_session(self) -> None:
         plan = FakeMcpSessionPlan(tools=(tool_descriptor("other"),))
         client, _, factory, _, _ = self.fixture((plan,))

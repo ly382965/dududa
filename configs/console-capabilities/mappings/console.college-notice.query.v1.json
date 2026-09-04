@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:afaefe4c1c9c6d6eb87bf1e60929d2c5ba044d513f3638a25e3780bc423c38c5",
+  "capability_id": "console.college-notice.query.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.college-notice.college_notices_public_query.input:v1:sha-256:4e422abb36b92ce16a3cad600d0b144bd3b0293a05063a2e5c2fe2002897e4d2",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.college-notice.college_notices_public_query.output:v1:sha-256:e361ac8cc27153cbb96d2365b5b0bd4a75a32dd08a2f9875534b204faac202ab",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:bf1a2eca684bd7eb393d675cd74526f519aa5bd7b603e6b3e2653d0d00e35744",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "college-notice",
+  "tool_name": "college_notices_public_query"
+}

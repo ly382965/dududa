@@ -33,6 +33,11 @@ from jsonschema.validators import validator_for
 from .runtime_servers import RuntimeServerOverlay
 
 SERVER_NAMES = {
+    "campus-events": "校园公告",
+    "college-notice": "学院通知",
+    "library": "图书馆开放时间",
+    "local-recs": "校园生活参考",
+    "training-plan": "本科专业设置",
     "icourse": "评课社区",
     "notifai": "校园通知",
     "ustc-academic": "教务处",
@@ -104,6 +109,7 @@ class McpConsoleRuntime:
         mappings_directory: Path,
         worker_python: Path,
         overlay_directory: Path,
+        console_catalog_directory: Path | None = None,
     ) -> None:
         self._server_overlay = RuntimeServerOverlay(
             registry_directory,
@@ -129,6 +135,30 @@ class McpConsoleRuntime:
             (item.schema_ref.schema_id, item.schema_ref.schema_version): item
             for item in self._catalog.schema_documents
         }
+        if console_catalog_directory is not None:
+            extra = load_capability_catalog_snapshot(
+                console_catalog_directory / "definitions",
+                console_catalog_directory / "mappings",
+                snapshot_id=f"mcp-console-extra:{uuid.uuid4().hex}",
+                acquired_at=datetime.now(timezone.utc),
+            )
+            if {item.capability_id for item in extra.mcp_mappings} & {item.capability_id for item in self._catalog.mcp_mappings}:
+                raise ValueError("duplicate_console_mapping")
+            if {item.provider.provider_id for item in extra.definitions} & {item.provider.provider_id for item in self._catalog.definitions}:
+                raise ValueError("duplicate_console_provider")
+            for item in extra.definitions:
+                if item.capability_id in self._definitions:
+                    raise ValueError("duplicate_console_capability")
+                self._definitions[item.capability_id] = item
+            for item in extra.mcp_mappings:
+                if item.enabled:
+                    self._mappings[item.capability_id] = item
+            for item in extra.schema_documents:
+                key = (item.schema_ref.schema_id, item.schema_ref.schema_version)
+                if key in self._schemas:
+                    raise ValueError("duplicate_console_schema")
+                self._schemas[key] = item
+        self._checks: dict[str, dict[str, Any]] = {}
         self._install_lock = asyncio.Lock()
 
     async def close(self) -> None:
@@ -155,6 +185,7 @@ class McpConsoleRuntime:
                     "health": health.status.value,
                     "reason": _missing_secret_reason(definition) if missing else None,
                     "capabilityCount": sum(1 for item in self._mappings.values() if item.server_id == server_id),
+                    **self._readiness(definition, health, missing),
                 }
             )
         capabilities = []
@@ -182,6 +213,46 @@ class McpConsoleRuntime:
                 }
             )
         return {"schemaVersion": 1, "servers": servers, "capabilities": capabilities}
+
+    def _readiness(self, definition, health, missing) -> dict[str, Any]:
+        count = sum(1 for item in self._mappings.values() if item.server_id == definition.server_id)
+        check = getattr(self, "_checks", {}).get(definition.server_id, {})
+        status = health.status.value
+        if not definition.enabled:
+            readiness, reason = "disabled", "未启用"
+        elif missing:
+            readiness, reason = "missing_secret", _missing_secret_reason(definition)
+        elif check.get("ok") is False or status in {"unavailable", "circuit_open", "closed"}:
+            readiness, reason = "error", "连接检测失败，请检查服务或重新检测"
+        elif not count:
+            readiness, reason = "unmapped", "尚未绑定工作台能力"
+        elif status == "healthy":
+            readiness, reason = "healthy", "连接正常（不代表数据时效）"
+        elif status == "stale":
+            readiness, reason = "stale", "连接检测已过期，请重新检测"
+        else:
+            readiness, reason = "unverified", "尚未检测连接"
+        return {"readiness": readiness, "reason": reason, "checkedAt": check.get("checkedAt")}
+
+    async def check_server(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        if set(request) != {"serverId"} or not isinstance(request.get("serverId"), str):
+            raise ValueError("invalid_mcp_check_request")
+        server_id = request["serverId"]
+        definition = next((item for item in self._registry.acquire_snapshot().definitions if item.server_id == server_id), None)
+        if definition is None:
+            raise ValueError("unknown_mcp_server_id")
+        if not definition.enabled or any(not self._secrets.is_configured(ref) for ref in definition.secret_refs):
+            return {"ok": False, "server": await self._runtime_server_projection(definition)}
+        try:
+            schema = await asyncio.wait_for(self._client.discover(
+                server_id, refresh=True, call=self._service_call("connection-check"),
+            ), timeout=20)
+            required = {item.tool_name for item in self._mappings.values() if item.server_id == server_id}
+            ok = required.issubset({item.name for item in schema.tools})
+        except Exception:  # Connection errors can contain endpoints or credentials; never return them.
+            ok = False
+        self._checks[server_id] = {"ok": ok, "checkedAt": datetime.now(timezone.utc).isoformat()}
+        return {"ok": ok, "server": await self._runtime_server_projection(definition)}
 
     async def runtime_servers(self) -> dict[str, Any]:
         snapshot = self._registry.acquire_snapshot()
@@ -303,12 +374,13 @@ class McpConsoleRuntime:
                 1 for item in self._mappings.values() if item.server_id == definition.server_id
             ),
             "capabilityGranted": False,
+            **self._readiness(definition, health, missing),
         }
 
     async def invoke(self, capability_id: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
         definition = self._definitions.get(capability_id)
         mapping = self._mappings.get(capability_id)
-        if definition is None or mapping is None:
+        if definition is None or mapping is None or not definition.enabled:
             raise ValueError("unknown_capability_id")
         if mapping.semantics is not McpOperationSemantics.READ_ONLY:
             raise ValueError("console_only_supports_read_only_capabilities")
@@ -360,6 +432,7 @@ class McpConsoleRuntime:
             semantics=mapping.semantics,
         )
         result = await self._client.call_tool(mapping.server_id, mapping.tool_name, payload, call=call)
+        self._checks[mapping.server_id] = {"ok": True, "checkedAt": datetime.now(timezone.utc).isoformat()}
         data = _plain(result.structured_content)
         if data is not None:
             output_document = self._schema(definition.output_schema)
@@ -374,7 +447,7 @@ class McpConsoleRuntime:
         source_url = data.get("source_url") if isinstance(data, dict) else None
         fetched = data.get("fetched_at") if isinstance(data, dict) else None
         return {
-            "ok": not result.is_error,
+            "ok": not result.is_error and (not isinstance(data, dict) or data.get("ok", True) is not False),
             "capabilityId": capability_id,
             "serverId": mapping.server_id,
             "toolName": mapping.tool_name,
@@ -481,6 +554,11 @@ async def _handle(runtime: McpConsoleRuntime, reader: asyncio.StreamReader, writ
             if not isinstance(value, dict):
                 raise ValueError("invalid_mcp_server_install_request")
             await _response(writer, 200, await runtime.install_server(value))
+        elif method == "POST" and path == "/v1/servers/check":
+            value = json.loads(body or b"{}")
+            if not isinstance(value, dict):
+                raise ValueError("invalid_mcp_check_request")
+            await _response(writer, 200, await runtime.check_server(value))
         elif method == "POST" and path == "/v1/invoke":
             value = json.loads(body or b"{}")
             if not isinstance(value, dict) or not isinstance(value.get("capabilityId"), str) or not isinstance(value.get("arguments", {}), dict):
@@ -492,6 +570,7 @@ async def _handle(runtime: McpConsoleRuntime, reader: asyncio.StreamReader, writ
             "/v1/invoke",
             "/v1/servers/runtime",
             "/v1/servers/install",
+            "/v1/servers/check",
         }:
             await _response(writer, 405, {"error": "method_not_allowed"})
         else:
@@ -514,6 +593,7 @@ async def serve(args: argparse.Namespace) -> None:
         args.mappings,
         args.worker_python,
         args.runtime_overlay,
+        args.console_catalog,
     )
     server = await asyncio.start_server(lambda reader, writer: _handle(runtime, reader, writer), args.host, args.port, limit=MAX_BODY_BYTES + 32_768)
     stop = asyncio.Event()
@@ -545,6 +625,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--definitions", type=Path, default=Path(os.getenv("DUDUDA_CAPABILITY_DEFINITIONS_DIR", "/opt/dududa/config/capabilities/definitions")))
     parser.add_argument("--mappings", type=Path, default=Path(os.getenv("DUDUDA_CAPABILITY_MAPPINGS_DIR", "/opt/dududa/config/capabilities/mappings")))
     parser.add_argument("--worker-python", type=Path, default=Path(os.getenv("DUDUDA_MCP_WORKER_PYTHON", "/opt/dududa/unified-mcp-worker/.venv/bin/python")))
+    parser.add_argument("--console-catalog", type=Path, default=Path(os.getenv("DUDUDA_MCP_CONSOLE_CATALOG_DIR", "/opt/dududa/config/console-capabilities")))
     return parser.parse_args(argv)
 
 

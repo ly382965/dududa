@@ -7,7 +7,7 @@ diff --git a/astrbot/core/provider/sources/openai_source.py b/astrbot/core/provi
  
 +        # Dududa owns the request-level output and reasoning budgets. Keep this
 +        # list explicit so unrelated plugin kwargs never become Provider input.
-+        for key in ("max_tokens", "reasoning_effort"):
++        for key in ("max_tokens", "reasoning_effort", "thinking"):
 +            if (value := kwargs.get(key)) is not None:
 +                payloads[key] = value
 +

@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 from .models import EventDetail, EventItem
 
 EVENT_ID_RE = re.compile(r"/info/(\d+)/(\d+)\.htm")
-LIST_DATE_RE = re.compile(r"(?:20\d{2}|)(\d{1,2})[-/](\d{1,2})")
+LIST_DATE_RE = re.compile(r"(?<![\d/-])(\d{1,2})[-/](\d{1,2})(?!\d)")
+FULL_DATE_RE = re.compile(r"(?<!\d)(20\d{2})[-/](\d{1,2})[-/](\d{1,2})(?!\d)")
 PUBLISHED_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 TITLE_SUFFIX_RE = re.compile(r"\s*[|｜\-–]\s*中国科学技术大学\s*$")
 ATTACHMENT_EXT_RE = re.compile(r"\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|txt)$", re.IGNORECASE)
@@ -50,6 +51,12 @@ def _clean_title(title: str) -> str:
 def _resolve_date(mm_dd: str | None, today: date | None = None) -> str | None:
     if not mm_dd:
         return None
+    full = FULL_DATE_RE.search(mm_dd)
+    if full:
+        try:
+            return date(*(int(part) for part in full.groups())).isoformat()
+        except ValueError:
+            return None
     match = LIST_DATE_RE.search(mm_dd)
     if not match:
         return None

@@ -190,6 +190,7 @@ class CollegeNoticeStore:
 
     def stats(self) -> dict[str, Any]:
         with self.connect() as conn:
+            observed = conn.execute("SELECT MAX(updated_at) FROM notices").fetchone()[0]
             total = conn.execute("SELECT COUNT(*) AS c FROM notices").fetchone()["c"]
             details = conn.execute("SELECT COUNT(*) AS c FROM notices WHERE content_text != ''").fetchone()["c"]
             colleges = conn.execute(
@@ -200,6 +201,7 @@ class CollegeNoticeStore:
             ).fetchone()["t"]
         return {
             "notices_known": total,
+            "last_fetched_at": observed,
             "notices_detail_fetched": details,
             "colleges": [dict(row) for row in colleges],
             "latest_at": latest,

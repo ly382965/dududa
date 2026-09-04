@@ -21,8 +21,8 @@ DEFAULT_COLLEGES: list[dict[str, Any]] = [
     {
         "key": "cs",
         "name": "计算机科学与技术学院",
-        "list_url": "https://cs.ustc.edu.cn/tzgg_35904/list.htm",
-        "list_path": "/tzgg_35904/list.htm",
+        "list_url": "https://cs.ustc.edu.cn/3054/list.htm",
+        "list_path": "/3054/list.htm",
         "base_url": "https://cs.ustc.edu.cn",
     },
     {

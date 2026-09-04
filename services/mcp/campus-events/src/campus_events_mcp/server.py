@@ -61,7 +61,7 @@ def _public_item(value: dict[str, Any]) -> dict[str, Any]:
         "summary": _bounded_text(value.get("content_text")),
         "source_url": _source_url(value.get("url")),
         "attachments": attachments,
-        "observed_at": _bounded_text(value.get("fetched_at"), 64),
+        "observed_at": _bounded_text(value.get("fetched_at") or value.get("updated_at"), 64),
     }
 
 
@@ -99,12 +99,15 @@ def create_mcp(config: AppConfig) -> FastMCP:
         items = [_public_item(item) for item in values]
         return {
             "schema_version": 1,
-            "ok": True,
+            "ok": store.stats()["events_known"] > 0,
             "query": query,
             "category": category or None,
             "items": items,
             "returned": len(items),
             "source": "ustc-homepage-notices-cache",
+            "source_url": "https://www.ustc.edu.cn/",
+            "fetched_at": store.stats()["last_fetched_at"],
+            "freshness_note": "官方公告列表缓存；未抓取的正文请打开条目来源，发布时间未知时不推测。",
         }
 
     return mcp

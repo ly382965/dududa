@@ -170,7 +170,7 @@ class RepositoryContractTests(unittest.TestCase):
         )
         self.assertEqual(registry["protocol_mode"], "legacy")
 
-    def test_pr10_mcp_servers_are_packaged_default_off_optional_assets(self) -> None:
+    def test_public_mcp_servers_are_console_only_readonly_assets(self) -> None:
         registry_root = ROOT / "configs" / "mcp" / "servers"
         mapping_root = ROOT / "configs" / "capabilities" / "mappings"
         mapped_server_ids = {
@@ -206,7 +206,9 @@ class RepositoryContractTests(unittest.TestCase):
                 (registry_root / f"{server_id}.json").read_text(encoding="utf-8")
             )
             self.assertEqual(definition["server_id"], server_id)
-            self.assertFalse(definition["enabled"])
+            self.assertTrue(definition["enabled"])
+            console_mapping = ROOT / "configs/console-capabilities/mappings" / f"console.{server_id}.query.v1.json"
+            self.assertEqual(json.loads(console_mapping.read_text())["tool_name"], tool_name)
             self.assertEqual(definition["protocol_mode"], "legacy")
             self.assertEqual(definition["allowed_tools"], [tool_name])
             self.assertNotIn(tool_name, definition["denied_tools"])

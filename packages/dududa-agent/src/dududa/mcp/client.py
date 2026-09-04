@@ -315,7 +315,6 @@ class ManagedUnifiedMcpClient:
         async with state.lock:
             self._validate_state_clocks(state, now)
             await self._sync_definition_locked(state, definition)
-            status = state.status
             current = state.current
             if current is not None and current.session.is_closed:
                 current.retired = True
@@ -323,6 +322,7 @@ class ManagedUnifiedMcpClient:
                 state.status = McpHealthStatus.UNAVAILABLE
                 state.reason_codes = ("transport_session_closed",)
                 current = None
+            status = state.status
             schema = current.schema if current is not None else state.last_good_schema
             if status is McpHealthStatus.HEALTHY and (
                 schema is None or schema.expires_at <= now
