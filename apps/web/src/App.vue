@@ -447,6 +447,7 @@ watch(
       :run="workspace.selectedRun.value"
       :catalog="workspace.agentCatalog.value"
       :policy="workspace.agentPolicy.value"
+      :policy-dirty="workspace.agentPolicyDirty.value"
       :policy-loading="workspace.agentPolicyLoading.value"
       :policy-saving="workspace.agentPolicySaving.value"
       :policy-error="workspace.agentPolicyError.value || workspace.agentCatalogError.value"

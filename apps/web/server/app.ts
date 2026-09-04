@@ -462,7 +462,13 @@ export function createDududaServer(options: DududaServerOptions) {
   const publicOrigin = configuredPublicOrigin(options.publicOrigin)
   const controlPlane = options.controlPlane ?? new UnavailableControlPlaneClient()
   const internalTest = options.internalTest ?? createInternalTestGateway(process.env, options.runtimePreview)
-  const agent = options.agent ?? createAgentGateway(process.env, options.runtimePreview)
+  const agent = options.agent ?? createAgentGateway(process.env, options.runtimePreview, async (scope, limit) => {
+    const prefix = `${scope.accountId}:group:`
+    if (!scope.conversationId.startsWith(prefix)) throw new InternalTestError('Runtime 历史仅支持当前账号群聊', 400)
+    const groupId = scope.conversationId.slice(prefix.length)
+    if (!/^\d+$/.test(groupId)) throw new InternalTestError('群聊标识无效', 400)
+    return options.hub.historyPage(scope.accountId, 'group', groupId, { limit })
+  })
   const mcpConsole = options.mcpConsole ?? new UnavailableMcpConsoleClient()
   const pluginManager = options.pluginManager ?? new UnavailablePluginManagerClient()
   const apiKeyPool = options.apiKeyPool

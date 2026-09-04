@@ -11,8 +11,41 @@ Last sync: unix:1788531488
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+Local implementation and focused verification are ready for Lead Review. The
+generated transaction status above does not claim completed integration/release.
+Production Web now obtains scoped recent history from the existing Hub; bounded
+history reaches both model inputs. Explicit terminal outcomes prevent empty/
+non-response previews displaying success. Saved or draft proactive probability
+zero is explained without changing the operator's policy.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- 59 focused Python tests passed, including input construction for both
+  perception and DirectChatModelCall with a recording fake provider.
+- Full Web suite passed: 101 frontend and 114 server tests. Production build
+  passed; after final browser-message sanitization, 17 focused server tests
+  and frontend/server type checks passed again.
+- Playwright passed at 1280px and 390px: visible deferred output, partial context,
+  saved/draft zero-probability explanation, no green success, zero send actions.
+- Lead's long-message finding was repaired: JSON wrapper/escape overhead counts
+  when shortening each record. A long newest message no longer empties the
+  entire window, and coverage includes the truncation evidence.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+Lead must integrate shared-file hunks, run the parent suite with its installed
+MCP worker environment, and perform separately authorized release acceptance.
+This worker did not run live LLM, QQ, real group-history or memory-write checks.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+Shared ownership stayed agreed: app.ts only injects the Hub history provider;
+composition.py only adjusts perception limits; rollout_bridge.py only extends
+preview result/body metadata. API Key apply, main.py and lifecycle pause/drain
+logic remain the sibling worker's scope.
+
+An extra production-composition run encountered the missing isolated
+services/mcp/unified-worker/.venv (65 fixture subtest failures). The sibling
+independently reproduced and resolved this prerequisite; Lead requested using
+the already installed parent environment for the unified run, without a
+duplicate run here. No application workaround was added.

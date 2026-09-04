@@ -14,6 +14,34 @@ afterEach(async () => {
 })
 
 describe('internal-test agent routes', () => {
+  it('fetches server-owned history through the formal authenticated-scope route', async () => {
+    const scope = { accountId: 'qq-100001', conversationId: 'qq-100001:group:200001' }
+    const hub = new OneBotHub({ token: 'synthetic-token' })
+    const history = vi.spyOn(hub, 'historyPage').mockResolvedValue({
+      messages: [{ ...scope, id: 'h1', messageId: 'h1', senderId: '300001', senderName: '合成成员',
+        senderAvatar: '', timestamp: '', timestampMs: Date.parse('2026-09-04T08:00:00Z'),
+        content: '地点图书馆', segments: [], mine: false }], hasMoreBefore: true, hasMoreAfter: false,
+    })
+    const preview = vi.fn(async () => ({ runId: 'preview-scoped', candidate: '地点图书馆', tier: 'haiku' as const,
+      model: 'synthetic', reasoning: 'low' as const, answerProfile: 'short' as const, reasonCodes: ['no_send'],
+      latencyMs: 1, generatedAt: '2026-09-04T09:00:00Z', messagesRead: 2, charactersRead: 9,
+      outputCalls: 0 as const, memoryWrites: 0 as const, toolCalls: 0, capabilityIds: [], outcome: 'response' as const }))
+    const server = createDududaServer({ hub, publicDir: '/not-used', runtimePreview: { preview } })
+    servers.push(server)
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+    const response = await fetch(`${baseUrl}/api/agent/respond`, { method: 'POST',
+      headers: { Origin: baseUrl, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...scope, conversationName: '合成群', conversationType: 'group', prompt: '总结', messages: [{ content: 'forged-history' }] }),
+    })
+    expect(response.status).toBe(200)
+    expect(history).toHaveBeenCalledWith(scope.accountId, 'group', '200001', { limit: expect.any(Number) })
+    expect(preview).toHaveBeenCalledWith(expect.objectContaining({ history: expect.objectContaining({
+      ...scope, messages: [expect.objectContaining({ content: '地点图书馆' })],
+    }) }))
+    expect(JSON.stringify(preview.mock.calls)).not.toContain('forged-history')
+  })
+
   it('serves the formal live status without corpus and protects formal writes', async () => {
     const status = vi.fn(async () => ({
       ready: true, checkedAt: '2026-09-04T00:00:00Z', modelMapping: { haiku: 'test-light' }, controls: {},

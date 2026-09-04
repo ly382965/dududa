@@ -90,6 +90,7 @@ const props = defineProps<{
   run?: AgentRunWithSelection
   catalog?: InternalTestAgentCatalog
   policy?: InternalTestAgentPolicy
+  policyDirty?: boolean
   policyLoading: boolean
   policySaving: boolean
   policyError: string
@@ -750,7 +751,7 @@ watch(
       </section>
 
       <footer class="agent-composer">
-        <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>最多提交 {{ contextMessages }} 条历史 · Runtime 按本轮预算截取</span></div>
+        <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>服务端最多读取 {{ contextMessages }} 条历史 · 仅最近窗口，Runtime 按预算截取</span></div>
         <textarea
           v-model="prompt"
           rows="3"
@@ -801,7 +802,7 @@ watch(
             <h3>{{ run.id }}</h3>
           </div>
           <span class="run-status" :class="`run-status--${run.status}`">
-            <span />{{ run.status === 'waiting_approval' ? '等待审核' : run.status === 'running' ? '运行中' : '已完成' }}
+            <span />{{ run.status === 'waiting_approval' ? '等待审核' : run.status === 'running' ? '运行中' : run.status === 'warning' ? '未产生成功回答' : run.status === 'error' ? '处理失败' : '已完成' }}
           </span>
         </header>
 
@@ -940,6 +941,9 @@ watch(
                 <span />
               </span>
             </label>
+            <p v-if="proactivePolicyEnabled && policy?.proactiveTalk.probabilityPercent === 0" role="status" class="proactive-zero-note">
+              {{ policyDirty ? '未保存草稿：触发概率为 0，保存后不会自动搭话；当前生效值仍以已保存配置为准。' : '触发概率为 0，不会自动搭话；服务连接与其他回复功能不受影响。' }}
+            </p>
             <dl>
               <div><dt>管理员期望</dt><dd>{{ proactivePolicyEnabled ? '启用 2.0 自动搭话' : '关闭自动搭话' }}</dd></div>
               <div><dt>当前阶段</dt><dd>{{ runtimeControls.proactiveGroupParticipation.stage === 'probe_shadow' ? 'Probe Shadow' : 'Proactive Canary' }}</dd></div>
@@ -1923,6 +1927,16 @@ textarea:disabled {
   background: var(--success-soft);
 }
 
+.run-status--warning,
+.step--warning {
+  color: #946318;
+}
+
+.run-status--error,
+.step--error {
+  color: #b34242;
+}
+
 .run-status--completed > span {
   background: var(--success);
 }
@@ -2346,6 +2360,17 @@ textarea:disabled {
   color: var(--text-muted);
   font-size: 7px;
   line-height: 1.45;
+}
+
+.runtime-control-card > .proactive-zero-note {
+  padding: 8px;
+  border: 1px solid #e7cd91;
+  border-radius: 5px;
+  color: #805b1c;
+  background: #fff8e8;
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .runtime-controls-section .settings-state {

@@ -1074,10 +1074,10 @@ def build_production_runtime(
 
     perception_limits = PerceptionLimits(
         schema_version=1,
-        max_messages=4,
-        max_identities=8,
-        max_characters_per_message=2_000,
-        max_total_characters=4_000,
+        max_messages=64,
+        max_identities=128,
+        max_characters_per_message=8_000,
+        max_total_characters=8_000,
         max_capability_categories=6,
         max_degraded_components=4,
         max_candidates_per_kind=8,

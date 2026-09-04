@@ -37,3 +37,18 @@ Acceptance: synthetic multirecord summary actually includes prior facts;
 correction/reply/date scope and truncation are honest; empty/deferred states
 visible; cross-scope/injection and existing no-send/no-memory tests pass;
 focused frontend/server/Python tests and no-real-message browser coverage.
+
+Production Web obtains history through the existing account-scoped Hub, not
+browser message contents. An injected history provider supplies isolated
+synthetic fixtures offline. Keep the maximum recent fetch at the existing 100
+records; the Core's existing 8,000-token upper-bound budget may select fewer.
+Always label this recent-window coverage partial, with actual count, date range
+and truncation; it does not establish complete daily coverage. Preview outcomes
+and observed generation are additive machine-readable fields, independent of
+HTTP completion and configured model labels.
+
+The operator also requested an honest proactive participation explanation:
+when the switch is enabled but its probability is zero, explicitly say it will
+not speak automatically. Distinguish an unsaved zero-probability draft from the
+saved policy. Do not change the probability, enable any group or call this a
+Runtime failure.

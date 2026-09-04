@@ -10,14 +10,15 @@ Title: Group Context And Honest Preview Results
 
 ## Acceptance
 
-- [ ] History reaches perception and generation with bounded same-scope context; empty/deferred/error results display an explanation; isolated tests prove no sends or memory writes.
+- [x] History reaches perception and generation with bounded same-scope context; empty/deferred/error results display an explanation; isolated tests prove no sends or memory writes.
 - [ ] Lead integration and scoped release verification are recorded separately from isolated worker verification.
 
 ## Local Steps
 
-- [ ] Inspect current adapters and fixtures; reproduce dropped context and empty results.
-- [ ] Implement additive context/outcome handling and narrowly justified classification repair.
-- [ ] Run focused TS/Python/browser tests; record evidence and commit.
+- [x] Inspect current adapters and fixtures; reproduce dropped context and empty results.
+- [x] Implement additive context/outcome handling and narrowly justified classification repair.
+- [x] Explain saved versus draft zero-probability proactive policy without changing it.
+- [x] Run focused TS/Python/browser tests; record evidence and prepare the worker commit.
 
 ## Out Of Scope
 
