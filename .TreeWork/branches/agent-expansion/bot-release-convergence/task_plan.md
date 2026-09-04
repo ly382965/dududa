@@ -10,7 +10,7 @@ Title: Bot Runtime Repair And Stable Release
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] Live Agent status/config/preview work without private historical corpus; errors identify actual readiness, not NO BANDIT.
+- [x] Live Agent status/config/preview work without private historical corpus; errors identify actual readiness, not NO BANDIT.
 - [x] Base URL/model setup is discoverable from Key creation; secrets stay write-only and saved/applied state is honest.
 - [ ] Bot services run verified stable/source releases, old versions have private rollback artifacts, and excluded services remain unchanged.
 - [ ] Focused regression/build/deployed checks pass and sanitized implementation/documentation is pushed to GitHub.
@@ -22,8 +22,9 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Build candidate artifacts; preserve state and old releases; upgrade existing containers sequentially.
 - [x] Add and test the explicit group proactive participation switch using existing scoped policy/save behavior without enabling any production group.
 - [x] Activate five public cache-backed MCPs in the workbench with console-only mappings, real data/provenance and explicit truthful connection checks; deploy and publish sanitized evidence.
-- [ ] Verify public auth, Runtime and NapCat connections; publish sanitized evidence and close branch.
-- [ ] Complete the approved DeepSeek migration after the separate provider-retention choice, with truthful evidence and a successful no-send Runtime preview; retain the old Arc until the compatibility choice is explicit.
+- [x] Verify public auth, Runtime and NapCat connections and record sanitized evidence.
+- [x] Apply the explicitly approved DeepSeek migration and provider-managed retention, with fresh Provider evidence and a successful no-send Runtime preview.
+- [ ] Publish this follow-up and retain the broader branch as partial; close only after the separate legacy Arc compatibility choice is resolved.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
