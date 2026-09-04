@@ -4,9 +4,9 @@
 <!-- treework:root-status:start -->
 Stage: work_tree
 Lead cursor: arc-compat-migration
-Accepted tree revision: 8
+Accepted tree revision: 9
 Tree editing: closed
-Last sync: unix:1788538657
+Last sync: unix:1788539117
 <!-- treework:root-status:end -->
 
 ## Global Reality (current project reality and material corrections; not a branch table)

@@ -1,879 +1,1238 @@
 {
+  "schema_version": 1,
+  "event_seq": 184,
+  "captured_at": "unix:1788539117",
+  "tree_revision": 9,
+  "checkpoint_hash": "fnv1a64:108e624f641bea35",
+  "project": {
+    "stage": "work_tree",
+    "current_branch": "arc-compat-migration",
+    "tree_editing": null,
+    "tree_hash": "fnv1a64:8612c1bfede2e668"
+  },
+  "tree": {
+    "schema_version": 1,
+    "revision": 9,
+    "source_hash": "fnv1a64:8612c1bfede2e668",
+    "state_hash": "fnv1a64:b0ebbfd97eb57bbb",
+    "accepted_at": "unix:1788539117",
+    "root": "root",
+    "nodes": [
+      {
+        "id": "root",
+        "parent": "",
+        "title": "Dududa Runtime And Operator Client",
+        "purpose": "Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.",
+        "spec": "spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "model-selection",
+        "parent": "root",
+        "title": "Model Selection Epic",
+        "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
+        "spec": "branches/model-selection/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "selection-contracts",
+        "parent": "model-selection",
+        "title": "S08 Selection Contracts",
+        "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
+        "spec": "branches/model-selection/selection-contracts/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "static-router",
+        "parent": "model-selection",
+        "title": "S08 Static Router",
+        "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
+        "spec": "branches/model-selection/static-router/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "selection-contracts"
+        ]
+      },
+      {
+        "id": "perception-tiering",
+        "parent": "model-selection",
+        "title": "S09 Perception And Tiering",
+        "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
+        "spec": "branches/model-selection/perception-tiering/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "static-router"
+        ]
+      },
+      {
+        "id": "offline-runtime",
+        "parent": "root",
+        "title": "S10 Offline Runtime",
+        "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
+        "spec": "branches/offline-runtime/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "perception-tiering"
+        ]
+      },
+      {
+        "id": "controlled-rollout",
+        "parent": "root",
+        "title": "S11 Controlled Rollout",
+        "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
+        "spec": "branches/controlled-rollout/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "offline-runtime"
+        ]
+      },
+      {
+        "id": "completion-audit",
+        "parent": "root",
+        "title": "S08-S11 Completion Audit",
+        "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
+        "spec": "branches/completion-audit/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "controlled-rollout"
+        ]
+      },
+      {
+        "id": "mew-parity",
+        "parent": "root",
+        "title": "Mew And NapCat Web Parity",
+        "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
+        "spec": "branches/mew-parity/spec.md",
+        "sibling_order": 4
+      },
+      {
+        "id": "mew-parity-foundation",
+        "parent": "mew-parity",
+        "title": "NapCat Web Foundation",
+        "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
+        "spec": "branches/mew-parity/mew-parity-foundation/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "mew-chat-parity",
+        "parent": "mew-parity",
+        "title": "Mew Chat Parity",
+        "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
+        "spec": "branches/mew-parity/mew-chat-parity/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "mew-parity-foundation"
+        ]
+      },
+      {
+        "id": "mew-directory-parity",
+        "parent": "mew-parity",
+        "title": "Mew Directory And Group Parity",
+        "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
+        "spec": "branches/mew-parity/mew-directory-parity/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "mew-parity-foundation"
+        ]
+      },
+      {
+        "id": "mew-parity-audit",
+        "parent": "mew-parity",
+        "title": "Mew Parity Audit",
+        "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
+        "spec": "branches/mew-parity/mew-parity-audit/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "mew-chat-parity",
+          "mew-directory-parity"
+        ]
+      },
+      {
+        "id": "agent-expansion",
+        "parent": "root",
+        "title": "Offline Agent Expansion",
+        "purpose": "Complete the governed S12-S22 and bounded S20 engineering chain before any real-group validation.",
+        "spec": "branches/agent-expansion/spec.md",
+        "sibling_order": 5
+      },
+      {
+        "id": "production-shape",
+        "parent": "agent-expansion",
+        "title": "S12 Entry Gate Production Shape",
+        "purpose": "Make the existing runtime safely composable, default-off and reproducible without enabling a real Endpoint.",
+        "spec": "branches/agent-expansion/production-shape/spec.md",
+        "sibling_order": 0,
+        "depends_on": [
+          "completion-audit"
+        ]
+      },
+      {
+        "id": "semantic-contract",
+        "parent": "agent-expansion",
+        "title": "S09 Additive Semantic Contract",
+        "purpose": "Add span, entity, reference and explicit uncertainty contracts with a synthetic Schema pilot.",
+        "spec": "branches/agent-expansion/semantic-contract/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "production-shape"
+        ]
+      },
+      {
+        "id": "mcp-v2-spike",
+        "parent": "agent-expansion",
+        "title": "S12A MCP V2 Spike",
+        "purpose": "Decide MCP v2 adoption using iCourse compatibility and isolated Fake lifecycle evidence.",
+        "spec": "branches/agent-expansion/mcp-v2-spike/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "semantic-contract"
+        ]
+      },
+      {
+        "id": "unified-mcp",
+        "parent": "agent-expansion",
+        "title": "S12 Unified MCP",
+        "purpose": "Implement one Core-owned multi-Server Client and Registry with iCourse as the sole real compatibility Adapter.",
+        "spec": "branches/agent-expansion/unified-mcp/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "mcp-v2-spike"
+        ]
+      },
+      {
+        "id": "bounded-capability",
+        "parent": "agent-expansion",
+        "title": "S13 Bounded Capability Runtime",
+        "purpose": "Map explicitly authorized business Capabilities to governed Provider calls and bounded Observations.",
+        "spec": "branches/agent-expansion/bounded-capability/spec.md",
+        "sibling_order": 4,
+        "depends_on": [
+          "unified-mcp"
+        ]
+      },
+      {
+        "id": "memory-retrieval",
+        "parent": "agent-expansion",
+        "title": "S14 Memory Lifecycle And Retrieval",
+        "purpose": "Complete Memory administration, deletion and lexical retrieval without weakening Scope authority.",
+        "spec": "branches/agent-expansion/memory-retrieval/spec.md",
+        "sibling_order": 5,
+        "depends_on": [
+          "bounded-capability"
+        ]
+      },
+      {
+        "id": "response-persona",
+        "parent": "agent-expansion",
+        "title": "S15 Response Profile And Persona",
+        "purpose": "Add deterministic short, medium and long Response Plans with fact-preserving composition and rendering.",
+        "spec": "branches/agent-expansion/response-persona/spec.md",
+        "sibling_order": 6,
+        "depends_on": [
+          "memory-retrieval"
+        ]
+      },
+      {
+        "id": "proactive-outbound",
+        "parent": "agent-expansion",
+        "title": "S15A-S15E Controlled Proactive Outbound",
+        "purpose": "Build the default-off initiated-run, scheduling, source and no-send Shadow sequence.",
+        "spec": "branches/agent-expansion/proactive-outbound/spec.md",
+        "sibling_order": 7
+      },
+      {
+        "id": "proactive-contracts",
+        "parent": "proactive-outbound",
+        "title": "S15A Proactive Contracts",
+        "purpose": "Freeze target-bound initiation, authorization, preview, dispatch and reconciliation contracts.",
+        "spec": "branches/agent-expansion/proactive-outbound/proactive-contracts/spec.md",
+        "sibling_order": 0,
+        "depends_on": [
+          "response-persona"
+        ]
+      },
+      {
+        "id": "durable-scheduler",
+        "parent": "proactive-outbound",
+        "title": "S15B Durable Scheduler",
+        "purpose": "Materialize time-zone-aware occurrences and durable single-owner claims under an injected clock.",
+        "spec": "branches/agent-expansion/proactive-outbound/durable-scheduler/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "proactive-contracts"
+        ]
+      },
+      {
+        "id": "governed-sources",
+        "parent": "proactive-outbound",
+        "title": "S15C Governed Source Contracts",
+        "purpose": "Define source-neutral contracts and prove them with fixed fixtures rather than fictitious live MCP Servers.",
+        "spec": "branches/agent-expansion/proactive-outbound/governed-sources/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "durable-scheduler"
+        ]
+      },
+      {
+        "id": "digest-shadow",
+        "parent": "proactive-outbound",
+        "title": "S15D Digest Shadow",
+        "purpose": "Compose fixture-backed scheduled digests in a recommendation-only runtime with no delivery capability.",
+        "spec": "branches/agent-expansion/proactive-outbound/digest-shadow/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "governed-sources"
+        ]
+      },
+      {
+        "id": "probe-shadow",
+        "parent": "proactive-outbound",
+        "title": "S15E Probe Shadow",
+        "purpose": "Detect bounded group-level opportunities and prove the no-send proactive policy against synthetic conversations.",
+        "spec": "branches/agent-expansion/proactive-outbound/probe-shadow/spec.md",
+        "sibling_order": 4,
+        "depends_on": [
+          "digest-shadow"
+        ]
+      },
+      {
+        "id": "operations-hardening",
+        "parent": "agent-expansion",
+        "title": "S16 Operations Hardening",
+        "purpose": "Prove health, backup, restore, upgrade and rollback from a versioned release manifest.",
+        "spec": "branches/agent-expansion/operations-hardening/spec.md",
+        "sibling_order": 8,
+        "depends_on": [
+          "probe-shadow"
+        ]
+      },
+      {
+        "id": "layout-migration",
+        "parent": "agent-expansion",
+        "title": "S17 Layout Migration",
+        "purpose": "Move repository surfaces incrementally while preserving compatibility and a recoverable previous release.",
+        "spec": "branches/agent-expansion/layout-migration/spec.md",
+        "sibling_order": 9,
+        "depends_on": [
+          "operations-hardening"
+        ]
+      },
+      {
+        "id": "evaluation-ci",
+        "parent": "agent-expansion",
+        "title": "S18 Evaluation And CI",
+        "purpose": "Unify versioned fixtures, traces, fault injection and reproducible repository verification.",
+        "spec": "branches/agent-expansion/evaluation-ci/spec.md",
+        "sibling_order": 10,
+        "depends_on": [
+          "layout-migration"
+        ]
+      },
+      {
+        "id": "local-integration-audit",
+        "parent": "agent-expansion",
+        "title": "S19 Local Integration Audit",
+        "purpose": "Prove the complete release-required offline chain and freeze its rollback evidence without real traffic.",
+        "spec": "branches/agent-expansion/local-integration-audit/spec.md",
+        "sibling_order": 11,
+        "depends_on": [
+          "evaluation-ci"
+        ]
+      },
+      {
+        "id": "legacy-cleanup",
+        "parent": "agent-expansion",
+        "title": "S22 Evidence-Based Legacy Cleanup",
+        "purpose": "Remove only compatibility surfaces whose consumers have migrated and whose previous release remains independently recoverable.",
+        "spec": "branches/agent-expansion/legacy-cleanup/spec.md",
+        "sibling_order": 12,
+        "depends_on": [
+          "local-integration-audit"
+        ]
+      },
+      {
+        "id": "bandit-offline",
+        "parent": "agent-expansion",
+        "title": "S20 Offline Bandit Foundation",
+        "purpose": "Add replayable same-role and same-tier decision, support and estimator contracts without training or exploration.",
+        "spec": "branches/agent-expansion/bandit-offline/spec.md",
+        "sibling_order": 13,
+        "depends_on": [
+          "legacy-cleanup"
+        ]
+      },
+      {
+        "id": "control-plane",
+        "parent": "agent-expansion",
+        "title": "S21 Bot Control Plane",
+        "purpose": "Establish governed group-service initialization and operator control before any real-group validation.",
+        "spec": "branches/agent-expansion/control-plane/spec.md",
+        "sibling_order": 14
+      },
+      {
+        "id": "control-plane-foundation",
+        "parent": "control-plane",
+        "title": "S21A Control Plane Foundation",
+        "purpose": "Define the framework-neutral profile, assignment, operator command and projection foundation over Fake group and service facts.",
+        "spec": "branches/agent-expansion/control-plane/control-plane-foundation/spec.md",
+        "sibling_order": 0,
+        "depends_on": [
+          "legacy-cleanup",
+          "mew-parity-audit"
+        ]
+      },
+      {
+        "id": "group-onboarding",
+        "parent": "control-plane",
+        "title": "S21B Group Onboarding",
+        "purpose": "Let an authorized administrator preview and activate one initial group service profile with immutable Runtime assignment and recovery.",
+        "spec": "branches/agent-expansion/control-plane/group-onboarding/spec.md",
+        "sibling_order": 1,
+        "depends_on": [
+          "control-plane-foundation"
+        ]
+      },
+      {
+        "id": "governed-operations",
+        "parent": "control-plane",
+        "title": "S21C Governed Operations",
+        "purpose": "Expose authoritative operational projections and only the existing typed Core mutations through the Control Plane.",
+        "spec": "branches/agent-expansion/control-plane/governed-operations/spec.md",
+        "sibling_order": 2,
+        "depends_on": [
+          "group-onboarding"
+        ]
+      },
+      {
+        "id": "control-plane-audit",
+        "parent": "control-plane",
+        "title": "S21 Completion Audit",
+        "purpose": "Prove isolation, recovery and governed Agent operations while removing browser-local authority and direct-NapCat Agent delivery.",
+        "spec": "branches/agent-expansion/control-plane/control-plane-audit/spec.md",
+        "sibling_order": 3,
+        "depends_on": [
+          "governed-operations"
+        ]
+      },
+      {
+        "id": "pr10-selective-integration",
+        "parent": "agent-expansion",
+        "title": "PR10 Selective Plugin And MCP Integration",
+        "purpose": "Extract only non-duplicate PR10 capabilities into canonical, default-off plugin and Unified MCP boundaries while preserving the existing Core and deployment composition.",
+        "spec": "branches/agent-expansion/pr10-selective-integration/spec.md",
+        "sibling_order": 15,
+        "depends_on": [
+          "control-plane-audit"
+        ]
+      },
+      {
+        "id": "api-key-pools",
+        "parent": "agent-expansion",
+        "title": "Three-Tier LLM API Key Pools",
+        "purpose": "Add an independent Web credential workbench and server-side SecretRef-backed pools for the three Dududa reasoning tiers without changing tier policy, Runtime authority or existing Provider contracts.",
+        "spec": "branches/agent-expansion/api-key-pools/spec.md",
+        "sibling_order": 16,
+        "depends_on": [
+          "control-plane-audit"
+        ]
+      },
+      {
+        "id": "bot-release-convergence",
+        "parent": "agent-expansion",
+        "title": "Bot Runtime Repair And Stable Release",
+        "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
+        "spec": "branches/agent-expansion/bot-release-convergence/spec.md",
+        "sibling_order": 17,
+        "depends_on": [
+          "api-key-pools"
+        ]
+      },
+      {
+        "id": "preview-context-repair",
+        "parent": "bot-release-convergence",
+        "title": "Group Context And Honest Preview Results",
+        "purpose": "Connect bounded same-group history and explicit preview outcomes, correcting demonstrated perception conflicts without weakening safety.",
+        "spec": "branches/agent-expansion/bot-release-convergence/preview-context-repair/spec.md",
+        "sibling_order": 0
+      },
+      {
+        "id": "runtime-config-apply",
+        "parent": "bot-release-convergence",
+        "title": "One-Click External Model Configuration Apply",
+        "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
+        "spec": "branches/agent-expansion/bot-release-convergence/runtime-config-apply/spec.md",
+        "sibling_order": 1
+      },
+      {
+        "id": "arc-compat-migration",
+        "parent": "bot-release-convergence",
+        "title": "Current Arc Compatibility Release",
+        "purpose": "Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.",
+        "spec": "branches/agent-expansion/bot-release-convergence/arc-compat-migration/spec.md",
+        "sibling_order": 2
+      },
+      {
+        "id": "plugin-group-controls",
+        "parent": "agent-expansion",
+        "title": "PR12 And Per-Group Plugin Controls",
+        "purpose": "Merge Emoji Kitchen, connect group-level plugin switches to real execution, and deploy current Bot-only artifacts while retiring superseded running versions.",
+        "spec": "branches/agent-expansion/plugin-group-controls/spec.md",
+        "sibling_order": 18,
+        "depends_on": [
+          "bot-release-convergence"
+        ]
+      },
+      {
+        "id": "real-group-validation",
+        "parent": "agent-expansion",
+        "title": "S23 Authorized Real-Group Validation",
+        "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
+        "spec": "branches/agent-expansion/real-group-validation/spec.md",
+        "sibling_order": 19,
+        "depends_on": [
+          "legacy-cleanup",
+          "mew-parity-audit",
+          "control-plane-audit"
+        ]
+      }
+    ]
+  },
   "branches": [
     {
-      "path": "root",
+      "id": "root",
       "parent": "",
       "title": "Dududa Runtime And Operator Client",
       "purpose": "Deliver the deterministic Agent runtime and a real NapCat-backed multi-account QQ operator client.",
       "status": "in_progress",
       "verification_status": "unverified",
-      "sync_status": "clean",
-      "last_sync": "unix:1788539117"
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
     },
     {
-      "path": "model-selection",
+      "id": "model-selection",
       "parent": "root",
       "title": "Model Selection Epic",
       "purpose": "Own the shared architecture for task complexity, tier policy, and static endpoint routing.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "pending",
       "verification_status": "unverified",
-      "sync_status": "clean",
-      "last_sync": "unix:1788539117"
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
     },
     {
-      "path": "selection-contracts",
+      "id": "selection-contracts",
       "parent": "model-selection",
       "title": "S08 Selection Contracts",
       "purpose": "Freeze versioned tier, complexity projection, endpoint, traffic, and decision contracts.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/selection-contracts",
         "git_branch": "treework/selection-contracts",
         "managed_by_treework": false,
-        "created_at": "unix:1785750662",
-        "last_entered_at": "unix:1785750662",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "static-router",
+      "id": "static-router",
       "parent": "model-selection",
       "title": "S08 Static Router",
       "purpose": "Implement deterministic filtering, admission, reliability, registry, Fake, and one compatible Adapter.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/static-router",
         "git_branch": "treework/static-router",
         "managed_by_treework": false,
-        "created_at": "unix:1785760617",
-        "last_entered_at": "unix:1785760617",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "perception-tiering",
+      "id": "perception-tiering",
       "parent": "model-selection",
       "title": "S09 Perception And Tiering",
       "purpose": "Implement validated perception, complexity assessment, deterministic tier policy, social decision, and Eval.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/perception-tiering",
         "git_branch": "treework/perception-tiering",
         "managed_by_treework": false,
-        "created_at": "unix:1785773625",
-        "last_entered_at": "unix:1785773625",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "offline-runtime",
+      "id": "offline-runtime",
       "parent": "root",
       "title": "S10 Offline Runtime",
       "purpose": "Build the explicit-mention direct-chat vertical loop and prove shadow has no side effects.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/offline-runtime",
         "git_branch": "treework/offline-runtime",
         "managed_by_treework": false,
-        "created_at": "unix:1785785642",
-        "last_entered_at": "unix:1785785642",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "controlled-rollout",
+      "id": "controlled-rollout",
       "parent": "root",
       "title": "S11 Controlled Rollout",
       "purpose": "Add typed rollout modes, persistent idempotency, canary ownership, kill switch, metrics, and rollback.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/controlled-rollout",
         "git_branch": "treework/controlled-rollout",
         "managed_by_treework": false,
-        "created_at": "unix:1785812954",
-        "last_entered_at": "unix:1785812954",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "completion-audit",
+      "id": "completion-audit",
       "parent": "root",
       "title": "S08-S11 Completion Audit",
       "purpose": "Prove every accepted requirement with cross-stage verification and record external evidence gaps.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/completion-audit",
         "git_branch": "treework/completion-audit",
         "managed_by_treework": false,
-        "created_at": "unix:1785816767",
-        "last_entered_at": "unix:1785816767",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "mew-parity",
+      "id": "mew-parity",
       "parent": "root",
       "title": "Mew And NapCat Web Parity",
       "purpose": "Reproduce the Mew QQ-client surface over Dududa's real multi-account NapCat backend.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-parity",
         "git_branch": "treework/mew-parity",
         "managed_by_treework": false,
-        "created_at": "unix:1785851636",
-        "last_entered_at": "unix:1785851636",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "mew-parity-foundation",
+      "id": "mew-parity-foundation",
       "parent": "mew-parity",
       "title": "NapCat Web Foundation",
       "purpose": "Establish account-scoped rich-message, capability, cursor-history and persistence contracts.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-parity-foundation",
         "git_branch": "treework/mew-parity-foundation",
         "managed_by_treework": false,
-        "created_at": "unix:1785826597",
-        "last_entered_at": "unix:1785826597",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "mew-chat-parity",
+      "id": "mew-chat-parity",
       "parent": "mew-parity",
       "title": "Mew Chat Parity",
       "purpose": "Port Mew chat rendering, composition, history, search, drafts and message actions to NapCat.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-chat-parity",
         "git_branch": "treework/mew-chat-parity",
         "managed_by_treework": false,
-        "created_at": "unix:1785828495",
-        "last_entered_at": "unix:1785828594",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "mew-directory-parity",
+      "id": "mew-directory-parity",
       "parent": "mew-parity",
       "title": "Mew Directory And Group Parity",
       "purpose": "Port contacts, notifications, group management, resources and settings with capability gating.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-directory-parity",
         "git_branch": "treework/mew-directory-parity",
         "managed_by_treework": false,
-        "created_at": "unix:1785828496",
-        "last_entered_at": "unix:1785834834",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "mew-parity-audit",
+      "id": "mew-parity-audit",
       "parent": "mew-parity",
       "title": "Mew Parity Audit",
       "purpose": "Prove real NapCat multi-account behavior, security and desktop/mobile Mew parity.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mew-parity-audit",
         "git_branch": "treework/mew-parity-audit",
         "managed_by_treework": false,
-        "created_at": "unix:1785846916",
-        "last_entered_at": "unix:1785846916",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "agent-expansion",
+      "id": "agent-expansion",
       "parent": "root",
       "title": "Offline Agent Expansion",
       "purpose": "Complete the governed S12-S22 and bounded S20 engineering chain before any real-group validation.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "pending",
       "verification_status": "unverified",
-      "sync_status": "clean",
-      "last_sync": "unix:1788539117"
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
     },
     {
-      "path": "production-shape",
+      "id": "production-shape",
       "parent": "agent-expansion",
       "title": "S12 Entry Gate Production Shape",
       "purpose": "Make the existing runtime safely composable, default-off and reproducible without enabling a real Endpoint.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/production-shape",
         "git_branch": "treework/production-shape",
         "managed_by_treework": false,
-        "created_at": "unix:1786273050",
-        "last_entered_at": "unix:1786273050",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "semantic-contract",
+      "id": "semantic-contract",
       "parent": "agent-expansion",
       "title": "S09 Additive Semantic Contract",
       "purpose": "Add span, entity, reference and explicit uncertainty contracts with a synthetic Schema pilot.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/semantic-contract",
         "git_branch": "treework/semantic-contract",
         "managed_by_treework": false,
-        "created_at": "unix:1786277571",
-        "last_entered_at": "unix:1786277571",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "mcp-v2-spike",
+      "id": "mcp-v2-spike",
       "parent": "agent-expansion",
       "title": "S12A MCP V2 Spike",
       "purpose": "Decide MCP v2 adoption using iCourse compatibility and isolated Fake lifecycle evidence.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/mcp-v2-spike",
         "git_branch": "treework/mcp-v2-spike",
         "managed_by_treework": false,
-        "created_at": "unix:1786280889",
-        "last_entered_at": "unix:1786280889",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "unified-mcp",
+      "id": "unified-mcp",
       "parent": "agent-expansion",
       "title": "S12 Unified MCP",
       "purpose": "Implement one Core-owned multi-Server Client and Registry with iCourse as the sole real compatibility Adapter.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/unified-mcp",
         "git_branch": "treework/unified-mcp",
         "managed_by_treework": false,
-        "created_at": "unix:1786284521",
-        "last_entered_at": "unix:1786284521",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "bounded-capability",
+      "id": "bounded-capability",
       "parent": "agent-expansion",
       "title": "S13 Bounded Capability Runtime",
       "purpose": "Map explicitly authorized business Capabilities to governed Provider calls and bounded Observations.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bounded-capability",
         "git_branch": "treework/bounded-capability",
         "managed_by_treework": false,
-        "created_at": "unix:1786295863",
-        "last_entered_at": "unix:1786295863",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "memory-retrieval",
+      "id": "memory-retrieval",
       "parent": "agent-expansion",
       "title": "S14 Memory Lifecycle And Retrieval",
       "purpose": "Complete Memory administration, deletion and lexical retrieval without weakening Scope authority.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/memory-retrieval",
         "git_branch": "treework/memory-retrieval",
         "managed_by_treework": false,
-        "created_at": "unix:1786321574",
-        "last_entered_at": "unix:1786321574",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "response-persona",
+      "id": "response-persona",
       "parent": "agent-expansion",
       "title": "S15 Response Profile And Persona",
       "purpose": "Add deterministic short, medium and long Response Plans with fact-preserving composition and rendering.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/response-persona",
         "git_branch": "treework/response-persona",
         "managed_by_treework": false,
-        "created_at": "unix:1786329200",
-        "last_entered_at": "unix:1786329200",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "proactive-outbound",
+      "id": "proactive-outbound",
       "parent": "agent-expansion",
       "title": "S15A-S15E Controlled Proactive Outbound",
       "purpose": "Build the default-off initiated-run, scheduling, source and no-send Shadow sequence.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "pending",
       "verification_status": "unverified",
-      "sync_status": "clean",
-      "last_sync": "unix:1788539117"
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
     },
     {
-      "path": "proactive-contracts",
+      "id": "proactive-contracts",
       "parent": "proactive-outbound",
       "title": "S15A Proactive Contracts",
       "purpose": "Freeze target-bound initiation, authorization, preview, dispatch and reconciliation contracts.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/proactive-contracts",
         "git_branch": "treework/proactive-contracts",
         "managed_by_treework": false,
-        "created_at": "unix:1786336511",
-        "last_entered_at": "unix:1786336511",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "durable-scheduler",
+      "id": "durable-scheduler",
       "parent": "proactive-outbound",
       "title": "S15B Durable Scheduler",
       "purpose": "Materialize time-zone-aware occurrences and durable single-owner claims under an injected clock.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/durable-scheduler",
         "git_branch": "treework/durable-scheduler",
         "managed_by_treework": false,
-        "created_at": "unix:1786341492",
-        "last_entered_at": "unix:1786341492",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "governed-sources",
+      "id": "governed-sources",
       "parent": "proactive-outbound",
       "title": "S15C Governed Source Contracts",
       "purpose": "Define source-neutral contracts and prove them with fixed fixtures rather than fictitious live MCP Servers.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/governed-sources",
         "git_branch": "treework/governed-sources",
         "managed_by_treework": false,
-        "created_at": "unix:1786344886",
-        "last_entered_at": "unix:1786344886",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "digest-shadow",
+      "id": "digest-shadow",
       "parent": "proactive-outbound",
       "title": "S15D Digest Shadow",
       "purpose": "Compose fixture-backed scheduled digests in a recommendation-only runtime with no delivery capability.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/digest-shadow",
         "git_branch": "treework/digest-shadow",
         "managed_by_treework": false,
-        "created_at": "unix:1786349495",
-        "last_entered_at": "unix:1786349495",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "probe-shadow",
+      "id": "probe-shadow",
       "parent": "proactive-outbound",
       "title": "S15E Probe Shadow",
       "purpose": "Detect bounded group-level opportunities and prove the no-send proactive policy against synthetic conversations.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/probe-shadow",
         "git_branch": "treework/probe-shadow",
         "managed_by_treework": false,
-        "created_at": "unix:1786351959",
-        "last_entered_at": "unix:1786351959",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "operations-hardening",
+      "id": "operations-hardening",
       "parent": "agent-expansion",
       "title": "S16 Operations Hardening",
       "purpose": "Prove health, backup, restore, upgrade and rollback from a versioned release manifest.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/operations-hardening",
         "git_branch": "treework/operations-hardening",
         "managed_by_treework": false,
-        "created_at": "unix:1786354409",
-        "last_entered_at": "unix:1786354409",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "layout-migration",
+      "id": "layout-migration",
       "parent": "agent-expansion",
       "title": "S17 Layout Migration",
       "purpose": "Move repository surfaces incrementally while preserving compatibility and a recoverable previous release.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/layout-migration",
         "git_branch": "treework/layout-migration",
         "managed_by_treework": false,
-        "created_at": "unix:1786356682",
-        "last_entered_at": "unix:1786356682",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "evaluation-ci",
+      "id": "evaluation-ci",
       "parent": "agent-expansion",
       "title": "S18 Evaluation And CI",
       "purpose": "Unify versioned fixtures, traces, fault injection and reproducible repository verification.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/evaluation-ci",
         "git_branch": "treework/evaluation-ci",
         "managed_by_treework": false,
-        "created_at": "unix:1786366288",
-        "last_entered_at": "unix:1786366288",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "local-integration-audit",
+      "id": "local-integration-audit",
       "parent": "agent-expansion",
       "title": "S19 Local Integration Audit",
       "purpose": "Prove the complete release-required offline chain and freeze its rollback evidence without real traffic.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/local-integration-audit",
         "git_branch": "treework/local-integration-audit",
         "managed_by_treework": false,
-        "created_at": "unix:1786371279",
-        "last_entered_at": "unix:1786371279",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "legacy-cleanup",
+      "id": "legacy-cleanup",
       "parent": "agent-expansion",
       "title": "S22 Evidence-Based Legacy Cleanup",
       "purpose": "Remove only compatibility surfaces whose consumers have migrated and whose previous release remains independently recoverable.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/legacy-cleanup",
         "git_branch": "treework/legacy-cleanup",
         "managed_by_treework": false,
-        "created_at": "unix:1786374916",
-        "last_entered_at": "unix:1786374916",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "bandit-offline",
+      "id": "bandit-offline",
       "parent": "agent-expansion",
       "title": "S20 Offline Bandit Foundation",
       "purpose": "Add replayable same-role and same-tier decision, support and estimator contracts without training or exploration.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bandit-offline",
         "git_branch": "treework/bandit-offline",
         "managed_by_treework": false,
-        "created_at": "unix:1786378663",
-        "last_entered_at": "unix:1786378663",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "control-plane",
+      "id": "control-plane",
       "parent": "agent-expansion",
       "title": "S21 Bot Control Plane",
       "purpose": "Establish governed group-service initialization and operator control before any real-group validation.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/control-plane",
         "git_branch": "treework/control-plane",
         "managed_by_treework": false,
-        "created_at": "unix:1786717644",
-        "last_entered_at": "unix:1786717644",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "control-plane-foundation",
+      "id": "control-plane-foundation",
       "parent": "control-plane",
       "title": "S21A Control Plane Foundation",
       "purpose": "Define the framework-neutral profile, assignment, operator command and projection foundation over Fake group and service facts.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/control-plane-foundation",
         "git_branch": "treework/control-plane-foundation",
         "managed_by_treework": false,
-        "created_at": "unix:1786706813",
-        "last_entered_at": "unix:1786706813",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "group-onboarding",
+      "id": "group-onboarding",
       "parent": "control-plane",
       "title": "S21B Group Onboarding",
       "purpose": "Let an authorized administrator preview and activate one initial group service profile with immutable Runtime assignment and recovery.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/group-onboarding",
         "git_branch": "treework/group-onboarding",
         "managed_by_treework": false,
-        "created_at": "unix:1786709028",
-        "last_entered_at": "unix:1786709028",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "governed-operations",
+      "id": "governed-operations",
       "parent": "control-plane",
       "title": "S21C Governed Operations",
       "purpose": "Expose authoritative operational projections and only the existing typed Core mutations through the Control Plane.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/governed-operations",
         "git_branch": "treework/governed-operations",
         "managed_by_treework": false,
-        "created_at": "unix:1786713416",
-        "last_entered_at": "unix:1786713416",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "control-plane-audit",
+      "id": "control-plane-audit",
       "parent": "control-plane",
       "title": "S21 Completion Audit",
       "purpose": "Prove isolation, recovery and governed Agent operations while removing browser-local authority and direct-NapCat Agent delivery.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/control-plane-audit",
         "git_branch": "treework/control-plane-audit",
         "managed_by_treework": false,
-        "created_at": "unix:1786716134",
-        "last_entered_at": "unix:1786716134",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "pr10-selective-integration",
+      "id": "pr10-selective-integration",
       "parent": "agent-expansion",
       "title": "PR10 Selective Plugin And MCP Integration",
       "purpose": "Extract only non-duplicate PR10 capabilities into canonical, default-off plugin and Unified MCP boundaries while preserving the existing Core and deployment composition.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/pr10-selective-integration",
         "git_branch": "treework/pr10-selective-integration",
         "managed_by_treework": false,
-        "created_at": "unix:1788348428",
-        "last_entered_at": "unix:1788348428",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "api-key-pools",
+      "id": "api-key-pools",
       "parent": "agent-expansion",
       "title": "Three-Tier LLM API Key Pools",
       "purpose": "Add an independent Web credential workbench and server-side SecretRef-backed pools for the three Dududa reasoning tiers without changing tier policy, Runtime authority or existing Provider contracts.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/api-key-pools",
         "git_branch": "treework/api-key-pools",
         "managed_by_treework": false,
-        "created_at": "unix:1788428932",
-        "last_entered_at": "unix:1788428932",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "bot-release-convergence",
+      "id": "bot-release-convergence",
       "parent": "agent-expansion",
       "title": "Bot Runtime Repair And Stable Release",
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bot-release-convergence",
         "git_branch": "treework/bot-release-convergence",
         "managed_by_treework": false,
-        "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788538465",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "preview-context-repair",
+      "id": "preview-context-repair",
       "parent": "bot-release-convergence",
       "title": "Group Context And Honest Preview Results",
       "purpose": "Connect bounded same-group history and explicit preview outcomes, correcting demonstrated perception conflicts without weakening safety.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/preview-context-repair",
         "git_branch": "treework/preview-context-repair",
         "managed_by_treework": false,
-        "created_at": "unix:1788531842",
-        "last_entered_at": "unix:1788538283",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "runtime-config-apply",
+      "id": "runtime-config-apply",
       "parent": "bot-release-convergence",
       "title": "One-Click External Model Configuration Apply",
       "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/runtime-config-apply",
         "git_branch": "treework/runtime-config-apply",
         "managed_by_treework": false,
-        "created_at": "unix:1788531843",
-        "last_entered_at": "unix:1788538412",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "arc-compat-migration",
+      "id": "arc-compat-migration",
       "parent": "bot-release-convergence",
       "title": "Current Arc Compatibility Release",
       "purpose": "Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "complete",
       "verification_status": "verified",
-      "sync_status": "clean",
+      "status_reason": "",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/arc-compat-migration",
         "git_branch": "treework/arc-compat-migration",
         "managed_by_treework": false,
-        "created_at": "unix:1788531844",
-        "last_entered_at": "unix:1788538482",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
-      },
-      "last_sync": "unix:1788539117"
+      }
     },
     {
-      "path": "plugin-group-controls",
+      "id": "plugin-group-controls",
       "parent": "agent-expansion",
       "title": "PR12 And Per-Group Plugin Controls",
       "purpose": "Merge Emoji Kitchen, connect group-level plugin switches to real execution, and deploy current Bot-only artifacts while retiring superseded running versions.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "pending",
       "verification_status": "unverified",
-      "sync_status": "clean",
-      "last_sync": "unix:1788539117"
+      "status_reason": "",
+      "isolation": {
+        "mode": "",
+        "workspace_path": "",
+        "git_branch": "",
+        "managed_by_treework": false,
+        "last_status": ""
+      }
     },
     {
-      "path": "real-group-validation",
+      "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
-      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "paused",
       "verification_status": "partial",
-      "sync_status": "clean",
+      "status_reason": "100-question no-send Runtime simulation and required fixes are committed; S23 live QQ/NapCat and authorization-dependent gates remain open",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/real-group-validation",
         "git_branch": "treework/real-group-validation",
         "managed_by_treework": true,
-        "created_at": "unix:1786381821",
-        "last_entered_at": "unix:1788403825",
         "last_status": "reused existing worktree"
-      },
-      "status_reason": "100-question no-send Runtime simulation and required fixes are committed; S23 live QQ/NapCat and authorization-dependent gates remain open",
-      "last_sync": "unix:1788539117"
+      }
     }
   ]
 }

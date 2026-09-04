@@ -336,6 +336,14 @@ tree:
         title: Current Arc Compatibility Release
         purpose: Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.
         spec: branches/agent-expansion/bot-release-convergence/arc-compat-migration/spec.md
+    - id: plugin-group-controls
+      title: PR12 And Per-Group Plugin Controls
+      purpose: >-
+        Merge Emoji Kitchen, connect group-level plugin switches to real execution,
+        and deploy current Bot-only artifacts while retiring superseded running versions.
+      spec: branches/agent-expansion/plugin-group-controls/spec.md
+      depends_on:
+      - bot-release-convergence
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

@@ -655,6 +655,22 @@
       "kind": "parent_of",
       "user_label": "bot-release-convergence contains arc-compat-migration",
       "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-83",
+      "from": "agent-expansion",
+      "to": "plugin-group-controls",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains plugin-group-controls",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-84",
+      "from": "plugin-group-controls",
+      "to": "bot-release-convergence",
+      "kind": "depends_on",
+      "user_label": "plugin-group-controls depends on bot-release-convergence",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

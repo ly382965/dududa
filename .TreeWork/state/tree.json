@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "revision": 8,
-  "source_hash": "fnv1a64:5290531cd32b308e",
-  "state_hash": "fnv1a64:81b4b3cea8804324",
-  "accepted_at": "unix:1788531488",
+  "revision": 9,
+  "source_hash": "fnv1a64:8612c1bfede2e668",
+  "state_hash": "fnv1a64:b0ebbfd97eb57bbb",
+  "accepted_at": "unix:1788539117",
   "root": "root",
   "nodes": [
     {
@@ -460,12 +460,23 @@
       "sibling_order": 2
     },
     {
+      "id": "plugin-group-controls",
+      "parent": "agent-expansion",
+      "title": "PR12 And Per-Group Plugin Controls",
+      "purpose": "Merge Emoji Kitchen, connect group-level plugin switches to real execution, and deploy current Bot-only artifacts while retiring superseded running versions.",
+      "spec": "branches/agent-expansion/plugin-group-controls/spec.md",
+      "sibling_order": 18,
+      "depends_on": [
+        "bot-release-convergence"
+      ]
+    },
+    {
       "id": "real-group-validation",
       "parent": "agent-expansion",
       "title": "S23 Authorized Real-Group Validation",
       "purpose": "Run separately authorized inbound, digest and probe canaries only after every release-required local gate is complete.",
       "spec": "branches/agent-expansion/real-group-validation/spec.md",
-      "sibling_order": 18,
+      "sibling_order": 19,
       "depends_on": [
         "legacy-cleanup",
         "mew-parity-audit",
