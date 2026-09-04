@@ -4,9 +4,9 @@
 <!-- treework:status:start -->
 Branch: demo-runtime-validation
 Parent: agent-expansion
-Status: pending
-Verification: unverified
-Last sync: unix:1788545121
+Status: in_progress
+Verification: partial
+Last sync: unix:1788547284
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
