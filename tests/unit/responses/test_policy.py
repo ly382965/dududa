@@ -29,6 +29,7 @@ from dududa.responses import (
     project_response_reservation,
     response_plan_digest,
 )
+from dududa.responses.evidence import is_history_summary_request
 
 from tests.unit.models.test_tiering import (
     _assessment as tier_assessment,
@@ -143,6 +144,31 @@ class ResponseProfilePolicyTests(unittest.TestCase):
                     self.assertEqual(
                         plan.assessment_digest, DigestString("assessment:1")
                     )
+
+    def test_history_summary_signal_sets_only_an_auto_medium_floor(self) -> None:
+        for level in TaskComplexityLevel:
+            for explicit in (None, *AnswerProfile):
+                with self.subTest(level=level, explicit=explicit):
+                    value = request(level, explicit)
+                    value = replace(value, detail_evidence=replace(
+                        value.detail_evidence,
+                        reason_codes=(*value.detail_evidence.reason_codes, "recent_history_summary"),
+                    ))
+                    plan = self.policy.select(value, now=NOW)
+                    expected = explicit or (AnswerProfile.LONG if level is TaskComplexityLevel.HIGH else AnswerProfile.MEDIUM)
+                    self.assertIs(plan.selected_profile, expected)
+                    self.assertIs(plan.requested_profile, explicit)
+
+    def test_history_summary_matches_the_current_request_not_quoted_data(self) -> None:
+        for text in ("总结这个群今天的讨论。", "@嘟嘟哒 请总结本群最近消息。",
+                     "Please summarize today's group discussion.", "Summarise the chat history."):
+            with self.subTest(text=text):
+                self.assertTrue(is_history_summary_request(text))
+        for text in ("翻译这条消息。", "请翻译：总结本群今天的讨论。",
+                     "请总结这段文字：“群里有人要求总结消息。”",
+                     'Translate "summarize the group discussion" into Chinese.'):
+            with self.subTest(text=text):
+                self.assertFalse(is_history_summary_request(text))
 
     def test_required_tier_reasoning_profile_counterexamples_are_orthogonal(
         self,

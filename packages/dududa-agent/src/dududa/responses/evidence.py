@@ -35,6 +35,25 @@ _PATTERNS = {
     ),
 }
 
+_HISTORY_SUMMARY_PATTERNS = (
+    re.compile(
+        r"^(?:@\S+\s+)?(?:(?:请|麻烦|帮我|帮忙|能否|可以)\s*)*"
+        r"(?:总结|汇总|概括)(?:一下)?[^。！？\n：‘’“”\"']{0,80}"
+        r"(?:本群|这个群|群聊|群里|讨论|聊天|消息|记录)"
+    ),
+    re.compile(
+        r"^(?:@\S+\s+)?(?:please\s+)?summari[sz]e\b"
+        r"[^.!?\n:\"'‘’“”]{0,100}\b(?:group|chat|conversation|discussion|messages|history)\b"
+    ),
+)
+
+
+def is_history_summary_request(text: str) -> bool:
+    """Only the leading request, not a summary instruction quoted as data."""
+    normalized = unicodedata.normalize("NFKC", text).casefold().strip()
+    normalized = re.sub(r"(?<=\w)['’](?=\w)", "", normalized)
+    return any(pattern.search(normalized) for pattern in _HISTORY_SUMMARY_PATTERNS)
+
 
 def detect_detail_preference(
     message_ref: str,
@@ -72,4 +91,4 @@ def detect_detail_preference(
     )
 
 
-__all__ = ["detect_detail_preference"]
+__all__ = ["detect_detail_preference", "is_history_summary_request"]

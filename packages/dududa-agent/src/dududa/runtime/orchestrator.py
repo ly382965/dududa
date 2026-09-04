@@ -21,6 +21,7 @@ from dududa.domain.delivery import DeliveryReceipt, DeliveryStatus
 from dududa.domain.identity import ConversationScope
 from dududa.domain.primitives import (
     ComponentRevision,
+    ConversationType,
     Outcome,
     ResourceUsage,
     RuntimeBudget,
@@ -66,7 +67,10 @@ from dududa.responses.contracts import (
     ResponsePlan,
     ResponseProfileSelectionRequest,
 )
-from dududa.responses.evidence import detect_detail_preference
+from dududa.responses.evidence import (
+    detect_detail_preference,
+    is_history_summary_request,
+)
 from dududa.security.digests import actor_digest, scope_digest
 from dududa.security.models import AuthorizationEffect
 from dududa.security.ports import AuthorizationDecisionVerifier, AuthorizationPolicy
@@ -1488,11 +1492,23 @@ class OfflineRuntimeOrchestrator:
                 reason_codes=(f"entrypoint_{forced[0].value}_profile",),
                 detector_revision=self._detail_detector_revision,
             )
-        return detect_detail_preference(
+        evidence = detect_detail_preference(
             context.perception.current_message_ref,
             text,
             detector_revision=self._detail_detector_revision,
         )
+        if (
+            evidence.reason_codes == ("no_explicit_detail_preference",)
+            and context.perception.conversation_type is ConversationType.GROUP
+            and len(context.perception.messages) >= 3
+            and state.complexity_assessment is not None
+            and state.complexity_assessment.task_kind == "bounded_transformation"
+            and is_history_summary_request(text)
+        ):
+            evidence = replace(evidence, reason_codes=(
+                *evidence.reason_codes, "recent_history_summary",
+            ))
+        return evidence
 
     def _resolve_persona(self, state: RuntimeState) -> PersonaResolution:
         registry = self._persona_registry

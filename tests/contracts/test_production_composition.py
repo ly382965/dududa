@@ -1921,6 +1921,66 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
                 finally:
                     await plugin.terminate()
 
+    async def test_multi_message_summary_auto_profile_respects_explicit_and_locked_limits(self) -> None:
+        class SummaryProvider(_ProactiveAstrBotProvider):
+            async def text_chat(self, **kwargs):
+                response = await super().text_chat(**kwargs)
+                if "语义感知器" in str(kwargs.get("system_prompt")):
+                    payload = json.loads(response.completion_text)
+                    payload.update(task_kind="bounded_transformation", speech_acts=["request"])
+                    payload["complexity_signals"][0]["code"] = "bounded_transformation"
+                    response.completion_text = json.dumps(payload, ensure_ascii=False)
+                elif '"selected_profile":"short"' in str(kwargs.get("prompt")):
+                    response.completion_text = "只据最近窗口：会议更正为周六二十点，不代表全天。"
+                else:
+                    response.completion_text = "只据最近十条消息，会议更正为周六二十点。" + "这是合成历史中已确认的讨论事项，不代表全天记录。" * 7
+                return response
+
+        cases = (
+            ("总结这个群今天的讨论。", 10, None, "medium"),
+            ("Please summarize today's group discussion.", 10, None, "medium"),
+            ("总结这个群今天的讨论，请用一句话概括。", 10, None, "short"),
+            ("总结这个群今天的讨论。", 10, "short", "short"),
+            ("总结这个群今天的讨论。", 10, "long", "long"),
+            ("翻译这条消息成英文。", 10, None, "short"),
+            ("请总结这段文字：“群里有人要求总结消息。”", 10, None, "short"),
+            ("总结这个群今天的讨论。", 1, None, "short"),
+        )
+        for index, (prompt, count, forced, expected) in enumerate(cases):
+            with self.subTest(prompt=prompt, history=count, forced=forced):
+                provider = SummaryProvider()
+                plugin = self._production_plugin(provider)
+                self._initialize(plugin, self._runtime_config(rollout_mode="shadow"),
+                                 f"production-history-profile-{index}")
+                if forced:
+                    plugin.rollout_bridge._requests._scope_policy_resolver = SimpleNamespace(
+                        feature_flags=lambda connector: {f"response_profile.force_{forced}": True})
+                try:
+                    await plugin.runtime_assembly.refresh_model_health(
+                        timeout_seconds=1, evidence_ttl=timedelta(seconds=30))
+                    event = _Event(message_id=f"history-profile-{index}", message_str=f"@嘟嘟哒 {prompt}")
+                    event.dududa_preview_history = {
+                        "accountId": "qq-bot-1", "conversationId": "qq-bot-1:group:group-1",
+                        "source": "synthetic", "truncated": False, "messages": [
+                            {"id": f"h{number}", "senderId": "member-a", "senderName": "甲",
+                             "content": f"第{number}项讨论已确认；会议更正为周六二十点。",
+                             "timestamp": f"2026-09-04T02:{number:02d}:00+00:00"}
+                            for number in range(count)
+                        ],
+                    }
+                    preview = await plugin.rollout_bridge.preview(event)
+                    self.assertEqual(preview.completion.final_phase.value, "completed", preview.runtime_result.reason_codes)
+                    self.assertEqual(preview.runtime_result.outcome.value, "response")
+                    self.assertEqual(preview.context_usage["coverage"]["historyMessagesRead"], count)
+                    self.assertEqual(preview.runtime_result.final_response.profile_validation.selected_profile, expected)
+                    self.assertEqual(preview.runtime_result.selection_summary.selected_tier.value, "haiku")
+                    self.assertEqual(event.send_calls, 0)
+                    self.assertEqual(preview.tool_calls, 0)
+                    if expected == "medium":
+                        self.assertGreater(preview.runtime_result.final_response.profile_validation.visible_characters, 180)
+                finally:
+                    await plugin.terminate()
+
     async def test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp(
         self,
     ) -> None:
