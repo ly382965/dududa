@@ -770,7 +770,7 @@
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "paused",
-      "verification_status": "failed",
+      "verification_status": "partial",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -778,11 +778,11 @@
         "git_branch": "treework/bot-release-convergence",
         "managed_by_treework": true,
         "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788520201",
+        "last_entered_at": "unix:1788520911",
         "last_status": "reused existing worktree"
       },
-      "status_reason": "Requested group toggle is deployed and tested. Existing release gaps (upstream model503, Arc/DeepSeek choices) remain outside this UI follow-up.",
-      "last_sync": "unix:1788520580"
+      "status_reason": "Web/MCP cdbc5f0 deployed and live-verified; DeepSeek pools enabled and synthetic probes passed. Await separate provider-retention consent before Runtime migration; legacy Arc compatibility remains unresolved.",
+      "last_sync": "unix:1788524222"
     },
     {
       "path": "real-group-validation",
