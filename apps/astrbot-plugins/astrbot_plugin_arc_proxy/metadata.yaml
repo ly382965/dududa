@@ -1,11 +1,11 @@
 name: astrbot_plugin_arc_proxy
-display_name: Arcaea B50 本地渲染
-desc: 为 Dududa 2.0 Runtime 提供结构化 B50 本地渲染能力，不代理第三方 Bot 或自行发送消息。
-short_desc: Dududa 2.0 本地 B50 Capability 资产。
+display_name: Arcaea 命令兼容与本地 B50
+desc: 显式授权的旧版 Arc 命令兼容通道，独立保留默认关闭的本地 B50 Capability。
+short_desc: Arc bind / b50 / info / chart 与本地渲染资产。
 help: |
-  本插件不注册消息命令或被动监听器。
-  B50 渲染由 Dududa 2.0 Runtime 通过受治理 Capability 调用。
-version: v2.0.0
+  兼容通道需单独开启并配置群白名单与既有上游，B50 保留原显式命令副作用。
+  本地 B50 Capability 的授权、网络与发送边界不变。
+version: v2.1.0
 author: mmdustc
 repo: https://github.com/ly382965/dududa/tree/main/apps/astrbot-plugins/astrbot_plugin_arc_proxy
 astrbot_version: ">=4.26.2,<5"

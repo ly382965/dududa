@@ -10,14 +10,14 @@ Title: Current Arc Compatibility Release
 
 ## Acceptance
 
-- [ ] Old/new command mapping is explicit; isolated positive/negative tests cover inputs, authentication and redaction; current plugin loads without production actions.
+- [x] Old/new command mapping is explicit; isolated positive/negative tests cover inputs, authentication and redaction; current plugin loads without production actions.
 - [ ] Lead integration and scoped release verification are recorded separately from isolated worker verification.
 
 ## Local Steps
 
-- [ ] Inspect canonical and deployed plugin source only; map commands and dependencies.
-- [ ] Port compatibility behavior with external config and no secrets in source.
-- [ ] Run isolated plugin tests; document migration and commit.
+- [x] Inspect canonical and deployed plugin source only; map commands and dependencies.
+- [x] Port compatibility behavior with external config and no secrets in source.
+- [x] Run isolated plugin tests; document migration and commit.
 
 ## Out Of Scope
 

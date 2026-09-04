@@ -1,0 +1,1 @@
+"""Vendored Arcaea chart renderer."""

@@ -11,8 +11,35 @@ Last sync: unix:1788531488
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Canonical Arc v2.1 preserves `/arc bind`, `/arc b50`, `/arc info` and `/arc chart`
+  behind a separate explicit compatibility switch and original-scope group allowlist.
+  Local B50 Capability remains independently default-off with unchanged provider/renderer.
+- Ready for Lead Review after branch-local commit; not deployed, not runtime-tested
+  against real users or upstream. Lead owns actual config/state migration and old release freeze.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Reused legacy catalog, SQLite binding schema, chart renderer and licensed vendor;
+  moved private identities and asset/state locations into AstrBot schema configuration.
+  No deployed data or game assets were copied into Git.
+- Added bounded queue/transport/request deadlines, strict upstream-private/account checks,
+  failure-message rejection and no-auto-advance quarantine for uncertain upstream state.
+- 28 Arc unit tests and one existing synthetic B50 PNG test pass. Owned changed Python
+  lint, formatting and compilation pass; private-constant/data-copy scan passes.
+- Current AstrBot loader source inspected read-only: schema is recognized and config is
+  injected as `context=..., config=...`; no container plugin import or live request occurred.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Lead must migrate only the previous authorized groups/upstream and external asset/state
+  paths, verify current container loading, then freeze the previous plugin source mount.
+  No real B50 send/bind verification is authorized in this worker's work.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Integration should touch only canonical Arc, its two test files and this branch's docs.
+  README contains the exact four catalog JSON filenames and external directory layout.
+- Before replacing/reloading either version, operator must confirm upstream has no in-flight
+  request. Timeout/send ambiguity pauses the process; do not blindly restart or auto-drain.
+- Preserve vendor LICENSE/attribution, including its additional spoken-use condition.
+  Root/Lead performs protected verification/completion and deployment; this worker does not.
