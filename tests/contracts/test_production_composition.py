@@ -1851,6 +1851,40 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
 
+    async def test_production_preview_history_completes_without_sending(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(plugin, self._runtime_config(rollout_mode="shadow"),
+                         "production-preview-history")
+        try:
+            await plugin.runtime_assembly.refresh_model_health(
+                timeout_seconds=1, evidence_ttl=timedelta(seconds=30))
+            provider.calls.clear()
+            event = _Event(message_id="preview-history", message_str="@嘟嘟哒 你好")
+            event.dududa_preview_history = {
+                "accountId": "qq-bot-1", "conversationId": "qq-bot-1:group:group-1",
+                "source": "synthetic", "truncated": False, "messages": [
+                    {"id": "h1", "senderId": "member-a", "senderName": "甲",
+                     "content": "会议原定周五", "timestamp": None},
+                    {"id": "h2", "senderId": "member-b", "senderName": "乙",
+                     "content": "更正：周六晚上八点", "timestamp": None,
+                     "replyToId": "h1"},
+                ],
+            }
+            preview = await plugin.rollout_bridge.preview(event)
+            self.assertEqual(preview.completion.final_phase.value, "completed")
+            self.assertEqual(preview.runtime_result.outcome.value, "response")
+            self.assertEqual(preview.context_usage["messagesRead"], 3)
+            self.assertEqual(preview.context_usage["coverage"]["historyMessagesRead"], 2)
+            self.assertTrue(preview.generation_observed)
+            self.assertEqual(event.send_calls, 0)
+            self.assertEqual(preview.tool_calls, 0)
+            self.assertEqual(len(provider.calls), 2)
+            for call in provider.calls:
+                self.assertIn("更正：周六晚上八点", call["prompt"])
+        finally:
+            await plugin.terminate()
+
     async def test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp(
         self,
     ) -> None:

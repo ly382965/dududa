@@ -112,6 +112,10 @@ from dududa.runtime.capabilities import (
     tool_context_tokens_upper_bound,
     validated_tool_model_projection,
 )
+from dududa.runtime.context import (
+    CurrentMessageContextBuilder,
+    CurrentMessageContextBuilderConfig,
+)
 from dududa.runtime.contracts import (
     CurrentMessageContext,
     DirectChatExecutionReceipt,
@@ -1151,10 +1155,33 @@ def _validate_artifact_types_and_bindings(state: RuntimeState) -> None:
             perception_context.conversation_type is not state.message.conversation_type
             or perception_context.data_classification
             is not preprocess.data_classification
-            or len(perception_context.messages) != 1
+            or (
+                len(perception_context.messages) != 1
+                and state.message.metadata.get("preview_history") is None
+            )
         ):
             raise validation_error("runtime_context_projection_mismatch")
-        current_message = perception_context.messages[0]
+        if state.message.metadata.get("preview_history") is not None:
+            # Reuse the bounded projection instead of trusting extra messages in
+            # a checkpoint or implementing a second history validation schema.
+            expected_context = CurrentMessageContextBuilder(
+                CurrentMessageContextBuilderConfig(
+                    schema_version=1,
+                    limits=perception_context.limits,
+                    maximum_content_input_tokens=(
+                        perception_context.content_input_tokens_upper_bound
+                    ),
+                    private_data_classification=preprocess.data_classification,
+                    group_data_classification=preprocess.data_classification,
+                    component_revision=context.builder_revision,
+                    available_capability_categories=(
+                        perception_context.available_capability_categories
+                    ),
+                )
+            ).build(state.message, state.actor, state.conversation_scope, preprocess)
+            if expected_context != context:
+                raise validation_error("runtime_context_projection_mismatch")
+        current_message = perception_context.current_message
         if (
             current_message.message_ref != perception_context.current_message_ref
             or current_message.author_identity_ref
