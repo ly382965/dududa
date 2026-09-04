@@ -12,7 +12,7 @@ Title: Bot Runtime Repair And Stable Release
 
 - [x] Live Agent status/config/preview work without private historical corpus; errors identify actual readiness, not NO BANDIT.
 - [x] Base URL/model setup is discoverable from Key creation; secrets stay write-only and saved/applied state is honest.
-- [ ] Bot services run verified stable/source releases, old versions have private rollback artifacts, and excluded services remain unchanged.
+- [x] Bot services run verified stable/source releases, old versions have private rollback artifacts, and excluded services remain unchanged.
 - [x] Focused regression/build/deployed checks pass and sanitized implementation/documentation is pushed to GitHub.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
@@ -28,8 +28,8 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Fix MCP workbench button/card/scroll layout and verify narrow/desktop browsers; Web `31441a3` deployed with unchanged dependent services.
 - [x] Restore missing read-only notifai mounts in Console/AstrBot; both discover all seven tools and the public stats query succeeds. Preserve private rollback and record sanitized evidence.
 - [x] Integrate the three repair child branches and verify their cross-layer behavior.
-- [ ] Publish the new 100-question Markdown and run bounded synthetic no-send model previews plus isolated fault/proactive cases; record actual results rather than claiming full human acceptance.
-- [ ] Deploy verified Bot-only artifacts, test the apply action and context path, freeze superseded implementations privately, and publish sanitized GitHub changes.
+- [x] Publish the new 100-question Markdown and run bounded synthetic no-send model previews plus isolated fault/proactive cases; record actual results rather than claiming full human acceptance.
+- [x] Deploy verified Bot-only artifacts, test the apply action and context path, freeze superseded implementations privately, and publish sanitized GitHub changes.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

@@ -156,6 +156,13 @@ task kind for summarizing/rewriting untrusted quoted data. Preserve conflicting
 intent decisions and report only four fixed conflict-field reason codes, never
 raw model projections or prompt/configuration contents.
 
+An actual retained multi-message group-summary request may select the existing
+MEDIUM response profile through existing detail evidence. Explicit short/long,
+locked preferences, one-message summaries and non-summary transformations retain
+their behavior. This does not raise response hard limits, change model tiers or
+authorize tool/QQ actions. Record failed and partial model-quality cases without
+hardcoding the acceptance table into the framework.
+
 ### MCP Frontend Layout Follow-up
 
 Repair only the workbench presentation: explicitly style the connection-check
