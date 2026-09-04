@@ -93,7 +93,9 @@ Runtime 总输出额度同时覆盖感知与回答两份预留，避免在发请
 
 ## 2026-09-04 当前部署：DeepSeek 已应用
 
-- AstrBot 当前镜像为 `dududa/astrbot:0ef2a18-4.27.5`，镜像摘要为 `sha256:2fb56b38ca111c315b111957b0b0c9b52378cd550c1e26bfa2fb6bcbc1cf6bdd`。挂载的独立 Runtime/插件源为 `5e243fd`；后续提交只修改构建依赖，不改变该运行时代码。Web 和 MCP Console 保持 `cdbc5f0`，NapCat 保持 4.18.19。
+- 最新 Web-only 修复为 `dududa/web:31441a3`：MCP 检测按钮统一样式，检测中/禁用状态明确，状态与时间可换行，卡片随侧栏宽度调整，MCP 工具栏在本节滚动时保持可见。没有改变连接过期语义、自动检测或任何 Runtime 行为。以下其他组件版本不变。
+- 本次前端 100 项、浏览器 10 项、类型检查及构建通过；浏览器覆盖 1280px 桌面、390px 和 320px，检查按钮、长状态、滚动和无溢出。公网实际 CSS 与验证构建一致。仅 Web 重建，其余 30 个容器身份、镜像、启动时间不变；Web/QQ connected、Runtime 配置就绪、MCP10/26、未登录 Auth302 均通过。旧 Web 镜像和切换前私密清单保留。
+- AstrBot 当前镜像为 `dududa/astrbot:0ef2a18-4.27.5`，镜像摘要为 `sha256:2fb56b38ca111c315b111957b0b0c9b52378cd550c1e26bfa2fb6bcbc1cf6bdd`。挂载的独立 Runtime/插件源为 `5e243fd`；后续提交只修改构建依赖，不改变该运行时代码。Web 为上述 `31441a3`，MCP Console 保持 `cdbc5f0`，NapCat 保持 4.18.19。
 - 外部池 revision 14 已实际应用，三池均启用：Haiku/Luna 为 Flash `low` / 8192，Sonnet/Terra 为 Flash `high` / 16384，Opus/Sol 为 Pro `max` / 32768。数字为每次输出上限，不是每次必定消耗量。操作者明确同意 CN / provider-managed 默认留存策略；没有继续声称零留存，也没有复制旧 GPT 证据。
 - 三档均通过真实 AstrBot Provider 请求及非思考健康探针。线上 Agent 状态显示 `providerConfigured=true`，模型映射为 `deepseek-v4-flash`、`deepseek-v4-flash`、`deepseek-v4-pro`。普通问候的实际 Runtime 预览生成非空回答，用时 10.732 秒，路径为 `dududa_2_preview`，QQ 输出、Memory 写入、工具调用均为 0。
 - 一次含“测试”的固定输出合成提示返回 `conflicting_evidence_without_clarification`，不是模型路由缺失。静态规则支持验证关键词与模型分类冲突这一解释，但当次具体冲突字段未被捕获；未放宽冲突策略，也不据成功问候宣称所有输入都通过。尚未重新验收真实主动群发和人工质量。

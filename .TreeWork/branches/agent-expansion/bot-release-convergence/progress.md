@@ -4,20 +4,22 @@
 <!-- treework:status:start -->
 Branch: bot-release-convergence
 Parent: agent-expansion
-Status: in_progress
+Status: paused
 Verification: partial
-Last sync: unix:1788528889
+Last sync: unix:1788529380
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- AstrBot is deployed as `dududa/astrbot:0ef2a18-4.27.5`, with immutable Runtime/plugin source `5e243fd` (later changes only package/build definitions). Web and MCP Console remain `cdbc5f0`; NapCat remains 4.18.19. This follow-up recreated only AstrBot. The proactive switch and saved-versus-applied Key UI remain available.
+- Web is now `dududa/web:31441a3`, with the MCP workbench layout fix. AstrBot remains `dududa/astrbot:0ef2a18-4.27.5`, with immutable Runtime/plugin source `5e243fd` (later changes only package/build definitions). MCP Console remains `cdbc5f0`; NapCat remains 4.18.19. This latest follow-up recreated only Web; all 30 other containers retain their IDs, image IDs and start times. The proactive switch and saved-versus-applied Key UI remain available.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
 - Live Runtime is configured and maps Haiku/Sonnet/Opus to DeepSeek Flash low / Flash high / Pro max. Pool revision 14 was applied with the explicitly approved provider-managed retention policy. An ordinary greeting generated a nonempty no-send Runtime preview in 10.732 seconds, with zero QQ outputs, Memory writes and tool calls. Web/QQ and the MCP catalog (10 servers/26 capabilities) are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers and the three unchanged Bot dependencies retain their IDs, image IDs and start times.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Fixed MCP controls that had a template class but no CSS: explicit styled/focus/disabled/pending check button; wrapped status/timestamps; vertically spaced cards with aligned actions; container-width-driven columns and an in-section sticky toolbar below Agent tabs. Connection/expiry semantics and authorization are unchanged, with no automatic checks.
+- Latest Web-only verification: frontend 100 and Playwright 10 passed (including 1280px desktop/382px panel, 390px and 320px); typecheck/build and canonical Node 22.18 image build passed. Browser checks cover no overflow/clipped metadata, styled controls, pending/disabled states, explicit checks and toolbar position; desktop/mobile screenshots were inspected. Live CSS exactly matches the verified build; health connected, Runtime configured, MCP10/26 and public Auth302 verified. The private pre-cutover manifest and old Web image remain available for rollback.
 - Added the missing external-pool application bridge: prepare verifies the actual AstrBot Provider and saves private candidates/backups; install checks for intervening configuration changes and updates the stopped host; restart reconstructs Provider instances. Key/Base URL remain external. The frontend still does not apply automatically on save or offer an apply button.
 - Verified all three real Provider calls and non-thinking health probes, plus nine offline SDK/Provider boundary cases for parameters, one-attempt behavior, redaction, errors, deadline and cancellation. The explicit bounded path now disables nested retries; configured total Runtime output reservations cover both perception and direct replies without changing legacy defaults.
 - This turn: migration/model tests 26 passed; full production composition exercised 32 cases with 30 passing and two stale retry-count assertions failing. Updated those assertions; both and the new budget/privacy case passed the focused three-case rerun. New CLI lint passed. Final live model preview succeeded; no real QQ test message was sent.
@@ -35,6 +37,7 @@ Last sync: unix:1788528889
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- The preceding read-only preview diagnosis found that group history is dropped before Runtime (one operator instruction only) and empty candidates receive a misleading green success label. A same-prompt live retry returned clarification, not a group summary; the original screenshot's terminal reason was not captured. This separate behavior was not changed by the narrowly requested MCP layout fix.
 - Await operator choice for Arc: old QQ proxy commands versus the intentionally different default-off local Capability replacement. Do not silently remove commands or claim that preserved legacy Arc is upgraded.
 - A synthetic fixed-output prompt containing the verification keyword “测试” deferred with `conflicting_evidence_without_clarification`; code inspection supports a rules/LLM verification disagreement, but the exact online conflicting field was not captured. An ordinary greeting succeeded. Do not weaken the conflict policy or claim every prompt/model-quality scenario is verified.
 - Future Key-pool edits still require a controlled application/reassembly step; automatic frontend apply/hot reload is not implemented. The successful no-send preview is not evidence of subsequent autonomous QQ delivery or human quality acceptance.

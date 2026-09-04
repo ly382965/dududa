@@ -226,6 +226,85 @@ test('mobile navigation keeps real QQ chat separate from the unavailable Agent r
   if (process.env.DUDUDA_CAPTURE_SCREENSHOTS === '1') await page.screenshot({ path: '/tmp/dududa-chat-mobile.png' })
 })
 
+for (const width of [1280, 390, 320]) {
+  test(`MCP workbench keeps styled controls and readable cards at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const names = ['校园公告', '学院通知', '评课社区', '图书馆开放时间', '校园生活参考', '校园通知', '本科专业设置', '教务处', '培养方案', '二课']
+    const servers = names.map((displayName, index) => ({
+      id: `public-server-${index}`, displayName, enabled: index !== 9, available: index !== 9,
+      authentication: 'not_required', health: 'initializing', readiness: 'unverified',
+      reason: index === 9 ? '服务未启用' : index === 1
+        ? '连接检测已过期，请重新检测。此状态不代表源数据已失效；检测只验证协议与工具发现。'
+        : '连接检测已过期，请重新检测',
+      capabilityCount: index + 1, checkedAt: '2026-09-04T12:58:58Z',
+    }))
+    await page.route('**/api/internal-test/mcp/catalog', route => route.fulfill({
+      json: { schemaVersion: 1, available: true, servers, capabilities: [] },
+    }))
+    let releaseCheck!: () => void
+    const checkGate = new Promise<void>(resolve => { releaseCheck = resolve })
+    let checkCalls = 0
+    await page.route('**/api/mcp/check', async route => {
+      checkCalls += 1
+      await checkGate
+      await route.fulfill({ json: { ok: true, server: {
+        ...servers[0], readiness: 'healthy', health: 'healthy', reason: '连接正常（不代表数据时效）',
+      } } })
+    })
+    await page.goto('/')
+    await page.locator('.conversation-item').first().click()
+    await page.getByRole('button', { name: width > 860 ? '打开 Agent Console' : 'Agent', exact: true }).click()
+    const consolePanel = page.getByRole('complementary', { name: 'Agent Console' })
+    await consolePanel.getByRole('button', { name: '配置', exact: true }).click()
+    const workbench = consolePanel.locator('.mcp-workbench')
+    const cards = workbench.locator('.mcp-server-grid > article')
+    await expect(cards).toHaveCount(10)
+    await workbench.locator('.section-heading').scrollIntoViewIfNeeded()
+    const checkButton = workbench.getByRole('button', { name: '检测 校园公告 连接' })
+    await expect(checkButton).toHaveCSS('font-size', '9px')
+    await expect(checkButton).toHaveCSS('border-radius', '5px')
+    await expect(cards.first().locator('time')).toHaveAttribute('datetime', servers[0]!.checkedAt)
+    await expect(workbench.getByRole('button', { name: '检测 二课 连接' })).toBeDisabled()
+    expect(checkCalls).toBe(0)
+    try {
+      await checkButton.click()
+      await expect(checkButton).toBeDisabled()
+      await expect(checkButton).toHaveAttribute('aria-busy', 'true')
+      await expect(checkButton).toContainText('检测中')
+    } finally {
+      releaseCheck()
+    }
+    await expect(checkButton).toBeEnabled()
+    await expect(cards.first().locator('.mcp-server-status')).toContainText('连接正常')
+    expect(checkCalls).toBe(1)
+    await consolePanel.locator('.settings-view').evaluate(element => {
+      const heading = element.querySelector('.mcp-workbench .section-heading')!
+      element.scrollTop += heading.getBoundingClientRect().top - element.getBoundingClientRect().top + 25
+    })
+    const layout = await consolePanel.evaluate(element => {
+      const scroller = element.querySelector('.settings-view')!
+      const heading = element.querySelector('.mcp-workbench .section-heading')!
+      const grid = element.querySelector('.mcp-server-grid')!
+      return {
+        pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        panelOverflow: scroller.scrollWidth - scroller.clientWidth,
+        headingOffset: heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
+        tabsOverlap: element.querySelector('.agent-tabs')!.getBoundingClientRect().bottom - heading.getBoundingClientRect().top,
+        columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+        clippedCards: [...grid.querySelectorAll('article, .mcp-server-status, .mcp-server-meta')]
+          .filter(item => item.scrollWidth > item.clientWidth + 1).length,
+      }
+    })
+    expect(layout.pageOverflow).toBeLessThanOrEqual(0)
+    expect(layout.panelOverflow).toBeLessThanOrEqual(0)
+    expect(Math.abs(layout.headingOffset)).toBeLessThanOrEqual(1)
+    expect(layout.tabsOverlap).toBeLessThanOrEqual(1)
+    expect(layout.columns).toBe(width === 320 ? 1 : 2)
+    expect(layout.clippedCards).toBe(0)
+    await page.screenshot({ path: testInfo.outputPath('mcp-workbench.png') })
+  })
+}
+
 test('two real account scopes keep unsent drafts isolated', async ({ page }) => {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.stack || error.message))

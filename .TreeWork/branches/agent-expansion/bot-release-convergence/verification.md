@@ -4,7 +4,7 @@ Branch: bot-release-convergence
 
 ## Latest Verification
 
-- Command: `Migration/model26 passed; composition32 exercised, 30 passed then stale assertions corrected and focused3 passed; lint; secrets1262; final image SDK/Provider mock9; real Provider3 and health3; Runtime nonempty preview10.732s no-send/no-memory/no-tools; auth302; WebQQ connected; MCP10/26; excluded27 and Bot dependencies3 unchanged`
+- Command: `MCP layout: frontend100; Playwright10 including desktop1280/mobile390/320, pending/disabled/explicit-check/no-overflow/sticky assertions and screenshots; type/build; Node22 image; secrets1262; deployed CSS identical; WebQQ connected; Runtime configured; MCP10/26; public auth302; other30 container identities unchanged`
 - Result: partial
-- Coverage gap: DeepSeek applied with approved CN/provider-managed policy and live preview verified. Broader release retains legacy Arc pending compatibility choice; automatic frontend apply/hot reload and real-group quality are not verified.
-- Recorded: unix:1788528462
+- Coverage gap: MCP layout verified and publicly deployed. Broader release still preserves legacy Arc; previous group-history and empty-preview diagnosis remains unfixed and out of this UI-layout follow-up.
+- Recorded: unix:1788529379

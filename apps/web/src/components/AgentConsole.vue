@@ -1102,12 +1102,16 @@ watch(
 
         <section class="settings-section mcp-workbench">
           <div class="section-heading">
-            <Database :size="15" />
-            <span><strong>MCP 工作台</strong><small>SUPER ADMIN · GOVERNED REGISTRY</small></span>
-            <McpServerInstaller @installed="loadMcpCatalog(true)" />
-            <button type="button" class="section-action" title="刷新 MCP 状态" :disabled="mcpCatalogLoading" @click="loadMcpCatalog(true)">
-              <RefreshCw :size="13" :class="{ spinning: mcpCatalogLoading }" />
-            </button>
+            <div class="mcp-heading-title">
+              <Database :size="15" />
+              <span><strong>MCP 工作台</strong><small>SUPER ADMIN · GOVERNED REGISTRY</small></span>
+            </div>
+            <div class="mcp-heading-actions">
+              <McpServerInstaller @installed="loadMcpCatalog(true)" />
+              <button type="button" class="section-action" title="刷新 MCP 状态" :disabled="mcpCatalogLoading" @click="loadMcpCatalog(true)">
+                <RefreshCw :size="13" :class="{ spinning: mcpCatalogLoading }" />
+              </button>
+            </div>
           </div>
 
           <div v-if="mcpCatalogLoading && !mcpCatalog" class="settings-state"><RefreshCw :size="15" class="spinning" />正在读取 MCP Catalog</div>
@@ -1118,12 +1122,15 @@ watch(
             <div class="mcp-server-grid">
               <article v-for="server in mcpCatalog.servers" :key="server.id" :class="{ unavailable: !server.available }">
                 <header><strong>{{ server.displayName }}</strong><small>{{ server.id }}</small></header>
-                <span :class="server.readiness === 'healthy' ? 'available' : server.readiness === 'error' ? 'unavailable' : ''">
+                <span class="mcp-server-status" :class="server.readiness === 'healthy' ? 'available' : server.readiness === 'error' ? 'unavailable' : ''">
                   {{ server.reason || '尚未检测连接' }}
                 </span>
-                <p>{{ server.capabilityCount }} 项能力</p>
-                <p v-if="server.checkedAt">检测于 {{ new Date(server.checkedAt).toLocaleString() }}</p>
-                <button type="button" class="mcp-check-button" :aria-label="`检测 ${server.displayName} 连接`" :disabled="!server.enabled || server.authentication === 'missing_secret' || mcpChecking.includes(server.id)" @click="checkMcp(server.id)">
+                <div class="mcp-server-meta">
+                  <p>{{ server.capabilityCount }} 项能力</p>
+                  <p v-if="server.checkedAt">检测于 <time :datetime="server.checkedAt">{{ new Date(server.checkedAt).toLocaleString() }}</time></p>
+                </div>
+                <button type="button" class="mcp-check-button" :aria-label="`检测 ${server.displayName} 连接`" :aria-busy="mcpChecking.includes(server.id)" :disabled="!server.enabled || server.authentication === 'missing_secret' || mcpChecking.includes(server.id)" @click="checkMcp(server.id)">
+                  <RefreshCw :size="12" :class="{ spinning: mcpChecking.includes(server.id) }" />
                   {{ mcpChecking.includes(server.id) ? '检测中…' : '检测连接' }}
                 </button>
               </article>
@@ -2712,13 +2719,42 @@ textarea:disabled {
 }
 
 .mcp-workbench .section-heading {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  background: var(--agent-background);
+  padding: 8px 0;
+}
+
+.mcp-heading-title,
+.mcp-heading-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.mcp-heading-title > svg {
+  flex: 0 0 auto;
+}
+
+.mcp-heading-title small {
+  overflow-wrap: anywhere;
+}
+
+.mcp-heading-actions {
+  margin-left: auto;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .section-action {
   display: grid;
   width: 27px;
   height: 27px;
+  flex: 0 0 auto;
   margin-left: auto;
   cursor: pointer;
   place-items: center;
@@ -2730,20 +2766,21 @@ textarea:disabled {
 
 .mcp-server-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .mcp-server-grid article {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
-  padding: 8px;
-}
-
-.mcp-server-grid article.unavailable {
-  opacity: 0.72;
+  padding: 10px;
 }
 
 .mcp-server-grid header,
@@ -2754,40 +2791,81 @@ textarea:disabled {
 }
 
 .mcp-server-grid header strong {
-  overflow: hidden;
   color: var(--text-secondary);
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 .mcp-server-grid header small,
 .mcp-server-grid p {
-  overflow: hidden;
   margin: 2px 0 0;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 7px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 8px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-.mcp-server-grid > article > span {
+.mcp-server-meta {
+  width: 100%;
+}
+
+.mcp-server-status {
   display: inline-flex;
-  margin-top: 6px;
+  max-width: 100%;
   border-radius: 3px;
-  padding: 2px 5px;
-  font-size: 7px;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  padding: 4px 6px;
+  font-size: 8px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
-.mcp-server-grid > article > span.available {
+.mcp-server-status.available {
   color: var(--success);
   background: color-mix(in srgb, var(--success) 10%, transparent);
 }
 
-.mcp-server-grid > article > span.unavailable {
+.mcp-server-status.unavailable {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.mcp-check-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: auto;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--brand-strong);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.mcp-check-button:hover:not(:disabled) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.mcp-check-button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.mcp-check-button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .mcp-invocation-panel {

@@ -112,6 +112,17 @@ compatibility image onto the verified current base; never copy its private data.
 
 ## General Verification
 
+### MCP Frontend Layout Follow-up
+
+Repair only the workbench presentation: explicitly style the connection-check
+button and pending/disabled/focus states, separate wrapping status text from
+timestamps and actions, and adapt columns to the actual panel width. Keep the
+workbench toolbar visible within its scrolling section without covering the
+Agent tabs. Preserve connection checks, expiry semantics and authorization;
+do not automatically probe servers or change Runtime/history behavior. Verify
+real browser layout at narrow and desktop panel widths with synthetic data,
+then release only Web using the existing private rollback manifest.
+
 Focused tests cover missing corpus configuration with a live Runtime, actual
 unreachable/auth-failed Runtime, honest status messages, no-send preview and
 scope isolation. Run frontend/server tests, type/build and affected Python
