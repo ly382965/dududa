@@ -1,0 +1,14 @@
+{
+  "enabled": {
+    "description": "启用 Emoji Kitchen 表情合成",
+    "type": "bool",
+    "default": true,
+    "hint": "通过 /emoji <Emoji1> <Emoji2> 使用，仅发送官方合成图片。"
+  },
+  "metadata_ttl_seconds": {
+    "description": "Emoji Kitchen metadata 缓存时间（秒）",
+    "type": "int",
+    "default": 604800,
+    "hint": "首次使用或缓存过期时同步参考项目 metadata；图片按需缓存。"
+  }
+}

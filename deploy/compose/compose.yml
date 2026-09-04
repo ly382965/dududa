@@ -117,6 +117,7 @@ services:
       NOTIFAI_MAX_ITEMS: ${NOTIFAI_MAX_ITEMS:-100}
       DUDUDA_API_KEY_STORE_PATH: /run/dududa/api-keys/api-keys.json
       DUDUDA_AGENT_POLICY_PATH: /var/lib/dududa/agent/agent-policies.json
+      DUDUDA_EMOJI_KITCHEN_HTTP_PROXY: ${DUDUDA_EMOJI_KITCHEN_HTTP_PROXY:-}
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"

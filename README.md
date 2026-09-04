@@ -98,6 +98,7 @@ it never grants permission.
 | Component | Status in 2.0 |
 | --- | --- |
 | `astrbot_plugin_dududa_core` | Active AstrBot adapter for the single 2.0 Agent Runtime, command boundaries, Runtime composition, and delivery. |
+| `astrbot_plugin_emoji_kitchen` | Standalone Unicode Emoji Kitchen command; fetches official combinations and caches images on demand. |
 | `astrbot_plugin_sub2api_readonly` | Explicit administrator-only read-only commands. `overview` produces one four-section merged forward (today, current billing cycle, history, upstream accounts). It is an independent host plugin, not automatic Agent tool routing. |
 | `astrbot_plugin_proactive_chatter` | Side-effect-free policy extension consumed by Core before Bridge admission. It detects echo/robot-interaction contexts and can recommend silence; it does not listen, call a model, or send. Default off. |
 | `astrbot_plugin_reply_review` | Conservative review policy asset. It never intercepts messages or calls a Provider by itself; `production_wired=false` until a Runtime secondary-review port is connected. |
