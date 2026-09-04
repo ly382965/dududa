@@ -46,6 +46,7 @@ from dududa.runtime.state import (
 )
 
 from .adapters.output import AstrBotOutputAdapter, InMemoryDeliveryLedger
+from .runtime_admission import tracked_runtime_call
 
 
 class AstrBotBridgeAction(StrEnum):
@@ -273,6 +274,7 @@ class AstrBotRolloutBridge:
         self._runtime_ready = runtime_ready
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
+    @tracked_runtime_call
     async def preview(self, event: object) -> AstrBotRuntimePreviewResult:
         """Run the installed 2.0 Runtime and acknowledge a synthetic no-send output."""
 
@@ -330,6 +332,7 @@ class AstrBotRolloutBridge:
             capability_ids=capability_ids,
         )
 
+    @tracked_runtime_call
     async def handle(
         self,
         event: object,
@@ -473,7 +476,19 @@ class AstrBotRolloutBridge:
         return pending.reason_codes if pending is not None else ()
 
     async def close(self) -> None:
+        self._configuration_paused = True
+        if getattr(self, "_active_configuration_calls", 0):
+            raise RuntimeError("runtime_requests_active")
         await self._shadow.close()
+
+    def pause_configuration(self) -> bool:
+        if getattr(self, "_active_configuration_calls", 0) or self._shadow.active_count:
+            return False
+        self._configuration_paused = True
+        return True
+
+    def resume_configuration(self) -> None:
+        self._configuration_paused = False
 
 
 def _legacy(reason: str) -> AstrBotBridgeResult:

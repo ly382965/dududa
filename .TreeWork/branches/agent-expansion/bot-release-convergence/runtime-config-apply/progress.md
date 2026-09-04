@@ -4,15 +4,27 @@
 <!-- treework:status:start -->
 Branch: runtime-config-apply
 Parent: bot-release-convergence
-Status: pending
-Verification: unverified
-Last sync: unix:1788531488
+Status: in_progress
+Verification: partial
+Last sync: unix:1788533611
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Ready for Lead Review: the page explicitly applies revision-only intent through the existing plugin-scope host boundary; current live configuration, not saved revision alone, drives the displayed application state.
+- Core owns fresh Provider generations and never reloads/terminates global AstrBot Providers. The commit preserves proactive cooldown/rate counters and unrelated configuration. A fixed private last-good copy survives an interrupted three-file write; ordinary failures roll back.
+- Failed retired-resource cleanup remains applied-with-warning and retains resources for lifecycle retry. Shutdown rejects late candidates; HTTP cancellation cannot abandon post-commit retirement.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- 32 focused Python tests passed, including application transactions, bridge behavior and production composition/lifecycle samples. Web UI 16, server 3, mobile-browser E2E 1 passed; frontend/server type checks, production build and changed-Python Ruff passed.
+- An initial full composition run failed because this fresh worktree lacked its MCP worker venv. Provisioned the existing locked worker locally; the representative previously failed iCourse case then passed. Full composition rerun is deferred to lead integration, not claimed as passing here.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Lead must integrate the independent preview changes, perform the actual patched-host application using existing saved settings, and deploy only the Dududa services. No real model calls, QQ sends or production mutations were performed by this branch.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Shared edits: app.ts adds configuration routes/options; main.py adds fixed plugin routes; rollout_bridge.py only adds admission decorators and pause/close helpers; lifecycle.py coordinates owned cleanup. composition.py is unchanged in this branch.
+- UI changes are limited to API Key workbench/services/types and a separate runtime-config E2E file. No preview/history UI changes.

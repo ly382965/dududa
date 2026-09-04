@@ -61,6 +61,7 @@ import {
   type ApiKeyPoolClient,
 } from './model-keys'
 import { readBrowserUpload } from './uploads'
+import { RuntimeConfigClientError, type RuntimeConfigClient } from './runtime-config'
 
 export interface DududaServerOptions {
   hub: OneBotHub
@@ -72,6 +73,7 @@ export interface DududaServerOptions {
   mcpConsole?: McpConsoleClient
   pluginManager?: PluginManagerClient
   runtimePreview?: DududaRuntimePreviewClient
+  runtimeConfig?: RuntimeConfigClient
   /** Server-side provider credential pool.  `modelKeys` is a compatibility alias. */
   apiKeyPool?: ApiKeyPoolClient
   modelKeys?: ApiKeyPoolClient
@@ -127,6 +129,10 @@ function json(response: ServerResponse, status: number, payload: unknown): void 
 }
 
 function routeError(response: ServerResponse, error: unknown): void {
+  if (error instanceof RuntimeConfigClientError) {
+    json(response, error.status, { error: error.message })
+    return
+  }
   if (error instanceof ControlPlaneClientError) {
     json(response, error.status, { error: error.message })
     return
@@ -500,6 +506,27 @@ export function createDududaServer(options: DududaServerOptions) {
       }
       if (method === 'GET' && url.pathname === '/api/api-keys') {
         json(response, 200, sanitizeApiKeySnapshot(await apiKeyCall(() => apiKeyPool.list())))
+        return
+      }
+      if (url.pathname === '/api/api-keys/runtime' && method === 'GET') {
+        if (!options.runtimeConfig) throw new RuntimeConfigClientError('Runtime 配置接口未连接', 503)
+        json(response, 200, await options.runtimeConfig.status())
+        return
+      }
+      if (url.pathname === '/api/api-keys/runtime/apply' && method === 'POST') {
+        if (!sameOrigin(request, publicOrigin)) {
+          json(response, 403, { error: '只允许同源管理员页面应用 Runtime 配置' })
+          return
+        }
+        const body = await readJson(request, maxRequestBytes)
+        if (Object.keys(body).length !== 1 || !['number', 'string'].includes(typeof body.revision)) {
+          json(response, 400, { error: '应用请求只接受已保存配置的 revision' })
+          return
+        }
+        if (!options.runtimeConfig) throw new RuntimeConfigClientError('Runtime 配置接口未连接', 503)
+        const snapshot = await apiKeyCall(() => apiKeyPool.list())
+        if (body.revision !== snapshot.revision) throw new RuntimeConfigClientError('配置已被修改，请刷新后重新应用', 409)
+        json(response, 200, await options.runtimeConfig.apply(body.revision as number | string))
         return
       }
       const apiKeyPoolRoute = /^\/api\/api-keys\/pools\/([^/]+)$/.exec(url.pathname)

@@ -43,6 +43,9 @@ class CoreLifecycleMixin:
     async def terminate(self) -> None:
         if getattr(self, "_dududa_runtime_terminated", False):
             return
+        apply_service = getattr(self, "_dududa_runtime_config_apply", None)
+        if apply_service is not None:
+            await apply_service.begin_shutdown()
         bridge = getattr(self, "rollout_bridge", None)
         self.proactive_talk = None
         assembly = getattr(self, "runtime_assembly", None)
@@ -72,6 +75,11 @@ class CoreLifecycleMixin:
             else:
                 self.runtime_assembly = None
         icourse = getattr(self, "icourse", None)
+        if apply_service is not None and self.rollout_bridge is None and self.runtime_assembly is None:
+            try:
+                await apply_service.close()
+            except BaseException as exc:
+                first_error = first_error or exc
         if icourse is not None:
             try:
                 await icourse.close()
@@ -102,6 +110,7 @@ class CoreLifecycleMixin:
             and getattr(self, "icourse", None) is None
             and getattr(self, "unified_mcp_client", None) is None
             and not self._dududa_runtime_cleanup_assemblies
+            and not getattr(apply_service, "pending_cleanup", ())
         )
         if self._dududa_runtime_terminated:
             self._dududa_runtime_initialized = False

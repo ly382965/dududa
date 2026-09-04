@@ -2,6 +2,18 @@
 
 Parent: bot-release-convergence
 
+## Accepted lifecycle refinement
+
+AstrBot reload terminates Provider objects still retained by callers. The host
+adapter therefore owns private Dududa Provider generations and builds candidates
+through a context overlay. Only Dududa switches immediately; other AstrBot
+consumers keep their existing objects until the next cold start. Persisted
+AstrBot configuration is updated for that cold start. Never reload or terminate
+the global Provider Manager. Refuse an apply while a whole inbound/preview call
+is active, pause the old bridge, drain its shadow jobs and health task, and only
+close retired Provider objects that Dududa itself created. New candidate probes
+are synthetic and explicitly triggered by the Apply action.
+
 Add an explicit authenticated one-click application of saved external pools,
 with status visible in the API Key workbench. Saving remains separate from
 applying. Reuse the existing private pool adapter, verified Provider request

@@ -1,6 +1,38 @@
 # API Key Pool 与 AstrBot Runtime 的同步边界
 
-## 目的
+## 当前操作：显式应用到 Runtime
+
+API Key 页面上方提供 **应用到 Runtime** 按钮。先保存三档的连接参数和 Key，再点击
+按钮；保存本身不触发模型调用。按钮只提交当前保存版本 `revision`，由 Web 使用现有
+plugin-scope 凭据转交 AstrBot，浏览器不读取密钥，也不访问 Docker 或宿主命令。
+
+本次应用支持已验证的官方 DeepSeek Chat 协议、三档均启用、有可用 Key、既有固定
+Provider ID，以及已明确接受的 CN/provider-managed 留存配置；不支持的协议、停用池、
+缺少当前宿主证据等会拒绝应用并保留旧 Runtime，不会偷偷替换模型。Provider Source 的
+Base URL、Key、模型、推理深度与输出上限都是外部配置，无需改业务框架或重新构建页面。
+
+服务端先用三条短合成请求验证模型和输出边界，再执行三档健康检查；最坏可能耗时数分钟，
+期间旧 Runtime 继续工作。提交时若有入站、预览、Shadow 或自动搭话正在执行，会提示稍后
+重试。成功后立即切换 **Dududa 自己拥有的 Provider 实例**，不关闭 AstrBot 全局 Provider。
+因此其他 AstrBot 插件在下次冷启动前仍使用旧实例；持久配置和宿主配置缓存已经同步，
+冷启动后读取同一份新配置。主动搭话控制器只换 Runtime 引用，原冷却和小时限额不清零。
+
+页面“已应用”依据当前进程真实配置绑定判断，而不是单纯看文件保存成功；仅健康检测引起
+的版本变化不会误报未应用，Key/连接语义变化会显示待应用。它不保证上游永远健康，之后
+的供应商故障仍由既有 Runtime 健康策略处理。旧连接清理失败时显示“新配置已应用；旧连接
+清理待重试”，保留资源给生命周期清理重试，不把已完成切换伪装成失败。
+
+运行时挂载保持原样：Web 仅写外部 Key Store，AstrBot 只读该 Store；私有 command/Core/
+evidence 写入仅在 AstrBot 内完成。写入前在数据目录的
+`private/dududa-runtime-last-good/` 保存最后一份 command/core/evidence，目录 `0700`、
+文件 `0600`。正常失败自动回滚；若宿主在多个文件写入之间突然被杀死，应先停止 AstrBot，
+由部署管理员从此私有副本恢复三份文件后冷启动。该目录含原始凭据，禁止加入 Git、普通
+备份导出或浏览器下载。它不是普通功能文档中的公开备份数据。
+
+以下投影适配器仍可单独用于部署/冷启动；`ops/cli/apply_deepseek_runtime.py install`
+仍要求宿主已经停止，不提供绕过该保护的热安装参数。
+
+## 投影边界
 
 Web 控制台的 `/api-keys` 页面负责维护 Luna（`haiku`）、Terra
 （`sonnet`）和 Sol（`opus`）三个相互独立的 Provider Key 池。Key 池不是新的
@@ -103,18 +135,17 @@ Web Gateway 通过原子替换把快照写到仓库之外的私有 JSON 文件�
 429 轮换机制负责从 `key[]` 选择下一个凭据。若部署需要真正的加权调度，应在
 Provider Manager 层实现，而不是复制密钥或修改 Dududa 路由策略。
 
-当前页面中的字段分为两类：`sourceId`、`baseUrl`、Key、非认证 Header、协议和超时
-可直接进入未来的 Provider Source 重载；`provider`、`providerType`、
-`reasoningEffort`、`maxOutputTokens`、`schedulingMode` 与 `weight` 仅作为暂存/运维
-元数据。Web 页面不会声称后一类已经改变运行时。`providerId` 在页面中固定为既有
-Luna/Terra/Sol 绑定；`model` 在任何重载前都必须同时匹配 `runtime_models_json` 和
-当前 conformance evidence，否则部署侧必须拒绝新快照并保留 last-known-good。
+官方 DeepSeek 应用会把 `sourceId`、`baseUrl`、Key、非认证 Header、协议、超时、
+`model`、`reasoningEffort` 和 `maxOutputTokens` 同步到 Provider/Runtime 配置。
+`schedulingMode` 与 `weight` 仍不构成新的调度器；当前有界请求使用 AstrBot 初始 Key
+选择，不在一次请求中遇到 429 后隐藏重试或跨档。`providerId` 固定为既有 Luna/Terra/Sol
+绑定；新的模型/预算必须先通过实际候选探测才更新当前绑定证据。
 
 ## 生命周期与动态更新
 
-当前适配器是显式的启动/重载边界，不在模型调用热路径轮询文件。本功能提供共享
-文件挂载和投影适配器，但不注册 AstrBot Provider Manager 钩子，也不会因控制台
-保存而自动重载正在运行的 Provider。部署侧接入初始化或受控重载钩子时可执行：
+投影适配器不在模型调用热路径轮询文件，也不注册 AstrBot Provider Manager 重载钩子。
+控制台保存不会自动重载 Provider；只有上方明确的应用动作才进入 Core 自有实例交换。
+离线部署侧读取投影可执行：
 
 ```python
 from astrbot_plugin_dududa_core.adapters.api_key_pools import (
@@ -128,15 +159,13 @@ for tier in ("haiku", "sonnet", "opus"):
     if pool is None:
         continue
     projection = project_pool_to_astrbot(pool)
-    # 在确认 providerId/model 与 runtime_models_json 及 conformance evidence
-    # 一致后，将 projection.for_astrbot() 直接交给部署所用版本的 Provider
-    # Manager 重载入口；mapping 含原始 Key，只能在该边界内使用，随后丢弃。
+    # mapping 含原始 Key，只能在私有宿主配置边界使用。
+    # 不要对持有旧 Provider 引用的在线 Runtime 调用 Provider Manager.reload。
 ```
 
-控制台创建、轮换、停用或删除 Key 后，Gateway 会递增快照 `revision`。已接入该
-边界的部署编排可检测版本并对 AstrBot 执行一次受控 Provider 重载；未接入时，页面
-只确认配置已持久化，不声称运行实例已经同步。适配器本身不执行进程重启，也不会
-覆盖无关 Provider。
+控制台创建、轮换、停用或删除 Key 后，Gateway 递增快照 `revision`。应用使用该版本
+进行前后两次校验；期间配置改变会放弃候选并保留旧 Runtime。适配器不执行进程重启，
+不覆盖无关 Provider、群策略或运行配额。
 
 ## 安全与运维要求
 
@@ -146,7 +175,7 @@ for tier in ("haiku", "sonnet", "opus"):
   解析详情；诊断时只记录 schema/revision 和脱敏状态。
 - `for_astrbot()` 返回值包含原始 Key，是一次性边界对象。调用方不得打印、缓存到
   Domain 状态或再次序列化到 Web 响应；AstrBot 接收后应尽快释放引用。
-- 429 可在同一 tier 的 Source Key 列表中轮换；401/403、非法请求、Schema 错误和
+- 非 Dududa 消费者仍可使用 AstrBot 自身 Key 轮换；Dududa 有界请求不隐藏重试。401/403、非法请求、Schema 错误和
   安全拒绝不得借 Key 池机制跨 tier 重试。跨 tier fallback 仍完全由既有 Runtime
   路由与 Admission 合同决定。
 - 更新池元数据不会自动改变 `ModelTier`、`TierPolicy`、Endpoint descriptor
