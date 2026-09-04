@@ -11,8 +11,39 @@ Last sync: unix:1788545121
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- The branch contains general Runtime fixes for exact quoted replies, structured
+  multi-item answer sizing, and explicit public-query result limits. No demo
+  answer text is hard-coded.
+- The fixed native-message set passes 100/100 with 94 Runtime completions and 6
+  intentional legacy handoffs; all mismatch, exception, real QQ send, and
+  Memory-write counters are zero.
+- Production still runs the prior Bot revision until the verified branch is
+  completed and merged. The report therefore retains the prior-deployment
+  failures as historical evidence rather than claiming the fixes are live.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
+
+- Added focused unit and production-composition contracts for the three
+  reproduced defects; 42 broad unit cases and 7 focused production contracts
+  pass serially.
+- Re-ran the native 100-message benchmark after the last planner change; all
+  100 cases completed with the expected 94/6 split and zero safety violations.
+- Drafted the Chinese 5-to-10-minute recording storyboard and validation report,
+  with separate evidence boundaries for real DeepSeek previews, deterministic
+  native-message simulations, UI/configuration, MCP, and passive plugins.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
+- Complete TreeWork verification, merge the branch, build from the merged main
+  revision, and replace only Dududa AstrBot and MCP Console.
+- On the deployed revision, rerun exact reply, six-person assignment, bounded
+  Young aggregation, and quoted-injection counterexample previews with zero QQ
+  Output and zero Memory writes, then update the report with observed results.
+- Verify that Web, NapCat, and all out-of-scope services retained their container
+  identities while no old AstrBot or MCP Console container remains running.
+
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Do not release from the development worktree. Build the private snapshot from
+  the merge commit on `main`, preserve the current private manifest for rollback,
+  and never print its environment values.
