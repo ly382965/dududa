@@ -16,3 +16,6 @@ configure_assets("/path/to/assets")
 The asset root must contain the upstream `img`, `models`, and `Fonts` layout.
 No game assets are included in this vendor directory. See `LICENSE` for the
 upstream license. Runtime Python dependencies are listed in `requirements.txt`.
+
+The canonical compatibility migration also removes trailing whitespace from
+`element.py` and `render.py`; their behavior is otherwise unchanged.

@@ -263,7 +263,7 @@ class Render(object):
         for i in range(1, 4):
             x = width_track - width_chart + width_chart_edge + width_gap * (3 * i - 1) + width_note * i
             self.im.alpha_composite(split_line, (x, 0))
-            
+
     def _draw_extra_lanes(self):
         """Draw extra lanes for 6K regions"""
         draw = ImageDraw.Draw(self.im)
@@ -428,7 +428,7 @@ class Render(object):
                 fill=self.theme.text_bpm_change_color,
                 font=self.theme.font_Exo_SemiBold_20, anchor='ls'
             )
-            
+
     def _get_widen_segments(self) -> list[tuple[int, int]]:
         commands = self._chart.get_command_list_for_type(SceneControl, search_in_timing_group=True, exclude_noinput=False)
         enwiden_commands = [x for x in commands if x.type_ == AffToken.Value.SceneControl.enwidenlanes]
@@ -445,13 +445,13 @@ class Render(object):
         if curr_enwiden:
             enwiden_segments.append((curr_start, self._chart.end_time))
         return enwiden_segments
-    
+
     def _check_time_point_has_enwiden(self, time_point: float, enwiden: list[tuple[int, int]]) -> bool:
         for k in enwiden:
             if time_point >= k[0] and time_point <= k[1]:
                 return True
         return False
-    
+
     def _check_segment_has_enwiden(self, start_time: float, end_time: float, enwiden: list[tuple[int, int]]) -> bool:
         for k in enwiden:
             if not (k[1] <= start_time or k[0] >= end_time):
@@ -468,13 +468,13 @@ class Render(object):
             main_bar_duration = 4 * 60000 / self._song.bpm_base
         else:
             main_bar_duration = 4 * 60000 / main_bpm
-            
+
         segment = int(self._chart.end_time / 10000)
         segment_duration = (self._chart.end_time / segment // main_bar_duration or 1) * main_bar_duration
         segment_count = ceil(self._chart.end_time / segment_duration)
         segment_height = segment_duration / resize  # do not use int() here avoid accumulating errors
         enwiden_commands = self._get_widen_segments()
-        
+
         # Calculate Width
         width = segment_count * width_track
         for i in range(segment_count):

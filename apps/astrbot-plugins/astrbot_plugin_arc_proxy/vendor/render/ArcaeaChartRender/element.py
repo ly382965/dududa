@@ -226,7 +226,7 @@ class Chart(object):
         for arc in self.get_command_list_for_type(Arc, exclude_noinput=True):
             if arc.color.value == 3 and arc.t1 == arc.t2 and arc.y1 == arc.y2 and not arc.is_skyline and arc.t1 < t:
                 result += 1
-        
+
         result += sum(
             group.get_total_combo_before(t) for group in self._timing_group_list
         )
@@ -631,7 +631,7 @@ class TimingGroup(Chart, Control):
         Return 0 if 'type_list' contains 'noinput'.
         """
         return 0 if 'noinput' in self.type_list else super().get_combo_of(type_)
-    
+
     def get_total_combo_before(self, t: int) -> int:
         """
         Return the total combo before given time.
@@ -670,6 +670,6 @@ class TimingGroup(Chart, Control):
     def sub_command_syntax_check(self) -> Iterator[tuple[Command, bool]]:
         """Check the syntax of each subcommand within the TimingGroup individually."""
         return ((sub_command, sub_command.syntax_check()) for sub_command in self.command_list)
-    
+
     def has_hide_group(self) -> bool:
         return any(x for x in self.get_command_list_for_type(SceneControl) if x.type_ == 'hidegroup')
