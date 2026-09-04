@@ -41,6 +41,7 @@ from dududa.ports.responses import VisibleTokenCounter
 from dududa.responses.contracts import ResponsePlan
 from dududa.responses.counting import visible_character_count
 from dududa.responses.digests import response_plan_digest
+from dududa.responses.evidence import requested_exact_literal
 
 from .budget import reservation_budget, usage_within_reservation
 from .capabilities import (
@@ -351,17 +352,29 @@ class DirectChatModelCall:
                 raise validation_error("direct_chat_usage_exceeds_reservation")
             if not isinstance(response.output, str) or not response.output.strip():
                 raise validation_error("invalid_direct_chat_text_output")
+            current_message = next(
+                message
+                for message in context.perception.messages
+                if message.message_ref == context.perception.current_message_ref
+            )
+            visible_output = requested_exact_literal(
+                current_message.text,
+                bot_mentioned=(
+                    context.perception.bot_identity_ref
+                    in current_message.mentioned_identity_refs
+                ),
+            ) or response.output
             character_limit = (
                 response_plan.visible_character_limit
                 if response_plan is not None
                 else self._config.maximum_response_characters
             )
-            if visible_character_count(response.output) > character_limit:
+            if visible_character_count(visible_output) > character_limit:
                 raise validation_error("direct_chat_text_output_too_long")
             if (
                 response_plan is not None
                 and self._visible_token_counter is not None
-                and self._visible_token_counter.count(response.output)
+                and self._visible_token_counter.count(visible_output)
                 > response_plan.visible_token_limit
             ):
                 raise validation_error("direct_chat_visible_token_limit_exceeded")
@@ -390,7 +403,7 @@ class DirectChatModelCall:
         content = DirectChatContent(
             schema_version=1,
             content_id=self._id_factory(),
-            text=response.output,
+            text=visible_output,
             source_refs=source_refs,
             model_request_fingerprint=request_fingerprint,
             model_response_digest=response_digest,
