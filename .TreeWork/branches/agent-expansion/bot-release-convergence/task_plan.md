@@ -25,6 +25,7 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Verify public auth, Runtime and NapCat connections and record sanitized evidence.
 - [x] Apply the explicitly approved DeepSeek migration and provider-managed retention, with fresh Provider evidence and a successful no-send Runtime preview.
 - [x] Publish the DeepSeek follow-up, retaining the broader branch as partial.
+- [ ] Fix MCP workbench button/card/scroll layout, verify narrow and desktop browsers, and publish the Web-only update.
 - [ ] Close the broader release only after the separate legacy Arc compatibility choice is resolved.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
