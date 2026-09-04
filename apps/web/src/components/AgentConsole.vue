@@ -134,7 +134,7 @@ const proactiveRuntimeEnabled = computed(
   () => props.runtimeControls?.proactiveGroupParticipation.actualEnabled === true,
 )
 const proactiveActuallyEnabled = computed(
-  () => proactivePolicyEnabled.value && proactiveRuntimeEnabled.value,
+  () => props.policy?.enabled === true && proactivePolicyEnabled.value && proactiveRuntimeEnabled.value,
 )
 const runtimeLabel = computed(() => productionRuntimeOnline.value
   ? '2.0 Runtime 在线'
@@ -896,6 +896,23 @@ watch(
                 {{ proactiveActuallyEnabled ? '本群已开启' : proactiveRuntimeEnabled ? '本群未开启' : 'Shadow' }}
               </b>
             </header>
+            <label class="proactive-enable-control">
+              <span>
+                <strong>在本群启用自动搭话</strong>
+                <small>{{ conversation?.type === 'group' ? '修改后点击底部「保存配置」生效；不修改全局交付开关。' : '自动搭话仅支持群聊。' }}</small>
+              </span>
+              <span class="switch-control">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  aria-label="在本群启用自动搭话"
+                  :checked="proactivePolicyEnabled"
+                  :disabled="!policyEditable || conversation?.type !== 'group'"
+                  @change="updatePluginMode('social.proactive_talk', ($event.target as HTMLInputElement).checked ? 'auto' : 'off')"
+                >
+                <span />
+              </span>
+            </label>
             <dl>
               <div><dt>管理员期望</dt><dd>{{ proactivePolicyEnabled ? '启用 2.0 自动搭话' : '关闭自动搭话' }}</dd></div>
               <div><dt>当前阶段</dt><dd>{{ runtimeControls.proactiveGroupParticipation.stage === 'probe_shadow' ? 'Probe Shadow' : 'Proactive Canary' }}</dd></div>
@@ -2217,6 +2234,49 @@ textarea:disabled {
   display: grid;
   gap: 4px;
   margin: 9px 0 0;
+}
+
+.proactive-enable-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 5px;
+  background: var(--surface-hover);
+}
+
+.proactive-enable-control strong,
+.proactive-enable-control small {
+  display: block;
+}
+
+.proactive-enable-control strong {
+  color: var(--text);
+  font-size: 9px;
+}
+
+.proactive-enable-control small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.proactive-enable-control .switch-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.proactive-enable-control input:disabled + span {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.proactive-enable-control input:focus-visible + span {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
 }
 
 .runtime-control-card dl > div {
