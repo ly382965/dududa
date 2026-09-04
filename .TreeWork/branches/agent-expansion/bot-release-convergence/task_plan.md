@@ -13,7 +13,7 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Live Agent status/config/preview work without private historical corpus; errors identify actual readiness, not NO BANDIT.
 - [x] Base URL/model setup is discoverable from Key creation; secrets stay write-only and saved/applied state is honest.
 - [ ] Bot services run verified stable/source releases, old versions have private rollback artifacts, and excluded services remain unchanged.
-- [ ] Focused regression/build/deployed checks pass and sanitized implementation/documentation is pushed to GitHub.
+- [x] Focused regression/build/deployed checks pass and sanitized implementation/documentation is pushed to GitHub.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
@@ -24,7 +24,8 @@ Title: Bot Runtime Repair And Stable Release
 - [x] Activate five public cache-backed MCPs in the workbench with console-only mappings, real data/provenance and explicit truthful connection checks; deploy and publish sanitized evidence.
 - [x] Verify public auth, Runtime and NapCat connections and record sanitized evidence.
 - [x] Apply the explicitly approved DeepSeek migration and provider-managed retention, with fresh Provider evidence and a successful no-send Runtime preview.
-- [ ] Publish this follow-up and retain the broader branch as partial; close only after the separate legacy Arc compatibility choice is resolved.
+- [x] Publish the DeepSeek follow-up, retaining the broader branch as partial.
+- [ ] Close the broader release only after the separate legacy Arc compatibility choice is resolved.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
