@@ -1,4 +1,4 @@
-ARG ASTRBOT_BASE_IMAGE=m.daocloud.io/docker.io/soulter/astrbot@sha256:369164f8c2a063a6076203b8ef90be25e79be2d70c52c5317607035dece177ea
+ARG ASTRBOT_BASE_IMAGE=soulter/astrbot:v4.27.5@sha256:1db1792902be5ccecfb907a720ae22b233ebdc958854d860fc73d7f95a720637
 FROM ${ASTRBOT_BASE_IMAGE}
 
 COPY deploy/patches/astrbot/4.26.2-openai-request-overrides.patch /tmp/astrbot-openai-request-overrides.patch

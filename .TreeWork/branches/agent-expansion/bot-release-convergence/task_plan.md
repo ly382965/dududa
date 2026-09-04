@@ -6,26 +6,33 @@ Title: Bot Runtime Repair And Stable Release
 
 ## Scope (owned work and boundary; not progress notes or implementation history)
 
--
+- Formal Agent control-plane repair, clear per-tier connection setup, stable Bot-only release and sanitized GitHub publication.
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ]
+- [ ] Live Agent status/config/preview work without private historical corpus; errors identify actual readiness, not NO BANDIT.
+- [x] Base URL/model setup is discoverable from Key creation; secrets stay write-only and saved/applied state is honest.
+- [ ] Bot services run verified stable/source releases, old versions have private rollback artifacts, and excluded services remain unchanged.
+- [ ] Focused regression/build/deployed checks pass and sanitized implementation/documentation is pushed to GitHub.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ]
+- [x] Recover history and inspect actual production source/image mounts and upstream stable versions.
+- [x] Repair and test production status/policy/preview and credential UX.
+- [x] Build candidate artifacts; preserve state and old releases; upgrade existing containers sequentially.
+- [ ] Verify public auth, Runtime and NapCat connections; publish sanitized evidence and close branch.
+- [ ] Resolve current model-upstream HTTP 503 or operator-approved DeepSeek migration; retain the old Arc until the compatibility choice is explicit.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 
--
+- Other websites, LLM proxies, Authentik, Caddy, databases, new QQ-send grants, password resets and human model-quality claims.
 
 ## Dependencies (local or external prerequisites; branch-to-branch order belongs in tree.yaml)
 
-1.
+1. Existing authenticated plugin API, external policy/key stores and preserved QQ login state.
 
 ## Branch Intake Gate (inspect/reuse/create judgment; not after-the-fact branch sprawl justification)
 
-- Inspect:
-- Reuse check:
-- New branch rationale: Created from declarative `.TreeWork/tree.yaml`.
+- Inspect: Completed API Key branch and paused S23 real-group milestone.
+- Reuse check: API Key implementation is terminal; S23 owns separate live/human quality evidence, not general release convergence.
+- New branch rationale: Bounded maintenance/release successor without reopening completed acceptance or expanding S23 authority.

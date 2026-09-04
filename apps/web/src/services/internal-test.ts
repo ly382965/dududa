@@ -40,27 +40,27 @@ export class HttpInternalTestAdapter implements InternalTestAdapter {
   }
 
   agentStatus(): Promise<InternalTestAgentStatus> {
-    return this.request('/api/internal-test/agent/status')
+    return this.request('/api/agent/status')
   }
 
   agentCatalog(): Promise<InternalTestAgentCatalog> {
-    return this.request('/api/internal-test/agent/catalog')
+    return this.request('/api/agent/catalog')
   }
 
   agentConfig(scope: InternalTestAgentScope): Promise<InternalTestAgentPolicy> {
     const search = new URLSearchParams({ accountId: scope.accountId, conversationId: scope.conversationId })
-    return this.request(`/api/internal-test/agent/config?${search}`)
+    return this.request(`/api/agent/config?${search}`)
   }
 
   saveAgentConfig(
     scope: InternalTestAgentScope,
     policy: InternalTestAgentPolicy,
   ): Promise<InternalTestAgentPolicy> {
-    return this.request('/api/internal-test/agent/config', { scope, policy }, 'PUT')
+    return this.request('/api/agent/config', { scope, policy }, 'PUT')
   }
 
   respond(payload: InternalTestAgentRequest): Promise<InternalTestAgentResponse> {
-    return this.request('/api/internal-test/agent/respond', payload)
+    return this.request('/api/agent/respond', payload)
   }
 
   mcpCatalog(): Promise<McpConsoleCatalog> {

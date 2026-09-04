@@ -3,6 +3,29 @@ import { describe, expect, it, vi } from 'vitest'
 import { HttpDududaRuntimePreviewClient } from './dududa-runtime'
 
 describe('Dududa Runtime preview client', () => {
+  it('uses the plugin credential for a live GET and strips unapproved fields', async () => {
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      expect(init?.method).toBe('GET')
+      expect(init?.headers).toMatchObject({ 'X-API-Key': 'plugin-key' })
+      expect(init?.body).toBeUndefined()
+      return new Response(JSON.stringify({ status: 'ok', data: {
+        ready: true, checkedAt: 'now', modelMapping: { haiku: 'test', secret: 'sensitive' },
+        controls: { runtime_enabled: true, secret: 'sensitive' }, secret: 'sensitive',
+      } }))
+    })
+    const client = new HttpDududaRuntimePreviewClient('http://astrbot/api/v1', 'plugin-key', fetchImpl as typeof fetch)
+    const result = await client.status()
+    expect(result.ready).toBe(true)
+    expect(JSON.stringify(result)).not.toContain('sensitive')
+    expect(fetchImpl.mock.calls[0]?.[0]).toContain('/runtime/status')
+  })
+
+  it('reports auth failures without exposing upstream error bodies', async () => {
+    const client = new HttpDududaRuntimePreviewClient('http://astrbot/api/v1', 'plugin-key',
+      vi.fn(async () => new Response(JSON.stringify({ message: 'secret-sentinel' }), { status: 403 })) as typeof fetch)
+    await expect(client.status()).rejects.toThrow('认证失败')
+    await expect(client.status()).rejects.not.toThrow('secret-sentinel')
+  })
   it('calls the AstrBot plugin extension and preserves tool evidence', async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       expect(String(input)).toBe(

@@ -138,6 +138,13 @@ function poolFor(tier: ApiKeyTier): ApiKeyPool {
   return pools.value.find((pool) => pool.tier === tier) ?? emptyApiKeyPool(tier)
 }
 
+function editConnectionFromKey(): void {
+  const tier = keyEditor.value?.tier
+  if (!tier || keySaving.value) return
+  closeKeyEditor()
+  openPoolEditor(tier)
+}
+
 function displayStatus(status: ApiKeyStatus): string {
   return statusLabels[status] ?? status
 }
@@ -646,7 +653,7 @@ onMounted(() => void load())
           <button type="button" :aria-label="`探测 ${API_KEY_TIER_LABELS[tier]} Provider`" :disabled="Boolean(testingTier) || loading" @click="testPool(tier)">
             <LoaderCircle v-if="testingTier === tier" class="spin" :size="14" /><Activity v-else :size="14" />探测 Provider
           </button>
-          <button type="button" :aria-label="`编辑 ${API_KEY_TIER_LABELS[tier]} 池`" :disabled="loading" @click="openPoolEditor(tier)"><Pencil :size="14" />编辑池</button>
+          <button type="button" :aria-label="`编辑 ${API_KEY_TIER_LABELS[tier]} 池`" :disabled="loading" @click="openPoolEditor(tier)"><Pencil :size="14" />配置 Base URL / 模型</button>
         </div>
         <div v-if="testResults[tier]" class="test-result" :class="testResultClass(testResults[tier])" role="status">
           <Check v-if="testResults[tier]?.status === 'ok'" :size="13" /><CircleAlert v-else :size="13" />
@@ -689,6 +696,7 @@ onMounted(() => void load())
           <button class="icon-button" type="button" title="关闭" aria-label="关闭池配置" :disabled="poolSaving" @click="closePoolEditor()"><X :size="17" /></button>
         </header>
         <form class="editor-form" @submit.prevent="savePool">
+          <p class="connection-help">同一档的所有 Key 共用此连接。DeepSeek：Provider 填 DeepSeek，Base URL 填 https://api.deepseek.com，协议选 OpenAI Chat Completions；模型 ID 按 DeepSeek 控制台填写。保存后再添加 Key。模型变更需要运行时绑定验证，探测通过不代表已应用到 Bot。</p>
           <div class="form-grid form-grid--two">
             <label>显示名称<input v-model="poolDraft.displayName" autocomplete="off" /></label>
             <label>Provider<input v-model="poolDraft.provider" autocomplete="off" placeholder="例如 OpenAI-compatible" /></label>
@@ -719,6 +727,13 @@ onMounted(() => void load())
         </header>
         <form class="editor-form" @submit.prevent="saveKey">
           <div class="secret-boundary"><ShieldCheck :size="15" /><span>密钥只会随本次明确提交发送。提交后输入立即清空，服务端和 GET 列表只返回遮罩与 SecretRef。</span></div>
+          <div class="connection-help" role="note">
+            <strong>此 Key 使用的连接（同档共享）</strong>
+            <div>Base URL：{{ poolFor(keyEditor.tier).baseUrl || '尚未配置' }}</div>
+            <div>模型：{{ poolFor(keyEditor.tier).model || '尚未配置' }}</div>
+            <button type="button" :disabled="keySaving" @click="editConnectionFromKey">配置 Base URL / 模型</button>
+            <small>DeepSeek Key 填在下方 API Key；SecretRef ID 可留空。切换到连接设置会清空未提交的密钥。</small>
+          </div>
           <div class="form-grid form-grid--two">
             <label>显示名称<input v-model="keyDraft.name" autocomplete="off" placeholder="例如主 Key" /></label>
             <label>SecretRef ID（可选）<input v-model="keyDraft.secretRef" maxlength="160" autocomplete="off" placeholder="provider/luna-primary" /></label>
@@ -736,6 +751,8 @@ onMounted(() => void load())
 </template>
 
 <style scoped>
+.connection-help { padding: 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.connection-help small { display: block; color: var(--text-muted); }
 .api-key-pools-view { min-height: 0; overflow-y: auto; background: var(--app-background); padding: 24px clamp(16px, 3vw, 38px) 40px; }
 .view-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--border); padding-bottom: 17px; }
 .view-header small { color: var(--brand-strong); font-size: 9px; font-weight: 800; }

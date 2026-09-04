@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -7,6 +8,7 @@ from unittest.mock import patch
 from astrbot_plugin_dududa_core.web_runtime import (
     native_message_preview_event,
     preview_event,
+    runtime_status,
 )
 
 
@@ -49,6 +51,45 @@ class _Plugin:
 
 
 class AstrBotWebRuntimeContractTests(unittest.TestCase):
+    def test_status_uses_live_assembly_without_serializing_private_config(self) -> None:
+        plugin = SimpleNamespace(
+            enabled=True,
+            rollout_controls=SimpleNamespace(current=lambda: SimpleNamespace(
+                mode=SimpleNamespace(value="canary"), delivery_enabled=True,
+                kill_switch=True, allowlisted_group_ids={"private-group-sentinel"},
+            )),
+            config={
+                "runtime_enabled": True,
+                "rollout_mode": "canary",
+                "rollout_kill_switch": False,
+                "api_key": "private-sentinel",
+                "rollout_allowlisted_groups": ["private-group-sentinel"],
+                "runtime_models_json": json.dumps([
+                    {"tier": "haiku", "model_id": "test-light", "key": "private-sentinel"}
+                ]),
+            },
+            runtime_assembly=SimpleNamespace(ready=True),
+            rollout_bridge=object(),
+            _dududa_runtime_terminated=False,
+        )
+        status = runtime_status(plugin)
+        self.assertTrue(status["ready"])
+        self.assertEqual(status["modelMapping"], {"haiku": "test-light"})
+        self.assertEqual(status["modelHealth"], "not_probed")
+        self.assertTrue(status["controls"]["rollout_kill_switch"])
+        self.assertNotIn("private-sentinel", json.dumps(status))
+        self.assertNotIn("private-group-sentinel", json.dumps(status))
+        plugin._dududa_runtime_terminated = True
+        self.assertFalse(runtime_status(plugin)["ready"])
+        plugin._dududa_runtime_terminated = False
+        plugin.rollout_bridge = None
+        self.assertFalse(runtime_status(plugin)["ready"])
+        plugin.rollout_controls.current = lambda: (_ for _ in ()).throw(ValueError("secret-sentinel"))
+        invalid = runtime_status(plugin)
+        self.assertEqual(invalid["controlReason"], "rollout_config_invalid")
+        self.assertTrue(invalid["controls"]["rollout_kill_switch"])
+        self.assertNotIn("secret-sentinel", json.dumps(invalid))
+
     def test_exact_group_scope_builds_explicit_mention_preview_event(self) -> None:
         event, prompt = preview_event(
             {

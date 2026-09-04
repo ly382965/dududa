@@ -15,6 +15,71 @@ _PLATFORM_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 _MESSAGE_PATTERN = re.compile(r"^-?\d{1,20}$")
 
 
+def runtime_status(plugin: object) -> dict[str, object]:
+    """Project current process state, never credentials or raw configuration."""
+    config = getattr(plugin, "config", {})
+    assembly = getattr(plugin, "runtime_assembly", None)
+    terminated = getattr(plugin, "_dududa_runtime_terminated", False) is True
+    ready = (
+        getattr(assembly, "ready", False) is True
+        and getattr(plugin, "rollout_bridge", None) is not None
+        and not terminated
+    )
+    try:
+        specs = json.loads(config.get("runtime_models_json", "[]"))
+    except (TypeError, ValueError):
+        specs = []
+    models = {}
+    for spec in specs if isinstance(specs, list) else []:
+        if not isinstance(spec, dict):
+            continue
+        tier, model = spec.get("tier"), spec.get("model_id")
+        if tier in ("haiku", "sonnet", "opus") and isinstance(model, str):
+            models[tier] = model
+    controls: dict[str, object] = {
+        name: config.get(name) is True
+        for name in (
+            "runtime_enabled", "rollout_delivery_enabled", "proactive_talk_enabled"
+        )
+    }
+    controls["runtime_enabled"] = (
+        controls["runtime_enabled"] and getattr(plugin, "enabled", False) is True
+    )
+    control_error = False
+    try:
+        current = plugin.rollout_controls.current()
+        controls.update({
+            "rollout_mode": current.mode.value,
+            "rollout_delivery_enabled": current.delivery_enabled,
+            "rollout_kill_switch": current.kill_switch,
+            "all_groups": "*" in current.allowlisted_group_ids,
+        })
+    except Exception:  # noqa: BLE001 -- status fails closed without serializing config errors
+        control_error = True
+        controls.update({
+            "rollout_mode": "off", "rollout_delivery_enabled": False,
+            "rollout_kill_switch": True, "all_groups": False,
+        })
+    return {
+        "ready": ready,
+        "reason": "runtime_ready" if ready else (
+            "runtime_stopped" if terminated else "runtime_not_ready"
+        ),
+        "checkedAt": datetime.now(timezone.utc).isoformat(),
+        "modelMapping": models,
+        "controls": controls,
+        "modelHealth": "not_probed",
+        "previewScope": "group",
+        "controlReason": "rollout_config_invalid" if control_error else "rollout_config_current",
+    }
+
+
+async def runtime_status_response(plugin: object):
+    from astrbot.api.web import json_response
+
+    return json_response({"status": "ok", "data": runtime_status(plugin)})
+
+
 class At:
     def __init__(self, qq: str) -> None:
         self.qq = qq

@@ -67,6 +67,28 @@ astrbot_plugin_root() {
   fi
 }
 
+ensure_agent_policy_root() {
+  local configured candidate repository_root
+  configured="${DUDUDA_AGENT_POLICY_ROOT:-$(env_value DUDUDA_AGENT_POLICY_ROOT "$ENV_FILE")}"
+  configured="${configured:-../dududa-state/agent}"
+  if [[ "$configured" = /* ]]; then
+    candidate="$(realpath -m -- "$configured")"
+  else
+    candidate="$(realpath -m -- "$ROOT_DIR/$configured")"
+  fi
+  repository_root="$(realpath -m -- "$ROOT_DIR")"
+  if [[ "$candidate" == "/" || "$candidate" == "$repository_root" || "$candidate" == "$repository_root/"* ]]; then
+    printf 'DUDUDA_AGENT_POLICY_ROOT must resolve outside the repository\n' >&2
+    return 1
+  fi
+  mkdir -p "$candidate"
+  chmod 700 "$candidate"
+  if [[ "$(stat -c '%u' "$candidate")" != "1000" ]]; then
+    printf 'Agent policy directory must be owned by UID 1000: %s\n' "$candidate" >&2
+    return 1
+  fi
+}
+
 ensure_web_secrets() {
   local root token_file plugin_key_file api_key_root api_key_file api_key_root_uid api_key_file_uid
   root="$(web_data_root)"
@@ -100,6 +122,7 @@ ensure_web_secrets() {
     printf 'API Key store must be owned by UID 1000 for the Web container: %s\n' "$api_key_root" >&2
     return 1
   fi
+  ensure_agent_policy_root
 }
 
 project_name() {

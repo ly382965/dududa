@@ -456,7 +456,7 @@ watch(
       :available="workspace.agentAvailable.value"
       :runtime-loading="workspace.agentRuntimeLoading.value"
       :runtime-error="workspace.agentRuntimeError.value"
-      :runtime-warning="workspace.agentRuntimeStatus.value?.warnings.at(-1) ?? ''"
+      :runtime-warning="workspace.agentRuntimeStatus.value?.readinessReason ?? ''"
       :runtime-controls="workspace.agentRuntimeStatus.value?.runtimeControls"
       @set-tab="workspace.agentTab.value = $event"
       @select-session="workspace.selectSession"

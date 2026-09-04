@@ -14,6 +14,27 @@ afterEach(async () => {
 })
 
 describe('internal-test agent routes', () => {
+  it('serves the formal live status without corpus and protects formal writes', async () => {
+    const status = vi.fn(async () => ({
+      ready: true, checkedAt: '2026-09-04T00:00:00Z', modelMapping: { haiku: 'test-light' }, controls: {},
+    }))
+    const server = createDududaServer({
+      hub: new OneBotHub({ token: 'test-token' }), publicDir: '/not-used',
+      runtimePreview: { status, preview: vi.fn() },
+    })
+    servers.push(server)
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+    const response = await fetch(`${baseUrl}/api/agent/status`)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ available: true, modelMapping: { haiku: 'test-light' } })
+    for (const [path, method] of [['config', 'PUT'], ['respond', 'POST']]) {
+      const rejected = await fetch(`${baseUrl}/api/agent/${path}`, {
+        method, headers: { Origin: 'https://untrusted.example', 'Content-Type': 'application/json' }, body: '{}',
+      })
+      expect(rejected.status).toBe(403)
+    }
+  })
   it('reports runtime status and returns a same-origin no-send candidate', async () => {
     const respond = vi.fn(async () => ({
       runId: 'run-1',
