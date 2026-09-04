@@ -10,14 +10,14 @@ Title: PR12 And Per-Group Plugin Controls
 
 ## Acceptance (done checklist; not exploratory todos unless they decide completion)
 
-- [ ] PR12 head ancestry is merged and published, with relevant tests and actual plugin loading verified.
-- [ ] Group-only plugin switches persist through the existing Scope Policy and gate real handlers before effects; unrelated groups/accounts and existing restrictions are preserved.
-- [ ] Current Bot services use verified integrated/stable artifacts; no superseded Bot service remains active; private rollback and excluded services are retained.
+- [x] PR12 head ancestry is merged and published, with relevant tests and actual plugin loading verified.
+- [x] Group-only plugin switches persist through the existing Scope Policy and gate real handlers before effects; unrelated groups/accounts and existing restrictions are preserved.
+- [x] Current Bot services use verified integrated/stable artifacts; no superseded Bot service remains active; private rollback and excluded services are retained.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
-- [ ] Review PR and connect policy controls through UI and handlers; add focused tests.
-- [ ] Verify, publish and deploy immutable artifacts; record actual running versions and any limitations.
+- [x] Review PR and connect policy controls through UI and handlers; add focused tests.
+- [x] Verify, publish and deploy versioned artifacts; record actual running versions and any limitations.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

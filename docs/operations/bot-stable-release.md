@@ -3,7 +3,37 @@
 本流程只覆盖 Dududa Web、AstrBot、已有 NapCat、MCP 和已安装的自有插件。
 不重启其他站点、LLM 代理、Authentik、Caddy 或数据库，也不新增 QQ 发送权限。
 
-## 2026-09-05 收尾修复部署（工程验证完成）
+## 2026-09-05 PR12 与群插件开关发布
+
+- PR12 原始提交 `67899a1` 已保留合并祖先，GitHub main 已发布集成提交 `c74b0dc`。
+  Web、AstrBot、MCP Console 的运行代码统一为 `58e2bb0`；后续提交仅记录发布与 TreeWork 状态。
+  宿主 AstrBot 4.27.5、NapCat 4.18.19 保持已核实的稳定版。
+- 群聊 → Agent → 配置 → 插件与能力，现在提供群开关，保存后生效。按账号、群分别授权，
+  不因安装而全群开启。Emoji、自动复读、Arc、Sub2API 在入口和异步输出前检查权限；
+  Core/校车沿用现有控制。详见 [群插件操作说明](group-plugin-controls.md)。
+- 新 Emoji 默认群关闭。仅给旧 Arc 两个明确群补齐缺失权限（一条已有记录、一条新记录），
+  未修改已有会话字段或已配置插件模式；其他补齐模式均为默认关闭。保留宿主白名单，B50 停用。
+- Web/QQ connected、NapCat online；DeepSeek 配置仍为 revision 14 / applied / ready，
+  cleanupPending=false。正式宿主加载六个自有插件和两个内建插件；10 个 MCP 连接检测均健康。
+  检测仅证明协议与工具发现，不等于所有业务数据或真实群发已验收。
+- 前端 109、服务端 118、浏览器 15 项通过，类型检查和构建通过；相关 Python 79 项在本地与
+  断网候选镜像中均通过。真实 AstrBot 注册验证 6/6，Emoji GreedyStr 与 Sub2API 12 个命令签名
+  正常。仓库脱敏检查 1,333 个文件通过。没有发送真实 QQ 测试消息。
+- 当前 Web 镜像 `dududa/web:58e2bb0`，ID
+  `sha256:6dd8ba85446d9e2c5b4db5568204b3614067bb56a46aa741209ec67684f67b65`；
+  AstrBot/MCP Console 共用 `dududa/astrbot:58e2bb0-4.27.5`，ID
+  `sha256:63fc98c19d556551660485b428d6307d142ed25d3b4864c446c80f851a29992a`。
+  使用独立版本发布副本，不挂开发工作树。插件目录为兼容宿主安装器仍可写，不能称只读挂载。
+- 前后共 31 个容器，仅 Web/AstrBot/MCP Console 身份变更，其余 28 个身份、镜像和启动时间
+  不变。旧 Bot 容器已替换，旧镜像、私密配置备份保留而不运行。私密活动清单位于
+  `<state-root>/releases/bot-20260905/dududa.candidate.private.json`，不要用上一日期清单启动旧版。
+- 最终核验旧版三个容器已不存在、原 15 个宿主 PID 全部退出；未发现独立旧 Bot 或遗留测试
+  进程，测试端口没有监听。公网入口最终经现有默认出口复测 Auth 302、TLS 校验通过。
+  较早曾出现一次 522，无代理直连超时；随后未改配置即恢复，证据不足以定位链路故障点。
+  本地 IPv6 源站也返回 Auth 302（仅本机诊断忽略 Origin CA 信任，不改变正式 TLS）。
+  未修改共享 Caddy、DNS、Auth 或外部代理。
+
+## 历史阶段：2026-09-05 收尾修复部署
 
 - Web 为 `f6c158d`，AstrBot/不可变插件源为 `297106e`，宿主仍为已验证的 4.27.5。
   MCP Console 源码未变，保留 `cdbc5f0`；NapCat 保留 4.18.19。本轮仅重建 Web/AstrBot。
