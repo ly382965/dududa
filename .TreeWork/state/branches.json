@@ -878,11 +878,11 @@
         "git_branch": "treework/real-group-validation",
         "managed_by_treework": true,
         "created_at": "unix:1786381821",
-        "last_entered_at": "unix:1788403825",
+        "last_entered_at": "unix:1788545043",
         "last_status": "reused existing worktree"
       },
-      "status_reason": "100-question no-send Runtime simulation and required fixes are committed; S23 live QQ/NapCat and authorization-dependent gates remain open",
-      "last_sync": "unix:1788539117"
+      "status_reason": "Demo-quality validation needs a current-main successor; this historical S23 worktree contains an obsolete unmerged API-key commit and retains its separate live-canary scope",
+      "last_sync": "unix:1788545078"
     }
   ]
 }
