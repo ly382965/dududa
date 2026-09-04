@@ -769,7 +769,7 @@
       "title": "Bot Runtime Repair And Stable Release",
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "paused",
       "verification_status": "partial",
       "sync_status": "clean",
       "isolation": {
@@ -781,7 +781,7 @@
         "last_entered_at": "unix:1788532508",
         "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788532508"
+      "last_sync": "unix:1788538170"
     },
     {
       "path": "preview-context-repair",
