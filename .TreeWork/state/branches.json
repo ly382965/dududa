@@ -809,7 +809,7 @@
       "title": "One-Click External Model Configuration Apply",
       "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "paused",
+      "status": "in_progress",
       "verification_status": "partial",
       "sync_status": "clean",
       "isolation": {
@@ -818,11 +818,10 @@
         "git_branch": "treework/runtime-config-apply",
         "managed_by_treework": true,
         "created_at": "unix:1788531843",
-        "last_entered_at": "unix:1788533816",
+        "last_entered_at": "unix:1788538412",
         "last_status": "reused existing worktree"
       },
-      "status_reason": "Lead review deepcopy correction and focused regression passed; ready for integration.",
-      "last_sync": "unix:1788533961"
+      "last_sync": "unix:1788538412"
     },
     {
       "path": "arc-compat-migration",
