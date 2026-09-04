@@ -870,7 +870,7 @@
       "purpose": "Define a five-to-ten-minute full-product demonstration, run fixed known questions through the current no-send Runtime, repair reproduced defects, and publish an evidence-backed report.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
       "status": "in_progress",
-      "verification_status": "partial",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
@@ -881,7 +881,7 @@
         "last_entered_at": "unix:1788545134",
         "last_status": "created managed worktree"
       },
-      "last_sync": "unix:1788547284"
+      "last_sync": "unix:1788549178"
     },
     {
       "path": "real-group-validation",

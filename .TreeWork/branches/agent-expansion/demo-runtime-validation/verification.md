@@ -4,7 +4,7 @@ Branch: demo-runtime-validation
 
 ## Latest Verification
 
-- Command: `serial unit/contracts 49/49; native benchmark 100/100; git diff --check`
-- Result: partial
-- Coverage gap: Bot-only merged-revision deployment and post-deploy DeepSeek preview retests remain
-- Recorded: unix:1788547284
+- Command: `32 relevant unit/production contracts; changed-source Ruff and syntax; native benchmark 100/100; deployed DeepSeek G20/G75/G53/G87/G13; MCP 10/10; auth/version/old-container audit`
+- Result: passed
+- Coverage gap: No gap in fixed-demo scope; explicitly deferred capabilities remain documented
+- Recorded: unix:1788549178
