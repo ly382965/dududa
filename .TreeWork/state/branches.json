@@ -829,19 +829,19 @@
       "title": "Current Arc Compatibility Release",
       "purpose": "Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
+      "status": "complete",
       "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/arc-compat-migration",
         "git_branch": "treework/arc-compat-migration",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788531844",
         "last_entered_at": "unix:1788538482",
-        "last_status": "reused existing worktree"
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788538550"
+      "last_sync": "unix:1788538552"
     },
     {
       "path": "real-group-validation",
