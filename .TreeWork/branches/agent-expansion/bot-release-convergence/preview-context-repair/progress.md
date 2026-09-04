@@ -4,15 +4,17 @@
 <!-- treework:status:start -->
 Branch: preview-context-repair
 Parent: bot-release-convergence
-Status: in_progress
-Verification: unverified
-Last sync: unix:1788531842
+Status: complete
+Verification: verified
+Last sync: unix:1788538388
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-Local implementation and focused verification are ready for Lead Review. The
-generated transaction status above does not claim completed integration/release.
+Lead integrated this child in bot-release-convergence and completed the scoped
+release on 2026-09-05: Web f6c158d and AstrBot/Core 297106e. The engineering and
+release acceptance is recorded in [the release report](../../../../../docs/operations/bot-stable-release.md)
+and [the 100-question results](../../../../../docs/operations/group-chat-100-question-results.md).
 Production Web now obtains scoped recent history from the existing Hub; bounded
 history reaches both model inputs. Explicit terminal outcomes prevent empty/
 non-response previews displaying success. Saved or draft proactive probability
@@ -20,6 +22,12 @@ zero is explained without changing the operator's policy.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Lead verification passed Web 104, server 117, browser 13 and final core 95
+  tests, plus one production summary test with eight answer-length subcases.
+  Formal Web preview read 16 same-group history records and returned MEDIUM
+  content in 22.411 seconds with zero tool calls, QQ sends and memory writes.
+  Only Web/AstrBot changed; the other 29 containers and the full scope policy
+  remained unchanged. These are existing Lead records, not new closeout probes.
 - 59 focused Python tests passed, including input construction for both
   perception and DirectChatModelCall with a recording fake provider.
 - Full Web suite passed: 101 frontend and 114 server tests. Production build
@@ -33,11 +41,17 @@ zero is explained without changing the operator's policy.
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-Lead must integrate shared-file hunks, run the parent suite with its installed
-MCP worker environment, and perform separately authorized release acceptance.
-This worker did not run live LLM, QQ, real group-history or memory-write checks.
+No child engineering or integration gate remains. Model-quality limitations
+(including date filtering, certainty, attribution and unnecessary clarification)
+are preserved in the 100-question report; completion does not certify perfect
+answers, real QQ delivery or B50. This closeout performed no production calls.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+The Lead accepted the integrated release. Formal protected completion is the
+remaining bookkeeping transition; keep the worktree and return to control.
+The earlier isolated handoff and missing-worker note below are historical and
+were superseded by the passing parent integration environment.
 
 Shared ownership stayed agreed: app.ts only injects the Hub history provider;
 composition.py only adjusts perception limits; rollout_bridge.py only extends

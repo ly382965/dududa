@@ -778,10 +778,10 @@
         "git_branch": "treework/bot-release-convergence",
         "managed_by_treework": true,
         "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788532508",
+        "last_entered_at": "unix:1788538465",
         "last_status": "reused existing worktree"
       },
-      "last_sync": "unix:1788532508"
+      "last_sync": "unix:1788538465"
     },
     {
       "path": "preview-context-repair",
@@ -789,19 +789,19 @@
       "title": "Group Context And Honest Preview Results",
       "purpose": "Connect bounded same-group history and explicit preview outcomes, correcting demonstrated perception conflicts without weakening safety.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/preview-context-repair",
         "git_branch": "treework/preview-context-repair",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788531842",
-        "last_entered_at": "unix:1788531842",
-        "last_status": "created managed worktree"
+        "last_entered_at": "unix:1788538283",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788531842"
+      "last_sync": "unix:1788538388"
     },
     {
       "path": "runtime-config-apply",
@@ -809,20 +809,19 @@
       "title": "One-Click External Model Configuration Apply",
       "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "paused",
-      "verification_status": "partial",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/runtime-config-apply",
         "git_branch": "treework/runtime-config-apply",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788531843",
-        "last_entered_at": "unix:1788533816",
-        "last_status": "reused existing worktree"
+        "last_entered_at": "unix:1788538412",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "status_reason": "Lead review deepcopy correction and focused regression passed; ready for integration.",
-      "last_sync": "unix:1788533961"
+      "last_sync": "unix:1788538458"
     },
     {
       "path": "arc-compat-migration",
@@ -830,19 +829,19 @@
       "title": "Current Arc Compatibility Release",
       "purpose": "Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "in_progress",
-      "verification_status": "unverified",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/arc-compat-migration",
         "git_branch": "treework/arc-compat-migration",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788531844",
-        "last_entered_at": "unix:1788531844",
-        "last_status": "created managed worktree"
+        "last_entered_at": "unix:1788538482",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788531844"
+      "last_sync": "unix:1788538552"
     },
     {
       "path": "real-group-validation",
