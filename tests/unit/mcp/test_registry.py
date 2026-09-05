@@ -83,14 +83,8 @@ class ConfigMcpServerRegistryTests(unittest.IsolatedAsyncioTestCase):
                 "ustc-young",
             ),
         )
-        for server_id in (
-            "campus-events",
-            "college-notice",
-            "library",
-            "local-recs",
-            "training-plan",
-        ):
-            self.assertFalse(registry.resolve_server(snapshot, server_id).enabled)
+        for definition in snapshot.definitions:
+            self.assertTrue(registry.resolve_server(snapshot, definition.server_id).enabled)
         icourse = registry.resolve_server(snapshot, "icourse")
         self.assertEqual(icourse.maximum_concurrency, 1)
         self.assertEqual(

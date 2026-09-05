@@ -469,9 +469,9 @@ def _gold_document() -> dict[str, object]:
             _gold(
                 "tool-medium",
                 None,
-                "medium",
-                "medium",
-                ("no_explicit_detail_preference", "task_requires_medium_response"),
+                "long",
+                "long",
+                ("no_explicit_detail_preference", "tool_assisted_long_response"),
             ),
         )
     )

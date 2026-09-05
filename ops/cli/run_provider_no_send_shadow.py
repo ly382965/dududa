@@ -20,7 +20,10 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 uses the locked TOML backport.
+    import tomli as tomllib
 
 _SAMPLES = (
     ("gpt-5.6-luna", "haiku"),

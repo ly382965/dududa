@@ -25,7 +25,7 @@ jobs:
           python -m pip install uv==0.12.1
           uv lock --check
           uv lock --project services/mcp/unified-worker --check
-          uv sync --locked --python "${{ matrix.python-version }}"
+          uv sync --locked --group corpus --python "${{ matrix.python-version }}"
           uv sync --project services/mcp/unified-worker \
             --locked --python "${{ matrix.python-version }}"
       - name: Build and install Dududa package wheel

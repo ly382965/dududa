@@ -11,8 +11,22 @@ Last sync: unix:1788576636
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
+- Actual CI failure logs are available through the authenticated GitHub CLI.
+- Missing corpus/TOML dependencies, stale current-architecture expectations,
+  and premature truncation of ranked Young queries have been repaired locally.
+- Original full CI profiles on Python 3.10 and 3.12 are running from freshly
+  built wheels; four committed offline bundles pass on both versions.
+
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Reproduced the original loader and bundle failures, then identified all
+  failures from the first 982-test Python 3.12 run.
+- Focused repairs pass 23 and 30 relevant tests, plus 5 Planner tests. Optional
+  MCP services and isolated worker tests pass; repository secret check passes.
+
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
+
+- Finish both full local CI runs, publish one consolidated repair, and inspect
+  the resulting GitHub workflow jobs.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)

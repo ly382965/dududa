@@ -13,6 +13,7 @@ from dududa.capabilities import (
     CapabilityHealthSnapshot,
     CapabilityHealthStatus,
     CapabilityProviderHealth,
+    CapabilityProviderKind,
     CapabilityRunRequest,
     CapabilityRunStatus,
     ConfigCapabilityRegistry,
@@ -52,6 +53,7 @@ from dududa.security.limits import InMemoryBudgetLedger, InMemoryInteractionLimi
 from astrbot_plugin_dududa_core.adapters.mcp_schema import (
     JsonSchemaCapabilityValidator,
 )
+from astrbot_plugin_ustc_shuttle.provider import UstcShuttleCapabilityProvider
 from tests.unit.capabilities.test_contracts import NOW
 from tests.unit.capabilities.test_executor import execution_call
 from tests.unit.capabilities.test_registry import call as catalog_call
@@ -234,6 +236,10 @@ class McpCapabilityExtensionContractTests(unittest.IsolatedAsyncioTestCase):
                     client,
                     schemas,
                     clock=lambda: NOW,
+                )
+                if descriptor.kind is CapabilityProviderKind.MCP
+                else UstcShuttleCapabilityProvider.from_catalog(
+                    bootstrap, descriptor, schemas, clock=lambda: NOW,
                 )
                 for descriptor in bootstrap.provider_descriptors
             )

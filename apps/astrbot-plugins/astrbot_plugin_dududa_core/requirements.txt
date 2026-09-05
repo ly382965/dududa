@@ -1,1 +1,2 @@
 jsonschema>=4.10,<5
+tomli>=2,<3; python_version < "3.11"
