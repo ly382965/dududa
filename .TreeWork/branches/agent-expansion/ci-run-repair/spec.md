@@ -36,7 +36,15 @@ the unsorted retrieval can discard the true winners. Keep the configured
 retrieval bound for explicit ranking, with the requested output count still
 present in the response context. Plain listing continues to narrow retrieval.
 
+Normalize Docker's nanosecond timestamp fraction to datetime's microsecond
+precision before parsing so the current replay command behaves on both supported
+Python versions. Preserve the exact UTC timestamp assertion.
+
+The current release-audit tests need the previous source revision. Fetch two
+commits in Python CI instead of checkout's default one, retaining all audit
+assertions and avoiding an unnecessary full-history fetch for those jobs.
+
 Run both Python versions and committed bundles with the actual CI commands,
-then push one consolidated repair and inspect GitHub checks. Private downloaded
+then publish the repair and inspect GitHub checks. Private downloaded
 logs stay in temporary storage. Production services and notification preferences
 are outside this CI repair.

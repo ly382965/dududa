@@ -13,13 +13,13 @@ Title: Repair GitHub CI Run 33897997167
 - [x] Actual GitHub failures are explained and reproduced locally.
 - [x] Minimal fixes preserve every job, test, assertion and failure exit.
 - [x] Relevant local CI commands pass on both supported Python versions.
-- [ ] Review the diff, publish the repair, and inspect remote CI outcomes.
+- [x] Review the diff, publish the repair, and inspect remote CI outcomes.
 
 ## Local Steps (durable working steps toward acceptance; not session-only todos)
 
 - [x] Diagnose missing corpus dependencies and exact S09 artifact drift.
 - [x] Repair causes and run the original CI profiles.
-- [ ] Finish branch records and publish verified changes.
+- [x] Finish branch records and publish verified changes.
 
 ## Out Of Scope (nearby work this branch must not absorb; not unrelated future ideas)
 

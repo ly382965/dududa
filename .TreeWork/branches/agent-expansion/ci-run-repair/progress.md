@@ -19,7 +19,8 @@ Last sync: unix:1788576636
 - Four committed offline bundles pass on both versions.
 - Published repair 9ef9c70. Remote run 33941400500 exposed shallow-checkout
   history missing from release-audit tests; depth-two checkout fixes the exact
-  reproduced errors locally on both versions. Remote confirmation is pending.
+  reproduced errors locally on both versions. Correction 93ef466 passes all
+  five jobs in GitHub run 33941956099.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
@@ -30,6 +31,10 @@ Last sync: unix:1788576636
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Publish the minimal checkout-depth correction and inspect GitHub CI.
+- None in this scoped CI repair. Production deployment and legacy services
+  remain outside scope.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
+
+- Source changes are merged and pushed to main. All remote CI jobs passed.
+- Only branch completion records follow the verified source revision.
