@@ -21,6 +21,9 @@ Branch: ci-run-repair
 - Young case 38 exposed early candidate truncation before ranking, compounded
   by interpreting the text '当前二课' as an explicit count of two. Preserve the
   existing retrieval bound for ranking and exclude that non-count phrase.
+- Python 3.10 rejects Docker's nine-digit fractional timestamp. Normalize to
+  datetime's six-digit precision before parsing, matching Python 3.12, and
+  assert the exact UTC timestamp in the existing replay test.
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 

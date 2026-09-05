@@ -14,8 +14,11 @@ Last sync: unix:1788576636
 - Actual CI failure logs are available through the authenticated GitHub CLI.
 - Missing corpus/TOML dependencies, stale current-architecture expectations,
   and premature truncation of ranked Young queries have been repaired locally.
-- Original full CI profiles on Python 3.10 and 3.12 are running from freshly
-  built wheels; four committed offline bundles pass on both versions.
+- Python 3.12 passed all 983 repository tests with the two original host-only
+  skips. Python 3.10 reached the same 983 tests with one nanosecond-timestamp
+  parsing failure; the repaired replay module passes all three tests on both
+  versions. A final 3.10 full run and remote CI remain pending.
+- Four committed offline bundles pass on both versions.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
