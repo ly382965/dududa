@@ -22,9 +22,14 @@ ACCOUNT_CONFIG_PATTERN = re.compile(r"^onebot11_\d{5,20}\.json$")
 def load_token(path: Path) -> str:
     if path.is_symlink() or not path.is_file():
         raise ValueError("OneBot token file must be a regular file")
-    mode = stat.S_IMODE(path.stat().st_mode)
-    if mode & 0o077:
-        raise ValueError("OneBot token file must not be readable by group or others")
+    try:
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if os.name != "nt" and (mode & 0o077):
+            raise ValueError("OneBot token file must not be readable by group or others")
+    except ValueError:
+        raise
+    except Exception:
+        pass
     token = path.read_text(encoding="utf-8").strip()
     if len(token) < 32:
         raise ValueError("OneBot token must contain at least 32 characters")

@@ -4,8 +4,10 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import os
 import shutil
 import subprocess
+import time
 import tempfile
 from pathlib import Path
 
@@ -21,6 +23,7 @@ OWNED_PLUGIN_PATHS = (
     "apps/astrbot-plugins/astrbot_plugin_sub2api_readonly",
     "apps/astrbot-plugins/astrbot_plugin_ustc_shuttle",
     "apps/astrbot-plugins/astrbot_plugin_weather",
+    "apps/astrbot-plugins/astrbot_plugin_weather_scheduler",
 )
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 MARKER_PATH_ALIASES = {
@@ -38,10 +41,28 @@ def run(*args: str, cwd: Path | None = None) -> None:
 
 
 def remove_path(path: Path) -> None:
-    if path.is_symlink() or path.is_file():
-        path.unlink()
-    elif path.exists():
-        shutil.rmtree(path)
+    if not path.exists() and not path.is_symlink():
+        return
+    _force_rm(path)
+
+
+def _force_rm(path: Path, retries: int = 6) -> None:
+    def _on_dir_error(func, p, exc):
+        try:
+            os.chmod(p, 0o777)
+        except OSError:
+            pass
+    for attempt in range(retries):
+        try:
+            if path.is_symlink() or path.is_file():
+                path.unlink()
+            elif path.exists():
+                shutil.rmtree(path, onexc=_on_dir_error)
+            return
+        except OSError:
+            if attempt == retries - 1:
+                raise
+            time.sleep(0.5)
 
 
 def marker_for(plugin: dict) -> dict:
@@ -141,7 +162,7 @@ def stage_plugin(plugin: dict, plugins_root: Path) -> Path:
                 raise RuntimeError(f"invalid patch path for {plugin['name']}")
             run("git", "apply", "--check", str(patch_path), cwd=staging)
             run("git", "apply", str(patch_path), cwd=staging)
-        shutil.rmtree(staging / ".git")
+        _force_rm(staging / ".git")
         return staging
     except Exception:
         remove_path(staging)
@@ -174,7 +195,7 @@ def install_plugin(plugin: dict, plugins_root: Path, force: bool) -> None:
         raise
     finally:
         if staging.exists():
-            shutil.rmtree(staging)
+            _force_rm(staging)
 
 
 def install_owned_plugin(relative_path: str, plugins_root: Path) -> None:
@@ -212,7 +233,7 @@ def install_owned_plugin(relative_path: str, plugins_root: Path) -> None:
         raise
     finally:
         if staging.exists():
-            shutil.rmtree(staging)
+            _force_rm(staging)
 
 
 def main() -> int:

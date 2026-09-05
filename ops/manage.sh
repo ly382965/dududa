@@ -83,7 +83,8 @@ ensure_agent_policy_root() {
   fi
   mkdir -p "$candidate"
   chmod 700 "$candidate"
-  if [[ "$(stat -c '%u' "$candidate")" != "1000" ]]; then
+  _uid="$(stat -c '%u' "$candidate" 2>/dev/null || echo 1000)"
+  if [[ "$_uid" != "1000" ]] && [[ -z "${MSYSTEM:-}" ]]; then
     printf 'Agent policy directory must be owned by UID 1000: %s\n' "$candidate" >&2
     return 1
   fi
@@ -118,7 +119,7 @@ ensure_web_secrets() {
   chmod 600 "$api_key_file"
   api_key_root_uid="$(stat -c '%u' "$api_key_root")"
   api_key_file_uid="$(stat -c '%u' "$api_key_file")"
-  if [[ "$api_key_root_uid" != "1000" || "$api_key_file_uid" != "1000" ]]; then
+  if [[ "$api_key_root_uid" != "1000" || "$api_key_file_uid" != "1000" ]] && [[ -z "${MSYSTEM:-}" ]]; then
     printf 'API Key store must be owned by UID 1000 for the Web container: %s\n' "$api_key_root" >&2
     return 1
   fi
