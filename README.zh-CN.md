@@ -35,6 +35,7 @@
 
 - **跟得上讨论**：读取近期群聊上下文，处理引用、指代和临时更正。
 - **参与程度可调**：支持按群开启自动搭话，配置参与概率、冷却、频率和上下文窗口。
+- **按话题启用能力**：管理员授予自适应权限后，她能从连续讨论中识别需求，开启原本关闭的查询插件，控制台同步显示启用原因。
 - **任务直接说**：明确 @ 可以发起请求；开启自动参与后，普通群消息也能成为接话的起点。
 - **回答长短合适**：模型档位、推理强度与回答长度独立配置，兼顾简短交流和展开讨论。
 
@@ -120,6 +121,8 @@ uv run --locked python ops/cli/run_dududa_100_message_benchmark.py \
 | Terra · 标准 | `deepseek-v4-flash` | `high` | 校园查询、一般分析 |
 | Sol · 深度 | `deepseek-v4-pro` | `max` | 复杂论证与比较 |
 
+录制环境保留快速档的轻量推理，标准档与深度档使用 `thinking: disabled` 直接组织查询结果；表中的推理参数是常规部署配置。
+
 服务地址为 `https://api.deepseek.com`。模型通过 AstrBot `text_chat` 接口调用，Key 在部署端配置。Luna/Terra/Sol 是程序的档位别名，回答篇幅另外设置为短、中、长。详细调用方式见 [设计文档](docs/design/dududa-2.0-design-report.md)。
 
 ## 技术架构
@@ -150,7 +153,7 @@ flowchart TD
 | Persona | 组织稳定的中文表达风格与输出格式。 |
 | Memory | 已实现中文 BM25、会话检索、写入和生命周期管理的离线模块。 |
 
-核心使用 Python，通过接口接入模型、消息平台和校园服务。当前业务查询采用单步能力计划；后续 Skill 层将复用这些原子化能力，组织更长的任务和能力启停。
+核心使用 Python，通过接口接入模型、消息平台和校园服务。当前业务查询采用单步能力计划；已支持按群聊话题自适应启用获准的查询能力；后续 Skill 层将复用这些原子化能力，组织更长的任务。
 
 ```text
 packages/dududa-agent/   智能体核心：感知、社交、记忆、路由与回答
@@ -187,7 +190,7 @@ npm run dev
 
 提交相关 Web 改动前运行 `npm test` 与 `npm run build`。其他模块的验证入口见 [本地开发说明](docs/development/local-environment.md) 和 [CI 工作流](.github/workflows/ci.yml)。
 
-2026-09-05 的材料验证完成了 100 题离线流程、81 项相关测试、Web 构建与核心 wheel 安装检查。真实 DeepSeek 代表任务的结果列在 [设计文档](docs/design/dududa-2.0-design-report.md) 中。
+本轮验证覆盖 100 题离线流程、26 项真实 MCP 查询、5 个真实模型问答，以及四人群聊的自适应启用流程。录制步骤与验证结果见 [录制操作单](docs/operations/recording-runbook.md)，技术验证见 [设计文档](docs/design/dududa-2.0-design-report.md)。
 
 ## 开发路线
 
@@ -209,7 +212,7 @@ npm run dev
 | 作品定位与创新点 | [作品简介](docs/design/dududa-2.0-work-introduction.md) |
 | 完整架构与技术难点 | [设计文档](docs/design/dududa-2.0-design-report.md) |
 | 安装与体验 | [程序使用说明](docs/operations/submission-program.md) |
-| 五分钟演示 | [视频大纲](docs/operations/demo-video-runtime-validation-2026-09-05.md) |
+| 五分钟演示 | [分镜与配音稿](docs/operations/demo-video-runtime-validation-2026-09-05.md) · [录制操作单](docs/operations/recording-runbook.md) |
 | 扩展校园能力 | [新增 Capability](docs/development/adding-a-capability.md) · [新增 MCP Server](docs/development/adding-an-mcp-server.md) |
 | 设计角色与记忆 | [Persona](docs/design/persona.md) · [Memory](docs/design/memory.md) |
 | 海报原图 | [嘟嘟哒宣传海报](docs/assets/dududa-poster.png) |

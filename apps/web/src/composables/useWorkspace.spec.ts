@@ -1082,6 +1082,20 @@ describe('useWorkspace account-scoped state', () => {
     expect(workspace.agentPolicy.value?.reasoning).toEqual({ mode: 'locked', preferred: 'high', allowed: ['high'] })
     expect(workspace.agentPolicy.value?.plugins['social.proactive_talk']).toBe('auto')
     expect(workspace.agentPolicy.value?.proactiveTalk).toEqual(policy.proactiveTalk)
+
+    const activation = { reason: '数学分析选课讨论', activatedAt: '2026-09-06T00:00:00Z', messagesRead: 20 }
+    workspace.updateAgentPolicy({ ...nextPolicy, adaptivePlugins: ['icourse.read'] })
+    vi.mocked(agentAdapter.agentConfig).mockResolvedValueOnce({ ...policy, activePlugins: { 'icourse.read': activation } })
+    workspace.agentTab.value = 'settings'
+    await flushPromises()
+    expect(workspace.agentPolicy.value?.activePlugins?.['icourse.read']).toEqual(activation)
+    expect(workspace.agentPolicyDirty.value).toBe(true)
+    expect(workspace.agentPolicy.value?.reasoning).toEqual(nextPolicy.reasoning)
+    vi.mocked(agentAdapter.agentConfig).mockResolvedValueOnce({ ...policy, activePlugins: {} })
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(workspace.agentPolicy.value?.activePlugins).toEqual({})
+    expect(workspace.agentPolicyDirty.value).toBe(true)
     for (const outcome of ['deferred', 'no_reply', 'failed', 'empty'] as const) {
       respond.mockResolvedValueOnce({ ...response, candidate: '', outcome,
         generationObserved: false, reasonCodes: ['conflicting_evidence_without_clarification'] })

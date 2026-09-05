@@ -81,6 +81,8 @@ The Web preview runs the same Runtime used by the QQ integration, making it usef
 
 The Chinese prompts match the project's current campus examples; the English lines explain their meaning. The console's run view shows the path taken for each request.
 
+Administrators can grant adaptive activation for read-only plugins. Dududa can then enable a disabled query capability when a group discussion develops a matching need; the console shows why it was enabled.
+
 ## Quick start
 
 ### Run locally
@@ -204,7 +206,7 @@ The submission validation on 2026-09-05 completed the 100-message offline flow, 
 | Product and ideas | [Project introduction](docs/design/dududa-2.0-work-introduction.md) |
 | Architecture and implementation | [Design document](docs/design/dududa-2.0-design-report.md) |
 | Installation | [Program guide](docs/operations/submission-program.md) |
-| Five-minute demonstration | [Video outline](docs/operations/demo-video-runtime-validation-2026-09-05.md) |
+| Five-minute demonstration | [Storyboard and narration](docs/operations/demo-video-runtime-validation-2026-09-05.md) · [Recording runbook](docs/operations/recording-runbook.md) |
 | New capabilities | [Adding a Capability](docs/development/adding-a-capability.md) · [Adding an MCP server](docs/development/adding-an-mcp-server.md) |
 | Characters and memory | [Persona](docs/design/persona.md) · [Memory](docs/design/memory.md) |
 | Original poster | [Dududa artwork](docs/assets/dududa-poster.png) |

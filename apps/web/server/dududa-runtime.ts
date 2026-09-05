@@ -37,6 +37,10 @@ export interface DududaRuntimeStatus {
   modelMapping: Partial<Record<'haiku' | 'sonnet' | 'opus', string>>
   controls: Record<string, unknown>
   checkedAt: string
+  adaptiveActivations?: Array<{
+    accountId: string; conversationId: string; pluginId: string
+    reason: string; activatedAt: string; messagesRead: number
+  }>
 }
 
 export class DududaRuntimePreviewClientError extends Error {
@@ -77,6 +81,13 @@ export class HttpDududaRuntimePreviewClient implements DududaRuntimePreviewClien
       controlReason: value.controlReason === 'rollout_config_invalid'
         ? 'rollout_config_invalid' : 'rollout_config_current',
       checkedAt: text(value.checkedAt),
+      adaptiveActivations: Array.isArray(value.adaptiveActivations) ? value.adaptiveActivations.flatMap(raw => {
+        const item = record(raw)
+        if (!item || !text(item.pluginId) || !text(item.accountId) || !text(item.conversationId)) return []
+        return [{ accountId: text(item.accountId), conversationId: text(item.conversationId),
+          pluginId: text(item.pluginId), reason: text(item.reason), activatedAt: text(item.activatedAt),
+          messagesRead: typeof item.messagesRead === 'number' ? item.messagesRead : 0 }]
+      }) : [],
       modelMapping: Object.fromEntries(['haiku', 'sonnet', 'opus'].flatMap(tier => (
         text(mapping[tier]) ? [[tier, text(mapping[tier])]] : []
       ))),

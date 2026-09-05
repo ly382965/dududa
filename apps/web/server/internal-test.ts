@@ -67,6 +67,7 @@ export interface ProactiveTalkSettings {
   probabilityPercent: number
   cooldownSeconds: number
   maximumPerHour: number
+  minimumMessages?: number
 }
 
 export interface InternalTestAgentPolicyDefaults {
@@ -79,12 +80,14 @@ export interface InternalTestAgentPolicyDefaults {
   groupChatStyle: AdaptiveSetting<GroupChatStyle>
   proactiveTalk: ProactiveTalkSettings
   plugins: Record<string, PluginMode>
+  adaptivePlugins?: string[]
 }
 
 export interface InternalTestAgentPolicy extends InternalTestAgentPolicyDefaults {
   schemaVersion: 1
   scope: InternalTestAgentScope
   updatedAt?: string
+  activePlugins?: Record<string, { reason: string; activatedAt: string; messagesRead: number }>
 }
 
 export interface InternalTestCatalogModel {
@@ -824,7 +827,7 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       runtimeTarget: 'astrbot',
       runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'passive_behavior',
-      description: '读取有界群聊历史并通过 2.0 Runtime 生成 SHORT 群级接话；频率、冷却和每小时上限由独立主动频率控制。',
+      description: '根据近期群聊参与讨论；获得自适应许可后可启用查询能力。参与频率、冷却和每小时上限可单独设置。',
     },
     {
       id: 'social.reread.auto',
@@ -895,7 +898,7 @@ function currentAgentRuntimeControls(
       stage: proactiveEnabled ? 'proactive_canary' : 'probe_shadow',
       deliveryEnabled: proactiveEnabled,
       summary: proactiveEnabled
-        ? 'Dududa 2.0 主动搭话执行器在线；仅对 Scope Policy 明确启用的群生效，自动回复固定为 SHORT。'
+        ? '主动搭话在线。日常接话使用短回复，查询任务按内容展开。'
         : '主动参与当前只有 S15E Probe Shadow，只生成机会与候选，不发送消息。',
     },
   }
@@ -1179,6 +1182,14 @@ function normalizeAgentPolicy(
   const policy = objectValue(value) ?? {}
   const knownPlugins = new Map(catalogPlugins().map((plugin) => [plugin.id, plugin]))
   const plugins = { ...current.plugins }
+  const adaptivePlugins = policy.adaptivePlugins ?? current.adaptivePlugins
+  if (adaptivePlugins !== undefined && (!Array.isArray(adaptivePlugins) || adaptivePlugins.some(id => {
+    const plugin = typeof id === 'string' ? knownPlugins.get(id) : undefined
+    return !plugin?.available || plugin.executionKind !== 'agent_capability' || plugin.runtimeTarget !== 'astrbot'
+  }))) throw new InternalTestError('自适应启用只支持已接入的只读查询能力')
+  if (Array.isArray(adaptivePlugins) && adaptivePlugins.length && !scope.conversationId.startsWith(`${scope.accountId}:group:`)) {
+    throw new InternalTestError('自适应启用仅支持群聊')
+  }
   const requestedPlugins = objectValue(policy.plugins)
   if (requestedPlugins) {
     for (const [id, mode] of Object.entries(requestedPlugins)) {
@@ -1241,6 +1252,7 @@ function normalizeAgentPolicy(
       current.proactiveTalk,
     ),
     plugins,
+    ...(adaptivePlugins !== undefined ? { adaptivePlugins: [...new Set(adaptivePlugins as string[])] } : {}),
     ...(updatedAt ? { updatedAt } : {}),
   }
 }
@@ -1271,6 +1283,10 @@ function proactiveTalkSettings(
       PROACTIVE_TALK_LIMITS.maximumPerHour,
       'maximumPerHour',
     ),
+    ...(proactive.minimumMessages !== undefined || fallback.minimumMessages !== undefined ? {
+      minimumMessages: proactiveInteger(proactive.minimumMessages, fallback.minimumMessages ?? 3,
+        { minimum: 3, maximum: 100, step: 1 }, 'minimumMessages'),
+    } : {}),
   }
 }
 
@@ -1755,7 +1771,19 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async agentConfig(query: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
-    return (await this.resolvedPolicy(agentScope(query))).policy
+    const policy = (await this.resolvedPolicy(agentScope(query))).policy
+    if (!policy.adaptivePlugins?.length || !this.options.runtimePreview?.status) return policy
+    let live
+    try {
+      live = await this.options.runtimePreview.status()
+    } catch {
+      return policy
+    }
+    const activePlugins = Object.fromEntries((live.adaptiveActivations ?? []).filter(item =>
+      item.accountId === policy.scope.accountId && item.conversationId === policy.scope.conversationId
+      && policy.adaptivePlugins!.includes(item.pluginId),
+    ).map(item => [item.pluginId, { reason: item.reason, activatedAt: item.activatedAt, messagesRead: item.messagesRead }]))
+    return { ...policy, activePlugins }
   }
 
   async saveAgentConfig(body: Record<string, unknown>): Promise<InternalTestAgentPolicy> {

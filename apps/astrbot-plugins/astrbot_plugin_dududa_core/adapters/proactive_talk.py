@@ -13,6 +13,7 @@ from dududa.rollout import CanaryExecutionDisposition
 
 from ..rollout_bridge import AstrBotBridgeAction, AstrBotRolloutBridge
 from .agent_policy import FileScopeAgentPolicyResolver, GroupProactiveTalkPolicy
+from .adaptive_plugins import adaptive_history
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +166,7 @@ class ProactiveTalkController:
                 message_limit=message_limit,
                 byte_limit=byte_limit,
             )
-            if len(lines) < 3:
+            if len(lines) < policy.minimum_messages:
                 return False
             skip_reason = proactive_context_skip_reason(lines)
             if skip_reason is not None:
@@ -176,9 +177,15 @@ class ProactiveTalkController:
                     skip_reason,
                 )
                 return False
-            prompt = proactive_prompt(lines, policy)
+            adaptive = self._policy.activate_for_context(
+                bot_id=bot_id, group_id=group_id, lines=lines,
+            )
+            prompt = adaptive.question if adaptive else proactive_prompt(lines, policy)
+            runtime_event = self._event_factory(event, prompt)
+            if adaptive:
+                runtime_event.dududa_preview_history = adaptive_history(lines[:-1], bot_id=bot_id, group_id=group_id)
             result = await self._bridge.handle(
-                self._event_factory(event, prompt),
+                runtime_event,
                 proactive_group_participation=True,
             )
             delivered = (

@@ -272,7 +272,22 @@ export function useWorkspace(
 
   function refreshAgentRuntimeWhenVisible(): void {
     if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-      void Promise.all([loadAgentRuntimeStatus(), loadAgentCatalog()])
+      void Promise.all([loadAgentRuntimeStatus(), loadAgentCatalog(), refreshAdaptiveActivations()])
+    }
+  }
+
+  async function refreshAdaptiveActivations(): Promise<void> {
+    const policy = agentPolicy.value
+    if (!policy?.adaptivePlugins?.length) return
+    const generation = agentPolicyGeneration
+    try {
+      const live = await agentAdapter.agentConfig(policy.scope)
+      if (generation !== agentPolicyGeneration || !agentPolicy.value) return
+      if (live.scope.accountId !== policy.scope.accountId || live.scope.conversationId !== policy.scope.conversationId) return
+      // Runtime state can change while the administrator is editing a draft.
+      agentPolicy.value = { ...agentPolicy.value, activePlugins: live.activePlugins ?? {} }
+    } catch {
+      // The existing Runtime status refresh reports connection failures.
     }
   }
 
@@ -1157,6 +1172,9 @@ export function useWorkspace(
   }
 
   watch([theme, resolvedTheme], applyTheme, { immediate: true })
+  watch(agentTab, (tab) => {
+    if (tab === 'settings') void refreshAdaptiveActivations()
+  })
   watch(
     [
       () => selectedAgentScope.value?.accountId,

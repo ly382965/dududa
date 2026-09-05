@@ -436,7 +436,25 @@ function selectTopModel(tier: string): void {
 
 function updatePluginMode(pluginId: string, mode: InternalTestPluginMode): void {
   if (!props.policy) return
-  emitPolicy({ plugins: { ...props.policy.plugins, [pluginId]: mode } })
+  emitPolicy({ plugins: { ...props.policy.plugins, [pluginId]: mode },
+    ...(mode === 'off' && (props.policy.adaptivePlugins?.includes(pluginId) || props.policy.activePlugins?.[pluginId]) ? {
+      adaptivePlugins: (props.policy.adaptivePlugins ?? []).filter(id => id !== pluginId),
+      activePlugins: Object.fromEntries(Object.entries(props.policy.activePlugins ?? {}).filter(([id]) => id !== pluginId)),
+    } : {}),
+  })
+}
+
+function pluginActive(pluginId: string): boolean {
+  return (props.policy?.plugins[pluginId] ?? 'off') !== 'off'
+    || Boolean(props.policy?.activePlugins?.[pluginId] && props.policy?.adaptivePlugins?.includes(pluginId))
+}
+
+function toggleAdaptivePlugin(pluginId: string, enabled: boolean): void {
+  if (!props.policy) return
+  const allowed = new Set(props.policy.adaptivePlugins ?? [])
+  if (enabled) allowed.add(pluginId)
+  else allowed.delete(pluginId)
+  emitPolicy({ adaptivePlugins: [...allowed] })
 }
 
 function toggleGroupPlugin(plugin: InternalTestCatalogPlugin, enabled: boolean): void {
@@ -1061,10 +1079,10 @@ watch(
 
         <section class="settings-section">
           <div class="section-heading"><Wrench :size="15" /><span><strong>插件与能力</strong><small>DYNAMIC CATALOG</small></span></div>
-          <p class="settings-help">开关仅影响当前账号的当前群，修改后点击底部「保存配置」生效。关闭后不参与；启用不要求每轮调用。</p>
+          <p class="settings-help">开关仅影响当前账号的当前群，修改后点击底部「保存配置」生效。勾选自适应启用后，嘟嘟哒会根据群聊话题打开所需查询能力。</p>
           <p class="settings-help">宿主全局停用、敏感查询白名单和 B50 暂停限制仍然有效。高级模式保留原有自适应设置。</p>
           <p v-if="catalog" class="settings-help">
-            控制台身份：超级管理员；Bot 执行身份：普通管理员。这里设置每个群的初值，Agent 仍可在允许范围内自适应。
+            这里设置每个群的初值，Agent 可在允许范围内自适应启用查询能力。
           </p>
           <p v-if="catalog" class="settings-help">
             “已装配”表示源码和 Compose 已就绪，不代表执行器当前在线或本轮已经调用；实际调用结果单独显示。
@@ -1092,15 +1110,23 @@ watch(
               </div>
               <div v-if="plugin.policyManaged" class="plugin-controls">
                 <label class="plugin-enable-control">
-                  <span>{{ (policy?.plugins[plugin.id] ?? 'off') !== 'off' ? '本群开启' : '本群关闭' }}</span>
+                  <span>{{ pluginActive(plugin.id) ? (policy?.activePlugins?.[plugin.id] ? '嘟嘟哒已启用' : '本群开启') : '本群关闭' }}</span>
                   <span class="switch-control">
                     <input type="checkbox" role="switch" :aria-label="`在本群启用${plugin.displayName}`"
-                      :checked="plugin.available && (policy?.plugins[plugin.id] ?? 'off') !== 'off'"
+                      :checked="plugin.available && pluginActive(plugin.id)"
                       :disabled="!policyEditable || !plugin.available || conversation?.type !== 'group'"
                       @change="toggleGroupPlugin(plugin, ($event.target as HTMLInputElement).checked)" />
                     <span />
                   </span>
                 </label>
+                <label v-if="plugin.available && plugin.executionKind === 'agent_capability' && plugin.runtimeTarget === 'astrbot'" class="plugin-adaptive-control">
+                  <input type="checkbox" :aria-label="`允许嘟嘟哒自适应启用${plugin.displayName}`"
+                    :checked="policy?.adaptivePlugins?.includes(plugin.id) ?? false"
+                    :disabled="!policyEditable || conversation?.type !== 'group'"
+                    @change="toggleAdaptivePlugin(plugin.id, ($event.target as HTMLInputElement).checked)" />
+                  允许嘟嘟哒自适应启用
+                </label>
+                <small v-if="policy?.activePlugins?.[plugin.id]">{{ policy.activePlugins[plugin.id]?.reason }} · 已读取 {{ policy.activePlugins[plugin.id]?.messagesRead }} 条讨论</small>
                 <small v-if="!policy?.enabled && (policy?.plugins[plugin.id] ?? 'off') !== 'off'">会话总开关已关闭，当前不生效</small>
                 <select
                 :value="plugin.available ? (policy?.plugins[plugin.id] ?? 'off') : 'off'"

@@ -173,7 +173,9 @@ def _social_decision_values(
     elif proactive_group and signals.private_data_boundary:
         action = SocialAction.IGNORE
         reasons = ("proactive_group_private_data_skipped",)
-    elif proactive_group and perception.need_tools:
+    elif proactive_group and perception.need_tools and not (
+        signals.tools_enabled and signals.authorization.can_use_tools
+    ):
         action = SocialAction.IGNORE
         reasons = ("proactive_group_tool_use_skipped",)
     elif proactive_group and perception.ambiguities:
@@ -201,7 +203,7 @@ def _social_decision_values(
             reasons = ("tools_disabled",)
         else:
             action = SocialAction.USE_TOOLS
-            reasons = ("bounded_tool_execution",)
+            reasons = (("proactive_group_tool_reply",) if proactive_group else ("bounded_tool_execution",))
     else:
         clarification = next(
             (

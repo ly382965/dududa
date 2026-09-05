@@ -23,6 +23,7 @@ export interface InternalTestProactiveTalkSettings {
   probabilityPercent: number
   cooldownSeconds: number
   maximumPerHour: number
+  minimumMessages?: number
 }
 
 export interface InternalTestAgentPolicyDefaults {
@@ -35,12 +36,14 @@ export interface InternalTestAgentPolicyDefaults {
   groupChatStyle: InternalTestAdaptiveSetting<InternalTestGroupChatStyle>
   proactiveTalk: InternalTestProactiveTalkSettings
   plugins: Record<string, InternalTestPluginMode>
+  adaptivePlugins?: string[]
 }
 
 export interface InternalTestAgentPolicy extends InternalTestAgentPolicyDefaults {
   schemaVersion: 1
   scope: InternalTestAgentScope
   updatedAt?: string
+  activePlugins?: Record<string, { reason: string; activatedAt: string; messagesRead: number }>
 }
 
 export interface InternalTestCatalogModel {

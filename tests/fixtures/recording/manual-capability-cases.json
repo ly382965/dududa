@@ -1,0 +1,274 @@
+{
+  "cases": [
+    {
+      "capabilityId": "icourse.course.get.v1",
+      "question": "查看评课社区课程 26560 的数学分析(B1)详情。",
+      "fixtureCaseId": null,
+      "tool": null,
+      "arguments": {
+        "course_id": 26560,
+        "include_reviews": true,
+        "refresh": false
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "icourse.courses.search.v1",
+      "question": "在评课社区搜索数学分析，列出三门课。",
+      "fixtureCaseId": null,
+      "tool": null,
+      "arguments": {
+        "query": "数学分析",
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "icourse.public-query.v2",
+      "question": "结合具体点评比较数学分析老师的授课体验。",
+      "fixtureCaseId": 11,
+      "tool": "icourse_public_query",
+      "arguments": {
+        "query": "数学分析",
+        "operation": "teacher",
+        "goal": "结合具体点评比较数学分析老师的授课体验",
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "icourse.reviews.get.v1",
+      "question": "查看评课社区课程 26560 的三条点评。",
+      "fixtureCaseId": null,
+      "tool": null,
+      "arguments": {
+        "course_id": 26560,
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "icourse.stats.read.v1",
+      "question": "评课社区目前有多少课程和点评？",
+      "fixtureCaseId": null,
+      "tool": null,
+      "arguments": {},
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.categories.list.v1",
+      "question": "通知分类字典有哪些类别和数量？",
+      "fixtureCaseId": 67,
+      "tool": "list_notice_categories",
+      "arguments": {},
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.notices.calendar.v1",
+      "question": "2026 年 9 月校园通知日历有哪些节点？",
+      "fixtureCaseId": 62,
+      "tool": "get_notice_calendar",
+      "arguments": {
+        "month": "2026-09"
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.notices.deadlines.v1",
+      "question": "未来七天有哪些校园通知临近截止？",
+      "fixtureCaseId": 61,
+      "tool": "get_notice_deadlines",
+      "arguments": {
+        "days": 7,
+        "page_size": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.notices.get.v1",
+      "question": "查看通知 a4f76189c274b63733088539b7383bfb 的摘要和正文。",
+      "fixtureCaseId": 65,
+      "tool": "get_notice",
+      "arguments": {
+        "notice_id": "a4f76189c274b63733088539b7383bfb"
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.notices.search.v1",
+      "question": "查询最近的校园通知，最多列三条。",
+      "fixtureCaseId": 63,
+      "tool": "search_notices",
+      "arguments": {
+        "page_size": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.sources.list.v1",
+      "question": "当前有哪些通知来源，各自有多少条？",
+      "fixtureCaseId": 66,
+      "tool": "list_notice_sources",
+      "arguments": {},
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "notifai.stats.read.v1",
+      "question": "通知总数、来源数以及最近同步时间是多少？",
+      "fixtureCaseId": 68,
+      "tool": "get_notice_stats",
+      "arguments": {},
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.academic.calendar.get.v1",
+      "question": "2026 年 9 月 1 日至 15 日的教学日历。",
+      "fixtureCaseId": 26,
+      "tool": "teaching_calendar_get",
+      "arguments": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-09-15"
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.academic.exams.search.v1",
+      "question": "查询 2026 春季学期的考试安排，最多三条。",
+      "fixtureCaseId": 24,
+      "tool": "catalog_search_exams",
+      "arguments": {
+        "semester": "2026春",
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.academic.lessons.search.v1",
+      "question": "查询 2026 秋季学期数学分析的开课记录，最多三条。",
+      "fixtureCaseId": 22,
+      "tool": "catalog_search_lessons",
+      "arguments": {
+        "semester": "2026秋",
+        "query": "数学分析",
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.academic.semesters.list.v1",
+      "question": "教务处目前公布了哪些教学学期？",
+      "fixtureCaseId": 21,
+      "tool": "catalog_list_semesters",
+      "arguments": {
+        "limit": 5
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.curriculum.public-query.v1",
+      "question": "查询计算机科学与技术专业的培养方案。",
+      "fixtureCaseId": 31,
+      "tool": "curriculum_public_query",
+      "arguments": {
+        "query": "计算机科学与技术",
+        "operation": "program",
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.shuttle.public-query.v1",
+      "question": "工作日北区去东区早高峰有哪些校车？",
+      "fixtureCaseId": 51,
+      "tool": null,
+      "arguments": {},
+      "mode": "runtime"
+    },
+    {
+      "capabilityId": "ustc.young.activities.search.v1",
+      "question": "查询二课最近公开发布的活动，最多三项。",
+      "fixtureCaseId": 41,
+      "tool": "young_search_activities",
+      "arguments": {
+        "query": "",
+        "state": "all",
+        "limit": 3
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.young.activity.get.v1",
+      "question": "查看二课活动 72b26b0a8b4c209959e204c6cea6e803 的详情和子场次。",
+      "fixtureCaseId": 45,
+      "tool": "young_get_activity",
+      "arguments": {
+        "activity_id": "72b26b0a8b4c209959e204c6cea6e803",
+        "include_children": true
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.young.connection.status.v1",
+      "question": "二课连接状态里的认证配置正常能证明我自己的账号已登录吗？",
+      "fixtureCaseId": 47,
+      "tool": "young_connection_status",
+      "arguments": {},
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "ustc.young.facets.list.v1",
+      "question": "二课有哪些组织单位可以筛选？",
+      "fixtureCaseId": 42,
+      "tool": "young_list_facets",
+      "arguments": {
+        "facet": "department"
+      },
+      "mode": "mcp"
+    },
+    {
+      "capabilityId": "console.library.query.v1",
+      "question": "东校区",
+      "arguments": {
+        "query": "东校区",
+        "limit": 3
+      },
+      "mode": "mcp-console"
+    },
+    {
+      "capabilityId": "console.local-recs.query.v1",
+      "question": "东校区吃饭",
+      "arguments": {
+        "query": "东校区吃饭",
+        "limit": 3
+      },
+      "mode": "mcp-console"
+    },
+    {
+      "capabilityId": "console.training-plan.query.v1",
+      "question": "计算机",
+      "arguments": {
+        "query": "计算机",
+        "limit": 3
+      },
+      "mode": "mcp-console"
+    },
+    {
+      "capabilityId": "console.campus-events.query.v1",
+      "question": "查看最近公告",
+      "arguments": {
+        "query": "",
+        "limit": 3
+      },
+      "mode": "mcp-console"
+    },
+    {
+      "capabilityId": "console.college-notice.query.v1",
+      "question": "查看最近公告",
+      "arguments": {
+        "query": "",
+        "limit": 3
+      },
+      "mode": "mcp-console"
+    }
+  ]
+}

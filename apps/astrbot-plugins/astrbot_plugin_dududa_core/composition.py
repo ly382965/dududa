@@ -392,6 +392,10 @@ class _ProductionPerceptionMerger:
         model_status: PerceptionModelStatus,
         model_route_receipt_digest: DigestString | None = None,
     ) -> PerceptionResult:
+        if (model is not None and context.conversation_type.value == "group"
+            and context.bot_identity_ref not in context.current_message.mentioned_identity_refs):
+            # Proactive participation addresses the group, not a synthetic @ target.
+            model = replace(model, target_identity_refs=())
         if (
             model is not None
             and context.current_message.text.startswith(PROACTIVE_GROUP_PROMPT_MARKER)
@@ -1527,7 +1531,9 @@ def build_production_runtime(
             model_calls=1,
             tool_steps=0,
             retries=0,
-            input_tokens=12_000,
+            # A 20-message group window plus the perception schema measured
+            # 18,262 units under the conservative UTF-8 estimator.
+            input_tokens=24_000,
             output_tokens=perception_output_limit,
             cost_units=None,
         ),
@@ -1536,7 +1542,8 @@ def build_production_runtime(
             model_calls=1,
             tool_steps=0,
             retries=0,
-            input_tokens=24_000,
+            # Leave room for both group history and cited course-review samples.
+            input_tokens=40_000,
             output_tokens=direct_output_limit,
             cost_units=None,
         ),
@@ -1686,7 +1693,7 @@ def build_production_runtime(
         CurrentMessageContextBuilderConfig(
             schema_version=1,
             limits=perception_limits,
-            maximum_content_input_tokens=8_000,
+            maximum_content_input_tokens=12_000,
             private_data_classification=PrivacyLevel.PERSONAL,
             group_data_classification=PrivacyLevel.CONVERSATION,
             component_revision=_revision("current-message-context"),
@@ -2186,6 +2193,7 @@ def install_rollout_runtime(
     scope_policy_resolver = (
         FileScopeAgentPolicyResolver(Path(policy_path)) if policy_path else None
     )
+    plugin.scope_policy_resolver = scope_policy_resolver
     requests = AstrBotRuntimeRequestFactory(
         connector,
         runtime_budget,
@@ -2254,7 +2262,7 @@ def _default_runtime_budget(config: dict[str, object] | None = None) -> RuntimeB
         model_calls_remaining=2,
         tool_steps_remaining=1,
         retries_remaining=1,
-        input_tokens_remaining=40_000,
+        input_tokens_remaining=68_000,
         output_tokens_remaining=output_tokens,
         cost_units_remaining=None,
     )

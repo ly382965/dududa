@@ -670,7 +670,7 @@ def _notifai_capability_from_goal(goal: str) -> str:
     compact = _normalize_term(goal)
     if any(value in compact for value in ("统计", "数量", "总数")):
         return NOTIFAI_STATS_CAPABILITY_ID
-    if "来源" in compact:
+    if re.search(r"(?:有哪些|哪些|列出|查看|查询|显示)(?:通知)?来源|来源(?:列表|有哪些|有哪|统计)", compact):
         return NOTIFAI_SOURCES_CAPABILITY_ID
     if "分类" in compact:
         return NOTIFAI_CATEGORIES_CAPABILITY_ID

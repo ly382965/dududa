@@ -10,6 +10,7 @@ from .commands.memory import CoreMemoryCommands
 from .composition import activate_runtime_after_host_start, initialize_plugin
 from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
 from .runtime_config_apply import runtime_config_apply_response, runtime_config_status_response
+from .recording_rehearsal import runtime_rehearsal_response
 from .web_runtime import (
     runtime_native_message_preview_response,
     runtime_preview_response,
@@ -60,6 +61,11 @@ class DududaCorePlugin(
                 "Run Dududa 2.0 with no QQ output",
             )
             register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/rehearsal",
+                self.runtime_rehearsal, ["POST"],
+                "Simulate group participation with synthetic messages and no QQ output",
+            )
+            register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/native-message-preview",
                 self.runtime_native_message_preview,
                 ["POST"],
@@ -78,6 +84,9 @@ class DududaCorePlugin(
     async def runtime_preview(self):
         """Execute the installed 2.0 Runtime without QQ delivery."""
         return await runtime_preview_response(self)
+
+    async def runtime_rehearsal(self):
+        return await runtime_rehearsal_response(self)
 
     async def runtime_native_message_preview(self):
         """Replay one native NapCat message without QQ delivery."""

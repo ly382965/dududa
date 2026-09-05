@@ -69,6 +69,10 @@ def runtime_status(plugin: object) -> dict[str, object]:
         "modelMapping": models,
         "controls": controls,
         "modelHealth": "not_probed",
+        "adaptiveActivations": (
+            plugin.scope_policy_resolver.adaptive_status()
+            if getattr(plugin, "scope_policy_resolver", None) is not None else []
+        ),
         "previewScope": "group",
         "controlReason": "rollout_config_invalid" if control_error else "rollout_config_current",
     }
@@ -353,7 +357,13 @@ async def _runtime_preview_json(
         preview = await bridge.preview(event)
     except AstrBotRuntimePreviewError as exc:
         return error_response(exc.code, status_code=409)
-    except Exception:
+    except Exception as exc:
+        import logging
+        import traceback
+        frames = traceback.extract_tb(exc.__traceback__)
+        location = f"{frames[-1].name}:{frames[-1].lineno}" if frames else "unknown"
+        logging.getLogger(__name__).warning("Runtime preview failed: type=%s code=%s location=%s",
+            type(exc).__name__, getattr(getattr(exc, "info", None), "code", "unknown"), location)
         return error_response("runtime_preview_failed", status_code=502)
     result = preview.runtime_result
     response = result.final_response
