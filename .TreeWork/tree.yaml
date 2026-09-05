@@ -232,6 +232,12 @@ tree:
       spec: branches/agent-expansion/evaluation-ci/spec.md
       depends_on:
       - layout-migration
+    - id: ci-run-repair
+      title: Repair GitHub CI Run 33897997167
+      purpose: Reproduce actual Python and offline-evaluation failures and restore passing CI without weakening checks.
+      spec: branches/agent-expansion/ci-run-repair/spec.md
+      depends_on:
+      - evaluation-ci
     - id: local-integration-audit
       title: S19 Local Integration Audit
       purpose: >-

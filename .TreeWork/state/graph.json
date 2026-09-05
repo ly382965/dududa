@@ -687,6 +687,22 @@
       "kind": "depends_on",
       "user_label": "demo-runtime-validation depends on plugin-group-controls",
       "interpreted_relation": "depends_on"
+    },
+    {
+      "id": "edge-87",
+      "from": "agent-expansion",
+      "to": "ci-run-repair",
+      "kind": "parent_of",
+      "user_label": "agent-expansion contains ci-run-repair",
+      "interpreted_relation": "parent_of"
+    },
+    {
+      "id": "edge-88",
+      "from": "ci-run-repair",
+      "to": "evaluation-ci",
+      "kind": "depends_on",
+      "user_label": "ci-run-repair depends on evaluation-ci",
+      "interpreted_relation": "depends_on"
     }
   ]
 }

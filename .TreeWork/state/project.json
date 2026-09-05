@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1",
   "stage": "work_tree",
-  "current_branch": "demo-runtime-validation",
+  "current_branch": "ci-run-repair",
   "artifact_layout_version": 2,
-  "last_event_seq": 195,
-  "tree_revision": 10,
+  "last_event_seq": 198,
+  "tree_revision": 11,
   "tree_editing": null,
-  "tree_hash": "fnv1a64:3297862192898cd5",
-  "last_sync": "unix:1788549294"
+  "tree_hash": "fnv1a64:490d112f01d17098",
+  "last_sync": "unix:1788576636"
 }
