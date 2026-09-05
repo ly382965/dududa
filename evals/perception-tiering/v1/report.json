@@ -2,7 +2,7 @@
   "artifact_digests": {
     "cases": "dududa-c14n-v1:eval:perception-tiering-case-set:v1:sha-256:6ba37f1c29dcfeae6e5c95572908d0556c5e8d1d759837d874911fb25e1dd1ad",
     "fixtures": "dududa-c14n-v1:eval:perception-tiering-model-fixture-set:v1:sha-256:7274ec270f97fa587816c3fc9426ecd1d57a216d67929dde88963b1714dd7cae",
-    "gold": "dududa-c14n-v1:eval:perception-tiering-gold-set:v1:sha-256:e2fbcebacc64611a5f89a1b95103e15cfcdd19cea81e17775c887e4893a4cf91",
+    "gold": "dududa-c14n-v1:eval:perception-tiering-gold-set:v1:sha-256:af2db41a8d4b45b4cd35e0c394a245008b8d8cd9db00e0fb72a4830273340f9b",
     "plan": "dududa-c14n-v1:eval:perception-tiering-plan:v1:sha-256:d92b2dfdbb64c836057c588b025e571c15520c1f5e42c2c60c57b63ca4169bb1",
     "rubric": "dududa-c14n-v1:eval:quality-rubric:v1:sha-256:a3a515cba1077dcb025c82187bdf8a8d5d2e873415102d060312d542b5131e3c",
     "split": "dududa-c14n-v1:eval:perception-tiering-split:v1:sha-256:7b2756e00dabf63532546b7b5e7d60f75280f7087ba23db6c07388a05bec1a0a"
@@ -25,7 +25,7 @@
     "brier": "0.036715625000",
     "ece_10_bin": "0.152812500000"
   },
-  "dataset_digest": "dududa-c14n-v1:eval:perception-tiering-dataset:v1:sha-256:bc1730ce392631f2006c212c7e50229d0a62a4261edd576f3615ba8ef0f7fc48",
+  "dataset_digest": "dududa-c14n-v1:eval:perception-tiering-dataset:v1:sha-256:9e353326689e10268e007ea784a15d2a7d56a1b66b1ae52e23ee45bc73ca452b",
   "dataset_kind": "synthetic",
   "empirical_minimum_tier_claimed": false,
   "evaluation_component_revisions": {
@@ -1175,14 +1175,14 @@
     "count": 0,
     "denominator": 320
   },
-  "prediction_set_digest": "dududa-c14n-v1:eval:perception-tiering-prediction-set:v1:sha-256:c08ca143a8d44520106fab4ad9e2994570d20cde699d4c5809744014400de8d7",
+  "prediction_set_digest": "dududa-c14n-v1:eval:perception-tiering-prediction-set:v1:sha-256:60004a37ef8f5a30d93ad7cfa10e890120d285a275e7a4b6879bcc0a03220a6d",
   "quality_rubric_digest": "dududa-c14n-v1:eval:quality-rubric:v1:sha-256:a3a515cba1077dcb025c82187bdf8a8d5d2e873415102d060312d542b5131e3c",
   "quality_rubric_id": "s09-policy-gold-rubric-v1",
   "release_blockers": [
     "human_review_not_complete"
   ],
   "release_ready": false,
-  "report_digest": "dududa-c14n-v1:eval:perception-tiering-report:v1:sha-256:493fe8dbc22abe6ed5643c145cc3787fe6508dea02e95eac83e2e3aa3e30bf75",
+  "report_digest": "dududa-c14n-v1:eval:perception-tiering-report:v1:sha-256:7589db8673522cce614036ac4109eb65f1a4cfad068db6a606af5e44218f4bb8",
   "sample_count": 320,
   "schema_version": 1,
   "semantic_set_metrics": {

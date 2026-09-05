@@ -5,7 +5,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, ClassVar
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10, supported by the repository CI.
+    import tomli as tomllib
+
 from dududa.mcp import (
     ConfigMcpServerRegistry,
     ManagedUnifiedMcpClient,

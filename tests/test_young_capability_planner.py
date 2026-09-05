@@ -80,6 +80,14 @@ class YoungCapabilityPlannerTests(unittest.TestCase):
         self.assertEqual(_requested_result_limit("列出前五场", 8), 5)
         self.assertEqual(_requested_result_limit("只列出 20 条", 8), 8)
         self.assertEqual(_requested_result_limit("未来三天有哪些活动", 8), 8)
+        self.assertEqual(_requested_result_limit("列出当前二课活动", 8), 8)
+
+    def test_ranked_top_results_keep_the_bounded_candidate_set(self) -> None:
+        self.assertEqual(
+            _requested_result_limit("把当前二课按报名填充率排序，列出前三项。", 20),
+            20,
+        )
+        self.assertEqual(_requested_result_limit("列出学时最高的三项", 20), 20)
 
 
 if __name__ == "__main__":

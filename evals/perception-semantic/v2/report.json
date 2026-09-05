@@ -14,7 +14,7 @@
   "schema_ref": {
     "schema_id": "dududa.perception.model-projection",
     "schema_version": 2,
-    "digest": "dududa-c14n-v1:schema:dududa.perception.model-projection:v2:sha-256:e52c6ff35fefc63edac402d37bfe07546ad360cee7af4a8cce08fb0387dd02c5"
+    "digest": "dududa-c14n-v1:schema:dududa.perception.model-projection:v2:sha-256:e437c8731641a1f1c4c5268bae757c32d5864ebd309fe2ab73f6e2dc32939e00"
   },
   "schema_valid_count": 5,
   "whole_envelope_valid_count": 5,

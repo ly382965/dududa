@@ -164,7 +164,7 @@ _ACTIVITY_ID_RE = re.compile(
     re.IGNORECASE,
 )
 _RESULT_LIMIT_RE = re.compile(
-    r"(?:最多(?:列(?:出)?)?|只列(?:出)?|列(?:出)?前|前)\s*"
+    r"(?:最多(?:列(?:出)?)?|只列(?:出)?|列(?:出)?前|(?<!当)前)\s*"
     r"(?P<count>\d{1,2}|[一二两三四五六七八九十])\s*"
     r"(?:个|项|条|门|场|份)?"
 )
@@ -905,9 +905,12 @@ def _small_day_count(value: str) -> int:
 
 
 def _requested_result_limit(goal: str, default: int) -> int:
-    """Honor an explicit result count without widening a provider default."""
+    """Bound plain listings while retaining candidates for later ranking."""
 
-    match = _RESULT_LIMIT_RE.search(_normalize_term(goal))
+    normalized = _normalize_term(goal)
+    if re.search(r"排序|排名|排行|从高到低|从低到高|最高|最低|最大|最小", normalized):
+        return default
+    match = _RESULT_LIMIT_RE.search(normalized)
     if match is None:
         return default
     raw = match.group("count")

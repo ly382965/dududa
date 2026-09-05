@@ -114,7 +114,7 @@ class SemanticV2ContractTests(unittest.TestCase):
         self.assertEqual(
             str(model_projection_v2_schema_ref(limits()).digest),
             "dududa-c14n-v1:schema:dududa.perception.model-projection:v2:"
-            "sha-256:e52c6ff35fefc63edac402d37bfe07546ad360cee7af4a8cce08fb0387dd02c5",
+            "sha-256:e437c8731641a1f1c4c5268bae757c32d5864ebd309fe2ab73f6e2dc32939e00",
         )
         semantic = projection.semantic
         self.assertIsNotNone(semantic)
