@@ -1,212 +1,235 @@
-# 嘟嘟哒 2.0
+<div align="center">
 
-**嘟嘟哒是一个受治理的群体情境适应 Agent Runtime。** 它保留不可卸载的最小治理内核，
-在外围组合可逆、可观察、分作用域的能力资产。当前仓库定位为**内部 Canary**，不是生产就绪版本。
+# 嘟嘟哒 · Dududa
 
-仓库包含框架无关 Runtime、AstrBot/NapCat 适配器、校园 MCP 服务、Bot 控制台和可复现的离线测试。
-仓库不包含 Provider 凭据、QQ 登录态、运行数据库或生产聊天数据。
+**生活在 QQ 群里的 AI 群友**
 
-## 设计哲学
+让 AI 成为群里的自己人。
 
-```text
-QQ / 群消息
-      |
- NapCat OneBot v11
-      |
- AstrBot Connector
-      |
- MessageEnvelope -> 分作用域上下文 -> 语义理解
-                    （规则 + Haiku Schema 候选）
-      |
- 确定性资格过滤 / 授权 / 预算
-      |
- 静态 Model Router（Haiku / Sonnet / Opus）
-      |
- Capability Retrieval -> 有界 Planner -> Executor -> Validator
-                              |
-                         Unified MCP 或 Builtin Provider
-      |
- Observation -> Direct Chat -> ResponsePlan -> Persona -> 最终校验
-      |
- Output Adapter -> DeliveryReceipt
-```
+[简体中文](README.md) · [English](README.en.md)
 
-模型只提出类别、实体、工具候选和表达草案，不拥有身份、Scope、权限、预算、Capability 授权、
-路由资格或副作用。确定性代码拥有这些决策。MCP 只是传输边界，不授予 Capability，不负责调度、
-目标选择或发送消息。
+[![License: MIT](https://img.shields.io/badge/License-MIT-80b8a5)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-7ba9d6)](pyproject.toml)
+[![Vue 3](https://img.shields.io/badge/Vue-3-8bc6b3)](apps/web/package.json)
+[![CI](https://github.com/ly382965/dududa/actions/workflows/ci.yml/badge.svg)](https://github.com/ly382965/dududa/actions/workflows/ci.yml)
 
-模型的三个维度彼此正交：
+[功能亮点](#功能亮点) · [快速开始](#快速开始) · [技术架构](#技术架构) · [开发路线](#开发路线) · [参与贡献](#参与贡献)
 
-- `Tier`：`haiku`、`sonnet`、`opus`，表示能力与成本档位；
-- `Reasoning`：`off`、`light`、`balanced`、`deep`、`maximum`；
-- `AnswerProfile`：`short`、`medium`、`long`，表示可见输出预算。
+<a href="docs/assets/dududa-poster.png">
+  <img src="docs/assets/dududa-poster.png" alt="嘟嘟哒宣传海报：生活在 QQ 群里的 AI 群友，让 AI 成为群里的自己人" width="680">
+</a>
 
-内部部署通常把 Luna/Terra/Sol 映射到 Haiku/Sonnet/Opus。模型 ID、Endpoint 和凭据属于私有运行配置，
-不是仓库承诺。静态路由器先做资格过滤，再在合法候选中考虑质量和成本。
+</div>
 
-## Runtime 与控制台
+## 群里，来了一个 AI 群友
 
-`packages/dududa-agent` 是框架无关的 2.0 核心。AstrBot、MCP SDK、模型 SDK 以及 Vue/Node Web 应用
-都只能实现外围 Port。Web 是 Bot Control Plane（管理员超级工作台），不是第二套 Agent Runtime；
-所有写操作都转换为类型化 Core Command，读取的是 Runtime 投影状态。
+嘟嘟哒是一个生活在 QQ 群里的 AI 群友。我们希望她像群里一个什么都会一点的人：能接住闲聊，能认真讨论问题，知道什么时候出现，也懂得什么时候闭嘴。聊到选课、活动、考试和出行时，她又能找到相应资料，把事情说清楚。
 
-Bot 进入群聊后，授权管理员可以选择版本化 `GroupServiceProfile` 初值。`adaptive` 和 `preferred` 允许
-Agent 只在管理员批准的范围内按轮次调整，`locked` 才会禁止调整。Web 设置不会创建模型、授予能力或绕过
-Core 授权。
+这个项目探索的是 **AI 如何持续参与一个群体的日常生活**。上下文感知、Social Engine、Memory、模型路由、Skill/MCP 与人格表达，共同支撑从“这次回答得不错”到“这个群友越来越熟悉”的体验。
 
-## 能力与 MCP
+科大校园是嘟嘟哒开始生活的地方。也欢迎你把这套系统带到自己的群，接入新的服务，塑造不同的角色。
 
-每个已进入生产 mapping 的服务都有独立的 Server 身份、Session 生命周期、Schema 快照、健康状态和
-Capability mapping。单独登记 Registry 不会授予 Capability。本次五个可选 Server 已打包并默认关闭，
-没有 Capability mapping，不进入 Planner 或生产 Provider health 组合。
+## 功能亮点
 
-| 服务 | 类型 | 当前范围 |
-| --- | --- | --- |
-| iCourse / 评课社区 | Unified MCP | 匿名公开查询课程、教师、评价、排行榜和统计，是当前主要真实 MCP 路径。 |
-| USTC Young / 二课 | Unified MCP | 复用 `pyustc` 查询活动、筛选项、详情和连接状态；报名、取消报名、申请人等操作不作为公开能力。 |
-| USTC Academic / 教务处 | Unified MCP | 公开学期、开课、考试和教学日历查询。 |
-| NotifAI / 校园通知 | Unified MCP | 公开通知搜索、详情、日历、截止提醒、来源、分类和统计；只读，不保存正文。 |
-| USTC Curriculum / 培养方案 | Unified MCP | 查询 `docs.mmdustc.top/curriculum` 的研究快照，不是实时毕业审核。 |
-| USTC Shuttle / 校车 | Builtin Capability | 版本化本地时刻表，不建立 MCP Session，不联网抓取。 |
-| Local Recommendations / 本地推荐 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询仓库种子驱动的餐饮、活动和学习缓存；工具调用不写入、不刷新、不搜索任意地图。 |
-| Training Plan / 专业设置 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询本科专业/院系年度缓存，不等同于实时培养方案审核。 |
-| Campus Events / 学校通知聚合 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询学校主页公开通知缓存；与 NotifAI 使用不同来源。 |
-| College Notice / 学院通知 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询已配置学院官网的公开通知缓存。 |
-| Library / 图书馆开放时间 | 可选 MCP Server（仅 Registry，默认关闭） | 只查询图书馆官网各校区开放时间缓存。 |
-| Weather | 候选 Source/Capability Adapter | 已有 `WttrWeatherSource` 和 Provider 契约，但尚未接入生产组合或日报订阅。 |
-| 校园资讯、arXiv、行业来源 | 预留接口 | 只有来源契约和 fixture，不能宣称存在实时 Server 或实时日报。 |
+### 像群友一样接话
 
-Web MCP 控制台只接受批准的 Capability ID 和输入 Schema，不提供任意 `server/tool` 透传。Discovery 只更新事实，
-不会自动授予权限。
+- **跟得上讨论**：读取近期群聊上下文，处理引用、指代和临时更正。
+- **参与程度可调**：支持按群开启自动搭话，配置参与概率、冷却、频率和上下文窗口。
+- **任务直接说**：明确 @ 可以发起请求；开启自动参与后，普通群消息也能成为接话的起点。
+- **回答长短合适**：模型档位、推理强度与回答长度独立配置，兼顾简短交流和展开讨论。
 
-## 插件与本地能力
+### 做最懂科大的 AI 群友
 
-| 组件 | 2.0 状态 |
+嘟嘟哒会根据自然语言问题选择对应的校园能力，查询资料并整理带来源的回答。
+
+| 能力 | 可以帮你做什么 |
 | --- | --- |
-| `astrbot_plugin_dududa_core` | 唯一 2.0 Agent Runtime 的 AstrBot 适配器，负责命令边界、Runtime 组合和投递。 |
-| `astrbot_plugin_emoji_kitchen` | 独立的 Unicode Emoji Kitchen 表情合成插件，官方组合按需缓存。 |
-| `astrbot_plugin_sub2api_readonly` | 仅超级管理员可用的只读命令；`overview` 生成一条四段合并转发（今日、当前计费轮、历史、上游账号）。它是宿主独立插件，不是 Agent 自动工具路由。 |
-| `astrbot_plugin_proactive_chatter` | 由 Core 在 Bridge 前消费的无副作用策略扩展，识别复读/机器人互动并建议静默；不监听、不调用模型、不发送，默认关闭。 |
-| `astrbot_plugin_reply_review` | 保守审校策略资产，不拦截消息、不自行调用 Provider；接入 Runtime secondary-review Port 前保持 `production_wired=false`。 |
-| `astrbot_plugin_weather` | 只读天气 Source/Provider 资产，默认关闭，未注册到生产 Composition。 |
-| `astrbot_plugin_arc_proxy` | 受治理的本地 B50 渲染/Provider 资产；调用者提供结构化成绩，Core 拥有授权和投递权。默认关闭，未接生产 Composition。 |
-| `astrbot_plugin_ustc_shuttle` | Runtime 使用的本地校车时刻表 Capability Provider。 |
-| `astrbot_plugin_reread` | 兼容性的独立复读插件，默认关闭、独立 Scope；不是 Agent 的社会决策层。 |
-| `astrbot_plugin_reply_polish` | 旧版 LONG-only 合并转发兼容层，默认关闭；2.0 Output 自己负责合并转发判断。 |
-| `astrbot_plugin_dududa_social` | PR #10 中非重复的社交规则策略资产；总开关、功能开关和群 allowlist 默认关闭，使用 `/dududa-social` 命名空间，不注册全局自动 Handler。 |
+| 评课社区 | 找课程、教师与评论，区分同名课程和任课教师，查看评价与统计。 |
+| 第二课堂 | 搜索活动、查看详情，按类别、时间和数量筛选。 |
+| 教务信息 | 查询学期、全校开课、考试与教学日历。 |
+| 培养方案 | 查询不同年级、专业的方案资料，比较课程与方案变化。 |
+| 校园通知 | 搜索通知、查看详情、日历与截止日期。 |
+| 校车出行 | 按校区、路线、日期和时间查询常规班次。 |
 
-`third_party/` 中的 Better Reminder、ChatSummary、Iris 仅作为迁移或回滚证据保留。它们的旧消息监听、
-SQLite 状态、独立调度和直接发送都不是 2.0 Runtime 能力，不应在文档中写成已启用功能，也不能形成第二套控制面。
-旧的评课社区专用 Client 和 PR 中的旧 iCourse 实现不在本次集成结果内；评课社区统一走 Unified MCP。
+培养方案与校车结果保留资料版本。二课查询需要在部署端配置 USTC CAS 凭据。
 
-独立的 `apps/b50-renderer` 只依赖 Pillow，不依赖 AstrBot 或网络。它从结构化数据或本地 fixture 生成
-`1920x1750` PNG，不抓取成绩、不发送媒体。
+### 有性格，也有玩心
 
-## 目录结构
+人格通过独立的 Persona 资产描述：技术问题认真说清楚，日常聊天跟随群里的语气，表情和句长也有自己的节奏。Emoji Kitchen 提供表情合成，互动插件可以按群配置。
 
-```text
-packages/dududa-agent/       # 框架无关的 2.0 契约与 Runtime
-apps/astrbot-plugins/        # AstrBot 适配器和能力资产
-apps/b50-renderer/            # 离线 B50 渲染器
-apps/web/                     # Vue/Node Bot Control Plane
-services/mcp/icourse/         # 评课社区 MCP
-services/mcp/notifai/         # 校园通知 MCP
-services/mcp/ustc-campus/     # 二课、教务处、培养方案 MCP
-services/mcp/local-recs/      # 仅 Registry 的本地推荐 MCP（默认关闭）
-services/mcp/training-plan/   # 仅 Registry 的专业设置 MCP（默认关闭）
-services/mcp/campus-events/   # 仅 Registry 的学校通知 MCP（默认关闭）
-services/mcp/college-notice/  # 仅 Registry 的学院通知 MCP（默认关闭）
-services/mcp/library/         # 仅 Registry 的开放时间 MCP（默认关闭）
-services/mcp/console/         # MCP Registry/Capability 控制台
-configs/                      # 不含凭据的 Server 与 Capability mapping
-deploy/                       # Compose 与派生镜像
-ops/                          # 初始化、安装和验证工具
-third_party/                  # 锁定的兼容来源与补丁
-docs/                         # 设计、研究和进度记录
-```
+我们希望她逐渐认识群友、记住共同经历、学会群里的梗。当前已经实现 Memory v2 的中文检索和生命周期模块，准备了多 Persona 资产结构；长期记忆接入、多 OC 切换与群友印象正在这套基础上继续建设。
+
+### 看得见，也调得动
+
+Web 控制台把群聊、Agent 对话、运行记录和配置放在同一工作区。你可以查看一次回答所用的模型、能力和耗时，按群调整服务、插件与参与方式，管理三档模型 Key 池，并在 MCP 工作台检查服务连接。
+
+Web 预览复用正式 Runtime，方便在接入 QQ 群聊之前调试问题和回答。
+
+## 试着这样和她聊天
+
+> 评课社区里《线性代数》的评价怎么样？
+
+> 查一下二课最近公开发布的学术活动，最多列 3 项。
+
+> 刚才说周五八点，后来改成周六八点了。最终什么时候开会？
+
+> 给一个六人小组安排任务，每个人都要有明确产出。
+
+这些问题分别连接到校园查询、上下文理解和直接交流。实际执行过程可以在控制台的“运行”页查看。
 
 ## 快速开始
 
-要求：Linux、Docker Compose v2、`uv 0.12.1`、Python 3.10/3.12、Node.js 22、npm 10，
-以及在 AstrBot 私下配置的 OpenAI 兼容 Provider。
+### 先在本地跑起来
+
+准备 Python 3.12 和 [uv](https://github.com/astral-sh/uv)，在终端执行：
 
 ```bash
-cp deploy/env/.env.example .env
-chmod 600 .env
-./manage.sh init
-./manage.sh plugins
-./manage.sh web-up
+git clone https://github.com/ly382965/dududa.git
+cd dududa
+uv sync --locked --python 3.12.13
+uv run --locked python ops/cli/run_dududa_100_message_benchmark.py \
+  --json-output /tmp/dududa-100-runtime.json \
+  --report-output /tmp/dududa-100-runtime.md
 ```
 
-默认本机回环地址：
+项目自带 100 条固定消息，使用脚本模型和本地校园数据运行完整流程，生成逐题回答、工具调用与汇总报告。这个入口无需模型 Key 或 QQ 登录，适合先了解系统如何工作。
 
-- Web 控制台：`http://127.0.0.1:5173`
-- AstrBot：`http://127.0.0.1:6185`
-- NapCat：`http://127.0.0.1:6099`
+### 把她接到自己的 QQ 群
 
-`./manage.sh up` 会构建完整本地栈，可能重建本地 AstrBot/Web 服务；不会把凭据或 QQ 登录态写进 Git。
-NapCat 需要单独完成登录。示例 API Key Store 会解析到 checkout 同级的
-`../dududa-state/api-keys`；启动前可用 `./manage.sh api-key-store-path` 校验自定义
-路径。该凭据文件不进入普通 `backup/restore`，恢复时需从 Secret Manager 重新
-注入并轮换上游 Provider Key，详见部署文档。
+完整运行环境为 Linux、Docker Engine 和 Docker Compose v2。按 [安装与使用说明](docs/operations/submission-program.md) 完成：
 
-只测试仓库自有 2.0 资产时使用：
+1. 配置 `.env`、运行目录与校园认证文件，使用 `bash manage.sh up` 构建并启动服务。
+2. 在 NapCat 扫码登录 QQ，运行 `bash manage.sh web-connect` 接入 Web 工作区。
+3. 在 AstrBot 配置模型 Provider 和 Dududa Core，随后在 Web 中配置目标群的服务与参与方式。
 
-```bash
-python ops/cli/install_plugins.py --plugins-root ./runtime/astrbot-plugins --owned-only
+| 本地入口 | 地址 |
+| --- | --- |
+| 嘟嘟哒 Web 控制台 | <http://127.0.0.1:5173> |
+| AstrBot | <http://127.0.0.1:6185> |
+| NapCat | <http://127.0.0.1:6099> |
+
+首次安装需要完成模型端点与 Runtime 配置。完整步骤、模型字段和自动参与设置都在 [程序使用说明](docs/operations/submission-program.md) 中。
+
+### 模型配置
+
+当前演示使用 DeepSeek 的 OpenAI 兼容 Chat Completions 接口：
+
+| 档位 | 模型 | 推理强度 | 用途 |
+| --- | --- | --- | --- |
+| Luna · 快速 | `deepseek-v4-flash` | `low` | 感知、简短交流 |
+| Terra · 标准 | `deepseek-v4-flash` | `high` | 校园查询、一般分析 |
+| Sol · 深度 | `deepseek-v4-pro` | `max` | 复杂论证与比较 |
+
+服务地址为 `https://api.deepseek.com`。模型通过 AstrBot `text_chat` 接口调用，Key 在部署端配置。Luna/Terra/Sol 是程序的档位别名，回答篇幅另外设置为短、中、长。详细调用方式见 [设计文档](docs/design/dududa-2.0-design-report.md)。
+
+## 技术架构
+
+```mermaid
+flowchart TD
+    QQ["QQ 群聊 · NapCat / AstrBot"] --> Context["上下文感知"]
+    Web["Web 控制台 · Runtime 预览"] --> Context
+    Context --> Social["Social Engine · 参与决策"]
+    Social --> Route["模型路由 · 推理与回答长度"]
+    Social --> Quiet["保持安静"]
+    Route --> Chat["直接交流"]
+    Route --> Capability["原子化能力选择与执行"]
+    Capability --> Tools["校园 MCP / 本地能力"]
+    Tools --> Answer["事实与回答组织"]
+    Chat --> Answer
+    Answer --> Persona["Persona · 人格表达"]
+    Persona --> Output["QQ 回复 / Web 预览"]
+    Memory["Memory v2 · 长期接入建设中"] -.-> Context
 ```
 
-`third_party/plugins.lock.json` 继续作为兼容与迁移输入保留；锁定来源不等于自动获得 Agent Capability。
+| 模块 | 负责什么 |
+| --- | --- |
+| Context / Perception | 组织当前问题和近期讨论，识别意图、实体与引用。 |
+| Social Engine | 决定如何参与，结合群策略调整接话节奏。 |
+| Model Router | 选择模型配置，分别管理推理投入与可见篇幅。 |
+| Capability / MCP | 将业务需求映射成独立查询，统一执行和结果结构。 |
+| Persona | 组织稳定的中文表达风格与输出格式。 |
+| Memory | 已实现中文 BM25、会话检索、写入和生命周期管理的离线模块。 |
 
-## 验证
+核心使用 Python，通过接口接入模型、消息平台和校园服务。当前业务查询采用单步能力计划；后续 Skill 层将复用这些原子化能力，组织更长的任务和能力启停。
 
-仓库优先运行代表性、可执行的检查，不为假设事故预先堆叠门禁：
+```text
+packages/dududa-agent/   智能体核心：感知、社交、记忆、路由与回答
+apps/astrbot-plugins/    QQ 适配器、能力组件与互动插件
+apps/web/               Vue 3 + Node.js 控制台
+services/mcp/           校园服务、MCP Console 与独立 worker
+configs/                能力定义、服务映射、人格与配置示例
+deploy/                 Docker Compose 与镜像构建
+ops/                   安装、运行与验证工具
+tests/                 单元、接口与流程测试
+docs/                  设计文档、使用说明与宣传素材
+```
+
+## 本地开发与验证
+
+Python 依赖由 `uv.lock` 管理，Web 使用 Node.js 22.18.0 与 npm 10.9.3。
 
 ```bash
-uv lock --check
+uv sync --locked --python 3.12.13
 uv sync --project services/mcp/unified-worker --locked --python 3.12.13
-uv run --locked python -m compileall -q packages apps services ops tests
-uv run --locked python -m unittest discover -s tests -t .
-PYTHONPATH=services/mcp/campus-events/src:services/mcp/college-notice/src:services/mcp/library/src:services/mcp/local-recs/src:services/mcp/training-plan/src \
-  uv run --with pytest python -m pytest -q \
-    services/mcp/campus-events/tests services/mcp/college-notice/tests \
-    services/mcp/library/tests services/mcp/local-recs/tests services/mcp/training-plan/tests \
-    tests/test_social_plugin.py tests/test_install_plugins.py tests/test_repository_contract.py
-uv run --locked python ops/cli/check_secrets.py
-cd apps/web && npm run typecheck && npm run test && npm run build
+uv run --locked python -m unittest \
+  tests.test_dududa_100_message_benchmark \
+  tests.contracts.test_production_composition \
+  tests.contracts.test_proactive_talk
 ```
 
-Unified MCP worker 的 `.venv` 是本地忽略产物，不提交到 Git；首次运行依赖 worker 的测试前需执行上面的
-`uv sync`。完整汇总可能包含仍在 S23/历史基线中的失败，先看 `docs/refactor/PROGRESS.md` 的验证边界。
+Web 开发：
 
-聚焦插件检查覆盖 2.0 主动搭话策略、保守审校、天气 Source、本地 B50 Provider、Sub2API overview、默认关闭的
-社交插件和五个 Registry-only MCP 契约 fixture。五个可选 MCP 在本版本没有进入 Planner Capability。真实 QQ
-发送、实时来源新鲜度、人工质量标注、Bandit 在线探索和大规模群聊放量仍是外部验收工作。
+```bash
+cd apps/web
+npm ci
+npm run dev
+```
 
-## 数据、隐私与学习边界
+提交相关 Web 改动前运行 `npm test` 与 `npm run build`。其他模块的验证入口见 [本地开发说明](docs/development/local-environment.md) 和 [CI 工作流](.github/workflows/ci.yml)。
 
-不要提交 `.env`、API Key、Cookie、Token、QQ 登录目录、数据库、聊天导出、Memory 记录、运行生成物或私有
-Provider evidence。运行数据必须放在被忽略的私有目录。Memory v2 已有离线生命周期、检索和删除边界证据，
-但尚未作为生产 Context Builder 或自动写入器启用。
+2026-09-05 的材料验证完成了 100 题离线流程、81 项相关测试、Web 构建与核心 wheel 安装检查。真实 DeepSeek 代表任务的结果列在 [设计文档](docs/design/dududa-2.0-design-report.md) 中。
 
-S20 只提供离线 Bandit 决策/反馈契约和合成 IPS、SNIPS、DR 评估，没有训练 Worker、在线探索或生产奖励回路。
-未来学习只能在已经授权且安全等价的候选之间排序，并保持可观察、可撤销。
+## 开发路线
 
-## 文档
+- [x] QQ 群聊适配与近期上下文
+- [x] Social Engine 与可按群配置的自动参与机制
+- [x] 六类校园服务与原子化能力调用
+- [x] 独立人格资产、表情合成与群插件配置
+- [x] 多档模型路由与 Web 管理控制台
+- [ ] 更自然的参与时机、话题跟随与群聊节奏
+- [ ] 长期记忆接入、群友印象与共同经历
+- [ ] 多 OC 切换、表达习惯与表情风格
+- [ ] Skill 编排、能力自主启停与多步任务
+- [ ] 更低的查询延迟、更准确的群摘要与主动日报
 
-- [Dududa 2.0 设计总览](docs/design/dududa-2.0-overview.md)
-- [重构进度台账](docs/refactor/PROGRESS.md)
-- [模型路由](docs/design/model-routing.md)
-- [Capability 与 MCP 设计](docs/design/capability-and-mcp.md)
-- [Bot Control Plane](docs/design/bot-control-plane.md)
-- [API Key Pool 与 AstrBot 同步边界](docs/development/api-key-pool-runtime-sync.md)
-- [部署与凭据恢复](docs/operations/deployment.md)
-- [PR #10 选择性整合报告](docs/integrations/pr10-selective-integration.md)
-- [本地开发环境](docs/development/local-environment.md)
-- [English README](README.md)
+## 文档与作品材料
 
-`docs/refactor/PROGRESS.md` 是带证据的完成度和外部门禁台账。没有证据的部分不会被描述为生产就绪。
+| 想了解什么 | 从这里开始 |
+| --- | --- |
+| 作品定位与创新点 | [作品简介](docs/design/dududa-2.0-work-introduction.md) |
+| 完整架构与技术难点 | [设计文档](docs/design/dududa-2.0-design-report.md) |
+| 安装与体验 | [程序使用说明](docs/operations/submission-program.md) |
+| 五分钟演示 | [视频大纲](docs/operations/demo-video-runtime-validation-2026-09-05.md) |
+| 扩展校园能力 | [新增 Capability](docs/development/adding-a-capability.md) · [新增 MCP Server](docs/development/adding-an-mcp-server.md) |
+| 设计角色与记忆 | [Persona](docs/design/persona.md) · [Memory](docs/design/memory.md) |
+| 海报原图 | [嘟嘟哒宣传海报](docs/assets/dududa-poster.png) |
 
-## 许可证
+## 参与贡献
 
-嘟嘟哒原创代码和文档采用 MIT 许可证。第三方组件保留其上游许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+欢迎带着你的群聊生活参与这个项目：接入一个校园服务，补充一条真实使用场景，改善一句回答，设计一个 OC，或者修复一个让人困扰的问题。
+
+- **报告问题 / 提出想法**：在 [Issues](https://github.com/ly382965/dududa/issues) 描述使用场景、复现步骤和预期结果。
+- **提交改动**：参考 [Contributing](CONTRIBUTING.md)，为行为变化运行相关测试，再提交 Pull Request。
+- **扩展能力**：从一个可独立完成的任务开始，补齐输入、输出与使用示例。
+
+请使用合成或脱敏的群聊样例，Key 和 QQ 登录数据留在自己的运行目录。安全问题通过 [安全报告说明](SECURITY.md) 联系维护者。
+
+## 致谢与许可证
+
+感谢 [AstrBot](https://github.com/AstrBotDevs/AstrBot)、[NapCat](https://github.com/NapNeko/NapCat-Docker)、[pyustc](https://github.com/USTC-XeF2/pyustc) 及相关校园数据与开源项目。
+
+嘟嘟哒原创代码和文档采用 [MIT License](LICENSE)。第三方组件保留各自许可证，详见 [Third-Party Notices](THIRD_PARTY_NOTICES.md)。
+
+---
+
+一起聊天，一起变好。让 AI 成为群里的自己人。

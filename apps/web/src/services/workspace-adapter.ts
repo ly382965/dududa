@@ -106,7 +106,14 @@ export class NapCatWorkspaceAdapter implements WorkspaceAdapter {
   ) {}
 
   async load(force = false): Promise<WorkspaceSnapshot> {
-    const snapshot = await this.request<WorkspaceSnapshot>(`/api/workspace${force ? '?refresh=1' : ''}`)
+    const snapshot = await this.request<WorkspaceSnapshot>(`/api/workspace${force ? '?refresh=1' : ''}`, {
+      signal: AbortSignal.timeout(10_000),
+    }).catch((error: unknown) => {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new Error('连接工作台超时，请检查网关服务后重新检测')
+      }
+      throw error
+    })
     await Promise.allSettled(snapshot.conversations.map((conversation) => this.cache.saveConversation(conversation)))
     return snapshot
   }

@@ -100,6 +100,27 @@ function deferred<T>() {
 }
 
 describe('useWorkspace account-scoped state', () => {
+  it('shows the workspace without waiting for history or Agent status', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const history = deferred<HistoryPage>()
+    const runtime = deferred<InternalTestAgentStatus>()
+    const adapter = {
+      load: async () => ({ runtime: { status: 'connected', message: '', reverseWebSocketPath: '' }, accounts: [owner],
+        capabilities: {}, conversations: [target], messages: {}, configs: {}, sessions: [], agentMessages: {}, runs: [] }),
+      loadDraft: async () => undefined, loadCachedMessages: async () => [], loadHistory: () => history.promise,
+      markRead: async () => undefined, subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    const agent = { agentStatus: () => runtime.promise, agentCatalog: async () => undefined, agentConfig: async () => undefined } as unknown as InternalTestAgentAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({ setup() { workspace = useWorkspace(adapter, '', agent); return () => h('div') } }))
+    await flushPromises()
+    expect(workspace.loading.value).toBe(false)
+    expect(workspace.selectedConversation.value?.id).toBe(target.id)
+    expect(workspace.messagesLoading.value).toBe(true)
+    wrapper.unmount()
+  })
+
   afterEach(async () => {
     vi.unstubAllGlobals()
     window.localStorage.clear()
@@ -1071,6 +1092,20 @@ describe('useWorkspace account-scoped state', () => {
       expect(workspace.selectedRun.value?.status).toBe(outcome === 'failed' ? 'error' : 'warning')
       expect(workspace.selectedRun.value?.steps[1]?.status).not.toBe('completed')
     }
+    const providerFailureReasons = [
+      'policy.saved', 'provider_output_invalid', 'runtime.preview.no_send',
+      'plugin.emoji.kitchen.off_by_admin', 'plugin.icourse.read.eligible_on',
+      'plugin.social.proactive_talk.waiting_for_group_repeat',
+    ]
+    respond.mockResolvedValueOnce({ ...response, candidate: '', outcome: 'failed',
+      generationObserved: false, reasonCodes: providerFailureReasons })
+    await workspace.sendAgentPrompt('总结这个群最近已读取的讨论，并说明覆盖范围。')
+    expect(workspace.agentMessages.value.at(-1)!.parts).toContainEqual({
+      type: 'text', text: '本次处理失败。模型未返回可用正文，请重试。',
+    })
+    expect(workspace.selectedRun.value?.reasonCodes).toEqual(providerFailureReasons)
+    expect(workspace.selectedRun.value?.steps[1]?.detail).not.toContain('plugin.')
+    expect(workspace.selectedRun.value?.status).toBe('error')
     respond.mockRejectedValueOnce(new Error('isolated timeout'))
     await workspace.sendAgentPrompt('隔离的超时结果')
     expect(workspace.selectedRun.value?.status).toBe('error')

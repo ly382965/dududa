@@ -840,7 +840,7 @@ export function createDududaServer(options: DududaServerOptions) {
         return
       }
       if (method === 'GET' && url.pathname === '/api/workspace') {
-        await options.hub.refreshAll(url.searchParams.get('refresh') === '1')
+        if (url.searchParams.get('refresh') === '1') options.hub.refreshWorkspaceInBackground()
         json(response, 200, options.hub.workspaceSnapshot())
         return
       }

@@ -1833,11 +1833,17 @@ export class FileInternalTestGateway implements InternalTestGateway {
     const context = agentContext(body, contextLength.value)
     if (this.options.runtimePreview) {
       let runtime: DududaRuntimePreviewResult
+      const limit = CONTEXT_BUDGETS[contextLength.value].messageLimit
+      let history: ReturnType<typeof runtimeHistory> | undefined
       try {
-        const limit = CONTEXT_BUDGETS[contextLength.value].messageLimit
-        const history = this.options.historyProvider
+        history = this.options.historyProvider
           ? runtimeHistory(scope, await this.options.historyProvider(scope, limit), limit, this.options.historySource ?? 'server_recent')
           : undefined
+      } catch (error) {
+        if (error instanceof InternalTestError) throw error
+        throw new InternalTestError('读取 QQ 历史失败：请检查账号是否在线及群聊是否可访问，恢复后重试。本次尚未请求 Agent 生成回答。', 503)
+      }
+      try {
         runtime = await this.options.runtimePreview.preview({
           accountId: scope.accountId,
           conversationId: scope.conversationId,
@@ -1849,7 +1855,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
         if (error instanceof DududaRuntimePreviewClientError) {
           throw new InternalTestError(error.message, error.status)
         }
-        throw new InternalTestError('Dududa 2.0 Runtime 预览失败', 503)
+        throw new InternalTestError('Agent 预览调用失败：QQ 历史读取阶段已结束，请检查 Runtime 服务与模型连接后重试。', 503)
       }
       if (runtime.reasonCodes.includes('model_route_not_found')) {
         throw new InternalTestError(

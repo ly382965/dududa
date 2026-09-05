@@ -3,7 +3,30 @@
 本流程只覆盖 Dududa Web、AstrBot、已有 NapCat、MCP 和已安装的自有插件。
 不重启其他站点、LLM 代理、Authentik、Caddy 或数据库，也不新增 QQ 发送权限。
 
-## 2026-09-05 PR12 与群插件开关发布
+## 2026-09-05 预览失败提示修复
+
+- 用户反馈“总结这个群最近已读取的讨论，并说明覆盖范围。”一次返回 `provider_output_invalid`，随后确认模型调用已恢复。没有捕获到当次原始响应，不能进一步认定是推理额度耗尽或上游瞬时故障；本次未修改模型配置或重试策略。
+- 对话中的这类失败改为“模型未返回可用正文，请重试。”，不再把保存策略、预览不发送和插件选择状态全部列为失败原因；完整状态码仍保留在运行记录中。
+- Web 已发布为 `dududa/web:9d2a270`；活动清单为 `<state-root>/releases/bot-20260905/dududa.webui-9d2a270.private.json`，发布副本为 `source-9d2a270`。旧清单和镜像保留，AstrBot、MCP Console 与 NapCat 未重启。
+- 相关前端 14 项、桌面/手机浏览器 2 项回归及类型检查、构建通过。正式静态资源已包含新提示，Agent 可用且 Provider 已配置，公网未认证请求仍返回 Auth 302。
+
+## 2026-09-05 NapCat 公网登录入口修复
+
+- 用户反馈 `https://napcat.mmdustc.top/webui` 显示 HTML 源码。已在站点仓库的 `deploy/Caddyfile` 和 `deploy/Caddyfile.cloudflare-origin` 中为入口设置 `Content-Type: text/html; charset=utf-8`，保留 `no-store` 和 Authentik 认证，并热加载共享 Caddy 配置。
+- 入口现在通过 NapCat 登录 API 获取新会话，避免继续使用过期或重启前的签名凭据；成功后跳转至实际存在的 `/webui/qq_login`。旧 `/webui/index.html` 地址也进入该流程，失败时显示提示和手动登录链接。
+- 使用运行中的入口 HTML 对接本机真实 NapCat 后端进行浏览器验证：登录、会话检查成功，QQ 登录页和扫码页可打开，无 JavaScript 页面错误。公网入口及登录 API 的未认证请求仍返回 Auth 302；未使用用户的公网登录会话验证完整 SSO 流程。
+- QQ 仍需要用户扫码登录，不等同于 QQ 已上线。修改前的两个代理配置保存在 `<state-root>/releases/bot-20260905/napcat-html-response-frj8sgwp/`。
+
+## 2026-09-05 12:49 WebUI 修复版与服务重启
+
+- 经用户明确授权，Web 容器已更新为 `dududa/web:2046a7f`；源码发布副本为 `source-2046a7f`，不挂载开发工作树。
+- 使用实际运行的 `65544f3` Agent/MCP 清单作为基准；活动清单为 `<state-root>/releases/bot-20260905/dududa.webui-2046a7f.private.json`。旧清单与容器元数据保留供回滚。
+- Web、AstrBot、MCP Console、NapCat 均已重启。Agent 保持 `65544f3-4.27.5`，模型 revision 14 / applied / ready，MCP 目录返回 10 个服务和 26 项能力。没有重启无关站点和代理。
+- QQ 到 Agent 的 WebSocket 重连间隔由 30 秒调整为 5 秒；保留凭据、群授权和发送控制。
+- 公网 `https://console.mmdustc.top:8443/` 返回统一登录跳转；本机工作区 API 约 3.5 ms，新浏览器就绪约 424 ms，未观察到 JavaScript 页面错误。
+- QQ 已保存身份失效，NapCat 快速登录被上游拒绝，需要用户到 `https://napcat.mmdustc.top/webui` 重新扫码。当时仅核验了未认证请求的 Auth 302，入口页面问题已在上文修复；QQ 在扫码前仍离线，不宣称真实群收发恢复。未发送真实 QQ 测试消息。
+
+## 历史阶段：2026-09-05 PR12 与群插件开关发布
 
 - PR12 原始提交 `67899a1` 已保留合并祖先，GitHub main 已发布集成提交 `c74b0dc`。
   Web、AstrBot、MCP Console 的运行代码统一为 `58e2bb0`；后续提交仅记录发布与 TreeWork 状态。

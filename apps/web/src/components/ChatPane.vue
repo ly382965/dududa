@@ -75,6 +75,7 @@ const emit = defineEmits<{
   openGroup: [groupId: string]
   jumpMessage: [message: ChatMessage]
   consumeUnread: [conversationId: string]
+  retryConnection: []
 }>()
 
 const messageList = ref<HTMLElement | null>(null)
@@ -326,9 +327,16 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
         </div>
       </header>
 
+      <div v-if="account && account.status !== 'online'" class="connection-notice" role="status">
+        <strong>{{ account.status === 'offline' ? 'QQ 已离线' : 'QQ 连接受限' }}</strong>
+        <span>工作台网关已连接。请在 NapCat 检查 QQ 登录状态，恢复后重新检测。</span>
+        <button type="button" @click="emit('retryConnection')">重新检测</button>
+        <details><summary>登录指引</summary><p>打开此账号的 NapCat WebUI，确认 QQ 已登录，并启用连接到嘟嘟哒的 WebSocket Client。远程部署请使用管理员配置的 NapCat 地址。</p></details>
+      </div>
+
       <section ref="messageList" class="message-list" aria-label="聊天消息" @scroll.passive="onScroll">
         <div v-if="loading && !messages.length" class="chat-empty"><LoaderCircle class="spin" :size="27" /><strong>正在从 NapCat 读取消息</strong></div>
-        <div v-else-if="error && !messages.length" class="chat-empty error-state"><Info :size="27" /><strong>{{ error }}</strong></div>
+        <div v-else-if="error && !messages.length" class="chat-empty error-state"><Info :size="27" /><strong>{{ error }}</strong><button type="button" @click="loadLatest()">重试加载历史</button></div>
         <div v-else-if="messages.length" class="virtual-list" :style="{ height: `${totalSize}px` }">
           <div
             v-for="row in virtualRows"
@@ -421,6 +429,12 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
 </template>
 
 <style scoped>
+.connection-notice { flex: 0 0 auto; padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); background: var(--warning-soft, var(--surface)); font-size: 13px; line-height: 1.6; }
+.connection-notice strong { display: block; color: var(--warning, #a96500); }
+.connection-notice button { margin-left: 10px; }
+.connection-notice summary { cursor: pointer; }
+.connection-notice p { margin: 6px 0 0; }
+.connection-notice button, .chat-empty button { cursor: pointer; border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; color: var(--brand); background: var(--surface); }
 .chat-pane { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: var(--chat-background); }
 .chat-header { display: flex; height: 64px; min-width: 0; flex: 0 0 auto; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); background: var(--surface-glass); padding: 0 14px 0 18px; backdrop-filter: blur(12px); }
 .mobile-back, .chat-header__avatar { display: none; }.chat-heading { min-width: 0; flex: 1; }.chat-heading__title { display: flex; min-width: 0; align-items: center; gap: 7px; }.chat-heading h2 { overflow: hidden; margin: 0; color: var(--text); font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }.chat-heading p { overflow: hidden; margin: 3px 0 0; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }.type-chip { display: grid; width: 19px; height: 17px; place-items: center; border-radius: 4px; color: var(--brand-strong); background: var(--brand-soft-strong); font-size: 9px; font-weight: 700; }

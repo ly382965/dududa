@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useQqDirectoryStore } from '../stores/qq-directory'
 import type { Account } from '../types/workspace'
@@ -20,6 +20,20 @@ const account: Account = {
 
 describe('ContactsView', () => {
   beforeEach(() => setActivePinia(createPinia()))
+
+  it('keeps failed directory counts unknown and offers a retry', async () => {
+    const store = useQqDirectoryStore()
+    const reload = vi.spyOn(store, 'loadDirectory').mockResolvedValue(undefined)
+    store.errors[`directory:${account.id}`] = 'QQ 已离线'
+    const wrapper = mount(ContactsView, { props: { account } })
+    expect(wrapper.text()).toContain('联系人暂时无法读取')
+    expect(wrapper.text()).not.toContain('当前账号暂无联系人')
+    expect(wrapper.findAll('.segmented-control span').map(span => span.text())).toEqual(['—', '—'])
+    await wrapper.get('.inline-error button').trigger('click')
+    expect(reload).toHaveBeenLastCalledWith(account.id, true)
+    wrapper.unmount()
+    reload.mockRestore()
+  })
 
   it('searches real contacts by pinyin and emits account-scoped targets', async () => {
     const pinia = createPinia()
