@@ -202,13 +202,16 @@ for (const width of [1280, 390]) {
     await page.route('**/api/internal-test/mcp/catalog', route => route.fulfill({ json: { schemaVersion: 1, available: false, servers: [], capabilities: [] } }))
     const coverage = { source: 'synthetic', partial: true, truncated: true, historyMessagesRead: 2, oldestAt: '2026-09-04T08:00:00Z', newestAt: '2026-09-04T08:01:00Z' }
     const usage = { messageLimit: 31, characterLimit: 18000, messagesRead: 3, charactersRead: 80, coverage }
+    let previewFailed = false
     await page.route('**/api/agent/respond', async route => {
       expect(route.request().postDataJSON().messages).toEqual([])
       await route.fulfill({ json: {
-        runId: 'synthetic-empty', candidate: '', outcome: 'deferred', runtimeState: 'deferred', generationObserved: false,
+        runId: 'synthetic-empty', candidate: '', outcome: previewFailed ? 'failed' : 'deferred', runtimeState: previewFailed ? 'failed' : 'deferred', generationObserved: false,
         tier: 'haiku', model: 'synthetic-model', reasoning: 'low', answerProfile: 'short', replyIntensity: 'normal', contextLength: 'standard', groupChatStyle: 'natural',
         contextUsage: usage, effectiveSelection: { scope, policySource: 'saved', modelTier: 'haiku', model: 'synthetic-model', reasoning: 'low', answerProfile: 'short', replyIntensity: 'normal', contextLength: 'standard', groupChatStyle: 'natural', contextUsage: usage, plugins: {} },
-        reasonCodes: ['conflicting_evidence_without_clarification', 'runtime.preview.no_send'], latencyMs: 1,
+        reasonCodes: previewFailed
+          ? ['policy.saved', 'provider_output_invalid', 'runtime.preview.no_send', 'plugin.emoji.kitchen.off_by_admin', 'plugin.icourse.read.eligible_on']
+          : ['conflicting_evidence_without_clarification', 'runtime.preview.no_send'], latencyMs: 1,
         generatedAt: '2026-09-04T09:00:00Z', outputCalls: 0, memoryWrites: 0, toolCalls: 0, runtimePath: 'dududa_2_preview',
       } })
     })
@@ -223,6 +226,14 @@ for (const width of [1280, 390]) {
     await expect(panel.locator('.agent-message--assistant .status-part--success')).toHaveCount(0)
     await expect(panel.locator('.agent-message--assistant')).toContainText('仅最近 2 条历史（非全天，已截断）')
     await page.screenshot({ path: testInfo.outputPath('preview-deferred.png') })
+    previewFailed = true
+    await panel.getByLabel('Agent 指令输入').fill('总结这个群最近已读取的讨论，并说明覆盖范围。')
+    await panel.getByRole('button', { name: '发送给 Agent', exact: true }).click()
+    const failedMessage = panel.locator('.agent-message--assistant').last()
+    await expect(failedMessage).toContainText('模型未返回可用正文，请重试。')
+    await expect(failedMessage).not.toContainText('policy.saved')
+    await expect(failedMessage).not.toContainText('plugin.')
+    await expect(failedMessage.locator('.status-part--success')).toHaveCount(0)
     await panel.getByRole('button', { name: '配置', exact: true }).click()
     await expect(panel.getByText('触发概率为 0，不会自动搭话；服务连接与其他回复功能不受影响。')).toBeVisible()
     const probability = panel.locator('input[type=range]').filter({ visible: true }).first()

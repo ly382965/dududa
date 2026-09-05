@@ -972,7 +972,13 @@ export function useWorkspace(
         response: '未生成可见回答', no_reply: '本次未回复', deferred: '本次暂缓回复',
         failed: '本次处理失败', reaction: '本次仅产生互动动作，预览未发送', empty: '未生成可见回答',
       }[outcome]
-      const explanation = `${outcomeLabel}。${result.reasonCodes.length ? `原因：${result.reasonCodes.join('、')}` : 'Runtime 未提供进一步原因。'}`
+      const runtimeReasons = result.reasonCodes.filter(code => (
+        !['policy.saved', 'policy.default', 'runtime.preview.no_send'].includes(code)
+        && !code.startsWith('plugin.')
+      ))
+      const explanation = runtimeReasons.includes('provider_output_invalid')
+        ? `${outcomeLabel}。模型未返回可用正文，请重试。`
+        : `${outcomeLabel}。${runtimeReasons.length ? `原因：${runtimeReasons.join('、')}` : '详细状态可在运行记录中查看。'}`
       run.id = result.runId
       run.status = successful ? 'completed' : outcome === 'failed' ? 'error' : 'warning'
       run.duration = `${result.latencyMs} ms`
