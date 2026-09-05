@@ -54,6 +54,14 @@ describe('formal Agent Runtime without historical corpus', () => {
     expect(client.preview).toHaveBeenCalledTimes(1)
   })
 
+  it('identifies history failure before any runtime generation and does not expose upstream details', async () => {
+    const client = runtime()
+    const gateway = createAgentGateway({}, client, async () => { throw new Error('private upstream detail') })
+    await expect(gateway.respond({ accountId: 'qq-100001', conversationId: 'qq-100001:group:200001',
+      conversationName: '测试群', conversationType: 'group', prompt: '总结近期讨论' })).rejects.toThrow('读取 QQ 历史失败')
+    expect(client.preview).not.toHaveBeenCalled()
+  })
+
   it.each(['no_reply', 'deferred', 'failed', 'empty'] as const)('preserves %s as a non-success outcome', async outcome => {
     const client = runtime()
     const scope = { accountId: 'qq-100001', conversationId: 'qq-100001:group:200001' }

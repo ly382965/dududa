@@ -285,7 +285,10 @@ onMounted(load)
       <AlertTriangle :size="25" />
       <div>
         <strong>内测数据尚未配置</strong>
-        <p>{{ status?.warnings.join(' · ') || error || '请配置仓库外 S23E Demo 数据根。' }}</p>
+        <p>需要管理员接入脱敏样本和评价存储，才能浏览样本与生成候选回答。</p>
+        <a href="/downloads/webui-setup.md" target="_blank" rel="noreferrer">查看配置指引</a>
+        <button type="button" @click="load">重新检测内测数据</button>
+        <details><summary>配置诊断</summary><p>{{ status?.warnings.join(' · ') || error || '尚未接入内测数据。' }}</p></details>
       </div>
     </section>
 

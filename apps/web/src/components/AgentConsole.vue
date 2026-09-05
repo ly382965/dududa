@@ -195,9 +195,9 @@ const pluginReadinessLabels: Record<InternalTestCatalogPlugin['runtimeReadiness'
 }
 
 const tierLabels: Record<InternalTestTier, string> = {
-  haiku: '轻量 / Haiku',
-  sonnet: '中等 / Sonnet',
-  opus: '专业 / Opus',
+  haiku: '轻量',
+  sonnet: '中等',
+  opus: '专业',
 }
 
 const reasoningLabels: Record<InternalTestReasoningLevel, string> = {
@@ -266,12 +266,7 @@ const tierOptions = computed(() => {
 })
 
 const modelOptions = computed(() => props.catalog?.models ?? [])
-const selectedTopModelId = computed(() => {
-  const preferredTier = props.policy?.modelTier.preferred
-  return modelOptions.value.find(model => model.tier === preferredTier && model.available)?.id
-    ?? modelOptions.value.find(model => model.tier === preferredTier)?.id
-    ?? ''
-})
+const selectedTopModelTier = computed(() => props.policy?.modelTier.preferred ?? '')
 
 const reasoningOptions = computed(() => (props.catalog?.reasoningLevels ?? []).map(id => ({
   id,
@@ -434,8 +429,8 @@ function isAdaptiveAllowed(setting: { allowed: readonly string[] } | undefined, 
   return setting?.allowed.includes(value) ?? false
 }
 
-function selectTopModel(modelId: string): void {
-  const model = modelOptions.value.find(item => item.id === modelId)
+function selectTopModel(tier: string): void {
+  const model = modelOptions.value.find(item => item.tier === tier && item.available)
   if (model) updateAdaptivePreferred('modelTier', model.tier)
 }
 
@@ -662,7 +657,7 @@ watch(
       <label class="model-picker">
         <span>MODEL</span>
         <select
-          :value="selectedTopModelId"
+          :value="selectedTopModelTier"
           aria-label="选择首选模型"
           :disabled="!policyEditable || !modelOptions.length"
           @change="selectTopModel(($event.target as HTMLSelectElement).value)"
@@ -670,11 +665,11 @@ watch(
           <option v-if="!modelOptions.length" value="">暂无模型</option>
           <option
             v-for="model in modelOptions"
-            :key="model.id"
-            :value="model.id"
+            :key="model.tier"
+            :value="model.tier"
             :disabled="!model.available"
           >
-            {{ model.displayName }} · {{ tierLabels[model.tier] }}{{ model.available ? '' : '（不可用）' }}
+            {{ tierLabels[model.tier] }} · {{ model.id }}{{ model.available ? '' : '（不可用）' }}
           </option>
         </select>
       </label>
@@ -749,12 +744,16 @@ watch(
           <Sparkles :size="27" />
           <strong>{{ selectedSession?.title ?? '新对话' }}</strong>
           <div class="quick-prompts">
-            <button type="button" :disabled="!available" @click="selectQuickPrompt('总结这个群今天的讨论')">生成今日摘要</button>
+            <button type="button" :disabled="!available" @click="selectQuickPrompt('总结这个群最近已读取的讨论，并说明覆盖范围')">总结近期讨论</button>
             <button type="button" :disabled="!available" @click="selectQuickPrompt('检查 Bot 上一条回复是否准确')">检查上一条回复</button>
           </div>
         </div>
       </section>
 
+      <div v-if="run?.status === 'error'" class="preview-failure" role="status">
+        <span>{{ run.steps.at(-1)?.detail }}</span>
+        <button type="button" :disabled="!available || selectedSession?.status === 'running'" @click="emit('sendPrompt', run.triggerContent)">重试本次预览</button>
+      </div>
       <footer class="agent-composer">
         <div class="context-chip"><Hash :size="12" />{{ conversation?.name }}<span>服务端最多读取 {{ contextMessages }} 条历史 · 仅最近窗口，Runtime 按预算截取</span></div>
         <textarea
@@ -862,8 +861,8 @@ watch(
             </div>
             <div><dt>群聊风格</dt><dd>{{ runGroupChatStyle ? groupChatStyleLabels[runGroupChatStyle] : '未记录' }}</dd></div>
             <div><dt>实际插件</dt><dd>{{ runPlugins.length ? runPlugins.join('、') : '本轮未调用' }}</dd></div>
-            <div><dt>执行路径</dt><dd>{{ run.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退' }}</dd></div>
-            <div><dt>Tool 调用</dt><dd>{{ run.toolCalls ?? 0 }}</dd></div>
+            <div><dt>执行路径</dt><dd>{{ run.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : run.runtimePath === 'candidate_fallback' ? '候选回退' : '未确认' }}</dd></div>
+            <div><dt>Tool 调用</dt><dd>{{ run.toolCalls ?? '未记录' }}</dd></div>
             <div><dt>开始于</dt><dd>{{ run.startedAt }}</dd></div>
             <div><dt>回复账号</dt><dd>{{ account?.name }}</dd></div>
             <div><dt>发送权限</dt><dd>禁止发送（内测）</dd></div>
@@ -884,6 +883,7 @@ watch(
             </li>
           </ol>
         </section>
+        <button v-if="run.status === 'error'" class="retry-preview" type="button" :disabled="!available || selectedSession?.status === 'running'" @click="emit('sendPrompt', run.triggerContent)">重试本次预览</button>
       </template>
       <div v-else class="run-empty"><Activity :size="28" /><strong>当前对话还没有运行</strong></div>
     </section>
@@ -1029,6 +1029,7 @@ watch(
                 <span>初值</span>
                 <select
                   :value="axis.setting?.preferred"
+                  :aria-label="`${axis.title}初值`"
                   :disabled="!policyEditable || !axis.options.length"
                   @change="updateAdaptivePreferred(axis.key, ($event.target as HTMLSelectElement).value)"
                 >
@@ -1122,7 +1123,8 @@ watch(
           <div v-else class="empty-catalog">当前 Catalog 没有已登记插件</div>
         </section>
 
-        <section class="settings-section mcp-workbench">
+        <details class="settings-section mcp-workbench maintenance-section">
+          <summary>工具服务维护 <small>连接检测、能力调试与接入</small></summary>
           <div class="section-heading">
             <div class="mcp-heading-title">
               <Database :size="15" />
@@ -1234,10 +1236,13 @@ watch(
             </div>
             <div v-else class="empty-catalog">当前没有可调用的 MCP Capability</div>
           </template>
-        </section>
+        </details>
       </template>
 
-      <PluginManagerPanel />
+      <details class="maintenance-section">
+        <summary>全局插件维护 <small>安装与执行器状态</small></summary>
+        <PluginManagerPanel />
+      </details>
 
       <footer class="settings-footer">
         <span><ShieldCheck :size="13" />按账号 + 会话保存；普通偏好可由 Agent 本轮改选</span>
@@ -1257,6 +1262,14 @@ watch(
 </template>
 
 <style scoped>
+.maintenance-section { margin: 12px 14px; border: 1px solid var(--border); border-radius: 7px; padding: 12px; }
+.maintenance-section > summary { cursor: pointer; color: var(--text); font-size: 14px; font-weight: 600; }
+.maintenance-section > summary small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+.maintenance-section[open] > summary { margin-bottom: 16px; }
+.mcp-workbench.maintenance-section { margin: 12px 0; border-left: 0; border-right: 0; border-radius: 0; }
+.preview-failure { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px; color: var(--danger); font-size: 13px; line-height: 1.5; }
+.retry-preview, .preview-failure button { cursor: pointer; padding: 7px 12px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--brand); }
+
 .agent-console {
   position: relative;
   display: flex;
@@ -3173,5 +3186,11 @@ textarea:disabled {
   .mcp-fields {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+</style>
+
+<style scoped>
+@media (max-width: 700px) {
+  .settings-help, .settings-intro > div > span, .runtime-control p, .runtime-control dl, .context-chip, .scope-line, .runtime-mode-note, .agent-heading p { font-size: 12px; line-height: 1.5; }
 }
 </style>

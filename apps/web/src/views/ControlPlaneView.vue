@@ -345,8 +345,11 @@ watch(selectedProfileId, () => {
     <div v-if="loading" class="page-state"><LoaderCircle class="spin" :size="25" />正在读取群服务</div>
     <div v-else-if="!status.available" class="page-state unavailable">
       <CircleAlert :size="26" />
-      <strong>Control Plane 不可用</strong>
+      <strong>群服务暂不可用</strong>
       <span>{{ status.reason || error || '后端未连接' }}</span>
+      <p>请由管理员连接群服务后端。完成配置后可在这里重新检测。</p>
+      <a href="/downloads/webui-setup.md" target="_blank" rel="noreferrer">查看配置指引</a>
+      <button type="button" @click="load">重新检测群服务</button>
     </div>
     <p v-else-if="error && !inbox" class="inline-error" role="alert">{{ error }}</p>
 

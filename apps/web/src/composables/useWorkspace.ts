@@ -481,7 +481,7 @@ export function useWorkspace(
       mergeWorkspace(next)
       await loadConversationDrafts(next.conversations)
       if (selectedConversationId.value && selectedConversationId.value !== previousSelection) {
-        await loadConversationMessages(selectedConversation.value)
+        void loadConversationMessages(selectedConversation.value)
         return true
       }
     } catch (error) {
@@ -1141,14 +1141,12 @@ export function useWorkspace(
 
   async function load(): Promise<void> {
     loading.value = true
-    const [selectionLoaded] = await Promise.all([
-      refreshWorkspace(true),
-      loadAgentRuntimeStatus(),
-      loadAgentCatalog(),
-    ])
+    void loadAgentRuntimeStatus()
+    void loadAgentCatalog()
+    const selectionLoaded = await refreshWorkspace(true)
     loading.value = false
     if (selectedConversation.value && !selectionLoaded) {
-      await loadConversationMessages(selectedConversation.value)
+      void loadConversationMessages(selectedConversation.value)
     }
   }
 
@@ -1286,6 +1284,7 @@ export function useWorkspace(
     toggleTheme,
     setTheme,
     load,
+    refreshWorkspace,
     refreshAgentRuntimeStatus: loadAgentRuntimeStatus,
     notify,
   }

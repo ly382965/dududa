@@ -202,13 +202,13 @@ describe('Dududa NapCat workspace', () => {
     expect(wrapper.find('.chat-pane').exists()).toBe(true)
     expect(wrapper.text()).toContain('真实测试群')
     expect(wrapper.text()).toContain('成员：来自 NapCat 的消息')
-    expect(wrapper.text()).toContain('NapCat 实时连接')
+    expect(wrapper.text()).toContain('QQ 在线')
   })
 
   it('filters the real conversation list', async () => {
     mockApi()
     const wrapper = await mountApp()
-    const search = wrapper.get('input[aria-label="搜索会话或消息"]')
+    const search = wrapper.get('input[aria-label="搜索会话、QQ 号或最新消息"]')
 
     await search.setValue('好友消息')
 

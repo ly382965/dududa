@@ -73,6 +73,25 @@ describe('group proactive participation switch', () => {
     vi.restoreAllMocks()
   })
 
+  it('distinguishes tiers that share the same underlying model', async () => {
+    const original = policy()
+    original.modelTier = { mode: 'preferred', preferred: 'sonnet', allowed: ['haiku', 'sonnet'] }
+    const wrapper = render({ policy: original, catalog: {
+      ...pluginCatalog,
+      models: [
+        { id: 'shared-model', tier: 'haiku', displayName: '轻量', available: true, modalities: ['text'], reasoningLevels: ['low'] },
+        { id: 'shared-model', tier: 'sonnet', displayName: '中等', available: true, modalities: ['text'], reasoningLevels: ['low'] },
+      ],
+    } })
+    const select = wrapper.get<HTMLSelectElement>('[aria-label="选择首选模型"]')
+    expect(select.element.value).toBe('sonnet')
+    await select.setValue('haiku')
+    await select.setValue('sonnet')
+    const updates = wrapper.emitted('updatePolicy')!
+    expect((updates.at(-1)![0] as InternalTestAgentPolicy).modelTier.preferred).toBe('sonnet')
+    expect(wrapper.emitted('saveSettings')).toBeUndefined()
+  })
+
   it('toggles a group plugin without saving/sending and preserves other modes and scope', async () => {
     const original = { ...policy(), plugins: { ...policy().plugins, 'emoji.kitchen': 'off' as const } }
     const wrapper = render({ policy: original, catalog: pluginCatalog })

@@ -286,6 +286,7 @@ watch(
     <span class="startup-logo"><Bot :size="25" /></span>
     <LoaderCircle class="startup-spinner" :size="18" />
     <strong>嘟嘟哒工作台</strong>
+    <span role="status">正在连接工作台，联系人与历史将在后台加载…</span>
   </div>
 
   <ConnectionScreen
@@ -377,6 +378,7 @@ watch(
       @update-reply-to="workspace.updateReplyTo"
       @jump-message="workspace.jumpToMessage"
       @consume-unread="workspace.consumeUnreadTarget"
+      @retry-connection="workspace.refreshWorkspace(true)"
       @send-to-agent="workspace.sendMessageToAgent"
       @open-agent="workspace.toggleAgent"
       @back="setMobilePanel('inbox')"

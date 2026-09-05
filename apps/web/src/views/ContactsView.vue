@@ -76,10 +76,10 @@ watch(
     <div class="directory-tools">
       <div class="segmented-control" role="tablist" aria-label="联系人类型">
         <button :class="{ active: mode === 'friends' }" type="button" @click="mode = 'friends'">
-          <UserRound :size="15" />好友 <span>{{ directory?.friends.length || 0 }}</span>
+          <UserRound :size="15" />好友 <span>{{ directory?.friends.length ?? '—' }}</span>
         </button>
         <button :class="{ active: mode === 'groups' }" type="button" @click="mode = 'groups'">
-          <UsersRound :size="15" />群聊 <span>{{ directory?.groups.length || 0 }}</span>
+          <UsersRound :size="15" />群聊 <span>{{ directory?.groups.length ?? '—' }}</span>
         </button>
       </div>
       <label class="directory-search">
@@ -88,7 +88,11 @@ watch(
       </label>
     </div>
 
-    <p v-if="error" class="inline-error" role="alert">{{ error }}</p>
+    <div v-if="error" class="inline-error" role="alert">
+      <strong>联系人暂时无法读取</strong>
+      <p>{{ error }}{{ directory ? '；以下为上次读取的联系人。' : '；当前数量未知。' }}</p>
+      <button type="button" :disabled="busy || !account" @click="account && store.loadDirectory(account.id, true)">重试读取联系人</button>
+    </div>
     <div v-if="busy && !directory" class="directory-state"><LoaderCircle class="spin" :size="24" />正在读取 NapCat 联系人</div>
     <section v-else class="contact-grid" :aria-label="mode === 'friends' ? '好友列表' : '群聊列表'">
       <article v-for="item in contacts" :key="item.id" class="contact-item">
@@ -110,7 +114,7 @@ watch(
           <Settings2 :size="17" />
         </button>
       </article>
-      <div v-if="!contacts.length" class="directory-state">
+      <div v-if="!contacts.length && !error && directory" class="directory-state">
         <component :is="mode === 'friends' ? UserRound : UsersRound" :size="26" />
         {{ query ? '没有匹配的联系人' : '当前账号暂无联系人' }}
       </div>

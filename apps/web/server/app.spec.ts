@@ -567,6 +567,23 @@ afterEach(async () => {
 })
 
 describe('Dududa NapCat gateway', () => {
+  it('returns the workspace while the upstream directory refresh is still pending', async () => {
+    const { hub, server, baseUrl } = await startTestServer()
+    servers.push(server)
+    let finish!: () => void
+    const refresh = vi.spyOn(hub, 'refreshAll').mockImplementation(() => new Promise<void>(resolve => { finish = resolve }))
+    try {
+      const response = await fetch(`${baseUrl}/api/workspace?refresh=1`, { signal: AbortSignal.timeout(1000) })
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ accounts: [] })
+      await fetch(`${baseUrl}/api/workspace?refresh=1`)
+      expect(refresh).toHaveBeenCalledTimes(1)
+    } finally {
+      finish?.()
+      refresh.mockRestore()
+    }
+  })
+
   it('serves workspace data without browser authentication', async () => {
     const { server, baseUrl } = await startTestServer()
     servers.push(server)
@@ -1528,7 +1545,7 @@ describe('Dududa NapCat gateway', () => {
       }),
     )
     await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'offline')
-    expect(hub.runtimeStatus()).toMatchObject({ status: 'connected', message: '0/1 个 QQ 账号在线，NapCat 连接正常' })
+    expect(hub.runtimeStatus()).toMatchObject({ status: 'connected', message: '网关已连接 · 0/1 个 QQ 账号在线，请在 NapCat 检查 QQ 登录状态' })
 
     napcat.socket.send(
       JSON.stringify({

@@ -347,6 +347,7 @@ export class OneBotHub extends EventEmitter {
   readonly reverseWebSocketPath = '/onebot/v11/ws'
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 50 * 1024 * 1024 })
   private readonly accounts = new Map<string, AccountState>()
+  private workspaceRefresh: Promise<void> | undefined
   private readonly media = new Map<string, MediaEntry>()
   private readonly customFaces = new Map<string, CustomFaceEntry>()
   private readonly uploads = new Map<string, StagedUpload>()
@@ -421,7 +422,7 @@ export class OneBotHub extends EventEmitter {
     const online = [...this.accounts.values()].filter((state) => state.account.status === 'online').length
     return {
       status: 'connected',
-      message: `${online}/${this.accounts.size} 个 QQ 账号在线，NapCat 连接正常`,
+      message: `网关已连接 · ${online}/${this.accounts.size} 个 QQ 账号在线${online === 0 ? '，请在 NapCat 检查 QQ 登录状态' : ''}`,
       reverseWebSocketPath: this.reverseWebSocketPath,
     }
   }
@@ -448,7 +449,17 @@ export class OneBotHub extends EventEmitter {
   }
 
   async refreshAll(force = false): Promise<void> {
-    await Promise.allSettled([...this.accounts.values()].map((state) => this.refreshAccount(state, force)))
+    await Promise.allSettled([...this.accounts.values()]
+      .filter((state) => state.account.status !== 'offline')
+      .map((state) => this.refreshAccount(state, force)))
+  }
+
+  refreshWorkspaceInBackground(): void {
+    if (this.workspaceRefresh) return
+    this.workspaceRefresh = this.refreshAll(true).finally(() => {
+      this.workspaceRefresh = undefined
+      if (!this.closed) this.broadcast({ type: 'workspace.refresh' })
+    })
   }
 
   capabilities(account: string): AccountCapabilityDocument {

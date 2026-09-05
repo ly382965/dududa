@@ -100,6 +100,27 @@ function deferred<T>() {
 }
 
 describe('useWorkspace account-scoped state', () => {
+  it('shows the workspace without waiting for history or Agent status', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const history = deferred<HistoryPage>()
+    const runtime = deferred<InternalTestAgentStatus>()
+    const adapter = {
+      load: async () => ({ runtime: { status: 'connected', message: '', reverseWebSocketPath: '' }, accounts: [owner],
+        capabilities: {}, conversations: [target], messages: {}, configs: {}, sessions: [], agentMessages: {}, runs: [] }),
+      loadDraft: async () => undefined, loadCachedMessages: async () => [], loadHistory: () => history.promise,
+      markRead: async () => undefined, subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    const agent = { agentStatus: () => runtime.promise, agentCatalog: async () => undefined, agentConfig: async () => undefined } as unknown as InternalTestAgentAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({ setup() { workspace = useWorkspace(adapter, '', agent); return () => h('div') } }))
+    await flushPromises()
+    expect(workspace.loading.value).toBe(false)
+    expect(workspace.selectedConversation.value?.id).toBe(target.id)
+    expect(workspace.messagesLoading.value).toBe(true)
+    wrapper.unmount()
+  })
+
   afterEach(async () => {
     vi.unstubAllGlobals()
     window.localStorage.clear()

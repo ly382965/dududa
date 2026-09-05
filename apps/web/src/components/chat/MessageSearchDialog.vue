@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { LoaderCircle, Search, X } from '@lucide/vue'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { workspaceAdapter } from '../../services/workspace-adapter'
 import type { ChatMessage, Conversation } from '../../types/workspace'
@@ -20,7 +20,38 @@ const results = ref<ChatMessage[]>([])
 const loading = ref(false)
 const error = ref('')
 const hasMore = ref(false)
+const searched = ref(false)
+const hasCachedMessages = ref(true)
+const dialog = ref<HTMLElement>()
+let returnFocus: HTMLElement | null = null
 let version = 0
+
+function restoreFocus(): void {
+  if (returnFocus?.isConnected) returnFocus.focus()
+  returnFocus = null
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    emit('close')
+  }
+  if (event.key !== 'Tab') return
+  const items = [...(dialog.value?.querySelectorAll<HTMLElement>('*') ?? [])]
+    .filter(item => item.matches('button, input, select, [tabindex="0"]') && !item.matches(':disabled'))
+  const first = items[0]
+  const last = items.at(-1)
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last?.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first?.focus()
+  }
+}
+
+onBeforeUnmount(restoreFocus)
 
 const canSearch = computed(() => Boolean(query.value.trim() || senderId.value || startDate.value || endDate.value))
 
@@ -34,6 +65,10 @@ function dateValue(value: string, end = false): number | undefined {
 async function search(append = false): Promise<void> {
   const conversation = props.conversation
   if (!conversation || !canSearch.value) return
+  if (startDate.value && endDate.value && startDate.value > endDate.value) {
+    error.value = '开始日期不能晚于结束日期'
+    return
+  }
   const requestVersion = ++version
   loading.value = true
   error.value = ''
@@ -54,6 +89,11 @@ async function search(append = false): Promise<void> {
       ? [...new Map([...results.value, ...page.messages].map((message) => [message.id, message])).values()]
       : page.messages
     hasMore.value = page.hasMore
+    searched.value = true
+    if (!page.messages.length) {
+      const cached = await workspaceAdapter.loadCachedMessages(conversation, 1)
+      if (requestVersion === version) hasCachedMessages.value = cached.length > 0
+    }
   } catch (cause) {
     if (requestVersion === version) error.value = cause instanceof Error ? cause.message : '搜索消息失败'
   } finally {
@@ -65,7 +105,14 @@ watch(
   () => [props.open, props.conversation?.id] as const,
   async ([open], previous) => {
     version += 1
-    if (!open) return
+    loading.value = false
+    hasMore.value = false
+    if (!open) {
+      await nextTick()
+      restoreFocus()
+      return
+    }
+    if (!previous?.[0]) returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (!previous?.[0] || previous[1] !== props.conversation?.id) {
       query.value = ''
       senderId.value = ''
@@ -73,9 +120,11 @@ watch(
       endDate.value = ''
       results.value = []
       error.value = ''
+      searched.value = false
+      hasCachedMessages.value = true
     }
     await nextTick()
-    document.querySelector<HTMLInputElement>('[aria-label="消息关键词"]')?.focus()
+    dialog.value?.querySelector<HTMLInputElement>('[aria-label="消息关键词"]')?.focus()
   },
 )
 </script>
@@ -83,7 +132,7 @@ watch(
 <template>
   <Teleport to="body">
     <div v-if="open" class="dialog-backdrop" role="presentation" @mousedown.self="emit('close')">
-      <section class="search-dialog" role="dialog" aria-modal="true" aria-label="搜索消息">
+      <section ref="dialog" class="search-dialog" role="dialog" aria-modal="true" aria-label="搜索消息" @keydown="onKeydown">
         <header><div><strong>搜索消息</strong><small>{{ conversation?.name }}</small></div><button type="button" title="关闭" @click="emit('close')"><X :size="18" /></button></header>
         <form @submit.prevent="search(false)">
           <div class="search-row"><input v-model="query" type="search" aria-label="消息关键词" placeholder="输入关键词" /><button type="submit" :disabled="!canSearch || loading"><LoaderCircle v-if="loading" class="spin" :size="16" /><Search v-else :size="16" />搜索</button></div>
@@ -93,13 +142,15 @@ watch(
             <label><span>结束日期</span><input v-model="endDate" type="date" /></label>
           </div>
         </form>
-        <div class="search-results">
+        <p class="search-scope">仅搜索此浏览器已加载的消息，不代表完整 QQ 历史。可先浏览历史，或在设置中补齐指定日期。</p>
+        <div class="search-results" aria-live="polite" :aria-busy="loading">
           <span v-if="error" class="error">{{ error }}</span>
           <button v-for="message in results" :key="message.id" type="button" @click="emit('select', message)">
             <span><strong>{{ message.senderName }}</strong><time>{{ message.timestamp }}</time></span>
             <p>{{ message.content }}</p>
           </button>
-          <p v-if="!loading && !results.length && !error" class="empty">输入条件搜索已缓存的真实 QQ 消息</p>
+          <p v-if="loading" class="empty">正在搜索…</p>
+          <p v-else-if="!results.length && !error" class="empty">{{ !searched ? '输入条件搜索已缓存的 QQ 消息' : hasCachedMessages ? '未找到匹配消息，请调整关键词或日期范围' : '此浏览器尚未缓存该会话的消息，请先加载聊天历史' }}</p>
           <button v-if="hasMore" class="load-more" type="button" :disabled="loading" @click="search(true)">加载更多</button>
         </div>
       </section>
@@ -108,6 +159,7 @@ watch(
 </template>
 
 <style scoped>
+.search-scope { margin: 0; padding: 10px 12px; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
 .dialog-backdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; background: #0007; padding: 16px; }
 .search-dialog { display: flex; width: min(680px, 100%); max-height: min(760px, calc(100dvh - 32px)); flex-direction: column; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: var(--floating-shadow); }
 header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 12px 14px; }
