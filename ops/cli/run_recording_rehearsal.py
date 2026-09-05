@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -79,7 +80,9 @@ def check_adaptive(result: dict) -> list[str]:
         ):
             issues.append("没有实际调用评课社区")
         answer = reply.get("candidate", "")
-        if "数学分析" not in answer or "http" not in answer:
+        if "数学分析" not in answer or not re.search(
+            r"(?:https?://)?icourse\.club/course/\d+(?:/|\b)", answer
+        ):
             issues.append("回答缺少课程名称或来源")
         for name in ("小林", "小周", "小陈", "小许"):
             if name not in answer:
