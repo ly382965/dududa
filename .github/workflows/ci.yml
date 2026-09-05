@@ -17,6 +17,9 @@ jobs:
         python-version: ["3.10.20", "3.12.13"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Release audit tests archive HEAD^ as the previous source revision.
+          fetch-depth: 2
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}

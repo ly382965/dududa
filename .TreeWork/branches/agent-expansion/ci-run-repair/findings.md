@@ -24,6 +24,11 @@ Branch: ci-run-repair
 - Python 3.10 rejects Docker's nine-digit fractional timestamp. Normalize to
   datetime's six-digit precision before parsing, matching Python 3.12, and
   assert the exact UTC timestamp in the existing replay test.
+- Follow-up run 33941400500 passed Web, offline-eval and secret scanning. Its
+  Python release-audit tests require HEAD^, absent from checkout's default
+  depth of one. Reproduced both errors in a fresh shallow clone; fetching
+  depth two makes all five audit tests pass on both supported Python versions.
+  Set only the Python job's checkout depth to two; preserve the audit tests.
 
 ## Interface Or Contract Effects (outward effects on commands, state, APIs, generated files, or public contracts)
 

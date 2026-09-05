@@ -14,11 +14,12 @@ Last sync: unix:1788576636
 - Actual CI failure logs are available through the authenticated GitHub CLI.
 - Missing corpus/TOML dependencies, stale current-architecture expectations,
   and premature truncation of ranked Young queries have been repaired locally.
-- Python 3.12 passed all 983 repository tests with the two original host-only
-  skips. Python 3.10 reached the same 983 tests with one nanosecond-timestamp
-  parsing failure; the repaired replay module passes all three tests on both
-  versions. A final 3.10 full run and remote CI remain pending.
+- Python 3.10 and 3.12 passed all 983 repository tests with the two original
+  host-only skips. Replay timestamp assertions pass on both versions.
 - Four committed offline bundles pass on both versions.
+- Published repair 9ef9c70. Remote run 33941400500 exposed shallow-checkout
+  history missing from release-audit tests; depth-two checkout fixes the exact
+  reproduced errors locally on both versions. Remote confirmation is pending.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
@@ -29,7 +30,6 @@ Last sync: unix:1788576636
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- Finish both full local CI runs, publish one consolidated repair, and inspect
-  the resulting GitHub workflow jobs.
+- Publish the minimal checkout-depth correction and inspect GitHub CI.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
