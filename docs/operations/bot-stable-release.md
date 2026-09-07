@@ -3,6 +3,20 @@
 本流程只覆盖 Dududa Web、AstrBot、已有 NapCat、MCP 和已安装的自有插件。
 不重启其他站点、LLM 代理、Authentik、Caddy 或数据库，也不新增 QQ 发送权限。
 
+## 2026-09-07 2.0.1 提示词注入防护发布
+
+- 正式 AstrBot/Core 已切换为 `dududa/astrbot:2.0.1-f7d8cd9`，Agent 包与 Core 插件均为
+  2.0.1，宿主保留 AstrBot 4.27.5。源码和插件使用独立的 `source-f7d8cd9`、
+  `plugins-f7d8cd9` 发布目录。
+- 活动私密清单：`<state-root>/releases/bot-20260907-2.0.1/compose.private.json`；
+  原镜像、配置及 12 份数据库一致性备份保留，回退清单为同目录下的 `before/rollback.private.json`。
+- GitHub CI 全部通过，断网发布镜像 157 项通过。线上 5 类注入均在入口拒绝，
+  正常短答、引用分析和恶意合成历史预览成功；已授权群的课程查询调用 1 次真实工具并生成
+  回答。所有预览的 QQ 发送和 Memory 写入均为零。
+- Agent/Provider 可用，QQ 在线。前后 32 个容器仅 AstrBot 变化，其余 31 个未重启；
+  Web 保留 `three-plugin-modes`，MCP Console 和 NapCat 保持原版本及配置。
+- 完整证据、行为变化、限制和回退命令见 [2.0.1 版本更新报告](../releases/v2.0.1.md)。
+
 ## 2026-09-05 预览失败提示修复
 
 - 用户反馈“总结这个群最近已读取的讨论，并说明覆盖范围。”一次返回 `provider_output_invalid`，随后确认模型调用已恢复。没有捕获到当次原始响应，不能进一步认定是推理额度耗尽或上游瞬时故障；本次未修改模型配置或重试策略。
