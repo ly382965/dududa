@@ -34,6 +34,7 @@ from dududa.models.digests import provider_request_digest
 from dududa.models.errors import ModelProviderError, model_error_info
 from dududa.models.health import ModelHealthEvidence
 from dududa.ports.context import PortCallContext, ServiceCallContext
+from dududa.security.prompt_injection import escape_prompt_control_tokens
 
 from .model_codec import JsonSchemaDocumentRegistry
 
@@ -674,7 +675,7 @@ class AstrBotModelProviderAdapter:
             )
         sections = [
             "[DUDUDA_USER_INPUT]",
-            "\n\n".join(text_parts),
+            "\n\n".join(escape_prompt_control_tokens(part) for part in text_parts),
             "[/DUDUDA_USER_INPUT]",
         ]
         if request.output_schema is not None:

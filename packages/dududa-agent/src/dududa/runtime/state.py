@@ -138,6 +138,7 @@ from dududa.security.models import (
     AuthorizationEffect,
     AuthorizationRequest,
 )
+from dududa.security.prompt_injection import direct_input_injection_reasons
 
 
 class RuntimePhase(StrEnum):
@@ -2486,6 +2487,9 @@ def _validate_preprocess_binding(
     ):
         expected_action = RuntimeAdmissionAction.IGNORE
         expected_reasons = ("group_explicit_mention_required",)
+    elif injection_reasons := direct_input_injection_reasons(state.message.text):
+        expected_action = RuntimeAdmissionAction.DEFER
+        expected_reasons = ("prompt_injection_blocked", *injection_reasons)
     else:
         expected_action = RuntimeAdmissionAction.PROCEED
         expected_reasons = (

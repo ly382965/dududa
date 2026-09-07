@@ -3,6 +3,12 @@
 Status: S03 foundational controls are implemented; runtime-wide enforcement,
 production policy migration, and several later-phase controls remain pending.
 
+The 2026-09-07 production Runtime text-boundary hardening adds explicit injection
+admission checks, history/tool projection quarantine, shared system instructions,
+delimiter escaping and output markup checks. See the
+[implementation assessment and remaining gaps](../reviews/prompt-injection-security-2026-09-07.md).
+These controls do not establish complete semantic or multimodal injection resistance.
+
 ## Security Objectives
 
 - Default-deny privileged actions and fail closed on missing identity or Scope.

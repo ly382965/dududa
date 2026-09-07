@@ -42,6 +42,7 @@ from dududa.perception.validation import (
 from dududa.ports.context import PortCallContext
 from dududa.ports.models import BootstrapModelTierPolicy, ModelRouter
 from dududa.ports.perception import ModelPerception, PerceptionMerger, RulePerception
+from dududa.security.prompt_injection import project_history_text
 
 from .contracts import PerceptionExecutionReceipt
 
@@ -526,7 +527,11 @@ def serialize_perception_context(context: PerceptionContext) -> bytes:
                 {
                     "message_ref": message.message_ref,
                     "author_identity_ref": message.author_identity_ref,
-                    "text": message.text,
+                    "text": (
+                        message.text
+                        if message.message_ref == context.current_message_ref
+                        else project_history_text(message.text)
+                    ),
                     "reply_to_message_ref": message.reply_to_message_ref,
                     "mentioned_identity_refs": message.mentioned_identity_refs,
                     "is_bot_authored": message.is_bot_authored,

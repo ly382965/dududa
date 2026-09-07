@@ -183,7 +183,7 @@ wheels = [
 
 [[package]]
 name = "dududa-agent"
-version = "0.1.0a1"
+version = "2.0.1"
 source = { editable = "packages/dududa-agent" }
 
 [[package]]

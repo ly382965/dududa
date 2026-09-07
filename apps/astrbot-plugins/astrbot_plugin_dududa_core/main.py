@@ -22,7 +22,7 @@ from .web_runtime import (
     "astrbot_plugin_dududa_core",
     "mmdustc",
     "嘟嘟哒统一命令、权限、课程查询和管理骨架",
-    "0.1.0",
+    "2.0.1",
 )
 class DududaCorePlugin(
     CoreLifecycleMixin,

@@ -21,6 +21,7 @@ from dududa.perception.contracts import (
     PerceptionMessage,
 )
 from dududa.security.digests import actor_digest, scope_digest
+from dududa.security.prompt_injection import direct_input_injection_reasons
 
 from .contracts import (
     CurrentMessageContext,
@@ -130,6 +131,9 @@ class CurrentMessageContextBuilder:
         ):
             action = RuntimeAdmissionAction.IGNORE
             reasons = ("group_explicit_mention_required",)
+        elif injection_reasons := direct_input_injection_reasons(message.text):
+            action = RuntimeAdmissionAction.DEFER
+            reasons = ("prompt_injection_blocked", *injection_reasons)
         else:
             action = RuntimeAdmissionAction.PROCEED
             reasons = (

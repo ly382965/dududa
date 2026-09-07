@@ -42,6 +42,7 @@ from dududa.responses.contracts import ResponsePlan
 from dududa.responses.counting import visible_character_count
 from dududa.responses.digests import response_plan_digest
 from dududa.responses.evidence import requested_exact_literal
+from dududa.security.prompt_injection import project_history_text
 
 from .budget import reservation_budget, usage_within_reservation
 from .capabilities import (
@@ -449,7 +450,7 @@ class DirectChatModelCall:
         if any(item.message_ref != current.message_ref for item in context.perception.messages):
             payload_values["recent_messages"] = [
                 {"message_ref": item.message_ref, "author_identity_ref": item.author_identity_ref,
-                 "text": item.text, "reply_to_message_ref": item.reply_to_message_ref,
+                 "text": project_history_text(item.text), "reply_to_message_ref": item.reply_to_message_ref,
                  "is_bot_authored": item.is_bot_authored}
                 for item in context.perception.messages if item.message_ref != current.message_ref
             ]
