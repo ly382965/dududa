@@ -2134,7 +2134,9 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         )
         observed_at = datetime.now(timezone.utc)
         await plugin.runtime_assembly.publish_model_health(
-            (self._healthy_evidence(plugin.runtime_assembly, observed_at),),
+            (self._healthy_evidence(
+                plugin.runtime_assembly, observed_at, ttl=timedelta(minutes=1),
+            ),),
             call=replace(
                 self.call,
                 deadline=observed_at + timedelta(minutes=1),

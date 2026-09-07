@@ -21,7 +21,10 @@ def controller(*, enabled=True, probability=100, cooldown=60, maximum=2, random_
     policy = GroupProactiveTalkPolicy(enabled, probability, cooldown, maximum, "compact", "natural")
     history, bridge, clock = _History(), _Bridge(), _Clock()
     value = ProactiveTalkController(
-        bridge, SimpleNamespace(proactive_talk_policy=lambda **kwargs: policy),
+        bridge, SimpleNamespace(
+            proactive_talk_policy=lambda **kwargs: policy,
+            activate_for_context=lambda **kwargs: None,
+        ),
         history=history, random_value=lambda: random_value, monotonic=clock,
         event_factory=_ProactiveEvent,
     )
