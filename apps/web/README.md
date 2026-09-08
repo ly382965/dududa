@@ -1,10 +1,10 @@
 # Dududa Web
 
-嘟嘟哒的真实 QQ 多账号工作台。浏览器不直连 NapCat：同源 Node 网关接收 NapCat 的 OneBot 11
+嘟嘟哒的真实 QQ 多账号工作台。浏览器不直连 OneBot 客户端：同源 Node 网关接收 OneBot 11
 反向 WebSocket，在服务端执行受限 action，再向 Vue 前端提供 HTTP + SSE。
 
 生产代码不包含演示账号、虚构群聊或模拟 Agent 输出。账号、联系人、群、历史消息和发送结果均来自
-当前 NapCat 连接；浏览器 IndexedDB 只缓存 NapCat 返回的规范化消息、历史覆盖范围、会话和操作员草稿，
+当前 OneBot 连接；浏览器 IndexedDB 只缓存客户端返回的规范化消息、历史覆盖范围、会话和操作员草稿，
 不作为另一个 QQ 数据源。清理浏览器缓存不会修改 QQ 数据。
 
 ## Architecture
@@ -16,9 +16,14 @@ Vue browser
 Dududa Web Gateway
   | authenticated OneBot 11 reverse WebSocket
   v
-NapCat account A ---- QQ account A
-NapCat account B ---- QQ account B
+NapCat / LLOneBot account A ---- QQ account A
+NapCat / LLOneBot account B ---- QQ account B
 ```
+
+网关同时支持 NapCat 与 LLOneBot（LuckyLilliaBot / LLBot）两种 OneBot 11 客户端：账号初始化、
+消息历史分页与标准收发 action 对两者一致；NapCat 专有扩展（自定义表情市场、群文件、
+单条转发、精华消息、群公告等）对 LLOneBot 会在能力文档中明确标注 unsupported，
+相关页面入口据此禁用，不会发起注定失败的 action。
 
 每个 NapCat 进程只能承载一个当前登录 QQ。多账号必须使用多个 NapCat 容器，并为每个账号使用独立
 的 `config` 和 `.config/QQ` 数据卷；它们可以同时反连同一个 Dududa Gateway。
@@ -32,7 +37,7 @@ NapCat account B ---- QQ account B
 ```
 
 命令会在 `${DUDUDA_WEB_DATA_ROOT}/secrets/`（默认 `./runtime/web/secrets/`）中创建权限为
-`0600` 的 `onebot_access_token`。该凭据仅用于 NapCat 与服务端之间的 OneBot 连接，不进入浏览器。
+`0600` 的 `onebot_access_token`。该凭据仅用于客户端与服务端之间的 OneBot 连接，不进入浏览器。
 
 默认入口：
 
@@ -40,7 +45,9 @@ NapCat account B ---- QQ account B
 http://127.0.0.1:5173
 ```
 
-然后在每个 NapCat 已登录账号的 WebUI 中新增一个 `WebSocket Client`：
+### NapCat
+
+在每个 NapCat 已登录账号的 WebUI 中新增一个 `WebSocket Client`：
 
 ```json
 {
@@ -68,6 +75,35 @@ http://127.0.0.1:5173
 ```
 
 不要用这个命令操作其他生产栈。外部 NapCat 应在其 WebUI 中显式添加连接。
+
+### LLOneBot（LuckyLilliaBot / LLBot）
+
+LLBot 的每账号配置位于 `bin/llbot/data/config_<QQ>.json`，其 `ob11.connect` 数组支持多个
+并行连接。使用以下命令幂等追加/更新指向工作台的 `ws-reverse` 条目（默认 LLBot 数据目录
+`$HOME/LLBot/bin/llbot/data`，可用 `LLBOT_DATA_DIR` 覆盖）：
+
+```bash
+./manage.sh web-connect-llbot
+```
+
+或在 LLBot WebUI / Desktop 的 Bot 配置中手动添加反向 WS：
+
+```json
+{
+  "type": "ws-reverse",
+  "enable": true,
+  "url": "ws://127.0.0.1:5173/onebot/v11/ws",
+  "heartInterval": 60000,
+  "token": "<onebot_access_token 的内容>",
+  "reportSelfMessage": true,
+  "reportOfflineMessage": false,
+  "messageFormat": "array",
+  "debug": false
+}
+```
+
+写入后重启 LLBot 生效。现有 LLBot -> AstrBot 的 `ws://127.0.0.1:6199/ws` 连接保留，
+工作台连接作为第二个客户端并行存在。
 
 ## Development
 

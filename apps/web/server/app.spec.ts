@@ -172,6 +172,7 @@ interface FakeNapCatOptions {
   loginSelfId?: string
   reportSentEvent?: boolean
   sendMessageDelayMs?: number
+  appName?: string
   appVersion?: string
   selfRole?: string
   atAllAllowed?: boolean
@@ -273,7 +274,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         data = { online: true, good: true, stat: {} }
         break
       case 'get_version_info':
-        data = { app_name: 'NapCat.Onebot', protocol_version: 'v11', app_version: options.appVersion ?? '4.18.13' }
+        data = { app_name: options.appName ?? 'NapCat.Onebot', protocol_version: 'v11', app_version: options.appVersion ?? '4.18.13' }
         break
       case 'nc_get_packet_status':
         if (options.packetAvailable === false) {
@@ -1001,6 +1002,83 @@ describe('Dududa NapCat gateway', () => {
     napcat.socket.close()
   })
 
+  it('recognizes LLOneBot clients and gates NapCat extension capabilities', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const llonebot = connectFakeNapCat(port, { appName: 'LLOneBot', appVersion: '8.1.10', packetAvailable: false })
+    await llonebot.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = (await response.json()) as { actions?: Record<string, { status?: string }> }
+      return body.actions?.['history.cursor']?.status === 'supported'
+    })
+
+    const capabilities = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+    ).json()) as {
+      implementation: { name: string; version: string; protocol: string }
+      actions: Record<string, { status: string; reason?: string }>
+    }
+    expect(capabilities.implementation).toEqual({
+      name: 'LLOneBot',
+      version: '8.1.10',
+      protocol: 'onebot-v11',
+    })
+    expect(capabilities.actions['history.cursor']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['directory.friends']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['message.send.text']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['message.nudge']).toEqual({ status: 'supported' })
+    expect(capabilities.actions['message.custom_faces']).toMatchObject({
+      status: 'unsupported',
+      reason: expect.stringContaining('LLOneBot'),
+    })
+    expect(capabilities.actions['group.files']).toMatchObject({
+      status: 'unsupported',
+      reason: expect.stringContaining('LLOneBot'),
+    })
+    expect(capabilities.actions['directory.peer_pin']).toMatchObject({
+      status: 'unsupported',
+      reason: expect.stringContaining('LLOneBot'),
+    })
+
+    const workspace = (await (await fetch(`${baseUrl}/api/workspace`)).json()) as {
+      runtime: { status: string; message: string }
+      accounts: Array<{ status: string }>
+    }
+    expect(workspace.runtime).toMatchObject({ status: 'connected' })
+    expect(workspace.runtime.message).toContain('OneBot')
+    expect(workspace.accounts[0]?.status).toBe('online')
+    llonebot.socket.close()
+  })
+
+  it('marks unknown OneBot implementations as degraded without capabilities', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const unknown = connectFakeNapCat(port, { appName: 'SomeUnknownBot', appVersion: '1.0.0' })
+    await unknown.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const workspace = (await (await fetch(`${baseUrl}/api/workspace`)).json()) as {
+        accounts: Array<{ status: string }>
+      }
+      return workspace.accounts[0]?.status === 'degraded'
+    })
+    const capabilities = (await (
+      await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+    ).json()) as {
+      implementation: { name: string }
+      actions: Record<string, { status: string; reason?: string }>
+    }
+    expect(capabilities.implementation.name).toBe('SomeUnknownBot')
+    expect(capabilities.actions['history.cursor']).toMatchObject({
+      status: 'unavailable',
+      reason: expect.stringContaining('SomeUnknownBot'),
+    })
+    unknown.socket.close()
+  })
+
   it('keeps paging when NapCat returns an underfilled intermediate history page', async () => {
     const historyMessage = (sequence: number) => realGroupMessage(`历史 ${sequence}`, {
       time: 1_785_742_400 + sequence,
@@ -1528,7 +1606,7 @@ describe('Dududa NapCat gateway', () => {
       }),
     )
     await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'offline')
-    expect(hub.runtimeStatus()).toMatchObject({ status: 'connected', message: '0/1 个 QQ 账号在线，NapCat 连接正常' })
+    expect(hub.runtimeStatus()).toMatchObject({ status: 'connected', message: '0/1 个 QQ 账号在线，OneBot 连接正常' })
 
     napcat.socket.send(
       JSON.stringify({

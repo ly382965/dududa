@@ -122,6 +122,10 @@ services:
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
         target: 6185
         protocol: tcp
+      - host_ip: ${ASTRBOT_ONEBOT_WS_HOST:-127.0.0.1}
+        published: "${ASTRBOT_ONEBOT_WS_PORT:-6199}"
+        target: 6199
+        protocol: tcp
     volumes:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ${DUDUDA_ASTRBOT_PLUGIN_ROOT:-./runtime/astrbot-plugins}:/AstrBot/data/plugins
@@ -147,6 +151,7 @@ services:
           - bot-astrbot-qq-astrbot
 
   napcat:
+    profiles: ["legacy-napcat"]
     image: ${NAPCAT_IMAGE}
     restart: unless-stopped
     security_opt:
@@ -154,6 +159,7 @@ services:
     environment:
       NAPCAT_UID: ${NAPCAT_UID:-1000}
       NAPCAT_GID: ${NAPCAT_GID:-1000}
+      ACCOUNT: ${NAPCAT_ACCOUNT:-1350475499}
       MODE: astrbot
     ports:
       - host_ip: ${NAPCAT_WEBUI_HOST:-127.0.0.1}

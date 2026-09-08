@@ -188,6 +188,7 @@ usage() {
     '  up          Build and start the complete AstrBot + NapCat + Web stack' \
     '  web-up      Build and start only the Dududa QQ workspace' \
     '  web-connect Add the workspace reverse WS to this stack and restart NapCat' \
+    '  web-connect-llbot  Add the workspace reverse WS to LLBot host configs' \
     '  down        Stop and remove containers and private network' \
     '  restart     Restart all services, or one service' \
     '  logs        Follow logs for all services, or one service' \
@@ -298,6 +299,14 @@ case "$cmd" in
       --token-file "$(web_data_root)/secrets/onebot_access_token" \
       --apply
     "${COMPOSE[@]}" restart napcat
+    ;;
+  web-connect-llbot)
+    "$0" init
+    "$PYTHON" ops/cli/configure_llbot_web.py \
+      --config-dir "${LLBOT_DATA_DIR:-$HOME/LLBot/bin/llbot/data}" \
+      --token-file "$(web_data_root)/secrets/onebot_access_token" \
+      --endpoint "${DUDUDA_WEB_ONEBOT_WS_URL:-ws://127.0.0.1:5173/onebot/v11/ws}" \
+      --apply
     ;;
   down)
     setup_docker

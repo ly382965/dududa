@@ -91,6 +91,7 @@ interface AccountState {
   conversations: Map<string, Conversation>
   emittedMessages: Map<string, number>
   compatible: boolean
+  implementationKind: 'napcat' | 'llonebot' | 'unknown'
   implementationName: string
   implementationVersion?: string
   packetAvailable: boolean
@@ -414,14 +415,14 @@ export class OneBotHub extends EventEmitter {
     if (!this.accounts.size) {
       return {
         status: 'waiting',
-        message: '等待 NapCat 反向 WebSocket 连接',
+        message: '等待 OneBot 客户端反向 WebSocket 连接',
         reverseWebSocketPath: this.reverseWebSocketPath,
       }
     }
     const online = [...this.accounts.values()].filter((state) => state.account.status === 'online').length
     return {
       status: 'connected',
-      message: `${online}/${this.accounts.size} 个 QQ 账号在线，NapCat 连接正常`,
+      message: `${online}/${this.accounts.size} 个 QQ 账号在线，OneBot 连接正常`,
       reverseWebSocketPath: this.reverseWebSocketPath,
     }
   }
@@ -1469,6 +1470,7 @@ export class OneBotHub extends EventEmitter {
       conversations: previous?.conversations ?? new Map(),
       emittedMessages: new Map(),
       compatible: false,
+      implementationKind: 'unknown',
       implementationName: 'NapCat.Onebot',
       packetAvailable: false,
       refreshedAt: 0,
@@ -1497,8 +1499,15 @@ export class OneBotHub extends EventEmitter {
         state.connection.close(1008, 'OneBot self ID mismatch')
         return
       }
-      const compatible = version.app_name === 'NapCat.Onebot' && version.protocol_version === 'v11'
+      const isNapCat = version.app_name === 'NapCat.Onebot' && version.protocol_version === 'v11'
+      const isLLOneBot =
+        version.protocol_version === 'v11' &&
+        (version.app_name === 'LLOneBot' ||
+          version.app_name === 'LuckyLilliaBot' ||
+          version.app_name === 'llonebot')
+      const compatible = isNapCat || isLLOneBot
       state.compatible = compatible
+      state.implementationKind = isNapCat ? 'napcat' : isLLOneBot ? 'llonebot' : 'unknown'
       state.implementationName = version.app_name || 'Unknown OneBot'
       state.implementationVersion = version.app_version
       state.packetAvailable = packetAvailable
@@ -2136,6 +2145,16 @@ export class OneBotHub extends EventEmitter {
       ['request.friend.history', '当前 NapCat 无法回填普通好友申请历史'],
       ['group.folder.rename', '当前 NapCat 未提供群文件夹重命名 action'],
     ])
+    const llOneBotGaps = new Map<CapabilityName, string>([
+      ['directory.peer_pin', '当前 LLOneBot 未提供 QQ 同步置顶 action'],
+      ['request.friend.history', '当前 LLOneBot 无法回填普通好友申请历史'],
+      ['group.folder.rename', '当前 LLOneBot 未提供群文件夹重命名 action'],
+      ['group.files', '当前 LLOneBot 未提供 NapCat 群文件 API'],
+      ['message.forward', '当前 LLOneBot 未提供 NapCat 单条转发 API'],
+      ['message.custom_faces', '当前 LLOneBot 未提供 NapCat 自定义表情市场 API'],
+      ['group.essence', '当前 LLOneBot 未提供 NapCat 精华消息 API'],
+      ['group.announcements', '当前 LLOneBot 未提供 NapCat 群公告 API'],
+    ])
     const minimumVersions = new Map<CapabilityName, string>([
       ['message.download.file', '4.8.0'],
       ['message.forward', '4.8.0'],
@@ -2144,15 +2163,37 @@ export class OneBotHub extends EventEmitter {
     ])
     const actions = Object.fromEntries(
       capabilityNames.map((name) => {
-        if (!state.compatible) return [name, { status: 'unavailable' as const, reason: '连接端不是兼容的 NapCat OneBot v11' }]
-        if (state.account.status !== 'online') return [name, { status: 'unavailable' as const, reason: 'QQ 账号连接状态异常' }]
-        const minimumVersion = minimumVersions.get(name)
-        if (minimumVersion && !this.versionAtLeast(state.implementationVersion, minimumVersion)) {
+        if (!state.compatible) {
+          return [
+            name,
+            {
+              status: 'unavailable' as const,
+              reason: `连接端 ${state.implementationName} 不是兼容的 OneBot v11 客户端`,
+            },
+          ]
+        }
+        if (state.account.status !== 'online') {
+          return [name, { status: 'unavailable' as const, reason: 'QQ 账号连接状态异常' }]
+        }
+        if (state.implementationKind === 'napcat') {
+          const minimumVersion = minimumVersions.get(name)
+          if (minimumVersion && !this.versionAtLeast(state.implementationVersion, minimumVersion)) {
+            return [
+              name,
+              {
+                status: 'unsupported' as const,
+                reason: `需要 NapCat ${minimumVersion} 或更高版本，当前为 ${state.implementationVersion || '未知版本'}`,
+              },
+            ]
+          }
+        }
+        const gaps = state.implementationKind === 'llonebot' ? llOneBotGaps : napCatGaps
+        if (gaps.has(name)) {
           return [
             name,
             {
               status: 'unsupported' as const,
-              reason: `需要 NapCat ${minimumVersion} 或更高版本，当前为 ${state.implementationVersion || '未知版本'}`,
+              reason: gaps.get(name),
             },
           ]
         }
@@ -2161,7 +2202,7 @@ export class OneBotHub extends EventEmitter {
           name,
           {
             status: 'unsupported' as const,
-            reason: napCatGaps.get(name) || 'NapCat 支持该能力，但 Web 安全网关尚未实现',
+            reason: gaps.get(name) || `${state.implementationName} 支持该能力，但 Web 安全网关尚未实现`,
           },
         ]
       }),
