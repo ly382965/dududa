@@ -186,7 +186,11 @@ from .adapters.model import (
 )
 from .adapters.model_codec import JsonSchemaDocumentRegistry, JsonSchemaOutputCodec
 from .adapters.model_evidence import AstrBotProviderEvidenceStore
-from .adapters.output import ASTRBOT_OUTPUT_REVISION, InMemoryDeliveryLedger
+from .adapters.output import (  # noqa: F401
+    ASTRBOT_OUTPUT_REVISION,
+    AstrBotOutputAdapter,
+    InMemoryDeliveryLedger,
+)
 from .adapters.proactive_talk import (
     PROACTIVE_GROUP_PROMPT_MARKER,
     ProactiveTalkController,
@@ -392,6 +396,18 @@ class _ProductionPerceptionMerger:
         model_status: PerceptionModelStatus,
         model_route_receipt_digest: DigestString | None = None,
     ) -> PerceptionResult:
+        logger.warning(
+            "Dududa perception debug: text=%.80s rules_need_tools=%s "
+            "model=%s model_need_tools=%s model_categories=%s "
+            "model_status=%s available=%s",
+            (context.current_message.text or "").replace("\n", " "),
+            rules.need_tools,
+            model is not None,
+            getattr(model, "need_tools", None),
+            tuple(getattr(model, "capability_categories", ())),
+            model_status.value if model_status is not None else None,
+            tuple(context.available_capability_categories),
+        )
         if (
             model is not None
             and context.current_message.text.startswith(PROACTIVE_GROUP_PROMPT_MARKER)
@@ -1115,7 +1131,10 @@ def build_production_runtime(
     for index, spec in enumerate(specs):
         astrbot_provider = get_provider(spec.astrbot_provider_id)
         if astrbot_provider is None:
-            raise ValueError("configured AstrBot provider is unavailable")
+            raise ValueError(
+                "configured AstrBot provider is unavailable: "
+                + str(spec.astrbot_provider_id)
+            )
         traffic_policy = EndpointTrafficPolicy(
             schema_version=1,
             policy_id=f"{spec.endpoint_id}-traffic",
@@ -2031,6 +2050,12 @@ async def activate_runtime_after_host_start(plugin: Any) -> bool:
     if plugin.config.get("runtime_enabled") is not True:
         return False
     current = getattr(plugin, "runtime_assembly", None)
+    logger.warning(
+        "Dududa runtime activate check: current=%s ready=%s bridge=%s",
+        type(current).__name__ if current is not None else None,
+        getattr(current, "ready", None),
+        getattr(plugin, "rollout_bridge", None) is not None,
+    )
     if (
         isinstance(current, ProductionRuntimeAssembly)
         and current.ready
@@ -2043,7 +2068,10 @@ async def activate_runtime_after_host_start(plugin: Any) -> bool:
         await bridge.close()
         plugin.rollout_bridge = None
     if isinstance(current, ProductionRuntimeAssembly):
-        await current.close()
+        try:
+            await current.close()
+        except Exception:
+            logger.exception("Dududa runtime activate: closing previous assembly failed")
         plugin.runtime_assembly = None
 
     try:
@@ -2088,10 +2116,11 @@ async def activate_runtime_after_host_start(plugin: Any) -> bool:
         reason="runtime_ready",
         runtime_config=plugin.config,
     )
-    logger.info(
-        "Dududa 2.0 Runtime activated: model_probes=%s health_refresh=%s",
+    logger.warning(
+        "Dududa 2.0 Runtime activated: model_probes=%s health_refresh=%s categories=%s",
         assembly.has_model_health_probes,
         getattr(plugin, "_dududa_model_health_task", None) is not None,
+        tuple(getattr(assembly, "categories", ())),
     )
     return installed is not None
 
@@ -2206,6 +2235,15 @@ def install_rollout_runtime(
         metrics,
         clock=clock,
     )
+    reviewer = _build_reply_reviewer(plugin)
+    output_factory = None
+    if reviewer is not None:
+        output_factory = lambda event, output_ledger, guard: AstrBotOutputAdapter(  # noqa: E731
+            event,
+            output_ledger,
+            send_guard=guard,
+            reviewer=reviewer,
+        )
     bridge = AstrBotRolloutBridge(
         controls,
         requests,
@@ -2216,6 +2254,7 @@ def install_rollout_runtime(
         state_store=state_store,
         clock=clock,
         runtime_ready=runtime_ready,
+        output_factory=output_factory,
     )
     plugin.rollout_bridge = bridge
     plugin.proactive_talk = (
@@ -2226,6 +2265,87 @@ def install_rollout_runtime(
         else None
     )
     return bridge
+
+
+def _build_reply_reviewer(plugin: Any) -> Any | None:
+    config = getattr(plugin, "config", {}) or {}
+    if config.get("runtime_reply_review_enabled") is not True:
+        return None
+    try:
+        from astrbot_plugin_reply_review.policy import (
+            ConservativeReviewPolicy,
+            ReviewPolicyConfig,
+        )
+    except ModuleNotFoundError as exc:
+        if exc.name != "astrbot_plugin_reply_review":
+            raise
+        from data.plugins.astrbot_plugin_reply_review.policy import (
+            ConservativeReviewPolicy,
+            ReviewPolicyConfig,
+        )
+    from .adapters.review import AstrBotReplyReviewer
+
+    def _positive_int(key: str, default: int) -> int:
+        try:
+            value = int(config.get(key, default))
+        except (TypeError, ValueError):
+            return default
+        return value if value > 0 else default
+
+    try:
+        min_chars = _positive_int("runtime_reply_review_min_chars", 2)
+        max_chars = _positive_int("runtime_reply_review_max_chars", 2_000)
+        policy = ConservativeReviewPolicy(
+            ReviewPolicyConfig(
+                enabled=True,
+                min_chars=min(min_chars, max_chars),
+                max_chars=max(max_chars, min_chars),
+                max_output_tokens=_positive_int(
+                    "runtime_reply_review_max_output_tokens",
+                    600,
+                ),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001 - invalid review config stays disabled
+        logger.warning(
+            "Dududa reply review unavailable: reason=review_config_invalid detail=%s",
+            str(exc)[:120],
+        )
+        return None
+
+    provider_id = str(
+        config.get("runtime_reply_review_provider_id", "") or ""
+    ).strip()
+    context = getattr(plugin, "context", None)
+
+    def provider_getter() -> Any | None:
+        if provider_id:
+            get_provider = getattr(context, "get_provider_by_id", None)
+            if not callable(get_provider):
+                return None
+            return get_provider(provider_id)
+        get_using = getattr(context, "get_using_provider", None)
+        if not callable(get_using):
+            return None
+        return get_using()
+
+    try:
+        timeout = float(config.get("runtime_reply_review_timeout_seconds", 15) or 15)
+    except (TypeError, ValueError):
+        timeout = 15.0
+    timeout = max(timeout, 1.0)
+    reviewer = AstrBotReplyReviewer(
+        provider_getter,
+        policy,
+        timeout_seconds=timeout,
+    )
+    logger.info(
+        "Dududa reply review wired: provider=%s min_chars=%s timeout=%.1fs",
+        provider_id or "default",
+        policy.config.min_chars,
+        timeout,
+    )
+    return reviewer
 
 
 class _NoopShadowSink:

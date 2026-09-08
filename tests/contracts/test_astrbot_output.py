@@ -89,6 +89,20 @@ class FakeFactory:
         return tuple(components)
 
 
+class FakeReviewer:
+    def __init__(self, resolution=None) -> None:
+        self.calls: list[tuple[str, str]] = []
+        self.resolution = resolution
+
+    async def review(self, draft_text: str, context: str = ""):
+        self.calls.append((draft_text, context))
+        if self.resolution is not None:
+            return self.resolution
+        from astrbot_plugin_reply_review.policy import ReviewResolution
+
+        return ReviewResolution(draft_text, False, "review_keep")
+
+
 class FakeEvent:
     def __init__(
         self,
@@ -349,6 +363,74 @@ class AstrBotOutputContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.status, DeliveryStatus.SUCCEEDED)
         self.assertEqual(len(event.sent), 3)
         self.assertTrue(all(part.platform_message_ref is None for part in first.parts))
+
+    async def test_reviewer_revision_replaces_delivered_text(self) -> None:
+        from astrbot_plugin_reply_review.policy import ReviewResolution
+
+        event = FakeEvent()
+        reviewer = FakeReviewer(
+            ReviewResolution("ok-v2", True, "review_revised")
+        )
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+            reviewer=reviewer,
+        )
+        receipt = await adapter.deliver(self.request(text="ok"), call=self.call)
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(reviewer.calls), 1)
+        self.assertEqual(reviewer.calls[0][0], "ok")
+        delivered = [
+            item[1]
+            for sent in event.sent
+            for item in sent
+            if isinstance(item, tuple) and item[0] == "plain"
+        ]
+        self.assertEqual(delivered, ["ok-v2"])
+
+    async def test_reviewer_keep_and_failure_do_not_block_delivery(self) -> None:
+        event = FakeEvent()
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+            reviewer=FakeReviewer(),
+        )
+        receipt = await adapter.deliver(self.request(text="ok"), call=self.call)
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        delivered = [
+            item[1]
+            for sent in event.sent
+            for item in sent
+            if isinstance(item, tuple) and item[0] == "plain"
+        ]
+        self.assertEqual(delivered, ["ok"])
+
+    async def test_reviewer_is_skipped_for_multi_part_and_reaction(self) -> None:
+        from astrbot_plugin_reply_review.policy import ReviewResolution
+
+        reviewer = FakeReviewer(ReviewResolution("改", True, "review_revised"))
+        event = FakeEvent()
+        adapter = AstrBotOutputAdapter(
+            event,
+            InMemoryDeliveryLedger(),
+            component_factory=FakeFactory(),
+            clock=lambda: self.now,
+            reviewer=reviewer,
+        )
+        receipt = await adapter.deliver(
+            self.request(
+                text="hello world",
+                allow_forward_bundle=True,
+                answer_profile="long",
+            ),
+            call=self.call,
+        )
+        self.assertIs(receipt.status, DeliveryStatus.SUCCEEDED)
+        self.assertEqual(len(reviewer.calls), 0)
 
     async def test_forward_bundle_sends_all_parts_once(self) -> None:
         event = FakeEvent()

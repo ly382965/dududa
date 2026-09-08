@@ -8,6 +8,9 @@ import uuid
 from dududa.contracts.canonical import canonical_json_bytes
 from dududa.domain.primitives import ComponentRevision, DigestString, PrivacyLevel
 from dududa.errors import DududaError, ErrorCategory, ErrorInfo, validation_error
+import logging
+
+logger = logging.getLogger("dududa.perception")
 from dududa.models.contracts import (
     ModelInput,
     ModelInputModality,
@@ -387,6 +390,11 @@ class HybridPerceptionEngine:
         except RuntimeModelPerceptionFailure as failure:
             status = failure.status
             route_receipt = failure.route_receipt_digest
+            logger.warning(
+                "Dududa perception model failure: code=%s status=%s",
+                failure.code,
+                status.value if status is not None else None,
+            )
         except ModelInvocationError as failure:
             if failure.info.category in {
                 ErrorCategory.CANCELLED,

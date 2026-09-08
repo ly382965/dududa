@@ -66,6 +66,37 @@
     "type": "bool",
     "default": true
   },
+  "runtime_reply_review_enabled": {
+    "description": "发送前用 AI 审查 Runtime 回复（答非所问、上下文矛盾、逻辑混乱、冒犯）",
+    "type": "bool",
+    "default": false,
+    "hint": "只改写能从上下文直接确认的问题；无法确认时保留原回复，审查失败不阻塞发送。"
+  },
+  "runtime_reply_review_provider_id": {
+    "description": "审查用的 AstrBot Provider ID；留空使用默认 Provider",
+    "type": "string",
+    "default": ""
+  },
+  "runtime_reply_review_min_chars": {
+    "description": "回复至少多少字才送审",
+    "type": "int",
+    "default": 2
+  },
+  "runtime_reply_review_max_chars": {
+    "description": "回复超过多少字不送审",
+    "type": "int",
+    "default": 2000
+  },
+  "runtime_reply_review_max_output_tokens": {
+    "description": "审查模型最大输出 token 数",
+    "type": "int",
+    "default": 600
+  },
+  "runtime_reply_review_timeout_seconds": {
+    "description": "单次审查超时（秒），超时保留原回复",
+    "type": "int",
+    "default": 15
+  },
   "proactive_talk_enabled": {
     "description": "启用 Dududa 2.0 群级自动搭话执行器",
     "type": "bool",

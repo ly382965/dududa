@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -117,6 +118,7 @@ class AstrBotOutputAdapter:
         component_factory: ComponentFactory | None = None,
         send_guard: DeliverySendGuard | None = None,
         clock: Callable[[], datetime] | None = None,
+        reviewer: object | None = None,
     ) -> None:
         self._event = event
         self._ledger = ledger
@@ -124,6 +126,7 @@ class AstrBotOutputAdapter:
         self._send_guard = send_guard
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._revision = ASTRBOT_OUTPUT_REVISION
+        self._reviewer = reviewer
 
     async def deliver(
         self,
@@ -234,6 +237,24 @@ class AstrBotOutputAdapter:
         ):
             raise _output_error("delivery_content_safety_binding_mismatch")
 
+    async def _review_single_part(
+        self,
+        request: DeliveryRequest,
+    ) -> tuple[str, ...] | None:
+        reviewer = self._reviewer
+        if reviewer is None or request.outcome is Outcome.REACTION:
+            return None
+        if len(request.part_intents) != 1:
+            return None
+        intent = request.part_intents[0]
+        if not intent.text:
+            return None
+        context = str(getattr(self._event, "message_str", "") or "")
+        resolution = await reviewer.review(intent.text, context)
+        if not resolution.revised or resolution.text == intent.text:
+            return None
+        return (resolution.text,)
+
     async def _send(
         self,
         request: DeliveryRequest,
@@ -255,11 +276,16 @@ class AstrBotOutputAdapter:
             )
         if self._can_send_forward_bundle(request):
             return await self._send_forward_bundle(request, call)
+        reviewed_texts = await self._review_single_part(request)
         receipts: list[DeliveryPartReceipt] = []
         for index, intent in enumerate(request.part_intents, start=1):
             if intent.text is None:
                 raise _output_error("delivery_response_part_missing_text")
-            text = intent.text
+            text = (
+                reviewed_texts[0]
+                if reviewed_texts is not None
+                else intent.text
+            )
             part_id = intent.part_id
             target_ids = (
                 tuple(

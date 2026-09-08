@@ -849,6 +849,9 @@ class OfflineRuntimeOrchestrator:
                 if tier is None:
                     raise validation_error("direct_reply_missing_tier_decision")
                 try:
+                    metadata = getattr(checkpoint.state.message, "metadata", None) or {}
+                    recent_context = str(metadata.get("recent_context", "")).strip()
+                    reply_guidance = str(metadata.get("reply_guidance", "")).strip()
                     direct = await self._direct_chat.execute(
                         context,
                         assessment,
@@ -858,6 +861,8 @@ class OfflineRuntimeOrchestrator:
                         persona_resolution=persona_resolution,
                         route_hint=checkpoint.state.invocation_options.route_hint,
                         capability_receipt=capability_receipt,
+                        recent_group_context=recent_context,
+                        reply_guidance=reply_guidance,
                         call=self._call_with_budget(
                             call,
                             reservation_budget(response_reservation),

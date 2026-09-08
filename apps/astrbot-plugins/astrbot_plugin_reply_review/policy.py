@@ -76,6 +76,47 @@ _SYSTEM_PROMPT = (
 )
 
 
+def _normalize(text: str) -> str:
+    return "".join(ch for ch in text if not ch.isspace() and ch not in "，。！？!?,.、;；:：\"'")
+
+
+_OFF_TOPIC_REASON_MARKERS = (
+    "答非所问",
+    "无关",
+    "偏离",
+    "文不对题",
+)
+
+
+def _revision_reason_is_off_topic(payload: dict) -> bool:
+    """Off-topic drafts cannot be fixed by local correction; they need a full
+    re-answer upstream. Reject such revisions instead of shipping a
+    guessed replacement."""
+    reason = payload.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        return False
+    return any(marker in reason for marker in _OFF_TOPIC_REASON_MARKERS)
+
+
+def _echoes_user_message(revised_text: str, context: str) -> bool:
+    context = (context or "").strip()
+    if not context:
+        return False
+    normalized_revision = _normalize(revised_text)
+    normalized_context = _normalize(context)
+    if len(normalized_context) < 4:
+        return False
+    if normalized_revision == normalized_context:
+        return True
+    if len(normalized_revision) >= len(normalized_context) and (
+        normalized_context in normalized_revision
+    ):
+        overlap = len(normalized_context) / len(normalized_revision)
+        if overlap >= 0.8:
+            return True
+    return False
+
+
 class ConservativeReviewPolicy:
     """Pure review policy; model execution remains owned by the 2.0 Runtime."""
 
@@ -117,12 +158,25 @@ class ConservativeReviewPolicy:
         )
         prompt = (
             "检查草稿是否存在从所给上下文即可确认的明显问题。只在以下情况改写："
-            "答非所问、与上下文明显矛盾、冒犯，或语句严重混乱。不得仅为润色、改变人格"
-            "或调整措辞而改写；不得新增、删除或猜测事实、数字、链接、引用和标识符。"
-            "无法确认时选择 uncertain。\n"
+            "答非所问（草稿回答的问题与用户实际说的不符，或把重心放在无关的群聊话题上"
+            "而忽略用户消息本身）、与上下文明显矛盾、冒犯，或语句严重混乱。"
+            "若上下文是群聊对话，额外检查草稿是否像一位参与对话的成员——"
+            "是否接得上当前话题、有没有生硬地另起话题或机械寒暄；"
+            "明显脱离上下文、像自动接话而非参与讨论的草稿也要改写。"
+            "答非所问是最高优先级的改写原因。"
+            "不得仅为润色、改变人格或调整措辞而改写；不得新增、删除或猜测事实、"
+            "数字、链接、引用和标识符。"
+            "改写必须基于草稿已有内容修正错误；"
+            "不得把草稿替换为对用户消息的复述或重复用户的话。"
+            "如果草稿无法通过修正变成对用户的正确回答——"
+            "例如答非所问且草稿内容与用户问题完全无关、"
+            "或改写需要补充输入中没有的信息——"
+            "必须选择 uncertain，不得生成与草稿无关的新回复，"
+            "不得对草稿作者喊话或点评草稿本身。无法确认时选择 uncertain。\n"
             "只返回单个 JSON 对象，格式严格为 "
             '{"decision":"keep|revise|uncertain","certain":true|false,'
-            '"revised_text":"改写文本或 null"}。只有 decision=revise 且你能从输入直接'
+            '"revised_text":"改写文本或 null","reason":"改写原因简述（keep/uncertain 可为空字符串）"}。'
+            "只有 decision=revise 且你能从输入直接"
             "确认问题时，certain 才能为 true。\n"
             f"待审校数据：{payload}"
         )
@@ -161,11 +215,17 @@ class ConservativeReviewPolicy:
 
         revised_text = payload.get("revised_text")
         if not isinstance(revised_text, str) or not revised_text.strip():
+            if _revision_reason_is_off_topic(payload):
+                return ReviewResolution(original, False, "review_deferred_reanswer")
             return ReviewResolution(original, False, "review_invalid_revision")
         revised_text = revised_text.strip()
         if len(revised_text) > self.config.max_chars:
             return ReviewResolution(original, False, "review_invalid_revision")
         if revised_text == original:
+            return ReviewResolution(original, False, "review_unchanged")
+        if _echoes_user_message(revised_text, candidate.context):
+            return ReviewResolution(original, False, "review_unchanged")
+        if _revision_reason_is_off_topic(payload):
             return ReviewResolution(original, False, "review_unchanged")
         return ReviewResolution(revised_text, True, "review_revised")
 

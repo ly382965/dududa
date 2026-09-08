@@ -418,6 +418,9 @@ class AstrBotRolloutBridge:
                 "event_stop_failed",
                 aborted,
             )
+        should_call_llm = getattr(event, "should_call_llm", None)
+        if callable(should_call_llm):
+            should_call_llm(True)
         if claim.disposition is not RolloutClaimDisposition.ACQUIRED:
             replay = self._canary.replay_result(claim, run_id=call.run_id)
             return AstrBotBridgeResult(

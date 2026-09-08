@@ -195,6 +195,14 @@ def build_production_capability_runtime(
             schema_documents[definition.input_schema],
         )
     )
+    import logging
+
+    logging.getLogger("dududa.capabilities").warning(
+        "Dududa capability assembly: definitions=%s schemas=%s plannable=%s",
+        len(initial.definitions),
+        len(initial.schema_documents),
+        [d.capability_id for d in plannable],
+    )
     categories = tuple(sorted({definition.category for definition in plannable}))
     schemas = {
         (

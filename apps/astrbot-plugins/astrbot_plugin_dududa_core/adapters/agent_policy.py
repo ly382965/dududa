@@ -46,24 +46,24 @@ class FileScopeAgentPolicyResolver:
     def feature_flags(self, connector: ConnectorResult) -> Mapping[str, bool]:
         if not isinstance(connector, ConnectorResult):
             raise TypeError("invalid Connector result")
-        disabled = self._capability_flags({})
         try:
             payload = json.loads(self._path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
-            return {SCOPE_AGENT_ENABLED_FLAG: False, **disabled}
+            return {SCOPE_AGENT_ENABLED_FLAG: True}
 
         record = _scope_record(payload, connector)
         if record is None:
-            # Preserve the existing global inbound rollout for unmanaged Scopes,
-            # while keeping every Web-managed Capability off by default.
-            return {SCOPE_AGENT_ENABLED_FLAG: True, **disabled}
+            # Unmanaged Scopes keep the global inbound rollout and every
+            # Capability enabled until the Web Control Plane explicitly
+            # switches one off.
+            return {SCOPE_AGENT_ENABLED_FLAG: True}
         enabled = record.get("enabled") is True
         plugins = record.get("plugins") if enabled else {}
         if not isinstance(plugins, dict):
             plugins = {}
         flags = {
             SCOPE_AGENT_ENABLED_FLAG: enabled,
-            **self._capability_flags(plugins),
+            **self._explicit_capability_flags(plugins),
         }
         locked_profile = _locked_answer_profile(record) if enabled else None
         for profile in _ANSWER_PROFILES:
@@ -147,6 +147,19 @@ class FileScopeAgentPolicyResolver:
             )
             for plugin_id, category in _PLUGIN_CAPABILITY_CATEGORIES.items()
         }
+
+    @staticmethod
+    def _explicit_capability_flags(plugins: Mapping[str, Any]) -> dict[str, bool]:
+        """Only capabilities explicitly configured in the Scope record are
+        switched; unconfigured ones keep their runtime default (enabled)."""
+        flags: dict[str, bool] = {}
+        for plugin_id, category in _PLUGIN_CAPABILITY_CATEGORIES.items():
+            if plugin_id in plugins:
+                flags[f"{CAPABILITY_CATEGORY_FEATURE_PREFIX}{category}"] = (
+                    str(plugins.get(plugin_id) or "off").strip().lower()
+                    in _ENABLED_PLUGIN_MODES
+                )
+        return flags
 
 
 def _scope_record(payload: object, connector: ConnectorResult) -> dict[str, Any] | None:
