@@ -1,0 +1,1 @@
+﻿{"enabled": {"description": "启用插件", "type": "bool", "default": true}, "cache_ttl_hours": {"description": "教室/考试数据缓存时长（小时），官方数据次日更新", "type": "int", "default": 12}}

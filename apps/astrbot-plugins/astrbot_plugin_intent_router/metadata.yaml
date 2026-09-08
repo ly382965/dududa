@@ -1,0 +1,5 @@
+name: astrbot_plugin_intent_router
+desc: LLM 意图分类路由（@bot 消息分发到教室/课程/评课/考试查询或闲聊）
+version: v0.1.0
+author: mmdustc
+repo: ""
