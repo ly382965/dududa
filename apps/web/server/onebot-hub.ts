@@ -348,6 +348,7 @@ export class OneBotHub extends EventEmitter {
   readonly reverseWebSocketPath = '/onebot/v11/ws'
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 50 * 1024 * 1024 })
   private readonly accounts = new Map<string, AccountState>()
+  private workspaceRefresh: Promise<void> | undefined
   private readonly media = new Map<string, MediaEntry>()
   private readonly customFaces = new Map<string, CustomFaceEntry>()
   private readonly uploads = new Map<string, StagedUpload>()
@@ -422,7 +423,7 @@ export class OneBotHub extends EventEmitter {
     const online = [...this.accounts.values()].filter((state) => state.account.status === 'online').length
     return {
       status: 'connected',
-      message: `${online}/${this.accounts.size} 个 QQ 账号在线，OneBot 连接正常`,
+      message: `OneBot 网关已连接 · ${online}/${this.accounts.size} 个 QQ 账号在线${online === 0 ? '，请在 OneBot 客户端检查 QQ 登录状态' : ''}`,
       reverseWebSocketPath: this.reverseWebSocketPath,
     }
   }
@@ -449,7 +450,17 @@ export class OneBotHub extends EventEmitter {
   }
 
   async refreshAll(force = false): Promise<void> {
-    await Promise.allSettled([...this.accounts.values()].map((state) => this.refreshAccount(state, force)))
+    await Promise.allSettled([...this.accounts.values()]
+      .filter((state) => state.account.status !== 'offline')
+      .map((state) => this.refreshAccount(state, force)))
+  }
+
+  refreshWorkspaceInBackground(): void {
+    if (this.workspaceRefresh) return
+    this.workspaceRefresh = this.refreshAll(true).finally(() => {
+      this.workspaceRefresh = undefined
+      if (!this.closed) this.broadcast({ type: 'workspace.refresh' })
+    })
   }
 
   capabilities(account: string): AccountCapabilityDocument {
@@ -1132,6 +1143,38 @@ export class OneBotHub extends EventEmitter {
     return (await this.historyPage(account, type, peerId, { limit })).messages
   }
 
+  private async requestHistory(
+    state: AccountState,
+    action: string,
+    params: Record<string, string | number | boolean>,
+    direction: 'before' | 'after',
+  ): Promise<{ messages?: OneBotMessage[] }> {
+    if (state.implementationKind !== 'llonebot') return state.connection.request(action, params)
+    const { reverse_order: _order, message_seq: anchor, ...rest } = params
+    const llParams = { ...rest, reverseOrder: false }
+    if (!anchor || direction === 'before') {
+      return state.connection.request(action, { ...llParams, ...(anchor ? { message_seq: anchor } : {}) })
+    }
+    // LLBot 8.1.10 reads backwards from an inclusive end sequence. reverseOrder
+    // only changes output ordering, so a forward page needs a later end sequence.
+    const latest = await state.connection.request<{ messages?: OneBotMessage[] }>(action, { ...llParams, count: 1 })
+    const sequence = (message: OneBotMessage) => BigInt(message.message_seq ?? message.real_seq ?? 0)
+    const latestSeq = (latest.messages ?? []).reduce((max, item) => sequence(item) > max ? sequence(item) : max, 0n)
+    const afterSeq = BigInt(String(anchor))
+    let endSeq = afterSeq
+    const step = BigInt(Math.max(Number(params.count) - 1, 1))
+    while (endSeq < latestSeq) {
+      endSeq = endSeq + step < latestSeq ? endSeq + step : latestSeq
+      const page = await state.connection.request<{ messages?: OneBotMessage[] }>(action, {
+        ...llParams, message_seq: String(endSeq),
+      })
+      const messages = (page.messages ?? []).filter((item) => sequence(item) > afterSeq)
+      if (messages.length) return { messages }
+      // Deleted/filtered messages can leave a sequence gap; stop at the observed latest message.
+    }
+    return { messages: [] }
+  }
+
   async historyPage(
     account: string,
     type: 'group' | 'private',
@@ -1150,14 +1193,14 @@ export class OneBotHub extends EventEmitter {
     const key = type === 'group' ? 'group_id' : 'user_id'
     let data: { messages?: OneBotMessage[] }
     try {
-      data = await state.connection.request(action, {
+      data = await this.requestHistory(state, action, {
         [key]: peerId,
         count: requestCount,
         ...(decodedCursor ? { message_seq: decodedCursor.messageSeq } : {}),
         reverse_order: decodedCursor ? direction === 'before' : false,
         disable_get_url: false,
         parse_mult_msg: true,
-      })
+      }, direction)
     } catch (error) {
       if (error instanceof Error && /不存在|not found/i.test(error.message)) {
         return { messages: [], hasMoreBefore: false, hasMoreAfter: false }
@@ -1191,14 +1234,14 @@ export class OneBotHub extends EventEmitter {
     let hasMoreInDirection = mappedMessages.length > count
     if (!hasMoreInDirection && boundarySeq) {
       try {
-        const adjacent = await state.connection.request<{ messages?: OneBotMessage[] }>(action, {
+        const adjacent = await this.requestHistory(state, action, {
           [key]: peerId,
           count: 2,
           message_seq: boundarySeq,
           reverse_order: direction === 'before',
           disable_get_url: true,
           parse_mult_msg: false,
-        })
+        }, direction)
         hasMoreInDirection = (adjacent.messages ?? []).some((message) => {
           const sequence = String(message.message_seq ?? message.real_seq ?? '')
           return Boolean(sequence) && sequence !== boundarySeq
@@ -1471,7 +1514,7 @@ export class OneBotHub extends EventEmitter {
       emittedMessages: new Map(),
       compatible: false,
       implementationKind: 'unknown',
-      implementationName: 'NapCat.Onebot',
+      implementationName: 'Unknown OneBot',
       packetAvailable: false,
       refreshedAt: 0,
       directory: previous?.directory ?? { accountId: id, friends: [], groups: [], refreshedAt: 0 },
@@ -1485,14 +1528,10 @@ export class OneBotHub extends EventEmitter {
 
   private async initializeAccount(state: AccountState): Promise<void> {
     try {
-      const [login, status, version, packetAvailable] = await Promise.all([
+      const [login, status, version] = await Promise.all([
         state.connection.request<OneBotLoginInfo>('get_login_info'),
         state.connection.request<{ online?: boolean; good?: boolean }>('get_status'),
         state.connection.request<{ app_name?: string; app_version?: string; protocol_version?: string }>('get_version_info'),
-        state.connection.request<null>('nc_get_packet_status').then(
-          () => true,
-          () => false,
-        ),
       ])
       if (!this.isCurrent(state)) return
       if (String(login.user_id) !== state.selfId) {
@@ -1510,7 +1549,10 @@ export class OneBotHub extends EventEmitter {
       state.implementationKind = isNapCat ? 'napcat' : isLLOneBot ? 'llonebot' : 'unknown'
       state.implementationName = version.app_name || 'Unknown OneBot'
       state.implementationVersion = version.app_version
-      state.packetAvailable = packetAvailable
+      state.packetAvailable = isNapCat && await state.connection.request<null>('nc_get_packet_status').then(
+        () => true,
+        () => false,
+      )
       state.account = mapAccount(login, this.oneBotAccountStatus(status.online, status.good, compatible))
       await this.refreshAccount(state, true)
       if (!this.isCurrent(state)) return
@@ -2149,11 +2191,11 @@ export class OneBotHub extends EventEmitter {
       ['directory.peer_pin', '当前 LLOneBot 未提供 QQ 同步置顶 action'],
       ['request.friend.history', '当前 LLOneBot 无法回填普通好友申请历史'],
       ['group.folder.rename', '当前 LLOneBot 未提供群文件夹重命名 action'],
-      ['group.files', '当前 LLOneBot 未提供 NapCat 群文件 API'],
-      ['message.forward', '当前 LLOneBot 未提供 NapCat 单条转发 API'],
-      ['message.custom_faces', '当前 LLOneBot 未提供 NapCat 自定义表情市场 API'],
-      ['group.essence', '当前 LLOneBot 未提供 NapCat 精华消息 API'],
-      ['group.announcements', '当前 LLOneBot 未提供 NapCat 群公告 API'],
+      ['group.files', '当前工作台尚未对接 LLOneBot 群文件管理'],
+      ['message.forward', '当前工作台尚未对接 LLOneBot 单条转发'],
+      ['message.custom_faces', '当前工作台尚未对接 LLOneBot 自定义表情市场'],
+      ['group.essence', '当前工作台尚未对接 LLOneBot 精华消息'],
+      ['group.announcements', '当前工作台尚未对接 LLOneBot 群公告'],
     ])
     const minimumVersions = new Map<CapabilityName, string>([
       ['message.download.file', '4.8.0'],

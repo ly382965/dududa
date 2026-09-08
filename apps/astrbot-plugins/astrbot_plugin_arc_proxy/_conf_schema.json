@@ -4,5 +4,26 @@
     "type": "bool",
     "default": false,
     "hint": "默认关闭；启用插件不等于授予 Capability，实际可用范围由 Dududa 2.0 Runtime 策略决定。"
-  }
+  },
+  "compatibility_enabled": {
+    "description": "开启旧版 /arc 命令兼容通道",
+    "type": "bool",
+    "default": false,
+    "hint": "独立于本地 Capability；仅授权群的显式命令生效。查分还需单独开启 b50_enabled。启动和检查不会发送。"
+  },
+  "b50_enabled": {
+    "description": "单独开启 Arc B50 查分（本次发布先跳过）",
+    "type": "bool",
+    "default": false,
+    "hint": "关闭时明确提示查分暂未启用，不联系上游。开启后会向固定上游解绑、绑定、查询并回传图片；需另行确认上游状态。"
+  },
+  "allowed_group_ids": {"description": "兼容命令群白名单（空列表拒绝全部）", "type": "list", "default": []},
+  "upstream_bot_id": {"description": "既有 B50 上游 Bot QQ（只在私有配置填写）", "type": "string", "default": ""},
+  "state_root": {"description": "兼容状态绝对目录（SQLite / 图片缓存，仓库外）", "type": "string", "default": ""},
+  "assets_root": {"description": "既有 songlist / packlist / 曲目资产目录（默认 state_root/import）", "type": "string", "default": ""},
+  "catalog_root": {"description": "四个曲目索引 JSON 所在目录（默认 state_root/catalog）", "type": "string", "default": ""},
+  "renderer_assets_root": {"description": "谱面渲染 img / models / Fonts 目录（默认 state_root/renderer-assets）", "type": "string", "default": ""},
+  "queue_capacity": {"description": "B50 队列总容量（含正在执行；1–32）", "type": "int", "default": 8},
+  "request_timeout_seconds": {"description": "单次 B50 活动请求最长秒数（30–3600；超时暂停而非继续下一人）", "type": "int", "default": 600},
+  "transport_timeout_seconds": {"description": "单次 QQ 发送最长秒数（3–60）", "type": "int", "default": 15}
 }

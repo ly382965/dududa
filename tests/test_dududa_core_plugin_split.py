@@ -6,6 +6,8 @@ import importlib
 import unittest
 from pathlib import Path
 
+from dududa import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core" / "main.py"
 COMMANDS = ROOT / "apps" / "astrbot-plugins" / "astrbot_plugin_dududa_core" / "commands"
@@ -147,7 +149,7 @@ class DududaCorePluginSplitTests(unittest.TestCase):
         )
         self.assertEqual(
             ast.unparse(plugin.decorator_list[0]),
-            "register('astrbot_plugin_dududa_core', 'mmdustc', '嘟嘟哒统一命令、权限、课程查询和管理骨架', '0.1.0')",
+            f"register('astrbot_plugin_dududa_core', 'mmdustc', '嘟嘟哒统一命令、权限、课程查询和管理骨架', '{__version__}')",
         )
 
     def test_main_is_a_thin_wrapper_layer(self) -> None:

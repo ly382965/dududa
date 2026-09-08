@@ -173,7 +173,9 @@ def _social_decision_values(
     elif proactive_group and signals.private_data_boundary:
         action = SocialAction.IGNORE
         reasons = ("proactive_group_private_data_skipped",)
-    elif proactive_group and perception.need_tools:
+    elif proactive_group and perception.need_tools and not (
+        signals.tools_enabled and signals.authorization.can_use_tools
+    ):
         action = SocialAction.IGNORE
         reasons = ("proactive_group_tool_use_skipped",)
     elif proactive_group and perception.ambiguities:
@@ -201,7 +203,7 @@ def _social_decision_values(
             reasons = ("tools_disabled",)
         else:
             action = SocialAction.USE_TOOLS
-            reasons = ("bounded_tool_execution",)
+            reasons = (("proactive_group_tool_reply",) if proactive_group else ("bounded_tool_execution",))
     else:
         clarification = next(
             (
@@ -220,7 +222,16 @@ def _social_decision_values(
             reasons = ("bounded_clarification_required",)
         elif perception.conflicting_evidence:
             action = SocialAction.DEFER
-            reasons = ("conflicting_evidence_without_clarification",)
+            # Carry only fixed diagnostic codes into the terminal HTTP result.
+            reasons = (
+                "conflicting_evidence_without_clarification",
+                *(code for code in (
+                    "rule_model_conflict_task_kind",
+                    "rule_model_conflict_targets",
+                    "rule_model_conflict_tools",
+                    "rule_model_conflict_depth",
+                ) if code in perception.reason_codes),
+            )
         else:
             action = SocialAction.DIRECT_REPLY
             reasons = (

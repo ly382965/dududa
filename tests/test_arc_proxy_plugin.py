@@ -128,11 +128,12 @@ class ArcB50AssetTests(unittest.IsolatedAsyncioTestCase):
             await adapter.close()
         self.assertEqual(calls, 0)
 
-    def test_plugin_python_has_no_proxy_handler_identity_store_or_send(self) -> None:
+    def test_local_capability_has_no_proxy_handler_identity_store_or_send(self) -> None:
         identifiers: set[str] = set()
         string_literals: set[str] = set()
         decorators: list[str] = []
-        for path in PLUGIN_ROOT.glob("*.py"):
+        for name in ("provider.py", "local_renderer.py", "__init__.py"):
+            path = PLUGIN_ROOT / name
             tree = ast.parse(path.read_text(encoding="utf-8"))
             identifiers.update(
                 node.id for node in ast.walk(tree) if isinstance(node, ast.Name)
@@ -167,18 +168,25 @@ class ArcB50AssetTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertFalse(any("filter." in decorator for decorator in decorators))
-        self.assertFalse(any("3889054356" in value for value in string_literals))
-        self.assertFalse(any("mmdustc.top" in value for value in string_literals))
+        self.assertFalse(
+            any("https://" in value or "http://" in value for value in string_literals)
+        )
 
-    def test_plugin_is_default_off_and_describes_only_local_capability(self) -> None:
+    def test_local_and_compatibility_channels_are_independently_default_off(
+        self,
+    ) -> None:
         schema = json.loads(
             (PLUGIN_ROOT / "_conf_schema.json").read_text(encoding="utf-8")
         )
         metadata = (PLUGIN_ROOT / "metadata.yaml").read_text(encoding="utf-8")
 
         self.assertIs(schema["enabled"]["default"], False)
-        self.assertIn("version: v2.0.0", metadata)
-        self.assertIn("不代理第三方 Bot 或自行发送消息", metadata)
+        self.assertIs(schema["compatibility_enabled"]["default"], False)
+        self.assertIs(schema["b50_enabled"]["default"], False)
+        self.assertEqual(schema["allowed_group_ids"]["default"], [])
+        self.assertEqual(schema["upstream_bot_id"]["default"], "")
+        self.assertIn("version: v2.1.0", metadata)
+        self.assertIn("独立保留默认关闭的本地 B50 Capability", metadata)
 
     def test_repository_factory_points_at_in_tree_renderer(self) -> None:
         adapter = LocalB50Renderer.from_repository(

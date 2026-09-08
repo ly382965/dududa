@@ -236,6 +236,9 @@ def parse_log_line(
     if GROUP_LOG_MARKER not in line:
         return None, None
     timestamp_text, _, remainder = line.partition(" ")
+    # Docker emits nanoseconds; datetime stores microseconds. Python 3.10
+    # rejects the extra digits instead of truncating them like newer versions.
+    timestamp_text = re.sub(r"(\.\d{6})\d+", r"\1", timestamp_text)
     try:
         timestamp = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
     except ValueError:

@@ -4,20 +4,24 @@
 <!-- treework:status:start -->
 Branch: bot-release-convergence
 Parent: agent-expansion
-Status: paused
-Verification: partial
-Last sync: unix:1788531006
+Status: complete
+Verification: verified
+Last sync: unix:1788576635
 <!-- treework:status:end -->
 
 ## Current Reality (true state now, especially stale-plan corrections; not action narration)
 
-- Web is `dududa/web:31441a3`, with the MCP workbench layout fix. AstrBot remains `dududa/astrbot:0ef2a18-4.27.5`, with immutable Runtime/plugin source `5e243fd` (later changes only package/build definitions). MCP Console remains `cdbc5f0`; NapCat remains 4.18.19. The latest notifai follow-up recreated only AstrBot and MCP Console with unchanged images; all 29 other containers retain their IDs, image IDs and start times. The proactive switch and saved-versus-applied Key UI remain available.
+- Web is `dududa/web:f6c158d`; AstrBot is `dududa/astrbot:297106e-4.27.5`, with matching immutable Runtime/plugin source. MCP Console remains `cdbc5f0` (its source is unchanged); NapCat remains 4.18.19. Final comparison confirms only Web/AstrBot changed and all other 29 containers retained identity/image/start time. Old private images, manifests, configuration and plugin snapshots remain available.
 - Formal Agent APIs query current authenticated Runtime state without corpus or personal credentials; shared policy writes are atomic and serialized. The Key dialog now exposes its shared Base URL/model connection.
 - AstrBot 4.27.5, NapCat 4.18.19, current Web and MCP are deployed using the original four container names/projects. Private old images, exact manifests and stopped-writer data backups are retained. Active source/plugin/MCP mounts no longer depend on a development worktree.
-- Live Runtime is configured and maps Haiku/Sonnet/Opus to DeepSeek Flash low / Flash high / Pro max. Pool revision 14 was applied with the explicitly approved provider-managed retention policy. An ordinary greeting generated a nonempty no-send Runtime preview in 10.732 seconds, with zero QQ outputs, Memory writes and tool calls. Web/QQ and the MCP catalog (10 servers/26 capabilities) are connected; public HTTPS still redirects unauthenticated users to Auth. All 27 excluded containers and the three unchanged Bot dependencies retain their IDs, image IDs and start times.
+- Live Runtime maps Haiku/Sonnet/Opus to DeepSeek Flash low / Flash high / Pro max. The new Web apply action successfully applied revision 14 with the existing approved provider-managed retention policy (HTTP 200/applied/ready, 6.312 seconds). Arc v2.1 loads with the original scope and binding database; B50 is explicitly disabled as requested. An offline read-only asset test successfully queried song information and rendered a chart, without QQ or upstream calls.
 
 ## Recent Work (latest meaningful progress event and verification result; not a command log)
 
+- Final summary-profile fix passed 95 focused checks and a separate production-composition test with eight subcases; repository safety passed 1,314 files. Formal Web retrieved 16 actual same-scope history records, chose MEDIUM and returned a response in 22.411s, with tools/output/memory writes zero. No private history/candidate was recorded or published.
+- All 100 new questions are now documented: first full live synthetic batch on `8228da9` had 89 response/4 failed; strict review of its 93 questions was 60 pass/25 partial/8 fail. Seven isolated cases have separate evidence. Final `297106e` summary cases 21/27/100 all returned text but remain semantically partial for cross-midnight filtering, certainty and attribution. These are quality follow-ups, not claimed human/live-send acceptance.
+- Sanitized code was published to GitHub main through `72e3cae`; final code `297106e` and the completed report are included in the closing publication. Older events below describe their own point in time, not current deployment limitations.
+- Integrated all three child implementations. Web 104 + server 117, browser 13 and integrated Python 90 passed. Live smoke then exposed the old single-message RuntimeState assumption; repaired it in `c39507d`, with a complete production preview regression. A single synthetic DeepSeek projection reproduced `text_summary` versus `bounded_transformation`; `4822903` adds only exact semantic aliases, keeping dangerous-class conflicts. Final focused 39 tests plus one full production-history preview passed, and the repository safety scan passed 1,314 files. The corrected image is deployed; final live smoke and the new 100-question observations are in progress.
 - Restored the two canonical read-only notifai mounts missing from the private release manifest, using each container's existing immutable source revision. No source/config/credential/model/image changes were necessary. Exact pre/post manifest comparison permits only those two added mounts; the old private manifest is retained.
 - Formal Web check now reports notifai healthy and all seven mapped tools discovered. A public `notifai.stats.read.v1` request succeeded at both transport and business-envelope levels, returning 1,396 notices from 24 sources. A separate configured-command stdio discovery inside AstrBot also found all seven tools without a business call. Both source snapshots passed the existing offline metadata generator `--check`; no schema drift. Web/QQ connected, Runtime ready with unchanged DeepSeek mappings, public Auth302 and all 29 non-target containers unchanged were verified. No QQ test message or group-policy change.
 - Fixed MCP controls that had a template class but no CSS: explicit styled/focus/disabled/pending check button; wrapped status/timestamps; vertically spaced cards with aligned actions; container-width-driven columns and an in-section sticky toolbar below Agent tabs. Connection/expiry semantics and authorization are unchanged, with no automatic checks.
@@ -39,12 +43,11 @@ Last sync: unix:1788531006
 
 ## Open Issues (unfinished work, impediments, or unresolved questions; not latent finished-work risks)
 
-- The preceding read-only preview diagnosis found that group history is dropped before Runtime (one operator instruction only) and empty candidates receive a misleading green success label. A same-prompt live retry returned clarification, not a group summary; the original screenshot's terminal reason was not captured. This separate behavior was not changed by the narrowly requested MCP layout fix.
-- Await operator choice for Arc: old QQ proxy commands versus the intentionally different default-off local Capability replacement. Do not silently remove commands or claim that preserved legacy Arc is upgraded.
-- A synthetic fixed-output prompt containing the verification keyword “测试” deferred with `conflicting_evidence_without_clarification`; code inspection supports a rules/LLM verification disagreement, but the exact online conflicting field was not captured. An ordinary greeting succeeded. Do not weaken the conflict policy or claim every prompt/model-quality scenario is verified.
-- Future Key-pool edits still require a controlled application/reassembly step; automatic frontend apply/hot reload is not implemented. The successful no-send preview is not evidence of subsequent autonomous QQ delivery or human quality acceptance.
+- No unrecorded release task remains. The diagnostic report explicitly retains model-quality gaps: over-clarification, multi-item output-limit failures, invalid Provider output, tool selection/source evidence, and cross-day/factual summary precision. This release acceptance is not the separate S23 human-quality or autonomous-delivery milestone.
+- B50 score lookup is explicitly deferred by the operator, not an unresolved release choice. Real QQ test delivery and human model-quality acceptance remain separate from no-send engineering verification.
+- Current group proactive mode is on but probability is 0%; it intentionally does not trigger. Preserve the current operator settings and report the limit honestly.
 
 ## Exit Notes (handoff/return context for transitions; not a general progress log)
 
 - Private deployment records stay outside Git under the external release/state root. Keep all Authentik/Caddy/other-site/LLM-proxy containers unchanged.
-- DeepSeek application and no-send model generation are verified; do not mark the broader release branch complete while the separate Arc compatibility choice remains open. Keep its TreeWork verification partial and pause after sanitized publication. Authentication redirect was verified; no password reset or new authenticated user session was created.
+- Final no-send observations are in the 100-question report. All three integrated children passed protected completion; the generated status above records the parent release lifecycle. Do not claim B50, real proactive delivery or all model-quality criteria passed. Public Auth redirect is verified; no password reset or new authenticated session was created in this repair. No new branch is entered automatically; future quality acceptance belongs to the separately scoped S23 work.

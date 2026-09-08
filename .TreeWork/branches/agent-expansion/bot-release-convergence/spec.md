@@ -112,6 +112,57 @@ compatibility image onto the verified current base; never copy its private data.
 
 ## General Verification
 
+### Remaining Repairs Intake (2026-09-04)
+
+The operator now requests all six reported remaining items. The accepted child
+branches own group-history/preview outcomes and demonstrated perception defects,
+explicit external model configuration application, and Arc compatibility migration.
+This replaces the earlier pending Arc product choice: preserve the four deployed
+QQ commands in the canonical compatibility implementation, with the old behavior
+explicitly enabled only for the existing authorized groups. Migration and startup
+must not send messages or bind upstream accounts. The local Capability contract
+remains separate and default-off. Freeze the prior implementation privately after
+cutover rather than deleting command support or user data.
+
+The operator subsequently explicitly deferred Arc score lookup. Keep B50 disabled
+behind its separate flag in this release; no upstream binding/query or live B50
+acceptance is required or authorized. Preserve the implemented compatibility code
+for a later explicit enablement, and migrate the remaining local Arc commands.
+
+Lead integration verifies the newly authored 100-question Markdown separately
+from the older deterministic 100-message fixture. Record synthetic model-preview,
+isolated fault/proactive checks and live delivery evidence separately; do not
+claim scripted answers or HTTP success establish model-quality acceptance.
+No bulk production-group test messages are authorized. The latest saved target
+group policy has its participation switch on but probability zero. Preserve
+that current operator setting and show its effective non-triggering state; a
+real autonomous-delivery acceptance remains unavailable while that policy holds.
+
+The model apply boundary owns a Dududa-only Provider generation, leaving shared
+AstrBot Provider instances alive for other consumers until normal host shutdown.
+Use bounded candidate validation, a serialized apply and active-call admission
+boundary before swapping the Dududa assembly; preserve external configurations
+and rollback on failed preparation. This does not authorize a generic host
+restart endpoint or browser access to credentials/Docker.
+
+Live integration follow-ups remain within the same repair: a historical context
+must survive Runtime checkpoint validation using the existing bounded builder,
+not a second history schema. Production SHORT output keeps its existing 180
+visible-character hard cap; its Unicode policy-unit cap is aligned to 180 so a
+Chinese response already inside that display bound is not rejected by a hidden
+128-unit limit. Do not truncate generated facts or increase reasoning budgets.
+Production perception instructions name the existing canonical transformation
+task kind for summarizing/rewriting untrusted quoted data. Preserve conflicting
+intent decisions and report only four fixed conflict-field reason codes, never
+raw model projections or prompt/configuration contents.
+
+An actual retained multi-message group-summary request may select the existing
+MEDIUM response profile through existing detail evidence. Explicit short/long,
+locked preferences, one-message summaries and non-summary transformations retain
+their behavior. This does not raise response hard limits, change model tiers or
+authorize tool/QQ actions. Record failed and partial model-quality cases without
+hardcoding the acceptance table into the framework.
+
 ### MCP Frontend Layout Follow-up
 
 Repair only the workbench presentation: explicitly style the connection-check

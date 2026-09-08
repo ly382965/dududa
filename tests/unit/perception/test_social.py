@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
@@ -15,6 +16,7 @@ from dududa.perception.contracts import (
 from dududa.perception.social import (
     DeterministicSocialDecisionPolicy,
     SocialDecisionConfig,
+    validate_social_decision,
 )
 from dududa.ports.context import (
     ManualCancellationToken,
@@ -238,6 +240,25 @@ class DeterministicSocialDecisionPolicyTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIs(decision.action, SocialAction.ASK_CLARIFICATION)
         self.assertEqual(decision.clarification_key, "clarify.task")
+
+    async def test_conflict_deferral_preserves_only_fixed_diagnostic_codes(self) -> None:
+        codes = (
+            "rule_model_conflict_task_kind", "rule_model_conflict_targets",
+            "rule_model_conflict_tools", "rule_model_conflict_depth",
+        )
+        perception = replace(
+            _perception(context()), conflicting_evidence=True,
+            reason_codes=(*codes, "rule_model_conflict", "untrusted_projection_label"),
+        )
+        signals = _signals()
+        decision = await _policy().decide(perception, signals, call=_call())
+        self.assertIs(decision.action, SocialAction.DEFER)
+        self.assertEqual(set(decision.reason_codes), {
+            "conflicting_evidence_without_clarification", *codes,
+        })
+        self.assertEqual(validate_social_decision(
+            decision, perception, signals, SocialDecisionConfig("social-v1", 0.6),
+        ), decision)
 
     async def test_cancellation_and_deadline_are_not_soft_fallbacks(self) -> None:
         perception = _perception(context())

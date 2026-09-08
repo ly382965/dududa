@@ -992,6 +992,9 @@ class SocialDecision:
         proactive_group_reply = (
             self.action is SocialAction.DIRECT_REPLY
             and "proactive_group_direct_reply" in self.reason_codes
+        ) or (
+            self.action is SocialAction.USE_TOOLS
+            and "proactive_group_tool_reply" in self.reason_codes
         )
         targets = _unique_strings(
             self.target_identity_refs,

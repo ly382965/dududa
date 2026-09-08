@@ -21,7 +21,7 @@ NapCat / LLOneBot account B ---- QQ account B
 ```
 
 网关同时支持 NapCat 与 LLOneBot（LuckyLilliaBot / LLBot）两种 OneBot 11 客户端：账号初始化、
-消息历史分页与标准收发 action 对两者一致；NapCat 专有扩展（自定义表情市场、群文件、
+标准收发共用同一套 OneBot action；历史分页适配 LLBot 的反向序号范围。尚未对接的 NapCat 扩展（自定义表情市场、群文件、
 单条转发、精华消息、群公告等）对 LLOneBot 会在能力文档中明确标注 unsupported，
 相关页面入口据此禁用，不会发起注定失败的 action。
 
@@ -78,9 +78,12 @@ http://127.0.0.1:5173
 
 ### LLOneBot（LuckyLilliaBot / LLBot）
 
-LLBot 的每账号配置位于 `bin/llbot/data/config_<QQ>.json`，其 `ob11.connect` 数组支持多个
-并行连接。使用以下命令幂等追加/更新指向工作台的 `ws-reverse` 条目（默认 LLBot 数据目录
-`$HOME/LLBot/bin/llbot/data`，可用 `LLBOT_DATA_DIR` 覆盖）：
+Compose 默认使用 LLOneBot 8.1.10，WebUI 为 `http://127.0.0.1:3080`。首次登录需在
+WebUI 中输入官方 Auth Token 并扫码。账号配置位于 `STACK_DATA_ROOT/llbot/config_<QQ>.json`，
+可用 `LLBOT_DATA_DIR` 指定已有目录；CLI/Desktop 安装则指向其 `bin/llbot/data`。
+
+`ob11.connect` 可同时连接 AstrBot 与工作台。以下命令使用统一配置脚本追加/更新工作台连接，
+保留 AstrBot 和其他网关配置，默认容器地址为 `ws://web:8000/onebot/v11/ws`：
 
 ```bash
 ./manage.sh web-connect-llbot
@@ -92,8 +95,8 @@ LLBot 的每账号配置位于 `bin/llbot/data/config_<QQ>.json`，其 `ob11.con
 {
   "type": "ws-reverse",
   "enable": true,
-  "url": "ws://127.0.0.1:5173/onebot/v11/ws",
-  "heartInterval": 60000,
+  "url": "ws://web:8000/onebot/v11/ws",
+  "heartInterval": 30000,
   "token": "<onebot_access_token 的内容>",
   "reportSelfMessage": true,
   "reportOfflineMessage": false,
@@ -102,8 +105,10 @@ LLBot 的每账号配置位于 `bin/llbot/data/config_<QQ>.json`，其 `ob11.con
 }
 ```
 
-写入后重启 LLBot 生效。现有 LLBot -> AstrBot 的 `ws://127.0.0.1:6199/ws` 连接保留，
-工作台连接作为第二个客户端并行存在。
+写入后重启 LLBot 生效。容器内 AstrBot 地址为 `ws://astrbot:6199/ws`，工作台连接作为
+第二条连接；同主机 CLI/Desktop 可分别使用 `ws://127.0.0.1:6199/ws` 和
+`ws://127.0.0.1:5173/onebot/v11/ws`（配置命令用 `DUDUDA_WEB_ONEBOT_WS_URL` 覆盖）。
+迁移步骤与回退方式见 [LLOneBot 迁移说明](../../docs/operations/llonebot-migration.md)。
 
 ## Development
 

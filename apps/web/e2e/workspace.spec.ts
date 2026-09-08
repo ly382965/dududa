@@ -5,6 +5,7 @@ const selfId = '123456789'
 const token = 'playwright-only-onebot-token-32-chars'
 let napcat: WebSocket | undefined
 const extraNapcats: WebSocket[] = []
+let syntheticSendActions = 0
 
 function message(content: string, overrides: Record<string, unknown> = {}, ownerId = selfId) {
   return {
@@ -127,6 +128,7 @@ async function openFakeNapCat(ownerId = selfId, botName = '嘟嘟哒真实号', 
         data = { files: [], folders: [] }
         break
       case 'send_group_msg':
+        syntheticSendActions += 1
         lastSentText = String((request.params.message as Array<{ data?: { text?: string } }>)[0]?.data?.text ?? '')
         data = { message_id: 102 }
         break
@@ -156,6 +158,7 @@ async function openFakeNapCat(ownerId = selfId, botName = '嘟嘟哒真实号', 
 }
 
 test.beforeEach(async () => {
+  syntheticSendActions = 0
   napcat = await openFakeNapCat()
 })
 
@@ -165,6 +168,160 @@ test.afterEach(() => {
   extraNapcats.splice(0).forEach((socket) => socket.close())
 })
 
+for (const width of [1280, 390]) {
+  test(`preview explains empty outcomes and zero probability without sending at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const scope = { accountId: `qq-${selfId}`, conversationId: `qq-${selfId}:group:345678901` }
+    const policy = {
+      schemaVersion: 1, scope, enabled: true,
+      modelTier: { mode: 'adaptive', preferred: 'haiku', allowed: ['haiku'] },
+      reasoning: { mode: 'adaptive', preferred: 'low', allowed: ['low'] },
+      answerProfile: { mode: 'adaptive', preferred: 'short', allowed: ['short'] },
+      replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['normal'] },
+      contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['standard'] },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['natural'] },
+      proactiveTalk: { probabilityPercent: 0, cooldownSeconds: 5, maximumPerHour: 500 },
+      plugins: { 'social.proactive_talk': 'on' },
+    }
+    await page.route('**/api/agent/status', route => route.fulfill({ json: {
+      available: true, outputEnabled: false, providerConfigured: true, modelMapping: { haiku: 'synthetic-model' }, warnings: [],
+      runtimeControls: {
+        passiveAutoReply: { actualEnabled: true, state: 'enabled', rolloutMode: 'canary', deliveryEnabled: true, killSwitch: false, summary: 'Synthetic' },
+        proactiveGroupParticipation: { actualEnabled: true, state: 'enabled', stage: 'proactive_canary', deliveryEnabled: true, summary: 'Synthetic' },
+      },
+    } }))
+    await page.route('**/api/agent/config**', route => route.fulfill({ json: policy }))
+    await page.route('**/api/agent/catalog', route => route.fulfill({ json: {
+      agent: { id: 'dududa', displayName: 'Dududa' }, selectionModes: ['adaptive'], pluginModes: ['off', 'on', 'auto'],
+      models: [{ id: 'synthetic-model', tier: 'haiku', displayName: 'Synthetic light', available: true, modalities: ['text'], reasoningLevels: ['low'] }, { id: 'synthetic-model', tier: 'sonnet', displayName: 'Synthetic medium', available: true, modalities: ['text'], reasoningLevels: ['low'] }],
+      reasoningLevels: ['low'], answerProfiles: ['short'], replyIntensities: ['normal'], groupChatStyles: ['natural'],
+      contextLengths: [{ id: 'standard', messageLimit: 30, characterLimit: 18000 }],
+      proactiveTalkLimits: { probabilityPercent: { minimum: 0, maximum: 100, step: 1 }, cooldownSeconds: { minimum: 5, maximum: 1800, step: 5 }, maximumPerHour: { minimum: 1, maximum: 500, step: 1 } },
+      replyIntensityNotice: '', plugins: [], policyDefaults: policy,
+    } }))
+    await page.route('**/api/internal-test/mcp/catalog', route => route.fulfill({ json: { schemaVersion: 1, available: false, servers: [], capabilities: [] } }))
+    const coverage = { source: 'synthetic', partial: true, truncated: true, historyMessagesRead: 2, oldestAt: '2026-09-04T08:00:00Z', newestAt: '2026-09-04T08:01:00Z' }
+    const usage = { messageLimit: 31, characterLimit: 18000, messagesRead: 3, charactersRead: 80, coverage }
+    let previewFailed = false
+    await page.route('**/api/agent/respond', async route => {
+      expect(route.request().postDataJSON().messages).toEqual([])
+      await route.fulfill({ json: {
+        runId: 'synthetic-empty', candidate: '', outcome: previewFailed ? 'failed' : 'deferred', runtimeState: previewFailed ? 'failed' : 'deferred', generationObserved: false,
+        tier: 'haiku', model: 'synthetic-model', reasoning: 'low', answerProfile: 'short', replyIntensity: 'normal', contextLength: 'standard', groupChatStyle: 'natural',
+        contextUsage: usage, effectiveSelection: { scope, policySource: 'saved', modelTier: 'haiku', model: 'synthetic-model', reasoning: 'low', answerProfile: 'short', replyIntensity: 'normal', contextLength: 'standard', groupChatStyle: 'natural', contextUsage: usage, plugins: {} },
+        reasonCodes: previewFailed
+          ? ['policy.saved', 'provider_output_invalid', 'runtime.preview.no_send', 'plugin.emoji.kitchen.off_by_admin', 'plugin.icourse.read.eligible_on']
+          : ['conflicting_evidence_without_clarification', 'runtime.preview.no_send'], latencyMs: 1,
+        generatedAt: '2026-09-04T09:00:00Z', outputCalls: 0, memoryWrites: 0, toolCalls: 0, runtimePath: 'dududa_2_preview',
+      } })
+    })
+    await page.goto('/')
+    await page.locator('.conversation-item').first().click()
+    await page.getByRole('button', { name: width > 860 ? '打开 Agent Console' : 'Agent', exact: true }).click()
+    const panel = page.getByRole('complementary', { name: 'Agent Console' })
+    await panel.getByLabel('Agent 指令输入').fill('总结这段合成讨论')
+    await panel.getByRole('button', { name: '发送给 Agent', exact: true }).click()
+    await expect(panel.locator('.agent-message--assistant')).toContainText('本次暂缓回复')
+    await expect(panel.locator('.agent-message--assistant')).toContainText('conflicting_evidence_without_clarification')
+    await expect(panel.locator('.agent-message--assistant .status-part--success')).toHaveCount(0)
+    await expect(panel.locator('.agent-message--assistant')).toContainText('仅最近 2 条历史（非全天，已截断）')
+    await page.screenshot({ path: testInfo.outputPath('preview-deferred.png') })
+    previewFailed = true
+    await panel.getByLabel('Agent 指令输入').fill('总结这个群最近已读取的讨论，并说明覆盖范围。')
+    await panel.getByRole('button', { name: '发送给 Agent', exact: true }).click()
+    const failedMessage = panel.locator('.agent-message--assistant').last()
+    await expect(failedMessage).toContainText('模型未返回可用正文，请重试。')
+    await expect(failedMessage).not.toContainText('policy.saved')
+    await expect(failedMessage).not.toContainText('plugin.')
+    await expect(failedMessage.locator('.status-part--success')).toHaveCount(0)
+    await panel.getByRole('button', { name: '配置', exact: true }).click()
+    await expect(panel.getByText('触发概率为 0，不会自动搭话；服务连接与其他回复功能不受影响。')).toBeVisible()
+    const probability = panel.locator('input[type=range]').filter({ visible: true }).first()
+    await probability.fill('1')
+    await probability.fill('0')
+    await expect(panel.getByText('未保存草稿：触发概率为 0，保存后不会自动搭话；当前生效值仍以已保存配置为准。')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('zero-probability-draft.png') })
+    await panel.getByLabel('选择首选模型').selectOption('sonnet')
+    await panel.getByRole('button', { name: '配置', exact: true }).click()
+    await expect(panel.getByLabel('模型档位初值')).toHaveValue('sonnet')
+    await panel.getByRole('button', { name: '对话', exact: true }).click()
+    let failedRequests = 0
+    await page.route('**/api/agent/respond', async route => {
+      failedRequests += 1
+      await route.fulfill({ status: 503, json: { error: '读取 QQ 历史失败：请检查账号后重试' } })
+    })
+    await panel.getByRole('button', { name: '对话', exact: true }).click()
+    await panel.getByLabel('Agent 指令输入').fill('重试历史读取')
+    await panel.getByRole('button', { name: '发送给 Agent', exact: true }).click()
+    await expect(panel.locator('.preview-failure')).toContainText('读取 QQ 历史失败')
+    await panel.getByRole('button', { name: '重试本次预览', exact: true }).click()
+    await expect.poll(() => failedRequests).toBe(2)
+    await panel.getByRole('button', { name: '运行', exact: true }).click()
+    await expect(panel.getByText('未确认', { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('actionable-preview-error.png') })
+    expect(syntheticSendActions).toBe(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+  })
+}
+
+for (const width of [1280, 390]) {
+  test(`group plugin switches persist scoped policy without sending at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 })
+    const scope = { accountId: `qq-${selfId}`, conversationId: `qq-${selfId}:group:345678901` }
+    let saved = {
+      schemaVersion: 1, scope, enabled: true,
+      modelTier: { mode: 'adaptive', preferred: 'haiku', allowed: ['haiku'] },
+      reasoning: { mode: 'adaptive', preferred: 'low', allowed: ['low'] },
+      answerProfile: { mode: 'adaptive', preferred: 'short', allowed: ['short'] },
+      replyIntensity: { mode: 'adaptive', preferred: 'normal', allowed: ['normal'] },
+      contextLength: { mode: 'adaptive', preferred: 'standard', allowed: ['standard'] },
+      groupChatStyle: { mode: 'adaptive', preferred: 'natural', allowed: ['natural'] },
+      proactiveTalk: { probabilityPercent: 0, cooldownSeconds: 5, maximumPerHour: 500 },
+      plugins: { 'emoji.kitchen': 'off', 'arc.compat': 'off', 'social.reread.auto': 'off' },
+    }
+    const writes: Array<{ scope: typeof scope; policy: typeof saved }> = []
+    await page.route('**/api/agent/status', route => route.fulfill({ json: { available: true, providerConfigured: true, outputEnabled: false, modelMapping: {}, warnings: [] } }))
+    await page.route('**/api/agent/config**', async route => {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON()
+        writes.push(body)
+        saved = body.policy
+      }
+      await route.fulfill({ json: saved })
+    })
+    await page.route('**/api/agent/catalog', route => route.fulfill({ json: {
+      models: [], reasoningLevels: [], answerProfiles: [], replyIntensities: [], contextLengths: [], groupChatStyles: [],
+      selectionModes: ['adaptive'], pluginModes: ['off', 'auto', 'on', 'locked'],
+      proactiveTalkLimits: { probabilityPercent: { minimum: 0, maximum: 100, step: 1 }, cooldownSeconds: { minimum: 5, maximum: 1800, step: 5 }, maximumPerHour: { minimum: 1, maximum: 500, step: 1 } },
+      policyDefaults: saved,
+      plugins: [['emoji.kitchen', 'Emoji Kitchen 表情合成'], ['arc.compat', 'Arc 曲目与谱面'], ['social.reread.auto', '自动复读']].map(([id, displayName]) => ({
+        id, displayName, kind: 'readonly_query', installed: true, available: true, policyManaged: true,
+        runtimeTarget: 'astrbot', runtimeReadiness: 'online', executionKind: id === 'social.reread.auto' ? 'passive_behavior' : 'command_auto_reply', description: '仅本账号本群的显式开启权限',
+      })),
+    } }))
+    await page.goto('/')
+    await page.locator('.conversation-item').first().click()
+    await page.getByRole('button', { name: width > 860 ? '打开 Agent Console' : 'Agent', exact: true }).click()
+    const panel = page.getByRole('complementary', { name: 'Agent Console' })
+    await panel.getByRole('button', { name: '配置', exact: true }).click()
+    const control = panel.getByRole('switch', { name: '在本群启用Emoji Kitchen 表情合成', exact: true })
+    await control.check()
+    expect(writes).toHaveLength(0)
+    await panel.getByRole('button', { name: '保存配置', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(1)
+    expect(writes[0]!.scope).toEqual(scope)
+    expect(saved.plugins).toEqual({ 'emoji.kitchen': 'on', 'arc.compat': 'off', 'social.reread.auto': 'off' })
+    await panel.locator('.plugin-list').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath('group-plugin-controls.png') })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+    await control.uncheck()
+    await panel.getByRole('button', { name: '保存配置', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(2)
+    expect(saved.plugins['emoji.kitchen']).toBe('off')
+    expect(syntheticSendActions).toBe(0)
+  })
+}
+
 test('desktop operator reads and sends through the NapCat action channel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
@@ -172,7 +329,7 @@ test('desktop operator reads and sends through the NapCat action channel', async
   await expect(page.getByRole('heading', { name: '消息工作台' })).toBeVisible()
   await expect(page.getByText('NapCat 实时测试群', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('这条消息来自 OneBot 通道', { exact: true })).toBeVisible()
-  await expect(page.getByText('NapCat 实时连接')).toBeVisible()
+  await expect(page.getByText('QQ 在线', { exact: true })).toBeVisible()
 
   const composer = page.getByLabel('QQ 消息输入')
   await composer.fill('真实发送链路测试')
@@ -182,6 +339,36 @@ test('desktop operator reads and sends through the NapCat action channel', async
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   expect(overflow).toBeLessThanOrEqual(0)
   if (process.env.DUDUDA_CAPTURE_SCREENSHOTS === '1') await page.screenshot({ path: '/tmp/dududa-chat-desktop.png' })
+})
+
+test('offline status and search errors remain actionable without sending', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await expect(page.getByText('这条消息来自 OneBot 通道', { exact: true })).toBeVisible()
+  const trigger = page.getByTitle('搜索聊天记录', { exact: true }).first()
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: '搜索消息' })
+  await dialog.getByLabel('消息关键词').fill('没有匹配的关键词_xyz')
+  await dialog.getByRole('button', { name: '搜索', exact: true }).click()
+  await expect(dialog.getByText('未找到匹配消息，请调整关键词或日期范围')).toBeVisible()
+  await dialog.getByTitle('关闭', { exact: true }).focus()
+  await page.keyboard.press('Shift+Tab')
+  expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(dialog).not.toBeVisible()
+  await expect(trigger).toBeFocused()
+
+  napcat!.send(JSON.stringify({ self_id: Number(selfId), post_type: 'meta_event', meta_event_type: 'heartbeat', status: { online: false, good: false } }))
+  await expect(page.locator('.connection-notice')).toContainText('QQ 已离线')
+  await expect(page.locator('.sidebar-footer')).toContainText('0 在线 / 1 个账号')
+  await expect(page.getByTitle('发送消息', { exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: '重新检测', exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('offline-recovery.png') })
+  await page.getByRole('button', { name: '联系人', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('联系人暂时无法读取')
+  await expect(page.getByText('当前账号暂无联系人', { exact: true })).not.toBeVisible()
+  await expect(page.getByRole('button', { name: '重试读取联系人', exact: true })).toBeVisible()
+  expect(syntheticSendActions).toBe(0)
 })
 
 test('API Key workbench loads all three pools through the default browser adapter', async ({ page }) => {
@@ -257,6 +444,7 @@ for (const width of [1280, 390, 320]) {
     const consolePanel = page.getByRole('complementary', { name: 'Agent Console' })
     await consolePanel.getByRole('button', { name: '配置', exact: true }).click()
     const workbench = consolePanel.locator('.mcp-workbench')
+    await workbench.locator('summary').click()
     const cards = workbench.locator('.mcp-server-grid > article')
     await expect(cards).toHaveCount(10)
     await workbench.locator('.section-heading').scrollIntoViewIfNeeded()
@@ -416,11 +604,13 @@ test('mobile management routes remain usable in portrait and short landscape vie
   await page.getByRole('tablist', { name: '通知类型' }).getByRole('button', { name: /群通知/ }).click()
   await expect(page.getByText(/真实入群申请/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Key 池', exact: true }).click()
+  await page.locator('.mobile-more summary').click()
+  await page.locator('.mobile-more').getByRole('button', { name: 'API Key 池', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'API Key 池' })).toBeVisible()
   await expect(page.locator('.pool-card')).toHaveCount(3)
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
 
+  await page.locator('.mobile-more summary').click()
   await page.getByRole('button', { name: '设置', exact: true }).click()
   await expect(page.getByRole('heading', { name: '设置' })).toBeVisible()
   await expect(page.getByRole('button', { name: '跟随系统' })).toBeVisible()

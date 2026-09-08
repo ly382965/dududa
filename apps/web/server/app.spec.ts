@@ -568,6 +568,23 @@ afterEach(async () => {
 })
 
 describe('Dududa NapCat gateway', () => {
+  it('returns the workspace while the upstream directory refresh is still pending', async () => {
+    const { hub, server, baseUrl } = await startTestServer()
+    servers.push(server)
+    let finish!: () => void
+    const refresh = vi.spyOn(hub, 'refreshAll').mockImplementation(() => new Promise<void>(resolve => { finish = resolve }))
+    try {
+      const response = await fetch(`${baseUrl}/api/workspace?refresh=1`, { signal: AbortSignal.timeout(1000) })
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ accounts: [] })
+      await fetch(`${baseUrl}/api/workspace?refresh=1`)
+      expect(refresh).toHaveBeenCalledTimes(1)
+    } finally {
+      finish?.()
+      refresh.mockRestore()
+    }
+  })
+
   it('serves workspace data without browser authentication', async () => {
     const { server, baseUrl } = await startTestServer()
     servers.push(server)
@@ -858,8 +875,8 @@ describe('Dududa NapCat gateway', () => {
 
     await waitFor(async () => {
       const response = await fetch(`${baseUrl}/api/workspace`)
-      const body = (await response.json()) as { accounts: unknown[] }
-      return body.accounts.length === 1
+      const body = (await response.json()) as { conversations: Array<{ name: string }> }
+      return body.conversations.some((item) => item.name === '真实测试群')
     })
 
     const workspace = (await (await fetch(`${baseUrl}/api/workspace`)).json()) as {
@@ -1050,6 +1067,45 @@ describe('Dududa NapCat gateway', () => {
     expect(workspace.runtime).toMatchObject({ status: 'connected' })
     expect(workspace.runtime.message).toContain('OneBot')
     expect(workspace.accounts[0]?.status).toBe('online')
+    expect(llonebot.actions.some((item) => item.action === 'nc_get_packet_status')).toBe(false)
+    const blocked = await fetch(`${baseUrl}/api/accounts/${account}/conversations/group/345678901/custom-faces`)
+    expect(blocked.status).toBe(400)
+    expect(llonebot.actions.some((item) => item.action === 'fetch_custom_face')).toBe(false)
+    llonebot.socket.close()
+  })
+
+  it('pages LLOneBot history in both directions using its inclusive backward sequence API', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const history = [1, 2, 3, 4, 5, 6, 20, 21, 22]
+    const llonebot = connectFakeNapCat(port, {
+      appName: 'LLOneBot', appVersion: '8.1.10', packetAvailable: false,
+      // LLBot 8.1.10 always fetches backwards; reverseOrder only reverses the result.
+      groupHistory: ({ params }) => {
+        const end = Number(params.message_seq || 22)
+        const page = history.filter((seq) => seq <= end).slice(-Number(params.count))
+        if (params.reverseOrder) page.reverse()
+        return page.map((seq) => realGroupMessage(`消息 ${seq}`, {
+          message_id: seq, message_seq: seq, time: 1_785_742_400 + seq,
+        }))
+      },
+    })
+    await llonebot.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => (await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)).ok)
+    const url = `${baseUrl}/api/accounts/${account}/conversations/group/345678901/messages`
+    type Page = { messages: Array<{ messageSeq: string }>; beforeCursor: string; afterCursor: string; hasMoreAfter: boolean }
+    const latest = await (await fetch(`${url}?limit=2`)).json() as Page
+    expect(latest.messages.map((item) => item.messageSeq)).toEqual(['21', '22'])
+    const older = await (await fetch(`${url}?limit=2&before=${encodeURIComponent(latest.beforeCursor)}`)).json() as Page
+    expect(older.messages.map((item) => item.messageSeq)).toEqual(['6', '20'])
+    const newer = await (await fetch(`${url}?limit=2&after=${encodeURIComponent(older.afterCursor)}`)).json() as Page
+    expect(newer.messages.map((item) => item.messageSeq)).toEqual(['21', '22'])
+    expect(newer.hasMoreAfter).toBe(false)
+    const oldest = await (await fetch(`${url}?limit=1&before=${encodeURIComponent(older.beforeCursor)}`)).json() as Page
+    const acrossGap = await (await fetch(`${url}?limit=2&after=${encodeURIComponent(oldest.afterCursor)}`)).json() as Page
+    expect(acrossGap.messages.every((item) => Number(item.messageSeq) > 5)).toBe(true)
+    expect(acrossGap.hasMoreAfter).toBe(true)
     llonebot.socket.close()
   })
 
@@ -1140,7 +1196,9 @@ describe('Dududa NapCat gateway', () => {
     await Promise.all([firstNapcat.ready, secondNapcat.ready])
     const firstAccount = `qq-${selfId}`
     const secondAccount = `qq-${secondSelfId}`
-    await waitFor(() => Promise.resolve(hub.workspaceSnapshot().accounts.length === 2))
+    await waitFor(() => Promise.resolve(
+      hub.workspaceSnapshot().conversations.filter((item) => item.type === 'group').length === 2,
+    ))
 
     const catalogResponse = await fetch(
       `${baseUrl}/api/accounts/${firstAccount}/conversations/group/345678901/custom-faces`,
@@ -1606,7 +1664,7 @@ describe('Dududa NapCat gateway', () => {
       }),
     )
     await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'offline')
-    expect(hub.runtimeStatus()).toMatchObject({ status: 'connected', message: '0/1 个 QQ 账号在线，OneBot 连接正常' })
+    expect(hub.runtimeStatus()).toMatchObject({ status: 'connected', message: 'OneBot 网关已连接 · 0/1 个 QQ 账号在线，请在 OneBot 客户端检查 QQ 登录状态' })
 
     napcat.socket.send(
       JSON.stringify({

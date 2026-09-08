@@ -29,7 +29,7 @@ def main() -> int:
         with httpx.Client(timeout=20, trust_env=False) as client:
             while True:
                 try:
-                    config = json.loads(args.config.read_text(encoding="utf-8-sig"))
+                    config = json.loads(args.config.read_text(encoding="utf-8"))
                     secret = config.get("dashboard", {}).get("jwt_secret")
                     if not isinstance(secret, str) or not secret:
                         raise RuntimeError("AstrBot dashboard JWT secret is unavailable")

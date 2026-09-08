@@ -10,6 +10,7 @@ from astrbot_plugin_dududa_core.adapters.capability_planner import (
     YOUNG_SEARCH_CAPABILITY_ID,
     YOUNG_STATUS_CAPABILITY_ID,
     _declared_arguments,
+    _requested_result_limit,
     _young_capability,
     _young_state,
     _young_time_window,
@@ -73,6 +74,20 @@ class YoungCapabilityPlannerTests(unittest.TestCase):
         self.assertTrue(
             supports_production_query_schema(YOUNG_SEARCH_CAPABILITY_ID, schema)
         )
+
+    def test_explicit_result_count_narrows_but_never_widens_default(self) -> None:
+        self.assertEqual(_requested_result_limit("最多列 3 项", 8), 3)
+        self.assertEqual(_requested_result_limit("列出前五场", 8), 5)
+        self.assertEqual(_requested_result_limit("只列出 20 条", 8), 8)
+        self.assertEqual(_requested_result_limit("未来三天有哪些活动", 8), 8)
+        self.assertEqual(_requested_result_limit("列出当前二课活动", 8), 8)
+
+    def test_ranked_top_results_keep_the_bounded_candidate_set(self) -> None:
+        self.assertEqual(
+            _requested_result_limit("把当前二课按报名填充率排序，列出前三项。", 20),
+            20,
+        )
+        self.assertEqual(_requested_result_limit("列出学时最高的三项", 20), 20)
 
 
 if __name__ == "__main__":

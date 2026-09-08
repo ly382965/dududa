@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timezone
 
-from dududa.domain.content import ContentSafetyDecision
+from dududa.domain.content import ContentSafetyDecision, SafetyStage
 from dududa.domain.primitives import (
     ComponentRevision,
     DigestString,
@@ -15,6 +15,7 @@ from dududa.ports.context import PortCallContext
 
 from .digests import content_safety_content_digest, content_safety_request_digest
 from .models import ContentSafetyRequest, RedactionRequest
+from .prompt_injection import output_boundary_reasons
 from .redaction import DefaultRedactor
 
 
@@ -23,7 +24,7 @@ class DefaultContentSafetyPolicy:
         self,
         *,
         redactor: DefaultRedactor | None = None,
-        policy_revision: str = "content-safety-v1",
+        policy_revision: str = "content-safety-v2",
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._redactor = redactor or DefaultRedactor()
@@ -70,7 +71,10 @@ class DefaultContentSafetyPolicy:
                 1, request.content, Sensitivity.SENSITIVE, "content_safety"
             )
         )
-        allowed = not redaction.changed
+        reasons = ("credential_like_content",) if redaction.changed else ()
+        if request.stage in {SafetyStage.DRAFT_OUTPUT, SafetyStage.FINAL_OUTPUT}:
+            reasons += output_boundary_reasons(request.content)
+        allowed = not reasons
         return ContentSafetyDecision(
             schema_version=1,
             request_id=request.request_id,
@@ -81,7 +85,7 @@ class DefaultContentSafetyPolicy:
             scope_digest=request.scope_digest,
             allowed=allowed,
             required_constraints=ResponseConstraints(),
-            reason_codes=() if allowed else ("credential_like_content",),
+            reason_codes=reasons,
             policy_revision=self._policy_revision,
             producer=self._revision,
             decided_at=now,

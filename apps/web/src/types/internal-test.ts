@@ -23,6 +23,7 @@ export interface InternalTestProactiveTalkSettings {
   probabilityPercent: number
   cooldownSeconds: number
   maximumPerHour: number
+  minimumMessages?: number
 }
 
 export interface InternalTestAgentPolicyDefaults {
@@ -35,12 +36,14 @@ export interface InternalTestAgentPolicyDefaults {
   groupChatStyle: InternalTestAdaptiveSetting<InternalTestGroupChatStyle>
   proactiveTalk: InternalTestProactiveTalkSettings
   plugins: Record<string, InternalTestPluginMode>
+  adaptivePlugins?: string[]
 }
 
 export interface InternalTestAgentPolicy extends InternalTestAgentPolicyDefaults {
   schemaVersion: 1
   scope: InternalTestAgentScope
   updatedAt?: string
+  activePlugins?: Record<string, { reason: string; activatedAt: string; messagesRead: number }>
 }
 
 export interface InternalTestCatalogModel {
@@ -188,6 +191,7 @@ export interface InternalTestContextUsage {
   characterLimit: number
   messagesRead: number
   charactersRead: number
+  coverage?: PreviewCoverage
 }
 
 export interface InternalTestPrediction<T> {
@@ -301,7 +305,7 @@ export interface InternalTestAgentRequest {
   answerProfile?: InternalTestAnswerProfile
 }
 
-export interface InternalTestAgentResponse {
+export interface InternalTestAgentResponse extends PreviewEvidence {
   runId: string
   candidate: string
   tier: InternalTestTier
@@ -388,3 +392,4 @@ export interface InternalTestFeedbackResult {
   feedbackId: string
   progress: InternalTestProgress
 }
+import type { PreviewCoverage, PreviewEvidence } from './preview'

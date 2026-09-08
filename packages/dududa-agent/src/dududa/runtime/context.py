@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 
@@ -20,6 +21,7 @@ from dududa.perception.contracts import (
     PerceptionMessage,
 )
 from dududa.security.digests import actor_digest, scope_digest
+from dududa.security.prompt_injection import direct_input_injection_reasons
 
 from .contracts import (
     CurrentMessageContext,
@@ -129,6 +131,9 @@ class CurrentMessageContextBuilder:
         ):
             action = RuntimeAdmissionAction.IGNORE
             reasons = ("group_explicit_mention_required",)
+        elif injection_reasons := direct_input_injection_reasons(message.text):
+            action = RuntimeAdmissionAction.DEFER
+            reasons = ("prompt_injection_blocked", *injection_reasons)
         else:
             action = RuntimeAdmissionAction.PROCEED
             reasons = (
@@ -249,6 +254,7 @@ class CurrentMessageContextBuilder:
             content_input_tokens_upper_bound=1,
             data_classification=preprocess.data_classification,
         )
+        perception, history_bindings = self._with_preview_history(message, perception, reference_by_raw)
         token_bound = max(1, len(serialize_perception_context(perception)))
         if token_bound > self._config.maximum_content_input_tokens:
             raise validation_error("current_message_context_token_limit_exceeded")
@@ -276,7 +282,7 @@ class CurrentMessageContextBuilder:
         return CurrentMessageContext(
             schema_version=1,
             perception=perception,
-            identity_bindings=bindings,
+            identity_bindings=(*bindings, *history_bindings),
             current_author_identity_ref=reference_by_raw[message.user_id],
             current_message_reference=MessageReference(
                 platform=message.platform,
@@ -286,6 +292,102 @@ class CurrentMessageContextBuilder:
             ),
             builder_revision=self._config.component_revision,
         )
+
+    def _with_preview_history(
+        self, message: MessageEnvelope, base: PerceptionContext, known: dict[str, str],
+    ) -> tuple[PerceptionContext, tuple[RuntimeIdentityBinding, ...]]:
+        history = message.metadata.get("preview_history")
+        if history is None:
+            return base, ()
+        if (
+            not isinstance(history, Mapping)
+            or message.conversation_type is not ConversationType.GROUP
+            or history.get("accountId") != f"qq-{message.bot_id}"
+            or history.get("conversationId") != f"qq-{message.bot_id}:group:{message.conversation_id}"
+        ):
+            raise validation_error("preview_history_scope_mismatch")
+        records = history.get("messages", ())
+        if not isinstance(records, (tuple, list)) or len(records) > 100:
+            raise validation_error("invalid_preview_history_messages")
+        selected = list(enumerate(records))[-(base.limits.max_messages - 1):] if base.limits.max_messages > 1 else []
+        truncated = bool(history.get("truncated")) or len(selected) != len(records)
+        while True:
+            identities = list(base.identities)
+            references = dict(known)
+            bindings: list[RuntimeIdentityBinding] = []
+            messages: list[PerceptionMessage] = []
+            prior_refs: dict[str, str] = {}
+            for index, record in selected:
+                if not isinstance(record, Mapping):
+                    raise validation_error("invalid_preview_history_record")
+                sender = record.get("senderId")
+                content = record.get("content")
+                message_id = record.get("id")
+                if not all(isinstance(value, str) and value.strip() for value in (sender, content, message_id)):
+                    raise validation_error("invalid_preview_history_record")
+                if sender not in references:
+                    ref = f"identity:history:{index}"
+                    references[sender] = ref
+                    identities.append(PerceptionIdentity(1, ref, False))
+                    bindings.append(RuntimeIdentityBinding(
+                        schema_version=1, identity_ref=ref,
+                        resolved=ResolvedIdentityRef(
+                            identity_ref=ref,
+                            actor_ref=ActorRef(message.platform, message.bot_id, sender),
+                            evidence_message_ids=(message_id,),
+                        ),
+                    ))
+                ref = f"message:history:{index}"
+                text_fields = {
+                    "sender_name": record.get("senderName", ""),
+                    "timestamp": record.get("timestamp"), "content": content,
+                    "window_observed_at": message.timestamp.isoformat(),
+                    "display_timezone": "Asia/Shanghai",
+                }
+                text = json.dumps(text_fields, ensure_ascii=False, separators=(",", ":"))
+                if len(text) > base.limits.max_characters_per_message:
+                    low, high = 0, len(content)
+                    while low < high:
+                        middle = (low + high + 1) // 2
+                        text_fields["content"] = content[:middle]
+                        candidate_text = json.dumps(text_fields, ensure_ascii=False, separators=(",", ":"))
+                        if len(candidate_text) <= base.limits.max_characters_per_message:
+                            low = middle
+                        else:
+                            high = middle - 1
+                    text_fields["content"] = content[:low]
+                    text = json.dumps(text_fields, ensure_ascii=False, separators=(",", ":"))
+                    truncated = True
+                messages.append(PerceptionMessage(
+                    schema_version=1, message_ref=ref, author_identity_ref=references[sender],
+                    text=text, reply_to_message_ref=prior_refs.get(record.get("replyToId")),
+                    is_bot_authored=sender == message.bot_id,
+                ))
+                prior_refs[message_id] = ref
+            messages.extend(base.messages)
+            within_shape = (
+                len(identities) <= base.limits.max_identities
+                and all(len(item.text) <= base.limits.max_characters_per_message for item in messages)
+                and sum(len(item.text) for item in messages) <= base.limits.max_total_characters
+            )
+            if within_shape:
+                candidate = replace(
+                    base, messages=tuple(messages), identities=tuple(identities),
+                    degraded_components=("preview_recent_window_partial", *(('preview_history_truncated',) if truncated else ())),
+                )
+                if len(serialize_perception_context(candidate)) <= self._config.maximum_content_input_tokens:
+                    return candidate, tuple(bindings)
+                if len(selected) == 1 and len(selected[0][1]["content"]) > 1:
+                    # Even one escaped/UTF-8-heavy record can exceed the total
+                    # serialized budget. Keep a bounded prefix, not an empty window.
+                    index, record = selected[0]
+                    selected[0] = (index, {**record, "content": record["content"][:len(record["content"]) // 2]})
+                    truncated = True
+                    continue
+            if not selected:
+                raise validation_error("current_message_context_token_limit_exceeded")
+            selected.pop(0)
+            truncated = True
 
     def _classification(self, value: ConversationType) -> PrivacyLevel:
         if value is ConversationType.PRIVATE:

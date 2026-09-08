@@ -163,16 +163,19 @@ class DeterministicPerceptionMerger:
                 rules.complexity_signals,
                 model.complexity_signals,
             )
-            conflicting = any(
-                (
-                    task_conflict,
-                    bool(model_targets) and model_targets != rule_targets,
-                    rules.need_tools and not model.need_tools,
-                    rules.verification_required and not model.verification_required,
+            conflicts = {
+                "rule_model_conflict_task_kind": task_conflict,
+                "rule_model_conflict_targets": (
+                    bool(model_targets) and model_targets != rule_targets
+                ),
+                "rule_model_conflict_tools": rules.need_tools and not model.need_tools,
+                # The monotone OR preserves required verification without conflict.
+                "rule_model_conflict_depth": (
                     rules.reasoning_depth is TaskReasoningDepth.DEEP
-                    and model.reasoning_depth is TaskReasoningDepth.SHALLOW,
-                )
-            )
+                    and model.reasoning_depth is TaskReasoningDepth.SHALLOW
+                ),
+            }
+            conflicting = any(conflicts.values())
             confidence = min(rules.confidence, model.confidence)
             if conflicting:
                 confidence = min(
@@ -180,6 +183,7 @@ class DeterministicPerceptionMerger:
                     self._config.conflict_confidence_ceiling,
                 )
                 reasons.add("rule_model_conflict")
+                reasons.update(code for code, present in conflicts.items() if present)
             else:
                 reasons.add("rule_model_merged")
             model_projection_digest = model_perception_projection_digest(model)
@@ -223,6 +227,12 @@ class DeterministicPerceptionMerger:
 
 
 def _merge_task_kind(rule_kind: str, model_kind: str) -> tuple[str, bool]:
+    if rule_kind == "bounded_transformation" and model_kind in {
+        "summary", "summarization", "text_summary", "text_summarization",
+        "translation", "rewrite", "rewriting",
+        "formatting", "paraphrase", "text_transformation", "transformation",
+    }:
+        return rule_kind, False
     authoritative = {"explicit_command", "greeting", "bounded_transformation"}
     if rule_kind in authoritative:
         return rule_kind, rule_kind != model_kind

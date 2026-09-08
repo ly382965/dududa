@@ -8,7 +8,7 @@
       "status": "in_progress",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "model-selection",
@@ -19,7 +19,7 @@
       "status": "pending",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "selection-contracts",
@@ -39,7 +39,7 @@
         "last_entered_at": "unix:1785750662",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "static-router",
@@ -59,7 +59,7 @@
         "last_entered_at": "unix:1785760617",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "perception-tiering",
@@ -79,7 +79,7 @@
         "last_entered_at": "unix:1785773625",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "offline-runtime",
@@ -99,7 +99,7 @@
         "last_entered_at": "unix:1785785642",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "controlled-rollout",
@@ -119,7 +119,7 @@
         "last_entered_at": "unix:1785812954",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "completion-audit",
@@ -139,7 +139,7 @@
         "last_entered_at": "unix:1785816767",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "mew-parity",
@@ -159,7 +159,7 @@
         "last_entered_at": "unix:1785851636",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "mew-parity-foundation",
@@ -179,7 +179,7 @@
         "last_entered_at": "unix:1785826597",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "mew-chat-parity",
@@ -199,7 +199,7 @@
         "last_entered_at": "unix:1785828594",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "mew-directory-parity",
@@ -219,7 +219,7 @@
         "last_entered_at": "unix:1785834834",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "mew-parity-audit",
@@ -239,7 +239,7 @@
         "last_entered_at": "unix:1785846916",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "agent-expansion",
@@ -250,7 +250,7 @@
       "status": "pending",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "production-shape",
@@ -270,7 +270,7 @@
         "last_entered_at": "unix:1786273050",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "semantic-contract",
@@ -290,7 +290,7 @@
         "last_entered_at": "unix:1786277571",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "mcp-v2-spike",
@@ -310,7 +310,7 @@
         "last_entered_at": "unix:1786280889",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "unified-mcp",
@@ -330,7 +330,7 @@
         "last_entered_at": "unix:1786284521",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "bounded-capability",
@@ -350,7 +350,7 @@
         "last_entered_at": "unix:1786295863",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "memory-retrieval",
@@ -370,7 +370,7 @@
         "last_entered_at": "unix:1786321574",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "response-persona",
@@ -390,7 +390,7 @@
         "last_entered_at": "unix:1786329200",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "proactive-outbound",
@@ -401,7 +401,7 @@
       "status": "pending",
       "verification_status": "unverified",
       "sync_status": "clean",
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "proactive-contracts",
@@ -421,7 +421,7 @@
         "last_entered_at": "unix:1786336511",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "durable-scheduler",
@@ -441,7 +441,7 @@
         "last_entered_at": "unix:1786341492",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "governed-sources",
@@ -461,7 +461,7 @@
         "last_entered_at": "unix:1786344886",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "digest-shadow",
@@ -481,7 +481,7 @@
         "last_entered_at": "unix:1786349495",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "probe-shadow",
@@ -501,7 +501,7 @@
         "last_entered_at": "unix:1786351959",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "operations-hardening",
@@ -521,7 +521,7 @@
         "last_entered_at": "unix:1786354409",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "layout-migration",
@@ -541,7 +541,7 @@
         "last_entered_at": "unix:1786356682",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "evaluation-ci",
@@ -561,7 +561,27 @@
         "last_entered_at": "unix:1786366288",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
+    },
+    {
+      "path": "ci-run-repair",
+      "parent": "agent-expansion",
+      "title": "Repair GitHub CI Run 33897997167",
+      "purpose": "Reproduce actual Python and offline-evaluation failures and restore passing CI without weakening checks.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "complete",
+      "verification_status": "verified",
+      "sync_status": "clean",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/ci-run-repair",
+        "git_branch": "treework/ci-run-repair",
+        "managed_by_treework": false,
+        "created_at": "unix:1788576636",
+        "last_entered_at": "unix:1788576636",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1788579506"
     },
     {
       "path": "local-integration-audit",
@@ -581,7 +601,7 @@
         "last_entered_at": "unix:1786371279",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "legacy-cleanup",
@@ -601,7 +621,7 @@
         "last_entered_at": "unix:1786374916",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "bandit-offline",
@@ -621,7 +641,7 @@
         "last_entered_at": "unix:1786378663",
         "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "control-plane",
@@ -641,7 +661,7 @@
         "last_entered_at": "unix:1786717644",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "control-plane-foundation",
@@ -661,7 +681,7 @@
         "last_entered_at": "unix:1786706813",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "group-onboarding",
@@ -681,7 +701,7 @@
         "last_entered_at": "unix:1786709028",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "governed-operations",
@@ -701,7 +721,7 @@
         "last_entered_at": "unix:1786713416",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "control-plane-audit",
@@ -721,7 +741,7 @@
         "last_entered_at": "unix:1786716134",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "pr10-selective-integration",
@@ -741,7 +761,7 @@
         "last_entered_at": "unix:1788348428",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "api-key-pools",
@@ -761,7 +781,7 @@
         "last_entered_at": "unix:1788428932",
         "last_status": "TreeWork management released; cleanup intent: remove worktree"
       },
-      "last_sync": "unix:1788516355"
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "bot-release-convergence",
@@ -769,20 +789,119 @@
       "title": "Bot Runtime Repair And Stable Release",
       "purpose": "Repair the production control-plane connection and credential workflow, converge only Bot services on verified stable releases, and retain private rollback artifacts while publishing sanitized implementation evidence.",
       "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
-      "status": "paused",
-      "verification_status": "partial",
+      "status": "complete",
+      "verification_status": "verified",
       "sync_status": "clean",
       "isolation": {
         "mode": "git-worktree",
         "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/bot-release-convergence",
         "git_branch": "treework/bot-release-convergence",
-        "managed_by_treework": true,
+        "managed_by_treework": false,
         "created_at": "unix:1788516357",
-        "last_entered_at": "unix:1788530524",
-        "last_status": "reused existing worktree"
+        "last_entered_at": "unix:1788538465",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
       },
-      "status_reason": "NotifAI mounted and verified in Console/AstrBot with public query success; preserve separate Arc/history/empty-preview gaps.",
-      "last_sync": "unix:1788531006"
+      "last_sync": "unix:1788576635"
+    },
+    {
+      "path": "preview-context-repair",
+      "parent": "bot-release-convergence",
+      "title": "Group Context And Honest Preview Results",
+      "purpose": "Connect bounded same-group history and explicit preview outcomes, correcting demonstrated perception conflicts without weakening safety.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "complete",
+      "verification_status": "verified",
+      "sync_status": "clean",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/preview-context-repair",
+        "git_branch": "treework/preview-context-repair",
+        "managed_by_treework": false,
+        "created_at": "unix:1788531842",
+        "last_entered_at": "unix:1788538283",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1788576635"
+    },
+    {
+      "path": "runtime-config-apply",
+      "parent": "bot-release-convergence",
+      "title": "One-Click External Model Configuration Apply",
+      "purpose": "Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "complete",
+      "verification_status": "verified",
+      "sync_status": "clean",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/runtime-config-apply",
+        "git_branch": "treework/runtime-config-apply",
+        "managed_by_treework": false,
+        "created_at": "unix:1788531843",
+        "last_entered_at": "unix:1788538412",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1788576635"
+    },
+    {
+      "path": "arc-compat-migration",
+      "parent": "bot-release-convergence",
+      "title": "Current Arc Compatibility Release",
+      "purpose": "Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "complete",
+      "verification_status": "verified",
+      "sync_status": "clean",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/arc-compat-migration",
+        "git_branch": "treework/arc-compat-migration",
+        "managed_by_treework": false,
+        "created_at": "unix:1788531844",
+        "last_entered_at": "unix:1788538482",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1788576635"
+    },
+    {
+      "path": "plugin-group-controls",
+      "parent": "agent-expansion",
+      "title": "PR12 And Per-Group Plugin Controls",
+      "purpose": "Merge Emoji Kitchen, connect group-level plugin switches to real execution, and deploy current Bot-only artifacts while retiring superseded running versions.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "complete",
+      "verification_status": "verified",
+      "sync_status": "clean",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/plugin-group-controls",
+        "git_branch": "treework/plugin-group-controls",
+        "managed_by_treework": false,
+        "created_at": "unix:1788539118",
+        "last_entered_at": "unix:1788539118",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1788576635"
+    },
+    {
+      "path": "demo-runtime-validation",
+      "parent": "agent-expansion",
+      "title": "Fixed Demo And Runtime Validation",
+      "purpose": "Define a five-to-ten-minute full-product demonstration, run fixed known questions through the current no-send Runtime, repair reproduced defects, and publish an evidence-backed report.",
+      "intake_rationale": "Created from declarative `.TreeWork/tree.yaml`.",
+      "status": "complete",
+      "verification_status": "verified",
+      "sync_status": "clean",
+      "isolation": {
+        "mode": "git-worktree",
+        "workspace_path": "/home/mmdustc/Code/.treework-worktrees/dududa/demo-runtime-validation",
+        "git_branch": "treework/demo-runtime-validation",
+        "managed_by_treework": false,
+        "created_at": "unix:1788545134",
+        "last_entered_at": "unix:1788545134",
+        "last_status": "TreeWork management released; cleanup intent: keep worktree and remove binding"
+      },
+      "last_sync": "unix:1788576635"
     },
     {
       "path": "real-group-validation",
@@ -799,11 +918,11 @@
         "git_branch": "treework/real-group-validation",
         "managed_by_treework": true,
         "created_at": "unix:1786381821",
-        "last_entered_at": "unix:1788403825",
+        "last_entered_at": "unix:1788545043",
         "last_status": "reused existing worktree"
       },
-      "status_reason": "100-question no-send Runtime simulation and required fixes are committed; S23 live QQ/NapCat and authorization-dependent gates remain open",
-      "last_sync": "unix:1788516355"
+      "status_reason": "Demo-quality validation needs a current-main successor; this historical S23 worktree contains an obsolete unmerged API-key commit and retains its separate live-canary scope",
+      "last_sync": "unix:1788576635"
     }
   ]
 }

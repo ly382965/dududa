@@ -72,7 +72,6 @@ class AstrBotInputConnector:
             "s04-v1",
             DigestString("builtin"),
         )
-        self._history_provider = None
 
     async def convert(
         self,
@@ -175,46 +174,11 @@ class AstrBotInputConnector:
             metadata={
                 "adapter_type": _safe_call(event, "get_platform_name"),
                 "message_type": str(_safe_call(event, "get_message_type")),
-                "recent_context": await self._recent_group_context(event, operation),
-                "reply_guidance": await self._reply_guidance(event),
+                **({"preview_history": event.dududa_preview_history}
+                   if getattr(event, "dududa_preview_history", None) is not None else {}),
             },
         )
         return ConnectorResult(1, envelope, actor, now, self._revision)
-
-    async def _reply_guidance(self, event: object) -> str:
-        try:
-            get_extra = getattr(event, "get_extra", None)
-            if not callable(get_extra):
-                return ""
-            value = get_extra("reply_guidance")
-            return str(value or "")[:600]
-        except Exception:  # noqa: BLE001 - guidance never blocks intake
-            return ""
-
-    async def _recent_group_context(
-        self,
-        event: object,
-        operation: ServiceCallContext,
-    ) -> str:
-        """Fetch a compact recent group-chat window for conversational grounding."""
-        try:
-            group_id = _safe_call(event, "get_group_id")
-            if not group_id:
-                return ""
-            if self._history_provider is None:
-                from .proactive_talk import AstrBotGroupHistoryProvider
-
-                self._history_provider = AstrBotGroupHistoryProvider()
-            lines = await self._history_provider.recent_lines(
-                event,
-                message_limit=10,
-                byte_limit=2000,
-            )
-            if not lines:
-                return ""
-            return "\n".join(lines[-10:])
-        except Exception:  # noqa: BLE001 - context grounding never blocks intake
-            return ""
 
 
 def _default_actor(event: object, platform: str, bot_id: str, user_id: str) -> Actor:

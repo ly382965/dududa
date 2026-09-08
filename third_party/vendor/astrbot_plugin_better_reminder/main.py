@@ -46,31 +46,6 @@ class ReminderPlugin(Star):
         "6": 5,
         "7": 6,
     }
-    TRIGGER_PREFIX = re.compile(
-        r"^\s*(提醒我|帮我提醒|记得提醒|别忘了提醒|请提醒|麻烦.{0,4}提醒|设置提醒|定时提醒|日程提醒)"
-    )
-    RECOUNT_WORDS = re.compile(
-        r"[说讲告诉提]过?[^，。！？\n]{0,10}提醒"
-        r"|结果.{0,8}提醒"
-        r"|发现.{0,8}提醒"
-        r"|还真的?提醒"
-        r"|真提醒了"
-        r"|然后.{0,8}提醒"
-    )
-    TIME_WORDS = re.compile(
-        r"\d{1,2}\s*[:：点]\s*\d{0,2}"
-        r"|[一二三四五六七八九十两]{1,3}\s*[:：点]"
-        r"|几点|什么时候"
-        r"|\d+\s*(分钟|小时|秒钟?|天)"
-        r"|\d{1,2}\s*(号|日)"
-        r"|今天|明天|后天|大后天|周[一二三四五六日天]|星期[一二三四五六日天]|下?个?月"
-        r"|今晚|今早|明早|明晚|早上|早晨|中午|下午|晚上|夜里|凌晨|傍晚|一会儿|稍后|马上|等会|待会"
-    )
-    ACTION_WORDS = re.compile(
-        r"提醒|叫|喊|催|记得|别忘了|不要忘|上课|下课|开会|考试|自习|提交|截止|"
-        r"打卡|报名|签到|值日|打扫|复习|背书?|写作业|交作业|做作业|学习|运动|锻炼|"
-        r"洗澡|睡觉|起床|吃饭|回家|回来|出发|开始|结束|完成|去|做|干|拿|取|买|寄|接|送|练"
-    )
 
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -191,21 +166,6 @@ class ReminderPlugin(Star):
             # 终止事件传播
             event.stop_event()
             return
-
-        # 提取结果校验：时间和事件缺一不可，不再用默认时间随意设提醒
-        invalid_markers = {"未指定", "未提及", "无", "未知", "暂无", ""}
-        time_text = (schedule_info.get("time") or "").strip()
-        event_text = (schedule_info.get("event") or "").strip()
-        if time_text in invalid_markers and event_text in invalid_markers:
-            return
-        if time_text in invalid_markers:
-            yield event.plain_result("我没看到具体时间呢～想让我什么时候提醒你？")
-            event.stop_event()
-            return
-        if event_text in invalid_markers:
-            yield event.plain_result("要提醒什么事呢？我没看到具体内容～")
-            event.stop_event()
-            return
             
         # 第三步：设置提醒计时器
         timer_set = await self.set_reminder_timer(event, schedule_info)
@@ -224,30 +184,12 @@ class ReminderPlugin(Star):
         # 终止事件传播
         event.stop_event()
 
-    def _looks_like_reminder(self, message: str) -> bool:
-        """零成本的规则预筛：只有"像提醒"的消息才值得打 LLM。"""
-        text = (message or "").strip()
-        if not text or len(text) > 200:
-            return False
-        if self.RECOUNT_WORDS.search(text):
-            return False
-        if self.TRIGGER_PREFIX.search(text):
-            return True
-        if "什么时候" in text or text.endswith(("？", "?", "吗", "呢")):
-            return False
-        has_time = bool(self.TIME_WORDS.search(text))
-        has_action = bool(self.ACTION_WORDS.search(text))
-        return has_time and has_action
-
     async def is_schedule_trigger(self, message: str, event: AstrMessageEvent) -> bool:
         """判断是否触发日程设定动作"""
-        # 规则预筛：闲聊、转述吐槽、纯时间陈述、疑问句等直接排除
-        if not self._looks_like_reminder(message):
-            return False
-
-        # 只有以祈使句开头的明确委托才跳过 LLM 判断
-        if self.TRIGGER_PREFIX.search(message):
-            logger.info(f"通过祈使句式匹配触发日程设定: {message}")
+        # 对于非常明显的日程设定请求，直接返回True
+        trigger_keywords = ["提醒我", "设置提醒", "定时提醒", "日程提醒"]
+        if any(keyword in message for keyword in trigger_keywords):
+            logger.info(f"通过关键词匹配触发日程设定: {message}")
             return True
             
         # 检查是否配置了专用的日程检测LLM提供商
@@ -272,16 +214,10 @@ class ReminderPlugin(Star):
             
         # 构造提示词，让LLM判断是否是日程设定请求
         prompt = f"""
-        请判断以下用户消息是否在请求"设置一个定时提醒"（即要求机器人到某个时间点提醒某人做某事）：
+        请判断以下用户消息是否是日程设定请求：
         用户消息："{message}"
-
-        判定规则：
-        - 必须同时包含：明确的提醒意图（如 提醒/叫我/喊我/记得/别忘了）或明确的委托语气，以及可确定的时间。
-        - 仅回答别人关于时间的提问（如"四点半"）、仅陈述时间安排、纯闲聊、疑问句（如"几点放学？"）都不是提醒请求，回答"否"。
-        - 消息如果是在转述、复述或吐槽机器人过去的行为（如"它说四点半提醒我"、"结果真的提醒了"、"我发现它设了提醒"），回答"否"。
-        - 没有明确时间或没有具体事件内容的，回答"否"。
-
-        如果是提醒请求，请回复"是"，否则回复"否"。
+        
+        如果是日程设定请求，请回复"是"，否则回复"否"。
         只需回复"是"或"否"，不要包含其他内容。
         """
         

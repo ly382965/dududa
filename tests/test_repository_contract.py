@@ -82,7 +82,7 @@ class RepositoryContractTests(unittest.TestCase):
             )
             if match:
                 services.add(match.group(1))
-        self.assertEqual(services, {"web", "mcp-console", "astrbot", "napcat"})
+        self.assertEqual(services, {"web", "mcp-console", "astrbot", "llbot", "napcat"})
 
         for component in ("sub2api", "postgres", "redis", "xray", "caddy", "authelia"):
             self.assertFalse((ROOT / component).exists(), component)

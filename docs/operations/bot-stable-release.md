@@ -3,6 +3,97 @@
 本流程只覆盖 Dududa Web、AstrBot、已有 NapCat、MCP 和已安装的自有插件。
 不重启其他站点、LLM 代理、Authentik、Caddy 或数据库，也不新增 QQ 发送权限。
 
+## 2026-09-07 2.0.1 提示词注入防护发布
+
+- 正式 AstrBot/Core 已切换为 `dududa/astrbot:2.0.1-f7d8cd9`，Agent 包与 Core 插件均为
+  2.0.1，宿主保留 AstrBot 4.27.5。源码和插件使用独立的 `source-f7d8cd9`、
+  `plugins-f7d8cd9` 发布目录。
+- 活动私密清单：`<state-root>/releases/bot-20260907-2.0.1/compose.private.json`；
+  原镜像、配置及 12 份数据库一致性备份保留，回退清单为同目录下的 `before/rollback.private.json`。
+- GitHub CI 全部通过，断网发布镜像 157 项通过。线上 5 类注入均在入口拒绝，
+  正常短答、引用分析和恶意合成历史预览成功；已授权群的课程查询调用 1 次真实工具并生成
+  回答。所有预览的 QQ 发送和 Memory 写入均为零。
+- Agent/Provider 可用，QQ 在线。前后 32 个容器仅 AstrBot 变化，其余 31 个未重启；
+  Web 保留 `three-plugin-modes`，MCP Console 和 NapCat 保持原版本及配置。
+- 完整证据、行为变化、限制和回退命令见 [2.0.1 版本更新报告](../releases/v2.0.1.md)。
+
+## 2026-09-05 预览失败提示修复
+
+- 用户反馈“总结这个群最近已读取的讨论，并说明覆盖范围。”一次返回 `provider_output_invalid`，随后确认模型调用已恢复。没有捕获到当次原始响应，不能进一步认定是推理额度耗尽或上游瞬时故障；本次未修改模型配置或重试策略。
+- 对话中的这类失败改为“模型未返回可用正文，请重试。”，不再把保存策略、预览不发送和插件选择状态全部列为失败原因；完整状态码仍保留在运行记录中。
+- Web 已发布为 `dududa/web:9d2a270`；活动清单为 `<state-root>/releases/bot-20260905/dududa.webui-9d2a270.private.json`，发布副本为 `source-9d2a270`。旧清单和镜像保留，AstrBot、MCP Console 与 NapCat 未重启。
+- 相关前端 14 项、桌面/手机浏览器 2 项回归及类型检查、构建通过。正式静态资源已包含新提示，Agent 可用且 Provider 已配置，公网未认证请求仍返回 Auth 302。
+
+## 2026-09-05 NapCat 公网登录入口修复
+
+- 用户反馈 `https://napcat.mmdustc.top/webui` 显示 HTML 源码。已在站点仓库的 `deploy/Caddyfile` 和 `deploy/Caddyfile.cloudflare-origin` 中为入口设置 `Content-Type: text/html; charset=utf-8`，保留 `no-store` 和 Authentik 认证，并热加载共享 Caddy 配置。
+- 入口现在通过 NapCat 登录 API 获取新会话，避免继续使用过期或重启前的签名凭据；成功后跳转至实际存在的 `/webui/qq_login`。旧 `/webui/index.html` 地址也进入该流程，失败时显示提示和手动登录链接。
+- 使用运行中的入口 HTML 对接本机真实 NapCat 后端进行浏览器验证：登录、会话检查成功，QQ 登录页和扫码页可打开，无 JavaScript 页面错误。公网入口及登录 API 的未认证请求仍返回 Auth 302；未使用用户的公网登录会话验证完整 SSO 流程。
+- QQ 仍需要用户扫码登录，不等同于 QQ 已上线。修改前的两个代理配置保存在 `<state-root>/releases/bot-20260905/napcat-html-response-frj8sgwp/`。
+
+## 2026-09-05 12:49 WebUI 修复版与服务重启
+
+- 经用户明确授权，Web 容器已更新为 `dududa/web:2046a7f`；源码发布副本为 `source-2046a7f`，不挂载开发工作树。
+- 使用实际运行的 `65544f3` Agent/MCP 清单作为基准；活动清单为 `<state-root>/releases/bot-20260905/dududa.webui-2046a7f.private.json`。旧清单与容器元数据保留供回滚。
+- Web、AstrBot、MCP Console、NapCat 均已重启。Agent 保持 `65544f3-4.27.5`，模型 revision 14 / applied / ready，MCP 目录返回 10 个服务和 26 项能力。没有重启无关站点和代理。
+- QQ 到 Agent 的 WebSocket 重连间隔由 30 秒调整为 5 秒；保留凭据、群授权和发送控制。
+- 公网 `https://console.mmdustc.top:8443/` 返回统一登录跳转；本机工作区 API 约 3.5 ms，新浏览器就绪约 424 ms，未观察到 JavaScript 页面错误。
+- QQ 已保存身份失效，NapCat 快速登录被上游拒绝，需要用户到 `https://napcat.mmdustc.top/webui` 重新扫码。当时仅核验了未认证请求的 Auth 302，入口页面问题已在上文修复；QQ 在扫码前仍离线，不宣称真实群收发恢复。未发送真实 QQ 测试消息。
+
+## 历史阶段：2026-09-05 PR12 与群插件开关发布
+
+- PR12 原始提交 `67899a1` 已保留合并祖先，GitHub main 已发布集成提交 `c74b0dc`。
+  Web、AstrBot、MCP Console 的运行代码统一为 `58e2bb0`；后续提交仅记录发布与 TreeWork 状态。
+  宿主 AstrBot 4.27.5、NapCat 4.18.19 保持已核实的稳定版。
+- 群聊 → Agent → 配置 → 插件与能力，现在提供群开关，保存后生效。按账号、群分别授权，
+  不因安装而全群开启。Emoji、自动复读、Arc、Sub2API 在入口和异步输出前检查权限；
+  Core/校车沿用现有控制。详见 [群插件操作说明](group-plugin-controls.md)。
+- 新 Emoji 默认群关闭。仅给旧 Arc 两个明确群补齐缺失权限（一条已有记录、一条新记录），
+  未修改已有会话字段或已配置插件模式；其他补齐模式均为默认关闭。保留宿主白名单，B50 停用。
+- Web/QQ connected、NapCat online；DeepSeek 配置仍为 revision 14 / applied / ready，
+  cleanupPending=false。正式宿主加载六个自有插件和两个内建插件；10 个 MCP 连接检测均健康。
+  检测仅证明协议与工具发现，不等于所有业务数据或真实群发已验收。
+- 前端 109、服务端 118、浏览器 15 项通过，类型检查和构建通过；相关 Python 79 项在本地与
+  断网候选镜像中均通过。真实 AstrBot 注册验证 6/6，Emoji GreedyStr 与 Sub2API 12 个命令签名
+  正常。仓库脱敏检查 1,333 个文件通过。没有发送真实 QQ 测试消息。
+- 当前 Web 镜像 `dududa/web:58e2bb0`，ID
+  `sha256:6dd8ba85446d9e2c5b4db5568204b3614067bb56a46aa741209ec67684f67b65`；
+  AstrBot/MCP Console 共用 `dududa/astrbot:58e2bb0-4.27.5`，ID
+  `sha256:63fc98c19d556551660485b428d6307d142ed25d3b4864c446c80f851a29992a`。
+  使用独立版本发布副本，不挂开发工作树。插件目录为兼容宿主安装器仍可写，不能称只读挂载。
+- 前后共 31 个容器，仅 Web/AstrBot/MCP Console 身份变更，其余 28 个身份、镜像和启动时间
+  不变。旧 Bot 容器已替换，旧镜像、私密配置备份保留而不运行。私密活动清单位于
+  `<state-root>/releases/bot-20260905/dududa.candidate.private.json`，不要用上一日期清单启动旧版。
+- 最终核验旧版三个容器已不存在、原 15 个宿主 PID 全部退出；未发现独立旧 Bot 或遗留测试
+  进程，测试端口没有监听。公网入口最终经现有默认出口复测 Auth 302、TLS 校验通过。
+  较早曾出现一次 522，无代理直连超时；随后未改配置即恢复，证据不足以定位链路故障点。
+  本地 IPv6 源站也返回 Auth 302（仅本机诊断忽略 Origin CA 信任，不改变正式 TLS）。
+  未修改共享 Caddy、DNS、Auth 或外部代理。
+
+## 历史阶段：2026-09-05 收尾修复部署
+
+- Web 为 `f6c158d`，AstrBot/不可变插件源为 `297106e`，宿主仍为已验证的 4.27.5。
+  MCP Console 源码未变，保留 `cdbc5f0`；NapCat 保留 4.18.19。本轮仅重建 Web/AstrBot。
+- API Key 页面可显式应用：实际 revision 14 返回 HTTP 200 / applied / ready，耗时
+  6.312 秒；三档 Flash low / Flash high / Pro max 和原留存授权保持不变。
+  last-good 目录权限 0700，三个配置恢复文件均为 0600。
+- 多消息群摘要自动使用 MEDIUM，明确要求短答或锁定档位仍被尊重，不改变模型推理挡位。
+  正式 Web 预览实际取得 16 条服务端同群历史，标明部分截断窗口，MEDIUM 返回正文，
+  耗时 22.411 秒，工具/QQ 输出/Memory 写入均为零；只核对元数据，不公开真实群内容。
+  最终三题摘要复测均有正文，但跨日筛选、确定性及归属仍有语义问题，不宣称完全通过。
+- Arc v2.1 已装载，保留原群范围和绑定库；B50 按用户要求停用。只读现有资产的隔离检查
+  成功查询曲目并渲染谱面，不联系上游、不发送 QQ。旧插件、镜像和私密清单保留用于回滚。
+- NotifAI 真实连接检测健康，发现 7 个工具。公网未登录仍返回 Auth 跳转。
+- Web 104 + server 117、浏览器 13 项通过；最终核心聚焦回归 95 项通过，另一个完整生产装配
+  测试覆盖 8 个自动/显式/锁定答长子情形。安全检查通过 1,314 个文件。
+  100 题均已登记：首次线上 93 题为 60 通过/25 部分/8 失败，另 7 题隔离测试。
+  详见 [100 题测试结果](group-chat-100-question-results.md)，不等同真实群聊全部通过。
+- 最终逐容器对照：本轮仅 Web、AstrBot 变更，其余 29 个容器的身份、镜像和启动时间相同。
+  当前群搭话开关开着但概率为 0%，冷却 5 秒/每小时 500；本轮未修改策略，所以不会主动触发。
+- 当前 AstrBot 镜像为 `dududa/astrbot:297106e-4.27.5`，镜像 ID 为
+  `sha256:5b9213b4d922f4c007144f3e2d0c4aa7c4a6b56da4080714f24fbedcc62dc492`。
+  Web 镜像 ID 为 `sha256:653c0a8b4b4d7495cce3ac39264e05eabf748df4b388de27043684037aa3e4fb`。
+
 ## 前端与正式 Runtime
 
 前端源码在 `apps/web`，API Key 页面为 `/#/api-keys`。每档的「配置 Base URL / 模型」
@@ -16,6 +107,19 @@ SecretRef 可以留空，真实 Key 只在明确写入时提交。
 进程的 `/api/v1/plugins/extensions/astrbot_plugin_dududa_core/runtime/status`。
 装配就绪不等于模型调用健康，`NO BANDIT` 不是连接失败原因。
 群聊预览调用现有 Runtime，保持 no-send/no-memory-write；当前不支持私聊预览。
+
+以下预览和一键应用说明对应当前源码；部署是否完成、线上是否通过应看独立验收记录。
+正式 Web 预览由服务端通过现有 Hub 获取同账号、同群的最近历史，不使用浏览器提交的
+聊天缓存；历史作为不可信数据进入感知和回答模型，当前指令保持独立。最多请求 100 条，
+Runtime 再按上下文预算选取最近窗口。页面显示实际历史条数、时间范围和截断情况；
+`messagesRead` 包含当前指令，`historyMessagesRead` 只数历史。`coverage.partial`
+始终为 true，“总结今天”不意味着已经读取全天记录。隔离测试可注入合成历史，但正式
+Web 不因此开放浏览器伪造历史的入口。
+
+HTTP 200、模型名称或耗时均不代表生成成功。只有 `outcome=response` 且正文非空才
+显示成功；`no_reply/deferred/reaction/empty` 显示非成功解释，`failed` 显示错误，
+并保留 Runtime 原因码。`generationObserved` 区分已观察到回答生成和仅有配置标签；
+`runtimeState` 表示实际终态。这些预览结果不发送到 QQ，也不写入正式记忆。
 
 群聊的 Agent「配置 → 运行行为 → 主动加入群聊」提供「在本群启用自动搭话」开关。
 开启使用自动参与模式，关闭停用；修改后点击底部「保存配置」生效。概率、冷却、
@@ -60,11 +164,11 @@ NotifAI 的 registry 启动脚本及 cwd 使用 `/AstrBot/data/notifai-mcp`；�
 
 ## 尚未等同于 Runtime 应用的操作
 
-API Key 的保存和显式探测不等于切换 Runtime 模型。现有池投影适配器不做
-Provider Manager 热重载：AstrBot 会先终止旧 Provider，而已装配 Runtime 仍持有
-旧对象。模型、Provider binding、conformance evidence 不一致时必须保持旧实例。
-任何受控应用须先验证这些绑定、保留 last-known-good，并重新装配 Runtime。
-不要复制旧模型证据给 DeepSeek 或把 pending 状态改成 synced。
+API Key 的保存和显式探测不等于切换 Runtime 模型。需要再点「应用到 Runtime」，
+完成同版本检查、候选 Provider 验证和 Runtime 实例交换。该路径不调用 AstrBot 全局
+Provider Manager 热重载；不关闭其他消费者正在使用的 Provider。模型、Provider
+binding、conformance evidence 验证失败则保留旧 Runtime。不要复制旧模型证据给
+DeepSeek，也不要手工把 pending 改成 applied 来替代实际应用。
 
 ## GitHub 边界
 
@@ -75,13 +179,26 @@ Provider Manager 热重载：AstrBot 会先终止旧 Provider，而已装配 Run
 
 Key、Base URL、模型名与推理设置属于外部配置，不是 Runtime 框架代码。
 网页写入独立 Key store；AstrBot 用 Source/Provider 注册连接；Runtime 在装配时
-通过 Provider ID 获取实例，只处理模型调用接口。过去缺少前两者的应用桥接，
-所以保存池不会更新已运行实例。换 Key/Base URL 本身不应要求重新构建镜像。
+通过 Provider ID 获取实例，只处理模型调用接口。保存池仍不会自动更新已运行实例，
+但显式应用现在会建立 Dududa-owned Provider generation，重新装配并交换 Dududa
+Runtime 引用。换受支持的 Key/Base URL 不需要重新构建镜像，也不需要重启整个宿主。
 应用后真实 Key 也会存在 AstrBot 私有数据目录的 `cmd_config.json` 中，供 Source
 创建客户端使用；并非整个服务端只存 SecretRef。两处凭据文件和备份均不得公开。
-当前网页没有一键应用或自动热更新链路，仍需下面的显式应用和冷启动。
 
-`ops/cli/apply_deepseek_runtime.py` 为本次明确授权的 DeepSeek 迁移提供两步操作：
+页面向同源 `POST /api/api-keys/runtime/apply` 只提交已保存的 `revision`。Web 和
+AstrBot 在准备前/提交前校验版本及宿主配置；变化时拒绝覆盖。候选探测期间旧 Runtime
+继续服务，有活动请求时应用会提示稍后重试。当前仅支持已验证的官方 DeepSeek Chat、
+固定三档 Provider ID、均启用且有可用 Key，以及已同意 CN/provider-managed 留存的
+配置。提交前验证失败保留旧 Runtime；私有文件写入失败执行回滚，回滚失败须停止重试
+并由管理员恢复。断连或超时后先查询 `GET /api/api-keys/runtime` 确认实际状态。
+
+成功只切换 Dududa 的自有实例，不热重载其他 AstrBot 消费者。持久配置和宿主配置缓存
+同步，其他消费者保留旧实例，冷启动后才读取新配置。没有保存即自动应用或文件轮询式
+热更新。详细限制、清理待重试和 last-known-good 恢复见
+[API Key Pool 同步边界](../development/api-key-pool-runtime-sync.md)。
+
+`ops/cli/apply_deepseek_runtime.py` 仍提供部署侧的显式准备/冷安装路径；它不是网页
+应用按钮的内部命令，也不允许在线跳过停机保护。两步操作如下：
 在已验证 AstrBot 镜像内用 `prepare --data <只读数据目录> --store <私有池文件>
 --candidate <新的私密目录> --expected-revision <池revision> --source-revision <代码提交>
 --accept-provider-retention` 生成候选；验证真实三档 Provider、参数、输出与健康探针，
@@ -98,7 +215,7 @@ Key、Base URL、模型名与推理设置属于外部配置，不是 Runtime 框
 调用的隐式重试，不改变其他调用默认策略。默认预算保持不变；配置较大推理预算时，
 Runtime 总输出额度同时覆盖感知与回答两份预留，避免在发请求前因固定额度被拒绝。
 
-## 2026-09-04 当前部署：DeepSeek 已应用
+## 历史阶段：2026-09-04 DeepSeek 首次应用（以下旧版本和阻塞已被上文替代）
 
 - 最新 notifai 部署修复：恢复 MCP Console 与 AstrBot 的 `/AstrBot/data/notifai-mcp` 只读挂载，分别指向既有 `cdbc5f0` / `5e243fd` 发布副本中的 `services/mcp/notifai`，不挂载开发工作树。两个镜像不变，仅重建这两个容器，其他 29 个容器身份/镜像/启动时间不变。旧私密发布清单保留用于回滚。
 - notifai 验收：Web「检测连接」为 healthy、七个工具完整；AstrBot 内按实际 registry 的 command/args/cwd 启动 stdio 也发现七个工具。公开统计查询的 HTTP、传输层 `ok` 和业务层 `data.ok` 全部成功，样本为 1,396 条通知、24 个来源。Web/QQ connected、Runtime DeepSeek 三档和公网 Auth302 均保持正常，未发送 QQ 测试消息。

@@ -117,6 +117,7 @@ services:
       NOTIFAI_MAX_ITEMS: ${NOTIFAI_MAX_ITEMS:-100}
       DUDUDA_API_KEY_STORE_PATH: /run/dududa/api-keys/api-keys.json
       DUDUDA_AGENT_POLICY_PATH: /var/lib/dududa/agent/agent-policies.json
+      DUDUDA_EMOJI_KITCHEN_HTTP_PROXY: ${DUDUDA_EMOJI_KITCHEN_HTTP_PROXY:-}
     ports:
       - host_ip: ${ASTRBOT_WEBUI_HOST:-127.0.0.1}
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
@@ -150,6 +151,31 @@ services:
           - dududa-astrbot
           - bot-astrbot-qq-astrbot
 
+  llbot:
+    image: ${LLBOT_IMAGE:-linyuchen/llbot:8.1.10}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      WEBUI_PORT: 3080
+      AUTO_LOGIN_QQ: ${LLBOT_ACCOUNT:-}
+    ports:
+      - host_ip: ${LLBOT_WEBUI_HOST:-127.0.0.1}
+        published: "${LLBOT_WEBUI_PORT:-3080}"
+        target: 3080
+        protocol: tcp
+    volumes:
+      - ${LLBOT_DATA_DIR:-${STACK_DATA_ROOT:-./data}/llbot}:/app/llbot/data
+      - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data:ro
+    networks:
+      bot_net:
+      edge:
+        aliases:
+          - dududa-llbot
+    depends_on:
+      - astrbot
+
   napcat:
     profiles: ["legacy-napcat"]
     image: ${NAPCAT_IMAGE}
@@ -159,7 +185,6 @@ services:
     environment:
       NAPCAT_UID: ${NAPCAT_UID:-1000}
       NAPCAT_GID: ${NAPCAT_GID:-1000}
-      ACCOUNT: ${NAPCAT_ACCOUNT:-1350475499}
       MODE: astrbot
     ports:
       - host_ip: ${NAPCAT_WEBUI_HOST:-127.0.0.1}

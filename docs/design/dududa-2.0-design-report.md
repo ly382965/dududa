@@ -1,999 +1,388 @@
 # 嘟嘟哒 2.0 设计文档
 
-**文档性质：**作品技术设计报告
-**版本：**2.0 设计基线（2026-09-03）
-**项目：**Dududa 2.0 受治理的群体情境适应 Agent Runtime
+**作品名称**：嘟嘟哒 2.0——生活在 QQ 群里的 AI 群友
 
-## 摘要
+**版本**：2.0，2026 年 9 月 6 日
 
-嘟嘟哒 2.0 不是把一个大模型接到 QQ 上的问答脚本，而是一套面向群聊场景的 Agent
-Runtime。它把“理解消息”“决定是否介入”“选择模型”“调用能力”“组织事实”“以人格表达”
-和“投递消息”拆成可观察、可测试、可替换的阶段；把身份、会话 Scope、权限、预算和副作用
-交给确定性代码，把模型限制在语义候选和语言表达范围内。
+**作品方向**：群聊原生社交智能体；以校园生活、教学支持与群体协作为首批落地场景
 
-系统保留一个不可卸载的治理内核，在外围组合校园查询、校车、资讯、人格、主动消息和学习等
-能力资产。所有能力都以版本化契约出现，所有外部结果都带来源和可信度边界。AstrBot、NapCat、
-MCP Server、模型 Provider、Memory 后端和 Web 控制台都是外围适配器，互不把平台类型带入核心。
+## 1. 作品目标与设计思路
 
-当前仓库已经形成框架无关的 Core 契约、Runtime 状态机、静态模型路由、感知与社交决策、统一
-MCP 基础设施、能力执行闭环、Memory v2 离线实现、Persona/ResponsePlan、主动消息 Shadow、
-Bot Control Plane 和可复现评测。iCourse、NotifAI 通知、二课、教务、培养方案研究五类校园查询
-以及本地校车已经进入 2.0 能力组合；PR #9 新增的 NotifAI 公开通知 MCP 已合并到主分支，并完成七项能力
-的 Registry、Schema、映射和 Web 目录集成。PR #10 中不重复的社交规则已整理为独立、默认关闭、
-只响应显式命令的策略插件；本地推荐、专业设置、学校通知、学院通知和图书馆开放时间已整理为
-五个 Registry-only、cache-only 的可选 MCP Server。它们已打包但没有 Capability mapping，不进入
-Planner 或生产 Provider health。真实 QQ 入站目前覆盖群内明确 @Bot 的纯文本、无
-附件消息，运行实例使用 Luna/Terra/Sol 三档模型；Memory 生产读写、实时主动发送、在线 Bandit
-和部分多轮/附件能力仍按各自状态边界运行。
+### 1.1 从“群里多了一个 AI 群友”出发
 
-本文是面向评审、部署和后续维护者的统一设计说明。冻结的细粒度接口仍以同目录下的专项设计
-文档和源码类型为准：
+嘟嘟哒是一个生活在 QQ 群里的 AI 群友。我们希望她像群里一个什么都会一点的人：能接住闲聊、参与讨论，知道大家在说谁、说什么；遇到实际问题时，又能调动相应能力帮上忙。
 
-- [Runtime](runtime.md)
-- [感知与社交决策](perception-and-social.md)
-- [模型路由](model-routing.md)
-- [能力与 MCP](capability-and-mcp.md)
-- [Memory](memory.md)
-- [Persona](persona.md)
-- [主动消息](proactive-messaging.md)
-- [Bot Control Plane](bot-control-plane.md)
-- [在线学习](online-learning.md)
-- [安全与隐私](security.md)
-- [PR #10 选择性插件与 MCP 整合](../integrations/pr10-selective-integration.md)
+这个定位包含三个层次：**像群友一样参与、成为最懂科大的 AI 群友、拥有值得长期相处的个性。** 用户不需要先学习命令体系。明确 @ 可以提出任务；按群开启自动参与后，普通讨论也可以成为她接话的起点。
 
-## 1. 背景与要解决的问题
+校园是一个适合群聊智能体成长的真实环境。选课、二课、教务、考试、出行和活动组织每天都在群里发生；群成员还有熟悉的表达习惯、共同经历和内部梗。作品将这些生活任务与上下文感知、Social Engine、Memory、模型路由、Skill/MCP 和人格表达放进同一套系统。
 
-### 1.1 产品背景
-
-嘟嘟哒运行在 AstrBot + NapCat + OneBot v11 的 QQ 生态中，服务对象是校园群聊、私聊和管理
-工作台。产品期望同时具备三种看似矛盾的特征：
-
-1. **自然。** 能读懂口语、省略、指代和群聊节奏，不把每条消息都当成命令。
-2. **有用。** 能查评课社区、二课活动、教务公开信息、培养方案研究资料和校车时刻表，并给出
-   可追溯的结果。
-3. **可靠。** 不因模型幻觉、插件异常或群聊上下文而越权、串群、重复发送或泄露个人数据。
-
-早期插件各自监听消息、各自调用模型或 MCP、各自维护配置和发送逻辑，功能增长很快，但形成
-了多套权限入口、模型入口和状态来源。一个“查课程”的请求可能同时经过旧命令、自然语言
-Handler、Web Search 或插件专用 Client；一个群聊回复也可能被多个监听器竞争。2.0 的核心工作
-是把这些隐含行为改造成一条单一、可审阅的执行链。
-
-### 1.2 传统方案的结构性问题
-
-| 问题 | 直接后果 | 2.0 的解决方向 |
+| 体验目标 | 群聊里的具体时刻 | 当前实现或建设方向 |
 | --- | --- | --- |
-| 平台事件直接进入业务代码 | 核心逻辑绑定 AstrBot，难以离线复现 | Connector 先转换为平台无关 Envelope |
-| 模型同时决定意图、权限和工具 | 提示注入可改变边界，越权难审计 | 模型只产出候选，确定性 Policy 决定资格 |
-| 每个插件拥有自己的模型/Client | 重复连接、错误语义不一致、难以回滚 | Model Router 与 Unified MCP Client 统一收口 |
-| 记忆查询以可选字段作过滤 | 缺字段会变成全局搜索，发生跨群泄露 | MemoryScope 先精确过滤，再做检索 |
-| 人格 Prompt 兼任安全规则 | 改写语气时可能改事实或弱化拒绝 | Draft、Fact Anchor、Validator 与 Persona 分离 |
-| 定时任务伪造成用户消息 | 缺少真实 Actor、目标和投递授权 | 主动消息使用独立 Initiated Run |
-| WebUI 直接写浏览器状态或发 QQ | 配置看似成功但 Runtime 不消费 | Web 只做 Control Plane，写入 Core Command |
+| 跟得上聊天 | 会议信息更正后，有人追问最终时间。 | 近期上下文、引用与更正处理，结构化语义感知。 |
+| 出现得合适 | 群里正在闲聊，有值得回应的话题。 | 按群配置自动搭话、概率、冷却、频率和上下文窗口。 |
+| 关键时刻有用 | 讨论课程评价、学术活动、校历或出行。 | 六类校园查询，自动选择对应业务能力。 |
+| 交流有性格 | 同一个群里既有技术讨论，也有轻松闲聊。 | 独立 Persona 资产、中文表达规则、表情合成与群插件配置。 |
+| 相处有积累 | 希望她记住群友的偏好、一起经历的事和群里的梗。 | Memory v2 已完成离线模块，多 OC 和长期关系体验继续接入。 |
+| 能力能生长 | 群里出现新的服务需求。 | 原子化 Capability、统一 MCP 和插件目录，向 Skill 组合扩展。 |
 
-### 1.3 目标与非目标
+### 1.2 三个设计原则
 
-目标是提供一条从 QQ 消息到可验证投递回执的完整链路，并为校园能力、长期记忆、主动消息和
-群体情境适应留下可替换端口。非目标包括：让模型拥有权限、让 MCP 直接发送消息、把所有历史
-聊天自动变成长时记忆、用在线学习自动打开新服务，以及用一个“万能 Agent 循环”替代业务策略。
+**体验以群体参与为中心。** 一次运行既要理解问题，也要决定是否参与、面向谁、怎样表达。上下文感知、社交决策和人格承担不同职责，共同塑造群友体验。
 
-## 2. 设计理念
+**将能力拆成可以组合的业务单元。** 课程搜索、活动查询、通知读取、校车查询各有明确输入和输出。智能体按问题选择已有能力，管理员按群配置服务，后续 Skill 层可以组织更长的任务。
 
-### 2.1 治理内核 + 可逆能力资产
+**让人格、记忆与计算互相配合。** 人格定义如何表达，Memory 支撑跨轮次的熟悉感，模型路由选择计算投入，Social Engine 调整参与节奏。各模块独立演进，又在同一 Runtime 中协作。
 
-核心包 `packages/dududa-agent` 拥有身份、Scope、Runtime 状态、授权、预算、错误、Trace、
-投递和契约版本。校园查询、Persona、天气、B50 渲染和未来资讯源是可独立启停的能力资产。
-能力资产必须声明 Provider、输入输出 Schema、风险、隐私级别、上下文类型、成本和副作用，
-由 Registry 组合，而不是把业务判断散落在插件入口。
+## 2. 总体技术架构
 
-这种拆分让一个能力可以在离线 Fake、Web 预览、Shadow、单群 Canary 和真实投递之间逐级移动；
-能力故障只影响该能力的结果，不会改变 Runtime 的身份和授权模型。
-
-### 2.2 Scope-first Memory
-
-会话、用户、群、Bot、平台和 Persona 构成记忆边界。查询先由确定性策略生成带授权证明的
-`ScopeSelector`，Repository 在这个精确集合内做 TTL、可见性和类型过滤，最后才允许 recency、
-BM25 或未来 embedding 排序。相似度永远不能扩大 Scope；“全局群知识”必须成为另一个经过治理
-的知识资产，而不能由缺少 group_id 的查询隐式产生。
-
-### 2.3 Perception 与 Social Decision 分离
-
-感知回答“这条消息表达了什么、涉及哪些实体、可能需要哪类能力”；社交决策回答“此刻是否
-介入、以什么方式介入”。前者可以使用规则和 Haiku 模型，后者由确定性硬规则包围，综合
-明确 @、回复关系、群模式、冷却、授权、重复消息和任务价值。Persona 只影响已经决定的表达。
-
-### 2.4 先过滤资格，再优化质量
-
-Model Router 只能在合法的 Tier/Endpoint 中选模型，Capability Retrieval 只能向 Planner 展示
-通过权限、隐私、风险、健康和预算过滤的候选，Bandit 只能在安全等价候选中排序。任何质量分、
-延迟分或用户偏好都不能恢复一个已经被硬策略排除的能力。
-
-### 2.5 事实、表达和副作用各有所有者
-
-- **事实所有者：**工具 Observation、来源引用和 Fact Anchor。
-- **表达所有者：**Response Composer、Persona Renderer 和 Answer Profile。
-- **副作用所有者：**Authorization、Budget、Output Adapter、Delivery Reconciliation。
-- **配置所有者：**Bot Control Plane Core Command 和版本化 Snapshot。
-- **消息入口所有者：**Connector；定时主动行为拥有独立 Orchestrator。
-
-模块之间通过不可变 DTO、Schema Ref、组件 revision 和低敏 Receipt 传递信息，避免一个模块
-通过“顺手改字段”获得另一模块的控制权。
-
-### 2.6 兼容优先、逐步切换
-
-旧命令、插件 ID、OneBot 入口和 Compose 入口在新链路通过测试前继续保留为兼容或回滚材料。
-迁移按纵向切片推进：先建立 Core 契约，再接 Connector、模型、能力、Persona 和 Output，最后
-切换生产组合。旧 Target Talk、ReplyPolish、专用 iCourse Client 等已按消费者证据退出 2.0
-默认运行面，但历史源码和数据不会被无依据地抹除。
-
-## 3. 总体技术架构
-
-### 3.1 逻辑架构
+### 2.1 系统分层
 
 ```text
-                  ┌──────────────────────────────────────────┐
-                  │                外部交互层                  │
-                  │ QQ / NapCat / OneBot · Web Console       │
-                  └───────────────────┬──────────────────────┘
-                                      │ Adapter / Connector
-                                      ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                         Dududa 2.0 Core                                  │
-│ Envelope · Scope · Authorization · Budget · Runtime State · Trace        │
-│                                                                        │
-│ Context Builder → Perception → Social Decision → Response Profile       │
-│       │                    │                    │                       │
-│       ▼                    ▼                    ▼                       │
-│   Memory Port       Model Router          Capability Retrieval            │
-│                                                │                           │
-│                                  Planner → Executor → Validator            │
-│                                                │                           │
-│                       Response Composer → Persona → Final Validator      │
-└───────────────────────────────┬────────────────────────────────────────┘
-                                │ Ports
-          ┌─────────────────────┼─────────────────────────┐
-          ▼                     ▼                         ▼
-   AstrBot Model Adapter   Unified MCP Client       Output / Delivery
-          │                     │                         │
-   Luna/Terra/Sol       Registry + Sessions        OneBot send + Receipt
-                                │
-             ┌──────────────────┼────────────────────┐
-             ▼                  ▼                    ▼
-          iCourse            USTC Campus           NotifAI
-       (评课社区)       (二课/教务/培养方案)       (校园通知)
+用户与管理员
+    │
+    ├─ QQ 群聊 → NapCat / OneBot v11 → AstrBot 适配器 ─┐
+    │                                                │
+    └─ Vue 3 控制台 → Node.js 网关 → Runtime 预览 ─────┤
+                                                     ↓
+                    Dududa Agent Runtime
+             上下文整理 → 语义感知 → Social Engine
+                             ↓
+                    模型路由与回答长度
+                             ↓
+          直接交流 / 能力检索 → 单步计划 → 执行
+                             ↓
+                 结果校验 → 回答生成与表达
+                             ↓
+                  QQ 输出 / Web 预览结果
+
+外围模块：DeepSeek · MCP / 本地能力 · Persona · Memory
 ```
 
-### 3.2 依赖方向
+| 层次 | 技术与模块 | 职责 |
+| --- | --- | --- |
+| 交互层 | QQ、NapCat、AstrBot，Vue 3、Node.js | 接收消息、呈现回答、提供管理员工作台。 |
+| 智能体核心 | Python，Domain、Ports、Runtime | 组织上下文、感知、路由、能力执行、回答和投递流程。 |
+| 能力层 | Capability Registry、MCP、本地 Provider | 接入校园数据，描述输入参数与返回结构。 |
+| 基础设施层 | 模型适配器、SQLite/JSON、Docker Compose | 模型调用、配置持久化、服务运行与部署。 |
 
-```text
-AstrBot / Web adapters
-          ↓
-Runtime / Application
-          ↓
-Domain DTO + Protocol Ports
-          ↑
-Infrastructure: Model · MCP · Memory · Builtin Provider · Output
-```
+核心包通过 Python 接口接入外部服务，不依赖 AstrBot 或具体模型 SDK。替换消息平台、模型服务或校园数据源时，主要修改相应适配器。测试可以注入本地数据和输出实现，直接运行同一智能体核心。
 
-`dududa-agent` 不导入 AstrBot、NapCat、OneBot、具体 MCP Server 包或供应商 SDK。服务实现通过
-构造函数注入；MCP Server 自己拥有抓取、解析和缓存细节，Core 只看到统一结果。该方向让同一
-Runtime 可以由 Fake、离线 CLI、AstrBot 和 Web 预览共同驱动。
+### 2.2 主要模块
 
-### 3.3 部署拓扑
+| 模块 | 输入与输出 | 关键实现 |
+| --- | --- | --- |
+| 消息适配 | 平台事件 → 统一消息、用户身份、会话范围 | 提取正文、提及、引用及时间，接入直接响应、自动参与和 Web 预览。 |
+| 上下文构建 | 当前问题与同群历史 → 有限上下文窗口 | 选择最近可见消息，保留引用关系与时间，标注窗口范围。 |
+| 语义感知 | 上下文 → 意图、实体、能力类别 | 规则与结构化模型输出合并，处理课程名、活动类别和日期等信息。 |
+| Social Engine | 感知结果、群配置、群聊窗口 → 参与方式 | 决定回答、查询、澄清或静默，结合概率、冷却和频率控制自动参与。 |
+| 模型路由 | 任务复杂度、群偏好 → 计算与篇幅 | 分别选择模型档位、推理配置和回答长度。 |
+| 能力运行 | 业务需求 → 查询计划与观察结果 | 目录检索、参数绑定、单步执行及结果结构检查。 |
+| 回答与人格 | 工具事实或直接问题 → 可见正文 | 模型生成回答，Composer 整理结构，确定性 Persona Renderer 完成最终表达。 |
+| 输出适配 | 正文 → 平台消息或预览 | 普通文本和长回复组件适配，记录投递结果。 |
+| Memory | 记忆候选与检索请求 → 相关记忆 | 已实现会话内检索、中文 BM25、写入和生命周期模块，长期接入继续建设。 |
+| 管理控制台 | 管理员配置 → 群服务与运行视图 | 按群设置模型、插件、参与方式与服务，显示实际调用和耗时。 |
 
-```text
-浏览器
-  │ HTTPS
-  ▼
-Cloudflare ──► Caddy（公网 IPv6 源站，443/8443）
-                    │ exact host route
-                    ├─► Authentik forward-auth ──► Authentik + PostgreSQL
-                    └─► dududa-web-api:8000 ──► Vue/Node Web Console
+## 3. 从群聊消息到行动
 
-NapCat ── OneBot v11 WebSocket ──► AstrBot Connector ──► Dududa Core
-                                      │
-                                      ├─► AstrBot OpenAI-compatible Provider
-                                      └─► Unified MCP worker（stdio sessions）
-```
+系统处理两类入口：用户直接提出任务，以及开启自动参与后从群聊窗口中产生的交流机会。直接交流进入回答流程，需要外部资料的任务进入能力执行流程。以下以“评课社区里《线性代数》的评价怎么样？”为例：
 
-仓库内的 Dududa Compose 栈包含 AstrBot、Web、MCP Console 和插件；公网 Caddy、Cloudflare、
-Authentik、NapCat 登录态和 Provider 凭据属于运行环境。控制台当前可通过
-`https://console.mmdustc.top:8443/` 访问，Caddy 对控制台站点启用 Authentik forward-auth，
-仅 `Dududa console access` 组成员通过。Cloudflare 现有 Origin Rule 把该主机名回源到 8443，
-因此显式端口是当前稳定入口；标准 443 地址需在 Cloudflare 侧把该主机加入同一精确 Origin Rule
-后再切换回调地址，Caddy 已同时监听 443 和 8443。
+1. **接收问题。** QQ 适配器解析群内 @ 消息；Web 预览则由网关提交当前问题和服务端取得的同群上下文。
+2. **整理上下文。** Runtime 保留当前问题及预算内的相关历史，区分本轮要求、被引用消息和历史发言。
+3. **识别需求。** 规则识别“评课社区”这一明确来源，快速档模型补充课程名与查询意图。
+4. **生成查询计划。** 能力目录选出评课查询，参数绑定器将课程关键词和结果数量写入单步计划。
+5. **读取校园资料。** Unified MCP 调用评课服务，返回课程、教师、评论和来源字段。
+6. **组织答案。** 回答模型区分课程与教师，将评论整理为可读的评价；材料缺少的维度直接说明。
+7. **呈现结果。** Composer、Persona Renderer 和格式检查处理正文，输出到对应界面。管理员可查看所用模型、查询能力、耗时和运行结果。
 
-## 4. 核心契约与一次运行的生命周期
+典型查询包含语义感知、一次业务能力调用和回答生成。当前校园查询采用单步业务计划，适合定位清晰的日常请求。一个问题需要同时查询多个服务时，系统会引导用户拆分需求。
 
-### 4.1 MessageEnvelope、Actor 与 ConversationScope
+## 4. 最懂科大的 AI 群友：能力与数据组织
 
-Connector 把 AstrBot Event 转成 `MessageEnvelope`，其中包含平台、Bot、会话类型、会话 ID、
-群 ID、用户 ID、时间、纯文本、引用、Mention 和受限 metadata。附件只以有界的 opaque
-`AttachmentRef` 跨边界，原始字节留在 Attachment Repository。
+### 4.1 六类校园服务
 
-`Actor` 是已经由适配器解析的授权主体，携带平台/Bot/用户、角色和 deny flags；
-`ConversationScope` 描述当前会话和 Persona。Runtime 校验 Envelope、Actor、Scope 三者的
-平台、Bot、会话和群身份一致。缺少必需身份时，运行在进入模型和工具前结束。
+| 服务 | 实现方式 | 功能与数据特点 |
+| --- | --- | --- |
+| 评课社区 iCourse | MCP | 课程、教师、评论、排名与统计；支持同名条目区分及原文查阅。 |
+| 二课 USTC Young | MCP | 活动搜索、详情、类别筛选与连接状态；本作品的智能体查询覆盖活动信息。 |
+| 教务公开信息 | MCP | 学期、开课、考试与教学日历；结果保留学期与时间字段。 |
+| 培养方案资料 | MCP | 年级、专业、课程和方案比较；使用公开研究快照，结果标明年度和版本。 |
+| 校园通知 NotifAI | MCP | 通知搜索、详情、日历、截止日期、来源、分类与统计。 |
+| 校车 | 本地能力组件 | 按校区、路线、日期和时间检索版本化时刻表。 |
 
-### 4.2 PortCallContext 与版本化证据
+校园查询面向课程、活动和公开事务信息；二课报名与个人学时仍由原平台办理。培养方案和校车结果显示资料版本，方便用户结合最新安排使用。
 
-每次 Port 调用共享 `run_id`、`trace_id`、deadline、取消令牌、预算和 policy snapshot。核心
-DTO 使用 `schema_version`；配置、Schema、Provider、Capability、Persona 和策略都带 revision。
-规范化编码用于生成域区分的 digest，Receipt 只保留低敏摘要，不把正文、思维链、凭据或原始
-Provider 错误写入仓库。
+### 4.2 为什么设置统一能力层
 
-### 4.3 Runtime 状态机
+校园服务的参数和返回形式差异很大。课程查询关注课程名、教师和评价，活动查询关注类别、时间和报名状态，校车查询关注校区、路线与班次。
 
-```text
-RECEIVED
-  → PREPROCESSED
-  → CONTEXT_BUILT
-  → PERCEIVED
-  → SOCIALLY_DECIDED
-      ├─ IGNORE / DEFER → COMPLETED
-      ├─ DIRECT_REPLY → MODEL_SELECTED → DRAFTED
-      └─ USE_TOOLS → CAPABILITY_RETRIEVED → PLANNED
-                      → AUTHORIZED → EXECUTING → OBSERVED
-                      → VALIDATED ──┐
-                                     ├─ FINISH → COMPOSED → RENDERED
-                                     ├─ CONTINUE → PLANNED
-                                     ├─ CLARIFY / DEGRADE → COMPOSED
-                                     └─ ABORT → COMPLETED
-  → FINAL_VALIDATED
-  → DELIVERY_PREPARED
-  → OUTPUT_SENT
-  → DELIVERY_ACKNOWLEDGED / RECONCILED
-  → MEMORY_CANDIDATE_EVALUATED
-  → COMPLETED
-```
+能力层用统一的定义描述业务名称、输入结构、输出结构和服务实现，再将业务参数映射到具体工具。Runtime 因而可以复用计划执行、超时处理和结果检查；新增服务时，主要工作集中在业务 Schema、参数映射和数据适配器。
 
-Runtime 通过 State Store 的 CAS/single-flight 取得一次消息的执行所有权。重复消息返回已有
-结果或等待原执行；不会启动第二条工具链。每次状态转换写入阶段、revision、reason code 和
-资源使用摘要，便于离线重放和故障定位。
+MCP 客户端管理各服务的独立会话、工具发现、超时与取消。校车的结构化时刻表直接交给本地 Provider。两种实现最终都形成统一的 Observation，供回答模块使用。
 
-### 4.4 入站数据流
+控制台另有本地推荐、专业设置、学校通知、学院通知和图书馆等五个可选 MCP 服务，已登记并完成连接检测，后续可通过能力映射接入智能体任务。
 
-```text
-OneBot Event
-  → Connector/身份一致性
-  → Preprocess（明确 @、附件、重复、群策略）
-  → Context Builder（近期上下文 + 可用能力类别）
-  → Rule Perception
-  → Luna/Haiku Structured Perception（需要时）
-  → Merger + Validator
-  → Social Decision
-  → Complexity + Tier Policy
-  → Model Router
-  → Direct Chat 或 Capability Loop
-  → ResponsePlan
-  → Composer（事实/引用/不确定性）
-  → Persona Renderer
-  → Final Validator + Content Safety
-  → Output Adapter
-  → DeliveryReceipt / Reconciliation
-```
+### 4.3 从原子化能力走向 Skill
 
-定时日报和主动探测不伪造上述入站 Event，而从 `InitiatedRunRequest` 进入
-`ProactiveDeliveryOrchestrator`；它们复用能力、模型、Composer 和 Output 端口，但使用独立的
-Target、Grant、订阅、幂等键和发送前检查。
+这里的“原子化”以一个可独立执行的业务操作为单位。例如，搜索活动和查看活动详情是两个能力；每个能力声明输入参数、结果结构与对应实现。智能体先识别需求，再从本群已经开放的能力中选择服务。
 
-## 5. 消息接入、运行时与投递模块
+当前 Capability 层承担能力发现、选择、参数绑定和执行。管理员可以为本群授权自适应启用只读插件；Social Engine 结合多位群友的连续讨论和当前请求，启用匹配的能力并进入查询流程。运行状态记录启用原因，WebUI 展示生效的开关。固定的四人数学分析讨论已经跑通“评课关闭—形成需求—自主启用—查询点评—给出建议”的完整过程。
 
-### 5.1 AstrBot Connector
+Skill 层将继续组织可复用的多步任务，例如“收集活动信息—整理时间—生成群内通知草稿”，并扩展能力组合。
 
-`astrbot_plugin_dududa_core` 是 2.0 唯一 Agent Runtime 的 AstrBot 适配器。它负责：
+统一的能力层让嘟嘟哒可以持续增加生活技能。校园查询提供第一批成熟业务，新的知识服务、娱乐组件和群协作工具可以沿相同接口接入。
 
-- 将 `AstrMessageEvent` 转换为 Core Envelope/Actor/Scope；
-- 识别 OneBot 的文本、引用、@、合并转发和附件引用；
-- 读取由 Control Plane 发布的 rollout/运行策略；GroupServiceAssignment 的离线投影已完成，
-  完整 live Assignment 投影仍在接入中；
-- 将 Runtime 的平台无关结果交给 Output Adapter；
-- 注册命令、生命周期、健康状态和兼容入口。
+## 5. 群聊感知、Social Engine 与角色系统
 
-Connector 不决定人格、模型或工具。当前真实入站范围是群内明确 `@Bot`、纯文本、无附件；私聊、
-附件和未 @ 普通群消息保持静默，不回退到 1.0 Handler。
+### 5.1 规则与模型共同理解消息
 
-### 5.2 Context Builder
+规则擅长识别 @、引用、明确站点名称和消息格式；模型擅长理解口语、省略及意图。系统先产生规则结果，再让模型输出结构化语义，最后合并为统一的感知结果。
 
-Context Builder 的目标契约把当前消息、已校验 Scope、近期消息、回复链、群策略、用户偏好视图、
-Persona 引用和能力类别组装成 `ContextSnapshot`。近期上下文属于 Conversation Context，不会
-自动变成长期 Memory。当前生产实现只投影当前消息，尚未接入真实近期历史、Memory 或完整
-Assignment live projection；离线 Port 已为这些数据保留位置。未来接入 Memory 时，Builder 只
-接收已通过精确 Selector 的 `ContextMemoryEvidence`，并把冲突、过期和降级状态保留下来。
+例如，“线代评价如何”需要理解课程别称；“评课社区里……”已经指定来源；先说“周五八点”、再更正为“周六八点”时，回答需要采用后来的有效安排。感知模块保留当前指令与历史文本的区别，将意图和实体交给后续回复策略。
 
-### 5.3 Runtime Orchestrator
+Web 预览的历史由服务端从同账号、同群获取，Runtime 再按预算裁剪。页面显示读取条数、时间范围和截断情况，用户可以看见本次回答参考了哪一段讨论。
 
-`OfflineRuntimeOrchestrator` 目前承担可离线验证的完整执行骨架，生产装配通过
-`AstrBotRolloutBridge` 注入真实 Connector、Provider、Capability 和 Output。Orchestrator 负责
-总 deadline、模型/工具步数预算、取消、CAS 状态、幂等、错误降级和最终 Receipt，不负责解析
-AstrBot Event 或直接发送 QQ。
+### 5.2 模型、推理与篇幅分别配置
 
-### 5.4 Output Adapter 与 LONG 合并转发
+| 维度 | 解决的问题 | 示例 |
+| --- | --- | --- |
+| 模型档位 Tier | 使用哪个模型配置 | 快速档、标准档、深度档。 |
+| 推理强度 Reasoning | 为问题投入多少推理 | `low`、`high`、`max`。 |
+| 回答长度 AnswerProfile | 用户看到多长的正文 | `short`、`medium`、`long`。 |
 
-Output Adapter 将 `ValidatedFinalResponse` 转成 AstrBot 的 `Plain`、`At`、`Image` 或 `Nodes`。
-SHORT/MEDIUM 始终以普通 QQ 消息发送；LONG 单段也是普通消息，只有群聊中确实产生至少两个
-纯文本 part 且无附件时才使用合并转发。LONG 的分片优先在自然标点和 UTF-8 字符边界断开，
-目标用户语义保留在 Runtime，合并转发不额外制造一个 @。
+感知阶段使用快速档完成意图提取；回答阶段根据任务复杂度和群配置选取档位。简短追问可以使用短回答，需要展开的小组方案可以使用中长回答。管理员可以允许自动选择，也可以锁定特定档位。
 
-发送开始前再次检查 target、授权、限流、kill switch 和 delivery binding。OneBot 返回的
-`DeliveryReceipt` 与 Runtime run 绑定；超时或连接断开但结果不明时进入 reconciliation，
-不把未知结果当成“肯定失败”而盲目重发。
+这种拆分使“认真推理后简短回答”和“普通难度下详细说明”都能被表达。路由器同时参考模型可用性和本轮预算；当前使用静态策略，尚未采用在线学习调度。
 
-### 5.5 插件兼容面
+### 5.3 从查询结果到自然回答
 
-| 组件 | 2.0 归属与当前状态 |
-| --- | --- |
-| `astrbot_plugin_dududa_core` | 唯一 Agent Runtime 宿主，负责组合、命令和投递 |
-| `astrbot_plugin_ustc_shuttle` | 本地版本化校车 Builtin Provider，进入能力闭环 |
-| `astrbot_plugin_sub2api_readonly` | 超级管理员只读命令，独立于 Agent 自动工具路由 |
-| `astrbot_plugin_reread` | 独立、默认关闭、按 Scope 配置的兼容插件 |
-| `astrbot_plugin_proactive_chatter` | Core 消费的无副作用策略扩展，不监听、不调用模型、不发送 |
-| `astrbot_plugin_reply_review` | 保守审校资产，等待 secondary-review Port，当前不拦截线上结果 |
-| `astrbot_plugin_weather` | Source/Provider 资产，默认关闭，未进入生产组合 |
-| `astrbot_plugin_arc_proxy` / B50 | 受治理的本地渲染/Provider 资产，默认关闭 |
-| `astrbot_plugin_dududa_social` | PR #10 非重复社交规则；仅 `/dududa-social` 显式命令，总开关、feature 和群 allowlist 默认关闭，不注册普通消息 Handler |
-| `reply_polish` | 1.0 LONG-only 兼容层，默认关闭；2.0 Output 不依赖它 |
-| `target_talk` | 已退出 2.0 默认入站路径，保留迁移/回滚材料 |
+工具结果保留条目身份、来源、时间和正文要点。回答模型据此组织信息，Composer 汇总回答结构，确定性 Persona Renderer 应用统一表达规则，最终检查处理格式与可见长度。
 
-Sub2API、Reread 和其他宿主插件不因安装在同一容器就获得 Agent Capability 权限。
+系统的默认语气适合中文群聊，在技术问题上保持清楚直接，在日常交流中适当使用轻松表达。用户指定“只回复收到”或“只输出 JSON”时，精确格式优先。长回复需要分段时，QQ 输出适配器可使用合并转发。
 
-## 6. 感知、社交决策与回答档位
+### 5.4 Social Engine：决定什么时候出现
 
-### 6.1 Perception：从自然语言到结构化证据
+群聊参与分为两个问题：有没有值得回应的内容，以及现在是否适合回应。语义感知提供话题、意图和引用等信息；Social Engine 结合群策略选择回答、查询、澄清或静默。
 
-Perception 输入是经过 Context Builder 限定的 `ContextSnapshot`，输出包含 intent、entity、
-reference、topic、ambiguity、complexity signal、是否需要工具、能力类别和 evidence refs。
-流水线为：
+当前自动搭话执行器已接入 Core。它读取本群最近消息，按配置选取紧凑、标准或扩展上下文窗口，检查参与概率、冷却和每小时上限，再将群聊窗口交给同一 Runtime 生成回应。重复文本与机器人互动等模式可以交给策略插件识别，以减少重复接话。
 
-```text
-Rule Perception
-    + Model Perception（固定 Haiku/Luna，严格 JSON Schema）
-    → Perception Merger
-    → Schema / semantic Validator
-    → PerceptionResult
-```
+管理员可以为学习群设置较低参与频率，为闲聊群配置更活跃的节奏。自动参与需要在目标群开启；它使用独立的参与入口，明确 @ 的任务则沿直接响应入口处理。
 
-规则层负责明确 @、回复关系、命令、站点 marker 和不支持范围；模型层只补充语义候选。以校园
-查询为例，“评课社区” marker 可确定地映射到 `campus.course-review`，即使模型漏报工具，也
-不会丢失已经验证的站点事实；相反，模型声称“帮我报名”不会自动得到二课写权限。
+未来将把话题持续性、面向对象、群友回应和当前活跃度纳入更细的社交评分，让“接话的时机”逐步成为可以评估和改进的产品能力。
 
-### 6.2 Social Decision：是否介入
+### 5.5 Memory：为认识群友与共同经历提供基础
 
-Social Decision 使用 `AuthorizationView`、mention/reply 信号、群模式、interaction lease、
-重复/自消息和旧 TargetTalk 的兼容信号。动作包括 `IGNORE`、`REACT`、`DIRECT_REPLY`、
-`USE_TOOLS`、`ASK_CLARIFICATION` 和 `DEFER`。
+近期上下文帮助理解正在发生的对话，长期记忆用于保存值得在以后重新提起的信息。Memory v2 将用户画像、群记忆、情节记忆和显式记忆区分存储，通过候选生成、写入筛选和检索构成完整模块。
 
-硬规则先于价值评分：没有明确触发、无有效 Scope、被禁言、超过冷却、附件不支持或权限不足时，
-不能靠模型提高“回复价值”来绕过。回复价值模型只在合法候选之间比较插话收益与打扰成本，
-并把确定性 reason code 写入 Receipt。
+检索先确定当前用户和群可用的记录，再处理有效期和可见性，最后采用时间排序或中文 BM25 选出相关内容。删除、归档、恢复和导出由生命周期模块处理。离线评估比较了无记忆、近期优先与 BM25 三种方式。
 
-### 6.3 Complexity、Tier 与 Answer Profile
+这套结构面向具体体验：记住一个群友喜欢怎样的回答，找回之前讨论过的安排，保留共同活动和群内梗的来历。当前已完成 Memory 模块与离线验证，正式聊天中的长期读写和关系体验在后续接入。
 
-复杂度由规则和结构化感知证据评估，得到低/中/高任务等级、置信度、上下文压力、验证需求和
-预计工具步数；它不直接写入 Provider 或 model ID。`DeterministicTierPolicy` 再结合角色、隐私、
-预算和健康状况选择 Tier。
+### 5.6 Persona 与 OC：让“她是谁”成为独立资产
 
-三档逻辑映射如下：
+Persona 定义角色的语气、句长、用词、表情预算和不同场景中的表达习惯。仓库已经提供 `dududa` 与 `neutral` 资产定义，当前正式组合使用嘟嘟哒人格。回答生成与人格处理分别实现，便于继续扩展角色。
 
-| 逻辑档位 | 产品别名 | 当前模型 ID | 典型职责 |
+嘟嘟哒的默认表达以自然中文短句为主，技术问题先给结论和必要步骤，日常聊天跟随群里的语气。Emoji Kitchen 已提供表情合成；互动插件可以按群启用。多 OC 切换、不同表情风格和基于 Memory 的群友印象，将在这套资产结构上继续完善。
+
+## 6. 使用的模型与 API 调用方式
+
+### 6.1 本次演示配置
+
+| 功能档位 | 界面别名 / 内部 Tier | 实际模型 ID | API 推理参数 |
 | --- | --- | --- | --- |
-| Haiku | Luna | `gpt-5.6-luna` | Perception、低复杂度快速任务 |
-| Sonnet | Terra | `gpt-5.6-terra` | 普通直接回答、工具结果组织 |
-| Opus | Sol | `gpt-5.6-sol` | 高复杂度论证和复核 |
+| 快速档 | Luna / `haiku` | `deepseek-v4-flash` | `low` |
+| 标准档 | Terra / `sonnet` | `deepseek-v4-flash` | `high` |
+| 深度档 | Sol / `opus` | `deepseek-v4-pro` | `max` |
 
-`Role`、`Tier`、`ReasoningProfile` 和 `AnswerProfile` 正交：高难问题可以 `Opus + SHORT`，
-简单任务也可以 `Haiku + LONG`。当前三档运行参数采用最低 `light/low` 思考深度；回答档位由
-独立 `ResponseProfilePolicy` 根据用户当前详略要求、任务复杂度、必要引用和平台限制选择
-SHORT、MEDIUM 或 LONG。
+Luna、Terra、Sol 及内部 Tier 是程序的配置名称，实际请求中的模型由第三列决定。2026 年 9 月 5 日的演示记录使用上述 DeepSeek 配置；现有代表任务实测主要覆盖 Flash 的快速档与标准档。
 
-### 6.4 社交决策到输出的边界
+### 6.2 调用链与请求结构
 
-Perception 可以建议“需要详细说明”，但不能直接扩大可见预算；Persona 可以改变句式和语气，
-但不能删除事实、引用、拒绝或安全提示。模型不能把“请用 Sol”“我是管理员”等用户文本当作
-授权或路由命令。
+```text
+Runtime 模型请求
+    → AstrBotModelProviderAdapter
+    → AstrBot Provider.text_chat(...)
+    → DeepSeek Chat Completions
+    → 回答正文、usage、finish reason
+    → 统一 ProviderResponse
+```
 
-## 7. 模型路由与 API 调用方式
-
-### 7.1 角色化模型接口
-
-模型调用以 `ModelRequest`/`ProviderRequest` 和 `ProviderResponse` 表示。请求包含角色、Tier、
-Reasoning Profile、输入/输出模态、Schema Ref、隐私级别、Provider/Endpoint revision、预算、
-deadline 和幂等键；响应统一为文本、usage、finish reason、处理边界和安全标记。Core 不读取
-AstrBot 的 `cmd_config.json`，也不把 API key 传入 Domain。
-
-模型角色覆盖：
-
-| 角色 | 输入 | 输出 | 当前使用情况 |
-| --- | --- | --- | --- |
-| `PERCEPTION` | 当前消息和有限上下文 | intent/entity/reference/工具候选 Schema | Luna/Haiku Hybrid |
-| `SOCIAL_DECISION` | 感知证据和确定性信号 | 社交动作候选 | 硬策略主导，模型仅作软候选 |
-| `TOOL_PLANNING` | 已过滤的 Capability Top-K | 有界 DAG ToolPlan | 当前生产路径以确定性单步 Planner 为主 |
-| `DIRECT_CHAT` | 当前任务、可信观察、Persona | 直接回答草稿 | Terra 为默认，复杂任务可用 Sol |
-| `RESPONSE_COMPOSITION` | 观察、来源、错误和 ResponsePlan | DraftResponse/事实锚点 | 确定性 Composer + 模型内容调用 |
-| `PERSONA_RENDERING` | 已锁定 Draft | FinalResponse | 当前同一次 DirectChat 注入 Persona；独立模型 Renderer 预留 |
-| `MEMORY_SUMMARY` | 已授权记忆投影 | 结构化摘要 | 生产关闭 |
-| `IMAGE_UNDERSTANDING` / `IMAGE_GENERATION` | 有界附件或描述 | AttachmentSummary/GeneratedAsset | 能力资产存在，当前入站附件路径关闭 |
-
-### 7.2 OpenAI 兼容调用
-
-部署使用 AstrBot 的 OpenAI-compatible Provider。仓库外的 Provider Source 保存 endpoint 和
-凭据，逻辑模型 ID 由配置映射为 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol`。请求中
-明确传递角色提示、用户内容、`max_tokens` 和 `reasoning_effort`（`off/light/balanced/deep`
-映射为供应商支持的 `None/low/medium/high` 等值）；生产适配器通过 AstrBot `text_chat` 端口
-接收结果，不把供应商 SDK 类型泄漏到 Core。
-
-仓库的 Endpoint 抽样工具也支持直接验证 OpenAI Responses API：
+服务地址为 `https://api.deepseek.com`，协议为 OpenAI 兼容的 Chat Completions。下例展示标准档的等价 HTTP 请求结构，正文仅用于说明字段：
 
 ```http
-POST {OPENAI_COMPATIBLE_BASE}/v1/responses
-Authorization: Bearer <运行环境注入的密钥>
+POST https://api.deepseek.com/chat/completions
+Authorization: Bearer <部署端配置的 API Key>
 Content-Type: application/json
 
 {
-  "model": "gpt-5.6-luna",
-  "instructions": "Return one short acknowledgement.",
-  "input": "Synthetic no-send check.",
-  "max_output_tokens": 32
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {"role": "system", "content": "根据提供的校园资料回答问题，保留来源。"},
+    {"role": "user", "content": "本轮问题与已经取得的查询结果"}
+  ],
+  "thinking": {"type": "enabled"},
+  "reasoning_effort": "high",
+  "max_tokens": 8192
 }
 ```
 
-Responses 的 `output_text`/`output[].content[].text` 和 `usage` 被压缩为低敏 Provider Evidence；
-该探测不连接 QQ、不调用 Tool、不写 Memory。AstrBot 生产链则使用同一 OpenAI-compatible Source
-背后的 Chat Completions 适配，经过 `text_chat(prompt, system_prompt, model, max_tokens,
-reasoning_effort)` 调用。两种协议都只属于 Provider 传输层，Runtime 依赖统一的 Provider Port。
+实际适配器传入 `prompt`、`system_prompt`、`model`、`max_tokens`、`thinking`、`reasoning_effort` 和重试参数，由 AstrBot 转成供应商请求。Runtime 将内部 `light/deep/maximum` 推理配置映射为 DeepSeek 的 `low/high/max`，并从 `completion_text` 与 usage 中读取结果。
 
-结构化任务优先使用 Provider 原生 JSON Schema；不支持时由 Adapter 注入受限 JSON 指令并用
-`JsonSchemaDocumentRegistry` 校验。第一次 Schema 失败最多进行一次受控修复，仍失败就生成
-`OUTPUT_INVALID` 终态，不把任意文本中的“看起来像 JSON”当成有效结果。生产配置把
-`store=false` 作为候选 Provider 的默认附加参数，运行凭据和真实 URL 不进入 Git。
+API 输出额度与最终回答篇幅分别管理：推理和生成使用 Provider 额度，用户可见正文遵循 AnswerProfile。结构化感知结果按 JSON Schema 解析，校园工具由程序执行后再提供给回答模型。
 
-### 7.3 静态路由和 Admission
+管理员在 Web 的三档 Key 池中配置服务地址、模型和凭据，完成测试与应用后供 Runtime 使用。模型接口与核心逻辑分离，后续更换 Provider 时可以复用校园能力和消息处理流程。
 
-路由步骤是：
+## 7. 技术难点与实现方法
 
-1. 根据复杂度和角色得到允许 Tier；
-2. 从不可变 Routing Snapshot 读取 Endpoint；
-3. 过滤模态、Schema、隐私/驻留、Provider 健康、deadline 和预算；
-4. 在共享 RPM/TPM/cost pool 中原子预留；
-5. 按静态 priority 和稳定 endpoint ID 选择；
-6. 只按显式 DAG 执行同 Tier 重试或跨 Tier fallback。
+### 7.1 在群聊语境中找到真正的问题
 
-认证失败、非法请求、安全拒绝、取消和第二次 Schema 失败直接终止；429、不可用和超时只有在
-角色策略、幂等和总 deadline 允许时才切换。健康刷新器以 900 秒间隔、15 秒超时和 1800 秒
-Evidence TTL 运行，过期后 Provider 回到 `UNKNOWN`，不会在路由热路径盲目探活。
+**难点**： 群聊消息短，常有引用、省略和更正。当前问题与旧讨论混合后，模型容易回答旧安排。
 
-### 7.4 运行时三模型证据
+**实现**： 消息适配保留提及和引用，上下文构建保留时间与发言关系，语义感知区分当前指令与历史材料。Web 预览从服务端读取同群最近历史。
 
-Luna/Terra/Sol 已在当前 AstrBot 宿主完成各一次真实 Chat Provider 调用，Responses 与
-Chat Completions 均有最小 HTTP 200 抽样；这证明模型绑定和调用通道可用，不等同于长期质量
-指标。75 条 iCourse 真实感知/本地 MCP/Fake Delivery 纵切中，Luna 感知、Terra/Sol 直接回答
-和 Luna Review 均使用 `low` 推理深度；其余质量结论以评测章节为准。
+**实例**： 会议时间更正后追问最终安排，实测回答采用“周六晚上八点”，并指出周五安排已作废。全天群摘要仍需要改进跨日筛选和发言归属。
 
-## 8. Capability、Planner、Executor 与统一 MCP
+### 7.2 将口语问题映射到异构校园数据
 
-### 8.1 Capability Registry
+**难点**： “最近”“学术活动”“最多三项”等要求分别涉及时间、类别和数量；同名课程又可能对应不同教师。
 
-Capability 是可规划的业务原子能力，不等同于一个原始函数。定义至少包含稳定 ID、名称、输入
-输出 Schema、Provider、风险级别、隐私级别、允许会话类型、所需权限、成本/延迟提示、幂等性
-和副作用集合。当前主分支有 22 个定义文件、21 个 MCP mapping，以及 1 个没有 MCP mapping
-的本地校车 Builtin Provider。Server Registry 另登记五个 PR #10 可选 Server，但它们保持
-`enabled=false` 且没有 Capability definition/mapping，因此不计入上述 21/22 统计。
+**实现**： 感知抽取需求，业务参数绑定器依据服务 Schema 生成查询，Observation 保留条目身份、来源和返回范围，回答阶段继续按用户条件组织结果。
 
-发现和授权是两件事：MCP Discovery 只告诉系统“Server 提供了什么”；只有显式 mapping、
-Schema digest、健康快照、当前群策略和 Actor 授权全部通过，能力才进入 Planner 候选。Web
-控制台只接受批准的 Capability ID 和输入 Schema，不提供任意 `server/tool` 透传。
+**实例**： 二课定向验证中，修正后的流程只展示符合学术活动条件的公开条目；评课查询分别列出课程和教师，按已有评论概括评价。
 
-### 8.2 Retrieval 与 Planner
+### 7.3 在推理投入与等待时间之间做选择
 
-Social Decision 产生业务目标和意图，不直接指定工具名。Retriever 按以下顺序生成 Top-K：
+**难点**： 所有请求都使用深度档会增加等待时间，而简单模型配置又未必适合复杂分析。推理模型还需要为内部推理保留输出额度。
 
-```text
-enabled / revision
-  → Provider health
-  → conversation type
-  → Actor + group policy
-  → privacy / risk / side effect
-  → input availability / deadline / budget
-  → semantic + intent + entity/schema score
-  → stable capability_id tie-break
-```
+**实现**： 感知和回答使用不同角色配置，分别管理模型、推理强度与可见篇幅。运行记录呈现实际档位、能力调用和耗时，便于调整。
 
-默认 K 为 8，全局上限为 20。Planner 只看到候选摘要，生成带 definition digest 的有向无环
-`ToolPlan`。参数模板只能引用字面量和已由 Validator 接受的 Observation JSON Pointer，不能
-读取任意文件、未来步骤或 Provider 对象。
+**实例**： 代表实测中，上下文更正约 10 秒，评课和二课查询约 42—43 秒。当前校园查询的等待时间仍有优化空间，后续重点是数据缓存、参数处理和模型调用耗时。
 
-### 8.3 Executor 与 Observation Validator
+### 7.4 同时满足事实、风格和精确格式
 
-Executor 在每个实际调用前重新解析定义、mapping、Provider、Actor、Scope、限流和预算，生成
-稳定幂等键，然后调用 Builtin Provider 或 Unified MCP。返回值被转换成 `ToolObservation`，
-含状态、数据、来源、Schema/revision、延迟、敏感度和截断标记。
+**难点**： 人格化语气可能给精确回复增加标点，也可能把需要保留的事实压缩掉。
 
-Validator 检查输出 Schema、业务错误、来源、空结果、跨步骤一致性、敏感度和完成条件，输出
-`FINISH`、`CONTINUE`、`RETRY`、`CLARIFY`、`ABORT` 或 `DEGRADE`。当前生产组合将工具尝试数
-收窄为 1；离线通用 Runtime 仍支持有限多步循环（默认 4、全局 8），并把重试计入步数。超时
-后无法确认副作用的结果是 `UNKNOWN`，非幂等操作不自动重放。
+**实现**： 工具事实、来源、篇幅要求和人格表达分别处理；用户明确要求的格式进入输出约束，最终校验检查正文。
 
-### 8.4 Unified MCP Client
+**实例**： “只回复收到”的复测输出为 `收到`；JSON 用例返回合法对象；六人分工用例给出每人对应的具体产出。
 
-`McpServerRegistry` 从严格 JSON 文件加载 Server 定义；`UnifiedMcpClient` 负责长生命周期
-stdio session、初始化和 discovery、Schema TTL、并发、超时、取消、有限重试、熔断、健康和
-错误标准化。配置只含命令 allowlist、环境变量 allowlist、工具 allow/deny 列表和 SecretRef，
-不含实际密钥。
+### 7.5 让群聊参与有节奏、角色体验有连续性
 
-一次 Runtime 使用同一个 Registry/Mapping snapshot。若 Server、Tool Schema 或 mapping revision
-漂移，执行被拒绝或重新检索，而不是静默调用新接口。MCP Client 不负责自然语言理解、权限定义、
-目标选择、订阅调度或 QQ 发送；这些职责分别属于 Perception、Authorization、Proactive 和
-Output 模块。
+**难点**： 只按消息触发会忽略群聊节奏，长期人格又需要跨轮次保持一致。
 
-### 8.5 当前服务矩阵
+**实现**： Social Engine 单独组织参与决策，自动搭话使用最近群聊窗口、概率、冷却和频率控制；Persona 独立描述表达习惯，Memory 保存可供后续调用的记忆。
 
-| 服务/Provider | 统一能力 | 数据与调用方式 | 当前边界 |
-| --- | --- | --- | --- |
-| iCourse / 评课社区 | 课程搜索、课程详情、评论、统计、公开查询 facade | stdio MCP；匿名访问公开页面/缓存，结果带来源 | 已完成自然语言单步闭环；不开放爬取、导出等管理工具 |
-| USTC Young / 二课 | 活动搜索、活动详情、筛选项、连接状态 | stdio MCP；复用 `pyustc`，账号由 SecretRef 注入子进程 | 只读公开活动事实；报名、取消、申请人和个人记录不作为能力 |
-| USTC Academic / 教务 | 学期列表、开课搜索、考试搜索、教学日历 | stdio MCP；公开目录和校历源 | 查询学期/开课/考试；不执行教务写操作 |
-| USTC Curriculum / 培养方案 | `curriculum_public_query` | stdio MCP；读取 `docs.mmdustc.top/curriculum` 研究快照 | 2015–2026 范围的公开研究资料；不是实时 SIS 或毕业审核 |
-| NotifAI | 通知搜索、通知详情、月/周日历、截止提醒、来源、分类、统计 | stdio MCP；调用 `https://notifai-api.enthusjast.cc/api` 公开 API | PR #9 新增并已合入主分支；只读，不保存正文，不接受任意 URL/写操作 |
-| USTC Shuttle | `ustc.shuttle.public-query.v1` | 本地 JSON 版本化时刻表 Builtin，不联网 | 解析校区、起终点、日期和时间；数据更新需发布新快照 |
+**当前进展**： 自动参与执行器和人格资产已经接入，Memory 已完成离线实现。群友印象、梗与关系变化将通过后续长期交互评估逐步完善。
 
-PR #10 选择性整合另提供以下外围 Server 资产。它们与上表使用相同的 strict Server Registry 和
-stdio 传输形态，但当前只有 Server 配置，没有 Capability mapping；“可发现”不等于 Runtime
-“可调用”。每个 Server 的 MCP 面只有一个查询工具，抓取和写入只属于运维 CLI。
+### 7.6 让 QQ 运行与 Web 调试保持一致
 
-| 可选 Server | 唯一 MCP Tool | 数据边界 | 当前状态 |
-| --- | --- | --- | --- |
-| Local Recommendations | `local_recommendations_public_query` | 仓库种子与本地运维缓存；查询不更新计数，不调用地图 | Registry-only、cache-only、默认关闭 |
-| Training Plan | `training_programs_public_query` | 教务处公开本科专业/院系年度一览缓存，不是毕业审核 | Registry-only、cache-only、默认关闭 |
-| Campus Events | `campus_events_public_query` | 中国科大主页通知公告缓存，来源与 NotifAI 不同 | Registry-only、cache-only、默认关闭 |
-| College Notice | `college_notices_public_query` | 已配置数学、计算机、物理学院 HTTPS 官网通知缓存 | Registry-only、cache-only、默认关闭 |
-| Library | `library_hours_public_query` | 图书馆各校区公开开放时间缓存 | Registry-only、cache-only、默认关闭 |
+**难点**： 单独制作演示接口容易与正式智能体行为产生差异；管理页面保存配置后，也需要确认程序已经消费。
 
-这五个 Server 没有加入 `configs/astrbot/mcp_server.json`。当前生产 Capability 组合会为已映射
-Provider 建立 health；在可选 Provider 加载语义完善前，不以一个表面上的 disabled mapping 把
-外围资产带入生产启动和健康链。
+**实现**： QQ 与 Web 入口调用同一 Runtime，Web 使用预览输出适配器；配置页面同时显示期望配置和实际生效状态，运行页显示本次调用结果。
 
-NotifAI 的七项稳定 capability ID 为：
+**实例**： 课程查询的预览能够显示 `icourse.public-query.v2`、实际模型和耗时，配置中的模型变化可以通过下一次运行观察。
+
+### 7.7 处理多入口与服务状态
+
+**难点**： 平台可能重复推送事件，外部服务可能超时，同一用户也可能出现在不同群里。
+
+**实现**： Runtime 按消息和会话标识组织执行，状态存储记录阶段，输出适配器保存回执；会话范围贯穿上下文、配置和能力执行。外部失败转成清楚的用户提示。凭据保存在部署端，公网管理入口使用登录认证。
+
+这些机制对应群聊运行中的具体问题，相关接口测试与消息回放可以验证其行为。
+
+## 8. 管理控制台与部署
+
+### 8.1 管理员工作流程
+
+管理员进入 QQ 工作区，选择群聊，打开 Agent 面板，即可完成三类操作：
+
+- **对话**： 输入问题，查看正式 Runtime 的预览回答。
+- **运行**： 查看模型、推理等级、能力调用、耗时和结果，定位查询或生成环节的问题。
+- **配置**： 设置群服务、插件、模型档位、回答长度与参与方式，查看实际生效状态。
+
+MCP 工作台用于发现服务和检查连接，API Key 页面用于维护三档 Provider 配置。预览回答留在 Web 页面，QQ 投递由 QQ 输出适配器完成。
+
+### 8.2 可部署程序组成
 
 ```text
-notifai.notices.search.v1
-notifai.notices.get.v1
-notifai.notices.calendar.v1
-notifai.notices.deadlines.v1
-notifai.sources.list.v1
-notifai.categories.list.v1
-notifai.stats.read.v1
+packages/dududa-agent/    Python 智能体核心
+apps/astrbot-plugins/    AstrBot 适配器与插件
+apps/web/               Vue/Node 控制台
+services/mcp/           校园服务与独立 MCP worker
+configs/                模型示例、能力定义、映射与人格资产
+deploy/                 Compose、Dockerfile 与环境变量模板
+ops/                    初始化、插件安装与验证脚本
+tests/                  单元、接口与流程测试
 ```
 
-NotifAI Client 使用 `httpx`，关闭环境代理继承，限制 URL scheme/host、字段长度、列表数量、
-附件和总 payload 大小；HTTPX/httpcore 日志不记录查询参数。Server 统一返回
-`schema_version/ok/data/error/source/observed_at/warnings` envelope，并把通知标题、摘要、
-正文和官网链接标为外部不可信资料。`search_notices(light=False)` 才保留清洗正文，轻量模式
-明确省略正文并返回 warning。配置和 Web 目录已纳入 NotifAI，但是否进入某一群的 Effective
-Service 仍由群策略、健康和 rollout 计算。
+提交程序包采用源码与 Docker Compose 交付，附依赖锁文件和测试入口。部署者配置自己的模型 Key 与 QQ 账号后，可以连接 QQ 并使用 Web 工作台；也可以先运行无需模型 Key 的离线流程验证。
 
-### 8.6 典型 iCourse 闭环
+本地入口为 Web `5173`、AstrBot `6185`、NapCat `6099`。Python 核心测试使用 `uv` 管理依赖，Web 使用 npm，容器分别运行 AstrBot、NapCat、Web 和 MCP Console。AstrBot 宿主中的 MCP 1.x 与独立 worker 的 MCP 2.x 分环境安装。
 
-```text
-“@嘟嘟哒 查询评课社区吴天”
-  → marker/意图识别
-  → campus.course-review 资格过滤
-  → icourse.public-query.v2
-  → icourse/icourse_public_query（一次，operation=course/review/teacher/ranking/stats）
-  → Observation Schema + 来源验证
-  → DirectChat 组织结果
-  → Persona/Final Validator
-  → 一条最终 Delivery
-```
+详细安装和验证步骤见 [程序使用说明](../operations/submission-program.md)。
 
-明确“评课社区”的 19 个测试案例均进入正确映射；普通聊天、合理澄清或无足够实体的请求不
-调用 MCP。培养方案查询会将“25级”归一化为 2025，避免误命中专业代码；校车查询直接在本地
-时刻表上完成，不建立 MCP Session。
+## 9. 验证结果与当前完成度
 
-## 9. Memory v2：长期记忆与上下文治理
+### 9.1 代表任务的真实模型表现
 
-### 9.1 三种状态分离
+下表来自 2026 年 9 月 6 日的录制验证。使用真实 DeepSeek Flash 标准档、关闭额外推理，实际执行各项查询；耗时为对应样本的单次观测。
 
-系统把运行检查点、近期会话上下文和长期语义 Memory 分开：
-
-| 数据 | 所有者 | 是否可作为长期记忆 |
+| 任务 | 观测结果 | 耗时 |
 | --- | --- | --- |
-| Runtime state/checkpoint | Runtime State Store | 否 |
-| recent messages/reply chain | Conversation Context Store | 否，按本轮预算读取 |
-| user/group/episodic record | Memory Repository | 需显式 Scope 和 Write Gate |
+| 查询英语角二课活动 | 返回 English Corner 系列活动、时间和报名状态。 | 29.07 秒 |
+| 查询 2026 秋数学分析开课 | 返回数学分析 A1/B1、任课教师及学期。 | 10.92 秒 |
+| 查询 2026 级计算机普通主修方案 | 返回 164 学分与对应方案。 | 12.06 秒 |
+| 查询最近三条校园通知 | 返回三条通知、日期和来源链接。 | 12.02 秒 |
+| 查询工作日东区到西区上午校车 | 返回对应方向与时间范围的班次。 | 17.04 秒 |
 
-### 9.2 Scope 与检索
+自适应场景使用四位模拟群友的 20 条固定讨论，模型与 iCourse 实际执行。前 19 条保持评课关闭，第 20 条形成查询请求后启用评课，回答回应四人的需求并附课程链接。手动测试另覆盖 26 项 MCP 原子查询；复读和统计使用明确标注的样例，Emoji 与 Arc 展示素材由真实服务生成。复现步骤见 [录制操作单](../operations/recording-runbook.md)。
 
-`MemoryScope` 绑定 platform、Bot、conversation、group/user、Persona 和 memory type。Repository
-只接受由授权策略签发的 `ScopeSelector`：当前会话、当前群或安全用户画像是三个命名模式，
-缺字段、过期证明、错 Actor、错请求或错 policy 都拒绝。
+### 9.2 程序流程验证
 
-检索流程为：
+2026 年 9 月 5 日重新执行 100 条固定消息验证。消息经过生产组合运行，模型输出与 MCP 数据由本地样例提供，输出由内存适配器接收。结果为：
 
-```text
-身份一致性
-  → 精确 Scope 过滤
-  → TTL / visibility / sensitivity
-  → 去重与冲突分组
-  → recency / M0-M1-M2 CJK BM25
-  → bounded ContextMemoryEvidence
-```
+- 94 条完成响应流程，6 条按消息入口规则交由兼容路径处理；
+- 53 次 MCP 调用、11 次本地校车调用、187 次脚本模型调用；
+- 动作、运行结果、调用次数、投递及重复消息检查全部符合预期。
 
-S14 已完成 JSON v2 原子状态、版本、tombstone、CAS 删除、归档/恢复、崩溃重放、scoped export、
-纯 Python CJK BM25 和固定合成评测。相似度只在已授权集合内排序；过期、Restricted、跨群和
-跨用户记录不能通过高相似度进入上下文。
+这组数据衡量流程正确性。上表的真实模型任务结果用于观察回答质量，两者分别报告。复现命令随程序包提供。
 
-### 9.3 Write Gate
+### 9.3 当前范围与下一步
 
-任何自动记忆先生成 `MemoryCandidate`，由 Write Gate 根据来源、Scope、敏感度、置信度、冲突、
-确认和投递依赖返回 `REJECT/ALLOW/REQUIRE_CONFIRMATION/DEFER`。密码、Token、Cookie、私钥、
-QQ 登录态和推断出的敏感属性直接拒绝；工具结果没有来源和政策证明不能成为用户事实。
+当前成果包括 QQ 群聊适配、近期上下文、Social Engine、自动参与执行器、独立人格资产、表情合成、六类校园查询、多档模型配置和 Web 管理控制台。明确 @ 与按群开启的自动参与分别接入 Runtime。本轮录制使用独立 Web 工作台和模拟 QQ 群成员，运行正式 Runtime 与真实模型、MCP 查询。
 
-当前生产 Runtime 没有挂载 Memory Retrieval/Write Gate，运行状态保持 `memoryWrites=0`，
-旧 `/remember` 是独立 JSON CRUD，不被重新命名为 Memory v2。真实 Iris SDK、embedding/hybrid
-检索、自动摘要和授权数据人工质量评测属于后续接入工作。
+Memory v2 已具备按会话检索和生命周期管理的离线实现；主动日报已有调度与摘要模块；Bandit 已有离线评估。下一步围绕群友体验接入长期记忆、多 OC 与更细的社交决策，同时改善查询等待时间、群摘要的时间筛选与归属，扩展 Skill 组合与自动日报。
 
-## 10. Persona、Response Composer 与 LONG 合并转发
+## 10. 创新与作品价值
 
-### 10.1 Persona 的职责
+### 10.1 将群体参与作为智能体的基本任务
 
-`PersonaDefinition` 由版本、角色档案、VoiceRules、channel rule、安全说明和 Renderer Policy
-组成；角色关系等叙事内容保存在版本化 `dududa.md` 源资产中。当前 `dududa` 资产表达“可爱、轻松、聪明、技术问题认真”的基线，
-但 Persona 不授予权限、不决定是否调用工具、不改变 Memory Scope，也不拥有事实裁决权。
+作品把上下文理解、参与时机、回答对象、能力选择和表达方式组织成连续决策。Social Engine 使“什么时候说话、什么时候安静”成为独立模块，为群聊原生的 AI 角色提供技术基础。
 
-DirectChat 在一次模型生成中同时注入已解析 Persona、群聊规则和 ResponsePlan，让人格通过
-措辞、节奏、关注点和信息取舍自然体现，不靠生成后再追加固定口号、机械卖萌或随机表情。
+### 10.2 以原子化能力连接真实生活
 
-### 10.2 Draft → Render → Validate
+评课、二课、教务、通知和校车等服务以独立业务能力进入统一 Runtime。当前智能体可以按问题选择服务，后续 Skill 可以复用这些能力组织更长的任务，使作品持续增加生活技能。
 
-Composer 先把工具结果、来源、错误、不确定性、目标和必要安全提示组织成 `DraftResponse`，并
-为课程名、教师、分数、日期、能力状态和拒绝理由建立 `FactAnchor`。Renderer 只能改语序、
-句式、口语程度和允许的风格偏好；不能改数字、删引用、改变目标、弱化拒绝或声称调用了不存在
-的模型/工具。
+### 10.3 人格、记忆与模型策略共同塑造群友
 
-最终 `RenderValidator` 比较 Draft/Final 的事实锚点、引用、附件、目标和约束，随后由
-Content Safety 产生最终判定。模型 Renderer 不可用时，确定性 Finalizer 走同一校验链。
+Persona 描述表达习惯，Memory 保存可积累的经历，模型路由配置计算投入，Social Engine 调整参与方式。将这些模块独立设计并组合起来，能够支持从“这次回答得好”走向“长期相处越来越熟悉”的体验。
 
-### 10.3 ResponsePlan 与分片
+### 10.4 让成长过程可以观察和调整
 
-`ResponseProfilePolicy` 根据当前消息的明确详略要求、复杂度、验证需求、群策略和平台上限选择：
+Web 工作台复用正式 Runtime，展示模型、工具、耗时与实际配置。管理员可以为不同群调整服务与参与方式，开发者可以用真实任务、固定消息回放和后续长期互动观察迭代效果。
 
-- `SHORT`：结论、问候、轻量探测；
-- `MEDIUM`：结论加必要解释，日报默认档位；
-- `LONG`：多步论证、比较和完整研究摘要。
+嘟嘟哒的目标是成为平时聊得来、关键时刻帮得上忙的 AI 群友。科大提供了真实而丰富的起点，这套群聊感知、社交、记忆与能力系统则支持她走向更广泛的共同生活场景。
 
-Answer Profile 与 Model Tier/Reasoning 独立。LONG 的可见预算、最大字符数、最大分片数和必需
-章节写入 ResponsePlan；Reasoning token 另由 Model Router 计费。输出先按自然边界分段，再由
-OneBot Adapter 决定普通消息或合并转发，避免 Persona 为满足平台长度而删除事实。
-
-## 11. 主动消息、订阅与来源框架
-
-### 11.1 独立的 Initiated Run
-
-主动行为没有用户入站消息，不能伪造系统用户或 `MessageEnvelope`。它从独立的
-`ProactiveDeliveryOrchestrator` 进入：
-
-```text
-Durable Scheduler / Topic Projection
-  → ScheduleOccurrence 或 ConversationOpportunity
-  → ProactiveTrigger
-  → 持久 CAS claim / cooldown
-  → Target + Grant + Subscription 验证
-  → 固定只读 Capability Plan
-  → SourceBatch 规范化、去重和新鲜度检查
-  → ResponsePlan + Composer + Persona
-  → 发送前重新授权、quiet hours、配额、kill switch
-  → PreparedDispatch → OutputAdapter → DeliveryReceipt
-```
-
-### 11.2 Conversation Probe
-
-Probe 是群级、低频、公共话题相关的短探测。它要求主动 allowlist、`active` 群策略、新鲜的
-脱敏话题快照、最小静默时间、长冷却、当日配额和有效发送授权；不针对个人、不读取个人画像、
-不连续追问。无明确回应只记为删失观测并进入长冷却，不自动追加消息。
-
-### 11.3 Scheduled Digest
-
-日报订阅绑定精确会话 Scope、创建者授权、来源集合、IANA 时区、发送时间、星期、quiet hours、
-misfire 策略、条目/字符/Token 上限、Answer Profile、Persona 和 revision。订阅的预览是独立
-`PREVIEW` 入口，只返回授权操作者，不创建 occurrence、Dispatch 或 DeliveryReceipt。
-
-### 11.4 来源治理
-
-来源结果统一包含外部 ID、规范 URL、发布时间、观察时间、来源 revision、内容摘要、引用和
-warning。外部网页和通知内容被包在数据边界中，不能修改 system prompt。来源抓取、游标、去重
-和许可信息由 Source Registry 管理；MCP 只提供读取能力，不拥有调度和发送。
-
-S15A–S15E 已完成契约、SQLite Scheduler、IANA/DST、misfire、Source fixture、Digest Shadow
-和 Probe Shadow 的离线链路。真实 Source Adapter、群 Projection、持久 Probe state、模型
-合成、Output 和 QQ 发送尚未接入生产组合；因此当前主动行为仍为 no-send/shadow。
-
-## 12. Bot Control Plane 与群服务初始化
-
-### 12.1 一个逻辑控制面
-
-Web 是管理员的 Bot Control Plane，不是第二套 Agent Runtime。它查询 Runtime、MCP、Plugin、
-Memory、Proactive、Model 和 Delivery 的投影；所有写操作都转成 Core Command，由统一授权、
-revision CAS、幂等、Audit 和 Receipt 处理。浏览器缓存、UI 标签和本地开关不能成为运行时事实。
-
-### 12.2 GroupServiceProfile 与 Assignment
-
-Bot 检测到新群后先进入 `PENDING_PROFILE`，不自动欢迎、不取得回复或主动发送权。管理员可在
-预览页选择版本化 `GroupServiceProfile`，系统计算：
-
-```text
-Effective Services
-  = Desired Profile
-  ∩ Installed + Healthy Definitions
-  ∩ Current Capability / Group Grants
-  ∩ Rollout + Budget + Kill-Switch Eligibility
-```
-
-确认后，Core 原子发布绑定精确 platform/Bot/group Scope、Profile revision、Desired/Effective
-服务、授权证据、LKG revision 和 Activation Receipt 的 `GroupServiceAssignment`。更新、暂停、
-恢复和回滚均使用 expected revision；并发管理员只有一个 CAS 成功。
-
-Profile 可以指定模型档位、推理强度、回答长度、回复强度、上下文预算、群聊风格和主动行为初值，
-但不能自行授予 Capability、扩大记忆、改变权限或开启发送。Group Context 只是带 TTL 的弱先验，
-Bandit 只能在已经允许的安全等价候选中排序。
-
-### 12.3 控制台功能面
-
-当前 Vue 3 + Node 网关提供：
-
-- 多账号 QQ 工作区、好友/群目录、历史消息、实时 SSE 事件和会话游标；
-- 受限的普通文本、回复、@、表情、图片、语音、视频、文件和合并转发显示/发送；
-- Agent Runtime 状态、群服务 Profile/Assignment、Desired/Effective 差异和 LKG；
-- MCP Server/Capability Schema、插件目录、健康和安装状态；
-- no-send 内测页、Runtime 预览、Trace/Eval/Health 运维投影；
-- Sub2API 用量只读概览、插件配置和受治理命令入口。
-
-网关不提供任意 OneBot action 转发；OneBot Token 只用于 NapCat 到服务端的反向 WebSocket，
-不会下发浏览器。公网发布时，外层 Caddy/Authentik 负责操作员登录，网关内部仍校验同源和
-operator session。
-
-## 13. 安全、隐私与供应链设计
-
-### 13.1 信任边界
-
-QQ 消息、附件、昵称、回复、网页、MCP 结果、模型输出、Provider 错误、Web 表单和插件输出都
-是外部输入。只有 Connector 解析的身份、版本化配置、Capability/Model Policy、受控 SecretRef
-和经过校验的 Schema 才进入可信边界。Persona 文本不承担认证或授权。
-
-### 13.2 授权、确认、限流和预算
-
-`AuthorizationPolicy` 根据 Actor、精确 ConversationScope、Action、Resource、Capability、
-风险和隐私返回 `ALLOW/DENY/REQUIRE_CONFIRMATION`。高风险操作需将确认绑定到 actor、Scope、
-动作、payload digest、执行 ID、幂等键和有效期。Interaction Limiter、Budget Ledger 和
-Output Circuit 在实际调用/发送前再次检查。
-
-### 13.3 隐私与日志
-
-隐私级别区分 `PUBLIC`、`CONVERSATION`、`PERSONAL`、`SENSITIVE` 和 `RESTRICTED`；Provider、
-Capability 和 Memory 各自声明可接受级别。Trace 和指标使用低基数脱敏引用，默认不保存原始
-消息、Prompt、completion、思维链、评论正文、附件、Cookie、Token 或 API key。外部 URL 只在
-allowlist 和 scheme 校验通过后使用；NotifAI 等服务还限制字段长度、附件数量和总 payload。
-
-### 13.4 容器、网络与第三方
-
-默认服务只在回环或内部 Docker 网络发布；MCP stdio 子进程使用固定工作目录、命令和环境变量
-allowlist。Young 的 CAS 凭据以 SecretRef 注入子进程，不写入配置仓库。Iris、Better Reminder、
-ChatSummary 等第三方资产保留锁定版本和补丁信息，不能自动成为 2.0 Agent 或第二控制面。
-
-## 14. 运维、部署、备份与回滚
-
-### 14.1 仓库与服务分层
-
-```text
-packages/dududa-agent/    Core Domain、Ports、Runtime、Policy、Eval
-apps/astrbot-plugins/     AstrBot Adapter、内建 Provider、兼容插件
-apps/web/                 Vue/Node Control Plane 与 OneBot Gateway
-services/mcp/             iCourse、USTC Campus、NotifAI、Unified Worker
-configs/                  无凭据的模型、Persona、MCP、Capability mapping
-deploy/                   Compose、镜像、网络和挂载
-ops/                      初始化、同步、安装、审计、回滚和评测 CLI
-docs/                     设计、研究、Runbook 和证据台账
-```
-
-### 14.2 发布流程
-
-发布由 `manage.sh`/`ops/cli` 驱动：检查 Python/Node 依赖和 Schema，构建 AstrBot/Web/MCP 镜像，
-原子安装 owned plugins，启动依赖服务，执行 health/status/contract smoke，再开启对应 rollout
-行为。运行数据位于仓库外的 AstrBot/NapCat/Web/数据库目录；`.env`、QQ 登录态、数据库、聊天
-导出和 Provider evidence 不提交 Git。
-
-### 14.3 备份与恢复
-
-S16 Operations 提供 Release Manifest、状态快照、SQLite Backup API、确定性 Restore Plan、升级
-失败单次回滚和 Compose mount/network contract。Authentik 使用独立 PostgreSQL，当前部署已生成
-权限为 0600 的数据库备份。应用回滚优先恢复上一份可运行 release；数据恢复使用受控 backup/
-restore，不在故障时自动覆盖线上状态。
-
-### 14.4 当前公网控制台交付
-
-本轮在 `mmdustc.top` 外部栈完成了控制台公网接入：
-
-1. Caddy 为 `console.mmdustc.top` 配置独立站点，并反向代理到本地 Web 服务；
-2. 控制台站点通过 Authentik forward-auth，应用绑定 `Dududa console access` 组；
-3. Web 服务仅绑定宿主机回环地址，由 Caddy 对外提供 HTTPS；
-4. 登录成功后可访问工作区和 `/api/workspace`，未登录请求被重定向到 Authentik；
-5. 恶意跨源写请求被控制台同源策略拒绝。
-
-当前公开稳定入口是 `https://console.mmdustc.top:8443/`；`auth.mmdustc.top` 是登录入口。标准
-无端口 URL 需要 Cloudflare Origin Rule 覆盖 `console.mmdustc.top` 后再启用，应用侧 443 监听
-已经就绪。登录账号只在交付给操作员的私密渠道提供，不写入本文或仓库。
-
-## 15. 评测与工程证据
-
-### 15.1 分层证据模型
-
-| 证据层 | 验证对象 | 当前结果 |
-| --- | --- | --- |
-| Unit/Contract | DTO、Schema、Registry、Policy、CAS、错误映射 | Core 与 MCP/Capability 重点集合持续验证 |
-| Offline integration | Runtime、Planner、Memory、Scheduler、Control Plane | S01–S22 离线范围已完成；固定 fixture 可重放 |
-| Provider smoke | 三模型调用、模型 ID、usage、deadline | Luna/Terra/Sol 各完成真实 Chat 抽样，Responses 也有抽样 |
-| MCP vertical slice | Connector → Tool → Observation → Composer → Delivery | iCourse 75 题 Fake Delivery 75/75；二课/教务/培养方案/校车有单步证据；100 题原生消息模拟 94/100 完成 Fake Delivery、校车 10/10 单步 Builtin |
-| 100-question Runtime simulation | OneBot-shaped Event → Production Composition → Fake Delivery | 100/100 fixture 通过；94 `canary_completed`、6 边界 `legacy`；187 次脚本模型调用、53 次 MCP、11 次 Builtin、94 次 Fake Delivery；Memory/真实 QQ/未捕获异常均为 0 |
-| Host ingress | OneBot JSON → AstrBot Event → Runtime | 合法 75/75 进入宿主，QQ 发送为 0 的 no-send 验证 |
-| Human/live | 真实群消息、人工质量、长期 SLO | 真实 QQ 人工端到端仍需一条用户触发消息闭合 |
-
-### 15.2 已有量化结果
-
-- iCourse 75 条自然语言题：75/75 Bridge、75/75 Runtime completed、75/75 Fake Delivery，
-  73 次 MCP，显式“评课社区”案例 19/19 正确命中；人工终审 49/75 完整。
-- 100 条原生消息：94/100 完成 2.0 Fake Delivery，6 条按自消息、未 @、附件或跨群 Reply
-  边界留在 legacy；Perception/Direct Chat 187 次，MCP 53 次，本地 Shuttle Builtin 11 次，
-  Memory 写入和真实 QQ 输出均为 0。所有动作、运行结果、Tool 数/名称、Delivery、重复重放、
-  可选 PR #10 Tool 和单步 Plan 断言通过。可信 `FAILED/DEFERRED` Receipt 以固定不可用答复
-  经过 Composer/Persona/Final Validator/Delivery；未验证、取消、Runtime 异常和最终校验失败
-  仍不发送。逐题记录见 [100 题 Runtime 模拟报告](../refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md)。
-- AstrBot 内存 WebSocket：75/75 合法 OneBot JSON 生成 Event 并进入 RequestFactory，发送为 0；
-  50 ms 延迟测试暴露过 `1,2,3 → 2,3,1` 的入队乱序，故宿主并发顺序仍是已知待验项。
-- NotifAI/MCP/检索相关本轮聚焦测试 18/18 通过；Web 当前类型检查通过，前端/服务端聚焦集合
-  20 个文件、77 个前端与 64 个服务端测试通过。
-- Memory v2 固定合成评测覆盖 M0 无记忆、M1 recency、M2 CJK BM25，并把跨 Scope、过期、
-  tombstone 和 Restricted strata 作为零暴露断言。
-- S20 Bandit 已完成 IPS/SNIPS/DR/ESS 的合成 OPE；没有训练 Worker、生产 Router hook 或在线探索。
-
-### 15.3 指标体系
-
-| 模块 | 质量指标 | 运行指标 |
-| --- | --- | --- |
-| Perception | Intent macro-F1、实体 F1、指代匹配、tool-need recall | 误插话率、Schema 合法率、P50/P95 |
-| Model Router | Tier 选择准确率、fallback 成功率 | latency、usage、成本、健康 TTL |
-| Capability/MCP | Recall@K、Plan/参数合法率、完成率 | 调用成功率、步数、重试、熔断 |
-| Memory | Precision/Recall/MRR、冲突/重复率 | Scope 违规数、候选数、token、P95 |
-| Response/Persona | 事实锚点保持、引用完整、风格评分 | 分片数、长度、Validator reject |
-| Proactive | 来源新鲜度、内容相关性、退订准确 | occurrence claim、发送率、冷却和删失反馈 |
-| Rollout | 任务完成和人工满意度 | 重复回复、未知投递、错误分类、回滚次数 |
-
-指标标签不含真实 user/group ID、原文或凭据；按群/会话聚类分析反馈，避免把同一群消息当作独立
-样本。
-
-## 16. 关键技术难点与设计取舍
-
-### 16.1 在不牺牲自然语言体验的情况下保持确定性边界
-
-群聊请求往往省略主语、混用昵称和站点名称。完全依赖规则会漏掉口语，完全依赖模型又会把
-“帮我报名”误判为公开查询。2.0 采用 Hybrid Perception：规则锁定身份、@、会话、站点 marker
-和硬性不支持范围，Haiku 只补充结构化语义，Merger/Validator 负责合并冲突。这样模型可以
-提高召回，却不能修改权限、Scope、预算或工具资格。
-
-### 16.2 多 Provider 的统一边界
-
-不同供应商对 reasoning、structured output、usage 和取消的字段语义并不一致。系统没有把
-供应商响应直接向上暴露，而是用 Provider Descriptor、Binding Evidence、Schema Codec 和
-Provider-neutral Receipt 统一表示；每个调用再由 Adapter 映射到 AstrBot `text_chat` 或
-Responses/Chat Completions。取舍是初期需要编写 conformance 和映射代码，但后续替换模型不需
-改 Runtime、Planner 或 Persona。
-
-### 16.3 MCP 的长生命周期与可验证性
-
-短脚本式 MCP Client 会在每次请求重启进程，造成并发、Schema 漂移和超时语义不一致。统一 Client
-用 Registry Snapshot 固定 Server 定义，以长生命周期 session 处理 discovery/call/close，
-再通过 Capability mapping 把原始 Tool 收敛成业务能力。取舍是新增一个 Registry 层，但换来
-Server 隔离、健康、熔断和同一套 Executor/Validator。
-
-### 16.4 记忆质量与隐私的先后关系
-
-embedding 或图检索可以提高召回，却不能修复一个错误的群/用户归属。Memory v2 先实现精确 Scope、
-tombstone、冲突和 Write Gate，再比较 recency、BM25、embedding/hybrid；生产默认关闭读写，
-不是因为后端无法工作，而是因为质量评测和真实授权数据尚未完成。这一顺序让每种新检索器都
-必须在已授权集合内证明收益。
-
-### 16.5 事实回答、人格和平台消息组件的协调
-
-课程评分、校历日期和通知截止日必须保持原值，Persona 又需要自然表达，QQ 还存在消息长度和
-合并转发约束。DraftResponse 用 FactAnchor/Citation 固化事实，ResponsePlan 固定可见预算，
-Renderer 只改语言，Output Adapter 最后决定 Plain/Nodes。三层各自验证，避免把“风格润色”
-误当成事实重写。
-
-### 16.6 状态、重复和未知结果
-
-QQ、MCP 和模型调用都可能在网络断开时返回未知状态。Runtime 用 CAS checkpoint、logical
-operation ID、幂等键、DeliveryReceipt 和 reconciliation 区分“未发送”“已发送但回执丢失”
-与“明确失败”。对非幂等副作用不自动重放；对只读查询可在策略允许时有限重试。这样恢复逻辑
-与业务事实一致，不靠重复发送来猜测结果。
-
-### 16.7 适配旧插件而不复制第二套 Runtime
-
-旧插件包含命令、数据库和用户习惯，直接删除会破坏兼容，原样保留又会形成第二个监听器。2.0
-采用薄 Adapter：保留 ID、文案和回滚材料，把行为转换到 Core Port；Target Talk、ReplyPolish、
-旧 iCourse Client 在验证完成后退出默认运行面。兼容层只处理历史协议，不拥有新的权限或发送权。
-
-## 17. P0/P1/P2 发展路线与完成定义
-
-历史恢复的完整计划见 [P0/P1/P2 开发计划](../refactor/p0-p1-p2-development-plan-recovered.md)。
-它把项目分为三个可验证层级：
-
-| 层级 | 交付重点 | 进入下一层的信号 |
-| --- | --- | --- |
-| P0：最小可信内核 | Core DTO/Schema、安全、Connector 兼容、Memory Scope、静态 Router、离线 Eval/Trace | 核心不依赖平台；Scope 泄漏、越权、预算越界为 0；插件行为可回滚 |
-| P1：可用纵向闭环 | 一条入站 Runtime、Perception/Social、iCourse Tool Loop、Response/Persona、受控 Canary | 可重复的端到端 Trace/Receipt；无重复 Tool/回复；逐群 feature flag 可回退 |
-| P2：产品化与规模化 | Memory 效果、更多来源、Web Control Plane、部署/回滚、真实群阶梯、兼容清理 | 真实群人工验收、长期 SLO、来源新鲜度和回滚证据齐全 |
-
-当前 S01–S22 以及 S23A–S23E 的离线既定范围已完成；S23 实时入站处于 Canary。后续工作按照
-`offline → shadow → 单群明确 @ → canary → 全量` 推进，主动发送、在线学习和高风险能力不因
-模型质量提升而跳过授权阶段。
-
-## 18. 当前实现状态与边界
-
-### 18.1 已实现并可复现
-
-- 框架无关 Core 契约、Domain/Port 分层、Runtime 状态机、CAS 与投递回执；
-- Rule + Haiku Schema Perception、确定性 Social Decision、静态 Luna/Terra/Sol 路由；
-- Capability Registry/Retrieval/Planner/Executor/Observation Validator；
-- 5 个独立 stdio MCP Server（iCourse、NotifAI、USTC Young、USTC Academic、USTC Curriculum），
-  21 个映射和 1 个校车 Builtin；
-- 5 个独立、默认关闭、只查询缓存的 Registry-only MCP Server（Local Recommendations、
-  Training Plan、Campus Events、College Notice、Library），均只有一个 public query Tool，未进入
-  Capability Catalog/Planner/生产健康链；
-- 独立 `astrbot_plugin_dududa_social` 社交策略插件，只提供 namespaced 显式命令和纯规则 API，
-  不监听普通消息、不调用模型/MCP、不自动发送；
-- iCourse、NotifAI、二课、教务、培养方案、校车的单步自然语言主链；
-- Memory v2 生命周期、JSON v2、CJK BM25、删除/导出/恢复和离线评测；
-- typed Persona、ResponsePlan、Fact Anchor、LONG 分片/合并转发规则；
-- S15A–S15E 主动消息契约、Scheduler、Source fixture、Digest/Probe Shadow；
-- S21 Bot Control Plane、GroupServiceProfile、Assignment、LKG、审计和运维投影；
-- Caddy + Authentik 保护的公网 Web Console（部署在仓库外的 `mmdustc.top` 栈）。
-
-### 18.2 已实现但默认关闭或仅离线
-
-- Memory 生产读取/写入、Iris SDK Backend、embedding/hybrid 检索；
-- 真实主动日报、Probe、来源网络 Adapter 和 QQ 出站；
-- Bandit 训练、在线探索、Router/Runtime hook；
-- Weather、B50、Reply Review 的生产组合；
-- 多 Persona 产品目录、持久用户 `/style` 渲染、多轮 Context、附件语义和 Plugin Runtime；
-- 真实 Web 管理员身份系统（公网登录由外部 Authentik 提供，仓库内部网关仍需 operator session）。
-
-### 18.3 当前明确未接入
-
-- 私聊和频道的 2.0 自动回复；
-- 附件字节读取、OCR、语音/视频理解；
-- iCourse 之外的通用多步复杂计划和任何高风险/写操作；
-- 实时校园资讯、arXiv、行业资讯 Server 及生产日报；
-- 由真实用户触发并收到 QQ DeliveryReceipt 的完整人工验收；
-- 在线群体情境学习、自动 Skill/Prompt/Style 发布。
-
-这些边界是模块状态，而不是产品愿景；新增能力必须在对应模块的 Contract、Scope、Receipt 和
-真实入口上有独立证据。
-
-## 19. 参考实现与阅读入口
+## 11. 源码与专项文档索引
 
 | 主题 | 入口 |
 | --- | --- |
-| Core/Runtime | `packages/dududa-agent/src/dududa/runtime/` |
-| 感知与社交 | `packages/dududa-agent/src/dududa/perception/` |
-| 模型路由 | `packages/dududa-agent/src/dududa/models/`、`apps/astrbot-plugins/astrbot_plugin_dududa_core/adapters/model.py` |
-| Capability/MCP | `packages/dududa-agent/src/dududa/capabilities/`、`packages/dududa-agent/src/dududa/mcp/` |
-| 校园服务 | `services/mcp/icourse/`、`services/mcp/ustc-campus/`、`services/mcp/notifai/` |
-| Memory | `packages/dududa-agent/src/dududa/memory/` |
-| Persona/Response | `packages/dududa-agent/src/dududa/persona/`、`packages/dududa-agent/src/dududa/responses/` |
-| 主动消息 | `packages/dududa-agent/src/dududa/proactive/` |
-| Control Plane | `packages/dududa-agent/src/dududa/control_plane/`、`apps/web/server/control-plane.ts` |
-| 运维与证据 | `ops/cli/`、`docs/operations/`、`docs/refactor/PROGRESS.md` |
-
-## 结语
-
-嘟嘟哒 2.0 的核心成果不是某个单独的模型或插件，而是把群聊 Agent 变成一套可解释的系统：
-模型带来语言能力，确定性内核守住边界，能力 Registry 连接真实服务，Persona 赋予连续的人格，
-Control Plane 让运营者能看见并改变系统，评测和 Receipt 让每次改变都能被复盘。这个结构既能
-承载当前校园助手功能，也为未来的群体情境适应留下清晰、可撤销的演化路径。
+| Runtime 与核心接口 | `packages/dududa-agent/src/dududa/runtime/`、[Runtime 设计](runtime.md) |
+| 正式运行组合 | `apps/astrbot-plugins/astrbot_plugin_dududa_core/composition.py` |
+| 参数绑定与单步计划 | `apps/astrbot-plugins/astrbot_plugin_dududa_core/adapters/capability_planner.py` |
+| 模型适配与 DeepSeek 配置 | `apps/astrbot-plugins/astrbot_plugin_dududa_core/adapters/model.py`、`apps/astrbot-plugins/astrbot_plugin_dududa_core/adapters/deepseek_config.py` |
+| 校园能力 | `services/mcp/`、[能力与 MCP 设计](capability-and-mcp.md) |
+| 社交与自动参与 | `apps/astrbot-plugins/astrbot_plugin_dududa_core/adapters/proactive_talk.py`、[感知与社交设计](perception-and-social.md) |
+| Memory 与人格 | [Memory 设计](memory.md)、[Persona 设计](persona.md) |
+| 群服务管理 | `apps/web/`、[控制台设计](bot-control-plane.md) |
+| 部署现状 | [Bot 发布记录](../operations/bot-stable-release.md) |
+| 视频录制 | [5 分钟演示大纲](../operations/demo-video-runtime-validation-2026-09-05.md) |

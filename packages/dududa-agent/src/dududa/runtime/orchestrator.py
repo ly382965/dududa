@@ -21,6 +21,7 @@ from dududa.domain.delivery import DeliveryReceipt, DeliveryStatus
 from dududa.domain.identity import ConversationScope
 from dududa.domain.primitives import (
     ComponentRevision,
+    ConversationType,
     Outcome,
     ResourceUsage,
     RuntimeBudget,
@@ -66,7 +67,11 @@ from dududa.responses.contracts import (
     ResponsePlan,
     ResponseProfileSelectionRequest,
 )
-from dududa.responses.evidence import detect_detail_preference
+from dududa.responses.evidence import (
+    detect_detail_preference,
+    is_history_summary_request,
+    is_structured_multi_item_request,
+)
 from dududa.security.digests import actor_digest, scope_digest
 from dududa.security.models import AuthorizationEffect
 from dududa.security.ports import AuthorizationDecisionVerifier, AuthorizationPolicy
@@ -849,9 +854,6 @@ class OfflineRuntimeOrchestrator:
                 if tier is None:
                     raise validation_error("direct_reply_missing_tier_decision")
                 try:
-                    metadata = getattr(checkpoint.state.message, "metadata", None) or {}
-                    recent_context = str(metadata.get("recent_context", "")).strip()
-                    reply_guidance = str(metadata.get("reply_guidance", "")).strip()
                     direct = await self._direct_chat.execute(
                         context,
                         assessment,
@@ -861,8 +863,6 @@ class OfflineRuntimeOrchestrator:
                         persona_resolution=persona_resolution,
                         route_hint=checkpoint.state.invocation_options.route_hint,
                         capability_receipt=capability_receipt,
-                        recent_group_context=recent_context,
-                        reply_guidance=reply_guidance,
                         call=self._call_with_budget(
                             call,
                             reservation_budget(response_reservation),
@@ -1493,11 +1493,34 @@ class OfflineRuntimeOrchestrator:
                 reason_codes=(f"entrypoint_{forced[0].value}_profile",),
                 detector_revision=self._detail_detector_revision,
             )
-        return detect_detail_preference(
+        evidence = detect_detail_preference(
             context.perception.current_message_ref,
             text,
             detector_revision=self._detail_detector_revision,
         )
+        if (
+            evidence.reason_codes == ("no_explicit_detail_preference",)
+            and context.perception.conversation_type is ConversationType.GROUP
+            and len(context.perception.messages) >= 3
+            and state.complexity_assessment is not None
+            and state.complexity_assessment.task_kind == "bounded_transformation"
+            and is_history_summary_request(text)
+        ):
+            evidence = replace(evidence, reason_codes=(
+                *evidence.reason_codes, "recent_history_summary",
+            ))
+        if (
+            evidence.reason_codes == ("no_explicit_detail_preference",)
+            and is_structured_multi_item_request(text)
+        ):
+            evidence = replace(
+                evidence,
+                reason_codes=(
+                    *evidence.reason_codes,
+                    "structured_multi_item_response",
+                ),
+            )
+        return evidence
 
     def _resolve_persona(self, state: RuntimeState) -> PersonaResolution:
         registry = self._persona_registry

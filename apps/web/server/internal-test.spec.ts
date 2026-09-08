@@ -55,6 +55,52 @@ afterEach(async () => {
 })
 
 describe('internal-test gateway', () => {
+  it('keeps adaptive permission separate from initial mode and shows only this group activation', async () => {
+    const root = await fixtureRoot()
+    const scope = { accountId: 'qq-100001', conversationId: 'qq-100001:group:200001' }
+    const activation = { ...scope, pluginId: 'icourse.read', reason: '课程评价与选课讨论', activatedAt: '2026-09-06T00:00:00Z', messagesRead: 20 }
+    const status = vi.fn(async () => ({ ready: true, checkedAt: 'now', modelMapping: {}, controls: {}, adaptiveActivations: [activation,
+      { ...activation, conversationId: 'qq-100001:group:200002', pluginId: 'notifai.read' },
+    ] }))
+    const gateway = new FileInternalTestGateway({ dataRoot: root, runtimePreview: { status, preview: vi.fn() } })
+    await gateway.saveAgentConfig({ scope, policy: { enabled: true, plugins: { 'icourse.read': 'off' }, adaptivePlugins: ['icourse.read'],
+      proactiveTalk: { minimumMessages: 20 } } })
+    const policy = await gateway.agentConfig({ scope })
+    expect(policy.plugins['icourse.read']).toBe('off')
+    expect(policy.adaptivePlugins).toEqual(['icourse.read'])
+    expect(policy.proactiveTalk.minimumMessages).toBe(20)
+    expect(Object.keys(policy.activePlugins ?? {})).toEqual(['icourse.read'])
+    expect(policy.activePlugins?.['icourse.read']?.messagesRead).toBe(20)
+    for (const id of ['image.generate.gpt-image-2', 'arc.compat', 'sub2api.auto_query', 'unknown']) {
+      await expect(gateway.saveAgentConfig({ scope, policy: { adaptivePlugins: [id] } })).rejects.toThrow('只读查询能力')
+    }
+    await expect(gateway.saveAgentConfig({ scope: { ...scope, conversationId: 'qq-100001:private:300001' },
+      policy: { adaptivePlugins: ['icourse.read'] } })).rejects.toThrow('仅支持群聊')
+    status.mockRejectedValueOnce(new Error('offline'))
+    expect((await gateway.agentConfig({ scope })).adaptivePlugins).toEqual(['icourse.read'])
+  })
+
+  it('persists new plugin modes per account and group without executing a provider', async () => {
+    const root = await fixtureRoot()
+    const provider = vi.fn(() => { throw new Error('no provider during configuration') })
+    const gateway = new FileInternalTestGateway({ dataRoot: root, fetchImpl: provider as typeof fetch })
+    const scope = { accountId: 'qq-707', conversationId: 'qq-707:group:101' }
+    await gateway.saveAgentConfig({ scope, policy: { plugins: { 'emoji.kitchen': 'on', 'arc.compat': 'locked' } } })
+    const restarted = new FileInternalTestGateway({ dataRoot: root, fetchImpl: provider as typeof fetch })
+    expect((await restarted.agentConfig({ scope })).plugins).toMatchObject({ 'emoji.kitchen': 'on', 'arc.compat': 'locked' })
+    for (const other of [
+      { accountId: 'qq-708', conversationId: 'qq-708:group:101' },
+      { accountId: 'qq-707', conversationId: 'qq-707:group:102' },
+    ]) expect((await restarted.agentConfig({ scope: other })).plugins['emoji.kitchen']).toBe('off')
+    await restarted.saveAgentConfig({ scope, policy: { plugins: { 'emoji.kitchen': 'off' } } })
+    expect((await restarted.agentConfig({ scope })).plugins).toMatchObject({ 'emoji.kitchen': 'off', 'arc.compat': 'locked' })
+    for (const id of ['emoji.kitchen', 'arc.compat', 'social.reread.auto']) {
+      await expect(restarted.saveAgentConfig({ scope: { accountId: 'qq-707', conversationId: 'qq-707:private:201' },
+        policy: { plugins: { [id]: 'on' } } })).rejects.toThrow('仅支持群聊')
+    }
+    expect(provider).not.toHaveBeenCalled()
+  })
+
   it('exposes a no-send agent runtime and returns a routed candidate for live workspace context', async () => {
     const root = await fixtureRoot()
     const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {

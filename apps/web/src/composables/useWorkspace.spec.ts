@@ -100,6 +100,27 @@ function deferred<T>() {
 }
 
 describe('useWorkspace account-scoped state', () => {
+  it('shows the workspace without waiting for history or Agent status', async () => {
+    const owner = account('qq-111111111')
+    const target = conversation(owner, '345678901')
+    const history = deferred<HistoryPage>()
+    const runtime = deferred<InternalTestAgentStatus>()
+    const adapter = {
+      load: async () => ({ runtime: { status: 'connected', message: '', reverseWebSocketPath: '' }, accounts: [owner],
+        capabilities: {}, conversations: [target], messages: {}, configs: {}, sessions: [], agentMessages: {}, runs: [] }),
+      loadDraft: async () => undefined, loadCachedMessages: async () => [], loadHistory: () => history.promise,
+      markRead: async () => undefined, subscribe: () => () => undefined,
+    } as unknown as WorkspaceAdapter
+    const agent = { agentStatus: () => runtime.promise, agentCatalog: async () => undefined, agentConfig: async () => undefined } as unknown as InternalTestAgentAdapter
+    let workspace!: ReturnType<typeof useWorkspace>
+    const wrapper = mount(defineComponent({ setup() { workspace = useWorkspace(adapter, '', agent); return () => h('div') } }))
+    await flushPromises()
+    expect(workspace.loading.value).toBe(false)
+    expect(workspace.selectedConversation.value?.id).toBe(target.id)
+    expect(workspace.messagesLoading.value).toBe(true)
+    wrapper.unmount()
+  })
+
   afterEach(async () => {
     vi.unstubAllGlobals()
     window.localStorage.clear()
@@ -1027,9 +1048,7 @@ describe('useWorkspace account-scoped state', () => {
       answerProfile: 'short',
     }))
     const request = respond.mock.calls[0]?.[0]
-    expect(request?.messages).toHaveLength(70)
-    expect(request?.messages[0]?.content).toBe('真实消息 1')
-    expect(request?.messages.at(-1)?.content).toBe('真实消息 70')
+    expect(request?.messages).toEqual([])
     expect(workspace.answerProfileHint.value).toBeUndefined()
     expect(workspace.conversationSessions.value).toHaveLength(1)
     expect(workspace.agentMessages.value.map((item) => item.role)).toEqual(['operator', 'assistant'])
@@ -1056,11 +1075,54 @@ describe('useWorkspace account-scoped state', () => {
       plugins: { ...policy.plugins, 'social.proactive_talk': 'auto' },
     }
     workspace.updateAgentPolicy(nextPolicy)
+    expect(workspace.agentPolicyDirty.value).toBe(true)
     await workspace.saveAgentPolicy()
+    expect(workspace.agentPolicyDirty.value).toBe(false)
     expect(saveAgentConfig).toHaveBeenCalledWith(scope, nextPolicy)
     expect(workspace.agentPolicy.value?.reasoning).toEqual({ mode: 'locked', preferred: 'high', allowed: ['high'] })
     expect(workspace.agentPolicy.value?.plugins['social.proactive_talk']).toBe('auto')
     expect(workspace.agentPolicy.value?.proactiveTalk).toEqual(policy.proactiveTalk)
+
+    const activation = { reason: '数学分析选课讨论', activatedAt: '2026-09-06T00:00:00Z', messagesRead: 20 }
+    workspace.updateAgentPolicy({ ...nextPolicy, adaptivePlugins: ['icourse.read'] })
+    vi.mocked(agentAdapter.agentConfig).mockResolvedValueOnce({ ...policy, activePlugins: { 'icourse.read': activation } })
+    workspace.agentTab.value = 'settings'
+    await flushPromises()
+    expect(workspace.agentPolicy.value?.activePlugins?.['icourse.read']).toEqual(activation)
+    expect(workspace.agentPolicyDirty.value).toBe(true)
+    expect(workspace.agentPolicy.value?.reasoning).toEqual(nextPolicy.reasoning)
+    vi.mocked(agentAdapter.agentConfig).mockResolvedValueOnce({ ...policy, activePlugins: {} })
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    expect(workspace.agentPolicy.value?.activePlugins).toEqual({})
+    expect(workspace.agentPolicyDirty.value).toBe(true)
+    for (const outcome of ['deferred', 'no_reply', 'failed', 'empty'] as const) {
+      respond.mockResolvedValueOnce({ ...response, candidate: '', outcome,
+        generationObserved: false, reasonCodes: ['conflicting_evidence_without_clarification'] })
+      await workspace.sendAgentPrompt('隔离的无正文结果')
+      const parts = workspace.agentMessages.value.at(-1)!.parts
+      expect(parts.some(part => part.type === 'text' && part.text.includes('conflicting_evidence_without_clarification'))).toBe(true)
+      expect(parts.some(part => part.type === 'status' && part.tone === 'success')).toBe(false)
+      expect(workspace.selectedRun.value?.status).toBe(outcome === 'failed' ? 'error' : 'warning')
+      expect(workspace.selectedRun.value?.steps[1]?.status).not.toBe('completed')
+    }
+    const providerFailureReasons = [
+      'policy.saved', 'provider_output_invalid', 'runtime.preview.no_send',
+      'plugin.emoji.kitchen.off_by_admin', 'plugin.icourse.read.eligible_on',
+      'plugin.social.proactive_talk.waiting_for_group_repeat',
+    ]
+    respond.mockResolvedValueOnce({ ...response, candidate: '', outcome: 'failed',
+      generationObserved: false, reasonCodes: providerFailureReasons })
+    await workspace.sendAgentPrompt('总结这个群最近已读取的讨论，并说明覆盖范围。')
+    expect(workspace.agentMessages.value.at(-1)!.parts).toContainEqual({
+      type: 'text', text: '本次处理失败。模型未返回可用正文，请重试。',
+    })
+    expect(workspace.selectedRun.value?.reasonCodes).toEqual(providerFailureReasons)
+    expect(workspace.selectedRun.value?.steps[1]?.detail).not.toContain('plugin.')
+    expect(workspace.selectedRun.value?.status).toBe('error')
+    respond.mockRejectedValueOnce(new Error('isolated timeout'))
+    await workspace.sendAgentPrompt('隔离的超时结果')
+    expect(workspace.selectedRun.value?.status).toBe('error')
     expect(sendMessage).not.toHaveBeenCalled()
     wrapper.unmount()
   })

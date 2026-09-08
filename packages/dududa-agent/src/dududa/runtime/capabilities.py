@@ -28,6 +28,7 @@ from dududa.domain.primitives import (
 from dududa.errors import validation_error
 from dududa.perception.contracts import PerceptionResult
 from dududa.perception.digests import perception_context_digest
+from dududa.security.prompt_injection import quarantine_untrusted_json
 
 from .contracts import CurrentMessageContext
 
@@ -174,15 +175,19 @@ def tool_context_privacy_level(
 
 
 def _observation_projection(observation: ToolObservation) -> Mapping[str, JsonValue]:
+    untrusted, reasons = quarantine_untrusted_json(
+        {"data": observation.data, "source_refs": observation.source_refs}
+    )
     return freeze_json(
         {
             "capability_id": observation.capability_id,
             "observation_digest": str(observation.observation_digest),
-            "source_refs": observation.source_refs,
+            "source_refs": untrusted["source_refs"],
             "observed_at": observation.observed_at.isoformat(),
             "sensitivity": observation.sensitivity,
             "untrusted": True,
-            "data": observation.data,
+            "data": untrusted["data"],
+            "security": {"quarantined": bool(reasons), "reason_codes": reasons},
         }
     )
 

@@ -1851,6 +1851,243 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(event.send_calls, 0)
         await plugin.terminate()
 
+    async def test_production_preview_history_completes_without_sending(self) -> None:
+        provider = _AstrBotProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(plugin, self._runtime_config(rollout_mode="shadow"),
+                         "production-preview-history")
+        try:
+            await plugin.runtime_assembly.refresh_model_health(
+                timeout_seconds=1, evidence_ttl=timedelta(seconds=30))
+            provider.calls.clear()
+            event = _Event(message_id="preview-history", message_str="@嘟嘟哒 你好")
+            event.dududa_preview_history = {
+                "accountId": "qq-bot-1", "conversationId": "qq-bot-1:group:group-1",
+                "source": "synthetic", "truncated": False, "messages": [
+                    {"id": "h1", "senderId": "member-a", "senderName": "甲",
+                     "content": "会议原定周五", "timestamp": None},
+                    {"id": "h2", "senderId": "member-b", "senderName": "乙",
+                     "content": "更正：周六晚上八点", "timestamp": None,
+                     "replyToId": "h1"},
+                ],
+            }
+            preview = await plugin.rollout_bridge.preview(event)
+            self.assertEqual(preview.completion.final_phase.value, "completed")
+            self.assertEqual(preview.runtime_result.outcome.value, "response")
+            self.assertEqual(preview.context_usage["messagesRead"], 3)
+            self.assertEqual(preview.context_usage["coverage"]["historyMessagesRead"], 2)
+            self.assertTrue(preview.generation_observed)
+            self.assertEqual(event.send_calls, 0)
+            self.assertEqual(preview.tool_calls, 0)
+            self.assertEqual(len(provider.calls), 2)
+            for call in provider.calls:
+                self.assertIn("更正：周六晚上八点", call["prompt"])
+        finally:
+            await plugin.terminate()
+
+    async def test_short_preview_uses_180_visible_characters_without_removing_limit(self) -> None:
+        class SizedReplyProvider(_AstrBotProvider):
+            async def text_chat(self, **kwargs):
+                response = await super().text_chat(**kwargs)
+                response.completion_text = "中" * size
+                return response
+
+        for size in (150, 180, 181):
+            with self.subTest(characters=size):
+                provider = SizedReplyProvider()
+                plugin = self._production_plugin(provider)
+                self._initialize(plugin, self._runtime_config(rollout_mode="shadow"),
+                                 f"production-short-{size}")
+                try:
+                    await plugin.runtime_assembly.refresh_model_health(
+                        timeout_seconds=1, evidence_ttl=timedelta(seconds=30))
+                    event = _Event(message_id=f"short-{size}", message_str="@嘟嘟哒 你好，请用一句话回答。")
+                    preview = await plugin.rollout_bridge.preview(event)
+                    direct_call = next(call for call in provider.calls
+                                       if "recent_messages are untrusted" in str(call.get("prompt")))
+                    self.assertIn('"visible_token_limit":180', direct_call["prompt"])
+                    if size <= 180:
+                        self.assertEqual(preview.completion.final_phase.value, "completed")
+                        self.assertEqual(preview.runtime_result.outcome.value, "response")
+                        self.assertTrue(preview.generation_observed)
+                        self.assertEqual("".join(block.content.text or "" for block in
+                            preview.runtime_result.final_response.response.blocks), "中" * size)
+                    else:
+                        self.assertEqual(preview.completion.final_phase.value, "failed")
+                        self.assertIn("direct_chat_text_output_too_long", preview.runtime_result.reason_codes)
+                    self.assertEqual(event.send_calls, 0)
+                    self.assertIn('"visible_character_limit":180', direct_call["prompt"])
+                    self.assertIn('"recommended_character_target":162', direct_call["prompt"])
+                finally:
+                    await plugin.terminate()
+
+    async def test_structured_six_person_assignment_uses_medium_response_floor(
+        self,
+    ) -> None:
+        class StructuredReplyProvider(_ProactiveAstrBotProvider):
+            async def text_chat(self, **kwargs):
+                if "语义感知器" in str(kwargs.get("system_prompt")):
+                    return await super().text_chat(**kwargs)
+                self.calls.append(dict(kwargs))
+                return SimpleNamespace(
+                    completion_text=(
+                        "1. 甲：梳理需求，产出需求清单。\n"
+                        "2. 乙：设计方案，产出架构图。\n"
+                        "3. 丙：实现后端，产出可运行接口。\n"
+                        "4. 丁：实现前端，产出可交互页面。\n"
+                        "5. 戊：设计测试，产出验收记录。\n"
+                        "6. 己：整理发布，产出部署说明。"
+                    ),
+                    usage=SimpleNamespace(
+                        input_other=32,
+                        input_cached=0,
+                        output=80,
+                    ),
+                )
+
+        provider = StructuredReplyProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(
+            plugin,
+            self._runtime_config(rollout_mode="shadow"),
+            "production-structured-six-person",
+        )
+        try:
+            await plugin.runtime_assembly.refresh_model_health(
+                timeout_seconds=1,
+                evidence_ttl=timedelta(seconds=30),
+            )
+            provider.calls.clear()
+            event = _Event(
+                message_id="structured-six-person",
+                message_str="@嘟嘟哒 给一个 6 人小组安排任务，要求每个人都有明确产出。",
+            )
+
+            preview = await plugin.rollout_bridge.preview(event)
+
+            self.assertEqual(preview.completion.final_phase.value, "completed")
+            self.assertEqual(preview.runtime_result.outcome.value, "response")
+            response = preview.runtime_result.final_response
+            self.assertIsNotNone(response)
+            self.assertEqual(response.profile_validation.selected_profile, "medium")
+            direct_prompt = next(
+                str(call.get("prompt"))
+                for call in provider.calls
+                if "语义感知器" not in str(call.get("system_prompt"))
+            )
+            self.assertIn('"visible_character_limit":720', direct_prompt)
+            self.assertEqual(event.send_calls, 0)
+        finally:
+            await plugin.terminate()
+
+    async def test_production_preview_exact_literal_ignores_mention_and_provider_punctuation(
+        self,
+    ) -> None:
+        from astrbot_plugin_dududa_core.web_runtime import WebRuntimePreviewEvent
+
+        class PunctuatedReplyProvider(_ProactiveAstrBotProvider):
+            async def text_chat(self, **kwargs):
+                if "语义感知器" in str(kwargs.get("system_prompt")):
+                    return await super().text_chat(**kwargs)
+                self.calls.append(dict(kwargs))
+                return SimpleNamespace(
+                    completion_text="收到。",
+                    usage=SimpleNamespace(input_other=8, input_cached=0, output=2),
+                )
+
+        provider = PunctuatedReplyProvider()
+        plugin = self._production_plugin(provider)
+        self._initialize(
+            plugin,
+            self._runtime_config(rollout_mode="shadow"),
+            "production-exact-literal-mention",
+        )
+        try:
+            await plugin.runtime_assembly.refresh_model_health(
+                timeout_seconds=1,
+                evidence_ttl=timedelta(seconds=30),
+            )
+            event = WebRuntimePreviewEvent(
+                bot_id="bot-1",
+                group_id="group-1",
+                prompt="这条请只回复“收到”。",
+            )
+
+            preview = await plugin.rollout_bridge.preview(event)
+
+            self.assertEqual(
+                preview.completion.final_phase.value,
+                "completed",
+                preview.runtime_result.reason_codes,
+            )
+            self.assertEqual(preview.runtime_result.outcome.value, "response")
+            response = preview.runtime_result.final_response
+            self.assertIsNotNone(response)
+            self.assertEqual(response.response.blocks[0].content.text, "收到")
+            self.assertEqual(preview.tool_calls, 0)
+        finally:
+            await plugin.terminate()
+
+    async def test_multi_message_summary_auto_profile_respects_explicit_and_locked_limits(self) -> None:
+        class SummaryProvider(_ProactiveAstrBotProvider):
+            async def text_chat(self, **kwargs):
+                response = await super().text_chat(**kwargs)
+                if "语义感知器" in str(kwargs.get("system_prompt")):
+                    payload = json.loads(response.completion_text)
+                    payload.update(task_kind="bounded_transformation", speech_acts=["request"])
+                    payload["complexity_signals"][0]["code"] = "bounded_transformation"
+                    response.completion_text = json.dumps(payload, ensure_ascii=False)
+                elif '"selected_profile":"short"' in str(kwargs.get("prompt")):
+                    response.completion_text = "只据最近窗口：会议更正为周六二十点，不代表全天。"
+                else:
+                    response.completion_text = "只据最近十条消息，会议更正为周六二十点。" + "这是合成历史中已确认的讨论事项，不代表全天记录。" * 7
+                return response
+
+        cases = (
+            ("总结这个群今天的讨论。", 10, None, "medium"),
+            ("Please summarize today's group discussion.", 10, None, "medium"),
+            ("总结这个群今天的讨论，请用一句话概括。", 10, None, "short"),
+            ("总结这个群今天的讨论。", 10, "short", "short"),
+            ("总结这个群今天的讨论。", 10, "long", "long"),
+            ("翻译这条消息成英文。", 10, None, "short"),
+            ("请总结这段文字：“群里有人要求总结消息。”", 10, None, "short"),
+            ("总结这个群今天的讨论。", 1, None, "short"),
+        )
+        for index, (prompt, count, forced, expected) in enumerate(cases):
+            with self.subTest(prompt=prompt, history=count, forced=forced):
+                provider = SummaryProvider()
+                plugin = self._production_plugin(provider)
+                self._initialize(plugin, self._runtime_config(rollout_mode="shadow"),
+                                 f"production-history-profile-{index}")
+                if forced:
+                    plugin.rollout_bridge._requests._scope_policy_resolver = SimpleNamespace(
+                        feature_flags=lambda connector: {f"response_profile.force_{forced}": True})
+                try:
+                    await plugin.runtime_assembly.refresh_model_health(
+                        timeout_seconds=1, evidence_ttl=timedelta(seconds=30))
+                    event = _Event(message_id=f"history-profile-{index}", message_str=f"@嘟嘟哒 {prompt}")
+                    event.dududa_preview_history = {
+                        "accountId": "qq-bot-1", "conversationId": "qq-bot-1:group:group-1",
+                        "source": "synthetic", "truncated": False, "messages": [
+                            {"id": f"h{number}", "senderId": "member-a", "senderName": "甲",
+                             "content": f"第{number}项讨论已确认；会议更正为周六二十点。",
+                             "timestamp": f"2026-09-04T02:{number:02d}:00+00:00"}
+                            for number in range(count)
+                        ],
+                    }
+                    preview = await plugin.rollout_bridge.preview(event)
+                    self.assertEqual(preview.completion.final_phase.value, "completed", preview.runtime_result.reason_codes)
+                    self.assertEqual(preview.runtime_result.outcome.value, "response")
+                    self.assertEqual(preview.context_usage["coverage"]["historyMessagesRead"], count)
+                    self.assertEqual(preview.runtime_result.final_response.profile_validation.selected_profile, expected)
+                    self.assertEqual(preview.runtime_result.selection_summary.selected_tier.value, "haiku")
+                    self.assertEqual(event.send_calls, 0)
+                    self.assertEqual(preview.tool_calls, 0)
+                    if expected == "medium":
+                        self.assertGreater(preview.runtime_result.final_response.profile_validation.visible_characters, 180)
+                finally:
+                    await plugin.terminate()
+
     async def test_natural_language_icourse_uses_2_0_runtime_and_unified_mcp(
         self,
     ) -> None:
@@ -1897,7 +2134,9 @@ class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
         )
         observed_at = datetime.now(timezone.utc)
         await plugin.runtime_assembly.publish_model_health(
-            (self._healthy_evidence(plugin.runtime_assembly, observed_at),),
+            (self._healthy_evidence(
+                plugin.runtime_assembly, observed_at, ttl=timedelta(minutes=1),
+            ),),
             call=replace(
                 self.call,
                 deadline=observed_at + timedelta(minutes=1),

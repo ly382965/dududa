@@ -86,7 +86,7 @@ class YoungClient:
 
         try:
             async with self._service():
-                activity = SecondClass(activity_id)
+                activity = SecondClass(activity_id, data={})
                 await activity.update()
                 item = self._public_activity(activity)
                 children = (
@@ -135,10 +135,13 @@ class YoungClient:
                         for child in value.children:
                             visit(child)
 
+                    # The raw tree includes thousands of class and club nodes.
+                    # The public filter lists university/school/department entries.
                     visit(root)
+                    items = [item for item in items if item["level"] <= 1]
         except RuntimeError:
             return self._upstream_unavailable()
-        return self._result(items)
+        return self._result(items[:100], extra={"total": len(items)})
 
     @asynccontextmanager
     async def _service(self) -> AsyncIterator[None]:

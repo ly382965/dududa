@@ -1,10 +1,13 @@
+import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewOutcome } from '../src/types/preview'
+
 export interface DududaRuntimePreviewRequest {
   accountId: string
   conversationId: string
   prompt: string
+  history?: PreviewHistory
 }
 
-export interface DududaRuntimePreviewResult {
+export interface DududaRuntimePreviewResult extends PreviewEvidence {
   runId: string
   candidate: string
   tier: 'haiku' | 'sonnet' | 'opus'
@@ -20,6 +23,7 @@ export interface DududaRuntimePreviewResult {
   memoryWrites: 0
   toolCalls: number
   capabilityIds: string[]
+  coverage?: PreviewCoverage
 }
 
 export interface DududaRuntimePreviewClient {
@@ -33,6 +37,10 @@ export interface DududaRuntimeStatus {
   modelMapping: Partial<Record<'haiku' | 'sonnet' | 'opus', string>>
   controls: Record<string, unknown>
   checkedAt: string
+  adaptiveActivations?: Array<{
+    accountId: string; conversationId: string; pluginId: string
+    reason: string; activatedAt: string; messagesRead: number
+  }>
 }
 
 export class DududaRuntimePreviewClientError extends Error {
@@ -73,6 +81,13 @@ export class HttpDududaRuntimePreviewClient implements DududaRuntimePreviewClien
       controlReason: value.controlReason === 'rollout_config_invalid'
         ? 'rollout_config_invalid' : 'rollout_config_current',
       checkedAt: text(value.checkedAt),
+      adaptiveActivations: Array.isArray(value.adaptiveActivations) ? value.adaptiveActivations.flatMap(raw => {
+        const item = record(raw)
+        if (!item || !text(item.pluginId) || !text(item.accountId) || !text(item.conversationId)) return []
+        return [{ accountId: text(item.accountId), conversationId: text(item.conversationId),
+          pluginId: text(item.pluginId), reason: text(item.reason), activatedAt: text(item.activatedAt),
+          messagesRead: typeof item.messagesRead === 'number' ? item.messagesRead : 0 }]
+      }) : [],
       modelMapping: Object.fromEntries(['haiku', 'sonnet', 'opus'].flatMap(tier => (
         text(mapping[tier]) ? [[tier, text(mapping[tier])]] : []
       ))),
@@ -138,6 +153,8 @@ function runtimePreviewResult(value: unknown): DududaRuntimePreviewResult {
     || !['haiku', 'sonnet', 'opus'].includes(tier)
     || !['low', 'medium', 'high'].includes(reasoning)
     || !['short', 'medium', 'long'].includes(answerProfile)
+    || item.outputCalls !== 0
+    || item.memoryWrites !== 0
   ) {
     throw new DududaRuntimePreviewClientError('Dududa 2.0 Runtime 返回格式无效', 502)
   }
@@ -157,6 +174,27 @@ function runtimePreviewResult(value: unknown): DududaRuntimePreviewResult {
     memoryWrites: 0,
     toolCalls: nonnegativeInteger(item.toolCalls),
     capabilityIds: stringArray(item.capabilityIds),
+    outcome: previewOutcome(item.outcome, text(item.candidate)),
+    runtimeState: text(item.runtimeState) || 'unknown',
+    generationObserved: item.generationObserved === true,
+    coverage: previewCoverage(item.coverage),
+  }
+}
+
+function previewOutcome(value: unknown, candidate: string): PreviewOutcome {
+  const supported: PreviewOutcome[] = ['response', 'no_reply', 'deferred', 'failed', 'reaction', 'empty']
+  return supported.includes(value as PreviewOutcome) ? value as PreviewOutcome : candidate ? 'response' : 'empty'
+}
+
+function previewCoverage(value: unknown): PreviewCoverage | undefined {
+  const item = record(value)
+  if (!item || !['server_recent', 'synthetic', 'unavailable'].includes(text(item.source))) return undefined
+  return {
+    source: item.source as PreviewCoverage['source'], partial: true,
+    truncated: item.truncated === true,
+    historyMessagesRead: nonnegativeInteger(item.historyMessagesRead),
+    oldestAt: text(item.oldestAt) || null,
+    newestAt: text(item.newestAt) || null,
   }
 }
 

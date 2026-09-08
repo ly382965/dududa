@@ -7,6 +7,7 @@ import {
   Inbox,
   KeyRound,
   MessageCircle,
+  Ellipsis,
   Moon,
   Plus,
   Settings,
@@ -16,10 +17,14 @@ import {
   UsersRound,
 } from '@lucide/vue'
 
+import { onMounted, ref, watch } from 'vue'
+import { controlPlaneAdapter } from '../services/control-plane'
+import { internalTestAdapter } from '../services/internal-test'
+
 import type { Account, MobilePanel, ThemeMode } from '../types/workspace'
 import AppAvatar from './AppAvatar.vue'
 
-defineProps<{
+const props = defineProps<{
   accounts: Account[]
   selectedAccountId: string
   totalUnread: number
@@ -39,6 +44,22 @@ const emit = defineEmits<{
   addAccount: []
   navigate: [route: 'chat' | 'contacts' | 'notifications' | 'control-plane' | 'internal-test' | 'api-keys' | 'settings']
 }>()
+const mobileMore = ref<HTMLDetailsElement>()
+const serviceUnavailable = ref(false)
+const internalUnavailable = ref(false)
+async function checkManagementStatus(): Promise<void> {
+  await Promise.allSettled([
+    controlPlaneAdapter.status().then(status => { serviceUnavailable.value = !status.available }).catch(() => { serviceUnavailable.value = true }),
+    internalTestAdapter.status().then(status => { internalUnavailable.value = !status.available }).catch(() => { internalUnavailable.value = true }),
+  ])
+}
+onMounted(checkManagementStatus)
+watch(() => props.activeRoute, () => { mobileMore.value?.removeAttribute('open'); void checkManagementStatus() })
+function closeMore(event: KeyboardEvent): void {
+  if (event.key !== 'Escape') return
+  mobileMore.value?.removeAttribute('open')
+  mobileMore.value?.querySelector('summary')?.focus()
+}
 </script>
 
 <template>
@@ -52,9 +73,9 @@ const emit = defineEmits<{
       <button class="rail-button" :class="{ active: activeRoute === 'chat' }" type="button" title="消息" aria-label="消息" @click="emit('navigate', 'chat')"><MessageCircle :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'contacts' }" type="button" title="联系人" aria-label="联系人" @click="emit('navigate', 'contacts')"><Contact :size="19" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'notifications' }" type="button" title="通知" aria-label="通知" @click="emit('navigate', 'notifications')"><Bell :size="19" /><span v-if="notificationCount" class="rail-badge">{{ notificationCount > 99 ? '99+' : notificationCount }}</span></button>
-      <button class="rail-button" :class="{ active: activeRoute === 'control-plane' }" type="button" title="群服务" aria-label="群服务" @click="emit('navigate', 'control-plane')"><ShieldCheck :size="19" /></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'control-plane' }" type="button" :title="serviceUnavailable ? '群服务 · 暂不可用，点击查看配置指引' : '群服务'" aria-label="群服务" @click="emit('navigate', 'control-plane')"><ShieldCheck :size="19" /><span v-if="serviceUnavailable" class="availability-dot" aria-label="暂不可用" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'api-keys' }" type="button" title="API Key 池" aria-label="API Key 池" :aria-current="activeRoute === 'api-keys' ? 'page' : undefined" @click="emit('navigate', 'api-keys')"><KeyRound :size="19" /></button>
-      <button class="rail-button" :class="{ active: activeRoute === 'internal-test' }" type="button" title="人工内测" aria-label="人工内测" @click="emit('navigate', 'internal-test')"><FlaskConical :size="19" /></button>
+      <button class="rail-button" :class="{ active: activeRoute === 'internal-test' }" type="button" :title="internalUnavailable ? '人工内测 · 暂不可用，点击查看配置指引' : '人工内测'" aria-label="人工内测" @click="emit('navigate', 'internal-test')"><FlaskConical :size="19" /><span v-if="internalUnavailable" class="availability-dot" aria-label="暂不可用" /></button>
       <button class="rail-button" :class="{ active: activeRoute === 'settings' }" type="button" title="设置" aria-label="设置" @click="emit('navigate', 'settings')"><Settings :size="19" /></button>
     </nav>
 
@@ -120,31 +141,33 @@ const emit = defineEmits<{
         <span>通知</span>
         <b v-if="notificationCount">{{ notificationCount }}</b>
       </button>
-      <button :class="{ active: activeRoute === 'control-plane' }" type="button" @click="emit('navigate', 'control-plane')">
-        <ShieldCheck :size="21" />
-        <span>服务</span>
-      </button>
-      <button :class="{ active: activeRoute === 'api-keys' }" type="button" :aria-current="activeRoute === 'api-keys' ? 'page' : undefined" @click="emit('navigate', 'api-keys')">
-        <KeyRound :size="21" />
-        <span>Key 池</span>
-      </button>
-      <button :class="{ active: activeRoute === 'internal-test' }" type="button" @click="emit('navigate', 'internal-test')">
-        <FlaskConical :size="21" />
-        <span>内测</span>
-      </button>
       <button :class="{ active: mobilePanel === 'agent' }" type="button" @click="emit('setMobilePanel', 'agent')">
         <Sparkles :size="21" />
         <span>Agent</span>
       </button>
-      <button :class="{ active: activeRoute === 'settings' }" type="button" @click="emit('navigate', 'settings')">
-        <Settings :size="21" />
-        <span>设置</span>
-      </button>
+      <details ref="mobileMore" class="mobile-more" @keydown="closeMore">
+        <summary :class="{ active: ['settings', 'control-plane', 'api-keys', 'internal-test'].includes(activeRoute) }"><Ellipsis :size="21" /><span>更多</span></summary>
+        <div class="mobile-more-menu">
+          <button type="button" @click="emit('navigate', 'control-plane')"><ShieldCheck :size="19" />群服务 <small v-if="serviceUnavailable">暂不可用</small></button>
+          <button type="button" :aria-current="activeRoute === 'api-keys' ? 'page' : undefined" @click="emit('navigate', 'api-keys')"><KeyRound :size="19" />API Key 池</button>
+          <button type="button" @click="emit('navigate', 'internal-test')"><FlaskConical :size="19" />人工内测 <small v-if="internalUnavailable">暂不可用</small></button>
+          <button type="button" @click="emit('navigate', 'settings')"><Settings :size="19" />设置</button>
+        </div>
+      </details>
     </nav>
   </aside>
 </template>
 
 <style scoped>
+.availability-dot { position: absolute; right: 4px; top: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--warning, #b7791f); }
+.mobile-more { position: relative; }
+.mobile-more summary { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: var(--text-muted); font-size: 12px; list-style: none; }
+.mobile-more summary::-webkit-details-marker { display: none; }
+.mobile-more summary.active { color: var(--brand-strong); }
+.mobile-more-menu { position: absolute; right: 8px; bottom: calc(100% + 8px); width: 225px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: var(--floating-shadow); }
+.mobile-nav .mobile-more-menu button { width: 100%; min-height: 44px; flex-direction: row; justify-content: flex-start; gap: 10px; padding: 8px; color: var(--text); font-size: 14px; }
+.mobile-more-menu small { margin-left: auto; color: var(--warning, #b7791f); font-size: 12px; }
+
 .account-rail {
   position: relative;
   z-index: 30;
@@ -322,7 +345,7 @@ const emit = defineEmits<{
     display: grid;
     width: 100%;
     height: 100%;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .mobile-nav button {
@@ -337,7 +360,7 @@ const emit = defineEmits<{
     border: 0;
     color: var(--text-muted);
     background: transparent;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .mobile-nav button.active {

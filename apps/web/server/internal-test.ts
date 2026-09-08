@@ -4,6 +4,8 @@ import { homedir } from 'node:os'
 import { dirname, isAbsolute, resolve } from 'node:path'
 
 import dududaPersona from '../../../configs/personas/registry-v1/dududa.json'
+import type { HistoryPage } from '../src/types/workspace'
+import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewHistoryMessage } from '../src/types/preview'
 import {
   DududaRuntimePreviewClientError,
   type DududaRuntimePreviewClient,
@@ -65,6 +67,7 @@ export interface ProactiveTalkSettings {
   probabilityPercent: number
   cooldownSeconds: number
   maximumPerHour: number
+  minimumMessages?: number
 }
 
 export interface InternalTestAgentPolicyDefaults {
@@ -77,12 +80,14 @@ export interface InternalTestAgentPolicyDefaults {
   groupChatStyle: AdaptiveSetting<GroupChatStyle>
   proactiveTalk: ProactiveTalkSettings
   plugins: Record<string, PluginMode>
+  adaptivePlugins?: string[]
 }
 
 export interface InternalTestAgentPolicy extends InternalTestAgentPolicyDefaults {
   schemaVersion: 1
   scope: InternalTestAgentScope
   updatedAt?: string
+  activePlugins?: Record<string, { reason: string; activatedAt: string; messagesRead: number }>
 }
 
 export interface InternalTestCatalogModel {
@@ -175,6 +180,7 @@ export interface InternalTestContextUsage {
   characterLimit: number
   messagesRead: number
   charactersRead: number
+  coverage?: PreviewCoverage
 }
 
 export interface InternalTestStatus {
@@ -257,7 +263,7 @@ export interface InternalTestAgentStatus {
   warnings: string[]
 }
 
-export interface InternalTestAgentResponse {
+export interface InternalTestAgentResponse extends PreviewEvidence {
   runId: string
   candidate: string
   tier: ModelTier
@@ -338,6 +344,43 @@ export interface FileInternalTestGatewayOptions {
   fetchImpl?: typeof fetch
   now?: () => Date
   runtimePreview?: DududaRuntimePreviewClient
+  /** Inject synthetic pages in isolated tests; production uses the scoped Hub. */
+  historyProvider?: (scope: InternalTestAgentScope, limit: number) => Promise<HistoryPage>
+  historySource?: 'server_recent' | 'synthetic'
+}
+
+function runtimeHistory(
+  scope: InternalTestAgentScope, page: HistoryPage, limit: number,
+  source: 'server_recent' | 'synthetic',
+): PreviewHistory {
+  let truncated = page.hasMoreBefore || page.hasMoreAfter || page.messages.length > limit
+  const messages: PreviewHistoryMessage[] = []
+  const ids = new Set<string>()
+  for (const message of page.messages.slice(-limit)) {
+    if (message.accountId !== scope.accountId || message.conversationId !== scope.conversationId) {
+      throw new InternalTestError('历史消息与请求账号或群聊不匹配', 502)
+    }
+    if (message.status === 'recalled' || !message.content.trim()) continue
+    const id = message.messageId || message.id
+    if (!id || id.length > 256 || !message.senderId || message.senderId.length > 128 || ids.has(id)) continue
+    ids.add(id)
+    const content = message.content.slice(0, 2_000)
+    truncated ||= content.length < message.content.length
+    const timestamp = Number.isFinite(message.timestampMs) ? new Date(message.timestampMs!).toISOString() : null
+    const reply = message.segments.find(segment => segment.type === 'reply')
+    messages.push({
+      id, senderId: message.senderId, senderName: message.senderName.slice(0, 100), content, timestamp,
+      ...(reply?.type === 'reply' && reply.messageId ? { replyToId: reply.messageId } : {}),
+    })
+  }
+  let remaining = 36_000
+  const bounded: PreviewHistoryMessage[] = []
+  for (const message of messages.reverse()) {
+    if (message.content.length > remaining) { truncated = true; break }
+    bounded.unshift(message)
+    remaining -= message.content.length
+  }
+  return { ...scope, source, messages: bounded, truncated }
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -642,12 +685,30 @@ function defaultPolicyDefaults(): InternalTestAgentPolicyDefaults {
       'social.proactive_talk': 'off',
       'social.reread.auto': 'off',
       'sub2api.auto_query': 'off',
+      'emoji.kitchen': 'off',
+      'arc.compat': 'off',
     },
   }
 }
 
 function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
   return [
+    {
+      id: 'emoji.kitchen', displayName: 'Emoji Kitchen 表情合成',
+      kind: 'image_generation', installed: true, available: true,
+      policyManaged: true, requiredRole: 'super_admin', executionRole: 'admin',
+      runtimeTarget: 'astrbot', runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'command_auto_reply',
+      description: '本群开启后响应 /emoji 或 /表情合成；按指令合成官方 Emoji，不调用 LLM。关闭时不下载、不回复。',
+    },
+    {
+      id: 'arc.compat', displayName: 'Arc 曲目与谱面',
+      kind: 'readonly_query', installed: true, available: true,
+      policyManaged: true, requiredRole: 'super_admin', executionRole: 'admin',
+      runtimeTarget: 'astrbot', runtimeReadiness: runtimeReady ? 'online' : 'configured',
+      executionKind: 'command_auto_reply',
+      description: '按群控制 /arc bind、info、chart；仍需宿主允许该群。B50 查分保持独立停用，本开关不会恢复查分。',
+    },
     {
       id: 'icourse.read',
       displayName: 'iCourse 评课社区',
@@ -766,7 +827,7 @@ function catalogPlugins(runtimeReady = false): InternalTestCatalogPlugin[] {
       runtimeTarget: 'astrbot',
       runtimeReadiness: runtimeReady ? 'online' : 'configured',
       executionKind: 'passive_behavior',
-      description: '读取有界群聊历史并通过 2.0 Runtime 生成 SHORT 群级接话；频率、冷却和每小时上限由独立主动频率控制。',
+      description: '根据近期群聊参与讨论；获得自适应许可后可启用查询能力。参与频率、冷却和每小时上限可单独设置。',
     },
     {
       id: 'social.reread.auto',
@@ -837,7 +898,7 @@ function currentAgentRuntimeControls(
       stage: proactiveEnabled ? 'proactive_canary' : 'probe_shadow',
       deliveryEnabled: proactiveEnabled,
       summary: proactiveEnabled
-        ? 'Dududa 2.0 主动搭话执行器在线；仅对 Scope Policy 明确启用的群生效，自动回复固定为 SHORT。'
+        ? '主动搭话在线。日常接话使用短回复，查询任务按内容展开。'
         : '主动参与当前只有 S15E Probe Shadow，只生成机会与候选，不发送消息。',
     },
   }
@@ -974,7 +1035,12 @@ function pluginRunSelection(
     }
   }
   if (plugin.executionKind === 'command_auto_reply') {
-    const matched = isSub2ApiCommand(body.prompt ?? body.command)
+    const command = stringValue(body.prompt ?? body.command) ?? ''
+    const matched = plugin.id === 'emoji.kitchen'
+      ? /^\/(?:emoji|表情合成)(?:\s|$)/iu.test(command)
+      : plugin.id === 'arc.compat'
+        ? /^\/arc\s+(?:bind|info|chart)(?:\s|$)/iu.test(command)
+        : isSub2ApiCommand(command)
     return {
       eligible: true,
       selectedForRun: false,
@@ -1116,12 +1182,27 @@ function normalizeAgentPolicy(
   const policy = objectValue(value) ?? {}
   const knownPlugins = new Map(catalogPlugins().map((plugin) => [plugin.id, plugin]))
   const plugins = { ...current.plugins }
+  const adaptivePlugins = policy.adaptivePlugins ?? current.adaptivePlugins
+  if (adaptivePlugins !== undefined && (!Array.isArray(adaptivePlugins) || adaptivePlugins.some(id => {
+    const plugin = typeof id === 'string' ? knownPlugins.get(id) : undefined
+    return !plugin?.available || plugin.executionKind !== 'agent_capability' || plugin.runtimeTarget !== 'astrbot'
+  }))) throw new InternalTestError('自适应启用只支持已接入的只读查询能力')
+  if (Array.isArray(adaptivePlugins) && adaptivePlugins.length && !scope.conversationId.startsWith(`${scope.accountId}:group:`)) {
+    throw new InternalTestError('自适应启用仅支持群聊')
+  }
   const requestedPlugins = objectValue(policy.plugins)
   if (requestedPlugins) {
     for (const [id, mode] of Object.entries(requestedPlugins)) {
       const plugin = knownPlugins.get(id)
       if (!plugin) throw new InternalTestError(`未知插件: ${id}`)
       const requestedMode = pluginMode(mode)
+      if (requestedMode !== 'off' && ['emoji.kitchen', 'arc.compat'].includes(id)
+        && !scope.conversationId.startsWith(`${scope.accountId}:group:`)) {
+        throw new InternalTestError(`插件 ${id} 仅支持群聊`)
+      }
+      if (requestedMode !== 'off' && id === 'social.reread.auto' && scope.conversationId.includes(':private:')) {
+        throw new InternalTestError(`插件 ${id} 仅支持群聊`)
+      }
       if (requestedMode !== 'off' && !plugin.policyManaged) {
         throw new InternalTestError(`插件 ${id} 不允许通过普通 Scope Policy 启用`)
       }
@@ -1171,6 +1252,7 @@ function normalizeAgentPolicy(
       current.proactiveTalk,
     ),
     plugins,
+    ...(adaptivePlugins !== undefined ? { adaptivePlugins: [...new Set(adaptivePlugins as string[])] } : {}),
     ...(updatedAt ? { updatedAt } : {}),
   }
 }
@@ -1201,6 +1283,10 @@ function proactiveTalkSettings(
       PROACTIVE_TALK_LIMITS.maximumPerHour,
       'maximumPerHour',
     ),
+    ...(proactive.minimumMessages !== undefined || fallback.minimumMessages !== undefined ? {
+      minimumMessages: proactiveInteger(proactive.minimumMessages, fallback.minimumMessages ?? 3,
+        { minimum: 3, maximum: 100, step: 1 }, 'minimumMessages'),
+    } : {}),
   }
 }
 
@@ -1685,7 +1771,19 @@ export class FileInternalTestGateway implements InternalTestGateway {
   }
 
   async agentConfig(query: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
-    return (await this.resolvedPolicy(agentScope(query))).policy
+    const policy = (await this.resolvedPolicy(agentScope(query))).policy
+    if (!policy.adaptivePlugins?.length || !this.options.runtimePreview?.status) return policy
+    let live
+    try {
+      live = await this.options.runtimePreview.status()
+    } catch {
+      return policy
+    }
+    const activePlugins = Object.fromEntries((live.adaptiveActivations ?? []).filter(item =>
+      item.accountId === policy.scope.accountId && item.conversationId === policy.scope.conversationId
+      && policy.adaptivePlugins!.includes(item.pluginId),
+    ).map(item => [item.pluginId, { reason: item.reason, activatedAt: item.activatedAt, messagesRead: item.messagesRead }]))
+    return { ...policy, activePlugins }
   }
 
   async saveAgentConfig(body: Record<string, unknown>): Promise<InternalTestAgentPolicy> {
@@ -1716,6 +1814,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
 
   async respond(body: Record<string, unknown>): Promise<InternalTestAgentResponse> {
     const scope = agentScope(body, this.options.runtimeOnly === true)
+    if (this.options.runtimeOnly) body = { ...body, messages: [] }
     if (this.options.runtimeOnly && !this.options.runtimePreview) {
       throw new InternalTestError('AstrBot Runtime 预览接口未配置', 503)
     }
@@ -1762,17 +1861,29 @@ export class FileInternalTestGateway implements InternalTestGateway {
     const context = agentContext(body, contextLength.value)
     if (this.options.runtimePreview) {
       let runtime: DududaRuntimePreviewResult
+      const limit = CONTEXT_BUDGETS[contextLength.value].messageLimit
+      let history: ReturnType<typeof runtimeHistory> | undefined
+      try {
+        history = this.options.historyProvider
+          ? runtimeHistory(scope, await this.options.historyProvider(scope, limit), limit, this.options.historySource ?? 'server_recent')
+          : undefined
+      } catch (error) {
+        if (error instanceof InternalTestError) throw error
+        throw new InternalTestError('读取 QQ 历史失败：请检查账号是否在线及群聊是否可访问，恢复后重试。本次尚未请求 Agent 生成回答。', 503)
+      }
       try {
         runtime = await this.options.runtimePreview.preview({
           accountId: scope.accountId,
           conversationId: scope.conversationId,
           prompt: stringValue(body.prompt) ?? '',
+          ...(history ? { history } : {}),
         })
       } catch (error) {
+        if (error instanceof InternalTestError) throw error
         if (error instanceof DududaRuntimePreviewClientError) {
           throw new InternalTestError(error.message, error.status)
         }
-        throw new InternalTestError('Dududa 2.0 Runtime 预览失败', 503)
+        throw new InternalTestError('Agent 预览调用失败：QQ 历史读取阶段已结束，请检查 Runtime 服务与模型连接后重试。', 503)
       }
       if (runtime.reasonCodes.includes('model_route_not_found')) {
         throw new InternalTestError(
@@ -1805,8 +1916,10 @@ export class FileInternalTestGateway implements InternalTestGateway {
       )
       const runtimeContextUsage = {
         ...context.usage,
+        ...(runtime.coverage ? { messageLimit: context.usage.messageLimit + 1 } : {}),
         messagesRead: runtime.messagesRead,
         charactersRead: runtime.charactersRead,
+        coverage: runtime.coverage,
       }
       const effectiveSelection: InternalTestEffectiveSelection = {
         scope,
@@ -1824,6 +1937,9 @@ export class FileInternalTestGateway implements InternalTestGateway {
       return {
         runId: runtime.runId,
         candidate: runtime.candidate,
+        outcome: runtime.outcome ?? (runtime.candidate.trim() ? 'response' : 'empty'),
+        runtimeState: runtime.runtimeState,
+        generationObserved: runtime.generationObserved,
         tier: runtime.tier,
         model: runtime.model,
         reasoning: runtime.reasoning,
@@ -1999,11 +2115,13 @@ export type AgentGateway = Pick<InternalTestGateway, 'agentStatus' | 'agentCatal
 export function createAgentGateway(
   environment: NodeJS.ProcessEnv = process.env,
   runtimePreview?: DududaRuntimePreviewClient,
+  historyProvider?: FileInternalTestGatewayOptions['historyProvider'],
 ): AgentGateway {
   return new FileInternalTestGateway({
     runtimeOnly: true,
     policyPath: environment.DUDUDA_AGENT_POLICY_PATH || '/var/lib/dududa/agent/agent-policies.json',
     runtimePreview,
+    historyProvider,
   })
 }
 

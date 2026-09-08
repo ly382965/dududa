@@ -9,6 +9,8 @@ from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F40
 from .commands.memory import CoreMemoryCommands
 from .composition import activate_runtime_after_host_start, initialize_plugin
 from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
+from .runtime_config_apply import runtime_config_apply_response, runtime_config_status_response
+from .recording_rehearsal import runtime_rehearsal_response
 from .web_runtime import (
     runtime_native_message_preview_response,
     runtime_preview_response,
@@ -20,7 +22,7 @@ from .web_runtime import (
     "astrbot_plugin_dududa_core",
     "mmdustc",
     "嘟嘟哒统一命令、权限、课程查询和管理骨架",
-    "0.1.0",
+    "2.0.1",
 )
 class DududaCorePlugin(
     CoreLifecycleMixin,
@@ -37,6 +39,16 @@ class DududaCorePlugin(
         register_web_api = getattr(context, "register_web_api", None)
         if callable(register_web_api):
             register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/configuration",
+                self.runtime_configuration_status, ["GET"],
+                "Read sanitized external configuration application state",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/configuration/apply",
+                self.runtime_configuration_apply, ["POST"],
+                "Apply saved model pools to Dududa Runtime only",
+            )
+            register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/status",
                 self.runtime_status,
                 ["GET"],
@@ -49,6 +61,11 @@ class DududaCorePlugin(
                 "Run Dududa 2.0 with no QQ output",
             )
             register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/rehearsal",
+                self.runtime_rehearsal, ["POST"],
+                "Simulate group participation with synthetic messages and no QQ output",
+            )
+            register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/native-message-preview",
                 self.runtime_native_message_preview,
                 ["POST"],
@@ -58,9 +75,18 @@ class DududaCorePlugin(
     async def runtime_status(self):
         return await runtime_status_response(self)
 
+    async def runtime_configuration_status(self):
+        return await runtime_config_status_response(self)
+
+    async def runtime_configuration_apply(self):
+        return await runtime_config_apply_response(self)
+
     async def runtime_preview(self):
         """Execute the installed 2.0 Runtime without QQ delivery."""
         return await runtime_preview_response(self)
+
+    async def runtime_rehearsal(self):
+        return await runtime_rehearsal_response(self)
 
     async def runtime_native_message_preview(self):
         """Replay one native NapCat message without QQ delivery."""

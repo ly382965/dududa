@@ -5,6 +5,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timezone
+
+from .adaptive_plugins import AdaptivePluginRequest, select_adaptive_plugin
 
 from dududa.runtime.context import CAPABILITY_CATEGORY_FEATURE_PREFIX
 from dududa.runtime.state import ConnectorResult
@@ -33,6 +36,7 @@ class GroupProactiveTalkPolicy:
     maximum_per_hour: int
     context_length: str
     group_chat_style: str
+    minimum_messages: int = 3
 
 
 class FileScopeAgentPolicyResolver:
@@ -42,28 +46,90 @@ class FileScopeAgentPolicyResolver:
         if not isinstance(path, Path) or not str(path).strip():
             raise ValueError("invalid Agent policy path")
         self._path = path
+        self._adaptive: dict[tuple[str, str], dict[str, Any]] = {}
+
+    def activate_for_context(
+        self, *, bot_id: str, group_id: str, lines: tuple[str, ...],
+    ) -> AdaptivePluginRequest | None:
+        record = self._record(bot_id=bot_id, group_id=group_id)
+        if record is None or record.get("enabled") is not True:
+            return None
+        allowed = record.get("adaptivePlugins", [])
+        if not isinstance(allowed, list):
+            return None
+        request = select_adaptive_plugin(lines, frozenset(
+            item for item in allowed if isinstance(item, str)
+            and item in _PLUGIN_CAPABILITY_CATEGORIES
+        ))
+        if request is None:
+            return None
+        self._adaptive[(bot_id, group_id)] = {
+            "accountId": f"qq-{bot_id}",
+            "conversationId": f"qq-{bot_id}:group:{group_id}",
+            "pluginId": request.plugin_id,
+            "reason": request.reason,
+            "messagesRead": len(lines),
+            "activatedAt": datetime.now(timezone.utc).isoformat(),
+            "policyUpdatedAt": record.get("updatedAt"),
+        }
+        return request
+
+    def adaptive_status(self) -> list[dict[str, Any]]:
+        result = []
+        for bot_id, group_id in tuple(self._adaptive):
+            record = self._record(bot_id=bot_id, group_id=group_id)
+            active = self._active_for_record(bot_id, group_id, record)
+            if active is not None:
+                result.append({key: value for key, value in active.items() if key != "policyUpdatedAt"})
+        return result
+
+    def _record(self, *, bot_id: str, group_id: str) -> dict[str, Any] | None:
+        try:
+            payload = json.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        return _scope_record_for_ids(payload, bot_id=bot_id, group_id=group_id)
+
+    def _active_for_record(self, bot_id: str, group_id: str, record: object) -> dict[str, Any] | None:
+        active = self._adaptive.get((bot_id, group_id))
+        if active is None:
+            return None
+        if (not isinstance(record, dict) or record.get("enabled") is not True
+            or not isinstance(record.get("adaptivePlugins"), list)
+            or active["pluginId"] not in record["adaptivePlugins"]
+            or active["policyUpdatedAt"] != record.get("updatedAt")):
+            self._adaptive.pop((bot_id, group_id), None)
+            return None
+        return active
 
     def feature_flags(self, connector: ConnectorResult) -> Mapping[str, bool]:
         if not isinstance(connector, ConnectorResult):
             raise TypeError("invalid Connector result")
+        disabled = self._capability_flags({})
         try:
             payload = json.loads(self._path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
-            return {SCOPE_AGENT_ENABLED_FLAG: True}
+            return {SCOPE_AGENT_ENABLED_FLAG: False, **disabled}
 
         record = _scope_record(payload, connector)
         if record is None:
-            # Unmanaged Scopes keep the global inbound rollout and every
-            # Capability enabled until the Web Control Plane explicitly
-            # switches one off.
-            return {SCOPE_AGENT_ENABLED_FLAG: True}
+            # Preserve the existing global inbound rollout for unmanaged Scopes,
+            # while keeping every Web-managed Capability off by default.
+            return {SCOPE_AGENT_ENABLED_FLAG: True, **disabled}
         enabled = record.get("enabled") is True
         plugins = record.get("plugins") if enabled else {}
         if not isinstance(plugins, dict):
             plugins = {}
+        plugins = dict(plugins)
+        active = self._active_for_record(
+            connector.message.bot_id, connector.message.group_id or "", record,
+        )
+        if active is not None:
+            plugins[active["pluginId"]] = "auto"
         flags = {
             SCOPE_AGENT_ENABLED_FLAG: enabled,
-            **self._explicit_capability_flags(plugins),
+            **self._capability_flags(plugins),
+            "proactive_readonly_tools": active is not None,
         }
         locked_profile = _locked_answer_profile(record) if enabled else None
         for profile in _ANSWER_PROFILES:
@@ -136,6 +202,7 @@ class FileScopeAgentPolicyResolver:
             maximum_per_hour,
             context_length,
             group_chat_style,
+            _bounded_integer(proactive.get("minimumMessages"), default=3, minimum=3, maximum=100),
         )
 
     @staticmethod
@@ -147,19 +214,6 @@ class FileScopeAgentPolicyResolver:
             )
             for plugin_id, category in _PLUGIN_CAPABILITY_CATEGORIES.items()
         }
-
-    @staticmethod
-    def _explicit_capability_flags(plugins: Mapping[str, Any]) -> dict[str, bool]:
-        """Only capabilities explicitly configured in the Scope record are
-        switched; unconfigured ones keep their runtime default (enabled)."""
-        flags: dict[str, bool] = {}
-        for plugin_id, category in _PLUGIN_CAPABILITY_CATEGORIES.items():
-            if plugin_id in plugins:
-                flags[f"{CAPABILITY_CATEGORY_FEATURE_PREFIX}{category}"] = (
-                    str(plugins.get(plugin_id) or "off").strip().lower()
-                    in _ENABLED_PLUGIN_MODES
-                )
-        return flags
 
 
 def _scope_record(payload: object, connector: ConnectorResult) -> dict[str, Any] | None:

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bot, Check, Inbox, Pin, Search, SlidersHorizontal, VolumeX } from '@lucide/vue'
+import { Bot, Inbox, Pin, Search, SlidersHorizontal, VolumeX } from '@lucide/vue'
 import { computed } from 'vue'
 
 import { hasComposerDraft } from '../services/composer-content'
@@ -57,7 +57,7 @@ function accountFor(conversation: Conversation): Account | undefined {
         <option v-for="account in accounts" :key="account.id" :value="account.id">{{ account.name }}</option>
       </select>
       <span class="account-filter__state">
-        <span class="online-dot" />
+        <span class="online-dot" :class="{ offline: !onlineCount }" />
         {{ onlineCount }}/{{ accounts.length }} 在线
       </span>
     </div>
@@ -68,8 +68,8 @@ function accountFor(conversation: Conversation): Account | undefined {
         <input
           :value="searchQuery"
           type="search"
-          placeholder="搜索会话或消息"
-          aria-label="搜索会话或消息"
+          placeholder="搜索会话、QQ 号或最新消息"
+          aria-label="搜索会话、QQ 号或最新消息"
           @input="emit('updateSearch', ($event.target as HTMLInputElement).value)"
         />
       </label>
@@ -133,18 +133,19 @@ function accountFor(conversation: Conversation): Account | undefined {
       <div v-if="!conversations.length" class="empty-state">
         <Inbox :size="26" />
         <strong>没有匹配的会话</strong>
-        <span>调整账号或未读筛选</span>
+        <span>{{ searchQuery ? '检查关键词，或清空搜索后重试' : '调整账号或未读筛选' }}</span>
       </div>
     </div>
 
     <footer class="sidebar-footer">
-      <span><span class="online-dot" />NapCat 实时连接</span>
-      <span><Check :size="13" />{{ onlineCount }} 个账号</span>
+      <span><span class="online-dot" :class="{ offline: !onlineCount }" />{{ onlineCount ? 'QQ 在线' : 'QQ 已离线' }}</span>
+      <span>{{ onlineCount }} 在线 / {{ accounts.length }} 个账号</span>
     </footer>
   </aside>
 </template>
 
 <style scoped>
+.online-dot.offline { background: var(--warning, #b7791f); box-shadow: none; }
 .conversation-sidebar {
   display: flex;
   min-width: 0;

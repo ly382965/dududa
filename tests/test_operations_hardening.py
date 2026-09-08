@@ -403,6 +403,17 @@ class OperationsHardeningTests(unittest.TestCase):
         result = validate_compose_contract(rendered)
         self.assertEqual(result["services"], ["astrbot", "napcat", "web"])
         self.assertTrue(result["loopback_ports"])
+        llbot = deepcopy(rendered)
+        del llbot["services"]["napcat"]
+        llbot["services"]["llbot"] = {
+            "ports": [{"host_ip": "127.0.0.1"}],
+            "volumes": [
+                {"target": "/app/llbot/data", "read_only": False},
+                {"target": "/AstrBot/data", "read_only": True},
+            ],
+            "networks": {"bot_net": {}, "edge": {}},
+        }
+        self.assertEqual(validate_compose_contract(llbot)["services"], ["astrbot", "llbot", "web"])
         public = deepcopy(rendered)
         public["services"]["web"]["ports"][0]["host_ip"] = "0.0.0.0"
         with self.assertRaises(OperationsError) as unsafe_port:
@@ -421,10 +432,6 @@ class OperationsHardeningTests(unittest.TestCase):
             "./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro",
         ):
             self.assertIn(value, compose)
-        self.assertNotIn(
-            "${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data:ro",
-            compose,
-        )
         self.assertGreaterEqual(compose.count("      bot_net:"), 3)
         self.assertGreaterEqual(compose.count("      edge:"), 3)
 

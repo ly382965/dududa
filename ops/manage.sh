@@ -83,8 +83,7 @@ ensure_agent_policy_root() {
   fi
   mkdir -p "$candidate"
   chmod 700 "$candidate"
-  _uid="$(stat -c '%u' "$candidate" 2>/dev/null || echo 1000)"
-  if [[ "$_uid" != "1000" ]] && [[ -z "${MSYSTEM:-}" ]]; then
+  if [[ "$(stat -c '%u' "$candidate")" != "1000" ]]; then
     printf 'Agent policy directory must be owned by UID 1000: %s\n' "$candidate" >&2
     return 1
   fi
@@ -119,7 +118,7 @@ ensure_web_secrets() {
   chmod 600 "$api_key_file"
   api_key_root_uid="$(stat -c '%u' "$api_key_root")"
   api_key_file_uid="$(stat -c '%u' "$api_key_file")"
-  if [[ "$api_key_root_uid" != "1000" || "$api_key_file_uid" != "1000" ]] && [[ -z "${MSYSTEM:-}" ]]; then
+  if [[ "$api_key_root_uid" != "1000" || "$api_key_file_uid" != "1000" ]]; then
     printf 'API Key store must be owned by UID 1000 for the Web container: %s\n' "$api_key_root" >&2
     return 1
   fi
@@ -185,10 +184,10 @@ usage() {
     '  api-key-store-path  Validate and print the external API Key store root' \
     '  sync        Merge the icourse MCP template into runtime config' \
     '  seed        Install the Dududa persona and MCP config into AstrBot' \
-    '  up          Build and start the complete AstrBot + NapCat + Web stack' \
+    '  up          Build and start the complete AstrBot + LLOneBot + Web stack' \
     '  web-up      Build and start only the Dududa QQ workspace' \
+    '  web-connect-llbot  Connect LLOneBot to the workspace' \
     '  web-connect Add the workspace reverse WS to this stack and restart NapCat' \
-    '  web-connect-llbot  Add the workspace reverse WS to LLBot host configs' \
     '  down        Stop and remove containers and private network' \
     '  restart     Restart all services, or one service' \
     '  logs        Follow logs for all services, or one service' \
@@ -293,19 +292,22 @@ case "$cmd" in
     ;;
   web-connect)
     "$0" init
+    setup_docker
     runtime_root="$(data_root)"
-    "$PYTHON" ops/cli/configure_napcat_web.py \
+    "$PYTHON" ops/cli/configure_onebot_web.py \
       --config-dir "$runtime_root/napcat/config" \
       --token-file "$(web_data_root)/secrets/onebot_access_token" \
       --apply
     "${COMPOSE[@]}" restart napcat
     ;;
   web-connect-llbot)
-    "$0" init
-    "$PYTHON" ops/cli/configure_llbot_web.py \
-      --config-dir "${LLBOT_DATA_DIR:-$HOME/LLBot/bin/llbot/data}" \
+    ensure_web_secrets
+    llbot_data_dir="${LLBOT_DATA_DIR:-$(env_value LLBOT_DATA_DIR "$ENV_FILE")}"
+    "$PYTHON" ops/cli/configure_onebot_web.py \
+      --implementation llonebot \
+      --config-dir "${llbot_data_dir:-$(data_root)/llbot}" \
       --token-file "$(web_data_root)/secrets/onebot_access_token" \
-      --endpoint "${DUDUDA_WEB_ONEBOT_WS_URL:-ws://127.0.0.1:5173/onebot/v11/ws}" \
+      --endpoint "${DUDUDA_WEB_ONEBOT_WS_URL:-ws://web:8000/onebot/v11/ws}" \
       --apply
     ;;
   down)

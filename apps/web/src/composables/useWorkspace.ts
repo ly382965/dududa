@@ -119,6 +119,7 @@ export function useWorkspace(
   const agentCatalog = ref<InternalTestAgentCatalog>()
   const agentCatalogError = ref('')
   const agentPolicy = ref<InternalTestAgentPolicy>()
+  const agentPolicyDirty = ref(false)
   const agentPolicyLoading = ref(false)
   const agentPolicySaving = ref(false)
   const agentPolicyError = ref('')
@@ -271,7 +272,22 @@ export function useWorkspace(
 
   function refreshAgentRuntimeWhenVisible(): void {
     if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-      void Promise.all([loadAgentRuntimeStatus(), loadAgentCatalog()])
+      void Promise.all([loadAgentRuntimeStatus(), loadAgentCatalog(), refreshAdaptiveActivations()])
+    }
+  }
+
+  async function refreshAdaptiveActivations(): Promise<void> {
+    const policy = agentPolicy.value
+    if (!policy?.adaptivePlugins?.length) return
+    const generation = agentPolicyGeneration
+    try {
+      const live = await agentAdapter.agentConfig(policy.scope)
+      if (generation !== agentPolicyGeneration || !agentPolicy.value) return
+      if (live.scope.accountId !== policy.scope.accountId || live.scope.conversationId !== policy.scope.conversationId) return
+      // Runtime state can change while the administrator is editing a draft.
+      agentPolicy.value = { ...agentPolicy.value, activePlugins: live.activePlugins ?? {} }
+    } catch {
+      // The existing Runtime status refresh reports connection failures.
     }
   }
 
@@ -293,6 +309,7 @@ export function useWorkspace(
   async function loadAgentPolicy(scope = selectedAgentScope.value): Promise<void> {
     const generation = ++agentPolicyGeneration
     agentPolicy.value = undefined
+    agentPolicyDirty.value = false
     agentPolicyError.value = ''
     answerProfileHint.value = undefined
     if (!scope) {
@@ -318,6 +335,7 @@ export function useWorkspace(
   function updateAgentPolicy(policy: InternalTestAgentPolicy): void {
     const scope = selectedAgentScope.value
     if (!scope || policy.scope.accountId !== scope.accountId || policy.scope.conversationId !== scope.conversationId) return
+    agentPolicyDirty.value = true
     agentPolicy.value = {
       ...policy,
       scope: { ...policy.scope },
@@ -343,6 +361,7 @@ export function useWorkspace(
       const saved = await agentAdapter.saveAgentConfig(scope, policy)
       if (selectedAgentScope.value?.accountId !== scope.accountId || selectedAgentScope.value?.conversationId !== scope.conversationId) return
       agentPolicy.value = saved
+      agentPolicyDirty.value = false
       notify('Agent 会话配置已保存；未锁定项仍可由 Agent 每轮调整')
     } catch (error) {
       if (selectedAgentScope.value?.accountId === scope.accountId && selectedAgentScope.value?.conversationId === scope.conversationId) {
@@ -477,7 +496,7 @@ export function useWorkspace(
       mergeWorkspace(next)
       await loadConversationDrafts(next.conversations)
       if (selectedConversationId.value && selectedConversationId.value !== previousSelection) {
-        await loadConversationMessages(selectedConversation.value)
+        void loadConversationMessages(selectedConversation.value)
         return true
       }
     } catch (error) {
@@ -939,8 +958,8 @@ export function useWorkspace(
         {
           id: 'context',
           label: '读取群聊上下文',
-          detail: `已选取最近 ${context.length} 条消息`,
-          status: 'completed',
+          detail: `浏览器已加载 ${context.length} 条；实际历史由服务端按当前账号和群聊读取`,
+          status: 'running',
         },
         {
           id: 'candidate',
@@ -959,11 +978,24 @@ export function useWorkspace(
         conversationName: conversation.name,
         conversationType: conversation.type,
         prompt,
-        messages: context,
+        messages: [],
         answerProfile: requestedAnswerProfile,
       })
+      const outcome = result.outcome ?? (result.candidate.trim() ? 'response' : 'empty')
+      const successful = outcome === 'response' && Boolean(result.candidate.trim())
+      const outcomeLabel = {
+        response: '未生成可见回答', no_reply: '本次未回复', deferred: '本次暂缓回复',
+        failed: '本次处理失败', reaction: '本次仅产生互动动作，预览未发送', empty: '未生成可见回答',
+      }[outcome]
+      const runtimeReasons = result.reasonCodes.filter(code => (
+        !['policy.saved', 'policy.default', 'runtime.preview.no_send'].includes(code)
+        && !code.startsWith('plugin.')
+      ))
+      const explanation = runtimeReasons.includes('provider_output_invalid')
+        ? `${outcomeLabel}。模型未返回可用正文，请重试。`
+        : `${outcomeLabel}。${runtimeReasons.length ? `原因：${runtimeReasons.join('、')}` : '详细状态可在运行记录中查看。'}`
       run.id = result.runId
-      run.status = 'completed'
+      run.status = successful ? 'completed' : outcome === 'failed' ? 'error' : 'warning'
       run.duration = `${result.latencyMs} ms`
       run.model = result.model
       run.modelTier = result.tier
@@ -979,12 +1011,17 @@ export function useWorkspace(
       run.toolCalls = result.toolCalls
       run.steps[0] = {
         ...run.steps[0],
+        status: 'completed',
         detail: `实际读取 ${result.contextUsage.messagesRead} 条 / ${result.contextUsage.charactersRead.toLocaleString('zh-CN')} 字符（预算上限 ${result.contextUsage.messageLimit} 条 / ${result.contextUsage.characterLimit.toLocaleString('zh-CN')} 字符）`,
+      }
+      const coverage = result.contextUsage.coverage
+      if (coverage) {
+        run.steps[0].detail += `；历史 ${coverage.historyMessagesRead} 条，仅最近窗口、非全天${coverage.truncated ? '，已截断' : ''}${coverage.oldestAt && coverage.newestAt ? `，${coverage.oldestAt} 至 ${coverage.newestAt}` : ''}`
       }
       run.steps[1] = {
         ...run.steps[1],
-        detail: `${result.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退'} · ${result.tier} · ${result.model} · Tool ${result.toolCalls}`,
-        status: 'completed',
+        detail: `${successful ? '' : `${explanation} `}${result.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退'} · ${result.tier} · ${result.model} · Tool ${result.toolCalls}${result.generationObserved === false ? ' · 未观察到回答模型生成' : ''}`,
+        status: successful ? 'completed' : outcome === 'failed' ? 'error' : 'warning',
         duration: `${result.latencyMs} ms`,
       }
       session.status = 'idle'
@@ -997,24 +1034,25 @@ export function useWorkspace(
         author: 'Dududa Agent',
         timestamp: session.updatedAt,
         parts: [
-          { type: 'text', text: result.candidate },
+          { type: 'text', text: result.candidate.trim() || explanation },
           {
             type: 'status',
-            label: `${result.tier} · ${result.model} · Tool ${result.toolCalls} · ${result.latencyMs} ms · 未发送`,
-            tone: 'success',
+            label: `${successful ? '候选回答' : outcomeLabel} · ${result.tier} · ${result.model}${result.generationObserved === false ? '（配置标签，未观察到回答模型生成）' : ''} · Tool ${result.toolCalls} · ${result.latencyMs} ms · 未发送${coverage ? ` · 仅最近 ${coverage.historyMessagesRead} 条历史（非全天${coverage.truncated ? '，已截断' : ''}）` : ''}`,
+            tone: successful ? 'success' : 'warning',
           },
         ],
       })
     } catch (error) {
       const detail = error instanceof Error ? error.message : '生成候选回答失败'
       session.status = 'idle'
-      run.status = 'completed'
+      run.status = 'error'
       run.duration = '失败'
+      run.steps[0].status = 'warning'
       run.steps[1] = {
         ...run.steps[1],
         label: '候选生成失败',
         detail,
-        status: 'completed',
+        status: 'error',
       }
       messages.push({
         id: `internal-message-${crypto.randomUUID()}`,
@@ -1124,18 +1162,19 @@ export function useWorkspace(
 
   async function load(): Promise<void> {
     loading.value = true
-    const [selectionLoaded] = await Promise.all([
-      refreshWorkspace(true),
-      loadAgentRuntimeStatus(),
-      loadAgentCatalog(),
-    ])
+    void loadAgentRuntimeStatus()
+    void loadAgentCatalog()
+    const selectionLoaded = await refreshWorkspace(true)
     loading.value = false
     if (selectedConversation.value && !selectionLoaded) {
-      await loadConversationMessages(selectedConversation.value)
+      void loadConversationMessages(selectedConversation.value)
     }
   }
 
   watch([theme, resolvedTheme], applyTheme, { immediate: true })
+  watch(agentTab, (tab) => {
+    if (tab === 'settings') void refreshAdaptiveActivations()
+  })
   watch(
     [
       () => selectedAgentScope.value?.accountId,
@@ -1204,6 +1243,7 @@ export function useWorkspace(
     agentCatalog,
     agentCatalogError,
     agentPolicy,
+    agentPolicyDirty,
     agentPolicyLoading,
     agentPolicySaving,
     agentPolicyError,
@@ -1268,6 +1308,7 @@ export function useWorkspace(
     toggleTheme,
     setTheme,
     load,
+    refreshWorkspace,
     refreshAgentRuntimeStatus: loadAgentRuntimeStatus,
     notify,
   }

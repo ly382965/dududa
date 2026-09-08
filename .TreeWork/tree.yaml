@@ -232,6 +232,12 @@ tree:
       spec: branches/agent-expansion/evaluation-ci/spec.md
       depends_on:
       - layout-migration
+    - id: ci-run-repair
+      title: Repair GitHub CI Run 33897997167
+      purpose: Reproduce actual Python and offline-evaluation failures and restore passing CI without weakening checks.
+      spec: branches/agent-expansion/ci-run-repair/spec.md
+      depends_on:
+      - evaluation-ci
     - id: local-integration-audit
       title: S19 Local Integration Audit
       purpose: >-
@@ -323,6 +329,36 @@ tree:
       spec: branches/agent-expansion/bot-release-convergence/spec.md
       depends_on:
       - api-key-pools
+      children:
+      - id: preview-context-repair
+        title: Group Context And Honest Preview Results
+        purpose: Connect bounded same-group history and explicit preview outcomes, correcting demonstrated perception conflicts without weakening safety.
+        spec: branches/agent-expansion/bot-release-convergence/preview-context-repair/spec.md
+      - id: runtime-config-apply
+        title: One-Click External Model Configuration Apply
+        purpose: Apply saved external provider pools through the authenticated host boundary and show truthful applied state without browser credentials or Docker access.
+        spec: branches/agent-expansion/bot-release-convergence/runtime-config-apply/spec.md
+      - id: arc-compat-migration
+        title: Current Arc Compatibility Release
+        purpose: Replace the deployed untracked legacy Arc implementation with a verified current compatibility implementation without silently losing existing commands.
+        spec: branches/agent-expansion/bot-release-convergence/arc-compat-migration/spec.md
+    - id: plugin-group-controls
+      title: PR12 And Per-Group Plugin Controls
+      purpose: >-
+        Merge Emoji Kitchen, connect group-level plugin switches to real execution,
+        and deploy current Bot-only artifacts while retiring superseded running versions.
+      spec: branches/agent-expansion/plugin-group-controls/spec.md
+      depends_on:
+      - bot-release-convergence
+    - id: demo-runtime-validation
+      title: Fixed Demo And Runtime Validation
+      purpose: >-
+        Define a five-to-ten-minute full-product demonstration, run fixed known
+        questions through the current no-send Runtime, repair reproduced defects,
+        and publish an evidence-backed report.
+      spec: branches/agent-expansion/demo-runtime-validation/spec.md
+      depends_on:
+      - plugin-group-controls
     - id: real-group-validation
       title: S23 Authorized Real-Group Validation
       purpose: >-

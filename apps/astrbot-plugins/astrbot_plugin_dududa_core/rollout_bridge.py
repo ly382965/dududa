@@ -46,6 +46,7 @@ from dududa.runtime.state import (
 )
 
 from .adapters.output import AstrBotOutputAdapter, InMemoryDeliveryLedger
+from .runtime_admission import tracked_runtime_call
 
 
 class AstrBotBridgeAction(StrEnum):
@@ -74,6 +75,9 @@ class AstrBotRuntimePreviewResult:
     completion: CompletionReceipt
     tool_calls: int
     capability_ids: tuple[str, ...] = ()
+    context_usage: Mapping[str, object] | None = None
+    generation_observed: bool = False
+    diagnostics: Mapping[str, object] | None = None
 
 
 class AstrBotRuntimePreviewError(RuntimeError):
@@ -174,12 +178,14 @@ class AstrBotRuntimeRequestFactory:
                 raise ValueError("Scope policy cannot replace global feature flags")
             requested_features.update(scope_features)
         if proactive_group_participation:
+            adaptive_tools = requested_features.get("proactive_readonly_tools", False)
             requested_features.update(
                 {
                     "proactive_group_participation": True,
-                    "response_profile.force_short": True,
+                    "tools": tools_enabled and adaptive_tools,
+                    "response_profile.force_short": not adaptive_tools,
                     "response_profile.force_medium": False,
-                    "response_profile.force_long": False,
+                    "response_profile.force_long": adaptive_tools,
                 }
             )
         options = RuntimeInvocationOptions(
@@ -273,7 +279,8 @@ class AstrBotRolloutBridge:
         self._runtime_ready = runtime_ready
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
-    async def preview(self, event: object) -> AstrBotRuntimePreviewResult:
+    @tracked_runtime_call
+    async def preview(self, event: object, *, proactive_group_participation: bool = False) -> AstrBotRuntimePreviewResult:
         """Run the installed 2.0 Runtime and acknowledge a synthetic no-send output."""
 
         try:
@@ -290,12 +297,15 @@ class AstrBotRolloutBridge:
                 timeout_seconds=timeout,
                 tools_enabled=config.tools_enabled,
                 memory_enabled=False,
+                proactive_group_participation=proactive_group_participation,
             )
         except Exception as exc:  # noqa: BLE001 - synthetic input stays fail closed
             raise AstrBotRuntimePreviewError("rollout_event_not_supported") from exc
         if not request.options.feature_flags.get("scope_agent_enabled", True):
             raise AstrBotRuntimePreviewError("scope_agent_disabled")
-        admission = decide_rollout_admission(request.connector_result, config)
+        admission = decide_rollout_admission(
+            request.connector_result, config, allow_proactive_group=proactive_group_participation,
+        )
         if admission.action is RolloutAdmissionAction.LEGACY:
             raise AstrBotRuntimePreviewError(admission.reason_codes[0])
         try:
@@ -307,12 +317,68 @@ class AstrBotRolloutBridge:
             raise AstrBotRuntimePreviewError("runtime_preview_timeout") from exc
         completion = result.completion
         capability_ids: tuple[str, ...] = ()
+        history = getattr(event, "dududa_preview_history", None) or {}
+        context_usage: Mapping[str, object] | None = {
+            "messagesRead": 0, "charactersRead": 0,
+            "coverage": {"source": history.get("source", "unavailable"), "partial": True,
+                         "truncated": bool(history.get("messages")), "historyMessagesRead": 0,
+                         "oldestAt": None, "newestAt": None},
+        }
+        generation_observed = False
+        diagnostics: dict[str, object] = {}
         if self._state_store is not None:
             checkpoint = await self._state_store.load(result.run_id, call=call)
-            if checkpoint is not None and checkpoint.state.tool_plan is not None:
-                capability_ids = tuple(
-                    step.capability_id for step in checkpoint.state.tool_plan.steps
-                )
+            if checkpoint is not None:
+                state = checkpoint.state
+                perception_execution = state.perception_execution
+                if perception_execution is not None:
+                    diagnostics.update(
+                        perceptionFailure=perception_execution.failure_code,
+                        perceptionModelStarted=perception_execution.model_call_started,
+                        perceptionReasons=list(perception_execution.result.reason_codes),
+                    )
+                    perception_route = perception_execution.route_decision
+                    if perception_route is not None:
+                        diagnostics["perceptionRejections"] = [list(item.reason_codes) for item in perception_route.rejected_endpoints]
+                if state.tool_plan is not None:
+                    diagnostics["toolArguments"] = [dict(step.arguments.literal_template) for step in state.tool_plan.steps]
+                if state.direct_chat_failure is not None:
+                    route = state.direct_chat_failure.route_decision
+                    diagnostics["directFailure"] = state.direct_chat_failure.failure_code
+                    diagnostics["directRejections"] = [list(item.reason_codes) for item in route.rejected_endpoints] if route else []
+                    diagnostics["directErrorReasons"] = list(route.terminal_error.reason_codes) if route and route.terminal_error else []
+                    diagnostics["directAttempts"] = [{"model": attempt.model_id, "error": attempt.error.code if attempt.error else None,
+                        "reasons": list(attempt.error.reason_codes) if attempt.error else []} for attempt in route.attempts] if route else []
+                if state.capability_run_receipt is not None:
+                    from dududa.runtime.capabilities import tool_context_tokens_upper_bound
+                    receipt = state.capability_run_receipt
+                    diagnostics["capabilityStatus"] = receipt.status.value
+                    if receipt.status.value == "completed" and receipt.validation and receipt.validation.accepted_observations:
+                        diagnostics["toolInputBytes"] = tool_context_tokens_upper_bound(receipt)
+                if state.current_context is not None:
+                    diagnostics["historyInputBytes"] = state.current_context.perception.content_input_tokens_upper_bound
+                generation_observed = state.direct_chat_execution is not None
+                if state.tool_plan is not None:
+                    capability_ids = tuple(step.capability_id for step in state.tool_plan.steps)
+                if state.current_context is not None:
+                    perception = state.current_context.perception
+                    history = getattr(event, "dududa_preview_history", None) or {}
+                    records = history.get("messages", [])
+                    used = [records[int(item.message_ref.rsplit(":", 1)[1])]
+                            for item in perception.messages if item.message_ref.startswith("message:history:")]
+                    dates = sorted(item["timestamp"] for item in used if item.get("timestamp"))
+                    context_usage = {
+                        "messagesRead": len(perception.messages),
+                        "charactersRead": sum(len(item.text) for item in perception.messages),
+                        "coverage": {
+                            "source": history.get("source", "unavailable"), "partial": True,
+                            "truncated": bool(history.get("truncated")) or len(used) < len(records)
+                            or "preview_history_truncated" in perception.degraded_components,
+                            "historyMessagesRead": len(used),
+                            "oldestAt": dates[0] if dates else None,
+                            "newestAt": dates[-1] if dates else None,
+                        },
+                    }
         if result.delivery_request is not None:
             receipt = _preview_delivery_receipt(
                 result.delivery_request,
@@ -328,8 +394,12 @@ class AstrBotRolloutBridge:
                 1 if RuntimePhase.TOOLS_EXECUTED in result.trace_summary.phases else 0
             ),
             capability_ids=capability_ids,
+            context_usage=context_usage,
+            generation_observed=generation_observed,
+            diagnostics=diagnostics,
         )
 
+    @tracked_runtime_call
     async def handle(
         self,
         event: object,
@@ -418,9 +488,6 @@ class AstrBotRolloutBridge:
                 "event_stop_failed",
                 aborted,
             )
-        should_call_llm = getattr(event, "should_call_llm", None)
-        if callable(should_call_llm):
-            should_call_llm(True)
         if claim.disposition is not RolloutClaimDisposition.ACQUIRED:
             replay = self._canary.replay_result(claim, run_id=call.run_id)
             return AstrBotBridgeResult(
@@ -476,7 +543,19 @@ class AstrBotRolloutBridge:
         return pending.reason_codes if pending is not None else ()
 
     async def close(self) -> None:
+        self._configuration_paused = True
+        if getattr(self, "_active_configuration_calls", 0):
+            raise RuntimeError("runtime_requests_active")
         await self._shadow.close()
+
+    def pause_configuration(self) -> bool:
+        if getattr(self, "_active_configuration_calls", 0) or self._shadow.active_count:
+            return False
+        self._configuration_paused = True
+        return True
+
+    def resume_configuration(self) -> None:
+        self._configuration_paused = False
 
 
 def _legacy(reason: str) -> AstrBotBridgeResult:

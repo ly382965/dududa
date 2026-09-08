@@ -1,1 +1,0 @@
-{"llm_provider_id": {"description": "分类用的 AstrBot Provider ID；留空用默认 Provider", "type": "string", "default": ""}, "timeout_seconds": {"description": "单次分类超时（秒）", "type": "int", "default": 8}}

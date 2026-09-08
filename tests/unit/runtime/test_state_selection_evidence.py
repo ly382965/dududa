@@ -210,6 +210,66 @@ class RuntimeSelectionEvidenceTests(unittest.IsolatedAsyncioTestCase):
             authorization,
         )
 
+    def _set_preview_history(self, *, long_message: bool = False) -> None:
+        self.message = replace(self.message, metadata={"preview_history": {
+            "accountId": "qq-bot-1", "conversationId": "qq-bot-1:group:group-1",
+            "source": "synthetic", "truncated": False, "messages": [
+                {"id": "h1", "senderId": "member-a", "senderName": "甲",
+                 "content": "会议周五举行", "timestamp": None},
+                {"id": "h2", "senderId": "member-b", "senderName": "乙",
+                 "content": '"' * 2000 if long_message else "更正：周六晚上八点",
+                 "timestamp": None, "replyToId": "h1"},
+            ],
+        }})
+        self.initial = replace(self.initial, message=self.message,
+            start_digest=runtime_start_digest(
+                ConnectorResult(1, self.message, self.actor, NOW,
+                                self.initial.connector_revision),
+                self.initial.invocation_options,
+            ))
+        self.context_builder = CurrentMessageContextBuilder(replace(
+            self.context_builder.config,
+            limits=replace(self.context_builder.config.limits, max_messages=4,
+                           max_identities=8, max_characters_per_message=2000),
+        ))
+
+    async def test_preview_history_passes_real_context_state_transition(self) -> None:
+        self._set_preview_history()
+        ready, _ = await self._context_ready(allow=True)
+        self.assertIs(ready.phase, RuntimePhase.CONTEXT_READY)
+        self.assertEqual(len(ready.current_context.perception.messages), 3)
+        self.assertEqual(ready.current_context.perception.current_message.text, "hello")
+
+    async def test_truncated_preview_history_reprojects_at_state_transition(self) -> None:
+        self._set_preview_history(long_message=True)
+        ready, _ = await self._context_ready(allow=True)
+        self.assertGreater(len(ready.current_context.perception.messages), 1)
+        self.assertIn("preview_history_truncated", ready.current_context.perception.degraded_components)
+
+    async def test_preview_state_rejects_unbound_or_modified_history(self) -> None:
+        self._set_preview_history()
+        ready, _ = await self._context_ready(allow=True)
+        context = ready.current_context
+        for index, changes in ((0, {"text": "forged history"}),
+                               (-1, {"text": "forged instruction"}),
+                               (-1, {"mentioned_identity_refs": ()})):
+            with self.subTest(index=index, changes=changes), self.assertRaises(DududaError):
+                messages = list(context.perception.messages)
+                messages[index] = replace(messages[index], **changes)
+                replace(ready, current_context=replace(context,
+                    perception=replace(context.perception, messages=tuple(messages))))
+        self.message = replace(self.message, metadata={})
+        self.initial = replace(self.initial, message=self.message,
+            start_digest=runtime_start_digest(
+                ConnectorResult(1, self.message, self.actor, NOW,
+                                self.initial.connector_revision),
+                self.initial.invocation_options,
+            ))
+        plain, _ = await self._context_ready(allow=True)
+        with self.assertRaises(DududaError) as captured:
+            replace(plain, current_context=context)
+        self.assertEqual(captured.exception.info.code, "runtime_context_projection_mismatch")
+
     def _perception_evidence(self, state: RuntimeState):
         context = state.current_context
         assert context is not None

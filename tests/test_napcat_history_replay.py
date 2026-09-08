@@ -35,6 +35,10 @@ class NapCatHistoryReplayTests(unittest.TestCase):
         )
         self.assertIsNone(error)
         self.assertIsNotNone(message)
+        self.assertEqual(
+            message.timestamp,
+            datetime(2026, 8, 14, 9, 23, 22, 925566, tzinfo=timezone.utc),
+        )
         self.assertTrue(message.direct_mention)
         self.assertEqual(message.attachment_kinds, (MODULE.AttachmentKind.IMAGE,))
 

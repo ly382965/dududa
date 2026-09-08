@@ -31,6 +31,7 @@ import type {
   ApiKeyStatus,
   ApiKeyTier,
   ApiKeyUpdateRequest,
+  RuntimeConfigStatus,
 } from '../types/api-key-pools'
 import {
   API_KEY_TIERS,
@@ -76,6 +77,51 @@ const pools = ref<ApiKeyPool[]>(API_KEY_TIERS.map(emptyApiKeyPool))
 const loading = ref(false)
 const error = ref('')
 const notice = ref('')
+const collectionRevision = ref<number | string>(1)
+const runtimeState = ref<RuntimeConfigStatus>()
+const runtimeError = ref('')
+const applyingRuntime = ref(false)
+let runtimeStatusGeneration = 0
+
+async function refreshRuntime(): Promise<void> {
+  if (!props.adapter.runtimeStatus) return
+  const generation = ++runtimeStatusGeneration
+  try {
+    const state = await props.adapter.runtimeStatus()
+    if (generation !== runtimeStatusGeneration) return
+    runtimeState.value = state
+    runtimeError.value = ''
+  } catch (cause) {
+    if (generation !== runtimeStatusGeneration) return
+    runtimeState.value = undefined
+    runtimeError.value = cause instanceof Error ? cause.message : 'Runtime 配置状态读取失败'
+  }
+}
+
+async function applyRuntime(): Promise<void> {
+  if (!props.adapter.applyRuntime || applyingRuntime.value) return
+  applyingRuntime.value = true
+  const generation = ++runtimeStatusGeneration
+  runtimeError.value = ''
+  try {
+    const state = await props.adapter.applyRuntime(collectionRevision.value)
+    if (generation !== runtimeStatusGeneration) return
+    runtimeState.value = state
+    if (runtimeState.value.status !== 'applied' || !runtimeState.value.ready) {
+      runtimeError.value = '服务端尚未确认新配置可用，请刷新实际状态'
+    } else setNotice('已应用到 Dududa Runtime；其他 AstrBot 插件保持原配置直到冷重启')
+  } catch (cause) {
+    runtimeError.value = cause instanceof Error ? cause.message : 'Runtime 配置应用失败'
+  } finally {
+    applyingRuntime.value = false
+  }
+}
+
+function captureMutation(response: ApiKeyMutationResponse): void {
+  if (response.revision !== undefined) collectionRevision.value = response.revision
+  if (runtimeState.value) runtimeState.value = { ...runtimeState.value, status: 'pending', message: '保存内容已变化，请应用到 Runtime' }
+  void refreshRuntime()
+}
 const poolEditorTier = ref<ApiKeyTier>()
 const poolDraft = ref<PoolForm>()
 const poolFormError = ref('')
@@ -232,6 +278,7 @@ function applyPool(pool: ApiKeyPool): void {
 }
 
 function mergeMutationPool(response: ApiKeyMutationResponse, fallback: ApiKeyPool): void {
+  captureMutation(response)
   if (response.pool) {
     applyPool(response.pool)
     return
@@ -270,11 +317,13 @@ function validHttpUrl(value: string): boolean {
 
 async function load(): Promise<void> {
   const generation = ++loadGeneration
+  ++runtimeStatusGeneration
   loading.value = true
   error.value = ''
   try {
     const response = await props.adapter.list()
     if (generation !== loadGeneration) return
+    collectionRevision.value = response.revision
     const byTier = new Map(response.pools.map((pool) => [pool.tier, pool]))
     const nextPools = API_KEY_TIERS.map((tier) => byTier.get(tier) ?? emptyApiKeyPool(tier))
     const nextResults = { ...testResults.value }
@@ -285,6 +334,7 @@ async function load(): Promise<void> {
     }
     pools.value = nextPools
     testResults.value = nextResults
+    void refreshRuntime()
   } catch (cause) {
     if (generation !== loadGeneration) return
     error.value = cause instanceof Error ? cause.message : 'API Key 池读取失败'
@@ -383,7 +433,7 @@ async function savePool(): Promise<void> {
     mergeMutationPool(response, fallback)
     clearTestResult(tier)
     closePoolEditor(true)
-    setNotice(`${API_KEY_TIER_LABELS[tier]} 配置已保存；部署侧可在下次受控重载时同步`)
+    setNotice(`${API_KEY_TIER_LABELS[tier]} 配置已保存；请点击“应用到 Runtime”使其生效`)
   } catch (cause) {
     poolFormError.value = cause instanceof Error ? cause.message : 'Provider 池保存失败'
   } finally {
@@ -504,6 +554,7 @@ async function saveKey(): Promise<void> {
     const response = editor.keyId
       ? await props.adapter.updateKey(editor.tier, editor.keyId, request as ApiKeyUpdateRequest)
       : await props.adapter.createKey(editor.tier, request as ApiKeyCreateRequest)
+    captureMutation(response)
     const current = poolFor(editor.tier)
     if (response.pool) {
       applyPool(response.pool)
@@ -517,7 +568,7 @@ async function saveKey(): Promise<void> {
     }
     clearTestResult(editor.tier)
     closeKeyEditor(true)
-    setNotice(editor.keyId ? 'Provider Key 元数据已保存；部署侧可在下次受控重载时同步' : 'Provider Key 已登记；密钥不会再次显示，部署侧可在下次受控重载时同步')
+    setNotice(editor.keyId ? 'Provider Key 已保存；请应用到 Runtime' : 'Provider Key 已登记；密钥不会再次显示，请应用到 Runtime')
   } catch (cause) {
     keyFormError.value = cause instanceof Error ? cause.message : 'Provider Key 保存失败；请重新输入密钥'
   } finally {
@@ -541,6 +592,7 @@ async function removeKey(tier: ApiKeyTier, keyId: string): Promise<void> {
   invalidatePendingLoad()
   try {
     const response = await props.adapter.deleteKey(tier, keyId)
+    captureMutation(response)
     const current = poolFor(tier)
     if (response.pool) applyPool(response.pool)
     else applyPool({ ...current, keys: current.keys.filter((key) => key.id !== keyId) })
@@ -557,6 +609,7 @@ async function toggleKey(tier: ApiKeyTier, key: ApiKeyEntry): Promise<void> {
   try {
     const current = poolFor(tier)
     const response = await props.adapter.updateKey(tier, key.id, { enabled: !key.enabled, revision: current.revision })
+    captureMutation(response)
     if (response.pool) applyPool(response.pool)
     else if (response.key) applyPool({ ...current, keys: current.keys.map((item) => item.id === key.id ? response.key! : item) })
     else applyPool({ ...current, keys: current.keys.map((item) => item.id === key.id ? { ...item, enabled: !key.enabled, status: !key.enabled ? 'active' : 'disabled' } : item) })
@@ -617,8 +670,16 @@ onMounted(() => void load())
 
     <div class="security-note" role="note">
       <ShieldCheck :size="17" />
-      <span><strong>密钥边界：</strong>浏览器只在明确的添加或轮换动作中提交一次密钥。列表、运行时状态、剪贴板和本地存储均不保存明文；本页保存配置，不会自动重载 AstrBot，部署侧可在受控重载时通过 Provider Source / SecretRef 同步。</span>
+      <span><strong>密钥边界：</strong>密钥只在添加或轮换时提交，读取仅返回脱敏信息。保存后点击“应用到 Runtime”，服务端会验证三档 Provider 后切换 Dududa；其他 AstrBot 插件保持原配置直到冷重启。应用会进行少量模型连接验证。</span>
     </div>
+
+    <section class="runtime-apply" aria-label="Runtime 配置应用">
+      <div><strong>Runtime 配置</strong><p role="status">{{ applyingRuntime ? '正在验证并应用三档配置…' : runtimeState?.message || runtimeError || '尚未确认应用状态' }}</p></div>
+      <button type="button" :disabled="!adapter.applyRuntime || loading || applyingRuntime || poolSaving || keySaving || !!testingTier" :aria-busy="applyingRuntime" @click="applyRuntime">
+        <LoaderCircle v-if="applyingRuntime" class="spin" :size="15" /><Save v-else :size="15" />应用到 Runtime
+      </button>
+    </section>
+    <p v-if="runtimeError" class="inline-error" role="alert">{{ runtimeError }}</p>
 
     <p v-if="error" class="inline-error" role="alert"><CircleAlert :size="15" />{{ error }}</p>
     <p v-if="notice" class="inline-notice" role="status"><CircleCheck :size="15" />{{ notice }}</p>
@@ -752,6 +813,12 @@ onMounted(() => void load())
 </template>
 
 <style scoped>
+.runtime-apply { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--surface); }
+.runtime-apply strong { font-size: 12px; }
+.runtime-apply p { margin: 5px 0 0; color: var(--text-secondary); font-size: 11px; }
+.runtime-apply button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 6px; padding: 10px 12px; color: white; background: var(--brand-strong); font: inherit; font-size: 12px; cursor: pointer; }
+.runtime-apply button:disabled { opacity: .55; cursor: wait; }
+.runtime-apply button:focus-visible { outline: 2px solid var(--brand-strong); outline-offset: 3px; }
 .connection-help { padding: 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 .connection-help small { display: block; color: var(--text-muted); }
 .api-key-pools-view { min-height: 0; overflow-y: auto; background: var(--app-background); padding: 24px clamp(16px, 3vw, 38px) 40px; }

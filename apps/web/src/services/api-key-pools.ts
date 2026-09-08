@@ -11,6 +11,7 @@ import type {
   ApiKeyTier,
   ApiKeyUpdateRequest,
   ApiKeyWriteReceipt,
+  RuntimeConfigStatus,
 } from '../types/api-key-pools'
 import { API_KEY_TIERS, emptyApiKeyPool } from '../types/api-key-pools'
 
@@ -226,6 +227,25 @@ function safeErrorMessage(value: unknown, status: number): string {
 
 export class HttpApiKeyPoolsAdapter implements ApiKeyPoolsAdapter {
   constructor(private readonly baseUrl = '', private readonly fetchImpl: typeof fetch = fetch) {}
+
+  async runtimeStatus(): Promise<RuntimeConfigStatus> {
+    return this.runtimeResult(await this.request('/api/api-keys/runtime'))
+  }
+
+  async applyRuntime(revision: number | string): Promise<RuntimeConfigStatus> {
+    return this.runtimeResult(await this.request('/api/api-keys/runtime/apply', {
+      method: 'POST', body: JSON.stringify({ revision }),
+    }))
+  }
+
+  private runtimeResult(value: unknown): RuntimeConfigStatus {
+    const item = record(value)
+    if (!item || !['applied', 'pending', 'applying', 'unavailable'].includes(text(item.status))) {
+      throw new ApiKeyPoolsClientError('Runtime 配置状态格式无效')
+    }
+    return { status: item.status as RuntimeConfigStatus['status'], savedRevision: item.savedRevision === null ? null : revision(item.savedRevision),
+      ready: item.ready === true, message: redactSensitiveText(text(item.message)), checkedAt: text(item.checkedAt), scope: 'dududa_only', cleanupPending: item.cleanupPending === true }
+  }
 
   async list(): Promise<ApiKeyPoolsResponse> {
     const body = await this.request('/api/api-keys')

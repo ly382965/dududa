@@ -1019,7 +1019,12 @@ def _expand_template(
         "social": {
             "action": template.expected_social_action,
             "allowed_actions": [template.expected_social_action],
-            "reason_codes": [_expected_social_reason(template)],
+            "reason_codes": [
+                _expected_social_reason(template),
+                # Current SocialDecision preserves this fixed task-conflict
+                # diagnostic; keep the independent annotation equally exact.
+                *(["rule_model_conflict_task_kind"] if expected_conflict else []),
+            ],
             "target_identity_refs": expected_social_targets,
         },
         "hard_invariants": list(_HARD_GATES[:-1]),
