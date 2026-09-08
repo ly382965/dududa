@@ -248,6 +248,11 @@ class CanaryCoordinator:
                 "canary_runtime_timeout",
             )
         except Exception:  # noqa: BLE001 - claimed messages cannot fall back
+            import logging
+
+            logging.getLogger("dududa.canary").exception(
+                "Dududa canary runtime failed for run %s", call.run_id
+            )
             record = self._ledger.mark_aborted(
                 record.message_key_digest,
                 record.revision,

@@ -537,6 +537,17 @@ class OfflineRuntimeOrchestrator:
                 signals,
                 call=self._call_with_budget(call, state.budget),
             )
+            import logging
+
+            logging.getLogger("dududa.orchestrator").warning(
+                "Dududa social decision: action=%s reasons=%s tools_enabled=%s "
+                "need_tools=%s can_use_tools=%s",
+                social.action.value,
+                tuple(social.reason_codes),
+                signals.tools_enabled,
+                perception.result.need_tools,
+                signals.authorization.can_use_tools,
+            )
 
             response_profile_request = None
             response_plan = None
@@ -656,6 +667,17 @@ class OfflineRuntimeOrchestrator:
                         capability_receipt,
                         capability_request,
                         run_id=checkpoint.state.run_id,
+                    )
+                    import logging
+
+                    logging.getLogger("dududa.orchestrator").warning(
+                        "Dududa capability receipt: status=%s reasons=%s "
+                        "plan_steps=%s observations=%s unobserved=%s",
+                        capability_receipt.status.value,
+                        tuple(capability_receipt.reason_codes),
+                        len(capability_receipt.plan.steps) if capability_receipt.plan else 0,
+                        len(capability_receipt.observations),
+                        len(capability_receipt.unobserved_attempts),
                     )
                 except asyncio.CancelledError:
                     raise
@@ -901,6 +923,22 @@ class OfflineRuntimeOrchestrator:
                 social,
                 direct.content if direct is not None else None,
                 response_plan,
+            )
+            import logging
+
+            logging.getLogger("dududa.orchestrator").warning(
+                "Dududa compose: direct_text_len=%s draft_blocks=%s draft_text=%s",
+                (
+                    len(getattr(direct.content, "text", "") or "")
+                    if direct is not None
+                    else -1
+                ),
+                len(getattr(draft, "content_blocks", ())),
+                (
+                    getattr(getattr(draft, "content_blocks", (None,))[0], "content", "")
+                    if getattr(draft, "content_blocks", None)
+                    else ""
+                )[:80],
             )
             checkpoint = await self._commit_transition(
                 checkpoint,

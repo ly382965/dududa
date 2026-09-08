@@ -85,14 +85,13 @@ class ProactiveTalkEvent:
         self._source = source
         self.message_str = prompt
         self.message_obj = copy.copy(source.message_obj)  # type: ignore[attr-defined]
-        original_id = str(getattr(self.message_obj, "message_id", "") or "event")
-        self.message_obj.message_id = f"{original_id}:proactive"
+        # Keep the original numeric message id untouched: delivery may quote it
+        # as a reply reference and OneBot clients must be able to resolve it.
         self.message_obj.message = [Plain(prompt)]
         self.message_obj.message_str = prompt
         raw = getattr(self.message_obj, "raw_message", None)
         if isinstance(raw, dict):
             raw = dict(raw)
-            raw["message_id"] = self.message_obj.message_id
             raw["message"] = [{"type": "text", "data": {"text": prompt}}]
             self.message_obj.raw_message = raw
         self._stopped = False
