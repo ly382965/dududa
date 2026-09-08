@@ -1688,8 +1688,9 @@ def load_driver_plan(path: Path) -> dict[str, tuple[str, ...]]:
 def validate_compose_contract(value: object) -> dict[str, object]:
     root = _mapping(value, "compose")
     services = _mapping(root.get("services"), "compose.services")
-    required_services = {"web", "astrbot", "napcat"}
-    if not required_services.issubset(services):
+    protocol_services = {"napcat", "llbot"}.intersection(services)
+    required_services = {"web", "astrbot"} | protocol_services
+    if not protocol_services or not required_services.issubset(services):
         _fail("compose_required_service_missing")
     for name in sorted(required_services):
         service = _mapping(services[name], f"compose.services.{name}")
@@ -1707,9 +1708,7 @@ def validate_compose_contract(value: object) -> dict[str, object]:
             if host_ip not in {"127.0.0.1", "::1"}:
                 _fail("compose_port_not_loopback", name)
     astrbot = _mapping(services["astrbot"], "compose.astrbot")
-    napcat = _mapping(services["napcat"], "compose.napcat")
     astrbot_mounts = _mount_map(astrbot.get("volumes", []), "astrbot")
-    napcat_mounts = _mount_map(napcat.get("volumes", []), "napcat")
     for target in (
         "/opt/dududa/config",
         "/opt/dududa/scripts",
@@ -1719,9 +1718,15 @@ def validate_compose_contract(value: object) -> dict[str, object]:
             _fail("compose_source_mount_not_read_only", target)
     if astrbot_mounts.get("/AstrBot/data") is not False:
         _fail("compose_runtime_mount_not_writable", "astrbot")
-    for target in ("/AstrBot/data", "/app/napcat/config", "/app/.config/QQ"):
-        if napcat_mounts.get(target) is not False:
-            _fail("compose_runtime_mount_not_writable", target)
+    for name in protocol_services:
+        service = _mapping(services[name], f"compose.{name}")
+        mounts = _mount_map(service.get("volumes", []), name)
+        targets = ("/app/llbot/data",) if name == "llbot" else ("/AstrBot/data", "/app/napcat/config", "/app/.config/QQ")
+        for target in targets:
+            if mounts.get(target) is not False:
+                _fail("compose_runtime_mount_not_writable", target)
+        if name == "llbot" and mounts.get("/AstrBot/data") is not True:
+            _fail("compose_source_mount_not_read_only", "/AstrBot/data")
     summary = {
         "schema_version": SCHEMA_VERSION,
         "services": sorted(required_services),

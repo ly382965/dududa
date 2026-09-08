@@ -123,6 +123,10 @@ services:
         published: "${ASTRBOT_WEBUI_PORT:-6185}"
         target: 6185
         protocol: tcp
+      - host_ip: ${ASTRBOT_ONEBOT_WS_HOST:-127.0.0.1}
+        published: "${ASTRBOT_ONEBOT_WS_PORT:-6199}"
+        target: 6199
+        protocol: tcp
     volumes:
       - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data
       - ${DUDUDA_ASTRBOT_PLUGIN_ROOT:-./runtime/astrbot-plugins}:/AstrBot/data/plugins
@@ -147,7 +151,33 @@ services:
           - dududa-astrbot
           - bot-astrbot-qq-astrbot
 
+  llbot:
+    image: ${LLBOT_IMAGE:-linyuchen/llbot:8.1.10}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      WEBUI_PORT: 3080
+      AUTO_LOGIN_QQ: ${LLBOT_ACCOUNT:-}
+    ports:
+      - host_ip: ${LLBOT_WEBUI_HOST:-127.0.0.1}
+        published: "${LLBOT_WEBUI_PORT:-3080}"
+        target: 3080
+        protocol: tcp
+    volumes:
+      - ${LLBOT_DATA_DIR:-${STACK_DATA_ROOT:-./data}/llbot}:/app/llbot/data
+      - ${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data:ro
+    networks:
+      bot_net:
+      edge:
+        aliases:
+          - dududa-llbot
+    depends_on:
+      - astrbot
+
   napcat:
+    profiles: ["legacy-napcat"]
     image: ${NAPCAT_IMAGE}
     restart: unless-stopped
     security_opt:

@@ -100,14 +100,14 @@ uv run --locked python ops/cli/run_dududa_100_message_benchmark.py \
 完整运行环境为 Linux、Docker Engine 和 Docker Compose v2。按 [安装与使用说明](docs/operations/submission-program.md) 完成：
 
 1. 配置 `.env`、运行目录与校园认证文件，使用 `bash manage.sh up` 构建并启动服务。
-2. 在 NapCat 扫码登录 QQ，运行 `bash manage.sh web-connect` 接入 Web 工作区。
+2. 在 LLOneBot WebUI 输入 Auth Token 并扫码，运行 `bash manage.sh web-connect-llbot` 接入工作区，配置见 [LLOneBot 迁移说明](docs/operations/llonebot-migration.md)。
 3. 在 AstrBot 配置模型 Provider 和 Dududa Core，随后在 Web 中配置目标群的服务与参与方式。
 
 | 本地入口 | 地址 |
 | --- | --- |
 | 嘟嘟哒 Web 控制台 | <http://127.0.0.1:5173> |
 | AstrBot | <http://127.0.0.1:6185> |
-| NapCat | <http://127.0.0.1:6099> |
+| LLOneBot | <http://127.0.0.1:3080> |
 
 首次安装需要完成模型端点与 Runtime 配置。完整步骤、模型字段和自动参与设置都在 [程序使用说明](docs/operations/submission-program.md) 中。
 
@@ -129,7 +129,7 @@ uv run --locked python ops/cli/run_dududa_100_message_benchmark.py \
 
 ```mermaid
 flowchart TD
-    QQ["QQ 群聊 · NapCat / AstrBot"] --> Context["上下文感知"]
+    QQ["QQ 群聊 · LLOneBot / AstrBot"] --> Context["上下文感知"]
     Web["Web 控制台 · Runtime 预览"] --> Context
     Context --> Social["Social Engine · 参与决策"]
     Social --> Route["模型路由 · 推理与回答长度"]

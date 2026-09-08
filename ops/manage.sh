@@ -184,8 +184,9 @@ usage() {
     '  api-key-store-path  Validate and print the external API Key store root' \
     '  sync        Merge the icourse MCP template into runtime config' \
     '  seed        Install the Dududa persona and MCP config into AstrBot' \
-    '  up          Build and start the complete AstrBot + NapCat + Web stack' \
+    '  up          Build and start the complete AstrBot + LLOneBot + Web stack' \
     '  web-up      Build and start only the Dududa QQ workspace' \
+    '  web-connect-llbot  Connect LLOneBot to the workspace' \
     '  web-connect Add the workspace reverse WS to this stack and restart NapCat' \
     '  down        Stop and remove containers and private network' \
     '  restart     Restart all services, or one service' \
@@ -291,12 +292,23 @@ case "$cmd" in
     ;;
   web-connect)
     "$0" init
+    setup_docker
     runtime_root="$(data_root)"
-    "$PYTHON" ops/cli/configure_napcat_web.py \
+    "$PYTHON" ops/cli/configure_onebot_web.py \
       --config-dir "$runtime_root/napcat/config" \
       --token-file "$(web_data_root)/secrets/onebot_access_token" \
       --apply
     "${COMPOSE[@]}" restart napcat
+    ;;
+  web-connect-llbot)
+    ensure_web_secrets
+    llbot_data_dir="${LLBOT_DATA_DIR:-$(env_value LLBOT_DATA_DIR "$ENV_FILE")}"
+    "$PYTHON" ops/cli/configure_onebot_web.py \
+      --implementation llonebot \
+      --config-dir "${llbot_data_dir:-$(data_root)/llbot}" \
+      --token-file "$(web_data_root)/secrets/onebot_access_token" \
+      --endpoint "${DUDUDA_WEB_ONEBOT_WS_URL:-ws://web:8000/onebot/v11/ws}" \
+      --apply
     ;;
   down)
     setup_docker

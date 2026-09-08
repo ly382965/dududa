@@ -91,6 +91,7 @@ interface AccountState {
   conversations: Map<string, Conversation>
   emittedMessages: Map<string, number>
   compatible: boolean
+  implementationKind: 'napcat' | 'llonebot' | 'unknown'
   implementationName: string
   implementationVersion?: string
   packetAvailable: boolean
@@ -415,14 +416,14 @@ export class OneBotHub extends EventEmitter {
     if (!this.accounts.size) {
       return {
         status: 'waiting',
-        message: '等待 NapCat 反向 WebSocket 连接',
+        message: '等待 OneBot 客户端反向 WebSocket 连接',
         reverseWebSocketPath: this.reverseWebSocketPath,
       }
     }
     const online = [...this.accounts.values()].filter((state) => state.account.status === 'online').length
     return {
       status: 'connected',
-      message: `网关已连接 · ${online}/${this.accounts.size} 个 QQ 账号在线${online === 0 ? '，请在 NapCat 检查 QQ 登录状态' : ''}`,
+      message: `OneBot 网关已连接 · ${online}/${this.accounts.size} 个 QQ 账号在线${online === 0 ? '，请在 OneBot 客户端检查 QQ 登录状态' : ''}`,
       reverseWebSocketPath: this.reverseWebSocketPath,
     }
   }
@@ -1142,6 +1143,38 @@ export class OneBotHub extends EventEmitter {
     return (await this.historyPage(account, type, peerId, { limit })).messages
   }
 
+  private async requestHistory(
+    state: AccountState,
+    action: string,
+    params: Record<string, string | number | boolean>,
+    direction: 'before' | 'after',
+  ): Promise<{ messages?: OneBotMessage[] }> {
+    if (state.implementationKind !== 'llonebot') return state.connection.request(action, params)
+    const { reverse_order: _order, message_seq: anchor, ...rest } = params
+    const llParams = { ...rest, reverseOrder: false }
+    if (!anchor || direction === 'before') {
+      return state.connection.request(action, { ...llParams, ...(anchor ? { message_seq: anchor } : {}) })
+    }
+    // LLBot 8.1.10 reads backwards from an inclusive end sequence. reverseOrder
+    // only changes output ordering, so a forward page needs a later end sequence.
+    const latest = await state.connection.request<{ messages?: OneBotMessage[] }>(action, { ...llParams, count: 1 })
+    const sequence = (message: OneBotMessage) => BigInt(message.message_seq ?? message.real_seq ?? 0)
+    const latestSeq = (latest.messages ?? []).reduce((max, item) => sequence(item) > max ? sequence(item) : max, 0n)
+    const afterSeq = BigInt(String(anchor))
+    let endSeq = afterSeq
+    const step = BigInt(Math.max(Number(params.count) - 1, 1))
+    while (endSeq < latestSeq) {
+      endSeq = endSeq + step < latestSeq ? endSeq + step : latestSeq
+      const page = await state.connection.request<{ messages?: OneBotMessage[] }>(action, {
+        ...llParams, message_seq: String(endSeq),
+      })
+      const messages = (page.messages ?? []).filter((item) => sequence(item) > afterSeq)
+      if (messages.length) return { messages }
+      // Deleted/filtered messages can leave a sequence gap; stop at the observed latest message.
+    }
+    return { messages: [] }
+  }
+
   async historyPage(
     account: string,
     type: 'group' | 'private',
@@ -1160,14 +1193,14 @@ export class OneBotHub extends EventEmitter {
     const key = type === 'group' ? 'group_id' : 'user_id'
     let data: { messages?: OneBotMessage[] }
     try {
-      data = await state.connection.request(action, {
+      data = await this.requestHistory(state, action, {
         [key]: peerId,
         count: requestCount,
         ...(decodedCursor ? { message_seq: decodedCursor.messageSeq } : {}),
         reverse_order: decodedCursor ? direction === 'before' : false,
         disable_get_url: false,
         parse_mult_msg: true,
-      })
+      }, direction)
     } catch (error) {
       if (error instanceof Error && /不存在|not found/i.test(error.message)) {
         return { messages: [], hasMoreBefore: false, hasMoreAfter: false }
@@ -1201,14 +1234,14 @@ export class OneBotHub extends EventEmitter {
     let hasMoreInDirection = mappedMessages.length > count
     if (!hasMoreInDirection && boundarySeq) {
       try {
-        const adjacent = await state.connection.request<{ messages?: OneBotMessage[] }>(action, {
+        const adjacent = await this.requestHistory(state, action, {
           [key]: peerId,
           count: 2,
           message_seq: boundarySeq,
           reverse_order: direction === 'before',
           disable_get_url: true,
           parse_mult_msg: false,
-        })
+        }, direction)
         hasMoreInDirection = (adjacent.messages ?? []).some((message) => {
           const sequence = String(message.message_seq ?? message.real_seq ?? '')
           return Boolean(sequence) && sequence !== boundarySeq
@@ -1480,7 +1513,8 @@ export class OneBotHub extends EventEmitter {
       conversations: previous?.conversations ?? new Map(),
       emittedMessages: new Map(),
       compatible: false,
-      implementationName: 'NapCat.Onebot',
+      implementationKind: 'unknown',
+      implementationName: 'Unknown OneBot',
       packetAvailable: false,
       refreshedAt: 0,
       directory: previous?.directory ?? { accountId: id, friends: [], groups: [], refreshedAt: 0 },
@@ -1494,25 +1528,31 @@ export class OneBotHub extends EventEmitter {
 
   private async initializeAccount(state: AccountState): Promise<void> {
     try {
-      const [login, status, version, packetAvailable] = await Promise.all([
+      const [login, status, version] = await Promise.all([
         state.connection.request<OneBotLoginInfo>('get_login_info'),
         state.connection.request<{ online?: boolean; good?: boolean }>('get_status'),
         state.connection.request<{ app_name?: string; app_version?: string; protocol_version?: string }>('get_version_info'),
-        state.connection.request<null>('nc_get_packet_status').then(
-          () => true,
-          () => false,
-        ),
       ])
       if (!this.isCurrent(state)) return
       if (String(login.user_id) !== state.selfId) {
         state.connection.close(1008, 'OneBot self ID mismatch')
         return
       }
-      const compatible = version.app_name === 'NapCat.Onebot' && version.protocol_version === 'v11'
+      const isNapCat = version.app_name === 'NapCat.Onebot' && version.protocol_version === 'v11'
+      const isLLOneBot =
+        version.protocol_version === 'v11' &&
+        (version.app_name === 'LLOneBot' ||
+          version.app_name === 'LuckyLilliaBot' ||
+          version.app_name === 'llonebot')
+      const compatible = isNapCat || isLLOneBot
       state.compatible = compatible
+      state.implementationKind = isNapCat ? 'napcat' : isLLOneBot ? 'llonebot' : 'unknown'
       state.implementationName = version.app_name || 'Unknown OneBot'
       state.implementationVersion = version.app_version
-      state.packetAvailable = packetAvailable
+      state.packetAvailable = isNapCat && await state.connection.request<null>('nc_get_packet_status').then(
+        () => true,
+        () => false,
+      )
       state.account = mapAccount(login, this.oneBotAccountStatus(status.online, status.good, compatible))
       await this.refreshAccount(state, true)
       if (!this.isCurrent(state)) return
@@ -2147,6 +2187,16 @@ export class OneBotHub extends EventEmitter {
       ['request.friend.history', '当前 NapCat 无法回填普通好友申请历史'],
       ['group.folder.rename', '当前 NapCat 未提供群文件夹重命名 action'],
     ])
+    const llOneBotGaps = new Map<CapabilityName, string>([
+      ['directory.peer_pin', '当前 LLOneBot 未提供 QQ 同步置顶 action'],
+      ['request.friend.history', '当前 LLOneBot 无法回填普通好友申请历史'],
+      ['group.folder.rename', '当前 LLOneBot 未提供群文件夹重命名 action'],
+      ['group.files', '当前工作台尚未对接 LLOneBot 群文件管理'],
+      ['message.forward', '当前工作台尚未对接 LLOneBot 单条转发'],
+      ['message.custom_faces', '当前工作台尚未对接 LLOneBot 自定义表情市场'],
+      ['group.essence', '当前工作台尚未对接 LLOneBot 精华消息'],
+      ['group.announcements', '当前工作台尚未对接 LLOneBot 群公告'],
+    ])
     const minimumVersions = new Map<CapabilityName, string>([
       ['message.download.file', '4.8.0'],
       ['message.forward', '4.8.0'],
@@ -2155,15 +2205,37 @@ export class OneBotHub extends EventEmitter {
     ])
     const actions = Object.fromEntries(
       capabilityNames.map((name) => {
-        if (!state.compatible) return [name, { status: 'unavailable' as const, reason: '连接端不是兼容的 NapCat OneBot v11' }]
-        if (state.account.status !== 'online') return [name, { status: 'unavailable' as const, reason: 'QQ 账号连接状态异常' }]
-        const minimumVersion = minimumVersions.get(name)
-        if (minimumVersion && !this.versionAtLeast(state.implementationVersion, minimumVersion)) {
+        if (!state.compatible) {
+          return [
+            name,
+            {
+              status: 'unavailable' as const,
+              reason: `连接端 ${state.implementationName} 不是兼容的 OneBot v11 客户端`,
+            },
+          ]
+        }
+        if (state.account.status !== 'online') {
+          return [name, { status: 'unavailable' as const, reason: 'QQ 账号连接状态异常' }]
+        }
+        if (state.implementationKind === 'napcat') {
+          const minimumVersion = minimumVersions.get(name)
+          if (minimumVersion && !this.versionAtLeast(state.implementationVersion, minimumVersion)) {
+            return [
+              name,
+              {
+                status: 'unsupported' as const,
+                reason: `需要 NapCat ${minimumVersion} 或更高版本，当前为 ${state.implementationVersion || '未知版本'}`,
+              },
+            ]
+          }
+        }
+        const gaps = state.implementationKind === 'llonebot' ? llOneBotGaps : napCatGaps
+        if (gaps.has(name)) {
           return [
             name,
             {
               status: 'unsupported' as const,
-              reason: `需要 NapCat ${minimumVersion} 或更高版本，当前为 ${state.implementationVersion || '未知版本'}`,
+              reason: gaps.get(name),
             },
           ]
         }
@@ -2172,7 +2244,7 @@ export class OneBotHub extends EventEmitter {
           name,
           {
             status: 'unsupported' as const,
-            reason: napCatGaps.get(name) || 'NapCat 支持该能力，但 Web 安全网关尚未实现',
+            reason: gaps.get(name) || `${state.implementationName} 支持该能力，但 Web 安全网关尚未实现`,
           },
         ]
       }),

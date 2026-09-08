@@ -73,6 +73,7 @@ class RecordingDriver:
 class OperationsHardeningTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = TemporaryDirectory(prefix="dududa-s16-")
+        self.addCleanup(self.temporary.cleanup)
         self.workspace = Path(self.temporary.name)
         self.data_root = self.workspace / "data"
         self.clock = lambda: NOW
@@ -85,9 +86,6 @@ class OperationsHardeningTests(unittest.TestCase):
             self.driver,
             clock=self.clock,
         )
-
-    def tearDown(self) -> None:
-        self.temporary.cleanup()
 
     def test_disposable_release_lifecycle(self) -> None:
         initial = self.store.bootstrap()
@@ -403,6 +401,17 @@ class OperationsHardeningTests(unittest.TestCase):
         result = validate_compose_contract(rendered)
         self.assertEqual(result["services"], ["astrbot", "napcat", "web"])
         self.assertTrue(result["loopback_ports"])
+        llbot = deepcopy(rendered)
+        del llbot["services"]["napcat"]
+        llbot["services"]["llbot"] = {
+            "ports": [{"host_ip": "127.0.0.1"}],
+            "volumes": [
+                {"target": "/app/llbot/data", "read_only": False},
+                {"target": "/AstrBot/data", "read_only": True},
+            ],
+            "networks": {"bot_net": {}, "edge": {}},
+        }
+        self.assertEqual(validate_compose_contract(llbot)["services"], ["astrbot", "llbot", "web"])
         public = deepcopy(rendered)
         public["services"]["web"]["ports"][0]["host_ip"] = "0.0.0.0"
         with self.assertRaises(OperationsError) as unsafe_port:
@@ -421,10 +430,6 @@ class OperationsHardeningTests(unittest.TestCase):
             "./services/mcp/icourse:/AstrBot/data/icourse-mcp:ro",
         ):
             self.assertIn(value, compose)
-        self.assertNotIn(
-            "${STACK_DATA_ROOT:-./data}/astrbot:/AstrBot/data:ro",
-            compose,
-        )
         self.assertGreaterEqual(compose.count("      bot_net:"), 3)
         self.assertGreaterEqual(compose.count("      edge:"), 3)
 
@@ -554,7 +559,10 @@ class OperationsHardeningTests(unittest.TestCase):
         config.write_text('{"release":"v1"}\n', encoding="utf-8")
         os.chmod(config, 0o600)
         database = astrbot / "data.db"
-        with sqlite3.connect(database) as connection:
+        # Keep the WAL open for backup/read-only checks; close before temporary cleanup.
+        connection = sqlite3.connect(database)
+        self.addCleanup(connection.close)
+        with connection:
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("PRAGMA wal_autocheckpoint=0")
             connection.execute("CREATE TABLE sample (value INTEGER NOT NULL)")
