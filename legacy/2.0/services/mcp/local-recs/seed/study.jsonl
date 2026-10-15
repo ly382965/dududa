@@ -1,0 +1,8 @@
+{"kind":"study","name":"模电/模拟电子技术","detail":"重点看三极管放大电路、运放应用、反馈与频率响应，刷课后例题和往年题","location":"图书馆/自习室","score":4.4,"proximity":"校内","tags":["电子信息","考试"]}
+{"kind":"study","name":"数电/数字电子技术","detail":"卡诺图化简、时序逻辑电路设计(计数器)、组合逻辑，多画状态转移图","location":"图书馆/自习室","score":4.4,"proximity":"校内","tags":["电子信息","考试"]}
+{"kind":"study","name":"数据结构","detail":"重点复习栈队列、树与图遍历、排序算法复杂度、KMP/哈希，手写核心伪代码","location":"图书馆/自习室","score":4.5,"proximity":"校内","tags":["计算机","考试"]}
+{"kind":"study","name":"概率论与数理统计","detail":"条件概率、随机变量分布、大数定律与中心极限定理、参数估计与假设检验","location":"图书馆/自习室","score":4.3,"proximity":"校内","tags":["数学","考试"]}
+{"kind":"study","name":"高等数学/微积分","detail":"极限、导数与微分、多元微分、重积分、级数，重点做历年真题","location":"图书馆/自习室","score":4.3,"proximity":"校内","tags":["数学","考试"]}
+{"kind":"study","name":"线性代数","detail":"矩阵运算、行列式、线性方程组、特征值与特征向量、相似对角化","location":"图书馆/自习室","score":4.3,"proximity":"校内","tags":["数学","考试"]}
+{"kind":"study","name":"大学物理","detail":"力学、电磁学、热学重点公式推导，波动光学(干涉衍射)常考","location":"图书馆/自习室","score":4.2,"proximity":"校内","tags":["物理","考试"]}
+{"kind":"study","name":"C语言程序设计","detail":"指针与数组、结构体、链表、文件操作、经典算法(排序/递归)手写","location":"图书馆/自习室","score":4.4,"proximity":"校内","tags":["计算机","考试"]}

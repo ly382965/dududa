@@ -5,6 +5,6 @@ updates:
     schedule:
       interval: monthly
   - package-ecosystem: pip
-    directory: /services/mcp/icourse
+    directory: /
     schedule:
       interval: monthly

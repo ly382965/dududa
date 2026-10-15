@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "college-notice-mcp"
+version = "0.1.0"
+description = "MCP server for public notice listings published by USTC college websites"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "httpx>=0.27.0",
+    "mcp>=1.2.0,<2",
+]
+
+[project.scripts]
+college-notice-mcp = "college_notice_mcp.server:main"
+college-notice-mcp-cli = "college_notice_mcp.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

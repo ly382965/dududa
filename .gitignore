@@ -47,3 +47,7 @@ node_modules/
 /quickstart.env
 /initial-login.txt
 /images/
+
+# Shared versioned shuttle data (not runtime state).
+!services/builtin/shuttle/data/
+!services/builtin/shuttle/data/**

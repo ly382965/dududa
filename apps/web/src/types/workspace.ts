@@ -2,8 +2,8 @@ import type {
   InternalTestAnswerProfile,
   InternalTestEffectiveSelection,
   InternalTestReasoningLevel,
-  InternalTestTier,
 } from './internal-test'
+import type { RuntimePreviewTier } from './preview'
 
 export type AccountStatus = 'online' | 'degraded' | 'offline'
 export type ConversationType = 'group' | 'private'
@@ -580,13 +580,13 @@ export interface AgentRun {
   cost: string
   contextMessages: number
   model: string
-  modelTier?: InternalTestTier
+  modelTier?: RuntimePreviewTier
   reasoning?: InternalTestReasoningLevel
   answerProfile?: InternalTestAnswerProfile
   plugins?: string[]
   reasonCodes?: string[]
   effectiveSelection?: InternalTestEffectiveSelection
-  runtimePath?: 'dududa_2_preview' | 'candidate_fallback'
+  runtimePath?: 'dududa_3_preview' | 'dududa_2_preview' | 'candidate_fallback'
   toolCalls?: number
   steps: AgentRunStep[]
 }

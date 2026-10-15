@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:7411f52d32f27312a7103dcdd0252f92c3ef76c1d7733c55f4c7be2dc28b4dea",
+  "capability_id": "notifai.notices.search.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.notifai.search_notices.input:v1:sha-256:b38c2e801c708838888027cf7f7bea63b87601434fea78fe4428f931ab4324ef",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.notifai.search_notices.output:v1:sha-256:b0236001917610b30cd051814521aecef7c506bf60eb827965f55c3b429f8794",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:af21c9cd797b9f1c4844da55e55d1c97aff2ae08624799daa2caf13f6b8e367d",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "notifai",
+  "tool_name": "search_notices"
+}

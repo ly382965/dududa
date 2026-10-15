@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:ba4f3f158e23be658e44730f89189bc810e93d49ca3a52b25e8e6d322679b207",
+  "capability_id": "console.campus-events.query.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.campus-events.campus_events_public_query.input:v1:sha-256:0b05511e70ca07ba1f744e44e3ba2fe3478028d8b352b2b96d53245127b4a0d3",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.campus-events.campus_events_public_query.output:v1:sha-256:7f3d8f968eb059073b6e7283c853bb9431f3a967c35dec41b987021463ad3f8f",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:9702be1b508e7fde6a376a01b5d309b2579a126fe1083be893d0d71f8dd8c48a",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "campus-events",
+  "tool_name": "campus_events_public_query"
+}

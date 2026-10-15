@@ -72,7 +72,7 @@ type AdaptiveAxis =
   | 'groupChatStyle'
 
 type AgentRunWithSelection = AgentRun & {
-  modelTier?: InternalTestTier
+  modelTier?: AgentRun['modelTier']
   reasoning?: InternalTestReasoningLevel
   answerProfile?: InternalTestAnswerProfile
   plugins?: string[]
@@ -187,10 +187,12 @@ const pluginReadinessLabels: Record<InternalTestCatalogPlugin['runtimeReadiness'
   unavailable: '执行器未接通',
 }
 
-const tierLabels: Record<InternalTestTier, string> = {
+const tierLabels: Record<NonNullable<AgentRun['modelTier']>, string> = {
   haiku: '轻量',
   sonnet: '中等',
   opus: '专业',
+  codex: '本机 Codex',
+  rules: '规则服务（无需 LLM）',
 }
 
 const reasoningLabels: Record<InternalTestReasoningLevel, string> = {
@@ -853,9 +855,9 @@ watch(
           <dl>
             <div><dt>模型</dt><dd>{{ run.model }}</dd></div>
             <div><dt>模型档位</dt><dd>{{ runTier ? tierLabels[runTier] : '未记录' }}</dd></div>
-            <div><dt>推理强度</dt><dd>{{ runReasoning ? reasoningLabels[runReasoning] : '未记录' }}</dd></div>
-            <div><dt>回答长度</dt><dd>{{ runAnswerProfile ? answerProfileLabels[runAnswerProfile] : '未记录' }}</dd></div>
-            <div><dt>回复强度</dt><dd>{{ runReplyIntensity ? replyIntensityLabels[runReplyIntensity] : '未记录' }}</dd></div>
+            <div><dt>推理强度</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '由本机 Codex 配置' : runReasoning ? reasoningLabels[runReasoning] : '未记录' }}</dd></div>
+            <div><dt>回答长度</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '由 3.0 Runtime 决定' : runAnswerProfile ? answerProfileLabels[runAnswerProfile] : '未记录' }}</dd></div>
+            <div><dt>回复强度</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '旧策略不适用' : runReplyIntensity ? replyIntensityLabels[runReplyIntensity] : '未记录' }}</dd></div>
             <div>
               <dt>上下文长度</dt>
               <dd>
@@ -872,9 +874,9 @@ watch(
                   : '未记录' }}
               </dd>
             </div>
-            <div><dt>群聊风格</dt><dd>{{ runGroupChatStyle ? groupChatStyleLabels[runGroupChatStyle] : '未记录' }}</dd></div>
+            <div><dt>群聊风格</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '由 3.0 Runtime 决定' : runGroupChatStyle ? groupChatStyleLabels[runGroupChatStyle] : '未记录' }}</dd></div>
             <div><dt>实际插件</dt><dd>{{ runPlugins.length ? runPlugins.join('、') : '本轮未调用' }}</dd></div>
-            <div><dt>执行路径</dt><dd>{{ run.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : run.runtimePath === 'candidate_fallback' ? '候选回退' : '未确认' }}</dd></div>
+            <div><dt>执行路径</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? 'Dududa 3.0 Runtime' : run.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : run.runtimePath === 'candidate_fallback' ? '候选回退' : '未确认' }}</dd></div>
             <div><dt>Tool 调用</dt><dd>{{ run.toolCalls ?? '未记录' }}</dd></div>
             <div><dt>开始于</dt><dd>{{ run.startedAt }}</dd></div>
             <div><dt>回复账号</dt><dd>{{ account?.name }}</dd></div>

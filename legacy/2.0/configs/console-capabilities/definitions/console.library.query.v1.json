@@ -1,0 +1,194 @@
+{
+  "allowed_contexts": [
+    "private"
+  ],
+  "capability_id": "console.library.query.v1",
+  "category": "console.library",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:73fa6a5da573cf7c3467bd5f28df7ecab82aa5f66307a9906138cd7947762f8b",
+  "description": "\u56fe\u4e66\u9986\u5f00\u653e\u65f6\u95f4\uff1a\u53ea\u8bfb\u7f13\u5b58\u67e5\u8be2\uff1bquery \u7559\u7a7a\u53ef\u6d4f\u89c8\u3002\u7ed3\u679c\u9644\u6570\u636e\u6765\u6e90\u548c\u65f6\u6548\u8bf4\u660e\uff0c\u4e0d\u81ea\u52a8\u6388\u6743\u7fa4\u804a\u3002",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.console.library.query.v1.input:v1:sha-256:0c1943693092fdaee7df44b1d3a8b9fc45d0df16dc506e77b1fff175f134abbc",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "campus": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Campus",
+          "type": "string"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "query": {
+          "default": "",
+          "maxLength": 120,
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "library_hours_public_queryArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.console.library.query.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 300,
+    "maximum_ms": 30000
+  },
+  "name": "\u56fe\u4e66\u9986\u5f00\u653e\u65f6\u95f4",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.console.library.query.v1.output:v1:sha-256:483731c70a5f0b614848df180a42f63ef94d42fdfe9b52070eb1e8dd007e6cea",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "campus": {
+          "maxLength": 32,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fetched_at": {
+          "maxLength": 64,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "freshness_note": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "campus": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "location": {
+                "maxLength": 240,
+                "type": "string"
+              },
+              "phone": {
+                "maxLength": 80,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "service": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "weekday": {
+                "maxLength": 160,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "weekend": {
+                "maxLength": 160,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "campus",
+              "location",
+              "service",
+              "weekday",
+              "weekend",
+              "phone"
+            ],
+            "type": "object"
+          },
+          "maxItems": 30,
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "query": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "returned": {
+          "maximum": 30,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "maxLength": 120,
+          "type": "string"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "query",
+        "items",
+        "returned",
+        "source",
+        "source_url",
+        "fetched_at",
+        "freshness_note",
+        "campus"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.console.library.query.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.library",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:b98d8dfdc18c82e17192830d93acfe897b7c607a3703e6c8afe1c527d001ace1",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "library-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "console.library.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "none"
+  ],
+  "tags": [
+    "cache-only",
+    "console-only",
+    "read-only"
+  ]
+}

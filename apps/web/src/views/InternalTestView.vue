@@ -435,9 +435,10 @@ onMounted(load)
               <article v-if="candidate" class="candidate-card" data-testid="candidate-answer">
                 <p>{{ candidate.candidate }}</p>
                 <footer>
-                  <span>{{ candidate.model }}</span>
+                  <span v-if="candidate.runtimePath === 'dududa_3_preview'">Dududa 3.0 Runtime</span>
+                  <span>{{ candidate.tier === 'rules' ? '规则服务 · 无需 LLM' : candidate.model }}</span>
                   <span>{{ candidate.latencyMs }} ms</span>
-                  <span>{{ profileLabels[candidate.answerProfile] }}</span>
+                  <span v-if="candidate.runtimePath !== 'dududa_3_preview'">{{ profileLabels[candidate.answerProfile] }}</span>
                   <b>Output {{ candidate.outputCalls }}</b>
                 </footer>
               </article>

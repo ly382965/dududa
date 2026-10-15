@@ -1,0 +1,187 @@
+:root {
+  color-scheme: light;
+  --font-sans: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
+  --app-background: #eef2f3;
+  --surface: #ffffff;
+  --surface-glass: rgb(255 255 255 / 91%);
+  --surface-subtle: #fafcfc;
+  --surface-muted: #f1f4f4;
+  --surface-hover: #edf2f2;
+  --surface-pinned: #f6f8f8;
+  --chat-background: #f3f6f6;
+  --agent-background: #f8fafa;
+  --text: #182326;
+  --text-secondary: #506064;
+  --text-muted: #89979a;
+  --border: #e1e7e8;
+  --border-soft: #e9eeee;
+  --border-strong: #cfd9da;
+  --brand: #217989;
+  --brand-strong: #145f6c;
+  --brand-soft: #eaf5f6;
+  --brand-soft-strong: #dceff1;
+  --brand-border: #b9dadd;
+  --accent: #d66b52;
+  --accent-strong: #ad4d38;
+  --accent-soft: #fbece8;
+  --success: #3d9a73;
+  --success-strong: #287653;
+  --success-soft: #e9f6ef;
+  --success-border: #b9ddca;
+  --warning: #d29a2e;
+  --warning-strong: #936512;
+  --warning-soft: #fff7e3;
+  --warning-border: #ecd395;
+  --danger: #d75561;
+  --danger-soft: #fdecef;
+  --message-incoming: #ffffff;
+  --message-outgoing: #dff1f2;
+  --message-outgoing-border: #badcdf;
+  --bubble-border: #e1e7e8;
+  --bubble-shadow: 0 2px 8px rgb(32 57 62 / 5%);
+  --floating-shadow: 0 16px 42px rgb(25 43 47 / 16%);
+  --toast-background: #253235;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --app-background: #121615;
+  --surface: #1c2221;
+  --surface-glass: rgb(28 34 33 / 92%);
+  --surface-subtle: #191e1d;
+  --surface-muted: #252c2b;
+  --surface-hover: #293130;
+  --surface-pinned: #222827;
+  --chat-background: #161b1a;
+  --agent-background: #181d1c;
+  --text: #eef3f2;
+  --text-secondary: #adb9b6;
+  --text-muted: #74827f;
+  --border: #2c3533;
+  --border-soft: #252d2c;
+  --border-strong: #3a4543;
+  --brand: #49a3b1;
+  --brand-strong: #76c2cd;
+  --brand-soft: #1d3437;
+  --brand-soft-strong: #254247;
+  --brand-border: #365b60;
+  --accent: #e27a61;
+  --accent-strong: #ef9a86;
+  --accent-soft: #3b2723;
+  --success: #50ad83;
+  --success-strong: #7ac8a4;
+  --success-soft: #1d3329;
+  --success-border: #315b48;
+  --warning: #dda93f;
+  --warning-strong: #ecc574;
+  --warning-soft: #392f1d;
+  --warning-border: #5b4824;
+  --danger: #e56d78;
+  --danger-soft: #3d2429;
+  --message-incoming: #222827;
+  --message-outgoing: #204044;
+  --message-outgoing-border: #326066;
+  --bubble-border: #333d3b;
+  --bubble-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  --floating-shadow: 0 18px 46px rgb(0 0 0 / 34%);
+  --toast-background: #e9efee;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: var(--text);
+  background: var(--app-background);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+button,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.icon-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  cursor: pointer;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  transition: color 130ms ease, background 130ms ease;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text-muted) 38%, transparent);
+  background-clip: padding-box;
+}
+
+::selection {
+  color: var(--text);
+  background: var(--brand-soft-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

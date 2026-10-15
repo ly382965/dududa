@@ -1069,12 +1069,14 @@ export function useWorkspace(
         detail: `实际读取 ${result.contextUsage.messagesRead} 条 / ${result.contextUsage.charactersRead.toLocaleString('zh-CN')} 字符（预算上限 ${result.contextUsage.messageLimit} 条 / ${result.contextUsage.characterLimit.toLocaleString('zh-CN')} 字符）`,
       }
       const coverage = result.contextUsage.coverage
+      const runtimeLabel = result.runtimePath === 'dududa_3_preview' ? 'Dududa 3.0 Runtime' : result.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退'
+      const modelLabel = result.tier === 'rules' ? '规则服务 · 无需 LLM' : `${result.tier} · ${result.model}`
       if (coverage) {
         run.steps[0].detail += `；历史 ${coverage.historyMessagesRead} 条，仅最近窗口、非全天${coverage.truncated ? '，已截断' : ''}${coverage.oldestAt && coverage.newestAt ? `，${coverage.oldestAt} 至 ${coverage.newestAt}` : ''}`
       }
       run.steps[1] = {
         ...run.steps[1],
-        detail: `${successful ? '' : `${explanation} `}${result.runtimePath === 'dududa_2_preview' ? 'Dududa 2.0 Runtime' : '候选回退'} · ${result.tier} · ${result.model} · Tool ${result.toolCalls}${result.generationObserved === false ? ' · 未观察到回答模型生成' : ''}`,
+        detail: `${successful ? '' : `${explanation} `}${runtimeLabel} · ${modelLabel} · Tool ${result.toolCalls}${result.generationObserved === false ? ' · 未观察到回答模型生成' : ''}`,
         status: successful ? 'completed' : outcome === 'failed' ? 'error' : 'warning',
         duration: `${result.latencyMs} ms`,
       }
@@ -1091,7 +1093,7 @@ export function useWorkspace(
           { type: 'text', text: result.candidate.trim() || explanation },
           {
             type: 'status',
-            label: `${successful ? '候选回答' : outcomeLabel} · ${result.tier} · ${result.model}${result.generationObserved === false ? '（配置标签，未观察到回答模型生成）' : ''} · Tool ${result.toolCalls} · ${result.latencyMs} ms · 未发送${coverage ? ` · 仅最近 ${coverage.historyMessagesRead} 条历史（非全天${coverage.truncated ? '，已截断' : ''}）` : ''}`,
+            label: `${successful ? '候选回答' : outcomeLabel} · ${runtimeLabel} · ${modelLabel}${result.generationObserved === false && result.tier !== 'rules' ? '（未观察到回答模型生成）' : ''} · Tool ${result.toolCalls} · ${result.latencyMs} ms · 未发送${coverage ? ` · 仅最近 ${coverage.historyMessagesRead} 条历史（非全天${coverage.truncated ? '，已截断' : ''}）` : ''}`,
             tone: successful ? 'success' : 'warning',
           },
         ],

@@ -5,7 +5,7 @@ import { dirname, isAbsolute, resolve } from 'node:path'
 
 import dududaPersona from '../../../configs/personas/registry-v1/dududa.json'
 import type { HistoryPage } from '../src/types/workspace'
-import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewHistoryMessage } from '../src/types/preview'
+import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewHistoryMessage, RuntimePreviewTier } from '../src/types/preview'
 import {
   DududaRuntimePreviewClientError,
   type DududaRuntimePreviewClient,
@@ -164,7 +164,7 @@ export interface InternalTestEffectivePlugin {
 export interface InternalTestEffectiveSelection {
   scope: InternalTestAgentScope
   policySource: 'default' | 'saved'
-  modelTier: ModelTier
+  modelTier: RuntimePreviewTier
   model: string
   reasoning: ReasoningLevel
   answerProfile: AnswerProfile
@@ -220,20 +220,21 @@ export interface InternalTestProgress {
   needsReview: number
 }
 
-export interface InternalTestCandidate {
+export interface InternalTestCandidate extends PreviewEvidence {
   runId: string
   windowId: string
   candidate: string
-  tier: ModelTier
+  tier: RuntimePreviewTier
   model: string
   answerProfile: AnswerProfile
   latencyMs: number
   generatedAt: string
   evidenceMode: typeof INTERNAL_TEST_EVIDENCE_MODE
-  providerCalls: 1
+  providerCalls: number | null
   outputCalls: 0
   memoryWrites: 0
-  toolCalls: 0
+  toolCalls: number
+  runtimePath?: 'dududa_3_preview' | 'dududa_2_preview'
 }
 
 export interface InternalTestAgentStatus {
@@ -266,7 +267,7 @@ export interface InternalTestAgentStatus {
 export interface InternalTestAgentResponse extends PreviewEvidence {
   runId: string
   candidate: string
-  tier: ModelTier
+  tier: RuntimePreviewTier
   model: string
   reasoning: ReasoningLevel
   answerProfile: AnswerProfile
@@ -281,7 +282,7 @@ export interface InternalTestAgentResponse extends PreviewEvidence {
   outputCalls: 0
   memoryWrites: 0
   toolCalls: number
-  runtimePath: 'dududa_2_preview' | 'candidate_fallback'
+  runtimePath: 'dududa_3_preview' | 'dududa_2_preview' | 'candidate_fallback'
 }
 
 export interface InternalTestFeedbackResult {
@@ -1667,6 +1668,22 @@ export class FileInternalTestGateway implements InternalTestGateway {
     const tier = sampleTier(sample)
     const answerProfile = sampleAnswerProfile(sample)
     const reasoning: ReasoningLevel = tier === 'opus' ? 'high' : tier === 'haiku' ? 'low' : 'medium'
+    if (this.options.runtimePreview) {
+      const runtime = await this.options.runtimePreview.preview({
+        accountId: 'web-internal-test',
+        conversationId: `web-internal-test:sample:${windowId}`,
+        prompt: contextFor(sample),
+      })
+      return {
+        runId: runtime.runId, windowId, candidate: runtime.candidate, tier: runtime.tier,
+        model: runtime.model, answerProfile: runtime.answerProfile, latencyMs: runtime.latencyMs,
+        generatedAt: runtime.generatedAt, evidenceMode: INTERNAL_TEST_EVIDENCE_MODE,
+        providerCalls: runtime.generationObserved ? null : 0, outputCalls: 0, memoryWrites: 0,
+        generationObserved: runtime.generationObserved, runtimeState: runtime.runtimeState,
+        toolCalls: runtime.toolCalls,
+        runtimePath: runtime.reasonCodes.includes('runtime_v3') ? 'dududa_3_preview' : 'dududa_2_preview',
+      }
+    }
     const generated = await this.requestCandidate(contextFor(sample), answerProfile, tier, reasoning)
     return {
       runId: randomUUID(),
@@ -1691,14 +1708,17 @@ export class FileInternalTestGateway implements InternalTestGateway {
         if (!this.options.runtimePreview?.status) throw new Error('missing runtime client')
         const live = await this.options.runtimePreview.status()
         const controlsValid = live.controlReason !== 'rollout_config_invalid'
-        const providerConfigured = Object.keys(live.modelMapping).length > 0
+        const runtimeV3 = live.controls.runtime === 'dududa-3.0'
+        const providerConfigured = runtimeV3 ? live.controls.codex_available === true : Object.keys(live.modelMapping).length > 0
         return {
           available: live.ready && controlsValid,
           providerConfigured,
           outputEnabled: false,
           modelMapping: { haiku: '', sonnet: '', opus: '', ...live.modelMapping },
           runtimeControls: currentAgentRuntimeControls(live.controls, live.ready && controlsValid),
-          readinessReason: !controlsValid
+          readinessReason: runtimeV3
+            ? `Dududa 3.0 Runtime 已连接；${providerConfigured ? '本机 Codex 可用' : '本机 Codex 不可用，规则服务仍可使用'}。预览不发送 QQ；旧模型档位及群聊策略不作用于 3.0。`
+            : !controlsValid
             ? 'AstrBot 已连接，但运行控制配置无效；预览与交付已关闭，请修正配置。'
             : live.ready
             ? 'Runtime 已连接；群聊预览不发送 QQ。模型调用健康以实际运行结果为准。'
@@ -1922,7 +1942,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
                 triggerMatched: true,
                 selectionReason: 'trigger_matched' as const,
               }
-            : plugin,
+            : runtime.reasonCodes.includes('runtime_v3') ? { ...plugin, selectedForRun: false } : plugin,
         ]),
       )
       const runtimeContextUsage = {
@@ -1970,7 +1990,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
         outputCalls: 0,
         memoryWrites: 0,
         toolCalls: runtime.toolCalls,
-        runtimePath: 'dududa_2_preview',
+        runtimePath: runtime.reasonCodes.includes('runtime_v3') ? 'dududa_3_preview' : 'dududa_2_preview',
       }
     }
     const generated = await this.requestCandidate(

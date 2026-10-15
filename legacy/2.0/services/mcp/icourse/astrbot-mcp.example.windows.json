@@ -1,0 +1,11 @@
+{
+  "command": "D:\\Codes\\Connector\\pksq\\.venv\\Scripts\\python.exe",
+  "args": [
+    "-m",
+    "icourse_mcp.server",
+    "--db-path",
+    "D:\\Codes\\Connector\\pksq\\data\\icourse.sqlite3",
+    "--request-delay",
+    "1.0"
+  ]
+}

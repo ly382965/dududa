@@ -1,0 +1,15 @@
+{
+  "state_dir": "runtime/v3",
+  "codex_binary": "codex",
+  "model": null,
+  "timeout_seconds": 180,
+  "concurrency": 2,
+  "allowed_scopes": [],
+  "proactive_scopes": [],
+  "proactive_cooldown_seconds": 120,
+  "mcp_console_url": null,
+  "campus_capabilities": [],
+  "rules": [
+    {"match": "嘟嘟哒在吗", "reply": "在呀！"}
+  ]
+}
