@@ -922,7 +922,7 @@ function buildAgentCatalog(
       executionRole: 'admin',
     },
     selectionModes: [...SELECTION_MODES],
-    pluginModes: [...PLUGIN_MODES],
+    pluginModes: ['off', 'auto', 'locked'],
     models: modelDetails.map(({ tier, label }) => ({
       id: models[tier],
       tier,
@@ -1182,7 +1182,7 @@ function normalizeAgentPolicy(
   const policy = objectValue(value) ?? {}
   const knownPlugins = new Map(catalogPlugins().map((plugin) => [plugin.id, plugin]))
   const plugins = { ...current.plugins }
-  const adaptivePlugins = policy.adaptivePlugins ?? current.adaptivePlugins
+  let adaptivePlugins = policy.adaptivePlugins ?? current.adaptivePlugins
   if (adaptivePlugins !== undefined && (!Array.isArray(adaptivePlugins) || adaptivePlugins.some(id => {
     const plugin = typeof id === 'string' ? knownPlugins.get(id) : undefined
     return !plugin?.available || plugin.executionKind !== 'agent_capability' || plugin.runtimeTarget !== 'astrbot'
@@ -1210,6 +1210,17 @@ function normalizeAgentPolicy(
         throw new InternalTestError(`插件 ${id} 当前不可用，不能启用`)
       }
       plugins[id] = requestedMode
+      const automaticQuery = requestedMode === 'auto' && plugin.executionKind === 'agent_capability'
+        && plugin.runtimeTarget === 'astrbot'
+      if (automaticQuery) {
+        if (!scope.conversationId.startsWith(`${scope.accountId}:group:`)) {
+          throw new InternalTestError('自动启用仅支持群聊')
+        }
+        adaptivePlugins = [...new Set([...(Array.isArray(adaptivePlugins) ? adaptivePlugins : []), id])]
+      } else if (Array.isArray(adaptivePlugins)
+        && (requestedMode !== 'off' || !Array.isArray(policy.adaptivePlugins))) {
+        adaptivePlugins = adaptivePlugins.filter(allowedId => allowedId !== id)
+      }
     }
   }
   return {

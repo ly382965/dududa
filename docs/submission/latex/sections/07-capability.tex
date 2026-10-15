@@ -1,0 +1,45 @@
+\section{Capability 与统一 MCP 设计}
+\subsection{业务能力、协议工具与独立插件}
+Capability 描述面向任务的业务操作，MCP Tool 描述具体服务暴露的协议调用，AstrBot 插件提供平台接入或独立交互。三者可以关联，但并不一一对应。例如，评课高层业务查询包含多种 operation；校车是本地 Provider；Emoji 与复读使用独立插件入口。
+
+核对时主仓包含 22 份能力定义，其中 21 份配置 MCP mapping，校车通过本地 Provider 装配。定义记录能力身份、输入输出 Schema、Provider、权限、风险和副作用；mapping 记录业务参数如何投影为具体工具调用。原子查询验证的 26 项是测试案例数量，不能替代这一配置数量。
+
+\subsection{能力目录与参数绑定}
+能力发现先检查群策略、必要权限及 Provider 条件，再从合法候选中按类别、意图和实体选取业务入口。当前 \code{EntityQueryToolPlanner} 是确定性的单步规划器，将模型提取的实体与明确的查询意图绑定到输入 Schema。
+
+\begin{tabularx}{\textwidth}{@{}L{30mm}Y Y@{}}\toprule
+业务约束 & 参数化方式 & 需要保留的区别\\\midrule
+课程与教师 & 课程关键词、教师线索、具体条目 ID & 同名课程、不同教师、评论与开课事实\\
+活动筛选 & 关键词、类别、时间、数量 & 公开活动、个人记录、报名状态与余位\\
+学期与方案 & 学期、年级、专业、方案类型 & 当前学期、历史学期；普通主修与其他方案\\
+通知检索 & 内容关键词、条数、详情 ID 或日历范围 & 通知正文、来源字典与类别统计\\
+出行查询 & 起点、终点、日期类型、时段 & 行车方向、始发与途经、正常班次与备注\\\bottomrule
+\end{tabularx}
+
+以评课为例，本轮自然语言首先形成“评课查询 + 课程关键词”的业务请求，再通过配置映射为 \code{icourse_public_query}。Schema 限制字段、类型、枚举和返回规模。缺少必需信息时应澄清，不能随意构造教师 ID、活动 ID 或方案版本。
+
+\subsection{执行与结果校验}
+执行器取得经验证的计划，检查能力仍可执行，调用相应 Provider，并将结果形成 Observation。Observation 同时包含运行状态和业务资料；工具返回空列表仍是一种有效结果，而超时、权限拒绝、返回结构错误属于不同失败。
+
+结果校验负责确保结构、来源和事实字段可以被后续回答使用。最终回答仍可能存在措辞、取舍或语义错误，因此工具 Schema 校验不能被称为“事实正确性全部验证”。项目保留真实问答检查，单独观察是否答对当前问题、是否遗漏来源、是否遵守数量和格式约束。
+
+\subsection{统一客户端与依赖隔离}
+MCP 采用 Host、Client、Server 结构，客户端管理与各服务的连接、初始化、能力发现和调用。[W4] 嘟嘟哒在核心侧实现 UnifiedMcpClient，拥有服务目录、工具 allowlist、会话与调用控制。协议中的 capability negotiation 与项目的业务 Capability 是不同层级的概念。
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}[node distance=7mm]
+\node[box,text width=13cm] (core) {Core：Capability Runtime + UnifiedMcpClient\\业务权限、服务目录、Schema、超时与错误处理};
+\node[box,text width=13cm,below=of core] (worker) {独立 Python 解释器：Unified MCP Worker\\mcp 2.0.0；initialize / discover / call / cancel / close};
+\node[box,text width=13cm,below=of worker] (services) {独立校园服务进程 / 配置的 MCP 服务\\宿主与 iCourse 使用 mcp 1.29.0；通过 legacy 模式衔接};
+\draw[flow](core)--(worker);\draw[flow](worker)--(services);
+\end{tikzpicture}
+\caption{MCP 版本隔离。worker 负责传输，不接管权限、规划、调度或消息发送。}
+\end{figure}
+
+独立 worker 将不同版本依赖隔离在解释器边界，避免为了接入新客户端而整体替换 AstrBot 的依赖。Core 保留计划和授权，worker 只执行已限定的协议操作。这增加一个进程边界，但降低了框架升级对校园服务和宿主插件的影响。
+
+\subsection{扩展一个新服务}
+新增服务的顺序为：实现有界输入输出与服务适配；登记 MCP Server 并验证发现和查询；创建业务 Capability definition 与 mapping；在组合中绑定 Provider；最后验证自然语言任务、群配置和失败提示。若只完成 Server 登记，控制台可以检测连接，但 Planner 尚不能使用该服务。
+
+更长的 Skill 将在现有业务能力上组织多步任务。其后续难点包括中间结果引用、跨服务身份对应、总预算、失败后是否继续，以及需要人工确认的动作。当前单步实现提供明确输入输出和回执基础，但尚未完成这一编排层。
+\source{[S3, S5, S6, S7]；\nolinkurl{configs/capabilities/}、\nolinkurl{adapters/capability_planner.py} 与 Unified worker README。}

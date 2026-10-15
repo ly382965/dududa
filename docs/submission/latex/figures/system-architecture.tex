@@ -1,0 +1,18 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[box,text width=6.1cm] (qq) at (0,0) {QQ 群成员\\NapCat / OneBot v11};
+\node[box,text width=6.1cm] (web) at (7.1,0) {管理员 Web 工作台\\Vue 3 / Node.js Gateway};
+\node[box,text width=6.1cm] (ad) at (0,-1.65) {AstrBot 输入与输出适配\\消息身份、引用、群历史、投递};
+\node[box,text width=6.1cm] (pr) at (7.1,-1.65) {Runtime 预览与配置接口\\服务端同群历史、运行记录};
+\node[box,text width=13.2cm,minimum height=2.1cm] (rt) at (3.55,-3.9) {\textbf{Dududa Agent Runtime}\\[2mm]上下文 $\rightarrow$ 感知 $\rightarrow$ 社交策略 $\rightarrow$ 模型路由\\[1mm]能力计划与执行 $\rightarrow$ 回答组织 $\rightarrow$ Persona $\rightarrow$ 输出请求};
+\node[box,text width=3.75cm,minimum height=1.35cm] (llm) at (-1.05,-6.4) {模型适配器\\DeepSeek\\Chat Completions};
+\node[box,text width=3.75cm,minimum height=1.35cm] (mcp) at (3.55,-6.4) {Unified MCP / 本地能力\\五类 MCP 校园服务\\校车时刻表};
+\node[box,text width=3.75cm,minimum height=1.35cm] (state) at (8.15,-6.4) {策略与状态\\Persona / 群配置\\SQLite / JSON};
+\node[future,text width=13.2cm] (future) at (3.55,-8.15) {独立模块与后续接入：Memory v2、主动日报、离线 Bandit、多步 Skill};
+\draw[flow] (qq)--(ad);\draw[flow] (web)--(pr);
+\draw[flow] (ad.south)--(ad.south |- rt.north);
+\draw[flow] (pr.south)--(pr.south |- rt.north);
+\draw[flow] (rt.south -| llm.north)--(llm.north);
+\draw[flow] (rt)--(mcp);
+\draw[flow] (rt.south -| state.north)--(state.north);
+\draw[flow,dashed] (future.east) -- ++(0.4,0) |- (rt.east);
+\end{tikzpicture}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
+from unittest.mock import AsyncMock
 from contextlib import asynccontextmanager
 from datetime import date
 
@@ -12,6 +13,22 @@ from ustc_campus_mcp.young import YoungClient
 
 
 class UstcCampusContractTests(unittest.TestCase):
+    def test_lesson_course_aliases_preserve_course_variant(self) -> None:
+        async def check():
+            client = AcademicClient()
+            client._json = AsyncMock(return_value=[
+                {"id": index, "course": {"cn": name}, "teacherAssignmentList": [{"name": "教师甲"}]}
+                for index, name in enumerate(["数学分析(B1)", "数学分析(A1)", "数学分析(B3)"])
+            ])
+            try:
+                for query in ("数学分析B1", "数学分析(B1)", "数学分析（Ｂ１）", "数学分析 B1"):
+                    result = await client.search_lessons(461, query=query)
+                    self.assertEqual([row["course_name"] for row in result["items"]], ["数学分析(B1)"], query)
+                self.assertEqual((await client.search_lessons(461, query="数学分析"))["total"], 3)
+            finally:
+                await client.close()
+        asyncio.run(check())
+
     def test_each_registry_service_has_only_approved_read_tools(self) -> None:
         self.assertEqual(
             {tool.name for tool in create_mcp("academic")._tool_manager.list_tools()},

@@ -225,6 +225,8 @@ class EntityQueryToolPlanner:
             expected_digest=request.retrieval.catalog_digest,
         )
         icourse_operation = _icourse_operation(request.query.intent_ids)
+        if icourse_operation is None and "campus.course-review" in request.query.preferred_categories:
+            icourse_operation = _icourse_operation_from_goal(request.query.natural_language_goal)
         curriculum_operation = _curriculum_operation(request.query.intent_ids)
         young_capability_id = _young_capability(request.query.intent_ids)
         academic_capability_id = _academic_capability(request.query.intent_ids)
@@ -513,6 +515,10 @@ def _primary_query_term(
         teacher = _teacher_query_term(terms, request.query.natural_language_goal)
         if teacher is not None:
             return teacher
+    if operation in {"course", "review", "teacher", "ranking"}:
+        title = re.search(r"《([^》\n]{1,80})》", request.query.natural_language_goal)
+        if title is not None:
+            return title.group(1).strip()
     if operation == "review":
         subject = _goal_first_query_term(
             terms,
@@ -737,6 +743,23 @@ def _notifai_arguments(
     )
 
 
+def _academic_query_from_goal(goal: str) -> str:
+    title = re.search(r"《([^》\n]{1,80})》", goal)
+    if title is not None:
+        return title.group(1).strip()
+    match = re.search(
+        r"(?:学期|查询|搜索|查一下)\s*([^，。！？\n]{1,80}?)的?(?:开课记录|开课信息|开课情况|考试安排)",
+        goal,
+    )
+    if match is None:
+        return ""
+    term = re.sub(
+        r"^(?:20\d{2}\s*年?\s*[春夏秋]季?(?:学期)?|本学期|这学期)\s*",
+        "", match.group(1),
+    ).strip().removesuffix("的")
+    return "" if term in {"全校", "所有课程", "全部课程", "课程"} else term
+
+
 def _academic_arguments(
     capability_id: str,
     document: Mapping[str, JsonValue],
@@ -773,9 +796,9 @@ def _academic_arguments(
         and _ACADEMIC_SEMESTER_TERM_RE.fullmatch(value.strip()) is None
     )
     values = {
-        "query": terms[0] if terms else "",
+        "query": terms[0] if terms else _academic_query_from_goal(goal),
         "semester": goal,
-        "limit": _requested_result_limit(goal, 10),
+        "limit": _requested_result_limit(goal, 25),
     }
     if match := _ACADEMIC_SEMESTER_ID_RE.search(goal):
         values["semester_id"] = int(match.group(1))
@@ -826,8 +849,12 @@ def _young_arguments(
         and _normalize_term(value) not in _YOUNG_GENERIC_TERMS
         and not _is_year_term(value)
     )
+    explicit_activity = re.search(r"(?:搜索|查询|查找|查一下)\s*([^，。！？\n]{1,40}?)活动", goal)
+    fallback_query = explicit_activity.group(1).strip() if explicit_activity is not None else ""
+    if fallback_query in {"所有", "全部", "最近", "当前", "可报名的"}:
+        fallback_query = ""
     arguments: dict[str, JsonValue] = {
-        "query": terms[0] if len(terms) == 1 else "",
+        "query": terms[0] if len(terms) == 1 else fallback_query if not terms else "",
         "state": _young_state(goal),
         "limit": _requested_result_limit(goal, _YOUNG_DEFAULT_LIMIT),
     }
@@ -943,6 +970,14 @@ def _icourse_operation(intent_ids: tuple[str, ...]) -> str | None:
     if any(intent_id.startswith("icourse.") for intent_id in intent_ids):
         return "course"
     return None
+
+
+def _icourse_operation_from_goal(goal: str) -> str:
+    if any(term in goal for term in ("老师", "教师", "选课建议", "选哪", "推荐")):
+        return "teacher"
+    if any(term in goal for term in ("点评", "评价", "评课")):
+        return "review"
+    return "course"
 
 
 def _curriculum_operation(intent_ids: tuple[str, ...]) -> str | None:

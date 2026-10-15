@@ -436,6 +436,7 @@ export interface FileSendReceipt {
 export interface ForwardedMessageBundle {
   forwardId: string
   messages: ChatMessage[]
+  retention?: { recordedAt: number; expiresAt: number }
 }
 
 export interface ChatMessage {
@@ -458,8 +459,27 @@ export interface ChatMessage {
   reactions?: Array<{ emoji: string; count: number }>
   runId?: string
   status?: 'sent' | 'failed' | 'recalled'
+  recall?: {
+    recalledAt: number
+    recordedAt?: number
+    operatorId?: string
+    retained: boolean
+    expiresAt?: number
+  }
   timestampMs?: number
   sequence?: string
+}
+
+export interface RecallSettings {
+  enabled: boolean
+  retentionDays: number
+}
+
+export interface RecallArchivePage {
+  settings: RecallSettings
+  messages: ChatMessage[]
+  hasMore: boolean
+  nextCursor?: string
 }
 
 export interface HistoryPage {
@@ -612,12 +632,14 @@ export interface WorkspaceSnapshot {
   agentMessages: Record<string, AgentMessage[]>
   runs: AgentRun[]
   configs: Record<string, AgentConfig>
+  recallSettings?: Record<string, RecallSettings>
 }
 
 export type WorkspaceEvent =
   | { type: 'workspace.refresh' }
   | { type: 'message.created'; conversation: Conversation; message: ChatMessage }
-  | { type: 'message.deleted'; accountId: string; conversationId: string; messageId: string }
+  | { type: 'message.deleted'; accountId: string; conversationId: string; messageId: string; message?: ChatMessage }
+  | { type: 'recall.settings.changed'; accountId: string; conversationId: string; settings: RecallSettings }
   | { type: 'capabilities.changed'; accountId: string; capabilities: AccountCapabilityDocument }
   | { type: 'directory.changed'; accountId: string }
   | { type: 'notification.changed'; accountId: string; notification: QqNotification }

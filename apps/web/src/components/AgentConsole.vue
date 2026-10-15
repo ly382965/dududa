@@ -165,13 +165,6 @@ const selectionModeLabels: Record<InternalTestSelectionMode, string> = {
   locked: '锁定',
 }
 
-const pluginModeLabels: Record<InternalTestPluginMode, string> = {
-  off: '关闭',
-  auto: '自动',
-  on: '偏好启用',
-  locked: '锁定可用',
-}
-
 const pluginExecutionLabels: Record<InternalTestCatalogPlugin['executionKind'], string> = {
   agent_capability: 'Agent 能力',
   command_auto_reply: '命令自动回复',
@@ -304,7 +297,6 @@ const groupChatStyleOptions = computed(() => (props.catalog?.groupChatStyles ?? 
 })))
 
 const selectionModes = computed<InternalTestSelectionMode[]>(() => props.catalog?.selectionModes ?? ['adaptive', 'preferred', 'locked'])
-const pluginModes = computed<InternalTestPluginMode[]>(() => props.catalog?.pluginModes ?? ['off', 'auto', 'on', 'locked'])
 const adaptiveAxes = computed(() => [
   {
     key: 'modelTier' as const,
@@ -437,7 +429,7 @@ function selectTopModel(tier: string): void {
 function updatePluginMode(pluginId: string, mode: InternalTestPluginMode): void {
   if (!props.policy) return
   emitPolicy({ plugins: { ...props.policy.plugins, [pluginId]: mode },
-    ...(mode === 'off' && (props.policy.adaptivePlugins?.includes(pluginId) || props.policy.activePlugins?.[pluginId]) ? {
+    ...((props.policy.adaptivePlugins?.includes(pluginId) || props.policy.activePlugins?.[pluginId]) ? {
       adaptivePlugins: (props.policy.adaptivePlugins ?? []).filter(id => id !== pluginId),
       activePlugins: Object.fromEntries(Object.entries(props.policy.activePlugins ?? {}).filter(([id]) => id !== pluginId)),
     } : {}),
@@ -445,25 +437,28 @@ function updatePluginMode(pluginId: string, mode: InternalTestPluginMode): void 
 }
 
 function pluginActive(pluginId: string): boolean {
-  return (props.policy?.plugins[pluginId] ?? 'off') !== 'off'
-    || Boolean(props.policy?.activePlugins?.[pluginId] && props.policy?.adaptivePlugins?.includes(pluginId))
+  const mode = props.policy?.plugins[pluginId] ?? 'off'
+  const query = props.catalog?.plugins.find(plugin => plugin.id === pluginId && plugin.executionKind === 'agent_capability' && plugin.runtimeTarget === 'astrbot')
+  return (mode !== 'off' && !(query && mode === 'auto'))
+    || Boolean(props.policy?.activePlugins?.[pluginId] && (mode === 'auto' || props.policy?.adaptivePlugins?.includes(pluginId)))
 }
 
-function toggleAdaptivePlugin(pluginId: string, enabled: boolean): void {
-  if (!props.policy) return
-  const allowed = new Set(props.policy.adaptivePlugins ?? [])
-  if (enabled) allowed.add(pluginId)
-  else allowed.delete(pluginId)
-  emitPolicy({ adaptivePlugins: [...allowed] })
+function pluginSelection(pluginId: string): string {
+  if (props.policy?.adaptivePlugins?.includes(pluginId)) return 'auto'
+  const mode = props.policy?.plugins[pluginId] ?? 'off'
+  return mode === 'on' ? 'locked' : mode
 }
 
-function toggleGroupPlugin(plugin: InternalTestCatalogPlugin, enabled: boolean): void {
+function selectPluginMode(plugin: InternalTestCatalogPlugin, value: string): void {
   if (!policyEditable.value || props.conversation?.type !== 'group' || !plugin.available || !plugin.policyManaged) return
-  updatePluginMode(plugin.id, enabled ? (plugin.executionKind === 'passive_behavior' ? 'auto' : 'on') : 'off')
-}
-
-function pluginModeOptions(plugin: InternalTestCatalogPlugin): InternalTestPluginMode[] {
-  return plugin.available ? pluginModes.value : ['off']
+  if (value === 'auto' && props.policy && plugin.executionKind === 'agent_capability' && plugin.runtimeTarget === 'astrbot') {
+    emitPolicy({
+      plugins: { ...props.policy.plugins, [plugin.id]: 'auto' },
+      adaptivePlugins: [...new Set([...(props.policy.adaptivePlugins ?? []), plugin.id])],
+    })
+  } else {
+    updatePluginMode(plugin.id, value as InternalTestPluginMode)
+  }
 }
 
 function schemaKind(schema: Record<string, unknown>): string {
@@ -1079,11 +1074,7 @@ watch(
 
         <section class="settings-section">
           <div class="section-heading"><Wrench :size="15" /><span><strong>插件与能力</strong><small>DYNAMIC CATALOG</small></span></div>
-          <p class="settings-help">开关仅影响当前账号的当前群，修改后点击底部「保存配置」生效。勾选自适应启用后，嘟嘟哒会根据群聊话题打开所需查询能力。</p>
-          <p class="settings-help">宿主全局停用、敏感查询白名单和 B50 暂停限制仍然有效。高级模式保留原有自适应设置。</p>
-          <p v-if="catalog" class="settings-help">
-            这里设置每个群的初值，Agent 可在允许范围内自适应启用查询能力。
-          </p>
+          <p class="settings-help">关闭：停用本群能力。自动启用：根据上下文或插件触发条件启用。锁定启用：在本群保持可用。点击底部「保存配置」生效。</p>
           <p v-if="catalog" class="settings-help">
             “已装配”表示源码和 Compose 已就绪，不代表执行器当前在线或本轮已经调用；实际调用结果单独显示。
           </p>
@@ -1109,39 +1100,17 @@ watch(
                 <em v-if="!plugin.available">{{ plugin.unavailableReason || '当前 Runtime 未接通该能力' }}</em>
               </div>
               <div v-if="plugin.policyManaged" class="plugin-controls">
-                <label class="plugin-enable-control">
-                  <span>{{ pluginActive(plugin.id) ? (policy?.activePlugins?.[plugin.id] ? '嘟嘟哒已启用' : '本群开启') : '本群关闭' }}</span>
-                  <span class="switch-control">
-                    <input type="checkbox" role="switch" :aria-label="`在本群启用${plugin.displayName}`"
-                      :checked="plugin.available && pluginActive(plugin.id)"
-                      :disabled="!policyEditable || !plugin.available || conversation?.type !== 'group'"
-                      @change="toggleGroupPlugin(plugin, ($event.target as HTMLInputElement).checked)" />
-                    <span />
-                  </span>
-                </label>
-                <label v-if="plugin.available && plugin.executionKind === 'agent_capability' && plugin.runtimeTarget === 'astrbot'" class="plugin-adaptive-control">
-                  <input type="checkbox" :aria-label="`允许嘟嘟哒自适应启用${plugin.displayName}`"
-                    :checked="policy?.adaptivePlugins?.includes(plugin.id) ?? false"
-                    :disabled="!policyEditable || conversation?.type !== 'group'"
-                    @change="toggleAdaptivePlugin(plugin.id, ($event.target as HTMLInputElement).checked)" />
-                  允许嘟嘟哒自适应启用
-                </label>
+                <select :value="plugin.available ? pluginSelection(plugin.id) : 'off'"
+                  :disabled="!policyEditable || !plugin.available || conversation?.type !== 'group'"
+                  :aria-label="`${plugin.displayName} 使用模式`"
+                  @change="selectPluginMode(plugin, ($event.target as HTMLSelectElement).value)">
+                  <option value="off">关闭</option>
+                  <option value="auto">自动启用</option>
+                  <option value="locked">锁定启用</option>
+                </select>
+                <small v-if="plugin.available">{{ pluginActive(plugin.id) ? (policy?.activePlugins?.[plugin.id] ? '嘟嘟哒已启用' : '本群开启') : '本群关闭' }}</small>
                 <small v-if="policy?.activePlugins?.[plugin.id]">{{ policy.activePlugins[plugin.id]?.reason }} · 已读取 {{ policy.activePlugins[plugin.id]?.messagesRead }} 条讨论</small>
                 <small v-if="!policy?.enabled && (policy?.plugins[plugin.id] ?? 'off') !== 'off'">会话总开关已关闭，当前不生效</small>
-                <select
-                :value="plugin.available ? (policy?.plugins[plugin.id] ?? 'off') : 'off'"
-                :disabled="!policyEditable || !plugin.available || conversation?.type !== 'group'"
-                :aria-label="`${plugin.displayName} 使用模式`"
-                @change="updatePluginMode(plugin.id, ($event.target as HTMLSelectElement).value as InternalTestPluginMode)"
-              >
-                <option
-                  v-for="mode in pluginModeOptions(plugin)"
-                  :key="mode"
-                  :value="mode"
-                >
-                  {{ pluginModeLabels[mode] }}
-                </option>
-              </select>
               </div>
               <span v-else class="plugin-policy-note">只读状态，不可从本页修改</span>
             </article>

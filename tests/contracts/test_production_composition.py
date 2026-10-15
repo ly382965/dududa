@@ -1337,6 +1337,24 @@ class _MutableClock:
 
 
 class ProductionCompositionContractTests(unittest.IsolatedAsyncioTestCase):
+    async def test_academic_opening_records_request_requires_tools_from_rules(self) -> None:
+        from tests.unit.perception.helpers import context
+
+        assembly = composition.build_production_runtime(
+            self._production_plugin(_AstrBotProvider()), self._runtime_config()
+        )
+        try:
+            current = context(available_capability_categories=("campus.academic",))
+            current = replace(current, messages=(*current.messages[:-1], replace(
+                current.current_message,
+                text="查询2026秋季学期数学分析B1的开课记录，列出课程名和任课老师。",
+            ),))
+            result = assembly.runtime._perception._rules.perceive(current)
+            self.assertTrue(result.need_tools)
+            self.assertEqual(result.capability_categories, ("campus.academic",))
+        finally:
+            await assembly.close()
+
     async def test_approved_provider_retention_and_reasoning_budget_assemble(self) -> None:
         values = self._runtime_config()
         specs = json.loads(values["runtime_models_json"])

@@ -9,6 +9,7 @@ import type {
   QqNotification,
 } from '../types/workspace'
 import { createSearchMatcher } from './search'
+import { withoutRecalledOriginal } from './recall'
 
 export interface StoredMessage {
   cacheId: string
@@ -159,6 +160,8 @@ function sanitizeSegment(segment: MessageSegment): MessageSegment {
 }
 
 export function sanitizeMessageForStorage(message: ChatMessage): ChatMessage {
+  // Recalled originals belong to the server archive and its retention policy.
+  if (message.status === 'recalled') return withoutRecalledOriginal(message)
   return {
     ...message,
     segments: message.segments.map(sanitizeSegment),

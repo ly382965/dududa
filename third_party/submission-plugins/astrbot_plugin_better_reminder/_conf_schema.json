@@ -1,0 +1,43 @@
+{
+  "default_reminder_time": {
+    "description": "默认提醒时间",
+    "type": "string",
+    "hint": "当无法解析用户指定的时间时使用的默认提醒时间，例如：10分钟、1小时",
+    "default": "10分钟"
+  },
+  "llm_provider": {
+    "description": "LLM提供商",
+    "type": "string",
+    "hint": "选择用于处理日程请求的LLM提供商",
+    "_special": "select_provider"
+  },
+  "schedule_detection_llm": {
+    "description": "日程检测专用LLM提供商",
+    "type": "string",
+    "hint": "选择用于判断是否为日程设定请求的LLM提供商（可选，留空则使用主LLM）",
+    "_special": "select_provider"
+  },
+  "enable_personality": {
+    "description": "启用人格化回复",
+    "type": "bool",
+    "hint": "是否使用人格设定来生成更自然的回复",
+    "default": true
+  },
+  "max_reminders": {
+    "description": "最大提醒数量",
+    "type": "int",
+    "hint": "同时最多可以设置的提醒数量",
+    "default": 10
+  },
+  "time_parse_accuracy": {
+    "description": "时间解析精度",
+    "type": "string",
+    "hint": "时间解析的精度设置，可选值：high, medium, low",
+    "default": "medium",
+    "options": [
+      "high",
+      "medium",
+      "low"
+    ]
+  }
+}

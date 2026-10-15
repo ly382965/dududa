@@ -86,6 +86,17 @@ async def run_recording_rehearsal(plugin, payload: dict) -> dict:
         raise ValueError("recording_runtime_not_ready")
     rows = history_input["messages"]
     history, relay = _History(), _PreviewBridge(bridge)
+    native = None
+    if payload.get("inputMode") == "onebot":
+        from .adapters.proactive_talk import AstrBotGroupHistoryProvider
+        from .native_rehearsal import NativeDeliveryBridge, native_input
+
+        native = await native_input(plugin, payload, source, rows)
+        history = AstrBotGroupHistoryProvider()
+        if payload.get("deliver") is True:
+            relay = NativeDeliveryBridge(bridge)
+    elif payload.get("deliver"):
+        raise ValueError("delivery_requires_real_onebot_account")
     clock = [1000.0]
     # The fixed six-second message timeline is accelerated; model/tool calls remain real.
     controller = ProactiveTalkController(
@@ -94,12 +105,15 @@ async def run_recording_rehearsal(plugin, payload: dict) -> dict:
     transitions = []
     for index, member in enumerate(rows):
         clock[0] += 6
-        history.lines += (
-            f"{member.get('senderName', member['senderId'])}：{member['content']}",
-        )
-        event = _GroupEvent(
-            bot_id=source.get_self_id(), group_id=source.get_group_id(), member=member
-        )
+        if native:
+            event = await native.event(member, index)
+        else:
+            history.lines += (
+                f"{member.get('senderName', member['senderId'])}：{member['content']}",
+            )
+            event = _GroupEvent(
+                bot_id=source.get_self_id(), group_id=source.get_group_id(), member=member
+            )
         before = resolver.adaptive_status()
         replied = await controller.maybe_handle(event)
         after = resolver.adaptive_status()
@@ -136,15 +150,16 @@ async def run_recording_rehearsal(plugin, payload: dict) -> dict:
             }
         )
     return {
-        "mode": "synthetic_group_rehearsal",
+        "mode": "native_onebot_rehearsal" if native else "synthetic_group_rehearsal",
         "messageIntervalSeconds": 6,
         "messages": len(rows),
         "participants": len({row["senderId"] for row in rows}),
         "transitions": transitions,
         "responses": responses,
         "adaptiveActivations": resolver.adaptive_status(),
-        "outputCalls": 0,
+        "outputCalls": sum(row.get("replied", False) for row in transitions) if native and payload.get("deliver") is True else 0,
         "memoryWrites": 0,
+        "deliveries": getattr(relay, "deliveries", []),
     }
 
 

@@ -1,0 +1,34 @@
+{
+  "enabled": {"description": "启用私聊通知", "type": "bool", "default": false},
+  "platform_id": {"description": "AstrBot OneBot 平台 ID", "type": "string", "default": ""},
+  "recipients": {"description": "允许接收通知的 QQ 号", "type": "list", "default": []},
+  "seminar_enabled": {"description": "启用 SeminarRadar 讲座通知", "type": "bool", "default": true},
+  "homework_enabled": {"description": "读取作业、私聊通知与 PDF 草稿", "type": "bool", "default": false},
+  "homework_recipient": {"description": "作业所有者 QQ 号，必须在收件人列表中", "type": "string", "default": ""},
+  "homework_interval_minutes": {"description": "作业检查间隔（分钟）", "type": "int", "default": 3},
+  "homework_auto_submit_enabled": {"description": "授权在截止前自动提交未完成作业的最新 PDF，无需逐份确认", "type": "bool", "default": false},
+  "homework_auto_submit_minutes": {"description": "距离截止多少分钟内自动提交（1 至 60）", "type": "int", "default": 3},
+  "homework_provider_id": {"description": "草稿模型 Provider ID；留空使用私聊默认模型", "type": "string", "default": ""},
+  "weekly_enabled": {"description": "授权按汇报日自动提交助教空周汇报（不填写正文、不上传附件）", "type": "bool", "default": false},
+  "weekly_submit_hour": {"description": "周汇报自动提交时间（北京时间，0 至 23 点）", "type": "int", "default": 20},
+  "weekly_interval_minutes": {"description": "周汇报常规检查间隔（分钟，1 至 1440）；到提交时刻提前唤醒", "type": "int", "default": 3},
+  "weekly_report_day": {"description": "系统列出的首个或最后一个汇报日", "type": "string", "default": "first", "options": ["first", "last"]},
+  "courses_enabled": {"description": "全课程任务提醒与课件日报（list + 图片，仅通知）", "type": "bool", "default": false},
+  "courses_interval_minutes": {"description": "课程检查间隔（分钟）", "type": "int", "default": 3},
+  "courses_summary_hour": {"description": "每日课件日报时间（北京时间，0 至 23 点）", "type": "int", "default": 20},
+  "course_sources": {
+    "description": "课程来源；留空使用已登记的七门课程", "type": "template_list", "default": [],
+    "templates": {"course": {"name": "课程", "items": {
+      "id": {"description": "稳定课程标识", "type": "string", "default": ""},
+      "name": {"description": "课程名称", "type": "string", "default": ""},
+      "kind": {"description": "来源类型", "type": "string", "default": "pending", "options": ["blackboard", "website", "graduate", "pending"]},
+      "url": {"description": "课程入口", "type": "string", "default": ""}
+    }}}
+  },
+  "preferred_only": {"description": "只通知 B 站或高新校区的可报名报告", "type": "bool", "default": true},
+  "interval_minutes": {"description": "讲座检查间隔（分钟，1 至 1440）", "type": "int", "default": 3},
+  "max_messages_per_poll": {"description": "每轮每个收件人的消息上限（1 至 20）", "type": "int", "default": 5},
+  "request_timeout_seconds": {"description": "认证及单次请求超时（秒）", "type": "int", "default": 45},
+  "credentials_file": {"description": "认证 TOML 文件路径；留空使用 USTC_CAS_CREDENTIALS_FILE", "type": "string", "default": ""},
+  "worker_python": {"description": "查询环境 Python 路径；留空使用插件数据目录中的 worker-venv", "type": "string", "default": ""}
+}

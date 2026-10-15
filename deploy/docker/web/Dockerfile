@@ -14,6 +14,7 @@ ENV NODE_ENV=production \
     DUDUDA_WEB_BIND=0.0.0.0 \
     DUDUDA_WEB_INTERNAL_PORT=8000 \
     DUDUDA_WEB_PUBLIC_DIR=/app/dist \
+    DUDUDA_RECALL_STORE_PATH=/var/lib/dududa/recall/messages.sqlite \
     DUDUDA_ONEBOT_TOKEN_FILE=/run/secrets/onebot_access_token \
     DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE=/run/secrets/astrbot_plugin_api_key
 COPY --from=build --chown=node:node /workspace/apps/web/dist ./dist

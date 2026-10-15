@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
 import logging
 import random
 import time
@@ -12,6 +13,7 @@ from typing import Any
 from dududa.rollout import CanaryExecutionDisposition
 
 from ..rollout_bridge import AstrBotBridgeAction, AstrBotRolloutBridge
+from ..config import PLUGIN_DATA_DIR
 from .agent_policy import FileScopeAgentPolicyResolver, GroupProactiveTalkPolicy
 from .adaptive_plugins import adaptive_history
 
@@ -67,12 +69,15 @@ class AstrBotGroupHistoryProvider:
         messages = result.get("messages") if isinstance(result, dict) else None
         if not isinstance(messages, list):
             return ()
+        reset_path = PLUGIN_DATA_DIR / "group-context-resets.json"
+        resets = json.loads(reset_path.read_text()) if reset_path.exists() else {}
         return project_history_lines(
             messages,
             group_id=group_id,
             bot_id=self_id,
             message_limit=message_limit,
             byte_limit=byte_limit,
+            since_epoch=int(resets.get(f"{self_id}:{group_id}", 0)),
         )
 
 
@@ -228,6 +233,7 @@ def project_history_lines(
     bot_id: str,
     message_limit: int,
     byte_limit: int,
+    since_epoch: int = 0,
 ) -> tuple[str, ...]:
     rows = [item for item in messages if isinstance(item, dict)]
     rows.sort(
@@ -240,6 +246,8 @@ def project_history_lines(
     aliases: dict[str, str] = {}
     lines: list[str] = []
     for item in rows:
+        if since_epoch and _integer(item.get("time")) < since_epoch:
+            continue
         if str(item.get("group_id") or group_id) != group_id:
             continue
         sender = item.get("sender")
@@ -251,7 +259,9 @@ def project_history_lines(
         if sender_id == bot_id:
             author = "嘟嘟哒"
         else:
-            author = aliases.setdefault(sender_id, f"成员{len(aliases) + 1}")
+            fallback = aliases.setdefault(sender_id, f"成员{len(aliases) + 1}")
+            author = str(sender.get("card") or sender.get("nickname") or fallback) if isinstance(sender, dict) else fallback
+            author = " ".join(author.split()).replace("：", " ").replace(":", " ")
         text = _message_text(item.get("message"))
         if text:
             lines.append(f"{author}：{text}")

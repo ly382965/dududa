@@ -14,6 +14,7 @@ LOCK_PATH = REPO_ROOT / "third_party" / "plugins.lock.json"
 OWNED_PLUGIN_PATHS = (
     "apps/astrbot-plugins/astrbot_plugin_arc_proxy",
     "apps/astrbot-plugins/astrbot_plugin_dududa_core",
+    "apps/astrbot-plugins/astrbot_plugin_dududa_notify",
     "apps/astrbot-plugins/astrbot_plugin_dududa_social",
     "apps/astrbot-plugins/astrbot_plugin_emoji_kitchen",
     "apps/astrbot-plugins/astrbot_plugin_proactive_chatter",

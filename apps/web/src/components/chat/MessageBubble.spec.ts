@@ -49,6 +49,32 @@ function message(): ChatMessage {
 }
 
 describe('MessageBubble', () => {
+  it('distinguishes an uncaptured forward from a saved original and includes its source when opening', async () => {
+    const original: ChatMessage = { ...message(), status: 'recalled', segments: [{ type: 'forward', forwardId: 'bundle' }],
+      recall: { recalledAt: Date.now(), retained: true, expiresAt: Date.now() + 60_000 } }
+    const wrapper = mount(MessageBubble, { props: { message: original, conversation, account } })
+    expect(wrapper.text()).toContain('已撤回 · 转发内容未完整保存')
+    expect(wrapper.text()).not.toContain('原文已保留')
+    await wrapper.get('.forward-segment').trigger('click')
+    expect(wrapper.emitted('openForward')?.[0]).toEqual([original.segments[0], original])
+    await wrapper.setProps({ message: { ...original, segments: [{ type: 'forward', forwardId: 'bundle', messages: [message()] }] } })
+    expect(wrapper.text()).toContain('已撤回 · 原文已保留')
+    wrapper.unmount()
+  })
+
+  it('displays retained originals with a recall label and hides expired originals', async () => {
+    const recalled: ChatMessage = { ...message(), status: 'recalled', recall: {
+      recalledAt: Date.now(), retained: true, expiresAt: Date.now() + 60_000,
+    } }
+    const wrapper = mount(MessageBubble, { props: { message: recalled, conversation, account } })
+    expect(wrapper.text()).toContain('已撤回 · 原文已保留')
+    expect(wrapper.find('a[href="https://example.com"]').exists()).toBe(true)
+    await wrapper.setProps({ message: { ...recalled, recall: { ...recalled.recall!, expiresAt: Date.now() - 1 } } })
+    expect(wrapper.text()).toContain('此消息已撤回')
+    expect(wrapper.find('a[href="https://example.com"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('linkifies text without turning a mention click into a QQ nudge', async () => {
     const wrapper = mount(MessageBubble, { props: { message: message(), conversation, account } })
 

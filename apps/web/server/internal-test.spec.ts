@@ -101,6 +101,20 @@ describe('internal-test gateway', () => {
     expect(provider).not.toHaveBeenCalled()
   })
 
+  it('connects auto mode to context activation permission and revokes it when disabled', async () => {
+    const root = await fixtureRoot()
+    const gateway = new FileInternalTestGateway({ dataRoot: root })
+    const scope = { accountId: 'qq-707', conversationId: 'qq-707:group:101' }
+    await gateway.saveAgentConfig({ scope, policy: { plugins: { 'icourse.read': 'auto' } } })
+    const automatic = await gateway.agentConfig({ scope })
+    expect(automatic.plugins['icourse.read']).toBe('auto')
+    expect(automatic.adaptivePlugins).toContain('icourse.read')
+    await gateway.saveAgentConfig({ scope, policy: { plugins: { 'icourse.read': 'off' } } })
+    expect((await gateway.agentConfig({ scope })).adaptivePlugins).not.toContain('icourse.read')
+    await expect(gateway.saveAgentConfig({ scope: { ...scope, conversationId: 'qq-707:private:101' },
+      policy: { plugins: { 'icourse.read': 'auto' } } })).rejects.toThrow('仅支持群聊')
+  })
+
   it('exposes a no-send agent runtime and returns a routed candidate for live workspace context', async () => {
     const root = await fixtureRoot()
     const providerRequest = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {

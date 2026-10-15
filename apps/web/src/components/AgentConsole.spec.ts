@@ -60,7 +60,7 @@ const pluginCatalog = { plugins: [emoji], pluginModes: ['off', 'auto', 'on', 'lo
   cooldownSeconds: { minimum: 5, maximum: 1800, step: 5 },
   maximumPerHour: { minimum: 1, maximum: 500, step: 1 },
 } } as unknown as NonNullable<Props['catalog']>
-const emojiSwitch = 'input[role="switch"][aria-label="在本群启用Emoji Kitchen 表情合成"]'
+const emojiMode = 'select[aria-label="Emoji Kitchen 表情合成 使用模式"]'
 
 describe('group proactive participation switch', () => {
   beforeEach(() => {
@@ -92,34 +92,54 @@ describe('group proactive participation switch', () => {
     expect(wrapper.emitted('saveSettings')).toBeUndefined()
   })
 
-  it('toggles a group plugin without saving/sending and preserves other modes and scope', async () => {
+  it('selects a group plugin mode without saving/sending and preserves other modes and scope', async () => {
     const original = { ...policy(), plugins: { ...policy().plugins, 'emoji.kitchen': 'off' as const } }
     const wrapper = render({ policy: original, catalog: pluginCatalog })
-    await wrapper.get(emojiSwitch).setValue(true)
+    expect(wrapper.get(emojiMode).findAll('option').map(option => [option.attributes('value'), option.text()]))
+      .toEqual([['off', '关闭'], ['auto', '自动启用'], ['locked', '锁定启用']])
+    await wrapper.get(emojiMode).setValue('locked')
     const updated = wrapper.emitted('updatePolicy')![0]![0] as InternalTestAgentPolicy
-    expect(updated).toEqual({ ...original, plugins: { ...original.plugins, 'emoji.kitchen': 'on' } })
+    expect(updated).toEqual({ ...original, plugins: { ...original.plugins, 'emoji.kitchen': 'locked' } })
     expect(wrapper.emitted('saveSettings')).toBeUndefined()
     expect(wrapper.emitted('sendPrompt')).toBeUndefined()
     await wrapper.setProps({ policy: updated })
-    await wrapper.get(emojiSwitch).setValue(false)
+    await wrapper.get(emojiMode).setValue('off')
     expect((wrapper.emitted('updatePolicy')![1]![0] as InternalTestAgentPolicy).plugins['emoji.kitchen']).toBe('off')
     const other = { ...original, scope: { ...scope, conversationId: 'qq-100001:group:other' } }
     await wrapper.setProps({ policy: other, conversation: { ...conversation, id: other.scope.conversationId, peerId: 'other' } })
-    expect(wrapper.get<HTMLInputElement>(emojiSwitch).element.checked).toBe(false)
+    expect(wrapper.get<HTMLSelectElement>(emojiMode).element.value).toBe('off')
   })
 
   it.each([
     { policyLoading: true }, { policySaving: true }, { conversation: { ...conversation, type: 'private' as const } },
-  ])('disables group plugin switch for unavailable editing state %s', overrides => {
+  ])('disables group plugin menu for unavailable editing state %s', overrides => {
     const wrapper = render({ ...overrides, catalog: pluginCatalog })
-    if ('policyLoading' in overrides) expect(wrapper.find(emojiSwitch).exists()).toBe(false)
-    else expect(wrapper.get<HTMLInputElement>(emojiSwitch).element.disabled).toBe(true)
+    if ('policyLoading' in overrides) expect(wrapper.find(emojiMode).exists()).toBe(false)
+    else expect(wrapper.get<HTMLSelectElement>(emojiMode).element.disabled).toBe(true)
   })
 
   it('does not hide a saved mode when the conversation master is off', () => {
     const wrapper = render({ catalog: pluginCatalog, policy: { ...policy(), enabled: false, plugins: { 'emoji.kitchen': 'locked' } } })
-    expect(wrapper.get<HTMLInputElement>(emojiSwitch).element.checked).toBe(true)
+    expect(wrapper.get<HTMLSelectElement>(emojiMode).element.value).toBe('locked')
     expect(wrapper.text()).toContain('会话总开关已关闭，当前不生效')
+  })
+
+  it('uses one menu for context activation and revokes permission when switched off', async () => {
+    const review = { ...emoji, id: 'icourse.read', displayName: '评课社区', executionKind: 'agent_capability' as const }
+    const original = { ...policy(), plugins: { 'icourse.read': 'off' as const } }
+    const wrapper = render({ policy: original, catalog: { ...pluginCatalog, plugins: [review] } })
+    const menu = wrapper.get<HTMLSelectElement>('select[aria-label="评课社区 使用模式"]')
+    expect(wrapper.findAll('.plugin-controls input')).toHaveLength(0)
+    await menu.setValue('auto')
+    const automatic = wrapper.emitted('updatePolicy')!.at(-1)![0] as InternalTestAgentPolicy
+    expect(automatic.plugins['icourse.read']).toBe('auto')
+    expect(automatic.adaptivePlugins).toEqual(['icourse.read'])
+    await wrapper.setProps({ policy: automatic })
+    expect(wrapper.find('.plugin-controls').text()).toContain('本群关闭')
+    await wrapper.setProps({ policy: { ...automatic, activePlugins: { 'icourse.read': { reason: '选课讨论', activatedAt: 'now', messagesRead: 20 } } } })
+    expect(wrapper.find('.plugin-controls').text()).toContain('嘟嘟哒已启用')
+    await menu.setValue('off')
+    expect((wrapper.emitted('updatePolicy')!.at(-1)![0] as InternalTestAgentPolicy).adaptivePlugins).toEqual([])
   })
 
   it('edits only the proactive plugin and uses the existing explicit save action', async () => {

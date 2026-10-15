@@ -103,6 +103,24 @@ class AdaptivePluginTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(self.resolver.adaptive_status(), [])
 
+    def test_auto_mode_stays_closed_until_context_activates_real_capability_flags(self):
+        from tests.unit.rollout.helpers import connector
+
+        self.policy["plugins"]["icourse.read"] = "auto"
+        self.policy.pop("adaptivePlugins")
+        self.save()
+        message = connector(group_id="group-1")
+        flag = "capability.category.campus.course-review"
+        self.assertFalse(self.resolver.feature_flags(message)[flag])
+        self.assertIsNotNone(self.resolver.activate_for_context(bot_id="bot-1", group_id="group-1", lines=self.lines))
+        self.assertTrue(self.resolver.feature_flags(message)[flag])
+        restarted = FileScopeAgentPolicyResolver(self.path)
+        self.assertFalse(restarted.feature_flags(message)[flag])
+        self.policy["plugins"]["icourse.read"] = "off"
+        self.save()
+        self.assertFalse(self.resolver.feature_flags(message)[flag])
+        self.assertIsNone(self.resolver.activate_for_context(bot_id="bot-1", group_id="group-1", lines=self.lines))
+
     def test_other_group_and_new_policy_do_not_inherit_activation(self):
         self.assertIsNone(
             self.resolver.activate_for_context(
@@ -204,6 +222,8 @@ class AdaptivePluginTests(unittest.IsolatedAsyncioTestCase):
             "accountId": "qq-1000000001",
             "conversationId": "qq-1000000001:group:2000000001",
         }
+        self.policy["plugins"]["icourse.read"] = "auto"
+        self.policy.pop("adaptivePlugins")
         self.save()
         assembly = composition.build_production_runtime(
             plugin, values, clock=lambda: FIXED_NOW

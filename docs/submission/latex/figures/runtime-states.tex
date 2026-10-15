@@ -1,0 +1,11 @@
+\begin{tikzpicture}[node distance=7mm and 7mm]
+\node[box,text width=3.8cm] (r) {接收与预处理\\received / preprocessed};
+\node[box,text width=3.8cm,right=of r] (c) {上下文与感知\\context\_ready / perceived};
+\node[box,text width=3.8cm,right=of c] (d) {参与决策\\decided};
+\node[box,text width=3.8cm,below=of d] (t) {计划与执行\\tools\_planned / executed};
+\node[box,text width=3.8cm,left=of t] (v) {结果与内容\\validated / composed};
+\node[box,text width=3.8cm,left=of v] (p) {表达与输出准备\\rendered / ready\_to\_emit};
+\node[box,text width=13cm,below=of v] (end) {输出回执 $\rightarrow$ 完成\quad delivery\_acknowledged $\rightarrow$ completed};
+\draw[flow] (r)--(c);\draw[flow](c)--(d);\draw[flow](d)--(t);\draw[flow](t)--(v);\draw[flow](v)--(p);
+\draw[flow](p.south)--(p.south |- end.north);
+\end{tikzpicture}

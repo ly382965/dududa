@@ -21,6 +21,8 @@ import {
   historyQuerySchema,
   nudgeRequestSchema,
   renameGroupSchema,
+  recallQuerySchema,
+  recallSettingsSchema,
   resolveNotificationSchema,
   sendMessageRequestSchema,
   setGroupAdminSchema,
@@ -103,6 +105,22 @@ interface ReplayableWorkspaceEvent {
 
 function workspaceEventFrame(event: WorkspaceEvent, id?: number): string {
   return `${id === undefined ? '' : `id: ${id}\n`}event: workspace\ndata: ${JSON.stringify(event)}\n\n`
+}
+
+// Replays resolve retained text from the store at delivery time, so expiry or
+// disabling a conversation cannot be bypassed by reconnecting an SSE client.
+function withoutRecalledContent(event: WorkspaceEvent): WorkspaceEvent {
+  if (event.type === 'message.deleted') {
+    const { message: _message, ...notice } = event
+    return notice
+  }
+  if (event.type === 'message.created' && event.message.status === 'recalled') {
+    return { ...event, conversation: { ...event.conversation, lastMessage: '此消息已撤回' }, message: {
+      ...event.message, content: '此消息已撤回', segments: [], attachments: undefined, reply: undefined,
+      recall: undefined,
+    } }
+  }
+  return event
 }
 
 function lastWorkspaceEventId(request: IncomingMessage): number | undefined {
@@ -484,7 +502,14 @@ export function createDududaServer(options: DududaServerOptions) {
   const eventReplay: ReplayableWorkspaceEvent[] = []
   let nextWorkspaceEventId = 1
   const onWorkspaceEvent = (event: WorkspaceEvent) => {
-    const replayable = { id: nextWorkspaceEventId, event }
+    if (event.type === 'message.deleted') {
+      for (const previous of eventReplay) {
+        if (previous.event.type === 'message.created' && previous.event.message.id === event.messageId) {
+          previous.event = withoutRecalledContent({ ...previous.event, message: { ...previous.event.message, status: 'recalled' } })
+        }
+      }
+    }
+    const replayable = { id: nextWorkspaceEventId, event: withoutRecalledContent(event) }
     nextWorkspaceEventId += 1
     eventReplay.push(replayable)
     if (eventReplay.length > workspaceEventReplayLimit) eventReplay.splice(0, eventReplay.length - workspaceEventReplayLimit)
@@ -864,7 +889,7 @@ export function createDududaServer(options: DududaServerOptions) {
             response.write(workspaceEventFrame({ type: 'workspace.refresh' }))
           } else {
             for (const replayable of eventReplay) {
-              if (replayable.id > lastEventId) response.write(workspaceEventFrame(replayable.event, replayable.id))
+              if (replayable.id > lastEventId) response.write(workspaceEventFrame(options.hub.replayEvent(replayable.event), replayable.id))
             }
           }
         }
@@ -1240,6 +1265,74 @@ export function createDududaServer(options: DududaServerOptions) {
         await proxyImage(response, source, 'private, max-age=300')
         return
       }
+      const recallSettingsRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/recall-settings$/.exec(url.pathname)
+      if (recallSettingsRoute && (method === 'GET' || method === 'PUT')) {
+        const account = decodeURIComponent(recallSettingsRoute[1]!)
+        const type = recallSettingsRoute[2] as 'group' | 'private'
+        const peerId = decodeURIComponent(recallSettingsRoute[3]!)
+        if (method === 'GET') {
+          json(response, 200, options.hub.recallSettings(account, type, peerId))
+        } else {
+          if (!sameOrigin(request, publicOrigin)) {
+            json(response, 403, { error: '跨站写请求已拒绝' })
+            return
+          }
+          const parsed = recallSettingsSchema.safeParse(await readJson(request, maxRequestBytes))
+          if (!parsed.success) {
+            json(response, 400, { error: '保存期限需为 1–30 天，并指定是否启用' })
+            return
+          }
+          json(response, 200, options.hub.setRecallSettings(account, type, peerId, parsed.data))
+        }
+        return
+      }
+      const recallsRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/recalls$/.exec(url.pathname)
+      if (method === 'GET' && recallsRoute) {
+        const parsed = recallQuerySchema.safeParse(Object.fromEntries(url.searchParams.entries()))
+        if (!parsed.success) {
+          json(response, 400, { error: '撤回记录查询参数无效' })
+          return
+        }
+        json(response, 200, options.hub.recalledMessages(decodeURIComponent(recallsRoute[1]!), recallsRoute[2] as 'group' | 'private', decodeURIComponent(recallsRoute[3]!), parsed.data))
+        return
+      }
+      const recallMediaRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/recalls\/(\d{1,24})\/media\/((?:\d+\.){1,17}(?:url|thumbnailUrl))$/.exec(url.pathname)
+      if (method === 'GET' && recallMediaRoute) {
+        const media = options.hub.recalledMedia(decodeURIComponent(recallMediaRoute[1]!), recallMediaRoute[2] as 'group' | 'private', decodeURIComponent(recallMediaRoute[3]!), recallMediaRoute[4]!, recallMediaRoute[5]!)
+        if (!media) {
+          json(response, 404, { error: '保留的媒体不存在或已过期' })
+          return
+        }
+        if ('source' in media) {
+          response.setHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+          await proxyMessageMedia(request, response, media.source, 'no-store')
+          return
+        }
+        securityHeaders(response)
+        response.setHeader('Cache-Control', 'no-store')
+        response.setHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+        response.setHeader('Content-Type', media.mime)
+        response.setHeader('Accept-Ranges', 'bytes')
+        const range = validatedRange(request.headers.range)
+        let start = 0
+        let end = media.body.length - 1
+        if (range) {
+          const [first, last] = range.slice(6).split('-')
+          start = first ? Number(first) : Math.max(0, media.body.length - Number(last))
+          end = first && last ? Math.min(Number(last), end) : end
+          if (start > end || start >= media.body.length) {
+            response.statusCode = 416
+            response.setHeader('Content-Range', `bytes */${media.body.length}`)
+            response.end()
+            return
+          }
+          response.statusCode = 206
+          response.setHeader('Content-Range', `bytes ${start}-${end}/${media.body.length}`)
+        }
+        response.setHeader('Content-Length', end - start + 1)
+        response.end(media.body.subarray(start, end + 1))
+        return
+      }
       const messagesRoute = /^\/api\/accounts\/([^/]+)\/conversations\/(group|private)\/([^/]+)\/messages$/.exec(url.pathname)
       if (messagesRoute) {
         const account = decodeURIComponent(messagesRoute[1]!)
@@ -1360,6 +1453,7 @@ export function createDududaServer(options: DududaServerOptions) {
             forwardedRoute[2] as 'group' | 'private',
             decodeURIComponent(forwardedRoute[3]!),
             decodeURIComponent(forwardedRoute[4]!),
+            url.searchParams.get('messageId') || undefined,
           ),
         )
         return

@@ -112,6 +112,18 @@ class _ProactiveEvent:
 
 
 class ProactiveTalkTests(unittest.IsolatedAsyncioTestCase):
+    def test_context_reset_excludes_old_messages_and_keeps_new_discussion(self):
+        rows = [
+            {"group_id": "g", "user_id": "u", "time": stamp,
+             "message": [{"type": "text", "data": {"text": text}}]}
+            for stamp, text in [(99, "旧排练"), (100, "正式开场")]
+        ]
+        self.assertEqual(
+            project_history_lines(rows, group_id="g", bot_id="b", message_limit=30,
+                                  byte_limit=6500, since_epoch=100),
+            ("成员1：正式开场",),
+        )
+
     def setUp(self) -> None:
         self.temp = TemporaryDirectory()
         self.path = Path(self.temp.name) / "agent-policies.json"
@@ -296,6 +308,19 @@ class ProactiveTalkTests(unittest.IsolatedAsyncioTestCase):
             ("成员1：第一句", "成员2：[回复] 第二句", "成员3：第三句"),
         )
         self.assertNotIn("30001", "".join(lines))
+
+    def test_history_keeps_group_cards_and_nicknames_for_member_preferences(self) -> None:
+        messages = [
+            {"group_id": "g", "user_id": "1", "time": 1,
+             "sender": {"card": "九鸟", "nickname": "DinaMist"},
+             "message": [{"type": "text", "data": {"text": "我重视证明"}}]},
+            {"group_id": "g", "user_id": "2", "time": 2,
+             "sender": {"nickname": "DinaMist"},
+             "message": [{"type": "text", "data": {"text": "我先看课表"}}]},
+        ]
+        self.assertEqual(project_history_lines(messages, group_id="g", bot_id="b",
+                                              message_limit=20, byte_limit=6500),
+                         ("九鸟：我重视证明", "DinaMist：我先看课表"))
 
     def test_prompt_is_short_group_level_and_contains_history(self) -> None:
         policy = FileScopeAgentPolicyResolver(self.path).proactive_talk_policy(

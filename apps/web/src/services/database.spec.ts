@@ -69,6 +69,21 @@ afterEach(async () => {
 })
 
 describe('WorkspaceCache', () => {
+  it('replaces cached originals with content-free recall markers, including media and quotes', async () => {
+    const storage = cache()
+    const target = conversation('qq-111111111')
+    const original = message(target, 1, '撤回原文')
+    await storage.saveMessages(target, [original])
+    await storage.saveHistoryPage(target, page([{ ...original, status: 'recalled', recall: {
+      recalledAt: Date.now(), retained: true, expiresAt: Date.now() + 60_000,
+    }, attachments: [{ kind: 'image', name: '原图', url: 'https://example.com/private.png' }] }]))
+    const [cached] = await storage.recentMessages(target.accountId, target.id)
+    expect(cached).toMatchObject({ content: '此消息已撤回', segments: [], recall: { retained: false } })
+    expect(cached?.attachments).toBeUndefined()
+    expect(JSON.stringify(cached)).not.toContain('撤回原文')
+    expect((await storage.searchMessages({ accountId: target.accountId, conversationId: target.id, query: '撤回原文' })).messages).toEqual([])
+  })
+
   it('partitions identical QQ conversations and drafts by account', async () => {
     const storage = cache()
     const first = conversation('qq-111111111')

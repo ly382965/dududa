@@ -1,0 +1,47 @@
+\clearpage
+\section{部署与交付方案}
+\label{sec:deployment}
+\subsection{部署拓扑}
+\begin{figure}[H]\centering
+\begin{tikzpicture}[node distance=7mm and 7mm]
+\node[box,text width=6cm] (web) {Web 容器\\Vue 静态资源 + Node Gateway\\宿主默认入口 5173};
+\node[box,text width=6cm,right=of web] (nc) {NapCat 容器\\QQ 登录与 OneBot\\管理入口 6099};
+\node[box,text width=6cm,below=of web] (mc) {MCP Console 容器\\服务目录、连接诊断、查询};
+\node[box,text width=6cm,right=of mc] (bot) {AstrBot 容器\\Dududa Core + 模型适配\\管理入口 6185};
+\draw[flow](nc)--(web);\draw[flow](nc)--(bot);
+\draw[flow](web.south east)--(bot.north west);
+\draw[flow](web)--(mc);
+\node[box,text width=13cm,below=of bot.south west,anchor=north] (vol) {运行卷：QQ 登录态、AstrBot 配置、群策略、校园缓存、Key Store};
+\end{tikzpicture}
+\caption{默认 Compose 的四个服务。模型供应商和校园数据源位于外部；图中端口为本地部署入口。}
+\end{figure}
+
+AstrBot 容器装配智能体核心与插件，MCP worker 由独立解释器执行；校园服务源码与配置通过镜像或只读挂载提供，业务缓存与运行状态写入独立目录。多 QQ 账号需要各自 NapCat 登录实例和独立数据卷，可反连同一 Web 网关。
+
+\subsection{交付组成与复现入口}
+程序采用源码、核心 wheel、Web 构建产物与 Docker Compose 交付，随包提供依赖锁文件和运行说明。开发环境使用 Python 3.12、uv，以及 Node.js 22.18.0/npm 10.9.3。精确依赖由 \code{uv.lock} 和 Web 锁文件确定。
+
+\begin{Code}
+packages/dududa-agent/   Core: domain, ports, runtime and modules
+apps/astrbot-plugins/    AstrBot adapters and owned plugins
+apps/web/               Vue frontend and Node gateway
+services/mcp/           Campus servers, console and worker
+configs/                Capabilities, mappings and persona assets
+deploy/                 Compose, Dockerfiles and examples
+ops/                    Installation, operation and evaluation
+tests/ and evals/       Behavioral checks and datasets
+docs/                   Design, operation and submission reports
+\end{Code}
+
+无需 QQ 登录或模型 Key 的离线验证入口为：
+\begin{Code}
+uv sync --locked --python 3.12.13
+uv run --locked python ops/cli/run_dududa_100_message_benchmark.py \
+  --json-output /tmp/dududa-100-runtime.json \
+  --report-output /tmp/dududa-100-runtime.md
+\end{Code}
+
+完整安装时，部署者按照程序使用说明配置环境文件、运行目录、模型服务与必要的校园认证，执行初始化与启动流程，再完成 NapCat QQ 登录、AstrBot Provider 和目标群策略设置。报告提供的是结构与复现入口，具体部署步骤以随程序的 \code{submission-program.md} 为准。
+
+升级时应保留现有运行卷与旧镜像，并依据受影响服务进行替换；运行中的账号、凭据和群授权不属于报告生成过程。模板与报告的编译方法在本报告源码目录另行提供。
+\source{[S8, S9, S10, S16]；Web README、Compose 与程序使用说明。}

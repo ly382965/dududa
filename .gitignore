@@ -42,3 +42,8 @@ apps/b50-renderer/example_b50.png
 
 node_modules/
 .next/
+
+# One-click deployment: local settings, credentials and exported images.
+/quickstart.env
+/initial-login.txt
+/images/

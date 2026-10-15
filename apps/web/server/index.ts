@@ -10,6 +10,9 @@ import { HttpAstrBotPluginManagerClient } from './plugin-manager'
 import { FileApiKeyPoolStore } from './model-keys'
 import { createHttpApiKeyProbe } from './provider-probe'
 import { HttpRuntimeConfigClient } from './runtime-config'
+import { RecallForwarder } from './recall-forwarder'
+import { RecallStore } from './recall-store'
+import { RecallMediaStore } from './recall-media'
 
 function readToken(environmentName: string, fileEnvironmentName: string, defaultFile: string): string {
   const environmentToken = process.env[environmentName]?.trim()
@@ -35,7 +38,11 @@ const astrBotPluginApiKey = () => readToken(
   'DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE',
   '/run/secrets/astrbot_plugin_api_key',
 )
-const hub = new OneBotHub({ token: oneBotToken })
+const recallPath = process.env.DUDUDA_RECALL_STORE_PATH || resolve(process.cwd(), '../../runtime/web/recall/messages.sqlite')
+const recallStore = new RecallStore({ path: recallPath })
+const recallMediaStore = new RecallMediaStore({ path: recallPath })
+const recallForwarder = new RecallForwarder(recallPath)
+const hub = new OneBotHub({ token: oneBotToken, recallStore, recallMediaStore, recallForwarder })
 const controlPlane = controlPlaneUrl
   ? new HttpControlPlaneClient(controlPlaneUrl)
   : new UnavailableControlPlaneClient()

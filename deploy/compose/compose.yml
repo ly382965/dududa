@@ -21,6 +21,7 @@ services:
       DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1
       DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE: /run/secrets/astrbot_plugin_api_key
       DUDUDA_AGENT_POLICY_PATH: /var/lib/dududa/agent/agent-policies.json
+      DUDUDA_RECALL_STORE_PATH: /var/lib/dududa/recall/messages.sqlite
     ports:
       - host_ip: ${DUDUDA_WEB_HOST:-127.0.0.1}
         published: "${DUDUDA_WEB_PORT:-5173}"
@@ -31,6 +32,7 @@ services:
       - ${DUDUDA_WEB_DATA_ROOT:-./runtime/web}/secrets/astrbot_plugin_api_key:/run/secrets/astrbot_plugin_api_key:ro
       - ${DUDUDA_API_KEY_STORE_ROOT:-../dududa-state/api-keys}:/var/lib/dududa/api-keys:rw
       - ${DUDUDA_AGENT_POLICY_ROOT:-../dududa-state/agent}:/var/lib/dududa/agent:rw
+      - ${DUDUDA_RECALL_STORE_ROOT:-../dududa-state/recall}:/var/lib/dududa/recall:rw
     tmpfs:
       - /tmp:size=16m,mode=1777
     networks:

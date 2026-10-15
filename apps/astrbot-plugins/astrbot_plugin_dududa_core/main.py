@@ -2,6 +2,7 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
 from astrbot.core.star.filter.command import GreedyStr
 
+from .recall_command_guard import consume_gateway_recall_command
 from .commands.admin import CoreAdminCommands
 from .commands.basic import CoreBasicCommands
 from .commands.course import CoreCourseCommands
@@ -63,7 +64,7 @@ class DududaCorePlugin(
             register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/rehearsal",
                 self.runtime_rehearsal, ["POST"],
-                "Simulate group participation with synthetic messages and no QQ output",
+                "Replay simulated group inputs; explicit delivery can use the logged-in QQ account",
             )
             register_web_api(
                 "/astrbot_plugin_dududa_core/runtime/native-message-preview",
@@ -104,6 +105,8 @@ class DududaCorePlugin(
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=100)
     async def controlled_rollout(self, event: AstrMessageEvent):
         """受控执行显式提及的 shadow/canary。"""
+        if consume_gateway_recall_command(event):
+            return
         await self._handle_controlled_rollout(event)
 
     @filter.command("help")

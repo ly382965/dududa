@@ -123,6 +123,28 @@ ensure_web_secrets() {
     return 1
   fi
   ensure_agent_policy_root
+  ensure_recall_store_root
+}
+
+ensure_recall_store_root() {
+  local configured candidate
+  configured="${DUDUDA_RECALL_STORE_ROOT:-$(env_value DUDUDA_RECALL_STORE_ROOT "$ENV_FILE")}"
+  configured="${configured:-../dududa-state/recall}"
+  if [[ "$configured" = /* ]]; then
+    candidate="$(realpath -m -- "$configured")"
+  else
+    candidate="$(realpath -m -- "$ROOT_DIR/$configured")"
+  fi
+  if [[ "$candidate" == "/" || "$candidate" == "$(realpath -m -- "$ROOT_DIR")" ]]; then
+    printf 'DUDUDA_RECALL_STORE_ROOT must be a dedicated data directory\n' >&2
+    return 1
+  fi
+  mkdir -p "$candidate"
+  chmod 700 "$candidate"
+  if [[ "$(stat -c '%u' "$candidate")" != "1000" ]]; then
+    printf 'Recall store directory must be owned by UID 1000: %s\n' "$candidate" >&2
+    return 1
+  fi
 }
 
 project_name() {

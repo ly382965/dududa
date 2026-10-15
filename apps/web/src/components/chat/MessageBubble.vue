@@ -13,6 +13,7 @@ import {
 import { computed, onBeforeUnmount, ref } from 'vue'
 
 import { linkifiedTextParts, renderMarkdown } from '../../services/markdown'
+import { hasRetainedOriginal } from '../../services/recall'
 import type { Account, ChatMessage, Conversation, MessageSegment } from '../../types/workspace'
 import AppAvatar from '../AppAvatar.vue'
 import QqFace from './QqFace.vue'
@@ -35,12 +36,18 @@ const emit = defineEmits<{
   forward: [message: ChatMessage]
   nudge: [message: ChatMessage]
   jump: [segment: Extract<MessageSegment, { type: 'reply' }>]
-  openForward: [segment: Extract<MessageSegment, { type: 'forward' }>]
+  openForward: [segment: Extract<MessageSegment, { type: 'forward' }>, message: ChatMessage]
   sendToAgent: [message: ChatMessage]
 }>()
 
 const menuOpen = ref(false)
 const copied = ref(false)
+const retained = computed(() => hasRetainedOriginal(props.message))
+const retainedLabel = computed(() => {
+  const incomplete = (messages: ChatMessage[]): boolean => messages.some((message) => message.segments.some((segment) =>
+    segment.type === 'forward' && (!segment.messages?.length || incomplete(segment.messages))))
+  return incomplete([props.message]) ? '已撤回 · 转发内容未完整保存' : '已撤回 · 原文已保留'
+})
 const swipeDistance = ref(0)
 const requestedMediaRefreshes = new Set<string>()
 const largeFace = computed(
@@ -145,8 +152,9 @@ onBeforeUnmount(cancelLongPress)
       </div>
       <div class="message-and-actions">
         <div class="message-bubble" :class="{ bot: message.bot, 'large-face': largeFace }">
-          <em v-if="message.status === 'recalled'" class="recalled-label">此消息已撤回</em>
+          <em v-if="message.status === 'recalled' && !retained" class="recalled-label">此消息已撤回</em>
           <template v-else>
+            <span v-if="retained" class="retained-label">{{ retainedLabel }}</span>
             <template v-for="(segment, index) in message.segments" :key="`${message.id}-${index}`">
               <span v-if="segment.type === 'text'" class="message-text">
                 <template v-for="(part, partIndex) in linkifiedTextParts(segment.text)" :key="partIndex">
@@ -218,7 +226,7 @@ onBeforeUnmount(cancelLongPress)
                 v-else-if="segment.type === 'forward'"
                 class="forward-segment"
                 type="button"
-                @click="emit('openForward', segment)"
+                @click="emit('openForward', segment, message)"
               >
                 <Forward :size="17" />
                 <span><strong>合并转发消息</strong><small>{{ segment.preview || (segment.count ? `${segment.count} 条消息` : '点击查看') }}</small></span>
@@ -322,6 +330,7 @@ button.unsupported-segment { cursor: pointer; }
 .markdown-segment :deep(p:last-child) { margin-bottom: 0; }
 .markdown-segment :deep(pre) { overflow-x: auto; border-radius: 5px; background: var(--surface-muted); padding: 8px; }
 .recalled-label { color: var(--text-muted); font-size: 10px; }
+.retained-label { display: block; margin-bottom: 6px; color: var(--warning, #ad7100); font-size: 10px; font-weight: 600; }
 .run-link { display: flex; cursor: pointer; align-items: center; gap: 4px; margin-top: 7px; border: 0; color: var(--brand-strong); background: transparent; padding: 0; font-size: 9px; }
 .plus-one { min-width: 32px; height: 26px; cursor: pointer; border: 1px solid var(--border); border-radius: 5px; color: var(--brand-strong); background: var(--surface); padding: 0 7px; font-size: 10px; font-weight: 700; }
 .message-actions { display: flex; visibility: hidden; align-items: center; gap: 2px; opacity: 0; }

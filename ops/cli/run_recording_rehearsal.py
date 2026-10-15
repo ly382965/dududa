@@ -84,7 +84,7 @@ def check_adaptive(result: dict) -> list[str]:
             r"(?:https?://)?icourse\.club/course/\d+(?:/|\b)", answer
         ):
             issues.append("回答缺少课程名称或来源")
-        for name in ("小林", "小周", "小陈", "小许"):
+        for name in json.loads((ROOT / "tests/fixtures/recording/math-analysis-discussion.json").read_text())["members"]:
             if name not in answer:
                 issues.append(f"回答未明确回应{name}的需求")
     if data.get("outputCalls") != 0 or data.get("memoryWrites") != 0:

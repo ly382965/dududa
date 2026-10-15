@@ -399,6 +399,7 @@ async def _runtime_preview_json(
         "memoryWrites": 0,
         "toolCalls": preview.tool_calls,
         "capabilityIds": list(preview.capability_ids),
+        "diagnostics": getattr(preview, "diagnostics", None),
         "outcome": result.outcome.value if candidate or result.outcome.value != "response" else "empty",
         "runtimeState": preview.completion.final_phase.value,
         "generationObserved": getattr(preview, "generation_observed", False),

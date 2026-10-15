@@ -89,6 +89,16 @@ export const renameGroupSchema = z.object({ name: z.string().trim().min(1).max(6
 
 export const setGroupMuteAllSchema = z.object({ enabled: z.boolean() }).strict()
 
+export const recallSettingsSchema = z.object({
+  enabled: z.boolean(),
+  retentionDays: z.number().int().min(1).max(30),
+}).strict()
+
+export const recallQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().min(1).max(2048).optional(),
+}).strict()
+
 export const groupFileMutationSchema = z.discriminatedUnion('operation', [
   z
     .object({

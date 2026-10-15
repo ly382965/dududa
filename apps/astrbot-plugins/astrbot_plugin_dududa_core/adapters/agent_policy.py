@@ -28,6 +28,16 @@ _PLUGIN_CAPABILITY_CATEGORIES: Mapping[str, str] = {
 }
 
 
+def _automatic_plugins(record: dict[str, Any]) -> frozenset[str]:
+    plugins = record.get("plugins", {})
+    legacy = record.get("adaptivePlugins", [])
+    return frozenset(
+        plugin_id for plugin_id in _PLUGIN_CAPABILITY_CATEGORIES
+        if (isinstance(plugins, dict) and plugins.get(plugin_id) == "auto")
+        or (isinstance(legacy, list) and plugin_id in legacy)
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class GroupProactiveTalkPolicy:
     enabled: bool
@@ -54,13 +64,7 @@ class FileScopeAgentPolicyResolver:
         record = self._record(bot_id=bot_id, group_id=group_id)
         if record is None or record.get("enabled") is not True:
             return None
-        allowed = record.get("adaptivePlugins", [])
-        if not isinstance(allowed, list):
-            return None
-        request = select_adaptive_plugin(lines, frozenset(
-            item for item in allowed if isinstance(item, str)
-            and item in _PLUGIN_CAPABILITY_CATEGORIES
-        ))
+        request = select_adaptive_plugin(lines, _automatic_plugins(record))
         if request is None:
             return None
         self._adaptive[(bot_id, group_id)] = {
@@ -95,8 +99,7 @@ class FileScopeAgentPolicyResolver:
         if active is None:
             return None
         if (not isinstance(record, dict) or record.get("enabled") is not True
-            or not isinstance(record.get("adaptivePlugins"), list)
-            or active["pluginId"] not in record["adaptivePlugins"]
+            or active["pluginId"] not in _automatic_plugins(record)
             or active["policyUpdatedAt"] != record.get("updatedAt")):
             self._adaptive.pop((bot_id, group_id), None)
             return None
@@ -121,11 +124,14 @@ class FileScopeAgentPolicyResolver:
         if not isinstance(plugins, dict):
             plugins = {}
         plugins = dict(plugins)
+        for plugin_id in _PLUGIN_CAPABILITY_CATEGORIES:
+            if plugins.get(plugin_id) == "auto":
+                plugins[plugin_id] = "off"
         active = self._active_for_record(
             connector.message.bot_id, connector.message.group_id or "", record,
         )
         if active is not None:
-            plugins[active["pluginId"]] = "auto"
+            plugins[active["pluginId"]] = "on"
         flags = {
             SCOPE_AGENT_ENABLED_FLAG: enabled,
             **self._capability_flags(plugins),

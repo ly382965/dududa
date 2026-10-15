@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { ComposerContentSegment } from '../services/composer-content'
 import { internalTestAdapter, type InternalTestAgentAdapter } from '../services/internal-test'
+import { expireRecalledOriginal, hasRetainedOriginal, publishRecallUpdate, subscribeRecallUpdates, withoutRecalledOriginal } from '../services/recall'
 import {
   clearUncertainGroupUpload,
   groupUploadFingerprint,
@@ -24,6 +25,7 @@ import type {
   MobilePanel,
   OutgoingMessageSegment,
   ReplyDraftPart,
+  RecallSettings,
   ThemeMode,
   WorkspaceEvent,
   WorkspaceSnapshot,
@@ -152,6 +154,8 @@ export function useWorkspace(
   )
   let toastTimer: ReturnType<typeof setTimeout> | undefined
   let unsubscribe: (() => void) | undefined
+  let unsubscribeRecall: (() => void) | undefined
+  const recallSettings = new Map<string, RecallSettings>()
   let colorSchemeQuery: MediaQueryList | undefined
   let agentStatusTimer: ReturnType<typeof setInterval> | undefined
   let agentPolicyGeneration = 0
@@ -411,11 +415,17 @@ export function useWorkspace(
   function mergeMessages(conversationId: string, incoming: ChatMessage[], direction: 'before' | 'latest' = 'latest'): void {
     const conversation = snapshot.value.conversations.find((item) => item.id === conversationId)
     if (!conversation) return
-    const existing = snapshot.value.messages[conversationId] ?? []
+    const existing = (snapshot.value.messages[conversationId] ?? []).map((message) => expireRecalledOriginal(message))
     const merged = new Map(existing.map((message) => [messageIdentity(message), message]))
     for (const message of incoming) {
       if (message.accountId === conversation.accountId && message.conversationId === conversation.id) {
-        merged.set(messageIdentity(message), message)
+        const previous = merged.get(messageIdentity(message))
+        // History requests and local caches can arrive after a recall event.
+        if (previous?.status === 'recalled' && (message.status !== 'recalled' ||
+          (hasRetainedOriginal(previous) && !hasRetainedOriginal(message)))) continue
+        const next = expireRecalledOriginal(message)
+        merged.set(messageIdentity(message), next.status === 'recalled' && recallSettings.get(conversationId)?.enabled === false
+          ? withoutRecalledOriginal(next) : next)
       }
     }
     let messages = [...merged.values()].sort(compareMessages)
@@ -428,6 +438,45 @@ export function useWorkspace(
       }
     }
     snapshot.value.messages[conversationId] = messages
+  }
+
+  function expireRecallArchives(): void {
+    for (const messages of Object.values(snapshot.value.messages)) {
+      for (const message of messages) {
+        if (message.recall?.retained && !hasRetainedOriginal(message)) Object.assign(message, withoutRecalledOriginal(message))
+      }
+    }
+  }
+
+  function applyRecallUpdate(event: Extract<WorkspaceEvent, { type: 'message.deleted' | 'recall.settings.changed' }>): void {
+    const conversation = conversations.value.find((item) => item.id === event.conversationId && item.accountId === event.accountId)
+    if (!conversation) return
+    const messages = snapshot.value.messages[event.conversationId] ?? []
+    if (event.type === 'recall.settings.changed') {
+      recallSettings.set(event.conversationId, event.settings)
+      for (const message of messages) {
+        if (message.status !== 'recalled') continue
+        if (!event.settings.enabled) Object.assign(message, withoutRecalledOriginal(message))
+        else if (message.recall?.expiresAt) {
+          message.recall.expiresAt = Math.min(message.recall.expiresAt,
+            (message.recall.recordedAt ?? message.recall.recalledAt) + event.settings.retentionDays * 86_400_000)
+          Object.assign(message, expireRecalledOriginal(message))
+        }
+      }
+      return
+    }
+    if (event.message && event.message.id === event.messageId && event.message.accountId === event.accountId &&
+      event.message.conversationId === event.conversationId) {
+      mergeMessages(event.conversationId, [event.message])
+    } else {
+      const message = messages.find((item) => item.id === event.messageId)
+      if (message) Object.assign(message, withoutRecalledOriginal(message))
+    }
+    if (snapshot.value.messages[event.conversationId]?.at(-1)?.id === event.messageId) {
+      conversation.lastMessage = '此消息已撤回'
+      void adapter.cacheMessages(conversation, [])
+    }
+    void adapter.deleteCachedMessage(event.accountId, event.conversationId, event.messageId)
   }
 
   function applyHistoryPage(conversationId: string, page: HistoryPage, direction: 'initial' | 'before' | 'after'): void {
@@ -481,6 +530,11 @@ export function useWorkspace(
       delete drafts.value[conversation.id]
     }
     snapshot.value = next
+    for (const conversation of next.conversations) {
+      const settings = next.recallSettings?.[conversation.id]
+      if (settings) publishRecallUpdate({ type: 'recall.settings.changed', accountId: conversation.accountId,
+        conversationId: conversation.id, settings })
+    }
     const stillSelected = next.conversations.some((item) => item.id === selectedConversationId.value)
     if (!stillSelected) selectedConversationId.value = next.conversations[0]?.id ?? ''
     if (selectedAccountId.value !== 'all' && !next.accounts.some((item) => item.id === selectedAccountId.value)) {
@@ -506,6 +560,7 @@ export function useWorkspace(
   }
 
   async function loadConversationMessages(conversation = selectedConversation.value): Promise<void> {
+    expireRecallArchives()
     const version = ++messageLoadVersion
     messagesError.value = ''
     if (!conversation) return
@@ -817,9 +872,8 @@ export function useWorkspace(
     if (!conversation || message.conversationId !== conversation.id) return
     try {
       await adapter.recallMessage(conversation, message)
-      message.status = 'recalled'
-      message.content = '此消息已撤回'
-      message.segments = []
+      const current = snapshot.value.messages[conversation.id]?.find((item) => item.id === message.id)
+      if (current && current.status !== 'recalled') Object.assign(current, withoutRecalledOriginal(current))
       notify('消息已撤回')
     } catch (error) {
       notify(error instanceof Error ? error.message : '撤回失败')
@@ -1126,15 +1180,8 @@ export function useWorkspace(
       }
       return
     }
-    if (event.type === 'message.deleted') {
-      const messages = snapshot.value.messages[event.conversationId]
-      const message = messages?.find((item) => item.id === event.messageId)
-      if (message) {
-        message.status = 'recalled'
-        message.content = '此消息已撤回'
-        message.segments = []
-      }
-      void adapter.deleteCachedMessage(event.accountId, event.conversationId, event.messageId)
+    if (event.type === 'message.deleted' || event.type === 'recall.settings.changed') {
+      publishRecallUpdate(event)
       return
     }
     if (event.type !== 'message.created') return
@@ -1186,11 +1233,13 @@ export function useWorkspace(
     { immediate: true },
   )
   onMounted(async () => {
+    unsubscribeRecall = subscribeRecallUpdates(applyRecallUpdate)
     colorSchemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)')
     colorSchemeQuery?.addEventListener('change', updateSystemTheme)
     window.addEventListener('focus', refreshAgentRuntimeWhenVisible)
+    window.addEventListener('focus', expireRecallArchives)
     document.addEventListener('visibilitychange', refreshAgentRuntimeWhenVisible)
-    agentStatusTimer = setInterval(refreshAgentRuntimeWhenVisible, 12_000)
+    agentStatusTimer = setInterval(() => { refreshAgentRuntimeWhenVisible(); expireRecallArchives() }, 12_000)
     unsubscribe = adapter.subscribe((event) => {
       if (!initialLoadComplete) {
         initialWorkspaceEvents.push(event)
@@ -1207,7 +1256,9 @@ export function useWorkspace(
   })
   onBeforeUnmount(() => {
     unsubscribe?.()
+    unsubscribeRecall?.()
     window.removeEventListener('focus', refreshAgentRuntimeWhenVisible)
+    window.removeEventListener('focus', expireRecallArchives)
     document.removeEventListener('visibilitychange', refreshAgentRuntimeWhenVisible)
     if (agentStatusTimer) clearInterval(agentStatusTimer)
     if (colorSchemeQuery) {
