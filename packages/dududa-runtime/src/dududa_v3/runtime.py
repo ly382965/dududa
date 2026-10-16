@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import re
 import shutil
 import sys
@@ -30,9 +31,11 @@ class Runtime:
         self.locks: dict[int, asyncio.Lock] = {}
         self.semaphore = asyncio.Semaphore(settings.concurrency)
         self.last_proactive: dict[str, float] = {}
+        self.proactive_attempts: dict[str, list[float]] = {}
 
     def health(self) -> dict:
         return {"runtime": RUNTIME, "version": VERSION,
+                    "model": self.settings.model, "reasoning_effort": self.settings.reasoning_effort,
                     "codex_available": shutil.which(self.settings.codex_binary) is not None,
                     "active_runs": sum(not task.done() for task in self.tasks.values())}
 
@@ -103,13 +106,14 @@ class Runtime:
             if matched:
                 self.store.update(run_id, status="completed", route="rule", text=text, model="rules")
                 return
-            if request["source"] == "qq" and "group" in request["conversation_id"] and not request.get("mentioned"):
-                now = time.monotonic()
-                if (public_scope not in self.settings.proactive_scopes
-                        or now - self.last_proactive.get(public_scope, -float("inf")) < self.settings.proactive_cooldown_seconds):
-                    self.store.update(run_id, status="ignored", route="ignore")
-                    return
-                self.last_proactive[public_scope] = now
+            if request["source"] == "qq" and request["text"].lstrip().startswith("/"):
+                # Unclaimed platform commands belong to deterministic plugin handlers.
+                self.store.update(run_id, status="ignored", route="ignore", reason="unclaimed_command")
+                return
+            if (request["source"] == "qq" and "group" in request["conversation_id"]
+                    and not request.get("mentioned") and not self._admit_proactive(public_scope, session_id)):
+                self.store.update(run_id, status="ignored", route="ignore")
+                return
             self.store.update(run_id, route="agent")
             async with self.locks.setdefault(session_id, asyncio.Lock()), self.semaphore:
                 session = self.store.session(scope)
@@ -117,7 +121,8 @@ class Runtime:
                 workspace.mkdir(parents=True, exist_ok=True)
                 client = self.client_factory(binary=self.settings.codex_binary, cwd=workspace,
                                              config_overrides=self._overrides(session_id, run_id),
-                                             model=self.settings.model, timeout=self.settings.timeout_seconds)
+                                             model=self.settings.model, reasoning_effort=self.settings.reasoning_effort,
+                                             timeout=self.settings.timeout_seconds)
                 async def on_event(event: dict) -> None:
                     method = event.get("method", "")
                     params = event.get("params", {})
@@ -141,6 +146,7 @@ class Runtime:
                 self.store.update(run_id, status="completed" if result.status == "completed" else "cancelled",
                                   text=result.text, thread_id=result.thread_id, turn_id=result.turn_id,
                                   model=result.model or self.settings.model or "codex",
+                                  reasoning_effort=getattr(result, "reasoning_effort", self.settings.reasoning_effort),
                                   tool_calls=len(result.tool_calls), tools=self.store.tools(run_id))
         except asyncio.CancelledError:
             self.store.update(run_id, status="cancelled")
@@ -195,6 +201,24 @@ class Runtime:
             if text == rule["match"]:
                 return True, rule["reply"]
         return False, ""
+
+    def _admit_proactive(self, scope: str, session_id: int) -> bool:
+        if scope not in self.settings.proactive_scopes:
+            return False
+        policy = self.settings.proactive_policies.get(scope, {})
+        now = time.monotonic()
+        cooldown = max(5, float(policy.get("cooldownSeconds", self.settings.proactive_cooldown_seconds)))
+        probability = max(0, min(100, int(policy.get("probabilityPercent", 100))))
+        maximum = max(1, int(policy.get("maximumPerHour", 30)))
+        minimum = max(1, min(30, int(policy.get("minimumMessages", 1))))
+        attempts = [at for at in self.proactive_attempts.get(scope, []) if now - at < 3600]
+        self.proactive_attempts[scope] = attempts
+        if (len(attempts) >= maximum or now - self.last_proactive.get(scope, -float("inf")) < cooldown
+                or len(self.store.recent(session_id, 30)) < minimum or random.random() * 100 >= probability):
+            return False
+        self.last_proactive[scope] = now
+        attempts.append(now)
+        return True
 
     def _instructions(self) -> str:
         persona = (self.settings.root / "configs/personas/dududa.md").read_text(encoding="utf-8")

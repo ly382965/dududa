@@ -160,6 +160,20 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['text'], '')
         self.assertEqual(self.protocol.instances, [])
 
+    async def test_live_model_is_pinned_and_legacy_commands_do_not_start_an_agent(self):
+        self.assertEqual(self.runtime.health()['model'], 'gpt-5.6-luna')
+        self.assertEqual(self.runtime.health()['reasoning_effort'], 'max')
+        result = await self.execute('/arc b50')
+        self.assertEqual(result['status'], 'ignored')
+        self.assertEqual(self.protocol.instances, [])
+        request = self.request('hello')
+        request.update(model='other-model', reasoning_effort='low')
+        run = await self.runtime.submit(request)
+        result = await self.runtime.wait(run['run_id'])
+        self.assertEqual(self.protocol.calls[-1]['config']['model'], 'gpt-5.6-luna')
+        self.assertEqual(self.protocol.calls[-1]['config']['reasoning_effort'], 'max')
+        self.assertEqual(result['reasoning_effort'], 'max')
+
     async def test_context_counts_current_message_and_truncates_whole_history_messages(self):
         history = {'messages': ([{'senderName': '较早用户', 'content': '较早消息'} for _ in range(21)]
                                 + [{'senderName': '历史用户', 'content': '甲' * 2100} for _ in range(10)])}
@@ -176,6 +190,21 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             request['history'] = invalid
             with self.assertRaises(ValueError):
                 await self.runtime.submit(request)
+
+    async def test_migrated_proactive_limits_are_retained(self):
+        scope = 'bot/qq:bot:group:1'
+        self.settings.proactive_scopes = (scope,)
+        self.settings.proactive_policies = {scope: {'probabilityPercent': 100, 'cooldownSeconds': 5,
+                                                  'maximumPerHour': 1, 'minimumMessages': 2}}
+        first = await self.execute('first background', mentioned=False)
+        self.assertEqual(first['status'], 'ignored')
+        second = await self.execute('second background', mentioned=False)
+        self.assertEqual(second['status'], 'completed')
+        self.runtime.last_proactive[scope] -= 10
+        third = await self.execute('hour limit', mentioned=False)
+        self.assertEqual(third['status'], 'ignored')
+        mentioned = await self.execute('explicit request')
+        self.assertEqual(mentioned['status'], 'completed')
 
     async def test_cli_check_does_not_recover_running_work_or_require_host_lock(self):
         session = self.session_for(self.request())

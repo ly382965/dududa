@@ -24,6 +24,8 @@
 
 3.0 将 Agent 的理解、规划和多步工具循环交给本机 Codex CLI。Dududa 自己管理消息入口、规则服务、会话、权限和输出。**明确的规则命令不调用 LLM，整个规则执行过程也不需要 Codex 参与。**
 
+当前默认服务模型固定为 **GPT‑5.6 Luna / MAX**（`gpt-5.6-luna`、`reasoning_effort=max`）。新建会话、恢复会话和每一轮请求都显式指定；聊天消息不能切换模型。运行记录和 Web 显示实际模型与推理强度。
+
 本仓库包含可独立启动的 3.0 Runtime，以及完整封存的 2.0 源码。3.0 的运行入口、测试和下文安装步骤均围绕新 Runtime；已有服务保留情况和当前迁移边界在下表说明。代码接入不代表已有线上机器人已经切换版本。
 
 ## 3.0 的变化
@@ -156,7 +158,7 @@ codex --version
 codex login status
 ```
 
-3.0 使用本机 Codex 的认证和模型配置。原来的 AstrBot Provider、DeepSeek Chat Completions 端点和 Luna / Terra / Sol 档位不参与新执行链；需要调整模型时，配置 Codex 或使用新 Runtime 支持的配置字段。
+3.0 使用本机 Codex 的认证，模型与推理强度由 Runtime 配置固定。原来的 AstrBot Provider、DeepSeek Chat Completions 端点和 Luna / Terra / Sol 档位不参与新执行链；管理员需要调整模型时，应修改 Runtime 的 `model`、`reasoning_effort`，而非旧 Web 模型池。
 
 ### 2. 运行 3.0 Runtime
 

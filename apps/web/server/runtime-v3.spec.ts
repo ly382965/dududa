@@ -37,6 +37,20 @@ const completed: RuntimeV3Run = {
 const scope = { accountId: 'qq-100001', conversationId: 'qq-100001:group:200001' }
 
 describe('Dududa 3.0 HTTP adapter', () => {
+  it('shows the configured Luna MAX result rather than a hardcoded low effort', async () => {
+    const url = await serve((request, response) => {
+      if (request.url === '/v3/health') return json(response, { codex_available: true,
+        model: 'gpt-5.6-luna', reasoning_effort: 'max' })
+      if (request.method === 'POST') return json(response, { run_id: 'run-v3', status: 'queued' })
+      json(response, { ...completed, route: 'agent', model: 'gpt-5.6-luna', reasoning_effort: 'max' })
+    })
+    const client = new HttpRuntimeV3Client(url, 'test', fetch, 1_000, 1)
+    expect(await client.status()).toMatchObject({ controls: { model: 'gpt-5.6-luna', reasoning_effort: 'max' } })
+    expect(await client.preview({ ...scope, prompt: 'hello' })).toMatchObject({
+      model: 'gpt-5.6-luna', reasoning: 'max', generationObserved: true,
+    })
+  })
+
   it('authenticates against v3, polls the run, and identifies deterministic output without claiming LLM generation', async () => {
     const requests: Array<{ path: string; method: string; body: string }> = []
     let reads = 0

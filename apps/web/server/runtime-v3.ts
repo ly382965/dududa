@@ -32,6 +32,7 @@ export interface RuntimeV3Run {
   thread_id?: string
   turn_id?: string
   model?: string
+  reasoning_effort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
   tool_calls: number
   events: unknown[]
   error?: string
@@ -71,6 +72,8 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
         runtime_enabled: true,
         codex_available: health.codex_available === true,
         version: health.version,
+        model: health.model,
+        reasoning_effort: health.reasoning_effort,
       },
       checkedAt: new Date().toISOString(),
     }
@@ -98,7 +101,7 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
       candidate: run.text,
       tier: run.route === 'agent' ? 'codex' : 'rules',
       model: run.model || '',
-      reasoning: 'low',
+      reasoning: run.route === 'agent' ? run.reasoning_effort ?? 'medium' : 'none',
       answerProfile: 'medium',
       reasonCodes: ['runtime_v3', `runtime_v3.route.${run.route}`, 'runtime.preview.no_send', 'legacy_ui_policy_fields_unused'],
       latencyMs: run.latency_ms,

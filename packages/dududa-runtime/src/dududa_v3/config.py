@@ -21,12 +21,14 @@ class Settings:
     root: Path = field(default_factory=repository_root)
     state_dir: Path | None = None
     codex_binary: str = "codex"
-    model: str | None = None
+    model: str | None = "gpt-5.6-luna"
+    reasoning_effort: str = "max"
     timeout_seconds: float = 180
     concurrency: int = 2
     allowed_scopes: tuple[str, ...] = ()
     proactive_scopes: tuple[str, ...] = ()
     proactive_cooldown_seconds: float = 120
+    proactive_policies: dict[str, dict] = field(default_factory=dict)
     mcp_console_url: str | None = None
     campus_capabilities: tuple[str, ...] = ()
     rules: tuple[dict, ...] = ()
@@ -36,6 +38,8 @@ class Settings:
         self.state_dir = (self.state_dir or self.root / "runtime/v3").resolve()
         if not 1 <= self.concurrency <= 8 or self.timeout_seconds <= 0:
             raise ValueError("Invalid concurrency or timeout")
+        if self.reasoning_effort not in ("none", "low", "medium", "high", "xhigh", "max"):
+            raise ValueError("Invalid reasoning effort")
         for rule in self.rules:
             if not isinstance(rule.get("match"), str) or not isinstance(rule.get("reply"), str):
                 raise TypeError("Rules require exact match and reply strings")
@@ -57,6 +61,8 @@ class Settings:
             values["codex_binary"] = os.environ["DUDUDA_V3_CODEX_BINARY"]
         if os.environ.get("DUDUDA_V3_MODEL"):
             values["model"] = os.environ["DUDUDA_V3_MODEL"]
+        if os.environ.get("DUDUDA_V3_REASONING_EFFORT"):
+            values["reasoning_effort"] = os.environ["DUDUDA_V3_REASONING_EFFORT"]
         if "DUDUDA_V3_QQ_SCOPES" in os.environ:
             values["allowed_scopes"] = tuple(filter(None, os.environ["DUDUDA_V3_QQ_SCOPES"].split(",")))
         for key in ("allowed_scopes", "proactive_scopes", "campus_capabilities", "rules"):

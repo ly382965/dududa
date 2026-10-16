@@ -34,6 +34,7 @@ class CodexResult:
     model: str | None
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     status: str = "completed"
+    reasoning_effort: str | None = None
 
 
 class CodexClient:
@@ -50,12 +51,14 @@ class CodexClient:
         cwd: Path,
         config_overrides: list[str] | None = None,
         model: str | None = None,
+        reasoning_effort: str | None = None,
         timeout: float = 180,
     ) -> None:
         self.binary = binary
         self.cwd = Path(cwd).resolve()
         self.config_overrides = list(config_overrides or [])
         self.model = model
+        self.reasoning_effort = reasoning_effort
         if timeout <= 0:
             raise ValueError("Codex timeout must be positive")
         self.timeout = timeout
@@ -96,6 +99,7 @@ class CodexClient:
             # boundaries so a restored thread cannot retain broader permissions.
             for setting in [
                 *self.config_overrides,
+                *([f'model_reasoning_effort={json.dumps(self.reasoning_effort)}'] if self.reasoning_effort else []),
                 'sandbox_mode="read-only"',
                 'approval_policy="never"',
             ]:
@@ -227,6 +231,11 @@ class CodexClient:
             raise CodexError("Codex resumed a different thread than requested")
         state["thread_id"] = current_thread
         model = response.get("model", self.model)
+        if self.model and model != self.model:
+            raise CodexError("Codex did not select the configured model")
+        effective_effort = response.get("reasoningEffort")
+        if self.reasoning_effort and effective_effort is not None and effective_effort != self.reasoning_effort:
+            raise CodexError("Codex did not select the configured reasoning effort")
         turn_response = await self.request(
             "turn/start",
             {
@@ -234,6 +243,8 @@ class CodexClient:
                 "input": [{"type": "text", "text": text, "text_elements": []}],
                 "approvalPolicy": "never",
                 "sandboxPolicy": {"type": "readOnly", "networkAccess": False},
+                **({"model": self.model} if self.model else {}),
+                **({"effort": self.reasoning_effort} if self.reasoning_effort else {}),
             },
         )
         current_turn = turn_response["turn"]["id"]
@@ -291,6 +302,7 @@ class CodexClient:
                 model=model,
                 tool_calls=list(tools.values()),
                 status=status,
+                reasoning_effort=self.reasoning_effort or effective_effort,
             )
 
     async def _write(self, message: dict[str, Any]) -> None:

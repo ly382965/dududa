@@ -1,7 +1,7 @@
 export type InternalTestTier = 'haiku' | 'sonnet' | 'opus'
 export type InternalTestAnswerProfile = 'short' | 'medium' | 'long'
 export type InternalTestSelectionMode = 'adaptive' | 'preferred' | 'locked'
-export type InternalTestReasoningLevel = 'low' | 'medium' | 'high'
+export type InternalTestReasoningLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 export type InternalTestPluginMode = 'off' | 'auto' | 'on' | 'locked'
 export type InternalTestReplyIntensity = 'quiet' | 'normal' | 'active'
 export type InternalTestContextLength = 'compact' | 'standard' | 'extended'

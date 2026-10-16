@@ -56,7 +56,9 @@ for line in sys.stdin:
             send({'id': request_id, 'error': {'code': -32000, 'message': 'thread not found'}})
             continue
         notify('thread/started', {'thread': {'id': 'thread-1'}})
-        send({'id': request_id, 'result': {'thread': {'id': 'thread-1'}, 'model': 'test-model'}})
+        send({'id': request_id, 'result': {'thread': {'id': 'thread-1'},
+              'model': 'wrong-model' if mode == 'wrong-model' else msg['params'].get('model', 'test-model'),
+              'reasoningEffort': options.get('model_reasoning_effort')}})
     elif method == 'turn/start':
         if mode == 'exit':
             sys.exit(7)
@@ -152,6 +154,28 @@ class CodexTransportTests(unittest.IsolatedAsyncioTestCase):
     async def test_commentary_is_not_a_final_reply(self):
         result = await self.client('commentary').run('hello')
         self.assertEqual(result.text, '')
+
+    async def test_pins_luna_max_when_starting_and_resuming(self):
+        for thread in (None, 'thread-1'):
+            client = self.client()
+            client.model = 'gpt-5.6-luna'
+            client.reasoning_effort = 'max'
+            result = await client.run('hello', thread_id=thread)
+            self.assertEqual(result.model, 'gpt-5.6-luna')
+            self.assertEqual(result.reasoning_effort, 'max')
+            await client.close()
+        for message in self.messages():
+            if message.get('method') in ('thread/start', 'thread/resume', 'turn/start'):
+                self.assertEqual(message['params']['model'], 'gpt-5.6-luna')
+            if message.get('method') == 'turn/start':
+                self.assertEqual(message['params']['effort'], 'max')
+
+    async def test_model_substitution_fails_before_generation(self):
+        client = self.client('wrong-model')
+        client.model = 'gpt-5.6-luna'
+        with self.assertRaisesRegex(CodexError, 'configured model'):
+            await client.run('hello')
+        self.assertNotIn('turn/start', [message.get('method') for message in self.messages()])
 
     async def test_resume_keeps_permissions(self):
         result = await self.client().run('continue', thread_id='thread-1')
