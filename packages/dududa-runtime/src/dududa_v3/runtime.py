@@ -11,7 +11,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from . import RUNTIME, VERSION
+from . import RUNTIME, SESSION_PROFILE, VERSION
 from .codex import CodexClient
 from .config import Settings
 from .store import Store
@@ -128,6 +128,8 @@ class Runtime:
                     except ServiceError:
                         self.store.event(run_id, {"type": "history_unavailable", "source": "local_recent_fallback"})
                 session = self.store.session(scope)
+                # This CLI retains initial developer instructions on resume. Rotate only when that profile changes.
+                resume_thread = session["thread_id"] if session.get("profile") == SESSION_PROFILE else None
                 workspace = self.settings.state_dir / "workspaces" / str(session_id)
                 workspace.mkdir(parents=True, exist_ok=True)
                 client = self.client_factory(binary=self.settings.codex_binary, cwd=workspace,
@@ -140,7 +142,7 @@ class Runtime:
                     if method == "thread/started":
                         thread_id = params.get("thread", {}).get("id")
                         if thread_id:
-                            self.store.thread(session_id, thread_id)
+                            self.store.thread(session_id, thread_id, SESSION_PROFILE)
                             self.store.update(run_id, thread_id=thread_id)
                     if method == "turn/started":
                         self.store.update(run_id, thread_id=params.get("threadId"), turn_id=params.get("turn", {}).get("id"))
@@ -149,11 +151,11 @@ class Runtime:
                         item = params.get("item", {})
                         self.store.event(run_id, {"type": method, "item_type": item.get("type"), "at": time.time()})
                 try:
-                    result = await client.run(self._prompt(run_id, request), thread_id=session["thread_id"],
+                    result = await client.run(self._prompt(run_id, request), thread_id=resume_thread,
                                               instructions=self._instructions(), on_event=on_event)
                 finally:
                     await client.close()
-                self.store.thread(session_id, result.thread_id)
+                self.store.thread(session_id, result.thread_id, SESSION_PROFILE)
                 self.store.update(run_id, status="completed" if result.status == "completed" else "cancelled",
                                   text=result.text, thread_id=result.thread_id, turn_id=result.turn_id,
                                   model=result.model or self.settings.model or "codex",

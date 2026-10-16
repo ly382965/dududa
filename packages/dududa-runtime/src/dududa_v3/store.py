@@ -34,6 +34,8 @@ class Store:
                 CREATE TABLE IF NOT EXISTS deliveries (
                   run_id TEXT PRIMARY KEY, state TEXT NOT NULL, message_id TEXT);
             """)
+            if "profile" not in {row[1] for row in db.execute("PRAGMA table_info(sessions)")}:
+                db.execute("ALTER TABLE sessions ADD COLUMN profile TEXT")
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -45,9 +47,9 @@ class Store:
             db.execute("INSERT OR IGNORE INTO sessions(scope) VALUES (?)", (scope,))
             return dict(db.execute("SELECT * FROM sessions WHERE scope=?", (scope,)).fetchone())
 
-    def thread(self, session_id: int, thread_id: str | None) -> None:
+    def thread(self, session_id: int, thread_id: str | None, profile: str | None = None) -> None:
         with self.connect() as db:
-            db.execute("UPDATE sessions SET thread_id=? WHERE id=?", (thread_id, session_id))
+            db.execute("UPDATE sessions SET thread_id=?,profile=? WHERE id=?", (thread_id, profile, session_id))
 
     def create_run(self, session_id: int, request: dict) -> tuple[dict, bool]:
         run_id = str(uuid.uuid4())

@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from dududa_v3 import SESSION_PROFILE
 from dududa_v3.__main__ import state_lock
 from dududa_v3.config import Settings
 from dududa_v3.runtime import Runtime
@@ -216,6 +217,19 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             await self.execute('总结群聊')
             fetch.assert_called_once_with(30)
             self.assertIn('gateway older history', self.protocol.calls[-1]['text'])
+
+    async def test_instruction_profile_rotates_old_thread_without_erasing_memory(self):
+        session = self.session_for(self.request())
+        self.runtime.store.thread(session['id'], 'old-thread', 'previous-profile')
+        self.runtime.store.remember(session['id'], 'alice', '保留的记忆')
+        first = await self.execute('刷新执行配置')
+        self.assertIsNone(self.protocol.calls[-1]['thread_id'])
+        current = self.session_for(self.request())
+        self.assertEqual(current['profile'], SESSION_PROFILE)
+        self.assertEqual(len(self.runtime.store.memories(session['id'])), 1)
+        second = await self.execute('继续当前配置')
+        self.assertEqual(self.protocol.calls[-1]['thread_id'], first['thread_id'])
+        self.assertEqual(second['thread_id'], first['thread_id'])
 
     async def test_cli_check_does_not_recover_running_work_or_require_host_lock(self):
         session = self.session_for(self.request())
