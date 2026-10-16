@@ -91,7 +91,7 @@ Host 在 Agent 路径之前匹配明确命令。规则处理器负责解析参�
 | `shuttle_query` | 查询本地校车资料，无需网络 |
 | `memory_search` | 搜索当前会话显式保存的记忆 |
 | `context_recent` | 读取当前会话近期聊天记录 |
-| `conversation_history` | 按当前 QQ 会话分页读取历史，最多 1000 条，返回实际数量和完整时间范围 |
+| `conversation_history` | 默认最近 3 小时，支持“今日”“近 5h”等自然语言时间范围；最多 1000 条，返回实际数量和完整时间范围 |
 | `services_list` | 列出本地工具和允许调用的公开校园能力及参数 |
 | `campus_query` | 通过 MCP Console 调用白名单内的公开校园查询 |
 

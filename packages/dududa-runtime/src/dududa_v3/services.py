@@ -6,11 +6,12 @@ import importlib.util
 import json
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener, urlopen
+from zoneinfo import ZoneInfo
 
 from .config import Settings
 from .store import Store
@@ -31,8 +32,12 @@ def tool_definitions() -> list[dict[str, Any]]:
         ("context_recent", "读取当前会话最近的聊天消息，不读取其他会话。", {
             "limit": {"type": "integer", "minimum": 1, "maximum": 30, "default": 12},
         }, []),
-        ("conversation_history", "从 QQ 网关分页读取当前会话的历史。总结群聊、回顾更早讨论或用户指定条数时使用；最多1000条，返回实际数量与覆盖范围。", {
-            "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100},
+        ("conversation_history", "按时间从 QQ 网关分页读取当前会话。默认最近3小时，最多1000条；今日用period=today，近5h用hours=5。返回实际数量、时间窗口与是否达到上限。", {
+            "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 1000},
+            "hours": {"type": "number", "exclusiveMinimum": 0, "maximum": 168,
+                      "description": "最近多少小时，未指定默认3小时；period=today时省略"},
+            "period": {"type": "string", "enum": ["recent", "today"], "default": "recent",
+                       "description": "today从北京时间今日零点开始，recent按hours读取"},
         }, []),
         ("services_list", "列出本地服务及当前会话允许调用的公开校园能力和参数结构。", {}, []),
         ("campus_query", "调用显式启用的公开只读校园能力；先用 services_list 查看能力与参数。", {
@@ -113,9 +118,18 @@ class ServiceHub:
             raise ServiceError("limit 必须为 1–30 的整数")
         return {"items": self.store.recent(self.session_id, limit)}
 
-    def conversation_history(self, limit: int = 100) -> dict[str, Any]:
+    def conversation_history(self, limit: int = 1000, hours: float | None = None, period: str = "recent") -> dict[str, Any]:
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise ServiceError("limit 必须为 1–1000 的整数")
+        if period not in ("recent", "today"):
+            raise ServiceError("period 必须为 recent 或 today")
+        if hours is not None and (type(hours) not in (int, float) or not 0 < hours <= 168):
+            raise ServiceError("hours 必须大于0且不超过168")
+        if period == "today" and hours is not None:
+            raise ServiceError("今日窗口请使用 period=today 并省略 hours")
+        local_zone = ZoneInfo("Asia/Shanghai")
+        until = datetime.now(local_zone)
+        since = until.replace(hour=0, minute=0, second=0, microsecond=0) if period == "today" else until - timedelta(hours=hours or 3)
         base = self.settings.qq_gateway_url
         if not base:
             raise ServiceError("当前运行环境未连接 QQ 历史网关")
@@ -131,6 +145,7 @@ class ServiceHub:
         cursor = None
         has_more = False
         truncated = False
+        reached_start = False
         characters = 0
         deadline = time.monotonic() + 60
         for _ in range(20):
@@ -156,25 +171,37 @@ class ServiceHub:
                 message_id = str(message.get("messageId") or message.get("id") or "")
                 if not message_id or message_id in items:
                     continue
+                timestamp_ms = message.get("timestampMs")
+                try:
+                    if isinstance(timestamp_ms, (int, float)) and timestamp_ms > 0:
+                        instant = datetime.fromtimestamp(timestamp_ms / 1000, timezone.utc)
+                    else:
+                        instant = datetime.fromisoformat(str(message.get("timestamp", "")).replace('Z', '+00:00'))
+                        if instant.tzinfo is None:
+                            raise ValueError("missing time zone")
+                except (ValueError, OverflowError, OSError):
+                    raise ServiceError("历史记录缺少可验证的完整时间，无法按时间范围总结") from None
+                if instant > until:
+                    continue
+                if instant < since:
+                    reached_start = True
+                    break
                 content = "[已撤回]" if message.get("status") == "recalled" else str(message.get("content", ""))
                 clipped = content[:2000]
                 truncated = truncated or content != clipped
                 if characters + len(clipped) > 250000:
                     truncated = True
                     break
-                timestamp = message.get("timestamp")
-                timestamp_ms = message.get("timestampMs")
-                if isinstance(timestamp_ms, (int, float)) and timestamp_ms > 0:
-                    timestamp = datetime.fromtimestamp(timestamp_ms / 1000, timezone.utc).isoformat()
+                timestamp = instant.astimezone(local_zone).isoformat()
                 items[message_id] = {"id": message_id, "senderId": message.get("senderId", ""),
                                      "senderName": message.get("senderName", ""), "content": clipped,
                                      "timestamp": timestamp}
                 characters += len(clipped)
                 if len(items) >= limit:
                     break
-            has_more = page.get("hasMoreBefore") is True
+            has_more = page.get("hasMoreBefore") is True and not reached_start
             next_cursor = page.get("beforeCursor")
-            if (len(items) >= limit or characters >= 248000 or not has_more or not next_cursor
+            if (reached_start or len(items) >= limit or characters >= 248000 or not has_more or not next_cursor
                     or next_cursor == cursor or len(items) == previous_count):
                 break
             cursor = next_cursor
@@ -183,6 +210,9 @@ class ServiceHub:
         truncated = truncated or (len(messages) < limit and has_more)
         metadata = {"source": "onebot_history", "requested": limit, "returned": len(messages),
                     "characters": characters, "has_more": has_more, "truncated": truncated,
+                    "period": period, "hours": (hours or 3) if period == "recent" else None,
+                    "timezone": "Asia/Shanghai", "window_start": since.isoformat(), "window_end": until.isoformat(),
+                    "limit_reached": len(messages) >= limit and has_more,
                     "oldest_at": messages[0]["timestamp"] if messages else None,
                     "newest_at": messages[-1]["timestamp"] if messages else None}
         run = self.store.get(self.run_id)

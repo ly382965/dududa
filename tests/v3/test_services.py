@@ -6,9 +6,12 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from dududa_v3.config import Settings
@@ -165,6 +168,7 @@ class ServiceTests(unittest.TestCase):
     def test_qq_history_pages_to_1000_and_rejects_other_scopes(self):
         paths = []
         crossed = []
+        base_time = int((time.time() - 1800) * 1000)
         session = self.store.session(json.dumps(['qq-123', 'qq-123:group:456', 'qq']))
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -175,7 +179,7 @@ class ServiceTests(unittest.TestCase):
                 messages = [{'accountId': 'other' if crossed else 'qq-123', 'conversationId': 'qq-123:group:456',
                              'messageId': str(i), 'senderId': '789', 'senderName': '测试用户',
                              'content': f'历史消息{i}', 'timestamp': '00:01' if i > 500 else '23:59',
-                             'timestampMs': 1792108700000 + i * 1000}
+                             'timestampMs': base_time + i * 1000}
                             for i in range(first, end)]
                 if first == 1:
                     messages[0].update(status='recalled', content='不能泄漏的撤回内容')
@@ -206,6 +210,49 @@ class ServiceTests(unittest.TestCase):
         crossed.append(True)
         with self.assertRaisesRegex(ServiceError, '范围不一致'):
             hub.call('conversation_history', {'limit': 1})
+
+    def test_history_defaults_to_three_hours_and_supports_today_and_five_hours(self):
+        fixed = datetime(2026, 10, 16, 7, 0, tzinfo=timezone.utc)  # 15:00 Beijing
+        times = ['2026-10-15T23:30:00+08:00', '2026-10-16T00:30:00+08:00',
+                 '2026-10-16T10:30:00+08:00', '2026-10-16T12:30:00+08:00', '2026-10-16T14:30:00+08:00']
+        messages = [{'accountId': 'qq-123', 'conversationId': 'qq-123:group:456', 'messageId': str(i),
+                     'content': f'消息{i}', 'timestampMs': datetime.fromisoformat(at).timestamp() * 1000}
+                    for i, at in enumerate(times)]
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed.astimezone(tz)
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                count = int(parse_qs(urlsplit(self.path).query)['limit'][0])
+                self.send_response(200); self.end_headers()
+                self.wfile.write(json.dumps({'messages': messages[-count:], 'beforeCursor': 'older',
+                                            'hasMoreBefore': len(messages) > count}).encode())
+            def log_message(self, *_args):
+                pass
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close); self.addCleanup(server.shutdown)
+        self.settings.qq_gateway_url = f'http://127.0.0.1:{server.server_port}'
+        session = self.store.session(json.dumps(['qq-123', 'qq-123:group:456', 'qq']))
+        hub = ServiceHub(self.settings, self.store, session['id'], self.run['run_id'])
+        with patch('dududa_v3.services.datetime', Clock):
+            recent = hub.call('conversation_history', {})
+            self.assertEqual(recent['returned'], 2)
+            self.assertEqual(recent['hours'], 3)
+            self.assertEqual(recent['window_start'], '2026-10-16T12:00:00+08:00')
+            self.assertFalse(recent['limit_reached'])
+            five = hub.call('conversation_history', {'hours': 5})
+            self.assertEqual(five['returned'], 3)
+            self.assertEqual(five['window_start'], '2026-10-16T10:00:00+08:00')
+            today = hub.call('conversation_history', {'period': 'today'})
+            self.assertEqual(today['returned'], 4)
+            self.assertEqual(today['window_start'], '2026-10-16T00:00:00+08:00')
+            capped = hub.call('conversation_history', {'period': 'today', 'limit': 2})
+            self.assertEqual(capped['returned'], 2)
+            self.assertTrue(capped['limit_reached'])
+            for invalid in ({'hours': 0}, {'hours': True}, {'hours': 200}, {'period': 'today', 'hours': 5}):
+                with self.assertRaises(ServiceError): hub.call('conversation_history', invalid)
 
 
 if __name__ == '__main__':
