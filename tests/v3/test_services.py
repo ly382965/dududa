@@ -257,6 +257,7 @@ class ServiceTests(unittest.TestCase):
                 ('总结群聊', 'recent', 3, 2), ('总结今日消息', 'today', None, 4),
                 ('总结近5h消息', 'recent', 5, 3), ('请总结近5小时消息', 'recent', 5, 3),
                 ('近5h消息', 'recent', 5, 3),
+                ('请把今日群聊消息总结一下', 'today', None, 4),
             ):
                 run, _ = self.store.create_run(session['id'], {'message_id': prompt, 'text': prompt})
                 bound = ServiceHub(self.settings, self.store, session['id'], run['run_id'])

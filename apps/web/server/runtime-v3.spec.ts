@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HttpRuntimeV3Client, RuntimeV3QqBridge, runtimeV3Scopes, type RuntimeV3Run } from './runtime-v3'
 import { createAgentGateway, FileInternalTestGateway } from './internal-test'
 import type { ChatMessage, WorkspaceEvent } from '../src/types/workspace'
+import { summaryForwardParts } from './summary-delivery'
 
 const servers: Server[] = []
 afterEach(async () => {
@@ -158,6 +159,7 @@ function messageEvent(): Extract<WorkspaceEvent, { type: 'message.created' }> {
 function bridgeFixture(scopes = runtimeV3Scopes(`${scope.accountId}/${scope.conversationId}`)) {
   const hub = Object.assign(new EventEmitter(), {
     sendSegments: vi.fn(async () => ({ ...messageEvent().message, messageId: 'sent-1', mine: true }) as ChatMessage),
+    sendMergedForward: vi.fn(async () => ({ messageId: 'forward-1' })),
   })
   const claims = new Set<string>()
   const runtime = {
@@ -172,6 +174,37 @@ function bridgeFixture(scopes = runtimeV3Scopes(`${scope.accountId}/${scope.conv
 }
 
 describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
+  it('sends a long summary once as merged forward, preserving all text and Unicode', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    const text = '14:20 小明在东区提出方案。😀\n\n'.repeat(150)
+    runtime.run.mockResolvedValue({ ...completed, route: 'agent', response_kind: 'conversation_summary', text })
+    await Promise.all([bridge.handle(messageEvent()), bridge.handle(messageEvent())])
+    expect(hub.sendSegments).not.toHaveBeenCalled()
+    expect(hub.sendMergedForward).toHaveBeenCalledTimes(1)
+    const args = hub.sendMergedForward.mock.calls[0] as unknown as [string, string, string, string[]]
+    expect(args.slice(0, 3)).toEqual(['qq-100001', 'group', '200001'])
+    expect(args[3].join('')).toBe(text)
+    expect(args[3].every(part => Array.from(part).length <= 1200)).toBe(true)
+    expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'sent', 'forward-1')
+    bridge.close()
+  })
+
+  it('keeps a short summary as text and never retries an uncertain forward', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    runtime.run.mockResolvedValue({ ...completed, response_kind: 'conversation_summary', text: '短总结' })
+    await bridge.handle(messageEvent())
+    expect(hub.sendSegments).toHaveBeenCalledTimes(1)
+    runtime.run.mockResolvedValue({ ...completed, run_id: 'long-run', response_kind: 'conversation_summary', text: '长'.repeat(1201) })
+    hub.sendMergedForward.mockRejectedValue(new Error('forward timeout'))
+    await expect(bridge.handle(messageEvent())).rejects.toThrow('forward timeout')
+    await bridge.handle(messageEvent())
+    expect(hub.sendMergedForward).toHaveBeenCalledTimes(1)
+    expect(hub.sendSegments).toHaveBeenCalledTimes(1)
+    expect(runtime.delivery).toHaveBeenCalledWith('long-run', 'unknown')
+    expect(summaryForwardParts('😀'.repeat(2401)).join('')).toBe('😀'.repeat(2401))
+    bridge.close()
+  })
+
   it('ignores self messages and scopes not explicitly enabled', async () => {
     const { bridge, runtime } = bridgeFixture()
     const own = messageEvent()

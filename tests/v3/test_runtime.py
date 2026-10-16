@@ -39,8 +39,8 @@ class CodexProtocolDouble:
             closed = False
             cancelled = False
 
-            async def run(self, text, thread_id=None, instructions='', on_event=None):
-                owner.calls.append({'text': text, 'thread_id': thread_id, 'config': config})
+            async def run(self, text, thread_id=None, instructions='', on_event=None, skills=()):
+                owner.calls.append({'text': text, 'thread_id': thread_id, 'config': config, 'skills': skills})
                 if owner.fail:
                     raise RuntimeError('resume unavailable')
                 result_thread = thread_id or f'thread-{len(owner.calls)}'
@@ -113,6 +113,17 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result['model'], 'rules')
             self.assertTrue(result['text'])
         self.assertEqual(self.protocol.instances, [])
+
+    async def test_summary_skill_is_injected_only_for_summary_turns(self):
+        for prompt in ('总结群聊', '总结今日消息', '近5h消息', '帮我总结一下', '请把群聊消息总结一下'):
+            result = await self.execute(prompt)
+            self.assertEqual(result['status'], 'completed')
+            self.assertEqual(result['response_kind'], 'conversation_summary')
+            self.assertEqual(result['skills'], ['summarize-chat'])
+            self.assertEqual(self.protocol.calls[-1]['skills'], (ROOT / 'skills/summarize-chat/SKILL.md',))
+        result = await self.execute('你好')
+        self.assertEqual(result['response_kind'], 'chat')
+        self.assertEqual(self.protocol.calls[-1]['skills'], ())
 
     async def test_memory_delete_requires_scope_and_owner(self):
         await self.execute('/remember 茶偏好')

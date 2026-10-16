@@ -173,6 +173,7 @@ class CodexClient:
         thread_id: str | None = None,
         instructions: str = "",
         on_event: EventCallback | None = None,
+        skills: tuple[Path, ...] = (),
     ) -> CodexResult:
         if self._running:
             raise CodexError("This Codex client already has an active run")
@@ -184,7 +185,7 @@ class CodexClient:
         try:
             await self.start()
             return await asyncio.wait_for(
-                self._run(text, thread_id, instructions, on_event, state),
+                self._run(text, thread_id, instructions, on_event, state, skills),
                 self.timeout,
             )
         except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
@@ -214,7 +215,14 @@ class CodexClient:
         instructions: str,
         on_event: EventCallback | None,
         state: dict[str, str],
+        skills: tuple[Path, ...],
     ) -> CodexResult:
+        if skills:
+            # Explicit skill inputs resolve against discovery roots even when
+            # the file is outside the conversation's isolated working directory.
+            await self.request("skills/extraRoots/set", {
+                "extraRoots": sorted({str(path.resolve().parent.parent) for path in skills}),
+            })
         params: dict[str, Any] = {
             "cwd": str(self.cwd),
             "approvalPolicy": "never",
@@ -240,7 +248,9 @@ class CodexClient:
             "turn/start",
             {
                 "threadId": current_thread,
-                "input": [{"type": "text", "text": text, "text_elements": []}],
+                "input": [{"type": "text", "text": text, "text_elements": []},
+                          *[{"type": "skill", "name": path.parent.name, "path": str(path.resolve())}
+                            for path in skills]],
                 "approvalPolicy": "never",
                 "sandboxPolicy": {"type": "readOnly", "networkAccess": False},
                 **({"model": self.model} if self.model else {}),

@@ -10,6 +10,7 @@ import {
 import type { OneBotHub } from './onebot-hub'
 import type { WorkspaceEvent } from '../src/types/workspace'
 import type { PreviewHistory } from '../src/types/preview'
+import { SUMMARY_FORWARD_THRESHOLD, summaryForwardParts } from './summary-delivery'
 
 export interface RuntimeV3Request {
   account_id: string
@@ -41,6 +42,8 @@ export interface RuntimeV3Run {
   context_messages?: number
   context_characters?: number
   context_truncated?: boolean
+  response_kind?: 'conversation_summary' | 'chat'
+  skills?: string[]
 }
 
 const terminal = new Set(['completed', 'failed', 'cancelled', 'ignored'])
@@ -209,6 +212,7 @@ interface RuntimeV3QqHub {
   on(event: 'workspace-event', listener: (event: WorkspaceEvent) => void): unknown
   off(event: 'workspace-event', listener: (event: WorkspaceEvent) => void): unknown
   sendSegments: OneBotHub['sendSegments']
+  sendMergedForward: OneBotHub['sendMergedForward']
 }
 
 /** Delivery is opt-in per exact account/conversation and claimed durably by the host. */
@@ -252,9 +256,14 @@ export class RuntimeV3QqBridge {
     if (this.closed || run.status !== 'completed' || !run.text.trim()) return
     if (!await this.runtime.delivery(run.run_id, 'sending')) return
     try {
-      const sent = await this.hub.sendSegments(message.accountId, conversation.type, conversation.peerId, [
-        { type: 'text', text: run.text },
-      ])
+      const longSummary = run.response_kind === 'conversation_summary'
+        && Array.from(run.text).length > SUMMARY_FORWARD_THRESHOLD
+      const sent = longSummary
+        ? await this.hub.sendMergedForward(message.accountId, conversation.type, conversation.peerId,
+          summaryForwardParts(run.text))
+        : await this.hub.sendSegments(message.accountId, conversation.type, conversation.peerId, [
+          { type: 'text', text: run.text },
+        ])
       await this.runtime.delivery(run.run_id, 'sent', sent.messageId)
     } catch (error) {
       // An interrupted OneBot request may already have sent. Never retry it automatically.

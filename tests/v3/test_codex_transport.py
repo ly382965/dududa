@@ -88,6 +88,8 @@ for line in sys.stdin:
             completed()
     elif method == 'turn/interrupt':
         send({'id': request_id, 'result': {}})
+    elif method == 'skills/extraRoots/set':
+        send({'id': request_id, 'result': {}})
     elif request_id == 'approval-1':
         completed()
 '''
@@ -183,6 +185,15 @@ class CodexTransportTests(unittest.IsolatedAsyncioTestCase):
         request = next(message for message in self.messages() if message.get('method') == 'thread/resume')
         self.assertEqual(request['params']['sandbox'], 'read-only')
         self.assertEqual(request['params']['approvalPolicy'], 'never')
+
+    async def test_skill_uses_native_input_with_absolute_path(self):
+        path = Path('/tmp/dududa-skills/summarize-chat/SKILL.md')
+        await self.client().run('$summarize-chat 总结群聊', skills=(path,))
+        turn = next(message for message in self.messages() if message.get('method') == 'turn/start')
+        self.assertEqual(turn['params']['input'][1],
+                         {'type': 'skill', 'name': 'summarize-chat', 'path': str(path)})
+        roots = next(message for message in self.messages() if message.get('method') == 'skills/extraRoots/set')
+        self.assertEqual(roots['params'], {'extraRoots': ['/tmp/dududa-skills']})
 
     async def test_missing_thread_does_not_fall_back_to_new_thread(self):
         with self.assertRaisesRegex(CodexError, 'thread not found'):

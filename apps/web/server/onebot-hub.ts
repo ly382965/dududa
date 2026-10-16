@@ -1440,6 +1440,35 @@ export class OneBotHub extends EventEmitter {
     return message
   }
 
+  /** Compose a summary under the bot's own identity, never impersonating participants. */
+  async sendMergedForward(
+    account: string, type: 'group' | 'private', peerId: string, parts: string[],
+  ): Promise<{ messageId: string }> {
+    const state = this.requireConversation(account, type, peerId)
+    this.requireCapability(state, 'message.send.text')
+    if (!parts.length || parts.some(part => !part.trim())) throw new Error('合并转发内容不能为空')
+    const result = await state.connection.request<{ message_id: number | string }>(
+      type === 'group' ? 'send_group_forward_msg' : 'send_private_forward_msg',
+      {
+        [type === 'group' ? 'group_id' : 'user_id']: peerId,
+        messages: parts.map((text, index) => ({
+          type: 'node',
+          data: {
+            user_id: state.selfId,
+            nickname: state.account.name,
+            content: [{ type: 'text', data: { text: `群聊总结 · ${index + 1}/${parts.length}\n\n${text}` } }],
+          },
+        })),
+        source: '群聊总结',
+        summary: `共 ${parts.length} 段 · 嘟嘟哒整理`,
+        prompt: '[群聊总结]',
+      },
+      120_000,
+    )
+    if (result?.message_id === undefined || result.message_id === null) throw new Error('合并转发未返回消息标识')
+    return { messageId: String(result.message_id) }
+  }
+
   async markRead(account: string, type: 'group' | 'private', peerId: string): Promise<void> {
     const state = this.requireConversation(account, type, peerId)
     this.requireCapability(state, 'message.read')

@@ -463,6 +463,10 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
           )
         }
         break
+      case 'send_group_forward_msg':
+      case 'send_private_forward_msg':
+        data = { message_id: 103, forward_id: 'summary-forward' }
+        break
       case 'upload_group_file':
       case 'upload_private_file':
         data = { file_id: 'uploaded-file-1' }
@@ -585,6 +589,26 @@ afterEach(async () => {
 })
 
 describe('Dududa NapCat gateway', () => {
+  it('builds merged summaries using the bot identity and exact target for group and private chats', async () => {
+    const { hub, server, port } = await startTestServer()
+    servers.push(server)
+    const bot = connectFakeNapCat(port)
+    await bot.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const parts = ['14:20 小明提出方案。', '14:30 小红确认东区见面。']
+    for (const [type, peerId] of [['group', '345678901'], ['private', '456789012']] as const) {
+      await expect(hub.sendMergedForward(`qq-${selfId}`, type, peerId, parts)).resolves.toEqual({ messageId: '103' })
+      const action = bot.actions.find(item => item.action === `send_${type}_forward_msg`)!
+      expect(action.params[type === 'group' ? 'group_id' : 'user_id']).toBe(peerId)
+      expect(action.params.messages).toEqual(parts.map((text, index) => ({ type: 'node', data: {
+        user_id: selfId, nickname: expect.any(String),
+        content: [{ type: 'text', data: { text: `群聊总结 · ${index + 1}/2\n\n${text}` } }],
+      } })))
+    }
+    await expect(hub.sendMergedForward(`qq-${selfId}`, 'group', '999999999', parts)).rejects.toThrow()
+    expect(bot.actions.filter(item => item.action.endsWith('_forward_msg'))).toHaveLength(2)
+  })
+
   it('automatically forwards group recalls only after exact super-admin commands through OneBot', async () => {
     const forwarder = new RecallForwarder(':memory:')
     const { hub, server, port } = await startTestServer({ recallForwarder: forwarder })

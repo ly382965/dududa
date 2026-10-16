@@ -21,11 +21,19 @@ class ServiceError(ValueError):
     pass
 
 
+def is_summary_request(text: str) -> bool:
+    """Identify chat-summary requests independently of supported time windows."""
+    return bool(
+        re.search(r"(?:总结|汇总|回顾).*(?:消息|群聊|聊天|记录)", text)
+        or re.search(r"(?:消息|群聊|聊天记录).*(?:总结|汇总|回顾)", text)
+        or re.fullmatch(r"\s*(?:请(?:你)?|请帮我|帮我|帮忙|麻烦(?:你)?)?\s*(?:总结|汇总|回顾)(?:一下)?[。！!]?\s*", text)
+        or (re.match(r"^\s*(?:今日|今天|(?:最近|近|过去)\s*\d)", text) and re.search(r"消息|群聊|聊天", text))
+    )
+
+
 def summary_window(text: str) -> tuple[str, float | None] | None:
     """Resolve the supported summary expressions before model-selected tool arguments."""
-    summary = re.match(r"^\s*(?:请(?:你)?|请帮我|帮我|帮忙|麻烦(?:你)?)?\s*(?:总结|汇总|回顾)", text)
-    short_request = re.match(r"^\s*(?:今日|今天|(?:最近|近|过去)\s*\d)", text) and re.search(r"消息|群聊|聊天", text)
-    if not summary and not short_request:
+    if not is_summary_request(text):
         return None
     if re.search(r"今日|今天", text):
         return "today", None
