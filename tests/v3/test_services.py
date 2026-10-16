@@ -185,7 +185,7 @@ class ServiceTests(unittest.TestCase):
                     messages[0].update(status='recalled', content='不能泄漏的撤回内容')
                 self.send_response(200); self.end_headers()
                 self.wfile.write(json.dumps({'messages': messages, 'beforeCursor': str(first),
-                                            'hasMoreBefore': first > 1}).encode())
+                                            'hasMoreBefore': False}).encode())  # Simulate a false-negative boundary probe.
             def log_message(self, *_args):
                 pass
         server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
@@ -256,6 +256,7 @@ class ServiceTests(unittest.TestCase):
             for prompt, expected_period, expected_hours, count in (
                 ('总结群聊', 'recent', 3, 2), ('总结今日消息', 'today', None, 4),
                 ('总结近5h消息', 'recent', 5, 3), ('请总结近5小时消息', 'recent', 5, 3),
+                ('近5h消息', 'recent', 5, 3),
             ):
                 run, _ = self.store.create_run(session['id'], {'message_id': prompt, 'text': prompt})
                 bound = ServiceHub(self.settings, self.store, session['id'], run['run_id'])

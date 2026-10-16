@@ -243,6 +243,8 @@ class Runtime:
             "除非用户明确要求更少条数，limit保持1000上限；实际覆盖范围、达到上限或内容截断都要如实说明。" \
             "宿主会按当前提示中的今日、近Nh等表达固定窗口；以工具返回的window_start/window_end为准。" \
             "总结只能使用本次时间窗口内返回的消息，不混入此前轮次或默认近期窗口中范围外的内容。" \
+            "如果通过 exec 调用 conversation_history，必须在该次 exec 代码的首行写 " \
+            "// @exec: {\"max_output_tokens\": 300000} ，再调用并输出工具结果，避免默认输出预算截断群聊历史。" \
             "明确说明实际读取数量和覆盖范围，不把默认近期窗口当作全部群聊，不凭空声称已读取1000条。" \
             "工具调用结束后给出一次最终回答，不输出内部思考或检索过程。"
 
@@ -278,7 +280,7 @@ class Runtime:
         overrides = [f'features.{name}=false' for name in
                      ("shell_tool", "code_mode", "apps", "plugins", "hooks", "multi_agent",
                       "browser_use", "computer_use", "view_image")]
-        overrides += ['web_search="disabled"']
+        overrides += ['web_search="disabled"', 'tool_output_token_limit=300000']
         for name in config.get("mcp_servers", {}):
             if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
                 raise ValueError("Unsupported local MCP server name; use letters, numbers, underscores or hyphens")

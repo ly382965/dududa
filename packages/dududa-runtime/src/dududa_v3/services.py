@@ -23,7 +23,9 @@ class ServiceError(ValueError):
 
 def summary_window(text: str) -> tuple[str, float | None] | None:
     """Resolve the supported summary expressions before model-selected tool arguments."""
-    if not re.match(r"^\s*(?:请(?:你)?|请帮我|帮我|帮忙|麻烦(?:你)?)?\s*(?:总结|汇总|回顾)", text):
+    summary = re.match(r"^\s*(?:请(?:你)?|请帮我|帮我|帮忙|麻烦(?:你)?)?\s*(?:总结|汇总|回顾)", text)
+    short_request = re.match(r"^\s*(?:今日|今天|(?:最近|近|过去)\s*\d)", text) and re.search(r"消息|群聊|聊天", text)
+    if not summary and not short_request:
         return None
     if re.search(r"今日|今天", text):
         return "today", None
@@ -36,7 +38,7 @@ def summary_window(text: str) -> tuple[str, float | None] | None:
         elif unit in ("天", "day", "days", "d"):
             hours *= 24
         return "recent", hours
-    if re.search(r"最近|过去|昨天|昨日|前天|本周|本月", text):
+    if re.search(r"最近|近|过去|昨天|昨日|前天|本周|本月", text):
         return None
     return "recent", 3
 
@@ -226,7 +228,8 @@ class ServiceHub:
                     break
             has_more = page.get("hasMoreBefore") is True and not reached_start
             next_cursor = page.get("beforeCursor")
-            if (reached_start or len(items) >= limit or characters >= 248000 or not has_more or not next_cursor
+            # OneBot adjacent-page probes can under-report hasMoreBefore; stop on cursor/data progress instead.
+            if (reached_start or len(items) >= limit or characters >= 248000 or not next_cursor
                     or next_cursor == cursor or len(items) == previous_count):
                 break
             cursor = next_cursor
@@ -238,7 +241,7 @@ class ServiceHub:
                     "period": period, "hours": (hours or 3) if period == "recent" else None,
                     "window_source": "user_prompt_rule" if requested_window else "tool_arguments",
                     "timezone": "Asia/Shanghai", "window_start": since.isoformat(), "window_end": until.isoformat(),
-                    "limit_reached": len(messages) >= limit and has_more,
+                    "limit_reached": len(messages) >= limit,
                     "oldest_at": messages[0]["timestamp"] if messages else None,
                     "newest_at": messages[-1]["timestamp"] if messages else None}
         run = self.store.get(self.run_id)

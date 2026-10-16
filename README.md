@@ -95,6 +95,8 @@ Host 在 Agent 路径之前匹配明确命令。规则处理器负责解析参�
 | `services_list` | 列出本地工具和允许调用的公开校园能力及参数 |
 | `campus_query` | 通过 MCP Console 调用白名单内的公开校园查询 |
 
+群聊中可以直接说「总结群聊」（默认最近 3 小时）、「总结今日消息」（北京时间零点起）或「总结近 5h 消息」。时间窗口由宿主规则确定，1000 条只是上限；达到上限或内容截断时会明确说明。历史查询使用独立的工具输出预算，避免取回数百条后又被 Codex 的默认输出限制裁短。
+
 校园查询需要同时配置 `mcp_console_url` 和 `campus_capabilities`；Host 还会核对能力目录中的 `privacy=public`、当前会话类型和可用状态。默认不连接 Console、不启用外部校园能力。本地校车、上下文和记忆查询可以先独立运行。模型不能通过工具参数修改账号、用户或会话身份。
 
 仓库还保留 [图书馆](services/mcp/library/README.md)、[校园活动](services/mcp/campus-events/README.md)、[学院通知](services/mcp/college-notice/README.md)和[附近推荐](services/mcp/local-recs/README.md)等服务，后续可按相同方式接入。
