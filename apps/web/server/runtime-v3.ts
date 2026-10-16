@@ -56,6 +56,7 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly timeoutMs = 180_000,
     private readonly pollMs = 250,
+    private readonly qqScopeCount = runtimeV3Scopes(process.env.DUDUDA_V3_QQ_SCOPES).size,
   ) {
     const parsed = new URL(baseUrl)
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Dududa 3.0 Runtime URL 协议无效')
@@ -74,6 +75,8 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
         version: health.version,
         model: health.model,
         reasoning_effort: health.reasoning_effort,
+        qq_scope_count: Math.min(this.qqScopeCount, Number(health.allowed_scope_count) || 0),
+        proactive_scope_count: this.qqScopeCount > 0 ? Number(health.proactive_scope_count) || 0 : 0,
       },
       checkedAt: new Date().toISOString(),
     }

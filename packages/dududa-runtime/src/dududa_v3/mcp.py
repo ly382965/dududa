@@ -79,13 +79,15 @@ def main() -> None:
     parser.add_argument("--session-id", type=int, required=True)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--console-url")
+    parser.add_argument("--gateway-url")
     parser.add_argument("--capabilities-json", default="[]")
     args = parser.parse_args()
     capabilities = json.loads(args.capabilities_json)
     if not isinstance(capabilities, list) or not all(isinstance(item, str) for item in capabilities):
         parser.error("--capabilities-json must be a JSON array of strings")
     settings = Settings(root=args.root, state_dir=args.database.parent,
-                        mcp_console_url=args.console_url, campus_capabilities=tuple(capabilities))
+                        mcp_console_url=args.console_url, qq_gateway_url=args.gateway_url,
+                        campus_capabilities=tuple(capabilities))
     hub = ServiceHub(settings, Store(args.database), args.session_id, args.run_id)
     MCPServer(hub).serve()
 

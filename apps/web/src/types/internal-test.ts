@@ -272,7 +272,7 @@ export interface InternalTestAgentStatus {
     passiveAutoReply: {
       actualEnabled: boolean
       state: 'enabled' | 'disabled'
-      rolloutMode: 'off' | 'shadow' | 'canary'
+      rolloutMode: 'off' | 'shadow' | 'canary' | 'codex'
       deliveryEnabled: boolean
       killSwitch: boolean
       summary: string
@@ -280,7 +280,7 @@ export interface InternalTestAgentStatus {
     proactiveGroupParticipation: {
       actualEnabled: boolean
       state: 'enabled' | 'disabled'
-      stage: 'proactive_canary' | 'probe_shadow'
+      stage: 'proactive_canary' | 'probe_shadow' | 'runtime_v3'
       deliveryEnabled: boolean
       summary: string
     }

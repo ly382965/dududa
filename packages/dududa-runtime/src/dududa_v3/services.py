@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
+import time
+from datetime import datetime, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.parse import quote, urlencode, urlsplit
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 from .config import Settings
 from .store import Store
@@ -28,6 +31,9 @@ def tool_definitions() -> list[dict[str, Any]]:
         ("context_recent", "读取当前会话最近的聊天消息，不读取其他会话。", {
             "limit": {"type": "integer", "minimum": 1, "maximum": 30, "default": 12},
         }, []),
+        ("conversation_history", "从 QQ 网关分页读取当前会话的历史。总结群聊、回顾更早讨论或用户指定条数时使用；最多1000条，返回实际数量与覆盖范围。", {
+            "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100},
+        }, []),
         ("services_list", "列出本地服务及当前会话允许调用的公开校园能力和参数结构。", {}, []),
         ("campus_query", "调用显式启用的公开只读校园能力；先用 services_list 查看能力与参数。", {
             "capability_id": {"type": "string", "minLength": 1},
@@ -42,7 +48,7 @@ def tool_definitions() -> list[dict[str, Any]]:
                             "required": required, "additionalProperties": False},
             "annotations": {"readOnlyHint": True, "destructiveHint": False,
                             "idempotentHint": True,
-                            "openWorldHint": name in {"campus_query", "services_list"}},
+                            "openWorldHint": name in {"campus_query", "services_list", "conversation_history"}},
         }
         for name, description, properties, required in definitions
     ]
@@ -57,12 +63,15 @@ class ServiceHub:
         if row is None:
             raise ServiceError("会话不存在")
         # Identity comes exclusively from the Host's session, never tool args.
+        scope = []
         try:
             scope = json.loads(row["scope"])
             conversation = scope[1] if isinstance(scope, list) and len(scope) > 1 else ""
         except (ValueError, TypeError):
             conversation = ""
         self.context = "private" if ":private:" in conversation else "group"
+        self.account_id = scope[0] if isinstance(scope, list) and len(scope) > 1 else ""
+        self.conversation_id = conversation
         self._shuttle = None
 
     @staticmethod
@@ -103,6 +112,82 @@ class ServiceHub:
         if type(limit) is not int or not 1 <= limit <= 30:
             raise ServiceError("limit 必须为 1–30 的整数")
         return {"items": self.store.recent(self.session_id, limit)}
+
+    def conversation_history(self, limit: int = 100) -> dict[str, Any]:
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ServiceError("limit 必须为 1–1000 的整数")
+        base = self.settings.qq_gateway_url
+        if not base:
+            raise ServiceError("当前运行环境未连接 QQ 历史网关")
+        parsed = urlsplit(base)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
+            raise ServiceError("历史网关必须是不含凭据的 HTTP(S) 地址")
+        scope = re.fullmatch(re.escape(self.account_id) + r":(group|private):(\d+)", self.conversation_id)
+        if not scope:
+            raise ServiceError("当前会话没有有效的 QQ 历史范围")
+        path = f"/api/accounts/{quote(self.account_id, safe='')}/conversations/{scope[1]}/{scope[2]}/messages"
+        opener = build_opener(ProxyHandler({}))
+        items: dict[str, dict] = {}
+        cursor = None
+        has_more = False
+        truncated = False
+        characters = 0
+        deadline = time.monotonic() + 60
+        for _ in range(20):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                truncated = True
+                break
+            query = {"limit": min(100, limit - len(items))}
+            if cursor:
+                query["before"] = cursor
+            try:
+                with opener.open(base.rstrip('/') + path + '?' + urlencode(query), timeout=min(15, remaining)) as response:
+                    page = json.load(response)
+            except (URLError, OSError, ValueError):
+                raise ServiceError("QQ 历史读取失败；请检查当前账号连接和网关") from None
+            if not isinstance(page, dict) or not isinstance(page.get("messages"), list):
+                raise ServiceError("QQ 历史网关返回格式无效")
+            previous_count = len(items)
+            # Pages are chronological; keep the newest portion first if a content budget is reached.
+            for message in reversed(page["messages"]):
+                if message.get("accountId") != self.account_id or message.get("conversationId") != self.conversation_id:
+                    raise ServiceError("QQ 历史范围不一致")
+                message_id = str(message.get("messageId") or message.get("id") or "")
+                if not message_id or message_id in items:
+                    continue
+                content = "[已撤回]" if message.get("status") == "recalled" else str(message.get("content", ""))
+                clipped = content[:2000]
+                truncated = truncated or content != clipped
+                if characters + len(clipped) > 250000:
+                    truncated = True
+                    break
+                timestamp = message.get("timestamp")
+                timestamp_ms = message.get("timestampMs")
+                if isinstance(timestamp_ms, (int, float)) and timestamp_ms > 0:
+                    timestamp = datetime.fromtimestamp(timestamp_ms / 1000, timezone.utc).isoformat()
+                items[message_id] = {"id": message_id, "senderId": message.get("senderId", ""),
+                                     "senderName": message.get("senderName", ""), "content": clipped,
+                                     "timestamp": timestamp}
+                characters += len(clipped)
+                if len(items) >= limit:
+                    break
+            has_more = page.get("hasMoreBefore") is True
+            next_cursor = page.get("beforeCursor")
+            if (len(items) >= limit or characters >= 248000 or not has_more or not next_cursor
+                    or next_cursor == cursor or len(items) == previous_count):
+                break
+            cursor = next_cursor
+        # Each page was inserted newest-first; display labels such as 23:59/00:01 are not sortable dates.
+        messages = list(reversed(items.values()))
+        truncated = truncated or (len(messages) < limit and has_more)
+        metadata = {"source": "onebot_history", "requested": limit, "returned": len(messages),
+                    "characters": characters, "has_more": has_more, "truncated": truncated,
+                    "oldest_at": messages[0]["timestamp"] if messages else None,
+                    "newest_at": messages[-1]["timestamp"] if messages else None}
+        run = self.store.get(self.run_id)
+        self.store.update(self.run_id, history_queries=[*run.get("history_queries", []), metadata])
+        return {**metadata, "messages": messages}
 
     def services_list(self) -> dict[str, Any]:
         result: dict[str, Any] = {

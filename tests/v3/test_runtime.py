@@ -206,6 +206,17 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         mentioned = await self.execute('explicit request')
         self.assertEqual(mentioned['status'], 'completed')
 
+    async def test_live_agent_loads_qq_history_but_rules_do_not(self):
+        self.settings.qq_gateway_url = 'http://gateway.invalid'
+        history = {'messages': [{'id': 'older', 'content': 'gateway older history', 'senderName': '用户'}],
+                   'truncated': False}
+        with patch('dududa_v3.services.ServiceHub.conversation_history', return_value=history) as fetch:
+            await self.execute('/ping')
+            fetch.assert_not_called()
+            await self.execute('总结群聊')
+            fetch.assert_called_once_with(30)
+            self.assertIn('gateway older history', self.protocol.calls[-1]['text'])
+
     async def test_cli_check_does_not_recover_running_work_or_require_host_lock(self):
         session = self.session_for(self.request())
         running, _ = self.runtime.store.create_run(session['id'], {'message_id': 'cli-check-active'})

@@ -30,6 +30,7 @@ class Settings:
     proactive_cooldown_seconds: float = 120
     proactive_policies: dict[str, dict] = field(default_factory=dict)
     mcp_console_url: str | None = None
+    qq_gateway_url: str | None = None
     campus_capabilities: tuple[str, ...] = ()
     rules: tuple[dict, ...] = ()
 

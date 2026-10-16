@@ -9,6 +9,7 @@
   "proactive_scopes": [],
   "proactive_cooldown_seconds": 120,
   "mcp_console_url": null,
+  "qq_gateway_url": null,
   "campus_capabilities": [],
   "rules": [
     {"match": "嘟嘟哒在吗", "reply": "在呀！"}
