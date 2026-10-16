@@ -21,6 +21,26 @@ class ServiceError(ValueError):
     pass
 
 
+def summary_window(text: str) -> tuple[str, float | None] | None:
+    """Resolve the supported summary expressions before model-selected tool arguments."""
+    if not re.match(r"^\s*(?:请(?:你)?|请帮我|帮我|帮忙|麻烦(?:你)?)?\s*(?:总结|汇总|回顾)", text):
+        return None
+    if re.search(r"今日|今天", text):
+        return "today", None
+    match = re.search(r"(?:最近|近|过去)\s*(\d+(?:\.\d+)?)\s*(小时|h(?:ours?)?|分钟|min|m|天|days?|d)", text, re.IGNORECASE)
+    if match:
+        hours = float(match[1])
+        unit = match[2].lower()
+        if unit in ("分钟", "min", "m"):
+            hours /= 60
+        elif unit in ("天", "day", "days", "d"):
+            hours *= 24
+        return "recent", hours
+    if re.search(r"最近|过去|昨天|昨日|前天|本周|本月", text):
+        return None
+    return "recent", 3
+
+
 def tool_definitions() -> list[dict[str, Any]]:
     definitions = [
         ("shuttle_query", "查询中国科大本地校车时刻表快照；无需网络或 LLM。", {
@@ -121,6 +141,11 @@ class ServiceHub:
     def conversation_history(self, limit: int = 1000, hours: float | None = None, period: str = "recent") -> dict[str, Any]:
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise ServiceError("limit 必须为 1–1000 的整数")
+        with self.store.connect() as db:
+            row = db.execute("SELECT request FROM runs WHERE id=?", (self.run_id,)).fetchone()
+        requested_window = summary_window(str(json.loads(row[0]).get("text", ""))) if row else None
+        if requested_window:
+            period, hours = requested_window
         if period not in ("recent", "today"):
             raise ServiceError("period 必须为 recent 或 today")
         if hours is not None and (type(hours) not in (int, float) or not 0 < hours <= 168):
@@ -211,6 +236,7 @@ class ServiceHub:
         metadata = {"source": "onebot_history", "requested": limit, "returned": len(messages),
                     "characters": characters, "has_more": has_more, "truncated": truncated,
                     "period": period, "hours": (hours or 3) if period == "recent" else None,
+                    "window_source": "user_prompt_rule" if requested_window else "tool_arguments",
                     "timezone": "Asia/Shanghai", "window_start": since.isoformat(), "window_end": until.isoformat(),
                     "limit_reached": len(messages) >= limit and has_more,
                     "oldest_at": messages[0]["timestamp"] if messages else None,

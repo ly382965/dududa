@@ -253,6 +253,16 @@ class ServiceTests(unittest.TestCase):
             self.assertTrue(capped['limit_reached'])
             for invalid in ({'hours': 0}, {'hours': True}, {'hours': 200}, {'period': 'today', 'hours': 5}):
                 with self.assertRaises(ServiceError): hub.call('conversation_history', invalid)
+            for prompt, expected_period, expected_hours, count in (
+                ('总结群聊', 'recent', 3, 2), ('总结今日消息', 'today', None, 4),
+                ('总结近5h消息', 'recent', 5, 3), ('请总结近5小时消息', 'recent', 5, 3),
+            ):
+                run, _ = self.store.create_run(session['id'], {'message_id': prompt, 'text': prompt})
+                bound = ServiceHub(self.settings, self.store, session['id'], run['run_id'])
+                actual = bound.call('conversation_history', {'hours': 3})
+                self.assertEqual((actual['period'], actual['hours'], actual['returned']),
+                                 (expected_period, expected_hours, count))
+                self.assertEqual(actual['window_source'], 'user_prompt_rule')
 
 
 if __name__ == '__main__':
