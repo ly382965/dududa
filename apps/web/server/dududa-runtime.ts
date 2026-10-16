@@ -1,4 +1,4 @@
-import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewOutcome } from '../src/types/preview'
+import type { PreviewCoverage, PreviewEvidence, PreviewHistory, PreviewOutcome, RuntimePreviewTier } from '../src/types/preview'
 
 export interface DududaRuntimePreviewRequest {
   accountId: string
@@ -10,7 +10,7 @@ export interface DududaRuntimePreviewRequest {
 export interface DududaRuntimePreviewResult extends PreviewEvidence {
   runId: string
   candidate: string
-  tier: 'haiku' | 'sonnet' | 'opus'
+  tier: RuntimePreviewTier
   model: string
   reasoning: 'low' | 'medium' | 'high'
   answerProfile: 'short' | 'medium' | 'long'

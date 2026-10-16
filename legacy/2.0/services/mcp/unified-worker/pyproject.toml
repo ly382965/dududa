@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dududa-unified-mcp-worker"
+version = "0.1.0"
+description = "Isolated MCP v2 transport worker for Dududa"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "mcp==2.0.0",
+]
+
+[project.scripts]
+dududa-unified-mcp-worker = "dududa_unified_mcp_worker.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,436 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "notifai.notices.search.v1",
+  "category": "campus.notifications",
+  "cost_hint_units": 3,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:7411f52d32f27312a7103dcdd0252f92c3ef76c1d7733c55f4c7be2dc28b4dea",
+  "description": "Search public campus notices by keyword, source, category, date, or deadline.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.notices.search.v1.input:v1:sha-256:e29ed849f7152dc6293f041f198c0611c65f00b68bc83fce843cfcda89e58082",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categories"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cursor"
+        },
+        "date_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date From"
+        },
+        "date_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date To"
+        },
+        "exclude_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exclude Ids"
+        },
+        "has_deadline": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has Deadline"
+        },
+        "keyword": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Keyword"
+        },
+        "light": {
+          "default": true,
+          "title": "Light",
+          "type": "boolean"
+        },
+        "page": {
+          "default": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "page_size": {
+          "default": 20,
+          "title": "Page Size",
+          "type": "integer"
+        },
+        "range_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Range From"
+        },
+        "range_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Range To"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "sources": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sources"
+        }
+      },
+      "title": "search_noticesArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.notices.search.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Search campus notices",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.notices.search.v1.output:v1:sha-256:1af949bb002e2f2e380765df275ac185586ebf40c1540b7a8c72d7c211d2c6ea",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "aiSummary": {
+                    "maxLength": 1600,
+                    "type": "string"
+                  },
+                  "attachments": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "maxLength": 300,
+                          "type": "string"
+                        },
+                        "url": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "url"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "categories": {
+                    "items": {
+                      "maxLength": 100,
+                      "type": "string"
+                    },
+                    "maxItems": 20,
+                    "type": "array"
+                  },
+                  "cleanContent": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "coreAction": {
+                    "maxLength": 1200,
+                    "type": "string"
+                  },
+                  "deadline": {
+                    "maxLength": 10,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "firstSeen": {
+                    "maxLength": 80,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "lastCrawl": {
+                    "maxLength": 80,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "originUrl": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "publishDate": {
+                    "maxLength": 10,
+                    "type": "string"
+                  },
+                  "source": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "targetAudience": {
+                    "maxLength": 800,
+                    "type": "string"
+                  },
+                  "title": {
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "source",
+                  "categories",
+                  "publishDate",
+                  "aiSummary",
+                  "deadline",
+                  "targetAudience",
+                  "coreAction",
+                  "originUrl",
+                  "cleanContent",
+                  "firstSeen",
+                  "lastCrawl",
+                  "attachments"
+                ],
+                "type": "object"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "nextCursor": {
+              "maxLength": 2000,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "total": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "items",
+            "total",
+            "nextCursor"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "observed_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "const": "notifai",
+          "maxLength": 32,
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "data",
+        "error",
+        "source",
+        "observed_at",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.notices.search.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.notifai",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:bd8beaf051159c86ab6753745fd9582568de527c65d10aba95021470a50b471a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "notifai-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.notifai.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "announcement",
+    "campus",
+    "notice",
+    "notifai",
+    "search"
+  ]
+}

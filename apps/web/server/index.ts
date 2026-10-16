@@ -10,6 +10,10 @@ import { HttpAstrBotPluginManagerClient } from './plugin-manager'
 import { FileApiKeyPoolStore } from './model-keys'
 import { createHttpApiKeyProbe } from './provider-probe'
 import { HttpRuntimeConfigClient } from './runtime-config'
+import { RecallForwarder } from './recall-forwarder'
+import { RecallStore } from './recall-store'
+import { RecallMediaStore } from './recall-media'
+import { HttpRuntimeV3Client, RuntimeV3QqBridge, runtimeV3Scopes } from './runtime-v3'
 
 function readToken(environmentName: string, fileEnvironmentName: string, defaultFile: string): string {
   const environmentToken = process.env[environmentName]?.trim()
@@ -35,7 +39,11 @@ const astrBotPluginApiKey = () => readToken(
   'DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE',
   '/run/secrets/astrbot_plugin_api_key',
 )
-const hub = new OneBotHub({ token: oneBotToken })
+const recallPath = process.env.DUDUDA_RECALL_STORE_PATH || resolve(process.cwd(), '../../runtime/web/recall/messages.sqlite')
+const recallStore = new RecallStore({ path: recallPath })
+const recallMediaStore = new RecallMediaStore({ path: recallPath })
+const recallForwarder = new RecallForwarder(recallPath)
+const hub = new OneBotHub({ token: oneBotToken, recallStore, recallMediaStore, recallForwarder })
 const controlPlane = controlPlaneUrl
   ? new HttpControlPlaneClient(controlPlaneUrl)
   : new UnavailableControlPlaneClient()
@@ -43,10 +51,20 @@ const mcpConsole = mcpConsoleUrl
   ? new HttpMcpConsoleClient(mcpConsoleUrl)
   : new UnavailableMcpConsoleClient()
 const pluginManager = new HttpAstrBotPluginManagerClient(astrBotPluginApiUrl, astrBotPluginApiKey)
-const runtimePreview = new HttpDududaRuntimePreviewClient(astrBotPluginApiUrl, astrBotPluginApiKey)
+const runtimeVersion = process.env.DUDUDA_RUNTIME_VERSION?.trim() || '3'
+if (!['2', '3'].includes(runtimeVersion)) throw new Error('DUDUDA_RUNTIME_VERSION 必须是 2 或 3')
+const runtimeV3 = runtimeVersion === '3'
+  ? new HttpRuntimeV3Client(
+      process.env.DUDUDA_V3_URL?.trim() || 'http://127.0.0.1:8783',
+      () => readToken('DUDUDA_V3_TOKEN', 'DUDUDA_V3_TOKEN_FILE', resolve(process.cwd(), '../../runtime/v3/token')),
+    )
+  : undefined
+const runtimePreview = runtimeV3 ?? new HttpDududaRuntimePreviewClient(astrBotPluginApiUrl, astrBotPluginApiKey)
+const runtimeBridge = runtimeV3
+  ? new RuntimeV3QqBridge(hub, runtimeV3, runtimeV3Scopes(process.env.DUDUDA_V3_QQ_SCOPES))
+  : undefined
 // The Web gateway owns the write-only credential file.  Provider probes are
-// explicit operator actions; Runtime model selection still remains in
-// AstrBot/Dududa's existing TierPolicy path.
+// explicit operator actions. These legacy pool settings are not Codex configuration.
 const apiKeyPool = new FileApiKeyPoolStore({ probe: createHttpApiKeyProbe() })
 const server = createDududaServer({
   hub,
@@ -62,10 +80,11 @@ const server = createDududaServer({
 
 server.listen(port, host, () => {
   const tokenState = hub.configured ? 'configured' : 'missing'
-  console.log(`Dududa web listening on http://${host}:${port}; OneBot token ${tokenState}`)
+  console.log(`Dududa web listening on http://${host}:${port}; Runtime ${runtimeVersion}.0; OneBot token ${tokenState}`)
 })
 
 function shutdown(): void {
+  runtimeBridge?.close()
   hub.close()
   server.close(() => process.exit(0))
   server.closeAllConnections()

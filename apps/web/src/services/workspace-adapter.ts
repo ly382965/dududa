@@ -83,7 +83,7 @@ export interface WorkspaceAdapter {
   recallMessage(conversation: Conversation, message: ChatMessage): Promise<void>
   refreshMessage(conversation: Conversation, message: ChatMessage): Promise<ChatMessage>
   forwardMessage(message: ChatMessage, source: Conversation, target: Conversation): Promise<void>
-  loadForwarded(conversation: Conversation, forwardId: string): Promise<ForwardedMessageBundle>
+  loadForwarded(conversation: Conversation, forwardId: string, messageId?: string): Promise<ForwardedMessageBundle>
   loadFileUrl(conversation: Conversation, fileId: string, fileName?: string): Promise<string>
   nudge(conversation: Conversation, userId: string): Promise<void>
   loadDraft(conversation: Conversation): Promise<ConversationDraft | undefined>
@@ -359,9 +359,9 @@ export class NapCatWorkspaceAdapter implements WorkspaceAdapter {
     )
   }
 
-  async loadForwarded(conversation: Conversation, forwardId: string): Promise<ForwardedMessageBundle> {
+  async loadForwarded(conversation: Conversation, forwardId: string, messageId?: string): Promise<ForwardedMessageBundle> {
     return this.request<ForwardedMessageBundle>(
-      `${this.conversationPath(conversation)}/forwards/${encodeURIComponent(forwardId)}`,
+      `${this.conversationPath(conversation)}/forwards/${encodeURIComponent(forwardId)}${messageId ? `?messageId=${encodeURIComponent(messageId)}` : ''}`,
     )
   }
 

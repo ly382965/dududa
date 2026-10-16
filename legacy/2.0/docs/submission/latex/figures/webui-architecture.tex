@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=8mm and 8mm]
+\node[box,text width=13.5cm] (ui) {Vue 浏览器：会话工作区、Agent 工作台与管理页面};
+\node[box,text width=13.5cm,below=of ui] (gateway) {Node.js Gateway\\工作区快照 / SSE 事件 / 历史读取 / 配置与预览请求};
+\node[box,text width=6.1cm,below=11mm of gateway.south west,anchor=north west] (qq) {NapCat / OneBot v11\\账号、消息与 QQ 操作};
+\node[box,text width=6.1cm,below=11mm of gateway.south east,anchor=north east] (runtime) {AstrBot / Dududa Runtime\\感知、模型、校园工具与回答};
+\draw[<->,>=Stealth,draw=accent,thick] (ui)--node[right,labeltext]{同源 HTTP / SSE}(gateway);
+\draw[<->,>=Stealth,draw=accent,thick] (gateway.south -| qq.north)--node[left,labeltext]{反向 WebSocket}(qq.north);
+\draw[<->,>=Stealth,draw=accent,thick] (gateway.south -| runtime.north)--node[right,labeltext]{Runtime HTTP API}(runtime.north);
+\end{tikzpicture}

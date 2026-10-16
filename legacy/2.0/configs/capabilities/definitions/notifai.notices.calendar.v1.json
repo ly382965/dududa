@@ -1,0 +1,206 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "notifai.notices.calendar.v1",
+  "category": "campus.notifications",
+  "cost_hint_units": 1,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:45b51ea44c835d84a87140c825133706c012ce4ba81ce3bf5a57ae6e3c9605b2",
+  "description": "Read public campus notices occurring in one requested month or ISO week.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.notices.calendar.v1.input:v1:sha-256:e7583aab39be156bff99fae5099c672e60d9334efb262986b7f14f8781e56e5f",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "month": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Month"
+        },
+        "week": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Week"
+        }
+      },
+      "title": "get_notice_calendarArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.notices.calendar.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read notice calendar",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.notices.calendar.v1.output:v1:sha-256:3f741b310424d9c46d516c5c82034055d10cbc0027b83af839101a543f8dacda",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "deadline": {
+                    "maxLength": 10,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "publishDate": {
+                    "maxLength": 10,
+                    "type": "string"
+                  },
+                  "source": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "title": {
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "source",
+                  "publishDate",
+                  "deadline"
+                ],
+                "type": "object"
+              },
+              "maxItems": 100,
+              "type": "array"
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "observed_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "const": "notifai",
+          "maxLength": 32,
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "data",
+        "error",
+        "source",
+        "observed_at",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.notices.calendar.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.notifai",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:bd8beaf051159c86ab6753745fd9582568de527c65d10aba95021470a50b471a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "notifai-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.notifai.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "calendar",
+    "campus",
+    "notice",
+    "notifai"
+  ]
+}

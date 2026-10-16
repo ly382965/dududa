@@ -1,0 +1,305 @@
+from astrbot.api.event import AstrMessageEvent, filter
+from astrbot.api.star import Context, Star, register
+from astrbot.core.star.filter.command import GreedyStr
+
+from .recall_command_guard import consume_gateway_recall_command
+from .commands.admin import CoreAdminCommands
+from .commands.basic import CoreBasicCommands
+from .commands.course import CoreCourseCommands
+from .commands.image import CoreImageCommands, ImageGenerationError  # noqa: F401
+from .commands.memory import CoreMemoryCommands
+from .composition import activate_runtime_after_host_start, initialize_plugin
+from .lifecycle import CoreLifecycleMixin, PendingAction  # noqa: F401
+from .runtime_config_apply import runtime_config_apply_response, runtime_config_status_response
+from .recording_rehearsal import runtime_rehearsal_response
+from .web_runtime import (
+    runtime_native_message_preview_response,
+    runtime_preview_response,
+    runtime_status_response,
+)
+
+
+@register(
+    "astrbot_plugin_dududa_core",
+    "mmdustc",
+    "嘟嘟哒统一命令、权限、课程查询和管理骨架",
+    "2.0.1",
+)
+class DududaCorePlugin(
+    CoreLifecycleMixin,
+    CoreCourseCommands,
+    CoreBasicCommands,
+    CoreMemoryCommands,
+    CoreAdminCommands,
+    CoreImageCommands,
+    Star,
+):
+    def __init__(self, context: Context, config: dict | None = None):
+        super().__init__(context)
+        initialize_plugin(self, config)
+        register_web_api = getattr(context, "register_web_api", None)
+        if callable(register_web_api):
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/configuration",
+                self.runtime_configuration_status, ["GET"],
+                "Read sanitized external configuration application state",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/configuration/apply",
+                self.runtime_configuration_apply, ["POST"],
+                "Apply saved model pools to Dududa Runtime only",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/status",
+                self.runtime_status,
+                ["GET"],
+                "Read sanitized live Dududa Runtime readiness",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/preview",
+                self.runtime_preview,
+                ["POST"],
+                "Run Dududa 2.0 with no QQ output",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/rehearsal",
+                self.runtime_rehearsal, ["POST"],
+                "Replay simulated group inputs; explicit delivery can use the logged-in QQ account",
+            )
+            register_web_api(
+                "/astrbot_plugin_dududa_core/runtime/native-message-preview",
+                self.runtime_native_message_preview,
+                ["POST"],
+                "Replay one NapCat message through Dududa 2.0 with no QQ output",
+            )
+
+    async def runtime_status(self):
+        return await runtime_status_response(self)
+
+    async def runtime_configuration_status(self):
+        return await runtime_config_status_response(self)
+
+    async def runtime_configuration_apply(self):
+        return await runtime_config_apply_response(self)
+
+    async def runtime_preview(self):
+        """Execute the installed 2.0 Runtime without QQ delivery."""
+        return await runtime_preview_response(self)
+
+    async def runtime_rehearsal(self):
+        return await runtime_rehearsal_response(self)
+
+    async def runtime_native_message_preview(self):
+        """Replay one native NapCat message without QQ delivery."""
+        return await runtime_native_message_preview_response(self)
+
+    async def terminate(self) -> None:
+        """Expose cleanup on the concrete class for AstrBot's plugin loader."""
+        await CoreLifecycleMixin.terminate(self)
+
+    @filter.on_astrbot_loaded()
+    async def activate_runtime(self):
+        """Assemble Dududa 2.0 after AstrBot Providers are available."""
+        await activate_runtime_after_host_start(self)
+
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=100)
+    async def controlled_rollout(self, event: AstrMessageEvent):
+        """受控执行显式提及的 shadow/canary。"""
+        if consume_gateway_recall_command(event):
+            return
+        await self._handle_controlled_rollout(event)
+
+    @filter.command("help")
+    async def help(self, event: AstrMessageEvent, module: str | None=None):
+        """查看嘟嘟哒帮助"""
+        async for result in CoreBasicCommands.help(self, event, module):
+            yield result
+
+    @filter.command_group("dududa", alias={"嘟嘟哒"})
+    def dududa(self):
+        """嘟嘟哒核心命令组"""
+        pass
+
+    @dududa.command("help")
+    async def dududa_help(self, event: AstrMessageEvent, module: str | None=None):
+        """查看嘟嘟哒帮助"""
+        async for result in CoreBasicCommands.dududa_help(self, event, module):
+            yield result
+
+    @filter.command("about")
+    async def about(self, event: AstrMessageEvent):
+        """查看嘟嘟哒介绍"""
+        async for result in CoreBasicCommands.about(self, event):
+            yield result
+
+    @filter.command("ping")
+    async def ping(self, event: AstrMessageEvent):
+        """测试在线状态"""
+        async for result in CoreBasicCommands.ping(self, event):
+            yield result
+
+    @filter.command("status")
+    async def status(self, event: AstrMessageEvent):
+        """查看可见运行状态"""
+        async for result in CoreBasicCommands.status(self, event):
+            yield result
+
+    @filter.command("privacy")
+    async def privacy(self, event: AstrMessageEvent):
+        """查看隐私说明"""
+        async for result in CoreBasicCommands.privacy(self, event):
+            yield result
+
+    @filter.command("remember")
+    async def remember(self, event: AstrMessageEvent, content: GreedyStr):
+        """让嘟嘟哒记住一件事"""
+        async for result in CoreMemoryCommands.remember(self, event, content):
+            yield result
+
+    @filter.command("forget")
+    async def forget(self, event: AstrMessageEvent, keyword: GreedyStr):
+        """删除自己的相关记忆"""
+        async for result in CoreMemoryCommands.forget(self, event, keyword):
+            yield result
+
+    @filter.command("memory")
+    async def memory(self, event: AstrMessageEvent, action: str | None=None):
+        """查看或管理自己的记忆"""
+        async for result in CoreMemoryCommands.memory(self, event, action):
+            yield result
+
+    @filter.command("style")
+    async def style(self, event: AstrMessageEvent, mode: str):
+        """设置回复偏好"""
+        async for result in CoreMemoryCommands.style(self, event, mode):
+            yield result
+
+    @filter.command_group("course")
+    def course(self):
+        """课程与评课命令组"""
+        pass
+
+    @course.command("stats")
+    async def course_stats(self, event: AstrMessageEvent):
+        """查看课程缓存规模"""
+        async for result in CoreCourseCommands.course_stats(self, event):
+            yield result
+
+    @course.command("search")
+    async def course_search(self, event: AstrMessageEvent, query: GreedyStr):
+        """搜索课程"""
+        async for result in CoreCourseCommands.course_search(self, event, query):
+            yield result
+
+    @course.command("review")
+    async def course_review(self, event: AstrMessageEvent, query: GreedyStr):
+        """总结公开评课"""
+        async for result in CoreCourseCommands.course_review(self, event, query):
+            yield result
+
+    @course.command("compare")
+    async def course_compare(self, event: AstrMessageEvent, query: GreedyStr):
+        """比较两个课程或老师"""
+        async for result in CoreCourseCommands.course_compare(self, event, query):
+            yield result
+
+    @course.command("refresh")
+    async def course_refresh(self, event: AstrMessageEvent, course_id: int):
+        """刷新单门课程缓存"""
+        async for result in CoreCourseCommands.course_refresh(self, event, course_id):
+            yield result
+
+    @filter.command_group("admin")
+    def admin(self):
+        """管理员命令组"""
+        pass
+
+    @admin.command("status")
+    async def admin_status(self, event: AstrMessageEvent):
+        """查看管理状态"""
+        async for result in CoreAdminCommands.admin_status(self, event):
+            yield result
+
+    @admin.command("plugins")
+    async def admin_plugins(self, event: AstrMessageEvent):
+        """查看插件列表"""
+        async for result in CoreAdminCommands.admin_plugins(self, event):
+            yield result
+
+    @admin.command("mcp")
+    async def admin_mcp(self, event: AstrMessageEvent, action: str='list', name: str | None=None):
+        """管理 MCP"""
+        async for result in CoreAdminCommands.admin_mcp(self, event, action, name):
+            yield result
+
+    @admin.command("group")
+    async def admin_group(self, event: AstrMessageEvent, action: str, value: str | None=None):
+        """设置群模式和概率"""
+        async for result in CoreAdminCommands.admin_group(self, event, action, value):
+            yield result
+
+    @admin.command("user")
+    async def admin_user(self, event: AstrMessageEvent, action: str, qq: str):
+        """限制或解除用户"""
+        async for result in CoreAdminCommands.admin_user(self, event, action, qq):
+            yield result
+
+    @admin.command("memory")
+    async def admin_memory(self, event: AstrMessageEvent, action: str):
+        """管理记忆"""
+        async for result in CoreAdminCommands.admin_memory(self, event, action):
+            yield result
+
+    @admin.command("logs")
+    async def admin_logs(self, event: AstrMessageEvent, action: str='errors', value: str | None=None):
+        """查看脱敏日志摘要"""
+        async for result in CoreAdminCommands.admin_logs(self, event, action, value):
+            yield result
+
+    @admin.command("backup")
+    async def admin_backup(self, event: AstrMessageEvent, action: str='create'):
+        """创建配置备份"""
+        async for result in CoreAdminCommands.admin_backup(self, event, action):
+            yield result
+
+    @admin.command("restart")
+    async def admin_restart(self, event: AstrMessageEvent, service: str):
+        """重启服务提示"""
+        async for result in CoreAdminCommands.admin_restart(self, event, service):
+            yield result
+
+    @admin.command("model")
+    async def admin_model(self, event: AstrMessageEvent, action: str='route', scene: str | None=None, model: str | None=None):
+        """查看模型路由"""
+        async for result in CoreAdminCommands.admin_model(self, event, action, scene, model):
+            yield result
+
+    @admin.command("permission")
+    async def admin_permission(self, event: AstrMessageEvent, action: str, qq: str, role: str):
+        """修改全局权限"""
+        async for result in CoreAdminCommands.admin_permission(self, event, action, qq, role):
+            yield result
+
+    @admin.command("broadcast")
+    async def admin_broadcast(self, event: AstrMessageEvent, content: GreedyStr):
+        """申请群发"""
+        async for result in CoreAdminCommands.admin_broadcast(self, event, content):
+            yield result
+
+    @filter.command("confirm")
+    async def confirm(self, event: AstrMessageEvent, token: str):
+        """确认高风险操作"""
+        async for result in CoreAdminCommands.confirm(self, event, token):
+            yield result
+
+    @filter.command("cancel")
+    async def cancel(self, event: AstrMessageEvent, token: str):
+        """取消高风险操作"""
+        async for result in CoreAdminCommands.cancel(self, event, token):
+            yield result
+
+    @filter.command("image")
+    async def image(self, event: AstrMessageEvent, prompt: GreedyStr):
+        """生成图片"""
+        async for result in CoreImageCommands.image(self, event, prompt):
+            yield result

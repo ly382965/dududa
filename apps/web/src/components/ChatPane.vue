@@ -9,6 +9,7 @@ import {
   MessageSquareReply,
   PanelRight,
   Search,
+  History,
   Sparkles,
   Users,
 } from '@lucide/vue'
@@ -23,6 +24,7 @@ import MessageBubble from './chat/MessageBubble.vue'
 import MessageComposer, { type PendingComposerFile } from './chat/MessageComposer.vue'
 import MessageForwardDialog from './chat/MessageForwardDialog.vue'
 import MessageSearchDialog from './chat/MessageSearchDialog.vue'
+import RecallArchiveDialog from './chat/RecallArchiveDialog.vue'
 
 const props = defineProps<{
   conversation?: Conversation
@@ -81,9 +83,11 @@ const emit = defineEmits<{
 const messageList = ref<HTMLElement | null>(null)
 const showLatest = ref(false)
 const searchOpen = ref(false)
+const recallArchiveOpen = ref(false)
 const forwardMessage = ref<ChatMessage>()
 const forwarding = ref(false)
 const forwardId = ref('')
+const forwardSourceMessageId = ref('')
 const forwardViewerOpen = ref(false)
 const loadingBoundary = ref(false)
 const pendingFiles = ref<File[]>([])
@@ -235,8 +239,9 @@ function selectSearchResult(message: ChatMessage): void {
   void revealMessage(message.messageId, message.messageSeq)
 }
 
-function openForwardViewer(segment: Extract<MessageSegment, { type: 'forward' }>): void {
+function openForwardViewer(segment: Extract<MessageSegment, { type: 'forward' }>, message: ChatMessage): void {
   forwardId.value = segment.forwardId
+  forwardSourceMessageId.value = message.messageId
   forwardViewerOpen.value = true
 }
 
@@ -284,6 +289,7 @@ watch(
   async () => {
     conversationVersion += 1
     searchOpen.value = false
+    recallArchiveOpen.value = false
     forwardMessage.value = undefined
     forwardViewerOpen.value = false
     pendingFiles.value = []
@@ -322,6 +328,7 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
         </div>
         <div class="chat-actions">
           <button class="icon-button" type="button" title="搜索聊天记录" @click="searchOpen = true"><Search :size="18" /></button>
+          <button class="icon-button" type="button" title="撤回记录与防撤回设置" @click="recallArchiveOpen = true"><History :size="18" /></button>
           <button v-if="conversation.type === 'group'" class="icon-button secondary-action" type="button" title="群聊管理" @click="emit('openGroup', conversation.peerId)"><Users :size="18" /></button>
           <button class="icon-button agent-toggle" :class="{ active: !agentCollapsed }" type="button" title="Agent Console" @click="emit('openAgent')"><PanelRight :size="18" /></button>
         </div>
@@ -396,6 +403,8 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
       />
 
       <MessageSearchDialog :open="searchOpen" :conversation="conversation" :senders="senders" @close="searchOpen = false" @select="selectSearchResult" />
+      <RecallArchiveDialog :open="recallArchiveOpen" :conversation="conversation" :account="account" @close="recallArchiveOpen = false"
+        @open-forward="openForwardViewer" />
       <MessageForwardDialog
         :open="Boolean(forwardMessage)"
         :message="forwardMessage"
@@ -410,6 +419,7 @@ watch([() => props.unreadTargetId, () => props.messages.length], () => void reve
         :conversation="conversation"
         :account="account"
         :forward-id="forwardId"
+        :message-id="forwardSourceMessageId"
         @close="forwardViewerOpen = false"
         @refresh-media="refreshMessage"
         @load-file="loadMessageFile"

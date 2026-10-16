@@ -1,0 +1,226 @@
+{
+  "allowed_contexts": [
+    "group",
+    "private"
+  ],
+  "capability_id": "notifai.notices.deadlines.v1",
+  "category": "campus.notifications",
+  "cost_hint_units": 2,
+  "definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:11c835799e66d8ccc1f53480ab7cf766b56dc83a687611f04e34a9010be6b33f",
+  "description": "Read public campus notices with deadlines in a bounded future date window.",
+  "enabled": true,
+  "idempotency": "read_only",
+  "input_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.notices.deadlines.v1.input:v1:sha-256:588695360345ff7bb7022b102cf0786ffcd62687d7ef034fc642beada2c7062b",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "default": 7,
+          "title": "Days",
+          "type": "integer"
+        },
+        "page": {
+          "default": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "page_size": {
+          "default": 50,
+          "title": "Page Size",
+          "type": "integer"
+        },
+        "sources": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sources"
+        }
+      },
+      "title": "get_notice_deadlinesArguments",
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.notices.deadlines.v1.input",
+    "schema_version": 1
+  },
+  "latency_hint": {
+    "expected_ms": 800,
+    "maximum_ms": 90000
+  },
+  "name": "Read notice deadlines",
+  "output_schema": {
+    "digest": "dududa-c14n-v1:schema:capability.notifai.notices.deadlines.v1.output:v1:sha-256:28c5c0824f9c99371c423c08ad7fead8078f1f2b874e628eca385e7a4061c77e",
+    "document": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "aiSummary": {
+                    "maxLength": 1600,
+                    "type": "string"
+                  },
+                  "deadline": {
+                    "maxLength": 10,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "publishDate": {
+                    "maxLength": 10,
+                    "type": "string"
+                  },
+                  "source": {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "targetAudience": {
+                    "maxLength": 800,
+                    "type": "string"
+                  },
+                  "title": {
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "source",
+                  "publishDate",
+                  "deadline",
+                  "aiSummary",
+                  "targetAudience"
+                ],
+                "type": "object"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            "total": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "items",
+            "total"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "error": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable"
+          ],
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "observed_at": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "source": {
+          "const": "notifai",
+          "maxLength": 32,
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ok",
+        "data",
+        "error",
+        "source",
+        "observed_at",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "schema_id": "capability.notifai.notices.deadlines.v1.output",
+    "schema_version": 1
+  },
+  "privacy_level": "conversation",
+  "provider": {
+    "provider_id": "mcp.notifai",
+    "revision": {
+      "artifact_digest": "dududa-c14n-v1:capability.provider-artifact:v1:sha-256:bd8beaf051159c86ab6753745fd9582568de527c65d10aba95021470a50b471a",
+      "component_id": "capability-provider.mcp",
+      "config_revision": "notifai-read-v1",
+      "implementation_version": "1.0.0"
+    }
+  },
+  "provider_kind": "mcp",
+  "required_permissions": [
+    "capability.notifai.read"
+  ],
+  "risk_level": "low",
+  "schema_version": 1,
+  "side_effects": [
+    "network_read"
+  ],
+  "tags": [
+    "campus",
+    "deadline",
+    "notice",
+    "notifai"
+  ]
+}

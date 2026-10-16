@@ -7,7 +7,10 @@ import { WebSocket } from 'ws'
 import { createDududaServer } from './app'
 import type { ControlPlaneClient } from './control-plane'
 import { OneBotHub, type HubOptions } from './onebot-hub'
-import type { WorkspaceEvent } from '../src/types/workspace'
+import { RecallForwarder } from './recall-forwarder'
+import { RecallStore } from './recall-store'
+import { RecallMediaStore } from './recall-media'
+import type { ForwardedMessageBundle, RecallArchivePage, WorkspaceEvent } from '../src/types/workspace'
 
 const token = 'test-only-onebot-token-32-characters'
 const selfId = '123456789'
@@ -37,6 +40,19 @@ function realGroupMessage(content = '来自真实 NapCat 的消息', overrides: 
     font: 0,
     ...overrides,
   }
+}
+
+function recallNotice(messageId: number, overrides: Record<string, unknown> = {}) {
+  return {
+    self_id: Number(selfId), post_type: 'notice', notice_type: 'group_recall',
+    group_id: 345678901, user_id: 234567890, operator_id: 234567890,
+    message_id: messageId, time: Math.floor(Date.now() / 1_000), ...overrides,
+  }
+}
+
+function workspaceEvents(body: string): WorkspaceEvent[] {
+  return body.split('\n').slice(0, -1).filter((line) => line.startsWith('data: '))
+    .map((line) => JSON.parse(line.slice(6)) as WorkspaceEvent)
 }
 
 async function startTestServer(
@@ -181,6 +197,7 @@ interface FakeNapCatOptions {
   groupFileCount?: number
   customFaceUrls?: string[]
   groupHistory?: (request: ActionRequest) => unknown[]
+  forwardMessages?: (request: ActionRequest) => unknown[]
 }
 
 interface FakeNapCatState {
@@ -479,7 +496,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         break
       case 'get_forward_msg':
         data = {
-          messages: [
+          messages: options.forwardMessages?.(request) ?? [
             {
               type: 'node',
               data: {
@@ -568,6 +585,47 @@ afterEach(async () => {
 })
 
 describe('Dududa NapCat gateway', () => {
+  it('automatically forwards group recalls only after exact super-admin commands through OneBot', async () => {
+    const forwarder = new RecallForwarder(':memory:')
+    const { hub, server, port } = await startTestServer({ recallForwarder: forwarder })
+    servers.push(server)
+    const bot = connectFakeNapCat(port)
+    await bot.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const emit = (event: unknown) => bot.socket.send(JSON.stringify(event))
+    const sends = () => bot.actions.filter((a) => a.action === 'send_group_msg')
+    const recalled = (id: number, group = 345678901) => ({ post_type: 'notice', notice_type: 'group_recall', self_id: Number(selfId), group_id: group, user_id: 234567890, message_id: id })
+    const cmd = (text: string, id: number, user = 1778159807) => realGroupMessage(text, {
+      message_id: id, user_id: user,
+      message: [{ type: 'at', data: { qq: selfId } }, { type: 'text', data: { text: ` ${text}` } }],
+    })
+    emit(realGroupMessage('默认关闭', { message_id: 701 }))
+    emit(recalled(701))
+    emit(cmd('/开启防撤回啊', 702))
+    emit(cmd('/开启防撤回', 703, 234567890))
+    emit(realGroupMessage('默认开启的测试内容', { message_id: 704, group_id: 419256533 }))
+    emit(recalled(704, 419256533))
+    await waitFor(async () => sends().length === 1)
+    expect(sends()[0]?.params.group_id).toBe('419256533')
+    expect(JSON.stringify(sends()[0]?.params.message)).toContain('测试成员（234567890）')
+    expect(JSON.stringify(sends()[0]?.params.message)).toContain('默认开启的测试内容')
+    emit(cmd('/开启防撤回', 705))
+    await waitFor(async () => sends().length === 2)
+    emit(realGroupMessage('开启后测试内容', { message_id: 706 }))
+    emit(recalled(706)); emit(recalled(706))
+    await waitFor(async () => sends().length === 3)
+    expect(JSON.stringify(sends()[2]?.params.message)).toContain('开启后测试内容')
+    emit(cmd('/关闭防撤回', 707))
+    await waitFor(async () => sends().length === 4)
+    expect(forwarder.enabled(`qq-${selfId}`, '345678901')).toBe(false)
+    emit(realGroupMessage('关闭后不转发', { message_id: 708 }));emit(recalled(708))
+    emit(cmd('/开启防撤回', 709))
+    await waitFor(async () => sends().length === 5)
+    emit({post_type:'notice',notice_type:'group_increase',self_id:Number(selfId),group_id:345678901,user_id:Number(selfId)})
+    await waitFor(async () => !forwarder.enabled(`qq-${selfId}`, '345678901'))
+    expect(sends()).toHaveLength(5)
+  })
+
   it('returns the workspace while the upstream directory refresh is still pending', async () => {
     const { hub, server, baseUrl } = await startTestServer()
     servers.push(server)
@@ -620,6 +678,388 @@ describe('Dududa NapCat gateway', () => {
     expect(replayed).toContain('"messageId":"600"')
     expect(replayed.indexOf('id: 2')).toBeLessThan(replayed.indexOf('id: 600'))
   })
+
+  it('captures forward contents and nested media before recall and serves them when QQ is unavailable', async () => {
+    let now = Date.now()
+    const recallStore = new RecallStore({ path: ':memory:', now: () => now, retentionDays: 1 })
+    const bytes = Buffer.from('archived-forward-image')
+    const download = vi.fn(async () => new Response(bytes, { headers: { 'Content-Type': 'image/png' } }))
+    const recallMediaStore = new RecallMediaStore({ path: ':memory:', now: () => now, fetch: download as typeof fetch })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore, recallMediaStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { forwardMessages: (request) => {
+      if (request.params.message_id === 'nested-id') return [{ sender: { user_id: 234567890, nickname: '内层成员' },
+        content: [{ type: 'text', data: { text: '内层原文' } }] }]
+      return [{ sender: { user_id: 234567890, nickname: '转发成员' }, content: [
+        { type: 'text', data: { text: '撤回后的转发原文' } },
+        { type: 'image', data: { url: 'https://gchat.qpic.cn/forward-recall.png' } },
+        { type: 'forward', data: { id: 'inline-id', content: [{ sender: { user_id: 345678901, nickname: '内嵌成员' },
+          content: [{ type: 'text', data: { text: 'NapCat 内嵌原文' } }] }] } },
+        { type: 'forward', data: { id: 'nested-id' } },
+      ] }]
+    } })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const conversation = `${account}:group:345678901`
+    const route = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+    const original = realGroupMessage('[转发消息]', { message_id: 501,
+      message: [{ type: 'forward', data: { id: 'saved-forward' } }] })
+    napcat.socket.send(JSON.stringify(original))
+    await waitFor(async () => {
+      const forward = recallStore.get(account, conversation, `${conversation}:501`)?.segments[0]
+      const nested = forward?.type === 'forward' ? forward.messages?.[0]?.segments[3] : undefined
+      return Boolean(nested?.type === 'forward' && nested.messages?.length)
+    })
+    await waitFor(async () => recallMediaStore.has({ accountId: account, conversationId: conversation,
+      messageId: `${conversation}:501`, slot: '0.0.1.url' }))
+    // QQ now refuses every read. A replay must not overwrite the captured bundle.
+    napcat.state.failedActions.add('get_forward_msg')
+    napcat.socket.send(JSON.stringify(recallNotice(501)))
+    napcat.socket.send(JSON.stringify(original))
+    await waitFor(async () => recallStore.get(account, conversation, `${conversation}:501`)?.status === 'recalled')
+    const calls = napcat.actions.filter((item) => item.action === 'get_forward_msg').length
+    napcat.socket.close()
+    await napcat.closed
+    const response = await fetch(`${route}/forwards/saved-forward?messageId=501`)
+    expect(response.status).toBe(200)
+    const bundle = await response.json() as ForwardedMessageBundle
+    expect(bundle).toMatchObject({ forwardId: 'saved-forward', retention: { recordedAt: now, expiresAt: now + 86_400_000 },
+      messages: [{ content: expect.stringContaining('撤回后的转发原文'), segments: [
+        { type: 'text' }, { type: 'image', url: expect.stringContaining('/recalls/501/media/0.0.1.url') },
+        { type: 'forward', messages: [{ content: 'NapCat 内嵌原文' }] },
+        { type: 'forward', messages: [{ content: '内层原文' }] },
+      ] }] })
+    expect(napcat.actions.filter((item) => item.action === 'get_forward_msg')).toHaveLength(calls)
+    const image = bundle.messages[0]?.segments[1]
+    if (image?.type !== 'image' || !image.url) throw new Error('Missing archived forward image')
+    const mediaUrl = `${baseUrl}${image.url}`
+    expect(Buffer.from(await (await fetch(mediaUrl)).arrayBuffer())).toEqual(bytes)
+    expect((await fetch(`${route.replace('/group/345678901', '/private/456789012')}/forwards/saved-forward?messageId=501`)).status).not.toBe(200)
+    now += 86_400_000
+    expect((await fetch(mediaUrl)).status).toBe(404)
+    expect((await fetch(`${route}/forwards/saved-forward?messageId=501`)).status).not.toBe(200)
+  })
+
+  it.each(['recalled', 'disabled'] as const)('handles a forward fetch completing after the original is %s', async (outcome) => {
+    const recallStore = new RecallStore({ path: ':memory:' })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    napcat.state.silentActions.add('get_forward_msg')
+    const account = `qq-${selfId}`, conversation = `${account}:private:456789012`
+    napcat.socket.send(JSON.stringify(realGroupMessage('[转发消息]', {
+      message_type: 'private', group_id: undefined, user_id: 456789012, message_id: 501,
+      sender: { user_id: 456789012, nickname: '好友' }, message: [{ type: 'forward', data: { id: 'pending-forward' } }],
+    })))
+    await waitFor(async () => napcat.actions.some((item) => item.action === 'get_forward_msg'))
+    if (outcome === 'disabled') hub.setRecallSettings(account, 'private', '456789012', { enabled: false, retentionDays: 7 })
+    else {
+      napcat.socket.send(JSON.stringify(recallNotice(501, { notice_type: 'friend_recall', group_id: undefined, user_id: 456789012 })))
+      await waitFor(async () => recallStore.get(account, conversation, `${conversation}:501`)?.status === 'recalled')
+    }
+    const request = napcat.actions.find((item) => item.action === 'get_forward_msg')!
+    napcat.socket.send(JSON.stringify({ status: 'ok', retcode: 0, echo: request.echo, data: { messages: [
+      { sender: { user_id: 456789012, nickname: '好友' }, content: [{ type: 'text', data: { text: '及时捕获的原文' } }] },
+    ] } }))
+    if (outcome === 'recalled') {
+      await waitFor(async () => {
+        const forward = recallStore.get(account, conversation, `${conversation}:501`)?.segments[0]
+        return Boolean(forward?.type === 'forward' && forward.messages?.length)
+      })
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/conversations/private/456789012/forwards/pending-forward?messageId=501`)
+      expect(await response.json()).toMatchObject({ messages: [{ content: '及时捕获的原文' }] })
+      const body = await readSseUntil(`${baseUrl}/api/events`, { 'Last-Event-ID': '0' }, (value) => value.includes('及时捕获的原文'))
+      expect(workspaceEvents(body)).toContainEqual(expect.objectContaining({ type: 'message.deleted', messageId: `${conversation}:501`,
+        message: expect.objectContaining({ status: 'recalled' }) }))
+    } else {
+      // A round trip after the forward response lets the gateway process the late result.
+      await hub.refreshAll(true)
+      expect(recallStore.get(account, conversation, `${conversation}:501`)).toBeUndefined()
+    }
+  })
+
+  it('retains a recall without a browser and serves the original through archive, SSE, history, and refresh', async () => {
+    const recallStore = new RecallStore({ path: ':memory:' })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { groupHistory: () => [] })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const conversation = `${account}:group:345678901`
+    const route = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+    const original = '无浏览器时接收的防撤回合成原文'
+    napcat.socket.send(JSON.stringify(realGroupMessage(original, { message_id: 501, message_seq: 501 })))
+    napcat.socket.send(JSON.stringify(recallNotice(501)))
+    await waitFor(async () => recallStore.get(account, conversation, `${conversation}:501`)?.status === 'recalled')
+
+    expect(await (await fetch(`${route}/recall-settings`)).json()).toEqual({ enabled: true, retentionDays: 7 })
+    const response = await fetch(`${route}/recalls`)
+    expect(response.status).toBe(200)
+    const archive = await response.json() as RecallArchivePage
+    expect(archive.messages).toHaveLength(1)
+    expect(archive.messages[0]).toMatchObject({
+      messageId: '501', content: original, status: 'recalled',
+      recall: { retained: true, operatorId: '234567890' },
+    })
+    const replay = await readSseUntil(`${baseUrl}/api/events`, { 'Last-Event-ID': '0' },
+      (body) => workspaceEvents(body).some((event) => event.type === 'message.deleted'))
+    expect(workspaceEvents(replay).find((event) => event.type === 'message.deleted')).toMatchObject({
+      accountId: account, conversationId: conversation, messageId: `${conversation}:501`,
+      message: { content: original, status: 'recalled', recall: { retained: true } },
+    })
+    const history = await fetch(`${route}/messages`)
+    expect(history.status).toBe(200)
+    expect(await history.json()).toMatchObject({ messages: [{ messageId: '501', content: original, status: 'recalled' }] })
+    napcat.state.failedActions.add('get_msg')
+    const refresh = await fetch(`${route}/messages/501`)
+    expect(refresh.status).toBe(200)
+    expect(await refresh.json()).toMatchObject({ message: { messageId: '501', content: original, status: 'recalled' } })
+    expect(napcat.actions.filter((action) => action.action === 'get_msg')).toEqual([])
+  })
+
+  it('isolates group and friend recall originals across connected accounts', async () => {
+    const recallStore = new RecallStore({ path: ':memory:' })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore })
+    servers.push(server)
+    const secondSelfId = '987654321'
+    const first = connectFakeNapCat(port)
+    const second = connectFakeNapCat(port, { selfId: secondSelfId })
+    await Promise.all([first.ready, second.ready])
+    await waitFor(async () => hub.workspaceSnapshot().accounts.filter((account) => account.status === 'online').length === 2)
+    const account = `qq-${selfId}`
+    const otherAccount = `qq-${secondSelfId}`
+    first.socket.send(JSON.stringify(realGroupMessage('账号一群聊合成原文', { message_id: 501, message_seq: 501 })))
+    first.socket.send(JSON.stringify(recallNotice(501)))
+    second.socket.send(JSON.stringify(realGroupMessage('账号二群聊合成原文', {
+      self_id: Number(secondSelfId), message_id: 501, message_seq: 501,
+    })))
+    second.socket.send(JSON.stringify(recallNotice(501, { self_id: Number(secondSelfId) })))
+    first.socket.send(JSON.stringify(realGroupMessage('账号一私聊合成原文', {
+      message_id: 501, message_seq: 501, message_type: 'private', group_id: undefined, group_name: undefined,
+      user_id: 456789012, sender: { user_id: 456789012, nickname: '合成好友' },
+    })))
+    first.socket.send(JSON.stringify(recallNotice(501, {
+      notice_type: 'friend_recall', group_id: undefined, user_id: 456789012, operator_id: undefined,
+    })))
+    await waitFor(async () => [
+      [account, `${account}:group:345678901`],
+      [otherAccount, `${otherAccount}:group:345678901`],
+      [account, `${account}:private:456789012`],
+    ].every(([owner, conversation]) => recallStore.listRecalled(owner!, conversation!).messages.length === 1))
+
+    const read = async (owner: string, type: string, peer: string) => {
+      const response = await fetch(`${baseUrl}/api/accounts/${owner}/conversations/${type}/${peer}/recalls`)
+      expect(response.status).toBe(200)
+      return await response.json() as RecallArchivePage
+    }
+    expect((await read(account, 'group', '345678901')).messages.map((message) => message.content)).toEqual(['账号一群聊合成原文'])
+    expect((await read(otherAccount, 'group', '345678901')).messages.map((message) => message.content)).toEqual(['账号二群聊合成原文'])
+    expect((await read(account, 'private', '456789012')).messages.map((message) => message.content)).toEqual(['账号一私聊合成原文'])
+    expect((await read(otherAccount, 'private', '456789012')).messages).toEqual([])
+    expect((await fetch(`${baseUrl}/api/accounts/qq-111111111/conversations/group/345678901/recalls`)).status).toBe(503)
+    expect((await fetch(`${baseUrl}/api/accounts/${account}/conversations/group/999999999/recalls`)).status).toBe(404)
+  })
+
+  it('clears disabled recall data, rejects cross-site changes, and removes originals from SSE replay', async () => {
+    const recallStore = new RecallStore({ path: ':memory:' })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { groupHistory: () => [] })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const conversation = `${account}:group:345678901`
+    const route = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+    const original = '关闭后不可通过重播读取的合成原文'
+    napcat.socket.send(JSON.stringify(realGroupMessage(original, { message_id: 501, message_seq: 501 })))
+    napcat.socket.send(JSON.stringify(recallNotice(501)))
+    await waitFor(async () => recallStore.listRecalled(account, conversation).messages.length === 1)
+    const settingsRequest = (origin: string, enabled: boolean, retentionDays = 7) => fetch(`${route}/recall-settings`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: origin },
+      body: JSON.stringify({ enabled, retentionDays }),
+    })
+    expect((await settingsRequest('https://foreign.example', false)).status).toBe(403)
+    expect(recallStore.listRecalled(account, conversation).messages).toHaveLength(1)
+    expect((await settingsRequest(baseUrl, true, 31)).status).toBe(400)
+    const disabled = await settingsRequest(baseUrl, false)
+    expect(disabled.status).toBe(200)
+    expect(await disabled.json()).toEqual({ enabled: false, retentionDays: 7 })
+    expect(await (await fetch(`${route}/recalls`)).json()).toMatchObject({ messages: [], settings: { enabled: false } })
+    const replay = await readSseUntil(`${baseUrl}/api/events`, { 'Last-Event-ID': '0' },
+      (body) => body.includes('"type":"recall.settings.changed"'))
+    expect(replay).not.toContain(original)
+    expect(workspaceEvents(replay).find((event) => event.type === 'message.deleted')).not.toHaveProperty('message')
+
+    napcat.socket.send(JSON.stringify(realGroupMessage('关闭期间合成消息', { message_id: 502, message_seq: 502 })))
+    napcat.socket.send(JSON.stringify(recallNotice(502)))
+    const disabledEvents = await readSseUntil(`${baseUrl}/api/events`, { 'Last-Event-ID': '0' },
+      (body) => workspaceEvents(body).some((event) => event.type === 'message.deleted' && event.messageId.endsWith(':502')))
+    expect(workspaceEvents(disabledEvents).find((event) => event.type === 'message.deleted' && event.messageId.endsWith(':502')))
+      .not.toHaveProperty('message')
+    expect((await settingsRequest(baseUrl, true)).status).toBe(200)
+    expect(await (await fetch(`${route}/recalls`)).json()).toMatchObject({ messages: [] })
+  })
+
+  it('handles recall-before-message events and never fabricates an unavailable original', async () => {
+    const recallStore = new RecallStore({ path: ':memory:' })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const conversation = `${account}:group:345678901`
+    const notices: WorkspaceEvent[] = []
+    hub.on('workspace-event', (event: WorkspaceEvent) => notices.push(event))
+    napcat.socket.send(JSON.stringify(recallNotice(601)))
+    napcat.socket.send(JSON.stringify(recallNotice(602)))
+    await waitFor(async () => notices.filter((event) => event.type === 'message.deleted').length === 2)
+    expect(notices.filter((event) => event.type === 'message.deleted').every((event) => !('message' in event))).toBe(true)
+    expect(recallStore.listRecalled(account, conversation).messages).toEqual([])
+
+    napcat.socket.send(JSON.stringify(realGroupMessage('乱序到达的合成原文', { message_id: 602, message_seq: 602 })))
+    await waitFor(async () => recallStore.get(account, conversation, `${conversation}:602`)?.status === 'recalled')
+    const created = notices.find((event) => event.type === 'message.created' && event.message.messageId === '602')
+    expect(created).toMatchObject({
+      conversation: { lastMessage: '此消息已撤回' },
+      message: { content: '乱序到达的合成原文', status: 'recalled', recall: { retained: true } },
+    })
+    expect(hub.workspaceSnapshot().conversations.find((item) => item.id === conversation)?.lastMessage).toBe('此消息已撤回')
+    const archive = await (await fetch(`${baseUrl}/api/accounts/${account}/conversations/group/345678901/recalls`)).json() as RecallArchivePage
+    expect(archive.messages.map((message) => message.messageId)).toEqual(['602'])
+    expect(archive.messages[0]?.content).toBe('乱序到达的合成原文')
+  })
+
+  it('excludes expired recall originals from archive, history, and SSE replay', async () => {
+    let now = Date.now()
+    const recallStore = new RecallStore({ path: ':memory:', retentionDays: 1, now: () => now })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port, { groupHistory: () => [] })
+    await napcat.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    const conversation = `${account}:group:345678901`
+    const route = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+    const original = '到期后不再暴露的合成原文'
+    napcat.socket.send(JSON.stringify(realGroupMessage(original, { message_id: 501, message_seq: 501 })))
+    napcat.socket.send(JSON.stringify(recallNotice(501)))
+    await waitFor(async () => recallStore.listRecalled(account, conversation).messages.length === 1)
+    now += 86_400_000
+    expect(await (await fetch(`${route}/recalls`)).json()).toMatchObject({ messages: [] })
+    expect(await (await fetch(`${route}/messages`)).json()).toMatchObject({ messages: [] })
+    const replay = await readSseUntil(`${baseUrl}/api/events`, { 'Last-Event-ID': '0' },
+      (body) => body.includes('"type":"message.deleted"'))
+    expect(replay).not.toContain(original)
+    expect(workspaceEvents(replay).find((event) => event.type === 'message.deleted')).not.toHaveProperty('message')
+  })
+
+  it('serves scoped recall media ranges and revokes access when retention is disabled', async () => {
+    const recallStore = new RecallStore({ path: ':memory:' })
+    const mediaBytes = Buffer.from('synthetic-image-bytes')
+    const download = vi.fn(async () => new Response(mediaBytes, { headers: { 'Content-Type': 'image/png' } }))
+    const recallMediaStore = new RecallMediaStore({ path: ':memory:', fetch: download as typeof fetch })
+    const { hub, server, baseUrl, port } = await startTestServer({ recallStore, recallMediaStore })
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    const second = connectFakeNapCat(port, { selfId: '987654321' })
+    await Promise.all([napcat.ready, second.ready])
+    await waitFor(async () => hub.workspaceSnapshot().accounts.filter((account) => account.status === 'online').length === 2)
+    const account = `qq-${selfId}`
+    const conversation = `${account}:group:345678901`
+    const route = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+    napcat.socket.send(JSON.stringify(realGroupMessage('[图片]', {
+      message_id: 501, message_seq: 501,
+      message: [{ type: 'image', data: { url: 'https://gchat.qpic.cn/synthetic-recall.png', file: 'synthetic.png' } }],
+    })))
+    napcat.socket.send(JSON.stringify(recallNotice(501)))
+    await waitFor(async () => recallMediaStore.has({ accountId: account, conversationId: conversation, messageId: `${conversation}:501`, slot: '0.url' }))
+    const archive = await (await fetch(`${route}/recalls`)).json() as RecallArchivePage
+    const segment = archive.messages[0]?.segments[0]
+    expect(segment).toMatchObject({ type: 'image', url: expect.stringContaining('/recalls/501/media/0.url') })
+    const mediaUrl = `${route}/recalls/501/media/0.url`
+    const media = await fetch(mediaUrl)
+    expect(media.status).toBe(200)
+    expect(media.headers.get('cache-control')).toBe('no-store')
+    expect(Buffer.from(await media.arrayBuffer())).toEqual(mediaBytes)
+    const range = await fetch(mediaUrl, { headers: { Range: 'bytes=2-5' } })
+    expect(range.status).toBe(206)
+    expect(range.headers.get('content-range')).toBe(`bytes 2-5/${mediaBytes.length}`)
+    expect(Buffer.from(await range.arrayBuffer())).toEqual(mediaBytes.subarray(2, 6))
+    expect((await fetch(mediaUrl, { headers: { Range: 'bytes=100-200' } })).status).toBe(416)
+    expect((await fetch(mediaUrl.replace(account, 'qq-987654321'))).status).toBe(404)
+    expect((await fetch(mediaUrl.replace('/group/345678901/', '/group/999999999/'))).status).toBe(404)
+    const disabled = await fetch(`${route}/recall-settings`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+      body: JSON.stringify({ enabled: false, retentionDays: 7 }),
+    })
+    expect(disabled.status).toBe(200)
+    expect((await fetch(mediaUrl)).status).toBe(404)
+    expect(download).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['disabled', 'expired'] as const)(
+    'keeps fallback recall media scoped and revokes its URL when retention is %s',
+    async (revocation) => {
+      let now = Date.now()
+      const recallStore = new RecallStore({ path: ':memory:', now: () => now, retentionDays: 1 })
+      const download = vi.fn(async () => { throw new Error('Synthetic retention download failed') })
+      const recallMediaStore = new RecallMediaStore({ path: ':memory:', now: () => now, fetch: download as typeof fetch })
+      const { hub, server, baseUrl, port } = await startTestServer({ recallStore, recallMediaStore })
+      servers.push(server)
+      const napcat = connectFakeNapCat(port)
+      await napcat.ready
+      await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+      const account = `qq-${selfId}`
+      const conversation = `${account}:group:345678901`
+      const route = `${baseUrl}/api/accounts/${account}/conversations/group/345678901`
+      const source = 'https://gchat.qpic.cn/synthetic-recall-fallback.png'
+      napcat.socket.send(JSON.stringify(realGroupMessage('[图片]', {
+        message_id: 501, message_seq: 501,
+        message: [{ type: 'image', data: { url: source, file: 'synthetic-fallback.png' } }],
+      })))
+      napcat.socket.send(JSON.stringify(recallNotice(501)))
+      await waitFor(async () => download.mock.calls.length === 1
+        && recallStore.get(account, conversation, `${conversation}:501`)?.status === 'recalled')
+      expect(recallMediaStore.has({ accountId: account, conversationId: conversation, messageId: `${conversation}:501`, slot: '0.url' })).toBe(false)
+      const archive = await (await fetch(`${route}/recalls`)).json() as RecallArchivePage
+      const segment = archive.messages[0]?.segments[0]
+      if (segment?.type !== 'image' || !segment.url) throw new Error('Missing fallback recall media URL')
+      expect(segment.url).toBe(`/api/accounts/${account}/conversations/group/345678901/recalls/501/media/0.url`)
+      const mediaUrl = new URL(segment.url, baseUrl).toString()
+      const nativeFetch = globalThis.fetch
+      let remoteRequests = 0
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (input, init) => {
+        if (String(input) === source) {
+          remoteRequests += 1
+          return new Response(Buffer.from('synthetic fallback bytes'), { headers: { 'Content-Type': 'image/png' } })
+        }
+        return nativeFetch(input, init)
+      }) as typeof fetch)
+      try {
+        const available = await fetch(mediaUrl)
+        expect(available.status).toBe(200)
+        expect(available.headers.get('cache-control')).toBe('no-store')
+        expect(await available.text()).toBe('synthetic fallback bytes')
+        expect(remoteRequests).toBe(1)
+        if (revocation === 'disabled') {
+          const disabled = await fetch(`${route}/recall-settings`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+            body: JSON.stringify({ enabled: false, retentionDays: 1 }),
+          })
+          expect(disabled.status).toBe(200)
+        } else now += 86_400_000
+        expect((await fetch(mediaUrl)).status).toBe(404)
+        expect(remoteRequests).toBe(1)
+      } finally {
+        fetchSpy.mockRestore()
+      }
+    },
+  )
 
   it('maps account identity and proxies typed control-plane queries and commands', async () => {
     const operationsProjection = {

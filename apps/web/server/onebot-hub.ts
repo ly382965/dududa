@@ -27,6 +27,8 @@ import type {
   OperationPermission,
   OutgoingMessageSegment,
   QqNotification,
+  RecallArchivePage,
+  RecallSettings,
   UploadReceipt,
   WorkspaceEvent,
   WorkspaceSnapshot,
@@ -57,6 +59,9 @@ import {
   type OneBotRecentContact,
   type OneBotSegment,
 } from './mapper'
+import type { RecallForwarder } from './recall-forwarder'
+import { archivedSegments, type RecallStore } from './recall-store'
+import type { RecallMediaStore } from './recall-media'
 
 interface OneBotResponse<T = unknown> {
   status?: string
@@ -183,6 +188,9 @@ interface OneBotForwardNode {
 
 export interface HubOptions {
   token: string
+  recallForwarder?: RecallForwarder
+  recallStore?: RecallStore
+  recallMediaStore?: RecallMediaStore
   actionTimeoutMs?: number
   groupFileUploadTimeoutMs?: number
   recentConversationCount?: number
@@ -366,6 +374,8 @@ export class OneBotHub extends EventEmitter {
   private readonly uploadMaxEntries: number
   private readonly uploadMaxTotalBytes: number
   private closed = false
+  private readonly recallPruneTimer: ReturnType<typeof setInterval> | undefined
+  private readonly capturingForwards = new Map<string, Promise<void>>()
 
   constructor(private readonly options: HubOptions) {
     super()
@@ -381,6 +391,14 @@ export class OneBotHub extends EventEmitter {
     this.uploadMaxEntries = Math.max(1, Math.floor(options.uploadMaxEntries ?? defaultUploadMaxEntries))
     this.uploadMaxTotalBytes = Math.max(1, Math.floor(options.uploadMaxTotalBytes ?? defaultUploadMaxTotalBytes))
     this.wss.on('connection', (socket, request) => this.acceptConnection(socket, request))
+    if (options.recallStore) {
+      this.recallPruneTimer = setInterval(() => {
+        options.recallForwarder?.prune()
+        options.recallStore?.prune()
+        options.recallMediaStore?.prune()
+      }, 60_000)
+      this.recallPruneTimer.unref()
+    }
   }
 
   get configured(): boolean {
@@ -441,6 +459,9 @@ export class OneBotHub extends EventEmitter {
       }),
       capabilities: Object.fromEntries(states.map((state) => [state.account.id, this.capabilityDocument(state)])),
       conversations,
+      recallSettings: this.options.recallStore
+        ? Object.fromEntries(conversations.map((conversation) => [conversation.id, this.options.recallStore!.getSettings(conversation.accountId, conversation.id)]))
+        : undefined,
       messages: {},
       sessions: [],
       agentMessages: {},
@@ -469,6 +490,59 @@ export class OneBotHub extends EventEmitter {
 
   botId(account: string): string {
     return this.requireAccount(account).account.botId
+  }
+
+  recallSettings(account: string, type: 'group' | 'private', peerId: string): RecallSettings {
+    this.requireConversation(account, type, peerId)
+    return this.requireRecallStore().getSettings(account, conversationId(account, type, peerId))
+  }
+
+  setRecallSettings(account: string, type: 'group' | 'private', peerId: string, settings: RecallSettings): RecallSettings {
+    this.requireConversation(account, type, peerId)
+    const id = conversationId(account, type, peerId)
+    const updated = this.requireRecallStore().setSettings(account, id, settings)
+    this.options.recallMediaStore?.setSettings(account, id, updated)
+    this.broadcast({ type: 'recall.settings.changed', accountId: account, conversationId: id, settings: updated })
+    return updated
+  }
+
+  recalledMessages(account: string, type: 'group' | 'private', peerId: string, query: { limit?: number; before?: string } = {}): RecallArchivePage {
+    this.requireConversation(account, type, peerId)
+    const page = this.requireRecallStore().listRecalled(account, conversationId(account, type, peerId), query)
+    return { ...page, messages: page.messages.map((message) => this.presentArchivedMessage(message)) }
+  }
+
+  recalledMedia(account: string, type: 'group' | 'private', peerId: string, messageId: string, slot: string): { body: Buffer; mime: string } | { source: string } | undefined {
+    const id = conversationId(account, type, peerId)
+    const canonicalId = `${id}:${messageId}`
+    const message = this.options.recallStore?.get(account, id, canonicalId)
+    if (!message) return undefined
+    const media = this.options.recallMediaStore?.get({ accountId: account, conversationId: id, messageId: canonicalId, slot })
+    if (media) return media
+    const separator = slot.lastIndexOf('.')
+    const path = slot.slice(0, separator)
+    const field = slot.slice(separator + 1)
+    if (field !== 'url' && field !== 'thumbnailUrl') return undefined
+    const segment = [...archivedSegments(message)].find((entry) => entry.path === path)?.segment as unknown as Record<string, unknown> | undefined
+    const source = segment?.[field]
+    return typeof source === 'string' && this.customFaceSourceAllowed(source) ? { source } : undefined
+  }
+
+  replayEvent(event: WorkspaceEvent): WorkspaceEvent {
+    if (event.type === 'message.deleted') {
+      const { message: _message, ...notice } = event
+      const current = this.options.recallStore?.get(event.accountId, event.conversationId, event.messageId)
+      return current?.status === 'recalled' ? { ...notice, message: this.presentArchivedMessage(current) } : notice
+    }
+    if (event.type === 'message.created' && event.message.status === 'recalled') {
+      const message = event.message
+      const current = this.options.recallStore?.get(message.accountId, message.conversationId, message.id)
+      return current?.status === 'recalled' ? { ...event, message: this.presentArchivedMessage(current) } : event
+    }
+    if (event.type === 'recall.settings.changed' && this.options.recallStore) {
+      return { ...event, settings: this.options.recallStore.getSettings(event.accountId, event.conversationId) }
+    }
+    return event
   }
 
   async customFaceCatalog(account: string, type: 'group' | 'private', peerId: string): Promise<CustomFaceCatalog> {
@@ -1203,7 +1277,7 @@ export class OneBotHub extends EventEmitter {
       }, direction)
     } catch (error) {
       if (error instanceof Error && /不存在|not found/i.test(error.message)) {
-        return { messages: [], hasMoreBefore: false, hasMoreAfter: false }
+        return { messages: this.overlayRecalledMessages([], account, type, peerId, decodedCursor?.messageSeq, direction), hasMoreBefore: false, hasMoreAfter: false }
       }
       throw error
     }
@@ -1252,7 +1326,7 @@ export class OneBotHub extends EventEmitter {
       }
     }
     return {
-      messages,
+      messages: this.overlayRecalledMessages(messages, account, type, peerId, decodedCursor?.messageSeq, direction),
       beforeCursor: firstSeq ? this.encodeHistoryCursor(account, type, peerId, firstSeq) : undefined,
       afterCursor: lastSeq ? this.encodeHistoryCursor(account, type, peerId, lastSeq) : undefined,
       hasMoreBefore: direction === 'before' && hasMoreInDirection,
@@ -1385,13 +1459,12 @@ export class OneBotHub extends EventEmitter {
     this.requireCapability(state, 'message.recall')
     const senderId = String(message.sender?.user_id ?? message.user_id ?? '')
     if (senderId !== state.selfId) throw new Error('消息标识与本账号撤回权限不匹配')
+    // Capture the verified original before QQ removes it, including messages sent
+    // by another client before this gateway connected.
+    const original = mapMessage(account, state.selfId, message, (url) => this.registerMedia(url), type === 'private' ? peerId : undefined)
+    if (original) this.archiveMessage(original)
     await state.connection.request('delete_msg', { message_id: messageId }, 20_000)
-    this.broadcast({
-      type: 'message.deleted',
-      accountId: account,
-      conversationId: conversationId(account, type, peerId),
-      messageId: `${account}:${type}:${peerId}:${messageId}`,
-    })
+    this.broadcastRecall(account, type, peerId, messageId, state.selfId)
   }
 
   async refreshMessage(
@@ -1401,6 +1474,9 @@ export class OneBotHub extends EventEmitter {
     messageId: string,
   ): Promise<ChatMessage> {
     if (!/^\d{1,24}$/.test(messageId)) throw new Error('消息标识无效')
+    this.requireConversation(account, type, peerId)
+    const archived = this.options.recallStore?.get(account, conversationId(account, type, peerId), `${account}:${type}:${peerId}:${messageId}`)
+    if (archived?.status === 'recalled') return this.presentArchivedMessage(archived)
     const { state, message } = await this.requireMessageInConversation(account, type, peerId, messageId)
     this.requireCapability(state, 'history.cursor')
     const mapped = mapMessage(
@@ -1449,18 +1525,46 @@ export class OneBotHub extends EventEmitter {
     type: 'group' | 'private',
     peerId: string,
     forwardId: string,
+    messageId?: string,
   ): Promise<ForwardedMessageBundle> {
-    const state = this.requireConversation(account, type, peerId)
     if (!forwardId || forwardId.length > 512) throw new Error('转发消息标识无效')
+    if (messageId && !/^\d{1,24}$/.test(messageId)) throw new Error('消息标识无效')
+    const scope = conversationId(account, type, peerId)
+    const canonicalId = messageId ? `${scope}:${messageId}` : undefined
+    const cached = (): ForwardedMessageBundle | undefined => {
+      const original = canonicalId ? this.options.recallStore?.get(account, scope, canonicalId) : undefined
+      if (!original) return undefined
+      const match = [...archivedSegments(this.presentArchivedMessage(original))]
+        .find(({ segment }) => segment.type === 'forward' && segment.forwardId === forwardId)?.segment
+      if (match?.type !== 'forward' || !match.messages?.length) return undefined
+      return { forwardId, messages: match.messages, retention: this.options.recallStore?.retention(account, scope, canonicalId!) }
+    }
+    const saved = cached()
+    if (saved) return saved
+    if (canonicalId) await this.capturingForwards.get(canonicalId)
+    const captured = cached()
+    if (captured) return captured
+    const state = this.requireConversation(account, type, peerId)
+    try {
+      const messages = await this.fetchForwardMessages(account, state, type, peerId, forwardId, { remaining: 500 })
+      if (canonicalId) this.saveForwardSnapshot(account, scope, canonicalId, forwardId, messages)
+      return cached() ?? { forwardId, messages }
+    } catch (error) {
+      if (canonicalId && this.options.recallStore?.get(account, scope, canonicalId)?.status === 'recalled') {
+        throw new Error('这条转发的内部内容未保存，QQ 端也无法读取；可请原发送者重新转发')
+      }
+      throw error
+    }
+  }
+
+  private async fetchForwardMessages(account: string, state: AccountState, type: 'group' | 'private', peerId: string,
+    forwardId: string, budget: { remaining: number }, depth = 0): Promise<ChatMessage[]> {
     const data = await state.connection.request<{ messages?: Array<OneBotForwardNode | OneBotMessage> }>(
       'get_forward_msg',
       { message_id: forwardId },
       30_000,
     )
-    const messages = this.mapForwardNodes(account, state, type, peerId, data.messages ?? [], forwardId, {
-      remaining: 500,
-    })
-    return { forwardId, messages }
+    return this.mapForwardNodes(account, state, type, peerId, data.messages ?? [], forwardId, budget, depth)
   }
 
   mediaUrl(key: string): string | undefined {
@@ -1484,6 +1588,10 @@ export class OneBotHub extends EventEmitter {
   close(): void {
     if (this.closed) return
     this.closed = true
+    clearInterval(this.recallPruneTimer)
+    this.options.recallMediaStore?.close()
+    this.options.recallForwarder?.close()
+    this.options.recallStore?.close()
     for (const state of this.accounts.values()) state.connection.close(1001, 'server shutting down')
     this.accounts.clear()
     this.media.clear()
@@ -1662,6 +1770,16 @@ export class OneBotHub extends EventEmitter {
     if (postType && String(event.self_id ?? '') !== state.selfId) {
       connection.close(1008, 'OneBot event self ID mismatch')
       return
+    }
+    if (this.options.recallForwarder && (postType === 'message' || postType === 'message_sent' || postType === 'notice')) {
+      const send = async (groupId: string, message: OneBotSegment[]) => {
+        if (!this.isCurrent(state) || state.account.status !== 'online') throw new Error('QQ connection unavailable')
+        return state.connection.request('send_group_msg', { group_id: groupId, message }, 20_000)
+      }
+      const action = postType === 'notice'
+        ? this.options.recallForwarder.recall(account, state.selfId, event, send)
+        : this.options.recallForwarder.message(account, state.selfId, event as unknown as OneBotMessage, send)
+      void action.catch(() => console.warn('Recall forwarding failed; delivery is not retried automatically.'))
     }
     if (postType === 'meta_event' && String(event.meta_event_type ?? '') === 'heartbeat') {
       const status = event.status
@@ -1842,12 +1960,7 @@ export class OneBotHub extends EventEmitter {
       const peerId = String(event.group_id ?? event.user_id ?? '')
       const rawMessageId = String(event.message_id ?? '')
       if (!peerId || !rawMessageId) return
-      this.broadcast({
-        type: 'message.deleted',
-        accountId: account,
-        conversationId: conversationId(account, type, peerId),
-        messageId: `${account}:${type}:${peerId}:${rawMessageId}`,
-      })
+      this.broadcastRecall(account, type, peerId, rawMessageId, String(event.operator_id ?? event.user_id ?? ''))
     }
   }
 
@@ -2396,8 +2509,9 @@ export class OneBotHub extends EventEmitter {
       budget.remaining -= 1
       if (Array.isArray(rawContent)) {
         mapped.segments = mapped.segments.map((segment, segmentIndex) => {
-          const rawSegment = rawContent[segmentIndex] as OneBotForwardNode | undefined
-          const nested = rawSegment?.type === 'node' ? rawSegment.data?.message ?? rawSegment.data?.content : undefined
+          const rawSegment = rawContent[segmentIndex] as (OneBotForwardNode & { type: string }) | undefined
+          const nested = rawSegment?.type === 'node' || rawSegment?.type === 'forward'
+            ? rawSegment.data?.message ?? rawSegment.data?.content : undefined
           if (!Array.isArray(nested)) return segment
           const nestedMessages =
             depth >= 7
@@ -2414,7 +2528,7 @@ export class OneBotHub extends EventEmitter {
                 )
           return {
             type: 'forward' as const,
-            forwardId: `inline:${path}.${index}.${segmentIndex}`,
+            forwardId: segment.type === 'forward' && segment.forwardId !== 'unknown' ? segment.forwardId : `inline:${path}.${index}.${segmentIndex}`,
             count: nestedMessages.length,
             preview: nestedMessages.length ? '嵌套转发消息' : '嵌套转发内容过深或为空',
             messages: nestedMessages,
@@ -2468,6 +2582,11 @@ export class OneBotHub extends EventEmitter {
   }
 
   private broadcastMessage(state: AccountState, conversation: Conversation, message: ChatMessage): void {
+    const archived = this.archiveMessage(message)
+    if (archived?.status === 'recalled') {
+      message = this.presentArchivedMessage(archived)
+      conversation.lastMessage = '此消息已撤回'
+    }
     const now = Date.now()
     for (const [id, expiresAt] of state.emittedMessages) {
       if (expiresAt <= now) state.emittedMessages.delete(id)
@@ -2480,6 +2599,159 @@ export class OneBotHub extends EventEmitter {
       state.emittedMessages.delete(oldest)
     }
     this.broadcast({ type: 'message.created', conversation, message })
+  }
+
+  private requireRecallStore(): RecallStore {
+    if (!this.options.recallStore) throw new Error('防撤回存储尚未配置')
+    return this.options.recallStore
+  }
+
+  private broadcastRecall(account: string, type: 'group' | 'private', peerId: string, rawMessageId: string, operatorId?: string): void {
+    const id = conversationId(account, type, peerId)
+    const messageId = `${id}:${rawMessageId}`
+    const retained = this.options.recallStore?.recall(account, id, messageId, { recalledAt: Date.now(), operatorId })
+    const conversation = this.accounts.get(account)?.conversations.get(id)
+    if (conversation && retained?.timestampMs === conversation.updatedAt) conversation.lastMessage = '此消息已撤回'
+    this.broadcast({
+      type: 'message.deleted', accountId: account, conversationId: id, messageId,
+      ...(retained ? { message: this.presentArchivedMessage(retained) } : {}),
+    })
+  }
+
+  private archiveMessage(message: ChatMessage): ChatMessage | undefined {
+    const store = this.options.recallStore
+    if (!store) return undefined
+    const archived = this.archiveSources(message)
+    const saved = store.remember(archived)
+    if (saved) {
+      this.captureArchivedMedia(saved)
+      if (saved.segments.some((segment) => segment.type === 'forward' && !segment.messages?.length)
+        && !this.capturingForwards.has(saved.id)) {
+        const capture = this.captureForwardSnapshots(saved).catch(() => {
+          // The card remains available when QQ cannot supply the original details.
+        }).finally(() => this.capturingForwards.delete(saved.id))
+        this.capturingForwards.set(saved.id, capture)
+      }
+    }
+    return saved
+  }
+
+  private archiveSources(message: ChatMessage): ChatMessage {
+    const archived = structuredClone(message)
+    // Store the upstream resource address, never an in-memory proxy handle.
+    for (const { segment } of archivedSegments(archived)) {
+      for (const field of ['url', 'thumbnailUrl'] as const) {
+        const source = (segment as unknown as Record<string, unknown>)[field]
+        if (typeof source !== 'string') continue
+        const handle = /^\/api\/media\/(message|file)\/([a-f0-9]{32})$/.exec(source)
+        const remote = handle ? this.media.get(handle[2]!)?.url : undefined
+        if (remote) (segment as unknown as Record<string, unknown>)[field] = remote
+      }
+    }
+    return archived
+  }
+
+  private async captureForwardSnapshots(message: ChatMessage): Promise<void> {
+    const [, type, peerId] = message.conversationId.split(':') as [string, 'group' | 'private', string]
+    const state = this.requireConversation(message.accountId, type, peerId)
+    const budget = { remaining: 500 }
+    const visited = new Set<string>()
+    const expand = async (messages: ChatMessage[], depth: number): Promise<void> => {
+      if (depth > 7 || this.closed || !this.options.recallStore?.get(message.accountId, message.conversationId, message.id)) return
+      for (const parent of messages) {
+        for (const segment of parent.segments) {
+          if (segment.type !== 'forward') continue
+          if (!segment.messages?.length && budget.remaining > 0 && !visited.has(segment.forwardId)) {
+            visited.add(segment.forwardId)
+            try {
+              const children = await this.fetchForwardMessages(message.accountId, state, type, peerId, segment.forwardId, budget, depth)
+              if (children.length) { segment.messages = children; segment.count = children.length }
+            } catch { /* Keep other nodes even if an individual nested forward has expired. */ }
+          }
+          // Persist each top-level bundle as soon as it is available.
+          if (depth === 0 && segment.messages?.length) {
+            this.saveForwardSnapshot(message.accountId, message.conversationId, message.id, segment.forwardId, segment.messages)
+          }
+          if (segment.messages) {
+            await expand(segment.messages, depth + 1)
+            if (depth === 0) this.saveForwardSnapshot(message.accountId, message.conversationId, message.id, segment.forwardId, segment.messages)
+          }
+        }
+      }
+    }
+    await expand([structuredClone(message)], 0)
+  }
+
+  private saveForwardSnapshot(account: string, scope: string, messageId: string, forwardId: string, messages: ChatMessage[]): void {
+    if (this.closed) return
+    const children = messages.map((message) => this.archiveSources(message))
+    const saved = this.options.recallStore?.saveForward(account, scope, messageId, forwardId, children)
+    if (!saved) return
+    this.captureArchivedMedia(saved)
+    if (saved.status === 'recalled') {
+      this.broadcast({ type: 'message.deleted', accountId: account, conversationId: scope,
+        messageId: saved.id, message: this.presentArchivedMessage(saved) })
+    }
+  }
+
+  private captureArchivedMedia(message: ChatMessage): void {
+    const store = this.options.recallStore
+    if (!store || !this.options.recallMediaStore) return
+    const expiresAt = store.expiresAt(message.accountId, message.conversationId, message.id)!
+    for (const { segment, path } of archivedSegments(message)) {
+      for (const field of ['url', 'thumbnailUrl'] as const) {
+        const source = (segment as unknown as Record<string, unknown>)[field]
+        if (typeof source !== 'string' || !/^https?:\/\//.test(source)) continue
+        void this.options.recallMediaStore!.capture({
+          accountId: message.accountId, conversationId: message.conversationId, messageId: message.id, slot: `${path}.${field}`,
+        }, source, expiresAt, () => !this.closed && Boolean(store.get(message.accountId, message.conversationId, message.id)))
+      }
+    }
+  }
+
+  private presentArchivedMessage(message: ChatMessage): ChatMessage {
+    const presented = structuredClone(message)
+    const [, type, peerId] = message.conversationId.split(':')
+    for (const { segment, path } of archivedSegments(presented)) {
+      for (const field of ['url', 'thumbnailUrl'] as const) {
+        const source = (segment as unknown as Record<string, unknown>)[field]
+        if (typeof source !== 'string') continue
+        const slot = `${path}.${field}`
+        // Both saved blobs and best-effort upstream fallbacks stay behind the
+        // archive's scope/expiry check, including after a browser reconnect.
+        const url = this.customFaceSourceAllowed(source)
+          ? `/api/accounts/${encodeURIComponent(message.accountId)}/conversations/${type}/${peerId}/recalls/${encodeURIComponent(message.messageId)}/media/${slot}`
+          : undefined
+        if (url) (segment as unknown as Record<string, unknown>)[field] = url
+        else delete (segment as unknown as Record<string, unknown>)[field]
+      }
+    }
+    return presented
+  }
+
+  private overlayRecalledMessages(messages: ChatMessage[], account: string, type: 'group' | 'private', peerId: string, cursor: string | undefined, direction: 'before' | 'after'): ChatMessage[] {
+    const store = this.options.recallStore
+    if (!store) return messages
+    const id = conversationId(account, type, peerId)
+    const byId = new Map(messages.map((message) => {
+      const saved = store.get(account, id, message.id)
+      return [message.id, saved?.status === 'recalled' ? this.presentArchivedMessage(saved) : message]
+    }))
+    // Fill gaps left by QQ in the loaded window. The separate archive provides
+    // paginated access to all retained recalls, including older windows.
+    const oldest = messages[0]?.timestampMs
+    const newest = messages.at(-1)?.timestampMs
+    for (const message of store.listRecalled(account, id, { limit: 100 }).messages) {
+      if (cursor && message.messageSeq && /^\d+$/.test(message.messageSeq)) {
+        const seq = BigInt(message.messageSeq)
+        if (direction === 'before' ? seq >= BigInt(cursor) : seq <= BigInt(cursor)) continue
+      }
+      if (oldest && (message.timestampMs ?? 0) < oldest) continue
+      if (cursor && newest && (message.timestampMs ?? 0) > newest) continue
+      byId.set(message.id, this.presentArchivedMessage(message))
+    }
+    return [...byId.values()].sort((left, right) =>
+      (left.timestampMs ?? 0) - (right.timestampMs ?? 0) || left.id.localeCompare(right.id, 'en', { numeric: true }))
   }
 
   private setAccountStatus(state: AccountState, status: Account['status'], suppressRefreshActions = false): void {

@@ -1,0 +1,15 @@
+{
+  "argument_mapping_revision": "identity-v1",
+  "capability_definition_digest": "dududa-c14n-v1:capability.definition:v1:sha-256:11c835799e66d8ccc1f53480ab7cf766b56dc83a687611f04e34a9010be6b33f",
+  "capability_id": "notifai.notices.deadlines.v1",
+  "enabled": true,
+  "expected_input_schema_digest": "dududa-c14n-v1:schema:mcp.notifai.get_notice_deadlines.input:v1:sha-256:c4228a5e471778bbc3b373c0c3a18ef29c47ccbc79a86c93f30fe1ca0873196a",
+  "expected_output_schema_digest": "dududa-c14n-v1:schema:mcp.notifai.get_notice_deadlines.output:v1:sha-256:d6278d786e5ffd7f1f920ba920baa572beb2194743c466f2e453ad6a62bc0639",
+  "fixed_arguments": {},
+  "mapping_digest": "dududa-c14n-v1:capability.mcp-mapping:v1:sha-256:076aa38e115848cd63f80c3708d52d02ade2e486de70de87a5b4d202581a033f",
+  "result_mapping_revision": "schema-project-v1",
+  "schema_version": 1,
+  "semantics": "read_only",
+  "server_id": "notifai",
+  "tool_name": "get_notice_deadlines"
+}

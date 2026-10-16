@@ -1,0 +1,44 @@
+\section{本地资料与源码索引}
+以下路径以主仓根目录为基准；录制与历史目录位于主仓旁。完整本地条目、主题及副本位置见配套汇总文件。源码链接以提交时的主仓为准，仓库访问权限由项目维护者管理。
+
+\begingroup\small\renewcommand{\arraystretch}{1.15}
+\begin{longtable}{@{}L{9mm}L{44mm}L{96mm}@{}}
+\caption{正文来源编号}\\\toprule
+编号 & 主题 & 主要文件或目录\\\midrule\endfirsthead
+\toprule 编号 & 主题 & 主要文件或目录\\\midrule\endhead
+S1 & 作品与原材料 & \nolinkurl{README.md}；\nolinkurl{docs/design/dududa-2.0-design-report.md}；\nolinkurl{docs/design/dududa-2.0-work-introduction.md}；原提交 PDF/Word。\\
+S2 & 核心架构与接口 & \nolinkurl{docs/design/runtime.md}；\nolinkurl{packages/dududa-agent/src/dududa/domain/}、\nolinkurl{ports/}、\nolinkurl{runtime/}。\\
+S3 & 当前运行组合 & \nolinkurl{apps/astrbot-plugins/astrbot_plugin_dududa_core/composition.py}；\nolinkurl{rollout_bridge.py}；\nolinkurl{web_runtime.py}。\\
+S4 & 感知与参与 & \nolinkurl{docs/design/perception-and-social.md}；\nolinkurl{adapters/proactive_talk.py}、\nolinkurl{adapters/adaptive_plugins.py}；核心 \nolinkurl{perception/}。\\
+S5 & 能力与工具 & \nolinkurl{docs/design/capability-and-mcp.md}；\nolinkurl{configs/capabilities/}；\nolinkurl{adapters/capability_planner.py}。\\
+S6 & 校园服务 & \nolinkurl{services/mcp/} 各服务 README；校车插件 README 和时刻表；培养方案数据 README。\\
+S7 & 扩展与整合 & \nolinkurl{docs/integrations/pr10-selective-integration.md}；各自有插件 README；\nolinkurl{THIRD_PARTY_NOTICES.md}。\\
+S8 & 安装与部署 & \nolinkurl{docs/operations/submission-program.md}、\nolinkurl{deployment.md}、\nolinkurl{upgrade-and-rollback.md}；\nolinkurl{deploy/compose/compose.yml}。\\
+S9 & 模型与 Key 池 & \nolinkurl{docs/design/model-routing.md}；\nolinkurl{docs/development/api-key-pool-runtime-sync.md}；\nolinkurl{adapters/model.py}、\nolinkurl{deepseek_config.py}。\\
+S10 & 录制验证 & \nolinkurl{docs/operations/recording-runbook.md}；\nolinkurl{../dududa-recording-state/reports/} 中 manual-answers、manual-mcp、adaptive、native-result、benchmark-100 记录。\\
+S11 & 广覆盖评测 & \nolinkurl{docs/operations/group-chat-100-question-results.md}；\nolinkurl{docs/refactor/} 内评课 75 题、二课 75 题、自然语言 MCP 及固定消息报告。\\
+S12 & Memory 与 Persona & \nolinkurl{docs/design/memory.md}、\nolinkurl{persona.md}；\nolinkurl{docs/research/memory-evaluation.md}；\nolinkurl{evals/memory-retrieval/v1/DATA_CARD.md}。\\
+S13 & 离线 Bandit & \nolinkurl{docs/refactor/s20-offline-bandit-report.md}；\nolinkurl{evals/bandit-offline-v1/}；\nolinkurl{packages/dududa-agent/src/dududa/bandit/}。\\
+S14 & 主动调度与研究 & \nolinkurl{docs/design/proactive-messaging.md}、\nolinkurl{online-learning.md}；\nolinkurl{docs/research/} 内群体情境、感知、主动参与及核心模块研究。\\
+S15 & 安全与阶段审查 & \nolinkurl{docs/design/security.md}；\nolinkurl{docs/adr/}；\nolinkurl{docs/reviews/}；\nolinkurl{.TreeWork/} 阶段记录。\\
+S16 & Web 与运行修复 & \nolinkurl{apps/web/README.md}；\nolinkurl{docs/reviews/webui-exploratory-fixes-2026-09-05.md}；\nolinkurl{docs/operations/bot-stable-release.md}；独立试用报告。\\
+S17 & 文档站与旧原型 & \nolinkurl{../mmdustc.top/apps/dududa-docs/}；\nolinkurl{../dududa20-prototype/}、\nolinkurl{../dududa20-plugin/}；主仓重构与迁移文档。\\
+S18 & WebUI 设计与实现 & \nolinkurl{apps/web/src/App.vue}、\nolinkurl{router.ts}、\nolinkurl{components/AgentConsole.vue}、\nolinkurl{views/ApiKeyPoolsView.vue}、\nolinkurl{services/database.ts}；\nolinkurl{apps/web/server/app.ts}、\nolinkurl{dududa-runtime.ts}、\nolinkurl{internal-test.ts}；\nolinkurl{docs/design/bot-control-plane.md}。\\\bottomrule
+\end{longtable}
+\endgroup
+
+\section{外部资料与排版来源}
+本次联网核对以下官方项目或文档。外部资料用于模板选择与协议字段解释，项目实现和验证结果仍以本地代码及记录为依据。访问日期均为 2026 年 9 月 6 日。
+
+\begin{description}[leftmargin=3em,style=nextline]
+\item[W1] ElegantLaTeX. ElegantPaper：中文及英文工作论文模板，v0.12（2026-02-27）。\url{https://github.com/ElegantLaTeX/ElegantPaper}。
+\item[W2] CTeX 项目. 中文 LaTeX 类与宏包说明。\url{https://ctan.org/pkg/ctex}。
+\item[W3] DeepSeek. Thinking Mode：thinking 开关、reasoning\_effort 与模型参数。\url{https://api-docs.deepseek.com/guides/thinking_mode/}。
+\item[W4] Model Context Protocol. Architecture，2025-11-25 规范。\url{https://modelcontextprotocol.io/specification/2025-11-25/architecture}。
+\end{description}
+
+\subsection*{模板采用与修改说明}
+本报告实际加载 ElegantPaper 上游类文件；原始文件随源码放在 \code{latex/vendor/}，遵循 LPPL 1.3c 或更新版本，许可证一并提供。中文排版采用 CTeX 与 Fandol 字体，图表由 LaTeX/TikZ 生成。项目在独立 \code{preamble.tex} 中配置 A4 单栏、页边距、标题层级、页眉页脚、表格及深灰/藏蓝配色，没有修改上游类文件。
+
+模板对照与选用理由另见 LaTeX 源码 README。图示优先表达组件责任与运行关系。
+\endinput

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ArrowLeft, LoaderCircle, X } from '@lucide/vue'
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 
 import { workspaceAdapter } from '../../services/workspace-adapter'
-import type { Account, ChatMessage, Conversation, MessageSegment } from '../../types/workspace'
+import { subscribeRecallUpdates } from '../../services/recall'
+import type { Account, ChatMessage, Conversation, ForwardedMessageBundle, MessageSegment } from '../../types/workspace'
 import MessageBubble from './MessageBubble.vue'
 
-const props = defineProps<{ open: boolean; conversation?: Conversation; account?: Account; forwardId: string }>()
+const props = defineProps<{ open: boolean; conversation?: Conversation; account?: Account; forwardId: string; messageId?: string }>()
 const emit = defineEmits<{
   close: []
   refreshMedia: [message: ChatMessage]
@@ -17,6 +18,31 @@ const loading = ref(false)
 const error = ref('')
 const stack = ref<Array<{ forwardId: string; messages: ChatMessage[] }>>([])
 let version = 0
+let retention: ForwardedMessageBundle['retention']
+let expiryTimer: ReturnType<typeof setInterval> | undefined
+
+function clearArchive(reason: string): void {
+  version += 1
+  messages.value = []
+  stack.value = []
+  loading.value = false
+  error.value = reason
+}
+
+function checkExpiry(): void {
+  if (retention && retention.expiresAt <= Date.now()) clearArchive('保留的转发内容已过期')
+}
+
+const unsubscribe = subscribeRecallUpdates((event) => {
+  if (!props.open || event.accountId !== props.conversation?.accountId || event.conversationId !== props.conversation.id) return
+  if (event.type === 'recall.settings.changed') {
+    if (!event.settings.enabled) clearArchive('此会话已关闭防撤回，保留内容已清除')
+    else if (retention) {
+      retention.expiresAt = Math.min(retention.expiresAt, retention.recordedAt + event.settings.retentionDays * 86_400_000)
+      checkExpiry()
+    }
+  }
+})
 
 async function load(forwardId: string, mode: 'replace' | 'push' = 'replace'): Promise<void> {
   if (!props.conversation || !forwardId) return
@@ -24,12 +50,14 @@ async function load(forwardId: string, mode: 'replace' | 'push' = 'replace'): Pr
   loading.value = true
   error.value = ''
   try {
-    const bundle = await workspaceAdapter.loadForwarded(props.conversation, forwardId)
+    const bundle = await workspaceAdapter.loadForwarded(props.conversation, forwardId, props.messageId)
     if (requestVersion !== version) return
+    retention = bundle.retention
     messages.value = bundle.messages
     const level = { forwardId, messages: bundle.messages }
     if (mode === 'push') stack.value.push(level)
     else stack.value = [level]
+    checkExpiry()
   } catch (cause) {
     if (requestVersion === version) error.value = cause instanceof Error ? cause.message : '无法加载合并转发消息'
   } finally {
@@ -38,6 +66,8 @@ async function load(forwardId: string, mode: 'replace' | 'push' = 'replace'): Pr
 }
 
 function nested(segment: Extract<MessageSegment, { type: 'forward' }>): void {
+  checkExpiry()
+  if (retention && retention.expiresAt <= Date.now()) return
   if (segment.messages) {
     messages.value = segment.messages
     stack.value.push({ forwardId: segment.forwardId, messages: segment.messages })
@@ -57,17 +87,24 @@ function back(): void {
 }
 
 watch(
-  () => [props.open, props.conversation?.id, props.forwardId] as const,
+  () => [props.open, props.conversation?.id, props.forwardId, props.messageId] as const,
   ([open]) => {
     version += 1
-    if (open) void load(props.forwardId)
-    else {
-      messages.value = []
-      stack.value = []
+    clearInterval(expiryTimer)
+    messages.value = []
+    stack.value = []
+    retention = undefined
+    error.value = ''
+    loading.value = false
+    if (open) {
+      expiryTimer = setInterval(checkExpiry, 1_000)
+      void load(props.forwardId)
     }
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => { version += 1; unsubscribe(); clearInterval(expiryTimer) })
 </script>
 
 <template>

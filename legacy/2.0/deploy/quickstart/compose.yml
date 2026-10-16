@@ -1,0 +1,124 @@
+name: ${DUDUDA_PROJECT_NAME:-dududa-quickstart}
+
+x-runtime: &runtime
+  image: dududa/astrbot:submission-2b52593
+  platform: linux/amd64
+  pull_policy: never
+  init: true
+  security_opt: ["no-new-privileges:true"]
+  environment: &runtime-env
+    TZ: Asia/Shanghai
+    PYTHONDONTWRITEBYTECODE: "1"
+    DUDUDA_API_KEY_STORE_PATH: /var/lib/dududa/api-keys/api-keys.json
+    DUDUDA_AGENT_POLICY_PATH: /var/lib/dududa/agent/agent-policies.json
+    DUDUDA_MCP_RUNTIME_OVERLAY_DIR: /var/lib/dududa/mcp/servers
+    USTC_CAS_USR: ${USTC_CAS_USR:-}
+    USTC_CAS_PWD: ${USTC_CAS_PWD:-}
+
+services:
+  init:
+    <<: *runtime
+    profiles: ["setup"]
+    build:
+      context: .
+      dockerfile: deploy/quickstart/Dockerfile
+      args:
+        ASTRBOT_BASE_IMAGE: ${ASTRBOT_BASE_IMAGE:-soulter/astrbot:v4.27.5@sha256:1db1792902be5ccecfb907a720ae22b233ebdc958854d860fc73d7f95a720637}
+    entrypoint: ["python", "/opt/dududa/quickstart/setup.py"]
+    command: ["prepare"]
+    volumes:
+      - astrbot-data:/AstrBot/data
+      - workspace-state:/var/lib/dududa
+      - napcat-config:/app/napcat/config
+
+  astrbot:
+    <<: *runtime
+    restart: unless-stopped
+    ports: ["127.0.0.1:${DUDUDA_ASTRBOT_PORT:-6185}:6185"]
+    volumes:
+      - astrbot-data:/AstrBot/data
+      - workspace-state:/var/lib/dududa:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:6185/', timeout=5)"]
+      interval: 5s
+      timeout: 6s
+      retries: 40
+      start_period: 20s
+
+  mcp-console:
+    <<: *runtime
+    restart: unless-stopped
+    read_only: true
+    command: ["python", "-m", "dududa_mcp_console"]
+    volumes:
+      - astrbot-data:/AstrBot/data
+      - mcp-state:/var/lib/dududa/mcp
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=5)"]
+      interval: 5s
+      timeout: 6s
+      retries: 24
+
+  web:
+    image: dududa/web:submission-2b52593
+    platform: linux/amd64
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: deploy/docker/web/Dockerfile
+    restart: unless-stopped
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      TZ: Asia/Shanghai
+      DUDUDA_WEB_BIND: 0.0.0.0
+      DUDUDA_WEB_INTERNAL_PORT: 8000
+      DUDUDA_ONEBOT_TOKEN_FILE: /var/lib/dududa/secrets/onebot_access_token
+      DUDUDA_ASTRBOT_PLUGIN_API_URL: http://astrbot:6185/api/v1
+      DUDUDA_ASTRBOT_PLUGIN_API_KEY_FILE: /var/lib/dududa/secrets/astrbot_plugin_api_key
+      DUDUDA_MCP_CONSOLE_URL: http://mcp-console:8090
+      DUDUDA_API_KEY_STORE_PATH: /var/lib/dududa/api-keys/api-keys.json
+      DUDUDA_AGENT_POLICY_PATH: /var/lib/dududa/agent/agent-policies.json
+    ports: ["127.0.0.1:${DUDUDA_WEB_PORT:-5173}:8000"]
+    volumes: ["workspace-state:/var/lib/dududa"]
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 6s
+      retries: 24
+
+  napcat:
+    image: dududa/napcat:submission-4.18.19
+    platform: linux/amd64
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: deploy/quickstart/NapCat.Dockerfile
+      args:
+        NAPCAT_BASE_IMAGE: ${NAPCAT_BASE_IMAGE:-mlikiowa/napcat-docker:v4.18.19@sha256:1336a777f9a4f1f8cb89fef42f7548deacd3645919a067a50df5b66b5e77390e}
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      TZ: Asia/Shanghai
+      NAPCAT_UID: "1000"
+      NAPCAT_GID: "1000"
+    ports: ["127.0.0.1:${DUDUDA_NAPCAT_PORT:-6099}:6099"]
+    volumes:
+      - napcat-config:/app/napcat/config
+      - napcat-qq:/app/.config/QQ
+      - astrbot-data:/AstrBot/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--location", "--max-time", "5", "http://127.0.0.1:6099/"]
+      interval: 5s
+      timeout: 6s
+      retries: 36
+      start_period: 20s
+
+volumes:
+  astrbot-data:
+  workspace-state:
+  mcp-state:
+  napcat-config:
+  napcat-qq:

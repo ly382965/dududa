@@ -175,7 +175,7 @@ export interface InternalTestEffectivePlugin {
 export interface InternalTestEffectiveSelection {
   scope: InternalTestAgentScope
   policySource: 'default' | 'saved'
-  modelTier: InternalTestTier
+  modelTier: RuntimePreviewTier
   model: string
   reasoning: InternalTestReasoningLevel
   answerProfile: InternalTestAnswerProfile
@@ -308,7 +308,7 @@ export interface InternalTestAgentRequest {
 export interface InternalTestAgentResponse extends PreviewEvidence {
   runId: string
   candidate: string
-  tier: InternalTestTier
+  tier: RuntimePreviewTier
   model: string
   reasoning: InternalTestReasoningLevel
   answerProfile: InternalTestAnswerProfile
@@ -323,7 +323,7 @@ export interface InternalTestAgentResponse extends PreviewEvidence {
   outputCalls: 0
   memoryWrites: 0
   toolCalls: number
-  runtimePath: 'dududa_2_preview' | 'candidate_fallback'
+  runtimePath: 'dududa_3_preview' | 'dududa_2_preview' | 'candidate_fallback'
 }
 
 export interface InternalTestSamplesQuery {
@@ -352,20 +352,21 @@ export interface InternalTestProgress {
   needsReview: number
 }
 
-export interface InternalTestCandidate {
+export interface InternalTestCandidate extends PreviewEvidence {
   runId: string
   windowId: string
   candidate: string
-  tier: InternalTestTier
+  tier: RuntimePreviewTier
   model: string
   answerProfile: InternalTestAnswerProfile
   latencyMs: number
   generatedAt: string
   evidenceMode: 'private_silver_shadow'
-  providerCalls: 1
+  providerCalls: number | null
   outputCalls: 0
   memoryWrites: 0
-  toolCalls: 0
+  toolCalls: number
+  runtimePath?: 'dududa_3_preview' | 'dududa_2_preview'
 }
 
 export interface InternalTestFeedback {
@@ -392,4 +393,4 @@ export interface InternalTestFeedbackResult {
   feedbackId: string
   progress: InternalTestProgress
 }
-import type { PreviewCoverage, PreviewEvidence } from './preview'
+import type { PreviewCoverage, PreviewEvidence, RuntimePreviewTier } from './preview'

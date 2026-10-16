@@ -1,0 +1,8 @@
+{
+  "name": "astrbot_plugin_iris_chat_memory",
+  "version": "0.1.1+privacy.1",
+  "source": "git",
+  "repository": "https://github.com/Leafliber/astrbot_plugin_iris_chat_memory.git",
+  "commit": "242164667d19061a316e8e8651d96c02690d4e4f",
+  "patch": "third_party/patches/iris-memory-user-group-isolation.patch"
+}

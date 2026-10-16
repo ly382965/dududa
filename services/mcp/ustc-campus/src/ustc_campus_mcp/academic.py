@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import re
+import unicodedata
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -12,6 +13,10 @@ from bs4 import BeautifulSoup
 from .common import contains, fetched_at, page, text
 
 CATALOG_BASE_URL = "https://catalog.ustc.edu.cn"
+
+
+def _compact_course_name(value: str) -> str:
+    return re.sub(r"[\s()]", "", unicodedata.normalize("NFKC", value)).casefold()
 
 
 class AcademicClient:
@@ -410,7 +415,12 @@ class AcademicClient:
                     *teachers,
                 )
             )
-            if query and query.casefold() not in searchable.casefold():
+            if (
+                query
+                and query.casefold() not in searchable.casefold()
+                and _compact_course_name(query)
+                not in _compact_course_name(str(item["course_name"] or ""))
+            ):
                 continue
             if department_code and department_code != item["department"]["code"]:
                 continue

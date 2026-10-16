@@ -1,0 +1,45 @@
+\PassOptionsToPackage{heading=true}{ctex}
+\documentclass[lang=cn,chinesefont=nofont,11pt,a4paper,bibend=bibtex]{elegantpaper}
+\newcommand{\reportkind}{设计文档}
+\input{preamble}
+\hypersetup{pdftitle={嘟嘟哒 设计文档},pdfsubject={群聊智能体的系统架构、功能实现与技术验证}}
+\begin{document}
+\hypersetup{pageanchor=false}
+\reportcover{设计文档}{本报告说明嘟嘟哒的使用场景、系统架构、核心模块、模型调用、工程实现与验证结果。内容以当前主仓实现为依据，整合本地设计、研究、原型、评测及运维资料，并明确区分运行能力、独立组件与后续设计。}{第 1 项 · 技术设计报告}
+\pagenumbering{Roman}
+\hypersetup{pageanchor=true}
+\section*{摘要}
+\phantomsection
+\addcontentsline{toc}{section}{摘要}
+校园群聊同时承载课程咨询、活动协调、通知转发与日常交流。面对多人交错发言、短句省略、临时更正及分散的数据源，智能体需要连续完成情境理解、参与决策、资料查询和回答组织。嘟嘟哒 以 QQ 群为主要交互场景，将这些职责拆分为上下文与感知、Social Engine、模型路由、Capability/MCP、回答与 Persona、输出适配等模块，并通过统一 Python Runtime 编排。
+
+系统经 NapCat/OneBot v11 与 AstrBot 接入 QQ，使用 Vue 3/Node.js 控制台管理群服务、模型配置与运行记录。业务层已连接评课、第二课堂、教务、培养方案、校园通知与校车六类校园服务。模型调用采用 DeepSeek 的 OpenAI 兼容 Chat Completions 接口，模型档位、推理强度和可见回答篇幅分别配置。管理员授权后，系统可以依据连续讨论和当前请求启用匹配的只读查询插件。
+
+本报告以自适应机制为技术主线：根据连续讨论与当前请求选择已授权插件；根据任务复杂度、置信度和预算选择模型路由；根据群聊情境调整参与方式与表达；并以 WebUI 工作台呈现实际选择，支持按群配置、预览和调整。Memory v2 的作用域检索、中文 BM25 和生命周期组件，以及主动调度、离线 Bandit 等研究成果一并说明，但不将其等同于已完成的长期群聊体验。
+
+验证材料包含 100 条固定消息的离线流程、真实 MCP 原子查询、真实模型预览及模拟入站记录。报告分别呈现测试输入、实际执行范围、结果与限制，保留早期广覆盖预览中发现的部分通过和失败项，为评审者提供可核查的完成度说明。
+
+\noindent\textbf{关键词：}群聊智能体；校园服务；语义感知；模型路由；MCP；可观察运行时
+\vfill
+\noindent\textbf{阅读说明。}第 1—4 节介绍目标、场景与架构；第 5—9 节解释技术机制；第\ref{sec:webui}节独立介绍 WebUI 设计；第\ref{sec:deployment}—\ref{sec:evaluation}节说明部署与验证；第\ref{sec:synthesis}节及附录汇总本地资料和演进边界。文中方括号 S 编号对应附录的本地来源索引。
+\clearpage
+\begingroup\small\linespread{1.05}\selectfont\setlength{\parskip}{0pt}
+\tableofcontents
+\endgroup\clearpage
+\pagenumbering{arabic}
+\input{sections/01-objectives}
+\input{sections/02-scenarios}
+\input{sections/03-architecture}
+\input{sections/04-functions}
+\input{sections/05-context-social}
+\input{sections/06-models}
+\input{sections/07-capability}
+\input{sections/08-persona-memory}
+\input{sections/09-data-reliability}
+\input{sections/10-webui}
+\input{sections/11-deployment}
+\input{sections/12-evaluation}
+\input{sections/13-synthesis}
+\clearpage\appendix
+\input{sections/appendix-sources}
+\end{document}

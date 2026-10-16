@@ -1,0 +1,6 @@
+name: astrbot_plugin_dududa_notify
+display_name: 嘟嘟哒私聊通知
+desc: 全课程 DDL 与课件日报、作业助手及助教空周汇报自动提交
+version: v0.5.3
+author: mmdustc
+repo: https://github.com/ly382965/dududa

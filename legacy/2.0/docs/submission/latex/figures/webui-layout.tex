@@ -1,0 +1,19 @@
+\begin{tikzpicture}[x=1cm,y=1cm,font=\small]
+\draw[draw=rulegray,fill=white,rounded corners=1pt] (0,0) rectangle (15.2,6.2);
+\fill[panel] (0.01,5.3) rectangle (15.19,6.19);
+\draw[rulegray] (0,5.3)--(15.2,5.3);
+\node[anchor=west,font=\small\sffamily\bfseries,text=accent] at (0.25,5.76) {当前账号 / 会话};
+\node[anchor=east,text=muted] at (14.95,5.76) {QQ 账号状态\quad Agent 状态};
+\fill[panel] (0.01,0.01) rectangle (1.65,5.29);
+\draw[rulegray] (1.65,0)--(1.65,5.3);
+\draw[rulegray] (5,0)--(5,5.3);
+\draw[rulegray] (10.15,0)--(10.15,5.3);
+\node[align=center,text width=1.3cm] at (0.825,2.8) {账号\\[4mm]消息\\联系人\\通知\\[4mm]管理\\设置};
+\node[anchor=north,align=left,text width=2.8cm] at (3.325,5.02) {\textbf{会话列表}\\[3mm]搜索 / 筛选\\[5mm]选中的群聊\\[3mm]其他群与私聊\\[3mm]最新消息与未读};
+\node[anchor=north,align=left,text width=4.55cm] at (7.575,5.02) {\textbf{消息正文}\\[3mm]当前讨论与时间\\[3mm]发言者、引用与消息段\\[3mm]历史分页与搜索};
+\draw[rulegray] (5,1.18)--(10.15,1.18);
+\node[align=center,text=muted] at (7.575,0.58) {消息输入\quad 提及 / 回复 / 发送};
+\node[anchor=north,align=left,text width=4.4cm] at (12.675,5.02) {\textbf{Agent 工作台}\\[2mm]对话\quad 运行\quad 配置\\[3mm]同群近期上下文\\[2mm]候选回答与资料来源\\[2mm]模型、能力与耗时};
+\draw[rulegray] (10.15,1.18)--(15.2,1.18);
+\node[align=center,text=muted] at (12.675,0.58) {问题输入\quad 运行预览};
+\end{tikzpicture}

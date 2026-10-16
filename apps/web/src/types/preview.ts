@@ -1,5 +1,6 @@
 /** Preview evidence, not authority to send a message or change Runtime policy. */
 export type PreviewOutcome = 'response' | 'no_reply' | 'deferred' | 'failed' | 'reaction' | 'empty'
+export type RuntimePreviewTier = 'haiku' | 'sonnet' | 'opus' | 'codex' | 'rules'
 
 export interface PreviewEvidence {
   outcome?: PreviewOutcome

@@ -1,0 +1,12 @@
+latex/build/
+latex/*.aux
+latex/*.log
+latex/*.out
+latex/*.toc
+latex/*.xdv
+latex/*.pdf
+latex/*.blg
+latex/*.bbl
+latex/*-blx.bib
+latex/*.run.xml
+__pycache__/

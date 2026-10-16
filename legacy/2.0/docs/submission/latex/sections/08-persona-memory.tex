@@ -1,0 +1,46 @@
+\section{人格、记忆与持续参与设计}
+\subsection{Persona 的职责}
+Persona 作为独立资产记录语气、句长、词汇、表情预算和场景表达。当前仓库提供 dududa 与 neutral 两套资产，正式组合固定使用嘟嘟哒人格，并以 neutral 作为 Registry 回退资产。资产可扩展不等于已经提供完整的多 OC 切换体验。
+
+回答生成先使用当前问题、工具资料和表达约束产生内容，再由 Composer 组织结构，确定性 Persona Renderer 完成最终处理。人格不应修改课程名称、教师身份、日期、数字、来源或任务目标。其价值在于稳定的信息取舍与表达节奏，而不是固定口号或对每一条回复添加可爱语气。
+
+用户的精确输出要求优先。当前已存验证包含指定短回复、JSON 和多人分工等用例；这些验证只能说明相应用例的行为，不能据此声明所有开放式输出都能严格满足格式。
+
+\subsection{近期上下文与长期记忆的区分}
+近期上下文是当前讨论窗口，帮助理解省略、引用和更正；长期 Memory 是跨运行持久化、按范围检索的资料。两者在保留期限、可见性、删除语义和使用目的上不同。
+
+Memory v2 已提供用户画像、群记忆、情节记忆和显式记忆等类型，以及 Repository、检索策略、候选写入筛选、删除、归档、恢复和导出组件。当前生产组合没有把这些组件接入聊天上下文和自动写入。因此，作品可以声称具备记忆基础模块，尚不能声称正式聊天已经持续记住群友或形成可靠关系模型。
+
+\subsection{作用域优先的检索流程}
+检索先通过当前 Actor 与 ConversationScope 生成允许的 Selector，限定当前会话、当前群或可用的用户画像。随后处理时间、有效期、可见性和删除状态，得到有限候选集，最后排序。先限制资料范围再计算相似度，可以避免先在全库匹配、再遗漏过滤的问题。
+
+\begin{center}
+\begin{tikzpicture}[node distance=5mm]
+\node[future,text width=13cm] (a) {检索请求：Actor、ConversationScope、问题、记忆类型};
+\node[future,text width=13cm,below=of a] (b) {授权 Selector $\rightarrow$ 有效期 / 可见性 / 删除状态 $\rightarrow$ 有界候选};
+\node[future,text width=13cm,below=of b] (c) {近期优先或中文 BM25 $\rightarrow$ Top-K 结果 $\rightarrow$ 后续 Context 接入};
+\draw[flow,dashed](a)--(b);\draw[flow,dashed](b)--(c);
+\end{tikzpicture}
+\end{center}
+
+中文检索实现使用 NFC 归一化、大小写折叠、连续汉字二元组及字母数字词项，无需外部 Embedding 服务。BM25 在同一已授权候选集合上计算：
+\[
+\operatorname{score}(d,q)=\sum_{t\in q}\operatorname{IDF}(t)
+\frac{f(t,d)(k_1+1)}{f(t,d)+k_1(1-b+b|d|/\overline{|d|})},
+\]
+\[
+\operatorname{IDF}(t)=\ln\!\left(1+\frac{N-df(t)+0.5}{df(t)+0.5}\right),
+\qquad k_1=1.2,\quad b=0.75.
+\]
+其中 $N$ 为候选记录数，$df(t)$ 为含词项 $t$ 的记录数，$f(t,d)$ 为词频。当前实现去重查询词项，仅保留正分结果，同分按记忆 ID 排序，便于复现。中文单字、别称与语义等价表达仍可能超出词法匹配能力。
+
+\subsection{写入与生命周期}
+记忆写入先形成候选，再由 Write Gate 判断是否允许保存、以何种类型与范围保存。删除后的 tombstone、归档与恢复记录用于防止已删内容在重建过程中重新出现；导出按可授权范围返回。既有测试关注范围隔离、有效期和生命周期行为。
+
+本地合成评测比较无记忆、近期优先和中文 BM25 三种策略，记录 Precision、Recall、MRR 和 nDCG 等指标。但数据卡明确标注没有完成真人相关性评审，因此这些离线结果不能证明真实中文记忆质量或长期体验收益。
+
+\subsection{主动日报与在线学习的阶段}
+仓库另有主动任务、调度器、来源存储及摘要预览等组件。它们研究如何在没有新的入站消息时创建有授权、有时间范围的运行，与第 5 节的普通消息触发自动参与属于不同机制。当前提交不宣称已稳定提供面向真实群的自动日报。
+
+Bandit 模块已实现离线决策、反馈与 IPS/SNIPS/DR/ESS 计算，固定四个合成样本用于验证计算和记录行为。它未接入生产 Router，也没有由群友反馈驱动的线上探索。后续只有在建立可归因质量反馈和等价可选端点后，才能评估在线优化是否优于当前静态策略。
+\source{[S12, S13, S14]；\nolinkurl{memory/lexical.py}、Memory 数据卡与离线 Bandit 报告。}

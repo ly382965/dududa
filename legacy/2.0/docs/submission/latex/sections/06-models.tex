@@ -1,0 +1,66 @@
+\section{模型选择与 API 调用方式}
+\subsection{模型档位、推理强度与回答篇幅}
+系统使用三个独立维度描述计算与表达。Tier 选择模型配置；Reasoning 决定推理投入；AnswerProfile 约束用户可见的正文长度、段落数及投递形式。当前三档的界面名称为 Luna、Terra、Sol，内部枚举为 haiku、sonnet、opus。这些是程序别名，不能据此认定调用的是 Anthropic 模型。
+
+\begin{table}[htbp]\centering
+\caption{项目记录的常规 DeepSeek 配置}
+\begin{tabularx}{\textwidth}{@{}L{22mm}L{22mm}L{43mm}L{17mm}Y@{}}\toprule
+界面档位 & 内部 Tier & 实际模型 ID & 推理值 & 主要用途\\\midrule
+Luna 快速 & haiku & \code{deepseek-v4-flash} & low & 感知、简短交流\\
+Terra 标准 & sonnet & \code{deepseek-v4-flash} & high & 校园查询、一般分析\\
+Sol 深度 & opus & \code{deepseek-v4-pro} & max & 复杂比较、论证\\\bottomrule
+\end{tabularx}
+\end{table}
+
+2026 年 9 月 6 日录制查询环境保留快速档的轻量推理，标准档和深度档关闭额外 thinking，直接组织已取得的工具资料。因此，表中常规推理配置不能直接用于解释该批样本耗时；第\ref{sec:evaluation}节保留这一差异。真实问答样本主要覆盖 Flash，已有配置并不等于三档模型完成了公平的性能对比。
+
+\subsection{任务驱动的自适应路由}
+感知角色使用快速档模型，回答角色依据任务信号、群偏好和可用档位选择模型。静态路由器在调用前检查角色、能力、数据条件、输出容量和预算，形成可记录的路由结果；管理员也可以固定档位。当前路由没有调用在线 Bandit 学习器。
+
+这里的自适应体现为同一套策略针对不同任务作出不同选择。当前档位策略使用复杂度信号及置信度：深度推理、独立核验、多约束综合等信号可支持选择较高档位；信号不足时使用默认或较低档位，并检查预算和候选可用性。模型档位与选择原因进入运行结果，便于管理员理解一次请求为什么采用相应计算配置。
+
+推理额度与正文额度分别约束。如果回答只需一句话，模型仍可能需要充分推理；若用户需要详细步骤，也不必仅因篇幅较长就提升任务复杂度。当前适配器将内部 \code{light/deep/maximum} 映射到 DeepSeek 的 \code{low/high/max}。无额外推理时发送 \code{thinking: disabled}。
+
+一次典型工具问答的等待时间可分解为
+\[
+T=T_{\mathrm{context}}+T_{\mathrm{perception}}+T_{\mathrm{tool}}+T_{\mathrm{answer}}+T_{\mathrm{output}}.
+\]
+这只是运行阶段的拆分，不是测得的耗时模型。现有样本记录了总耗时，尚不足以量化各阶段的平均贡献；后续优化应先区分工具等待与模型生成，再决定缓存或调用合并措施。
+
+\subsection{调用链与请求示例}
+\begin{center}\small
+Runtime ModelRequest $\rightarrow$ AstrBotModelProviderAdapter\\
+$\rightarrow$ AstrBot Provider.text\_chat $\rightarrow$ DeepSeek Chat Completions
+\end{center}
+服务基础地址为 \url{https://api.deepseek.com}，调用采用 OpenAI 兼容的 Chat Completions 协议。以下是与当前标准档录制模式对应的等价 HTTP 请求，用于说明字段；真实问题、系统提示和工具资料由 Runtime 构建。
+
+\begin{Code}
+POST https://api.deepseek.com/chat/completions
+Authorization: Bearer <DEPLOYMENT_API_KEY>
+Content-Type: application/json
+
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {"role": "system", "content": "Answer using the supplied evidence."},
+    {"role": "user", "content": "<question and validated tool observations>"}
+  ],
+  "thinking": {"type": "disabled"},
+  "max_tokens": 8192
+}
+\end{Code}
+
+常规启用推理的请求改用 \code{"thinking": {"type": "enabled"}}，并添加 \code{"reasoning_effort": "high"} 等配置。DeepSeek 官方文档说明了这两个控制字段；如直接使用 OpenAI SDK，扩展字段 thinking 应通过 SDK 的 \code{extra_body} 传递。[W3]
+
+项目本身通过 AstrBot \code{text_chat} 传入 \code{prompt}、\code{system_prompt}、模型 ID、\code{max_tokens} 和推理参数，由宿主 Provider 转换为 HTTP 请求。当前核心并不依赖模型原生 Function Calling 自动执行校园工具：语义提取完成后，由 Capability Runtime 调用 MCP，再将校验结果送入回答模型。
+
+\subsection{响应解析与错误处理}
+适配器读取 \code{completion_text}、token 用量及终止信息，转换为统一 ProviderResponse。感知结果须满足 JSON Schema；回答请求接收正文，再经过内容结构、篇幅和格式处理。推理正文不作为用户答案，也不需要作为普通群聊历史展示。
+
+请求受本轮总预算和下游超时约束。认证失败、限流、超时、输出无效和用户取消应成为可区分的错误，控制台以公开错误码和说明展示。重试或切换端点只能发生在已配置策略和预算内，不能无限重复调用；网页返回成功状态也不能代替有效正文检查。
+
+\subsection{Key 池与配置生效}
+Web 提供三档 Key 池，维护 Provider、基础地址、协议、模型及凭据。配置通过测试、应用和 Runtime 状态反馈完成衔接；界面应同时体现配置目标与实际生效状态。Luna 与 Terra 使用同一底层模型 ID 时，必须按档位区分选项，避免选择标准档却被识别为快速档。
+
+真实 Key 保存在部署侧，报告与可提交配置示例只使用占位符。模型服务为外部依赖；作品创新在于群聊运行机制、业务集成和计算策略组织，而非训练或发布新的基础模型。
+\source{[S3, S9, S10]；模型 API 字段参考 DeepSeek 官方 Thinking Mode 文档 [W3]，访问日期 2026-09-06。}

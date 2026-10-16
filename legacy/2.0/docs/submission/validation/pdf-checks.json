@@ -1,0 +1,62 @@
+{
+  "date": "2026-09-06",
+  "engine": "Tectonic 0.17.0",
+  "template": "ElegantPaper 0.12 (2026-02-27), bundled upstream class selected explicitly",
+  "heading_style": "CTeX native heading=true",
+  "reports": [
+    {
+      "file": "pdf/01_设计文档.pdf",
+      "pages": 36,
+      "all_pages_A4": true,
+      "characters": 39735,
+      "required_topics_missing": [],
+      "replacement_characters": 0,
+      "question_mark_pairs": 0,
+      "text_outside_page": [],
+      "fonts": 16,
+      "fonts_not_embedded": [],
+      "bookmark_count": 74,
+      "bookmark_heading_mismatches": [],
+      "internal_link_errors": 0,
+      "external_link_count": 9,
+      "obsolete_product_names": [],
+      "webui_chapter_pdf_pages": [
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "innovation_topics_verified": [
+        "自适应插件选择",
+        "任务驱动的自适应路由",
+        "自适应群聊参与与表达",
+        "WebUI 工作台设计"
+      ]
+    },
+    {
+      "file": "pdf/04_作品简介.pdf",
+      "pages": 5,
+      "all_pages_A4": true,
+      "characters": 4926,
+      "required_topics_missing": [],
+      "replacement_characters": 0,
+      "question_mark_pairs": 0,
+      "text_outside_page": [],
+      "fonts": 10,
+      "fonts_not_embedded": [],
+      "bookmark_count": 10,
+      "bookmark_heading_mismatches": [],
+      "internal_link_errors": 0,
+      "external_link_count": 5,
+      "obsolete_product_names": [],
+      "innovation_topics_verified": [
+        "自适应插件选择",
+        "任务驱动的自适应路由",
+        "自适应群聊参与与表达",
+        "WebUI 工作台设计"
+      ]
+    }
+  ],
+  "latest_revision": "强调自适应插件、路由、参与与 WebUI 创新；重编译并复核变更页及全部书签。此前的全文跨渲染器检查见检查记录。"
+}

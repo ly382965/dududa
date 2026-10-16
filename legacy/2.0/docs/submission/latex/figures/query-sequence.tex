@@ -1,0 +1,14 @@
+\begin{tikzpicture}[x=1cm,y=1cm]
+\foreach \x/\name/\id in {0/入口适配/a,3.5/Runtime/b,7/模型适配/c,10.5/能力与 MCP/d}{
+  \node[box,text width=2.6cm] (\id) at (\x,0) {\name};
+  \draw[dashed,rulegray] (\x,-0.6)--(\x,-7.25);
+}
+\draw[flow] (0,-1)--node[above,font=\footnotesize]{统一消息与同群上下文}(3.5,-1);
+\draw[flow] (3.5,-2)--node[above,font=\footnotesize]{结构化感知请求}(7,-2);
+\draw[flow] (7,-2.7)--node[above,font=\footnotesize]{意图、实体与置信信息}(3.5,-2.7);
+\draw[flow] (3.5,-3.6)--node[above,font=\footnotesize]{资格筛选、参数绑定、单步执行}(10.5,-3.6);
+\draw[flow] (10.5,-4.4)--node[above,font=\footnotesize]{Observation：事实、身份、来源、状态}(3.5,-4.4);
+\draw[flow] (3.5,-5.25)--node[above,font=\footnotesize]{资料与回答约束}(7,-5.25);
+\draw[flow] (7,-5.95)--node[above,font=\footnotesize]{生成正文与用量}(3.5,-5.95);
+\draw[flow] (3.5,-6.8)--node[above,font=\footnotesize]{格式校验后输出}(0,-6.8);
+\end{tikzpicture}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "server_id": "notifai",
+  "enabled": true,
+  "transport": "stdio",
+  "protocol_mode": "legacy",
+  "endpoint": {
+    "command": "/usr/local/bin/python",
+    "args": [
+      "/AstrBot/data/notifai-mcp/run_notifai_mcp.py"
+    ],
+    "cwd": "/AstrBot/data/notifai-mcp",
+    "env_allowlist": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "PYTHONPATH",
+      "NOTIFAI_API_BASE_URL",
+      "NOTIFAI_API_TIMEOUT_SECONDS",
+      "NOTIFAI_MAX_ITEMS"
+    ]
+  },
+  "secret_refs": [],
+  "allowed_tools": [
+    "search_notices",
+    "get_notice",
+    "get_notice_calendar",
+    "get_notice_deadlines",
+    "list_notice_sources",
+    "list_notice_categories",
+    "get_notice_stats"
+  ],
+  "denied_tools": [],
+  "timeouts_seconds": {
+    "connect": 10,
+    "discovery": 10,
+    "call": 30,
+    "maximum_call": 90,
+    "close": 5
+  },
+  "retry": {
+    "maximum_attempts": 2,
+    "base_delay_ms": 100
+  },
+  "circuit": {
+    "failure_threshold": 3,
+    "failure_window_seconds": 60,
+    "open_duration_seconds": 30
+  },
+  "maximum_concurrency": 2,
+  "schema_ttl_seconds": 300,
+  "config_revision": "notifai-read-v1"
+}

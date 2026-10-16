@@ -1,0 +1,68 @@
+\section{总体架构与运行流程}
+\subsection{系统边界与分层}
+系统采用单仓组织智能体核心、QQ 插件、Web 控制台、MCP 服务和部署工具。Python 核心通过 Domain 数据类型与 Ports 接口表达消息、策略、模型、能力和输出，AstrBot 组合根负责装配具体实现。外部模型平台、校园认证系统和校园数据源提供服务；公共域名、统一登录与站点网关属于部署环境，不是智能体核心组件。
+
+\begin{figure}[H]\centering
+\input{figures/system-architecture}
+\caption{嘟嘟哒的系统组成。实线为当前交互或调用关系；虚线模块为独立实现或后续接入方向。}
+\label{fig:architecture}
+\end{figure}
+
+\begin{longtable}{@{}L{24mm}L{45mm}L{80mm}@{}}
+\caption{架构分层与责任}\label{tab:layers}\\\toprule
+层次 & 主要组件 & 责任与输入输出\\\midrule\endfirsthead
+\toprule 层次 & 主要组件 & 责任与输入输出\\\midrule\endhead
+交互与适配 & QQ、NapCat、AstrBot；Vue 3、Node.js & 将平台消息变为统一消息，将结果变为 QQ 消息或 Web 预览；控制台读取配置和运行记录。\\
+领域与端口 & Domain、Ports & 表达 Actor、ConversationScope、MessageEnvelope、调用预算和版本化结果；不携带框架事件或密钥。\\
+智能体编排 & Runtime、Perception、Social、Router & 管理阶段流转，构建上下文，识别意图，决定静默、澄清、回答或使用工具，选择计算配置。\\
+业务能力 & Registry、Planner、Executor、Validator & 筛选本群可用能力，绑定输入，执行有界查询，将结果整理为 Observation。\\
+内容与表达 & DirectChat、Composer、Persona、Final Validator & 使用问题或可信工具资料生成正文；组织结构、来源与篇幅；完成最终格式校验。\\
+基础设施 & 模型适配器、Unified MCP、SQLite/JSON、Compose & 提供外部访问、服务会话、配置和持久状态；隔离第三方依赖及运行数据。\\\bottomrule
+\end{longtable}
+
+\subsection{核心组件与依赖方向}
+组合根位于 \code{apps/astrbot-plugins/astrbot_plugin_dududa_core/}，其中 \code{composition.py} 创建规则与模型混合感知、确定性社交策略、静态模型路由、单步能力运行时、Persona Registry 及输出请求构建器。
+
+核心 Runtime 的类名仍为 \code{OfflineRuntimeOrchestrator}，沿用了早期离线实现名称。当前正式组合已经为它注入真实模型和 MCP 适配器，因此类名中的 Offline 不代表正式运行使用假模型。测试则可以替换这些接口而保留相同编排。
+
+\begin{center}
+\begin{tikzpicture}[node distance=7mm]
+\node[box,text width=133mm] (a) {应用组合根与平台适配器\quad AstrBot / Web / Model / MCP};
+\node[box,text width=133mm,below=of a] (b) {应用服务与 Runtime\quad 上下文、感知、社交、路由、能力、回答};
+\node[box,text width=133mm,below=of b] (c) {Domain 与 Ports\quad 统一数据模型、接口、调用与结果契约};
+\draw[flow] (a)--(b);\draw[flow] (b)--(c);
+\end{tikzpicture}
+\end{center}
+核心依赖抽象端口，应用组合根提供具体实现。新增平台需要适配消息身份、引用和投递回执；新增模型需要满足统一请求与结果协议；新增业务则实现能力定义和 Provider。这种拆分支持独立验证，但也要求维护类型、组合根与接口实现之间的一致性。
+
+\subsection{关键数据对象}
+\begin{tabularx}{\textwidth}{@{}L{38mm}Y@{}}\toprule
+对象 & 业务含义\\\midrule
+MessageEnvelope & 本轮平台消息、正文、时间、提及、引用及附件描述；作为运行输入。\\
+Actor / ConversationScope & 当前行为主体及平台、机器人、会话、群的范围；决定可读取和可回复的上下文。\\
+PerceptionResult & 意图、实体、引用关系、能力类别及置信信息；提供后续决策所需的结构化语义。\\
+SocialDecision / ResponsePlan & 参与动作与理由、回答目标、模型档位和表达预算；区分行为选择与文本生成。\\
+ToolPlan / Observation & 待执行的业务能力与参数，以及校验后的工具事实、来源和结果状态。\\
+Draft / FinalResponse & 回答结构与最终正文；Persona 和格式校验在这一层完成。\\
+DeliveryRequest / Receipt & 期望投递的目标、分片和内容，以及平台确认的实际结果。\\\bottomrule
+\end{tabularx}
+
+\subsection{一次查询的完整路径}
+以“评课社区里数学分析 B1 的评价怎样”为例，系统首先从事件取得可信身份和同群上下文。规则识别明确的评课来源，快速档模型提取课程实体和意图；社交策略允许回应，能力目录筛选本群可用的评课能力；参数绑定器形成一次业务查询。MCP 返回课程、教师、评论和链接后，回答模型按事实组织文字，Composer 和 Persona 处理表达，最终由对应输出适配器完成呈现。
+
+\begin{figure}[H]\centering
+\input{figures/query-sequence}
+\caption{校园查询的请求时序。模型承担感知与回答，工具调用由程序显式执行。}
+\label{fig:sequence}
+\end{figure}
+
+一次典型查询由感知、业务能力执行和回答生成构成。业务能力内部可能读取多个数据条目，但当前 Planner 的计划仍只包含一个业务步骤；这与通用智能体跨服务自主规划多步任务不同。多项独立需求超出本轮范围时，当前实现会澄清或引导拆分。
+
+\subsection{阶段状态与完成条件}
+\begin{figure}[H]\centering
+\input{figures/runtime-states}
+\caption{主要运行阶段。直接回答跳过工具阶段；错误和延期可从相应阶段终止。}
+\end{figure}
+
+运行状态记录从收到消息到生成最终内容的进展，输出请求与实际发送分开确认。\code{ready_to_emit} 只表示内容已准备好，\code{delivery_acknowledged} 表示收到输出适配器回执。Web 预览把结果交给预览适配器，不能据此推断 QQ 已投递。状态类型中保留 Memory 阶段，但当前生产组合未装配长期记忆读写。
+\source{[S2, S3, S4]；源码：\nolinkurl{runtime/state.py}、\nolinkurl{runtime/orchestrator.py}、\nolinkurl{composition.py}。}
