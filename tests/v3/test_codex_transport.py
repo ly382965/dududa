@@ -56,7 +56,9 @@ for line in sys.stdin:
             send({'id': request_id, 'error': {'code': -32000, 'message': 'thread not found'}})
             continue
         notify('thread/started', {'thread': {'id': 'thread-1'}})
-        send({'id': request_id, 'result': {'thread': {'id': 'thread-1'}, 'model': 'test-model'}})
+        send({'id': request_id, 'result': {'thread': {'id': 'thread-1'},
+              'model': 'wrong-model' if mode == 'wrong-model' else msg['params'].get('model', 'test-model'),
+              'reasoningEffort': options.get('model_reasoning_effort')}})
     elif method == 'turn/start':
         if mode == 'exit':
             sys.exit(7)
@@ -85,6 +87,8 @@ for line in sys.stdin:
         elif mode != 'hang':
             completed()
     elif method == 'turn/interrupt':
+        send({'id': request_id, 'result': {}})
+    elif method == 'skills/extraRoots/set':
         send({'id': request_id, 'result': {}})
     elif request_id == 'approval-1':
         completed()
@@ -153,12 +157,43 @@ class CodexTransportTests(unittest.IsolatedAsyncioTestCase):
         result = await self.client('commentary').run('hello')
         self.assertEqual(result.text, '')
 
+    async def test_pins_luna_max_when_starting_and_resuming(self):
+        for thread in (None, 'thread-1'):
+            client = self.client()
+            client.model = 'gpt-5.6-luna'
+            client.reasoning_effort = 'max'
+            result = await client.run('hello', thread_id=thread)
+            self.assertEqual(result.model, 'gpt-5.6-luna')
+            self.assertEqual(result.reasoning_effort, 'max')
+            await client.close()
+        for message in self.messages():
+            if message.get('method') in ('thread/start', 'thread/resume', 'turn/start'):
+                self.assertEqual(message['params']['model'], 'gpt-5.6-luna')
+            if message.get('method') == 'turn/start':
+                self.assertEqual(message['params']['effort'], 'max')
+
+    async def test_model_substitution_fails_before_generation(self):
+        client = self.client('wrong-model')
+        client.model = 'gpt-5.6-luna'
+        with self.assertRaisesRegex(CodexError, 'configured model'):
+            await client.run('hello')
+        self.assertNotIn('turn/start', [message.get('method') for message in self.messages()])
+
     async def test_resume_keeps_permissions(self):
         result = await self.client().run('continue', thread_id='thread-1')
         self.assertEqual(result.thread_id, 'thread-1')
         request = next(message for message in self.messages() if message.get('method') == 'thread/resume')
         self.assertEqual(request['params']['sandbox'], 'read-only')
         self.assertEqual(request['params']['approvalPolicy'], 'never')
+
+    async def test_skill_uses_native_input_with_absolute_path(self):
+        path = Path('/tmp/dududa-skills/summarize-chat/SKILL.md')
+        await self.client().run('$summarize-chat 总结群聊', skills=(path,))
+        turn = next(message for message in self.messages() if message.get('method') == 'turn/start')
+        self.assertEqual(turn['params']['input'][1],
+                         {'type': 'skill', 'name': 'summarize-chat', 'path': str(path)})
+        roots = next(message for message in self.messages() if message.get('method') == 'skills/extraRoots/set')
+        self.assertEqual(roots['params'], {'extraRoots': ['/tmp/dududa-skills']})
 
     async def test_missing_thread_does_not_fall_back_to_new_thread(self):
         with self.assertRaisesRegex(CodexError, 'thread not found'):

@@ -12,6 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from dududa_v3 import SESSION_PROFILE
 from dududa_v3.__main__ import state_lock
 from dududa_v3.config import Settings
 from dududa_v3.runtime import Runtime
@@ -38,8 +39,8 @@ class CodexProtocolDouble:
             closed = False
             cancelled = False
 
-            async def run(self, text, thread_id=None, instructions='', on_event=None):
-                owner.calls.append({'text': text, 'thread_id': thread_id, 'config': config})
+            async def run(self, text, thread_id=None, instructions='', on_event=None, skills=()):
+                owner.calls.append({'text': text, 'thread_id': thread_id, 'config': config, 'skills': skills})
                 if owner.fail:
                     raise RuntimeError('resume unavailable')
                 result_thread = thread_id or f'thread-{len(owner.calls)}'
@@ -113,6 +114,17 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(result['text'])
         self.assertEqual(self.protocol.instances, [])
 
+    async def test_summary_skill_is_injected_only_for_summary_turns(self):
+        for prompt in ('总结群聊', '总结今日消息', '近5h消息', '帮我总结一下', '请把群聊消息总结一下'):
+            result = await self.execute(prompt)
+            self.assertEqual(result['status'], 'completed')
+            self.assertEqual(result['response_kind'], 'conversation_summary')
+            self.assertEqual(result['skills'], ['summarize-chat'])
+            self.assertEqual(self.protocol.calls[-1]['skills'], (ROOT / 'skills/summarize-chat/SKILL.md',))
+        result = await self.execute('你好')
+        self.assertEqual(result['response_kind'], 'chat')
+        self.assertEqual(self.protocol.calls[-1]['skills'], ())
+
     async def test_memory_delete_requires_scope_and_owner(self):
         await self.execute('/remember 茶偏好')
         session = self.session_for(self.request())
@@ -160,6 +172,20 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['text'], '')
         self.assertEqual(self.protocol.instances, [])
 
+    async def test_live_model_is_pinned_and_legacy_commands_do_not_start_an_agent(self):
+        self.assertEqual(self.runtime.health()['model'], 'gpt-5.6-luna')
+        self.assertEqual(self.runtime.health()['reasoning_effort'], 'max')
+        result = await self.execute('/arc b50')
+        self.assertEqual(result['status'], 'ignored')
+        self.assertEqual(self.protocol.instances, [])
+        request = self.request('hello')
+        request.update(model='other-model', reasoning_effort='low')
+        run = await self.runtime.submit(request)
+        result = await self.runtime.wait(run['run_id'])
+        self.assertEqual(self.protocol.calls[-1]['config']['model'], 'gpt-5.6-luna')
+        self.assertEqual(self.protocol.calls[-1]['config']['reasoning_effort'], 'max')
+        self.assertEqual(result['reasoning_effort'], 'max')
+
     async def test_context_counts_current_message_and_truncates_whole_history_messages(self):
         history = {'messages': ([{'senderName': '较早用户', 'content': '较早消息'} for _ in range(21)]
                                 + [{'senderName': '历史用户', 'content': '甲' * 2100} for _ in range(10)])}
@@ -176,6 +202,45 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             request['history'] = invalid
             with self.assertRaises(ValueError):
                 await self.runtime.submit(request)
+
+    async def test_migrated_proactive_limits_are_retained(self):
+        scope = 'bot/qq:bot:group:1'
+        self.settings.proactive_scopes = (scope,)
+        self.settings.proactive_policies = {scope: {'probabilityPercent': 100, 'cooldownSeconds': 5,
+                                                  'maximumPerHour': 1, 'minimumMessages': 2}}
+        first = await self.execute('first background', mentioned=False)
+        self.assertEqual(first['status'], 'ignored')
+        second = await self.execute('second background', mentioned=False)
+        self.assertEqual(second['status'], 'completed')
+        self.runtime.last_proactive[scope] -= 10
+        third = await self.execute('hour limit', mentioned=False)
+        self.assertEqual(third['status'], 'ignored')
+        mentioned = await self.execute('explicit request')
+        self.assertEqual(mentioned['status'], 'completed')
+
+    async def test_live_agent_loads_qq_history_but_rules_do_not(self):
+        self.settings.qq_gateway_url = 'http://gateway.invalid'
+        history = {'messages': [{'id': 'older', 'content': 'gateway older history', 'senderName': '用户'}],
+                   'truncated': False}
+        with patch('dududa_v3.services.ServiceHub.conversation_history', return_value=history) as fetch:
+            await self.execute('/ping')
+            fetch.assert_not_called()
+            await self.execute('总结群聊')
+            fetch.assert_called_once_with(30)
+            self.assertIn('gateway older history', self.protocol.calls[-1]['text'])
+
+    async def test_instruction_profile_rotates_old_thread_without_erasing_memory(self):
+        session = self.session_for(self.request())
+        self.runtime.store.thread(session['id'], 'old-thread', 'previous-profile')
+        self.runtime.store.remember(session['id'], 'alice', '保留的记忆')
+        first = await self.execute('刷新执行配置')
+        self.assertIsNone(self.protocol.calls[-1]['thread_id'])
+        current = self.session_for(self.request())
+        self.assertEqual(current['profile'], SESSION_PROFILE)
+        self.assertEqual(len(self.runtime.store.memories(session['id'])), 1)
+        second = await self.execute('继续当前配置')
+        self.assertEqual(self.protocol.calls[-1]['thread_id'], first['thread_id'])
+        self.assertEqual(second['thread_id'], first['thread_id'])
 
     async def test_cli_check_does_not_recover_running_work_or_require_host_lock(self):
         session = self.session_for(self.request())

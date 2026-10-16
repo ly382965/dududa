@@ -10,6 +10,7 @@ import {
 import type { OneBotHub } from './onebot-hub'
 import type { WorkspaceEvent } from '../src/types/workspace'
 import type { PreviewHistory } from '../src/types/preview'
+import { SUMMARY_FORWARD_THRESHOLD, summaryForwardParts } from './summary-delivery'
 
 export interface RuntimeV3Request {
   account_id: string
@@ -32,6 +33,7 @@ export interface RuntimeV3Run {
   thread_id?: string
   turn_id?: string
   model?: string
+  reasoning_effort?: 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
   tool_calls: number
   events: unknown[]
   error?: string
@@ -40,6 +42,8 @@ export interface RuntimeV3Run {
   context_messages?: number
   context_characters?: number
   context_truncated?: boolean
+  response_kind?: 'conversation_summary' | 'chat'
+  skills?: string[]
 }
 
 const terminal = new Set(['completed', 'failed', 'cancelled', 'ignored'])
@@ -55,6 +59,7 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly timeoutMs = 180_000,
     private readonly pollMs = 250,
+    private readonly qqScopeCount = runtimeV3Scopes(process.env.DUDUDA_V3_QQ_SCOPES).size,
   ) {
     const parsed = new URL(baseUrl)
     if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Dududa 3.0 Runtime URL 协议无效')
@@ -71,6 +76,10 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
         runtime_enabled: true,
         codex_available: health.codex_available === true,
         version: health.version,
+        model: health.model,
+        reasoning_effort: health.reasoning_effort,
+        qq_scope_count: Math.min(this.qqScopeCount, Number(health.allowed_scope_count) || 0),
+        proactive_scope_count: this.qqScopeCount > 0 ? Number(health.proactive_scope_count) || 0 : 0,
       },
       checkedAt: new Date().toISOString(),
     }
@@ -98,7 +107,7 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
       candidate: run.text,
       tier: run.route === 'agent' ? 'codex' : 'rules',
       model: run.model || '',
-      reasoning: 'low',
+      reasoning: run.route === 'agent' ? run.reasoning_effort ?? 'medium' : 'none',
       answerProfile: 'medium',
       reasonCodes: ['runtime_v3', `runtime_v3.route.${run.route}`, 'runtime.preview.no_send', 'legacy_ui_policy_fields_unused'],
       latencyMs: run.latency_ms,
@@ -203,6 +212,7 @@ interface RuntimeV3QqHub {
   on(event: 'workspace-event', listener: (event: WorkspaceEvent) => void): unknown
   off(event: 'workspace-event', listener: (event: WorkspaceEvent) => void): unknown
   sendSegments: OneBotHub['sendSegments']
+  sendMergedForward: OneBotHub['sendMergedForward']
 }
 
 /** Delivery is opt-in per exact account/conversation and claimed durably by the host. */
@@ -246,9 +256,14 @@ export class RuntimeV3QqBridge {
     if (this.closed || run.status !== 'completed' || !run.text.trim()) return
     if (!await this.runtime.delivery(run.run_id, 'sending')) return
     try {
-      const sent = await this.hub.sendSegments(message.accountId, conversation.type, conversation.peerId, [
-        { type: 'text', text: run.text },
-      ])
+      const longSummary = run.response_kind === 'conversation_summary'
+        && Array.from(run.text).length > SUMMARY_FORWARD_THRESHOLD
+      const sent = longSummary
+        ? await this.hub.sendMergedForward(message.accountId, conversation.type, conversation.peerId,
+          summaryForwardParts(run.text))
+        : await this.hub.sendSegments(message.accountId, conversation.type, conversation.peerId, [
+          { type: 'text', text: run.text },
+        ])
       await this.runtime.delivery(run.run_id, 'sent', sent.messageId)
     } catch (error) {
       // An interrupted OneBot request may already have sent. Never retry it automatically.

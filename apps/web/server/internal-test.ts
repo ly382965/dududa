@@ -44,7 +44,7 @@ const PROACTIVE_TALK_LIMITS = {
 export type ModelTier = 'haiku' | 'sonnet' | 'opus'
 export type AnswerProfile = keyof typeof PROFILE_TOKEN_LIMITS
 export type SelectionMode = typeof SELECTION_MODES[number]
-export type ReasoningLevel = typeof REASONING_LEVELS[number]
+export type ReasoningLevel = typeof REASONING_LEVELS[number] | 'none' | 'xhigh' | 'max'
 export type PluginMode = typeof PLUGIN_MODES[number]
 export type ReplyIntensity = typeof REPLY_INTENSITIES[number]
 export type ContextLength = typeof CONTEXT_LENGTHS[number]
@@ -248,7 +248,7 @@ export interface InternalTestAgentStatus {
     passiveAutoReply: {
       actualEnabled: boolean
       state: 'enabled' | 'disabled'
-      rolloutMode: 'off' | 'shadow' | 'canary'
+      rolloutMode: 'off' | 'shadow' | 'canary' | 'codex'
       deliveryEnabled: boolean
       killSwitch: boolean
       summary: string
@@ -256,7 +256,7 @@ export interface InternalTestAgentStatus {
     proactiveGroupParticipation: {
       actualEnabled: boolean
       state: 'enabled' | 'disabled'
-      stage: 'proactive_canary' | 'probe_shadow'
+      stage: 'proactive_canary' | 'probe_shadow' | 'runtime_v3'
       deliveryEnabled: boolean
       summary: string
     }
@@ -866,6 +866,23 @@ function currentAgentRuntimeControls(
   config: Record<string, unknown> = {},
   runtimeReady?: boolean,
 ): InternalTestAgentStatus['runtimeControls'] {
+  if (config.runtime === 'dududa-3.0') {
+    const count = Number(config.qq_scope_count) || 0
+    const active = count > 0 && runtimeReady !== false
+    const proactive = active && Number(config.proactive_scope_count) > 0
+    return {
+      passiveAutoReply: {
+        actualEnabled: active, state: active ? 'enabled' : 'disabled', rolloutMode: 'codex',
+        deliveryEnabled: active, killSwitch: !active,
+        summary: active ? `Dududa 3.0 QQ 桥接已启用 ${count} 个会话；Web 预览不发送消息。` : 'Dududa 3.0 预览可用，QQ 桥接尚未启用。',
+      },
+      proactiveGroupParticipation: {
+        actualEnabled: proactive, state: proactive ? 'enabled' : 'disabled', stage: 'runtime_v3',
+        deliveryEnabled: proactive,
+        summary: proactive ? '3.0 按已迁移的会话概率、冷却和频率限制主动参与。' : '3.0 未开启主动搭话；群聊通过 @ 触发。',
+      },
+    }
+  }
   const requestedMode = stringValue(config.rollout_mode)?.toLowerCase()
   const rolloutMode = requestedMode === 'shadow' || requestedMode === 'canary' ? requestedMode : 'off'
   const deliveryEnabled = config.rollout_delivery_enabled === true
@@ -1717,7 +1734,7 @@ export class FileInternalTestGateway implements InternalTestGateway {
           modelMapping: { haiku: '', sonnet: '', opus: '', ...live.modelMapping },
           runtimeControls: currentAgentRuntimeControls(live.controls, live.ready && controlsValid),
           readinessReason: runtimeV3
-            ? `Dududa 3.0 Runtime 已连接；${providerConfigured ? '本机 Codex 可用' : '本机 Codex 不可用，规则服务仍可使用'}。预览不发送 QQ；旧模型档位及群聊策略不作用于 3.0。`
+            ? `Dududa 3.0 Runtime 已连接；${providerConfigured ? '本机 Codex 可用' : '本机 Codex 不可用，规则服务仍可使用'}。固定 ${live.controls.model ?? '未配置模型'} / ${String(live.controls.reasoning_effort ?? '').toUpperCase()}。预览不发送 QQ。`
             : !controlsValid
             ? 'AstrBot 已连接，但运行控制配置无效；预览与交付已关闭，请修正配置。'
             : live.ready
