@@ -59,21 +59,15 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(self.give("u", -3, "rude", after=1).applied, -3)
         self.assertEqual(self.book.score("u"), 3)
 
-    def test_near_edges_damps_and_caps_per_day(self):
+    def test_near_edges_damps_without_daily_caps(self):
         self.book.set("u", 80, "admin", self.now)
-        outcome = self.give("u", 4)
-        self.assertAlmostEqual(outcome.applied, 2.0)
-        self.give("u", 4)
-        self.give("u", 4)
-        self.assertAlmostEqual(self.book.score("u"), 84.0)
-        self.now += DAY
-        self.assertGreater(self.give("u", 4).applied, 0)
-        self.book.set("v", -90, "admin", self.now)
-        self.assertAlmostEqual(self.give("v", -20, "abuse", after=1).applied, -5.0)
-        self.assertAlmostEqual(self.give("v", -20, "abuse", after=1).applied, -2.5)
-        self.give("v", -20, "abuse", after=1)
-        self.give("v", -20, "abuse", after=1)
-        self.assertGreaterEqual(self.book.score("v"), -100)
+        for expected in (2.0, 1.8, 1.62, 1.458):
+            self.assertAlmostEqual(self.give("u", 4).applied, expected)
+        self.assertAlmostEqual(self.book.score("u"), 86.878)
+        self.book.set("v", -61, "admin", self.now)
+        for expected in (-19.5, -9.75, -4.875):
+            self.assertAlmostEqual(self.give("v", -20, "abuse", after=1).applied, expected)
+        self.assertAlmostEqual(self.book.score("v"), -95.125)
         self.assertAlmostEqual(self.give("v", 5, "praise").applied, 5.0)
 
     def test_super_admin_is_fixed(self):

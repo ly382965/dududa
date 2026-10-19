@@ -274,6 +274,8 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(both['actions'][0], {'type': 'reaction', 'message_id': message_id, 'emoji_id': '66'})
         missing = await self.admin('嘟嘟哒 task on 不存在')
         self.assertIn('没有找到任务', missing['text'])
+        recall = await self.admin('嘟嘟哒 关闭 防撤回')
+        self.assertIn('防撤回为群独立设置', recall['text'])
         disabled = await self.admin('嘟嘟哒 关闭 回声')
         self.assertIn('[关]（手动） echo', disabled['text'])
         quiet = await self.execute('还在吗')

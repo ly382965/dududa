@@ -165,6 +165,8 @@ async def task_command(ctx: Ctx) -> str:
         return "【全局任务开关】\n" + "\n".join(task_line(ctx, task) for task in tasks.values())
     task = find_task(ctx, target)
     if task is None:
+        if target.strip().lower() in ("防撤回", "recall", "recall_forward"):
+            return "防撤回为群独立设置。请在目标群中由超级管理员发送：@嘟嘟哒 /开启防撤回 或 /关闭防撤回"
         return f"没有找到任务「{target}」。发送 嘟嘟哒 task list 查看全部任务。"
     if action in ("show", "详情"):
         aliases = "、".join(task.aliases) or "无"

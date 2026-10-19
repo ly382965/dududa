@@ -355,6 +355,9 @@ export class RuntimeV3QqBridge {
     if (conversation.type === 'group' && plain.startsWith('/') && !mentioned
       && message.segments.some(segment => segment.type === 'mention' && !segment.all
         && segment.userId !== botId)) return
+    // Recall forwarder commands are handled directly by OneBotHub's RecallForwarder; never pass to the Host.
+    const cleanPlain = plain.replace(/^[@＠]?(?:嘟嘟哒|dududa)\s*/i, '').trim()
+    if (conversation.type === 'group' && /^\s*\/?(?:开启|关闭)\s*防撤回\s*$/.test(cleanPlain)) return
     const target = { account: message.accountId, type: conversation.type, peerId: conversation.peerId }
     const run = await this.runtime.run(await this.request(message, target, botId, mentioned))
     const actions = run.actions?.length ? run.actions : run.text.trim() ? [{ type: 'text' as const, text: run.text }] : []

@@ -5,8 +5,8 @@ Scoring
   strips it, clamps it to the reason's range and applies it (addressed messages only).
 - Host events: first addressed message of the day +1, rate-limit / ping spam -1.
 - Between -60 and 60 deltas apply unchanged. Moving further toward ±100 they are damped by
-  (100 - |score|) / 40 and capped per day (+4 / -15). Positive gains have a 2 minute cooldown and the
-  same praise text counts once per 24 hours.
+  (100 - |score|) / 40, without daily caps. Positive gains have a 2 minute cooldown and the
+  same positive text counts once per 24 hours.
 - Hourly decay: above 30 after 14 idle days -1 per week (floor 30); below 0 heal +1 per 3 quiet days.
 - The super admin (``features.affinity.super_admin``) is fixed at 120 and is never stored.
 """
@@ -55,8 +55,6 @@ RANK_WINDOW_SECONDS = 90 * 86400
 POSITIVE_COOLDOWN_SECONDS = 120
 DEDUPE_SECONDS = 86400
 EDGE = 60
-DAILY_EDGE_GAIN = 4.0
-DAILY_EDGE_LOSS = -15.0
 AVATAR_TTL_SECONDS = 86400
 # Allowed delta range per model-judged reason; anything else counts as 0.
 REASONS = {
@@ -142,8 +140,7 @@ class Ledger:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS affinity (
                   user_id TEXT PRIMARY KEY, score REAL NOT NULL DEFAULT 0, last_interaction REAL,
-                  last_positive REAL, last_negative REAL, last_decay REAL, last_daily TEXT,
-                  day TEXT, day_gain REAL NOT NULL DEFAULT 0, day_loss REAL NOT NULL DEFAULT 0);
+                  last_positive REAL, last_negative REAL, last_decay REAL, last_daily TEXT);
                 CREATE TABLE IF NOT EXISTS affinity_events (
                   id INTEGER PRIMARY KEY, user_id TEXT NOT NULL, at REAL NOT NULL, raw REAL NOT NULL,
                   delta REAL NOT NULL, score REAL NOT NULL, reason TEXT NOT NULL, run_id TEXT, text_hash TEXT);
@@ -181,9 +178,6 @@ class Ledger:
             db.execute("BEGIN IMMEDIATE")
             db.execute("INSERT OR IGNORE INTO affinity(user_id, score) VALUES (?, 0)", (user_id,))
             row = dict(db.execute("SELECT * FROM affinity WHERE user_id=?", (user_id,)).fetchone())
-            day = today(now)
-            if row["day"] != day:
-                row.update(day=day, day_gain=0.0, day_loss=0.0)
             score, note, applied = float(row["score"]), "", raw
             if raw > 0 and reason != "daily":
                 if row["last_positive"] and now - row["last_positive"] < POSITIVE_COOLDOWN_SECONDS:
@@ -193,22 +187,18 @@ class Ledger:
                         (user_id, digest, now - DEDUPE_SECONDS)).fetchone():
                     applied, note = 0.0, "duplicate"
             if applied > 0 and score > EDGE:
-                applied = min(applied * (100 - score) / 40, max(0.0, DAILY_EDGE_GAIN - row["day_gain"]))
-                row["day_gain"] += applied
+                applied *= (100 - score) / 40
                 note = note or "edge"
             elif applied < 0 and score < -EDGE:
-                applied = max(applied * (100 + score) / 40, min(0.0, DAILY_EDGE_LOSS - row["day_loss"]))
-                row["day_loss"] += applied
+                applied *= (100 + score) / 40
                 note = note or "edge"
             new = max(-100.0, min(100.0, score + applied))
             if raw > 0 and note != "cooldown" and reason != "daily":
                 row["last_positive"] = now
             if raw < 0:
                 row["last_negative"] = now
-            db.execute("UPDATE affinity SET score=?, last_positive=?, last_negative=?, day=?, day_gain=?, "
-                       "day_loss=? WHERE user_id=?",
-                       (new, row["last_positive"], row["last_negative"], row["day"], row["day_gain"],
-                        row["day_loss"], user_id))
+            db.execute("UPDATE affinity SET score=?, last_positive=?, last_negative=? WHERE user_id=?",
+                       (new, row["last_positive"], row["last_negative"], user_id))
             if raw:
                 db.execute("INSERT INTO affinity_events(user_id,at,raw,delta,score,reason,run_id,text_hash) "
                            "VALUES (?,?,?,?,?,?,?,?)",

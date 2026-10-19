@@ -268,6 +268,25 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
     bridge.close()
   })
 
+  it('ignores recall forwarder commands so RecallForwarder handles them without double reply', async () => {
+    const { bridge, runtime } = bridgeFixture()
+    const event = messageEvent()
+    event.message.segments = [
+      { type: 'mention', userId: '100001', label: '嘟嘟哒', all: false },
+      { type: 'text', text: ' /关闭防撤回' },
+    ]
+    await bridge.handle(event)
+    expect(runtime.run).not.toHaveBeenCalled()
+
+    event.message.segments = [
+      { type: 'mention', userId: '100001', label: '嘟嘟哒', all: false },
+      { type: 'text', text: ' /开启防撤回' },
+    ]
+    await bridge.handle(event)
+    expect(runtime.run).not.toHaveBeenCalled()
+    bridge.close()
+  })
+
   it('groups consecutive content actions and sends forward, reaction and file actions standalone in order', async () => {
     const { bridge, runtime, hub } = bridgeFixture()
     const order: string[] = []
