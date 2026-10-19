@@ -152,22 +152,30 @@ def legend(canvas: Canvas, y: int) -> None:
         canvas.text((x + 16, y), caption, size=11, fill=MUTED, anchor="lm")
         x += 22 + canvas.font(11).getlength(caption) / S + 18
 
-
 def everyone(request: dict) -> bytes:
-    """Super admin view: every person in two columns, highest first."""
+    """Every person in two columns, highest first."""
     items = request["items"]
     per_column = max(1, (len(items) + 1) // 2)
     row_height = 44
-    top_y = 104
+    pinned = request.get("pinned")
+    pinned_height = 54 if pinned else 0
+    top_y = 104 + pinned_height
     height = top_y + per_column * row_height + 80
     canvas = Canvas(height, request["fonts"])
     canvas.rect([12, 12, W - 12, height - 12], fill=PANEL, outline=BORDER, radius=22, width=2)
     canvas.text((40, 48), "全部亲密度", size=22, bold=True, anchor="ls")
     canvas.text((W - 40, 48), f"共 {request['count']} 人", size=13, fill=MUTED, anchor="rs")
+    if pinned:
+        color = TIERS["最喜欢的姐姐"]
+        canvas.rect([40, 66, W - 40, 106], outline=color, radius=12, width=2)
+        canvas.avatar((62, 86), 13, pinned.get("avatar"), pinned["name"], color)
+        canvas.text((84, 86), canvas.fit(pinned["name"], 15, 300), size=15, fill=color, bold=True, anchor="lm")
+        canvas.text((W - 58, 86), "最喜欢的姐姐 · 120", size=15, fill=color, bold=True, anchor="rm")
+    counts_y = 80 + pinned_height
     x = 40
     for label, count in request["counts"].items():
         caption = f"{label} {count}"
-        canvas.text((x, 80), caption, size=13, fill=TIERS[label], bold=True, anchor="ls")
+        canvas.text((x, counts_y), caption, size=13, fill=TIERS[label], bold=True, anchor="ls")
         x += canvas.font(13, True).getlength(caption) / S + 22
     if not items:
         canvas.text((40, top_y + 20), "还没有任何亲密度记录。", size=14, fill=MUTED, anchor="lm")

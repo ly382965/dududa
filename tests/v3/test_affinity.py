@@ -233,6 +233,16 @@ class AffinityRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["route"], "rule")
         self.assertIn("嘟嘟哒的亲密度排行", result["text"])
 
+    async def test_all_keyword_outputs_everyone_with_ranks(self):
+        self.book.set("7", 80, "42", time.time())
+        result = await self.say("/亲密度 all", user="7")
+        self.assertEqual(result["route"], "rule")
+        self.assertIn("【全部亲密度】", result["text"])
+        self.assertIn("最喜欢的姐姐 · 120", result["text"])
+        # Below threshold cannot run /亲密度 all
+        blocked = await self.say("/亲密度 all", user="8")
+        self.assertEqual((blocked["status"], blocked["actions"]), ("ignored", []))
+
 
 class RendererTests(unittest.TestCase):
     """Both layouts must produce a PNG under a Pillow interpreter (skipped where none is installed)."""

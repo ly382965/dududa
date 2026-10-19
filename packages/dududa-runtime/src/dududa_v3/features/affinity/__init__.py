@@ -49,6 +49,8 @@ ZONE = ZoneInfo("Asia/Shanghai")
 RENDER_SCRIPT = Path(__file__).with_name("render.py")
 RENDER_TIMEOUT_SECONDS = 30
 QUERY_THRESHOLD = 60
+ALL_KEYWORDS = ("all", "全部", "全员", "所有人", "全部人")
+RANK_KEYWORDS = ("排行", "排名", "榜")
 RANK_WINDOW_SECONDS = 90 * 86400
 POSITIVE_COOLDOWN_SECONDS = 120
 DEDUPE_SECONDS = 86400
@@ -479,17 +481,24 @@ async def ranking_reply(ctx: Ctx, conversation_id: str) -> Reply:
 
 
 async def everyone_reply(ctx: Ctx) -> Reply:
-    """Super admin's private view: every scored person, highest first, with QQ numbers."""
-    exclude = {ctx.inbound.bot_id, ledger(ctx).super_admin, *map(str, ctx.config(TASK).get("exclude", []))}
-    rows = [row for row in ledger(ctx).everyone() if row["user_id"] not in exclude]
+    """Every scored person, highest first, with QQ numbers and ranks."""
+    book = ledger(ctx)
+    exclude = {ctx.inbound.bot_id, book.super_admin, *map(str, ctx.config(TASK).get("exclude", []))}
+    rows = [row for row in book.everyone() if row["user_id"] not in exclude]
     items = [{**entry(row, index + 1), "qq": row["user_id"]} for index, row in enumerate(rows)]
     counts = {label: sum(item["tier"] == label for item in items) for label in TIER_STYLE if label != "最喜欢的姐姐"}
-    request = {"kind": "all", "count": len(items), "items": items, "counts": counts}
-    await with_avatars(ctx, items)
+    pinned = None
+    if book.super_admin:
+        pinned = {"user_id": book.super_admin,
+                  "name": book.display_name(book.super_admin, ctx.inbound.conversation_id) or "姐姐"}
+    request = {"kind": "all", "count": len(items), "items": items, "counts": counts, "pinned": pinned}
+    await with_avatars(ctx, [*([pinned] if pinned else []), *items])
     png = await render(ctx, request)
     if png:
         return Reply().image(png)
     lines = [f"【全部亲密度】共 {len(items)} 人"]
+    if pinned:
+        lines.append(f"♡ {pinned['name']}：最喜欢的姐姐 · 120")
     lines += [f"{item['rank']}. {item['name']}（{item['qq']}）{item['score']:.1f} {item['tier']}" for item in items]
     return Reply.of_text("\n".join(lines))
 
@@ -529,7 +538,8 @@ async def affinity_command(ctx: Ctx) -> Reply | Delegate | str | None:
     if ctx.inbound.source != "qq":
         return Delegate(prompt=text)
     viewer = ctx.inbound.sender.id
-    if ctx.args and ctx.args not in ("排行", "排名", "榜"):
+    arg = ctx.args.strip().lower()
+    if arg and arg not in ALL_KEYWORDS and arg not in RANK_KEYWORDS:
         action, _, rest = ctx.args.partition(" ")
         if is_super_or_admin(ctx):
             result = await admin_command(ctx, action, rest)
@@ -542,6 +552,8 @@ async def affinity_command(ctx: Ctx) -> Reply | Delegate | str | None:
         if ctx.inbound.is_group and ctx.inbound.text.lstrip().startswith(("/", "／")):
             return None
         return Delegate(prompt=text)
+    if arg in ALL_KEYWORDS:
+        return await everyone_reply(ctx)
     if ctx.inbound.is_group:
         return await ranking_reply(ctx, ctx.inbound.conversation_id)
     if ledger(ctx).is_super(viewer):
