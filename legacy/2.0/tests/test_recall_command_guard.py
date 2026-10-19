@@ -15,20 +15,20 @@ guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 
 
-def event(text="/开启防撤回", *, user="1778159807", mention="3296147894", kind="group", extra=None):
+def event(text="/开启防撤回", *, user="300001", mention="100001", kind="group", extra=None):
     segments = [{"type": "at", "data": {"qq": mention}}, {"type": "text", "data": {"text": " " + text}}]
     if extra:
         segments.append(extra)
     return SimpleNamespace(
         message_obj=SimpleNamespace(raw_message={"message_type": kind, "user_id": user, "message": segments}),
-        get_self_id=lambda: "3296147894", stop_event=Mock(),
+        get_self_id=lambda: "100001", stop_event=Mock(),
     )
 
 
 class RecallCommandGuardTests(unittest.TestCase):
     def test_exact_commands_are_consumed_without_any_reply(self):
         for text in ("/开启防撤回", "/关闭防撤回"):
-            for user in ("1778159807", "123456789"):
+            for user in ("300001", "123456789"):
                 with self.subTest(text=text, user=user):
                     e = event(text, user=user)
                     self.assertTrue(guard.consume_gateway_recall_command(e))
@@ -44,9 +44,9 @@ class RecallCommandGuardTests(unittest.TestCase):
     def test_requires_real_single_self_mention_and_group(self):
         cases = [event(mention="all"), event(mention="123456789"), event(kind="private"),
                  event(extra={"type":"image","data":{"file":"x"}}),
-                 event(extra={"type":"at","data":{"qq":"3296147894"}})]
-        e = event(); e.message_obj.raw_message["message"] = [{"type":"text","data":{"text":"@3296147894 /开启防撤回"}}]; cases.append(e)
-        e = event(); e.message_obj.raw_message["message"] = "[CQ:at,qq=3296147894] /开启防撤回"; cases.append(e)
+                 event(extra={"type":"at","data":{"qq":"100001"}})]
+        e = event(); e.message_obj.raw_message["message"] = [{"type":"text","data":{"text":"@100001 /开启防撤回"}}]; cases.append(e)
+        e = event(); e.message_obj.raw_message["message"] = "[CQ:at,qq=100001] /开启防撤回"; cases.append(e)
         e = event(); e.message_obj.raw_message = None; cases.append(e)
         for e in cases:
             self.assertFalse(guard.consume_gateway_recall_command(e))

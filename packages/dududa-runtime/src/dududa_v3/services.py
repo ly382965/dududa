@@ -1,4 +1,4 @@
-"""Scope-bound, read-only services shared by rules and the native MCP server."""
+"""Scope-bound, read-only services shared by rules and the agent's Host tools."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
-from urllib.request import ProxyHandler, Request, build_opener, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 from zoneinfo import ZoneInfo
 
 from .config import Settings
@@ -113,7 +113,7 @@ class ServiceHub:
     def tool_definitions() -> list[dict[str, Any]]:
         return tool_definitions()
 
-    def call(self, name: str, args: dict[str, Any] | None = None) -> Any:
+    def call(self, name: str, args: dict[str, Any] | None = None, *, record: bool = True) -> Any:
         definitions = {item["name"]: item for item in tool_definitions()}
         if name not in definitions:
             raise ServiceError("未知的只读服务")
@@ -124,7 +124,8 @@ class ServiceHub:
         schema = definitions[name]["inputSchema"]
         if set(args) - set(schema["properties"]) or set(schema["required"]) - set(args):
             raise ServiceError("工具参数缺失或包含不允许的字段")
-        self.store.record_tool(self.run_id, name)
+        if record:
+            self.store.record_tool(self.run_id, name)
         return getattr(self, name)(**args)
 
     def shuttle_query(self, query: str) -> dict[str, Any]:
@@ -224,20 +225,28 @@ class ServiceHub:
                 content = "[已撤回]" if message.get("status") == "recalled" else str(message.get("content", ""))
                 clipped = content[:2000]
                 truncated = truncated or content != clipped
-                if characters + len(clipped) > 250000:
+                # Keeps the tool result well under omp's 1 MiB inbound RPC frame (CJK is 3 bytes/char).
+                if characters + len(clipped) > 200000:
                     truncated = True
                     break
                 timestamp = instant.astimezone(local_zone).isoformat()
+                reply = next((segment for segment in message.get("segments") or []
+                              if isinstance(segment, dict) and segment.get("type") == "reply"), None)
                 items[message_id] = {"id": message_id, "senderId": message.get("senderId", ""),
                                      "senderName": message.get("senderName", ""), "content": clipped,
                                      "timestamp": timestamp}
+                if str(message.get("senderId", "")) == self.account_id.removeprefix("qq-"):
+                    items[message_id]["isBot"] = True
+                if reply and (reply.get("senderId") or reply.get("senderName")):
+                    items[message_id]["replyTo"] = {"senderId": reply.get("senderId", ""),
+                                                    "senderName": reply.get("senderName", "")}
                 characters += len(clipped)
                 if len(items) >= limit:
                     break
             has_more = page.get("hasMoreBefore") is True and not reached_start
             next_cursor = page.get("beforeCursor")
             # OneBot adjacent-page probes can under-report hasMoreBefore; stop on cursor/data progress instead.
-            if (reached_start or len(items) >= limit or characters >= 248000 or not next_cursor
+            if (reached_start or len(items) >= limit or characters >= 198000 or not next_cursor
                     or next_cursor == cursor or len(items) == previous_count):
                 break
             cursor = next_cursor
@@ -297,7 +306,7 @@ class ServiceHub:
             if not isinstance(item, dict):
                 continue
             if (item.get("id") not in self.settings.campus_capabilities
-                    or item.get("privacy") != "public"
+                    or item.get("privacy") not in ("public", "conversation")
                     or self.context not in item.get("allowedContexts", [])):
                 continue
             # Only expose query metadata, never Console server/admin details.
@@ -320,7 +329,8 @@ class ServiceHub:
         request = Request(base.rstrip("/") + path, data=body,
                           headers={"Accept": "application/json", "Content-Type": "application/json"})
         try:
-            with urlopen(request, timeout=15) as response:
+            # The Console is a local service; never route it through the outbound proxy.
+            with build_opener(ProxyHandler({})).open(request, timeout=15) as response:
                 return json.load(response)
         except HTTPError as exc:
             raise ServiceError(f"MCP Console 请求失败（HTTP {exc.code}）") from None

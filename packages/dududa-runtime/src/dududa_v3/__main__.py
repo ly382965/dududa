@@ -60,10 +60,10 @@ async def chat(settings: Settings, text: str, conversation: str, preview: bool) 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Dududa 3.0: rules + local Codex CLI")
+    parser = argparse.ArgumentParser(description="Dududa 3.x: rule features + local omp agent harness")
     parser.add_argument("--config", help="Runtime JSON configuration")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("check", help="Check local executable without an LLM call")
+    sub.add_parser("check", help="Check the local omp executable without an LLM call")
     query = sub.add_parser("chat", help="Run a message through the actual 3.0 runtime")
     query.add_argument("text")
     query.add_argument("--conversation", default="private:local")
@@ -78,12 +78,12 @@ def main() -> int:
             return asyncio.run(chat(settings, args.text, args.conversation, args.preview))
     if args.command == "check":
         health = {"runtime": RUNTIME, "version": VERSION,
-                  "codex_available": shutil.which(settings.codex_binary) is not None}
-        if health["codex_available"]:
-            health["codex_version"] = subprocess.run([settings.codex_binary, "--version"], capture_output=True,
-                                                       text=True, timeout=10, check=True).stdout.strip()
+                  "omp_available": shutil.which(settings.omp_binary) is not None}
+        if health["omp_available"]:
+            health["omp_version"] = subprocess.run([settings.omp_binary, "--version"], capture_output=True,
+                                                   text=True, timeout=30, check=True).stdout.strip()
         print(json.dumps(health, ensure_ascii=False, indent=2))
-        return 0 if health["codex_available"] else 1
+        return 0 if health["omp_available"] else 1
     with state_lock(settings):
         return serve(settings, args.host, args.port)
 
@@ -95,8 +95,9 @@ def serve(settings: Settings, host: str, port: int) -> int:
     thread.start()
     runtime = Runtime(settings)
     runtime.store.recover()
+    asyncio.run_coroutine_threadsafe(_start_jobs(runtime), loop).result(10)
     httpd = create_server(runtime, loop, host, port, token)
-    print(f"Dududa 3.0 listening at http://{host}:{port}", flush=True)
+    print(f"Dududa {VERSION} listening at http://{host}:{port}", flush=True)
     if not os.environ.get("DUDUDA_V3_TOKEN"):
         print(f"Token file: {settings.state_dir / 'token'}", flush=True)
     try:
@@ -110,6 +111,10 @@ def serve(settings: Settings, host: str, port: int) -> int:
         thread.join(timeout=5)
         loop.close()
     return 0
+
+
+async def _start_jobs(runtime: Runtime) -> None:
+    runtime.start_jobs()
 
 
 if __name__ == "__main__":

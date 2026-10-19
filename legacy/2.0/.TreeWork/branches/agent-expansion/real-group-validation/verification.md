@@ -110,7 +110,7 @@ Branch: real-group-validation
   `ustc.curriculum.public-query.v1`、`outputCalls=0`、`memoryWrites=0`；回答正确引用
   2025 级两专业均为 167 学分及专业课程差集。第一条单方案原问题的 Web -> 2.0
   预览同样只调用一次培养方案 Capability，并明确快照无法证明必修/选修分项学分。
-- 2026-08-29 目标群 `364894085` no-send 耦合抽样：iCourse、二课、培养方案、
+- 2026-08-29 目标群 `200004` no-send 耦合抽样：iCourse、二课、培养方案、
   Academic 和校车均为 `on`；五类自然语言输入各自只选择对应插件并执行一次只读
   Tool，普通聊天为零 Tool。六条 Web -> 已安装 2.0 Runtime 预览均返回
   `runtimePath=dududa_2_preview / outputCalls=0 / memoryWrites=0`，AstrBot 与 NapCat
@@ -173,7 +173,7 @@ Branch: real-group-validation
   database remained 0 courses/0 reviews. The Web MCP Console then called the
   compatible `icourse.courses.search.v1 -> search_courses` path and returned the
   same four live hits on generation 3.
-- Two installed Dududa 2.0 no-send previews in Scope `364894085` each made one
+- Two installed Dududa 2.0 no-send previews in Scope `200004` each made one
   MCP call: `查询评课社区wanglulu` reported the user page's 54 reviews and
   `查询评课社区萌萌哒mmd` reported 83. Both used Terra `low`, selected LONG,
   returned `bounded_tool_execution + delivery_ready`, and recorded
@@ -190,7 +190,7 @@ Branch: real-group-validation
   live iCourse reads and no cache fallback, not real QQ delivery or full S23;
   branch status remains `paused/partial`.
 
-- 2026-08-28 长生命周期 Runtime 故障复现与修复：群 `364894085` 的真实 `@Bot`
+- 2026-08-28 长生命周期 Runtime 故障复现与修复：群 `200004` 的真实 `@Bot`
   事件正常进入 AstrBot，但 30 分钟后的 Endpoint load 快照被 Router 判为陈旧，
   no-send 同形请求稳定返回 `model_route_not_found`、空正文。假时钟跨越 31 分钟的
   聚焦测试通过；Core 单插件热重载后，原 iCourse 请求恢复为
@@ -641,7 +641,7 @@ Branch: real-group-validation
   endpoint `HEALTHY` only until the original evidence TTL; another timeout after expiry returns it to
   `UNKNOWN`. The periodic task and model-health publisher regressions remain green.
 - Live no-send evidence: Core was synchronized and hot-reloaded without restarting AstrBot or NapCat;
-  active timeout is 60 seconds. A group `419256533` Runtime preview returned HTTP 200 through Luna in
+  active timeout is 60 seconds. A group `200001` Runtime preview returned HTTP 200 through Luna in
   23.516 seconds with a non-empty candidate, `delivery_ready`, `explicit_direct_reply`, zero Tool calls and
   `outputCalls=0`; `model_route_not_found` was absent.
 - Evidence boundary: this closes the model-route failure and proves no-send execution only. Later natural

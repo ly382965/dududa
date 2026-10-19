@@ -10,7 +10,7 @@ import { HttpAstrBotPluginManagerClient } from './plugin-manager'
 import { FileApiKeyPoolStore } from './model-keys'
 import { createHttpApiKeyProbe } from './provider-probe'
 import { HttpRuntimeConfigClient } from './runtime-config'
-import { RecallForwarder } from './recall-forwarder'
+import { RecallForwarder, recallForwardOptionsFromEnv } from './recall-forwarder'
 import { RecallStore } from './recall-store'
 import { RecallMediaStore } from './recall-media'
 import { HttpRuntimeV3Client, RuntimeV3QqBridge, runtimeV3Scopes } from './runtime-v3'
@@ -42,7 +42,7 @@ const astrBotPluginApiKey = () => readToken(
 const recallPath = process.env.DUDUDA_RECALL_STORE_PATH || resolve(process.cwd(), '../../runtime/web/recall/messages.sqlite')
 const recallStore = new RecallStore({ path: recallPath })
 const recallMediaStore = new RecallMediaStore({ path: recallPath })
-const recallForwarder = new RecallForwarder(recallPath)
+const recallForwarder = new RecallForwarder(recallPath, recallForwardOptionsFromEnv())
 const hub = new OneBotHub({ token: oneBotToken, recallStore, recallMediaStore, recallForwarder })
 const controlPlane = controlPlaneUrl
   ? new HttpControlPlaneClient(controlPlaneUrl)

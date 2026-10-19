@@ -1,5 +1,23 @@
 # Dududa 3.0 Runtime
 
+> **3.1 更新**：3.1.0 用本机 omp（`omp --mode rpc`）替换了下文描述的 Codex app-server 传输。业务工具不再经独立 MCP stdio 进程，而是注册为 omp RPC host tool，由 Host 进程内应答；omp 内置工具只开放 `web_search`。会话连续性来自 `state_dir/agent-sessions/<session_id>/<thread>` 下的 omp session。规则命令扩展为 `features/` 功能模块（指令、观察者、定时任务、Agent 工具、任务开关），并新增 outbox、频率限制和模型注册表。下文保留 3.0 的设计记录；涉及 Codex、`codex.py`、`mcp.py`、thread / turn 的段落只描述 3.0。线上运维见 [3.1 运维手册](../operations/v3.md)。
+>
+> 3.1 模块：
+>
+> | 文件 / 目录（`packages/dududa-runtime/src/dududa_v3/`） | 责任 |
+> | --- | --- |
+> | `__main__.py` | `check`、`chat`、`serve` 命令与令牌文件 |
+> | `config.py` | JSON 配置、模型注册表（`models`、`model_defaults`、`service_defaults`）、环境变量覆盖 |
+> | `router.py` | 点名判断、指令匹配、未知斜杠指令忽略、频率限制 |
+> | `runtime.py` | 指令 → Agent → 观察者 → 主动搭话的调度、Agent 轮次、模型解析、定时任务 |
+> | `context.py` | 【会话】【近期聊天背景】/【上次回复后的新消息】【当前消息】块渲染 |
+> | `omp.py` | omp RPC 子进程、host tool 应答、事件、超时与中断 |
+> | `services.py` | ServiceHub：`shuttle_query`、`memory_search`、`context_recent`、`conversation_history`、`services_list`、`campus_query` |
+> | `store.py` | SQLite：会话、消息、运行、记忆、任务开关、模型绑定、outbox |
+> | `server.py` | HTTP API，新增 `/v3/outbox`、`/v3/outbox/claim`、`/v3/outbox/{id}/result` |
+> | `features/base.py` | 功能模块契约：`Command`、`Observer`、`Job`、`Tool`、`Task`、`Reply`、`Ctx` |
+> | `features/*.py`、`features/notify/`、`features/sub2api/` | core、weather、feeds、status_alerts、links、xiaohongshu、imagegen、emoji_kitchen、cats、repeater、notify、sub2api |
+
 3.0 使用独立 Python Host 承载确定性规则和 Agent 两条路径。Agent 路径调用**本机安装的 Codex CLI App Server**，不依赖 Python Codex SDK，也不经过 2.0 的感知、模型路由或单步能力计划。
 
 ![Dududa 3.0 架构：4:3，输入在左、输出在右](../assets/dududa-3.0-architecture.svg)
@@ -82,4 +100,4 @@ MCP 当前提供 `shuttle_query`、`memory_search`、`context_recent`、`service
 - 通知订阅、作业草稿与提交、助教汇报、互动插件和完整 Memory v2 保存在 2.0，未迁移或自动启用。
 - 真实本机 CLI 验证与协议测试分别报告；2.0 历史结果不算 3.0 证据。
 
-启动方式见 [3.0 操作说明](../operations/v3.md)，历史源码恢复见 [2.0 封存记录](../archive/2.0/ARCHIVE.md)。
+部署与运维见 [3.1 运维手册](../operations/v3.md)，历史源码恢复见 [2.0 封存记录](../archive/2.0/ARCHIVE.md)。

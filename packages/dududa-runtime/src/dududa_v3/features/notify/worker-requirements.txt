@@ -1,0 +1,8 @@
+seminar-radar @ https://github.com/ly382965/SeminarRadar/archive/af128a0c86b9c114ce3951fd805d7bb7543d37d2.tar.gz
+pypdf>=6,<7
+python-docx>=1.2,<2
+reportlab>=4.4,<5
+markdown-it-py>=4,<5
+lxml>=6,<7
+python-pptx>=1,<2
+fonttools>=4,<5

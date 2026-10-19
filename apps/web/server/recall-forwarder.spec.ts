@@ -3,10 +3,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OneBotMessage } from './mapper'
-import { RecallForwarder, recallCommand, recallForwardDefaultGroups, recallSuperAdmin } from './recall-forwarder'
-const self='3296147894', account=`qq-${self}`, group='419256533'
+import { RecallForwarder, recallCommand, recallForwardOptionsFromEnv } from './recall-forwarder'
+const self='100001', account=`qq-${self}`, group='200001'
+const recallSuperAdmin='300001', recallForwardDefaultGroups=['200001','200002','200003']
+const options={defaultGroups:recallForwardDefaultGroups,superAdmin:recallSuperAdmin}
 const stores:RecallForwarder[]=[], roots:string[]=[]
-function store(path=':memory:',now?:()=>number){const s=new RecallForwarder(path,now);stores.push(s);return s}
+function store(path=':memory:',now?:()=>number){const s=new RecallForwarder(path,options,now);stores.push(s);return s}
 function message(g=group,id=1,user='123456789'):OneBotMessage{return {message_type:'group',group_id:g,message_id:id,user_id:user,sender:{nickname:'昵称',card:'群名片'},message:[{type:'text',data:{text:'原始内容'}}]}}
 function command(t='/开启防撤回',g='999999999',id=10,user=recallSuperAdmin):OneBotMessage{return {...message(g,id,user),message:[{type:'at',data:{qq:self}},{type:'text',data:{text:` ${t}`}}]}}
 function notice(g=group,id=1,user='123456789'){return {notice_type:'group_recall',group_id:g,message_id:id,user_id:user}}
@@ -54,5 +56,10 @@ describe('recall forwarding',()=>{
   await s.message(account,self,raw,send);await s.recall(account,self,notice(),send);const out=send.mock.calls[0]?.[1]
   expect(out.some((s:{type:string})=>s.type==='at')).toBe(false);expect(JSON.stringify(out)).not.toContain('/etc/passwd')
   expect(out).toContainEqual({type:'image',data:{file:'https://gchat.qpic.cn/image.png'}});expect(JSON.stringify(out)).toContain('[语音]')
+ })
+ it('reads groups and the super admin from the environment',()=>{
+  expect(recallForwardOptionsFromEnv({DUDUDA_RECALL_FORWARD_GROUPS:' 200001, x ,200002',DUDUDA_RECALL_SUPER_ADMIN:' 300001 '}))
+   .toEqual({defaultGroups:['200001','200002'],superAdmin:'300001'})
+  expect(recallForwardOptionsFromEnv({})).toEqual({defaultGroups:[],superAdmin:''})
  })
 })

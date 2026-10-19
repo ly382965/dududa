@@ -1,8 +1,20 @@
 import { DatabaseSync } from 'node:sqlite'
 import type { OneBotMessage, OneBotSegment } from './mapper'
 
-export const recallForwardDefaultGroups = ['419256533', '481757927', '530719678'] as const
-export const recallSuperAdmin = '1778159807'
+export interface RecallForwardOptions {
+  /** Groups where anti-recall is on until a /关闭防撤回 command turns it off. */
+  defaultGroups: readonly string[]
+  /** The only QQ that may toggle anti-recall; empty disables the commands. */
+  superAdmin: string
+}
+
+/** Reads DUDUDA_RECALL_FORWARD_GROUPS (comma separated) and DUDUDA_RECALL_SUPER_ADMIN. */
+export function recallForwardOptionsFromEnv(env: NodeJS.ProcessEnv = process.env): RecallForwardOptions {
+  return {
+    defaultGroups: (env.DUDUDA_RECALL_FORWARD_GROUPS ?? '').split(',').map((group) => group.trim()).filter((group) => /^\d+$/.test(group)),
+    superAdmin: (env.DUDUDA_RECALL_SUPER_ADMIN ?? '').trim(),
+  }
+}
 const retentionMs = 7 * 86_400_000
 export type RecallSend = (groupId: string, message: OneBotSegment[]) => Promise<unknown>
 
@@ -53,7 +65,11 @@ function displaySegments(raw: OneBotMessage): OneBotSegment[] {
 export class RecallForwarder {
   private readonly db: DatabaseSync
   private closed = false
-  constructor(path: string, private readonly now: () => number = Date.now) {
+  constructor(
+    path: string,
+    private readonly options: RecallForwardOptions = { defaultGroups: [], superAdmin: '' },
+    private readonly now: () => number = Date.now,
+  ) {
     this.db = new DatabaseSync(path)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS recall_forward_settings (
@@ -73,7 +89,7 @@ export class RecallForwarder {
 
   enabled(account: string, groupId: string): boolean {
     const row = this.db.prepare('SELECT enabled FROM recall_forward_settings WHERE account=? AND group_id=?').get(account, groupId)
-    return row ? Boolean(row.enabled) : (recallForwardDefaultGroups as readonly string[]).includes(groupId)
+    return row ? Boolean(row.enabled) : this.options.defaultGroups.includes(groupId)
   }
 
   private setEnabled(account: string, groupId: string, enabled: boolean): void {
@@ -92,7 +108,7 @@ export class RecallForwarder {
     if (command !== undefined) {
       // The configured super administrator can operate even as an ordinary member.
       // No global AstrBot privileges or other users' permissions are changed.
-      if (String(raw.user_id) !== recallSuperAdmin) return
+      if (!this.options.superAdmin || String(raw.user_id) !== this.options.superAdmin) return
       const claimed = this.db.prepare('INSERT OR IGNORE INTO recall_forward_commands VALUES(?,?,?,?)')
         .run(account, groupId, id, this.now() + retentionMs)
       if (!claimed.changes) return
@@ -110,7 +126,7 @@ export class RecallForwarder {
   async recall(account: string, selfId: string, event: Record<string, unknown>, send: RecallSend): Promise<void> {
     if (!this.closed && event.notice_type === 'group_increase' && String(event.user_id) === selfId) {
       const joinedGroup = String(event.group_id ?? '')
-      if (/^\d+$/.test(joinedGroup) && !(recallForwardDefaultGroups as readonly string[]).includes(joinedGroup)) {
+      if (/^\d+$/.test(joinedGroup) && !this.options.defaultGroups.includes(joinedGroup)) {
         this.setEnabled(account, joinedGroup, false)
       }
       return

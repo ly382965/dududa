@@ -258,8 +258,8 @@ describe('internal-test gateway', () => {
   it('uses the AstrBot 2.0 no-send preview and reports the real iCourse call', async () => {
     const root = await fixtureRoot()
     const scope = {
-      accountId: 'qq-3296147894',
-      conversationId: 'qq-3296147894:group:364894085',
+      accountId: 'qq-100001',
+      conversationId: 'qq-100001:group:200001',
     }
     const preview = vi.fn(async () => ({
       runId: 'runtime-preview-1',

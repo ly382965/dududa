@@ -6,9 +6,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { HttpRuntimeV3Client, RuntimeV3QqBridge, runtimeV3Scopes, type RuntimeV3Run } from './runtime-v3'
+import {
+  HttpRuntimeV3Client, RuntimeV3QqBridge, runtimeV3Scopes,
+  type RuntimeV3OutboxItem, type RuntimeV3Request, type RuntimeV3Run,
+} from './runtime-v3'
 import { createAgentGateway, FileInternalTestGateway } from './internal-test'
-import type { ChatMessage, WorkspaceEvent } from '../src/types/workspace'
+import type { ChatMessage, GroupMemberDirectory, WorkspaceEvent } from '../src/types/workspace'
 import { summaryForwardParts } from './summary-delivery'
 
 const servers: Server[] = []
@@ -156,30 +159,167 @@ function messageEvent(): Extract<WorkspaceEvent, { type: 'message.created' }> {
   }
 }
 
+const MEDIA_KEY = 'a'.repeat(32)
+const QUOTED_KEY = 'b'.repeat(32)
+const cdn = (key: string) => `https://multimedia.nt.qq.com.cn/download?appid=1407&fileid=${key}`
+
 function bridgeFixture(scopes = runtimeV3Scopes(`${scope.accountId}/${scope.conversationId}`)) {
   const hub = Object.assign(new EventEmitter(), {
-    sendSegments: vi.fn(async () => ({ ...messageEvent().message, messageId: 'sent-1', mine: true }) as ChatMessage),
-    sendMergedForward: vi.fn(async () => ({ messageId: 'forward-1' })),
+    sendRuntimeMessage: vi.fn(async (..._args: unknown[]) => ({ messageId: 'sent-1' })),
+    sendRuntimeForward: vi.fn(async (..._args: unknown[]) => ({ messageId: 'rforward-1' })),
+    sendMergedForward: vi.fn(async (..._args: unknown[]) => ({ messageId: 'forward-1' })),
+    setMessageReaction: vi.fn(async (..._args: unknown[]) => undefined),
+    sendFile: vi.fn(async (..._args: unknown[]) => ({ kind: 'file' as const, fileId: 'file-1', name: 'x', size: 1 })),
+    resolveMediaSource: vi.fn((path: string | undefined) => {
+      const key = /^\/api\/media\/message\/([0-9a-f]{32})$/.exec(path ?? '')?.[1]
+      return key ? cdn(key) : undefined
+    }),
+    refreshMessage: vi.fn(async (..._args: unknown[]): Promise<ChatMessage> => { throw new Error('not cached') }),
+    memberDirectory: vi.fn(async (..._args: unknown[]): Promise<GroupMemberDirectory> => { throw new Error('no directory') }),
   })
   const claims = new Set<string>()
   const runtime = {
-    run: vi.fn(async () => completed),
+    run: vi.fn(async (_request: RuntimeV3Request) => completed),
     delivery: vi.fn(async (id: string, state: string, _messageId?: string) => {
       if (state !== 'sending' || claims.has(id)) return false
       claims.add(id)
       return true
     }),
   }
-  return { hub, runtime, bridge: new RuntimeV3QqBridge(hub, runtime, scopes) }
+  return { hub, runtime, bridge: new RuntimeV3QqBridge(hub, runtime, scopes, () => undefined) }
 }
 
 describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
+  it.each(['/a help', '/help', '/help /a', '/ping'])('ignores %s addressed only to another user', async (text) => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    const event = messageEvent()
+    event.message.segments = [
+      { type: 'mention', userId: '300002', label: '@Yurisaki', all: false },
+      { type: 'text', text: ` ${text}` },
+    ]
+    await bridge.handle(event)
+    expect(runtime.run).not.toHaveBeenCalled()
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+    expect(hub.sendMergedForward).not.toHaveBeenCalled()
+    event.message.segments.unshift({ type: 'mention', userId: '100001', label: '@嘟嘟哒', all: false })
+    await bridge.handle(event)
+    expect(runtime.run).toHaveBeenCalledWith(expect.objectContaining({ mentioned: true, text: `@Yurisaki ${text}` }))
+    bridge.close()
+  })
+
+  it('sends sender, quoted reply, mentions, absolute image URLs and normalized segments', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    hub.memberDirectory.mockResolvedValue({ members: [{ userId: '300002', card: '小红', nickname: '红' }] } as GroupMemberDirectory)
+    hub.refreshMessage.mockResolvedValue({ ...messageEvent().message, messageId: '77', senderId: '300003', senderName: '老王',
+      content: '原话[图片]', segments: [{ type: 'text', text: '原话' },
+        { type: 'image', url: `/api/media/message/${QUOTED_KEY}`, sticker: false }] })
+    const event = messageEvent()
+    Object.assign(event.message, { senderName: '群名片', senderCard: '群名片', senderNickname: '昵称', role: 'admin',
+      timestampMs: 1_790_000_000_000 })
+    event.message.segments = [
+      { type: 'reply', messageId: '77' },
+      { type: 'mention', userId: '100001', label: '嘟嘟哒', all: false },
+      { type: 'text', text: ' 看看 ' },
+      { type: 'mention', userId: '300002', label: '300002', all: false },
+      { type: 'image', url: `/api/media/message/${MEDIA_KEY}`, sticker: true, summary: '[动画表情]', width: 100, height: 80 },
+      { type: 'face', faceId: '14', name: '微笑', market: false },
+      { type: 'light_app', title: '小程序', url: 'https://b23.tv/x', description: '视频' },
+      { type: 'forward', forwardId: 'f', preview: '聊天记录' },
+      { type: 'audio' },
+    ]
+    await bridge.handle(event)
+    const request = runtime.run.mock.calls[0]![0]
+    const stickerImage = { url: cdn(MEDIA_KEY), sticker: true, summary: '[动画表情]', width: 100, height: 80 }
+    expect(request).toEqual({
+      account_id: 'qq-100001', conversation_id: 'qq-100001:group:200001', user_id: '300001', message_id: '1',
+      text: '看看 @小红', mentioned: true, source: 'qq', preview: false,
+      sender: { name: '群名片', card: '群名片', nickname: '昵称', role: 'admin' },
+      reply: { message_id: '77', sender_id: '300003', sender_name: '老王', text: '原话',
+        images: [{ url: cdn(QUOTED_KEY), sticker: false }] },
+      mentions: [{ id: '300002', name: '小红' }],
+      images: [stickerImage],
+      segments: [
+        { type: 'reply', message_id: '77' },
+        { type: 'mention', id: '100001', name: '嘟嘟哒' },
+        { type: 'text', text: ' 看看 ' },
+        { type: 'mention', id: '300002', name: '小红' },
+        { type: 'image', ...stickerImage },
+        { type: 'face', id: '14', name: '微笑' },
+        { type: 'light_app', title: '小程序', url: 'https://b23.tv/x', description: '视频' },
+        { type: 'forward', preview: '聊天记录' },
+        { type: 'unknown', summary: '[语音]' },
+      ],
+      timestamp: 1_790_000_000,
+    })
+    expect(hub.refreshMessage).toHaveBeenCalledWith('qq-100001', 'group', '200001', '77')
+    bridge.close()
+  })
+
+  it('allows empty text for image-only messages and keeps the body under 200 KiB', async () => {
+    const { bridge, runtime } = bridgeFixture()
+    const event = messageEvent()
+    event.message.segments = [{ type: 'image', url: `/api/media/message/${MEDIA_KEY}`, sticker: false }]
+    await bridge.handle(event)
+    expect(runtime.run.mock.calls[0]![0]).toMatchObject({ text: '', images: [{ url: cdn(MEDIA_KEY) }] })
+    event.message.segments = Array.from({ length: 200 }, () => ({ type: 'text' as const, text: '长'.repeat(3000) }))
+    await bridge.handle(event)
+    const body = runtime.run.mock.calls[1]![0]
+    expect(Buffer.byteLength(JSON.stringify(body))).toBeLessThan(200 * 1024)
+    bridge.close()
+  })
+
+  it('groups consecutive content actions and sends forward, reaction and file actions standalone in order', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    const order: string[] = []
+    hub.sendRuntimeMessage.mockImplementation(async () => { order.push('message'); return { messageId: `m${order.length}` } })
+    hub.sendRuntimeForward.mockImplementation(async () => { order.push('forward'); return { messageId: 'fw' } })
+    hub.setMessageReaction.mockImplementation(async () => { order.push('reaction') })
+    hub.sendFile.mockImplementation(async () => { order.push('file'); return { kind: 'file', fileId: 'f', name: 'x', size: 1 } })
+    runtime.run.mockResolvedValue({ ...completed, text: '天气', actions: [
+      { type: 'text', text: '合肥 晴' },
+      { type: 'image', data: 'aGVsbG8=', mime: 'image/png' },
+      { type: 'face', id: 14 },
+      { type: 'forward', nodes: [{ name: '嘟嘟哒', actions: [{ type: 'text', text: '节点' }, { type: 'image', url: 'https://example.com/a.png' }] }] },
+      { type: 'reaction', message_id: '1', emoji_id: '66' },
+      { type: 'file', name: 'H3_v2.pdf', data: Buffer.from('%PDF').toString('base64'), mime: 'application/pdf' },
+      { type: 'image', url: 'https://example.com/b.png' },
+    ] })
+    await bridge.handle(messageEvent())
+    expect(order).toEqual(['message', 'forward', 'reaction', 'file', 'message'])
+    expect(hub.sendRuntimeMessage).toHaveBeenNthCalledWith(1, 'qq-100001', 'group', '200001', [
+      { type: 'text', text: '合肥 晴' }, { type: 'image', file: 'base64://aGVsbG8=' }, { type: 'face', id: '14' },
+    ])
+    expect(hub.sendRuntimeForward).toHaveBeenCalledWith('qq-100001', 'group', '200001', [
+      { name: '嘟嘟哒', parts: [{ type: 'text', text: '节点' }, { type: 'image', file: 'https://example.com/a.png' }] },
+    ])
+    expect(hub.setMessageReaction).toHaveBeenCalledWith('qq-100001', '1', '66')
+    expect(hub.sendFile).toHaveBeenCalledWith('qq-100001', 'group', '200001',
+      { buffer: Buffer.from('%PDF'), fileName: 'H3_v2.pdf', size: 4 })
+    expect(hub.sendRuntimeMessage).toHaveBeenLastCalledWith('qq-100001', 'group', '200001', [
+      { type: 'image', file: 'https://example.com/b.png' },
+    ])
+    expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'sent', 'm1')
+    bridge.close()
+  })
+
+  it('claims reaction-only results once and reports them sent', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    runtime.run.mockResolvedValue({ ...completed, route: 'observer', text: '', actions: [{ type: 'reaction', message_id: '1', emoji_id: '66' }] })
+    await Promise.all([bridge.handle(messageEvent()), bridge.handle(messageEvent())])
+    expect(hub.setMessageReaction).toHaveBeenCalledTimes(1)
+    expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'sending')
+    expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'sent', undefined)
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+    bridge.close()
+  })
+
   it('sends a long summary once as merged forward, preserving all text and Unicode', async () => {
     const { bridge, runtime, hub } = bridgeFixture()
     const text = '14:20 小明在东区提出方案。😀\n\n'.repeat(150)
-    runtime.run.mockResolvedValue({ ...completed, route: 'agent', response_kind: 'conversation_summary', text })
+    runtime.run.mockResolvedValue({ ...completed, route: 'agent', response_kind: 'conversation_summary', text,
+      actions: [{ type: 'text', text }] })
     await Promise.all([bridge.handle(messageEvent()), bridge.handle(messageEvent())])
-    expect(hub.sendSegments).not.toHaveBeenCalled()
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
     expect(hub.sendMergedForward).toHaveBeenCalledTimes(1)
     const args = hub.sendMergedForward.mock.calls[0] as unknown as [string, string, string, string[]]
     expect(args.slice(0, 3)).toEqual(['qq-100001', 'group', '200001'])
@@ -193,13 +333,13 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
     const { bridge, runtime, hub } = bridgeFixture()
     runtime.run.mockResolvedValue({ ...completed, response_kind: 'conversation_summary', text: '短总结' })
     await bridge.handle(messageEvent())
-    expect(hub.sendSegments).toHaveBeenCalledTimes(1)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(1)
     runtime.run.mockResolvedValue({ ...completed, run_id: 'long-run', response_kind: 'conversation_summary', text: '长'.repeat(1201) })
     hub.sendMergedForward.mockRejectedValue(new Error('forward timeout'))
     await expect(bridge.handle(messageEvent())).rejects.toThrow('forward timeout')
     await bridge.handle(messageEvent())
     expect(hub.sendMergedForward).toHaveBeenCalledTimes(1)
-    expect(hub.sendSegments).toHaveBeenCalledTimes(1)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(1)
     expect(runtime.delivery).toHaveBeenCalledWith('long-run', 'unknown')
     expect(summaryForwardParts('😀'.repeat(2401)).join('')).toBe('😀'.repeat(2401))
     bridge.close()
@@ -231,15 +371,15 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
     event.message.segments.unshift({ type: 'mention', userId: '100001', label: '@机器人', all: false })
     await bridge.handle(event)
     expect(runtime.run).toHaveBeenLastCalledWith(expect.objectContaining({ mentioned: true, text: '普通群聊' }))
-    expect(hub.sendSegments).not.toHaveBeenCalled()
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
     bridge.close()
   })
 
   it('claims a durable delivery once even when duplicate events arrive concurrently', async () => {
     const { bridge, runtime, hub } = bridgeFixture()
     await Promise.all([bridge.handle(messageEvent()), bridge.handle(messageEvent())])
-    expect(hub.sendSegments).toHaveBeenCalledTimes(1)
-    expect(hub.sendSegments).toHaveBeenCalledWith('qq-100001', 'group', '200001', [{ type: 'text', text: 'pong' }])
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(1)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledWith('qq-100001', 'group', '200001', [{ type: 'text', text: 'pong' }])
     expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'sent', 'sent-1')
     bridge.close()
     expect(hub.listenerCount('workspace-event')).toBe(0)
@@ -247,11 +387,108 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
 
   it('records uncertain send results and does not resend on a repeated event', async () => {
     const { bridge, runtime, hub } = bridgeFixture()
-    hub.sendSegments.mockRejectedValue(new Error('OneBot timeout'))
+    hub.sendRuntimeMessage.mockRejectedValue(new Error('OneBot timeout'))
     await expect(bridge.handle(messageEvent())).rejects.toThrow('OneBot timeout')
     expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'unknown')
     await bridge.handle(messageEvent())
-    expect(hub.sendSegments).toHaveBeenCalledTimes(1)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(1)
     bridge.close()
+  })
+})
+
+describe('Dududa 3.0 outbox poller', () => {
+  function outboxFixture(items: RuntimeV3OutboxItem[]) {
+    const { hub, runtime } = bridgeFixture()
+    const outbox = {
+      ...runtime,
+      claimOutbox: vi.fn(async (_limit?: number) => items.splice(0)),
+      outboxResult: vi.fn(async (_id: number | string, _state: 'sent' | 'unknown', _messageId?: string) => undefined),
+    }
+    const errors: unknown[] = []
+    const bridge = new RuntimeV3QqBridge(hub, outbox, runtimeV3Scopes(`${scope.accountId}/${scope.conversationId}`),
+      error => errors.push(error), 0)
+    return { hub, outbox, bridge, errors }
+  }
+
+  it('claims, delivers to the parsed conversation, and reports results without retrying failures', async () => {
+    const { hub, outbox, bridge, errors } = outboxFixture([
+      { id: 1, account_id: scope.accountId, conversation_id: scope.conversationId,
+        actions: [{ type: 'text', text: '预警' }, { type: 'image', url: 'https://example.com/r.png' }] },
+      { id: 2, account_id: scope.accountId, conversation_id: 'qq-100001:group:999999', actions: [{ type: 'text', text: '不该发' }] },
+      { id: 3, account_id: scope.accountId, conversation_id: scope.conversationId, actions: [{ type: 'text', text: '失败' }] },
+    ])
+    hub.sendRuntimeMessage.mockResolvedValueOnce({ messageId: 'out-1' }).mockRejectedValueOnce(new Error('OneBot timeout'))
+    await bridge.pollOutbox()
+    expect(outbox.claimOutbox).toHaveBeenCalledWith(10)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(2)
+    expect(hub.sendRuntimeMessage).toHaveBeenNthCalledWith(1, 'qq-100001', 'group', '200001', [
+      { type: 'text', text: '预警' }, { type: 'image', file: 'https://example.com/r.png' },
+    ])
+    expect(outbox.outboxResult.mock.calls).toEqual([[1, 'sent', 'out-1'], [2, 'unknown'], [3, 'unknown']])
+    expect(errors).toHaveLength(2)
+    await bridge.pollOutbox()
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(2)
+    bridge.close()
+  })
+
+  it('never overlaps ticks and swallows claim errors', async () => {
+    const { outbox, bridge, errors } = outboxFixture([])
+    let release!: () => void
+    outbox.claimOutbox.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve([]) }))
+    const first = bridge.pollOutbox()
+    await bridge.pollOutbox()
+    expect(outbox.claimOutbox).toHaveBeenCalledTimes(1)
+    release()
+    await first
+    outbox.claimOutbox.mockRejectedValueOnce(new Error('host down'))
+    await bridge.pollOutbox()
+    expect(errors).toHaveLength(1)
+    bridge.close()
+  })
+
+  it('runs on a timer, private conversations included, and stops on close', async () => {
+    vi.useFakeTimers()
+    try {
+      const { hub } = bridgeFixture()
+      const privateScope = 'qq-100001:private:300001'
+      const items: RuntimeV3OutboxItem[] = [{ id: 9, account_id: scope.accountId, conversation_id: privateScope,
+        actions: [{ type: 'file', name: 'H3_v2.pdf', data: 'JVBERg==' }] }]
+      const outbox = {
+        run: vi.fn(), delivery: vi.fn(),
+        claimOutbox: vi.fn(async () => items.splice(0)),
+        outboxResult: vi.fn(async () => undefined),
+      }
+      const bridge = new RuntimeV3QqBridge(hub, outbox, runtimeV3Scopes(`${scope.accountId}/${privateScope}`), () => undefined)
+      await vi.advanceTimersByTimeAsync(3_000)
+      expect(hub.sendFile).toHaveBeenCalledWith('qq-100001', 'private', '300001',
+        { buffer: Buffer.from('%PDF'), fileName: 'H3_v2.pdf', size: 4 })
+      expect(outbox.outboxResult).toHaveBeenCalledWith(9, 'sent', 'file-1')
+      bridge.close()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(outbox.claimOutbox).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('uses the Host outbox endpoints', async () => {
+    const requests: Array<{ url?: string; body: string }> = []
+    const base = await serve((request, response) => {
+      let body = ''
+      request.on('data', chunk => { body += chunk })
+      request.on('end', () => {
+        requests.push({ url: request.url, body })
+        json(response, request.url === '/v3/outbox/claim'
+          ? { items: [{ id: 5, account_id: scope.accountId, conversation_id: scope.conversationId, actions: [] }] }
+          : { updated: true })
+      })
+    })
+    const client = new HttpRuntimeV3Client(base, 'token')
+    await expect(client.claimOutbox()).resolves.toEqual([{ id: 5, account_id: scope.accountId, conversation_id: scope.conversationId, actions: [] }])
+    await client.outboxResult(5, 'sent', 'm-1')
+    expect(requests).toEqual([
+      { url: '/v3/outbox/claim', body: '{"limit":10}' },
+      { url: '/v3/outbox/5/result', body: '{"state":"sent","message_id":"m-1"}' },
+    ])
   })
 })

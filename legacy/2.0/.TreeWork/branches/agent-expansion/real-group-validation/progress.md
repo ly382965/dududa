@@ -55,7 +55,7 @@ Last sync: unix:1788576635
   最近历史，并以 Bot 身份、发送开始时间和精确正文核对。命中后补记 `SUCCEEDED`
   与平台消息 ID，未命中及合并转发继续保持 `UNKNOWN`。聚焦 Fake 已覆盖两条分支；
   尚未人为制造真实 QQ 发送故障。
-- 2026-08-30 已在唯一 2.0 宿主为 `qq-3296147894:group:419256533`
+- 2026-08-30 已在唯一 2.0 宿主为 `qq-100001:group:200001`
   启用 `social.proactive_talk`。每条合格普通群消息按独立数值策略抽样；命中后读取
   NapCat 最近 12/30/100 条群历史并做群级别名投影，再以
   `explicit_interaction=false` 进入现有 Runtime。Web 已将固定频率档改为触发概率、
@@ -69,7 +69,7 @@ Last sync: unix:1788576635
   执行，读取版本化 JSON，覆盖校园、高新校区和太湖路园区时刻表；旧 MCP Server、
   mapping、网页抓取 Client 与 Tool 已移除。Production Perception/Planner 已能自然语言
   调用，Web Catalog 将其显示为 `readonly_query`，群级默认仍为 `off`。
-- 目标群 `364894085` 的 iCourse、二课、培养方案、教务和校车策略现均为 `on`。
+- 目标群 `200004` 的 iCourse、二课、培养方案、教务和校车策略现均为 `on`。
   Academic Planner 已把学期列表、开课、考试和教学日历四个现有只读 Capability
   接入自然语言路径；开课/考试在同一次 MCP 调用内解析官方 semester ID。五类
   no-send 抽样各自只选择目标 Provider，普通聊天保持零 Tool 调用。
@@ -453,7 +453,7 @@ Last sync: unix:1788576635
 
 - The private Demo is served at `http://127.0.0.1:8766/` from a repository-
   external data root. The next S23 evidence is one naturally sampled proactive
-  Delivery in the authorized `419256533` Scope plus one explicit-mention QQ
+  Delivery in the authorized `200001` Scope plus one explicit-mention QQ
   acceptance sample; implementation and enablement are complete, but observed
   delivery quality is not yet established.
 - The live Agent Console now persists administrator preferences and legal

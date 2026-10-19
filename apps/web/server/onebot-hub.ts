@@ -352,6 +352,23 @@ export class OneBotConnection {
   }
 }
 
+/** Host-produced message parts; `file` is `base64://…` or an http(s) URL. */
+export type RuntimeMessagePart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; file: string }
+  | { type: 'face'; id: string }
+
+export interface RuntimeForwardNode {
+  name?: string
+  parts: RuntimeMessagePart[]
+}
+
+function runtimeOneBotSegment(part: RuntimeMessagePart): { type: string; data: Record<string, string> } {
+  if (part.type === 'text') return { type: 'text', data: { text: part.text } }
+  if (part.type === 'image') return { type: 'image', data: { file: part.file } }
+  return { type: 'face', data: { id: part.id } }
+}
+
 export class OneBotHub extends EventEmitter {
   readonly reverseWebSocketPath = '/onebot/v11/ws'
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 50 * 1024 * 1024 })
@@ -1467,6 +1484,93 @@ export class OneBotHub extends EventEmitter {
     )
     if (result?.message_id === undefined || result.message_id === null) throw new Error('合并转发未返回消息标识')
     return { messageId: String(result.message_id) }
+  }
+
+  /** Map a `/api/media/message/<key>` proxy path back to the upstream QQ CDN URL. */
+  resolveMediaSource(path: string | undefined): string | undefined {
+    const match = /^\/api\/media\/message\/([0-9a-f]{32})$/.exec(path ?? '')
+    return match ? this.mediaUrl(match[1]!) : undefined
+  }
+
+  /** Send Host-produced parts (text, base64/url images, system faces) as one message from the bot. */
+  async sendRuntimeMessage(
+    account: string, type: 'group' | 'private', peerId: string, parts: RuntimeMessagePart[],
+  ): Promise<{ messageId: string }> {
+    const state = this.requireConversation(account, type, peerId)
+    this.requireRuntimeParts(state, parts)
+    const result = await state.connection.request<{ message_id: number | string }>(
+      type === 'group' ? 'send_group_msg' : 'send_private_msg',
+      { [type === 'group' ? 'group_id' : 'user_id']: peerId, message: parts.map(runtimeOneBotSegment) },
+      parts.some((part) => part.type === 'image') ? 120_000 : this.actionTimeoutMs,
+    )
+    if (result?.message_id === undefined || result.message_id === null) throw new Error('发送消息未返回消息标识')
+    const messageId = String(result.message_id)
+    // The send already happened; showing it in the workspace is best-effort and never fails delivery.
+    void this.broadcastSentMessage(state, account, type, peerId, messageId).catch(() => undefined)
+    return { messageId }
+  }
+
+  /** Merged forward whose every node is authored by the bot itself. */
+  async sendRuntimeForward(
+    account: string, type: 'group' | 'private', peerId: string, nodes: RuntimeForwardNode[],
+  ): Promise<{ messageId: string }> {
+    const state = this.requireConversation(account, type, peerId)
+    if (!nodes.length) throw new Error('合并转发内容不能为空')
+    nodes.forEach((node) => this.requireRuntimeParts(state, node.parts))
+    const result = await state.connection.request<{ message_id: number | string }>(
+      type === 'group' ? 'send_group_forward_msg' : 'send_private_forward_msg',
+      {
+        [type === 'group' ? 'group_id' : 'user_id']: peerId,
+        messages: nodes.map((node) => ({
+          type: 'node',
+          data: {
+            user_id: state.selfId,
+            nickname: node.name?.trim() || state.account.name,
+            content: node.parts.map(runtimeOneBotSegment),
+          },
+        })),
+      },
+      120_000,
+    )
+    if (result?.message_id === undefined || result.message_id === null) throw new Error('合并转发未返回消息标识')
+    return { messageId: String(result.message_id) }
+  }
+
+  /** NapCat `set_msg_emoji_like` on a message seen by this account. */
+  async setMessageReaction(account: string, messageId: string, emojiId: string): Promise<void> {
+    const state = this.requireAccount(account)
+    if (!/^-?\d{1,24}$/.test(messageId) || !/^\d{1,12}$/.test(emojiId)) throw new Error('表情回应参数无效')
+    await state.connection.request('set_msg_emoji_like', { message_id: messageId, emoji_id: emojiId, set: true }, this.actionTimeoutMs)
+  }
+
+  private requireRuntimeParts(state: AccountState, parts: RuntimeMessagePart[]): void {
+    if (!parts.length) throw new Error('消息内容不能为空')
+    for (const part of parts) {
+      if (part.type === 'text' && !part.text) throw new Error('消息内容不能为空')
+      if (part.type === 'image' && !part.file) throw new Error('图片内容不能为空')
+      this.requireCapability(state, part.type === 'text' ? 'message.send.text'
+        : part.type === 'image' ? 'message.send.image' : 'message.send.face')
+    }
+  }
+
+  private async broadcastSentMessage(
+    state: AccountState, account: string, type: 'group' | 'private', peerId: string, messageId: string,
+  ): Promise<void> {
+    const fetched = await state.connection.request<OneBotMessage>('get_msg', { message_id: messageId }, 10_000)
+    const raw: OneBotMessage = {
+      ...fetched,
+      self_id: fetched.self_id ?? state.selfId,
+      message_type: type,
+      group_id: type === 'group' ? peerId : fetched.group_id,
+      target_id: type === 'private' ? peerId : fetched.target_id,
+    }
+    const message = mapMessage(account, state.selfId, raw, (url) => this.registerMedia(url), type === 'private' ? peerId : undefined)
+    if (!message) return
+    const known = state.conversations.get(conversationId(account, type, peerId))
+    const conversation = eventConversation(account, state.selfId, raw, known, type === 'private' ? peerId : undefined)
+    if (!conversation) return
+    state.conversations.set(conversation.id, conversation)
+    this.broadcastMessage(state, conversation, message)
   }
 
   async markRead(account: string, type: 'group' | 'private', peerId: string): Promise<void> {

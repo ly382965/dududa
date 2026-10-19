@@ -610,7 +610,7 @@ describe('Dududa NapCat gateway', () => {
   })
 
   it('automatically forwards group recalls only after exact super-admin commands through OneBot', async () => {
-    const forwarder = new RecallForwarder(':memory:')
+    const forwarder = new RecallForwarder(':memory:', { defaultGroups: ['200001'], superAdmin: '300001' })
     const { hub, server, port } = await startTestServer({ recallForwarder: forwarder })
     servers.push(server)
     const bot = connectFakeNapCat(port)
@@ -619,7 +619,7 @@ describe('Dududa NapCat gateway', () => {
     const emit = (event: unknown) => bot.socket.send(JSON.stringify(event))
     const sends = () => bot.actions.filter((a) => a.action === 'send_group_msg')
     const recalled = (id: number, group = 345678901) => ({ post_type: 'notice', notice_type: 'group_recall', self_id: Number(selfId), group_id: group, user_id: 234567890, message_id: id })
-    const cmd = (text: string, id: number, user = 1778159807) => realGroupMessage(text, {
+    const cmd = (text: string, id: number, user = 300001) => realGroupMessage(text, {
       message_id: id, user_id: user,
       message: [{ type: 'at', data: { qq: selfId } }, { type: 'text', data: { text: ` ${text}` } }],
     })
@@ -627,10 +627,10 @@ describe('Dududa NapCat gateway', () => {
     emit(recalled(701))
     emit(cmd('/开启防撤回啊', 702))
     emit(cmd('/开启防撤回', 703, 234567890))
-    emit(realGroupMessage('默认开启的测试内容', { message_id: 704, group_id: 419256533 }))
-    emit(recalled(704, 419256533))
+    emit(realGroupMessage('默认开启的测试内容', { message_id: 704, group_id: 200001 }))
+    emit(recalled(704, 200001))
     await waitFor(async () => sends().length === 1)
-    expect(sends()[0]?.params.group_id).toBe('419256533')
+    expect(sends()[0]?.params.group_id).toBe('200001')
     expect(JSON.stringify(sends()[0]?.params.message)).toContain('测试成员（234567890）')
     expect(JSON.stringify(sends()[0]?.params.message)).toContain('默认开启的测试内容')
     emit(cmd('/开启防撤回', 705))
