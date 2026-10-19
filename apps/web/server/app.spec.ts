@@ -10,6 +10,7 @@ import { OneBotHub, type HubOptions } from './onebot-hub'
 import { RecallForwarder } from './recall-forwarder'
 import { RecallStore } from './recall-store'
 import { RecallMediaStore } from './recall-media'
+import { RuntimeV3QqBridge, runtimeV3Scopes, type RuntimeV3Run } from './runtime-v3'
 import type { ForwardedMessageBundle, RecallArchivePage, WorkspaceEvent } from '../src/types/workspace'
 
 const token = 'test-only-onebot-token-32-characters'
@@ -1386,6 +1387,87 @@ describe('Dududa NapCat gateway', () => {
     const sentBody = (await sent.json()) as { message: { content: string; mine: boolean } }
     expect(sentBody.message).toMatchObject({ content: '由真实动作通道发送', mine: true })
     expect(napcat.actions.some((item) => item.action === 'send_group_msg')).toBe(true)
+    napcat.socket.close()
+  })
+
+  it('delivers runtime mentions as real individual at segments with spacing and mixed action order', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = await response.json() as { actions?: Record<string, { status?: string }> }
+      return body.actions?.['message.send.mention']?.status === 'supported'
+    })
+    const result: RuntimeV3Run = {
+      runtime: 'dududa-3.0', run_id: 'runtime-mention', status: 'completed', route: 'rule',
+      text: '我讨厌你，不要和我说话。', tool_calls: 0, events: [], created_at: '', latency_ms: 0,
+      actions: [
+        { type: 'mention', user_id: '234567890' },
+        { type: 'text', text: '我讨厌你，不要和我说话。' },
+        { type: 'face', id: 14 },
+        { type: 'image', url: 'https://example.com/a.png' },
+        { type: 'forward', nodes: [{ actions: [
+          { type: 'text', text: '节点' }, { type: 'mention', user_id: '234567890' }, { type: 'text', text: '内容' },
+        ] }] },
+        { type: 'text', text: '结束' },
+      ],
+    }
+    const runtime = { run: vi.fn(async () => result),
+      delivery: vi.fn(async (_id: string, _state: string, _messageId?: string) => true) }
+    const errors: unknown[] = []
+    const bridge = new RuntimeV3QqBridge(hub, runtime,
+      runtimeV3Scopes(`${account}/${account}:group:345678901`), error => errors.push(error), 0)
+    try {
+      napcat.socket.send(JSON.stringify(realGroupMessage('触发回复')))
+      await waitFor(async () => runtime.delivery.mock.calls.some(call => call[1] === 'sent'))
+      expect(errors).toEqual([])
+      const sends = napcat.actions.filter(item => ['send_group_msg', 'send_group_forward_msg'].includes(item.action))
+      expect(sends.map(item => item.action)).toEqual(['send_group_msg', 'send_group_forward_msg', 'send_group_msg'])
+      expect(sends[0]?.params).toEqual({ group_id: '345678901', message: [
+        { type: 'at', data: { qq: '234567890' } },
+        { type: 'text', data: { text: ' ' } },
+        { type: 'text', data: { text: result.text } },
+        { type: 'face', data: { id: '14' } },
+        { type: 'image', data: { file: 'https://example.com/a.png' } },
+      ] })
+      expect(sends[1]?.params.messages).toEqual([{ type: 'node', data: {
+        user_id: selfId, nickname: '真实机器人', content: [
+          { type: 'text', data: { text: '节点' } },
+          { type: 'at', data: { qq: '234567890' } },
+          { type: 'text', data: { text: ' ' } },
+          { type: 'text', data: { text: '内容' } },
+        ],
+      } }])
+      expect(sends[2]?.params.message).toEqual([{ type: 'text', data: { text: '结束' } }])
+      expect(runtime.delivery).toHaveBeenCalledWith('runtime-mention', 'sent', '102')
+    } finally {
+      bridge.close()
+      napcat.socket.close()
+    }
+  })
+
+  it('rejects runtime mentions of all or malformed IDs before sending any OneBot message', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = await response.json() as { actions?: Record<string, { status?: string }> }
+      return body.actions?.['message.send.mention']?.status === 'supported'
+    })
+    for (const userId of ['all', 'ALL', ' all ', '', '0', '234567890,all', '[CQ:at,qq=all]']) {
+      const parts = [{ type: 'mention' as const, userId }, { type: 'text' as const, text: '不应发送' }]
+      await expect(hub.sendRuntimeMessage(account, 'group', '345678901', parts)).rejects.toThrow('具体 QQ 用户')
+      await expect(hub.sendRuntimeForward(account, 'group', '345678901', [{ parts }])).rejects.toThrow('具体 QQ 用户')
+    }
+    expect(napcat.actions.filter(item => ['send_group_msg', 'send_group_forward_msg'].includes(item.action))).toEqual([])
     napcat.socket.close()
   })
 

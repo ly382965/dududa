@@ -5,8 +5,8 @@ Scoring
   strips it, clamps it to the reason's range and applies it (addressed messages only).
 - Host events: first addressed message of the day +1, rate-limit / ping spam -1.
 - Between -60 and 60 deltas apply unchanged. Moving further toward ±100 they are damped by
-  (100 - |score|) / 40, without daily caps. Positive gains have a 2 minute cooldown and the
-  same positive text counts once per 24 hours.
+  (100 - |score|) / 40, without daily caps or positive cooldown.
+  The same positive text counts once per 24 hours.
 - Hourly decay: above 30 after 14 idle days -1 per week (floor 30); below 0 heal +1 per 3 quiet days.
 - The super admin (``features.affinity.super_admin``) is fixed at 120 and is never stored.
 """
@@ -45,6 +45,8 @@ log = logging.getLogger("dududa_v3.affinity")
 
 TASK = "affinity"
 SUPER_SCORE = 120
+HARD_REFUSAL_THRESHOLD = -90
+HARD_REFUSAL = "我讨厌你，不要和我说话。"
 ZONE = ZoneInfo("Asia/Shanghai")
 RENDER_SCRIPT = Path(__file__).with_name("render.py")
 RENDER_TIMEOUT_SECONDS = 30
@@ -52,7 +54,6 @@ QUERY_THRESHOLD = 60
 ALL_KEYWORDS = ("all", "全部", "全员", "所有人", "全部人")
 RANK_KEYWORDS = ("排行", "排名", "榜")
 RANK_WINDOW_SECONDS = 90 * 86400
-POSITIVE_COOLDOWN_SECONDS = 120
 DEDUPE_SECONDS = 86400
 EDGE = 60
 AVATAR_TTL_SECONDS = 86400
@@ -140,7 +141,7 @@ class Ledger:
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS affinity (
                   user_id TEXT PRIMARY KEY, score REAL NOT NULL DEFAULT 0, last_interaction REAL,
-                  last_positive REAL, last_negative REAL, last_decay REAL, last_daily TEXT);
+                  last_negative REAL, last_decay REAL, last_daily TEXT);
                 CREATE TABLE IF NOT EXISTS affinity_events (
                   id INTEGER PRIMARY KEY, user_id TEXT NOT NULL, at REAL NOT NULL, raw REAL NOT NULL,
                   delta REAL NOT NULL, score REAL NOT NULL, reason TEXT NOT NULL, run_id TEXT, text_hash TEXT);
@@ -179,13 +180,10 @@ class Ledger:
             db.execute("INSERT OR IGNORE INTO affinity(user_id, score) VALUES (?, 0)", (user_id,))
             row = dict(db.execute("SELECT * FROM affinity WHERE user_id=?", (user_id,)).fetchone())
             score, note, applied = float(row["score"]), "", raw
-            if raw > 0 and reason != "daily":
-                if row["last_positive"] and now - row["last_positive"] < POSITIVE_COOLDOWN_SECONDS:
-                    applied, note = 0.0, "cooldown"
-                elif digest and db.execute(
-                        "SELECT 1 FROM affinity_events WHERE user_id=? AND text_hash=? AND raw>0 AND at>?",
-                        (user_id, digest, now - DEDUPE_SECONDS)).fetchone():
-                    applied, note = 0.0, "duplicate"
+            if raw > 0 and reason != "daily" and digest and db.execute(
+                    "SELECT 1 FROM affinity_events WHERE user_id=? AND text_hash=? AND raw>0 AND at>?",
+                    (user_id, digest, now - DEDUPE_SECONDS)).fetchone():
+                applied, note = 0.0, "duplicate"
             if applied > 0 and score > EDGE:
                 applied *= (100 - score) / 40
                 note = note or "edge"
@@ -193,12 +191,10 @@ class Ledger:
                 applied *= (100 + score) / 40
                 note = note or "edge"
             new = max(-100.0, min(100.0, score + applied))
-            if raw > 0 and note != "cooldown" and reason != "daily":
-                row["last_positive"] = now
             if raw < 0:
                 row["last_negative"] = now
-            db.execute("UPDATE affinity SET score=?, last_positive=?, last_negative=? WHERE user_id=?",
-                       (new, row["last_positive"], row["last_negative"], user_id))
+            db.execute("UPDATE affinity SET score=?, last_negative=? WHERE user_id=?",
+                       (new, row["last_negative"], user_id))
             if raw:
                 db.execute("INSERT INTO affinity_events(user_id,at,raw,delta,score,reason,run_id,text_hash) "
                            "VALUES (?,?,?,?,?,?,?,?)",
@@ -310,6 +306,21 @@ def is_super_or_admin(ctx: Ctx) -> bool:
 # ---------------------------------------------------------------- hooks
 
 
+def intercept(ctx: Ctx) -> Reply | None:
+    """Use the pre-event score so today's +1 cannot bypass this request's refusal."""
+    sender = ctx.inbound.sender.id
+    if not ctx.addressed or ctx.inbound.source != "qq" or excluded(ctx, sender, ctx.inbound.bot_id):
+        return None
+    score = ledger(ctx).score(sender)
+    if score < HARD_REFUSAL_THRESHOLD:
+        ctx.store.event(ctx.run_id, {"type": "affinity_hard_refusal", "score": score})
+        reply = Reply()
+        if ctx.inbound.is_group:
+            reply.mention(sender)
+        return reply.text(HARD_REFUSAL)
+    return None
+
+
 async def on_event(ctx: Ctx, name: str) -> None:
     sender = ctx.inbound.sender.id
     if ctx.inbound.source != "qq" or excluded(ctx, sender, ctx.inbound.bot_id):
@@ -343,6 +354,7 @@ async def on_turn(ctx: Ctx) -> list[str]:
     # Proactive turns are the bot's own choice to speak, so only addressed requests can be refused.
     if ctx.addressed and random.random() < refusal_chance(ctx, score):
         ctx.store.event(ctx.run_id, {"type": "affinity_refusal"})
+        ctx.mention_sender = True
         lines.append("【关系】本轮你不想回答：只用一句很冷淡、不耐烦的话拒绝（每次说法不同），不提供任何实质内容。"
                      "例外：涉及人身安全、自伤或紧急求助时，仍要认真回应并建议向身边的人或专业渠道求助。")
     return lines
@@ -356,6 +368,8 @@ async def on_reply(ctx: Ctx, text: str) -> str:
         return clean
     value, reason = tag
     delta = clamp_reason(value, reason)
+    if delta < 0:
+        ctx.mention_sender = True
     digest = text_hash(ctx.inbound.text) if delta > 0 else None
     outcome = ledger(ctx).apply(sender, delta, reason, now=time.time(), run_id=ctx.run_id, digest=digest)
     ctx.store.event(ctx.run_id, {"type": "affinity", "reason": reason, "raw": delta,
@@ -469,6 +483,29 @@ async def ranking_reply(ctx: Ctx, conversation_id: str) -> Reply:
     png = await render(ctx, request)
     return Reply().image(png) if png else Reply.of_text(ranking_text(request))
 
+async def group_all_reply(ctx: Ctx, conversation_id: str) -> Reply:
+    """Group all members: every scored member of this group with ranks."""
+    ranked = ranked_members(ctx, conversation_id)
+    peer_id = conversation_id.rsplit(":", 1)[-1]
+    book = ledger(ctx)
+    items = [{**item, "qq": item["user_id"]} for item in ranked]
+    counts = {label: sum(item["tier"] == label for item in items) for label in TIER_STYLE if label != "最喜欢的姐姐"}
+    pinned = None
+    if book.super_admin:
+        pinned = {"user_id": book.super_admin,
+                  "name": book.display_name(book.super_admin, conversation_id) or "姐姐"}
+    request = {"kind": "all", "title": f"QQ群 {peer_id} 全部亲密度", "count": len(items),
+               "items": items, "counts": counts, "pinned": pinned}
+    await with_avatars(ctx, [*([pinned] if pinned else []), *items])
+    png = await render(ctx, request)
+    if png:
+        return Reply().image(png)
+    lines = [f"【QQ群 {peer_id} 全部亲密度】共 {len(items)} 人"]
+    if pinned:
+        lines.append(f"♡ {pinned['name']}：最喜欢的姐姐 · 120")
+    lines += [f"{item['rank']}. {item['name']}（{item['qq']}）{item['score']:.1f} {item['tier']}" for item in items]
+    return Reply.of_text("\n".join(lines))
+
 
 async def everyone_reply(ctx: Ctx) -> Reply:
     """Every scored person, highest first, with QQ numbers and ranks."""
@@ -542,15 +579,18 @@ async def affinity_command(ctx: Ctx) -> Reply | Delegate | str | None:
         if ctx.inbound.is_group and ctx.inbound.text.lstrip().startswith(("/", "／")):
             return None
         return Delegate(prompt=text)
-    if arg in ALL_KEYWORDS:
-        return await everyone_reply(ctx)
     if ctx.inbound.is_group:
+        if arg in ALL_KEYWORDS:
+            return await group_all_reply(ctx, ctx.inbound.conversation_id)
         return await ranking_reply(ctx, ctx.inbound.conversation_id)
     if ledger(ctx).is_super(viewer):
         return await everyone_reply(ctx)
     group = ledger(ctx).latest_group(viewer)
-    # In private chat a ranking needs a group: use the one the viewer was last active in.
-    return await ranking_reply(ctx, group) if group else Delegate(prompt=text)
+    if not group:
+        return Delegate(prompt=text)
+    if arg in ALL_KEYWORDS:
+        return await group_all_reply(ctx, group)
+    return await ranking_reply(ctx, group)
 
 
 async def decay_job(ctx: JobCtx) -> None:
@@ -560,6 +600,7 @@ async def decay_job(ctx: JobCtx) -> None:
 def register(registry: Registry) -> None:
     registry.task(Task(TASK, "亲密度", "隐藏的亲密度机制：影响嘟嘟哒对每个人的语气（亲密度 > 60 可用 /亲密度 查看群排行）",
                        aliases=("好感度",)))
-    registry.hook(Hook(task=TASK, system=SYSTEM_RULES, turn=on_turn, reply=on_reply, event=on_event))
+    registry.hook(Hook(task=TASK, system=SYSTEM_RULES, turn=on_turn, reply=on_reply, event=on_event,
+                       intercept=intercept))
     registry.command(Command(("亲密度",), affinity_command, "", task=TASK))
     registry.job(Job(task=TASK, interval_seconds=3600, handler=decay_job, initial_delay_seconds=120))

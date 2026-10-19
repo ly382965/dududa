@@ -8,11 +8,11 @@ import unittest
 import uuid
 from pathlib import Path
 from types import MappingProxyType
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from dududa_v3.config import Settings
 from dududa_v3.features import affinity, core
-from dududa_v3.features.base import Registry, Toolkit
+from dududa_v3.features.base import Gate, Hook, Registry, Toolkit
 from dududa_v3.runtime import Runtime
 from dududa_v3.store import Store
 from test_runtime import ROOT, OmpDouble
@@ -46,18 +46,19 @@ class LedgerTests(unittest.TestCase):
         self.now += after
         return self.book.apply(user, raw, reason, now=self.now, digest=digest)
 
-    def test_middle_range_is_unthrottled_beyond_cooldown(self):
+    def test_middle_range_has_no_daily_cap(self):
         for _ in range(12):
             self.give("u", 5)
         self.assertEqual(self.book.score("u"), 60)
 
-    def test_positive_cooldown_and_duplicate_praise(self):
-        self.give("u", 3)
-        self.assertEqual(self.give("u", 3, after=30).note, "cooldown")
-        self.assertEqual(self.give("u", 3, digest="same").applied, 3)
-        self.assertEqual(self.give("u", 3, digest="same").note, "duplicate")
+    def test_positive_has_no_cooldown_but_deduplicates_text(self):
+        self.assertEqual(self.give("u", 3, digest="first").applied, 3)
+        self.assertEqual(self.give("u", 3, after=0, digest="second").applied, 3)
+        self.assertEqual(self.give("u", 3, after=1, digest="third").applied, 3)
+        self.assertEqual(self.give("u", 3, after=1, digest="first").note, "duplicate")
         self.assertEqual(self.give("u", -3, "rude", after=1).applied, -3)
-        self.assertEqual(self.book.score("u"), 3)
+        self.assertEqual(self.book.score("u"), 6)
+        self.assertEqual(self.give("u", 3, after=DAY, digest="first").applied, 3)
 
     def test_near_edges_damps_without_daily_caps(self):
         self.book.set("u", 80, "admin", self.now)
@@ -137,10 +138,74 @@ class AffinityRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.omp.reply = "谢谢夸奖～\n[[aff:5:praise]]"
         result = await self.say("嘟嘟哒 你真厉害")
         self.assertEqual(result["text"], "谢谢夸奖～")
+        self.assertEqual(result["actions"], [{"type": "text", "text": "谢谢夸奖～"}])
         self.assertEqual(self.book.score("7"), 6)  # daily +1 and praise +5
         prompt = self.omp.last["text"]
         self.assertIn("【关系】你对这位发送者的态度：普通", prompt)
         self.assertIn("【隐藏关系机制】", self.omp.last["config"]["system_prompt"].read_text())
+
+    async def test_negative_reply_mentions_only_current_sender(self):
+        self.omp.reply = "请好好说话。[[aff:-5:rude]]"
+        for user in ("7", "8"):
+            with self.subTest(user=user):
+                result = await self.say(
+                    "嘟嘟哒 @999999 你真笨，去找888888", user=user,
+                    mentions=[{"id": "999999", "name": "别的人"}],
+                    reply={"user_id": "888888", "sender": {"id": "888888"}, "text": "引用消息"})
+                self.assertEqual(result["text"], "请好好说话。")
+                self.assertEqual(result["actions"], [
+                    {"type": "mention", "user_id": user},
+                    {"type": "text", "text": "请好好说话。"},
+                ])
+                event = next(event for event in result["events"] if event["type"] == "affinity")
+                self.assertEqual((event["raw"], event["applied"]), (-5, -5))
+                self.assertEqual(self.book.score(user), -4)
+
+    async def test_negative_classification_mentions_even_when_applied_is_zero(self):
+        self.omp.reply = "别这样说。[[aff:-20:abuse]]"
+        result = await self.say("嘟嘟哒 测试负面消息", user=SUPER)
+        event = next(event for event in result["events"] if event["type"] == "affinity")
+        self.assertEqual((event["raw"], event["applied"]), (-20, 0))
+        self.assertEqual(self.book.score(SUPER), 120)
+        self.assertEqual(result["text"], "别这样说。")
+        self.assertEqual(result["actions"], [
+            {"type": "mention", "user_id": SUPER},
+            {"type": "text", "text": "别这样说。"},
+        ])
+
+    async def test_refusal_and_negative_classification_do_not_duplicate_mentions(self):
+        self.book.set("7", -80, "42", time.time())
+        self.omp.reply = "自己查去。[[aff:-5:rude]]"
+        with patch("dududa_v3.features.affinity.random.random", return_value=0.0):
+            result = await self.say("嘟嘟哒 测试拒答")
+        self.assertIn("affinity_refusal", [event["type"] for event in result["events"]])
+        self.assertEqual(result["actions"], [
+            {"type": "mention", "user_id": "7"},
+            {"type": "text", "text": "自己查去。"},
+        ])
+
+    async def test_nonnegative_reply_does_not_infer_mentions_from_text_or_history(self):
+        self.book.set("7", -80, "42", time.time())
+        for tag in ("", "[[aff:0:none]]", "[[aff:5:praise]]", "[[aff:-20:made_up]]"):
+            with self.subTest(tag=tag):
+                self.omp.reply = "我讨厌你，不要和我说话。" + tag
+                with patch("dududa_v3.features.affinity.random.random", return_value=0.99):
+                    result = await self.say("嘟嘟哒 说一句话")
+                self.assertEqual(result["actions"], [
+                    {"type": "text", "text": "我讨厌你，不要和我说话。"},
+                ])
+
+    async def test_negative_and_refusal_replies_do_not_mention_in_private_or_web(self):
+        cases = (("qq", PRIVATE), ("web", GROUP), ("web", "web:chat:affinity"))
+        for source, conversation in cases:
+            with self.subTest(source=source, conversation=conversation):
+                self.book.set("7", -80, "42", time.time())
+                self.omp.reply = "不想回答。[[aff:-5:rude]]"
+                with patch("dududa_v3.features.affinity.random.random", return_value=0.0):
+                    result = await self.say("嘟嘟哒 测试拒答", source=source, conversation=conversation)
+                self.assertIn("affinity_refusal", [event["type"] for event in result["events"]])
+                self.assertEqual(result["text"], "不想回答。")
+                self.assertEqual(result["actions"], [{"type": "text", "text": "不想回答。"}])
 
     async def test_disliked_tier_refuses_with_rising_chance(self):
         toolkit = Toolkit(self.runtime)
@@ -153,26 +218,132 @@ class AffinityRuntimeTests(unittest.IsolatedAsyncioTestCase):
             refused = await self.say("嘟嘟哒 明天下雨吗")
         self.assertIn("本轮你不想回答", self.omp.last["text"])
         self.assertIn("affinity_refusal", [event["type"] for event in refused["events"]])
+        self.assertEqual(refused["actions"], [
+            {"type": "mention", "user_id": "7"}, {"type": "text", "text": "哦。"},
+        ])
         with patch("dududa_v3.features.affinity.random.random", return_value=0.99):
-            await self.say("嘟嘟哒 明天下雨吗")
+            accepted = await self.say("嘟嘟哒 明天下雨吗")
         self.assertNotIn("本轮你不想回答", self.omp.last["text"])
         self.assertIn("态度很差", self.omp.last["text"])
+        self.assertEqual(accepted["actions"], [{"type": "text", "text": "哦。"}])
+
+    async def test_hard_refusal_uses_strict_unrounded_boundary(self):
+        self.book.daily("7", time.time())
+        for score in (-100, -90.001, -90, -89.999):
+            with self.subTest(score=score):
+                self.book.set("7", score, "42", time.time())
+                calls = len(self.omp.calls)
+                with patch("dududa_v3.features.affinity.random.random", return_value=0.0):
+                    result = await self.say("嘟嘟哒 明天下雨吗")
+                if score < -90:
+                    self.assertEqual(result["text"], affinity.HARD_REFUSAL)
+                    self.assertEqual(len(self.omp.calls), calls)
+                else:
+                    self.assertEqual(result["route"], "agent")
+                    self.assertEqual(len(self.omp.calls), calls + 1)
+                    self.assertIn("本轮你不想回答", self.omp.last["text"])
+
+    async def test_hard_refusal_bypasses_chat_commands_rules_and_reply_rewriting(self):
+        self.settings.rules = ({"match": "规则问候", "reply": "规则回答"},)
+        rewrite = AsyncMock(return_value="改写后的回答")
+        self.runtime.registry.hook(Hook(task="affinity", reply=rewrite))
+        messages = (
+            ("嘟嘟哒 明天下雨吗", {}),
+            ("明天下雨吗", {"mentioned": True}),
+            ("明天下雨吗", {"conversation": PRIVATE}),
+            ("/ping", {}),
+            ("/亲密度", {}),
+            ("嘟嘟哒 规则问候", {}),
+        )
+        with patch.object(self.runtime, "_admit", new_callable=AsyncMock) as admit:
+            for text, extra in messages:
+                with self.subTest(text=text, extra=extra):
+                    self.book.set("7", -99, "42", time.time())
+                    result = await self.say(text, **extra)
+                    self.assertEqual((result["status"], result["route"]), ("completed", "rule"))
+                    self.assertEqual(result["text"], affinity.HARD_REFUSAL)
+                    expected = [{"type": "text", "text": affinity.HARD_REFUSAL}]
+                    if extra.get("conversation", GROUP) == GROUP:
+                        expected.insert(0, {"type": "mention", "user_id": "7"})
+                    self.assertEqual(result["actions"], expected)
+                    self.assertIn("affinity_hard_refusal", [event["type"] for event in result["events"]])
+                    self.assertTrue(self.runtime.store.delivery(result["run_id"], "sending")["claimed"])
+            admit.assert_not_awaited()
+        rewrite.assert_not_awaited()
+        self.assertEqual(core._pings, {})
+        self.assertEqual(self.omp.calls, [])
+
+    async def test_hard_refusal_mentions_each_current_sender(self):
+        for user in ("7", "8"):
+            with self.subTest(user=user):
+                self.book.set(user, -99, "42", time.time())
+                result = await self.say(
+                    "嘟嘟哒 @999999 明天下雨吗", user=user,
+                    mentions=[{"id": "999999"}], reply={"user_id": "888888", "text": "引用消息"})
+                self.assertEqual(result["text"], affinity.HARD_REFUSAL)
+                self.assertEqual(result["actions"], [
+                    {"type": "mention", "user_id": user},
+                    {"type": "text", "text": affinity.HARD_REFUSAL},
+                ])
+        self.assertEqual(self.omp.calls, [])
+
+    async def test_daily_credit_does_not_bypass_current_request(self):
+        self.book.set("7", -90.25, "42", time.time())
+        result = await self.say("嘟嘟哒 你好")
+        self.assertEqual(result["text"], affinity.HARD_REFUSAL)
+        self.assertEqual(self.book.score("7"), -89.25)
+        self.assertEqual(self.omp.calls, [])
+        with patch("dududa_v3.features.affinity.random.random", return_value=0.99):
+            result = await self.say("嘟嘟哒 再问一次")
+        self.assertEqual(result["route"], "agent")
+        self.assertEqual(self.book.score("7"), -89.25)
+
+    async def test_hard_refusal_does_not_claim_passive_or_other_bot_commands(self):
+        self.book.set("7", -99, "42", time.time())
+        for text in ("周末去爬山吗", "/其他机器人的指令"):
+            with self.subTest(text=text):
+                result = await self.say(text)
+                self.assertEqual((result["status"], result["actions"]), ("ignored", []))
+                self.assertNotIn("affinity_hard_refusal", [event["type"] for event in result["events"]])
+        self.assertEqual(self.book.score("7"), -99)
+        self.assertEqual(self.omp.calls, [])
+
+    async def test_hard_refusal_respects_exclusions_super_admin_and_source(self):
+        for user, source in ((OTHER_BOT, "qq"), (BOT, "qq"), (SUPER, "qq"), ("7", "web")):
+            with self.subTest(user=user, source=source):
+                self.book.set(user, -99, "42", time.time())
+                with patch("dududa_v3.features.affinity.random.random", return_value=0.99):
+                    result = await self.say("嘟嘟哒 你好", user=user, source=source)
+                self.assertEqual(result["route"], "agent")
+                self.assertNotIn("affinity_hard_refusal", [event["type"] for event in result["events"]])
+                self.assertEqual(self.book.score(user), 120 if user == SUPER else -99)
+
+    async def test_existing_gates_run_before_hard_refusal_and_scoring(self):
+        self.runtime.registry.gate(Gate("affinity", lambda ctx, decision: False))
+        self.book.set("7", -99, "42", time.time())
+        result = await self.say("嘟嘟哒 你好")
+        self.assertEqual((result["status"], result["actions"]), ("ignored", []))
+        self.assertEqual(self.book.score("7"), -99)
+        self.assertEqual(self.omp.calls, [])
 
     async def test_unaddressed_proactive_reply_is_stripped_without_scoring(self):
+        self.book.set("7", -99, "42", time.time())
         scope = f"{ACCOUNT}/{GROUP}"
         self.settings.proactive_scopes = (scope,)
         self.settings.proactive_policies = {scope: {"probabilityPercent": 100, "cooldownSeconds": 5}}
         self.omp.reply = "我也想去！[[aff:5:praise]]"
         result = await self.say("周末去爬山吗")
         self.assertEqual(result["text"], "我也想去！")
-        self.assertEqual(self.book.score("7"), 0)
+        self.assertEqual(self.book.score("7"), -99)
 
     async def test_switched_off_task_still_strips_markers(self):
+        self.book.set("7", -99, "42", time.time())
         self.runtime.store.set_switch("affinity", False, "42")
         self.omp.reply = "好的 [[aff:-20:abuse]]"
         result = await self.say("嘟嘟哒 你好")
         self.assertEqual(result["text"], "好的")
-        self.assertEqual(self.book.score("7"), 0)
+        self.assertEqual(self.book.score("7"), -99)
+        self.assertEqual(result["actions"], [{"type": "text", "text": "好的"}])
         self.assertNotIn("【隐藏关系机制】", self.omp.last["config"]["system_prompt"].read_text())
 
     async def test_query_is_hidden_below_threshold(self):
@@ -231,8 +402,13 @@ class AffinityRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.book.set("7", 80, "42", time.time())
         result = await self.say("/亲密度 all", user="7")
         self.assertEqual(result["route"], "rule")
-        self.assertIn("【全部亲密度】", result["text"])
+        self.assertIn("全部亲密度", result["text"])
         self.assertIn("最喜欢的姐姐 · 120", result["text"])
+        # Ensure members of other groups are not included in this group's all list
+        self.book.seen("other_user", "qq-10000:group:999", "外群成员", time.time())
+        self.book.set("other_user", 90, "42", time.time())
+        fresh_result = await self.say("/亲密度 all", user="7")
+        self.assertNotIn("外群成员", fresh_result["text"])
         # Below threshold cannot run /亲密度 all
         blocked = await self.say("/亲密度 all", user="8")
         self.assertEqual((blocked["status"], blocked["actions"]), ("ignored", []))

@@ -52,6 +52,7 @@ export interface RuntimeV3Request {
 
 export type RuntimeV3ContentAction =
   | { type: 'text'; text: string }
+  | { type: 'mention'; user_id: string }
   | { type: 'image'; data?: string; mime?: string; url?: string }
   | { type: 'face'; id: string | number }
 
@@ -301,13 +302,14 @@ function clip(value: string | undefined, limit: number): string {
 
 function contentPart(action: RuntimeV3ContentAction): RuntimeMessagePart | undefined {
   if (action.type === 'text') return action.text ? { type: 'text', text: action.text } : undefined
+  if (action.type === 'mention') return { type: 'mention', userId: action.user_id }
   if (action.type === 'face') return /^\d{1,6}$/.test(String(action.id)) ? { type: 'face', id: String(action.id) } : undefined
   if (action.data) return { type: 'image', file: `base64://${action.data.replace(/^data:[^,]*;base64,/, '')}` }
   return action.url && /^https?:\/\//i.test(action.url) ? { type: 'image', file: action.url } : undefined
 }
 
 function isContentAction(action: RuntimeV3Action): action is RuntimeV3ContentAction {
-  return action.type === 'text' || action.type === 'image' || action.type === 'face'
+  return action.type === 'text' || action.type === 'mention' || action.type === 'image' || action.type === 'face'
 }
 
 /** `qq-<bot>:group:<id>` / `qq-<bot>:private:<id>` → send target, only for the owning account. */
@@ -415,7 +417,7 @@ export class RuntimeV3QqBridge {
     this.outboxTimer.unref?.()
   }
 
-  /** Consecutive text/image/face actions become one QQ message; other actions are sent standalone in order. */
+  /** Consecutive text/mention/image/face actions become one QQ message; other actions are sent standalone in order. */
   private async deliver(target: DeliveryTarget, actions: RuntimeV3Action[]): Promise<string | undefined> {
     let first: string | undefined
     let pending: RuntimeMessagePart[] = []

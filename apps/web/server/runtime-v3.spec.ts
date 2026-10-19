@@ -295,10 +295,11 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
     hub.setMessageReaction.mockImplementation(async () => { order.push('reaction') })
     hub.sendFile.mockImplementation(async () => { order.push('file'); return { kind: 'file', fileId: 'f', name: 'x', size: 1 } })
     runtime.run.mockResolvedValue({ ...completed, text: '天气', actions: [
+      { type: 'mention', user_id: '300001' },
       { type: 'text', text: '合肥 晴' },
       { type: 'image', data: 'aGVsbG8=', mime: 'image/png' },
       { type: 'face', id: 14 },
-      { type: 'forward', nodes: [{ name: '嘟嘟哒', actions: [{ type: 'text', text: '节点' }, { type: 'image', url: 'https://example.com/a.png' }] }] },
+      { type: 'forward', nodes: [{ name: '嘟嘟哒', actions: [{ type: 'mention', user_id: '300001' }, { type: 'text', text: '节点' }, { type: 'image', url: 'https://example.com/a.png' }] }] },
       { type: 'reaction', message_id: '1', emoji_id: '66' },
       { type: 'file', name: 'H3_v2.pdf', data: Buffer.from('%PDF').toString('base64'), mime: 'application/pdf' },
       { type: 'image', url: 'https://example.com/b.png' },
@@ -306,10 +307,11 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
     await bridge.handle(messageEvent())
     expect(order).toEqual(['message', 'forward', 'reaction', 'file', 'message'])
     expect(hub.sendRuntimeMessage).toHaveBeenNthCalledWith(1, 'qq-100001', 'group', '200001', [
+      { type: 'mention', userId: '300001' },
       { type: 'text', text: '合肥 晴' }, { type: 'image', file: 'base64://aGVsbG8=' }, { type: 'face', id: '14' },
     ])
     expect(hub.sendRuntimeForward).toHaveBeenCalledWith('qq-100001', 'group', '200001', [
-      { name: '嘟嘟哒', parts: [{ type: 'text', text: '节点' }, { type: 'image', file: 'https://example.com/a.png' }] },
+      { name: '嘟嘟哒', parts: [{ type: 'mention', userId: '300001' }, { type: 'text', text: '节点' }, { type: 'image', file: 'https://example.com/a.png' }] },
     ])
     expect(hub.setMessageReaction).toHaveBeenCalledWith('qq-100001', '1', '66')
     expect(hub.sendFile).toHaveBeenCalledWith('qq-100001', 'group', '200001',

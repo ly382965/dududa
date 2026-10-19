@@ -163,7 +163,7 @@ def everyone(request: dict) -> bytes:
     height = top_y + per_column * row_height + 80
     canvas = Canvas(height, request["fonts"])
     canvas.rect([12, 12, W - 12, height - 12], fill=PANEL, outline=BORDER, radius=22, width=2)
-    canvas.text((40, 48), "全部亲密度", size=22, bold=True, anchor="ls")
+    canvas.text((40, 48), request.get("title") or "全部亲密度", size=22, bold=True, anchor="ls")
     canvas.text((W - 40, 48), f"共 {request['count']} 人", size=13, fill=MUTED, anchor="rs")
     if pinned:
         color = TIERS["最喜欢的姐姐"]

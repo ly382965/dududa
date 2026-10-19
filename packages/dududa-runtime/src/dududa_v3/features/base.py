@@ -6,6 +6,7 @@ Every module in ``dududa_v3.features`` (other than this one) exposes
 Replies are lists of delivery *actions* consumed by the QQ bridge:
 
 - ``{"type": "text", "text": str}``
+- ``{"type": "mention", "user_id": str}`` (QQ group at; does not alter ``plain_text``)
 - ``{"type": "image", "data": base64, "mime": str}`` or ``{"type": "image", "url": str}``
 - ``{"type": "face", "id": str}`` (QQ system face)
 - ``{"type": "forward", "nodes": [{"name": str, "actions": [text/image actions]}]}``
@@ -128,6 +129,10 @@ class Reply:
     def text(self, text: str) -> Reply:
         if text:
             self.actions.append({"type": "text", "text": text})
+        return self
+
+    def mention(self, user_id: str) -> Reply:
+        self.actions.append({"type": "mention", "user_id": str(user_id)})
         return self
 
     def image(self, data: bytes | None = None, *, url: str | None = None, mime: str = "image/png") -> Reply:
@@ -287,6 +292,8 @@ class Ctx(Toolkit):
     args: str = ""
     # True when the message was addressed to the bot (private, @mention, name prefix or slash command).
     addressed: bool = False
+    # Delivery hint set by host classification, never by user-supplied mention targets.
+    mention_sender: bool = False
 
     @property
     def is_admin(self) -> bool:
@@ -400,8 +407,11 @@ class Gate:
 
 @dataclass
 class Hook:
-    """Cross-cutting agent extensions; every callable is optional.
+    """Cross-cutting request and agent extensions; every callable is optional.
 
+    - ``intercept(ctx)``: synchronous, deterministic reply for an addressed request, after gates
+      but before ``addressed`` events. Task enabled only. A reply bypasses rules, commands and the
+      agent (including reply rewriting); the ``addressed`` event still runs before delivery.
     - ``system``: text appended to the chat agent's system prompt while the task is enabled.
     - ``turn(ctx)``: extra lines for the current-message block of an agent turn (task enabled only).
     - ``reply(ctx, text)``: rewrites the agent's final text. Always runs, so it can strip its own
@@ -415,6 +425,7 @@ class Hook:
     turn: Callable[[Ctx], Awaitable[list[str]]] | None = None
     reply: Callable[[Ctx, str], Awaitable[str]] | None = None
     event: Callable[[Ctx, str], Awaitable[None]] | None = None
+    intercept: Callable[[Ctx], Reply | None] | None = None
 
 @dataclass
 class Registry:

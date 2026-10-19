@@ -203,7 +203,18 @@ class Runtime:
                 self.store.update(run_id, status="ignored", route="ignore", reason="unclaimed_command")
                 return
             if decision.addressed:
+                intercepted = None
+                for hook in self.registry.hooks:
+                    if hook.intercept is not None and self.task_enabled(hook.task):
+                        reply = hook.intercept(ctx)
+                        if reply:
+                            intercepted = (hook.task, reply)
+                            break
                 await self.emit(ctx, "addressed")
+                if intercepted is not None:
+                    task, reply = intercepted
+                    self._finish(run_id, "rule", reply, model="rules", reason=f"hook:{task}")
+                    return
             for rule in self.settings.rules:
                 if decision.body == rule["match"] and (decision.addressed or not inbound.is_group):
                     self._finish(run_id, "rule", Reply.of_text(rule["reply"]), model="rules")
@@ -443,7 +454,10 @@ class Runtime:
                     except Exception as error:  # noqa: BLE001
                         log.warning("hook %s reply failed: %s", hook.task, error)
             answer = plain_text(answer.strip())
-            reply = Reply.of_text(answer)
+            reply = Reply()
+            if answer and ctx.mention_sender and inbound.source == "qq" and inbound.is_group:
+                reply.mention(inbound.sender.id)
+            reply.text(answer)
             for image in result.images:
                 reply.actions.append({"type": "image", "data": image["data"], "mime": image["mimeType"]})
             if not answer and not result.images:

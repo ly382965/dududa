@@ -355,6 +355,7 @@ export class OneBotConnection {
 /** Host-produced message parts; `file` is `base64://…` or an http(s) URL. */
 export type RuntimeMessagePart =
   | { type: 'text'; text: string }
+  | { type: 'mention'; userId: string }
   | { type: 'image'; file: string }
   | { type: 'face'; id: string }
 
@@ -365,8 +366,18 @@ export interface RuntimeForwardNode {
 
 function runtimeOneBotSegment(part: RuntimeMessagePart): { type: string; data: Record<string, string> } {
   if (part.type === 'text') return { type: 'text', data: { text: part.text } }
+  if (part.type === 'mention') return { type: 'at', data: { qq: part.userId } }
   if (part.type === 'image') return { type: 'image', data: { file: part.file } }
   return { type: 'face', data: { id: part.id } }
+}
+
+function runtimeOneBotMessage(parts: RuntimeMessagePart[]): Array<{ type: string; data: Record<string, string> }> {
+  const segments: Array<{ type: string; data: Record<string, string> }> = []
+  for (const part of parts) {
+    segments.push(runtimeOneBotSegment(part))
+    if (part.type === 'mention') segments.push({ type: 'text', data: { text: ' ' } })
+  }
+  return segments
 }
 
 export class OneBotHub extends EventEmitter {
@@ -1492,7 +1503,7 @@ export class OneBotHub extends EventEmitter {
     return match ? this.mediaUrl(match[1]!) : undefined
   }
 
-  /** Send Host-produced parts (text, base64/url images, system faces) as one message from the bot. */
+  /** Send Host-produced parts (text, individual mentions, base64/url images, system faces) as one bot message. */
   async sendRuntimeMessage(
     account: string, type: 'group' | 'private', peerId: string, parts: RuntimeMessagePart[],
   ): Promise<{ messageId: string }> {
@@ -1500,7 +1511,7 @@ export class OneBotHub extends EventEmitter {
     this.requireRuntimeParts(state, parts)
     const result = await state.connection.request<{ message_id: number | string }>(
       type === 'group' ? 'send_group_msg' : 'send_private_msg',
-      { [type === 'group' ? 'group_id' : 'user_id']: peerId, message: parts.map(runtimeOneBotSegment) },
+      { [type === 'group' ? 'group_id' : 'user_id']: peerId, message: runtimeOneBotMessage(parts) },
       parts.some((part) => part.type === 'image') ? 120_000 : this.actionTimeoutMs,
     )
     if (result?.message_id === undefined || result.message_id === null) throw new Error('发送消息未返回消息标识')
@@ -1526,7 +1537,7 @@ export class OneBotHub extends EventEmitter {
           data: {
             user_id: state.selfId,
             nickname: node.name?.trim() || state.account.name,
-            content: node.parts.map(runtimeOneBotSegment),
+            content: runtimeOneBotMessage(node.parts),
           },
         })),
       },
@@ -1547,9 +1558,13 @@ export class OneBotHub extends EventEmitter {
     if (!parts.length) throw new Error('消息内容不能为空')
     for (const part of parts) {
       if (part.type === 'text' && !part.text) throw new Error('消息内容不能为空')
+      if (part.type === 'mention' && (typeof part.userId !== 'string' || !/^[1-9]\d{0,19}$/.test(part.userId))) {
+        throw new Error('提及对象必须是具体 QQ 用户')
+      }
       if (part.type === 'image' && !part.file) throw new Error('图片内容不能为空')
       this.requireCapability(state, part.type === 'text' ? 'message.send.text'
-        : part.type === 'image' ? 'message.send.image' : 'message.send.face')
+        : part.type === 'mention' ? 'message.send.mention'
+          : part.type === 'image' ? 'message.send.image' : 'message.send.face')
     }
   }
 
