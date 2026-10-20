@@ -1,3 +1,5 @@
+> 本记录描述 Codex 时期的 3.0（Agent 由本机 Codex CLI app-server 执行）；3.1 已改用 omp，现行部署见 [3.1 运维手册](v3.md)。
+
 # Dududa 3.0 验证记录 · 2026-10-15
 
 本次验证从 **3.0 Runtime** 进入，实际调用本机 Codex CLI，通过原生 MCP 执行业务，再重建 Runtime 与 Codex 进程验证 thread 恢复。未用 2.0 Runtime 或固定模型答案代替真实链路。

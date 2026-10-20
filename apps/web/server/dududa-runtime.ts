@@ -12,7 +12,7 @@ export interface DududaRuntimePreviewResult extends PreviewEvidence {
   candidate: string
   tier: RuntimePreviewTier
   model: string
-  reasoning: 'low' | 'medium' | 'high'
+  reasoning: 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
   answerProfile: 'short' | 'medium' | 'long'
   reasonCodes: string[]
   latencyMs: number

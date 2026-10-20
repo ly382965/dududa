@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OneBotMessage } from './mapper'
 import { RecallForwarder, recallCommand, recallForwardDefaultGroups, recallSuperAdmin } from './recall-forwarder'
-const self='3296147894', account=`qq-${self}`, group='419256533'
+const self='100001', account=`qq-${self}`, group='200001'
 const stores:RecallForwarder[]=[], roots:string[]=[]
 function store(path=':memory:',now?:()=>number){const s=new RecallForwarder(path,now);stores.push(s);return s}
 function message(g=group,id=1,user='123456789'):OneBotMessage{return {message_type:'group',group_id:g,message_id:id,user_id:user,sender:{nickname:'昵称',card:'群名片'},message:[{type:'text',data:{text:'原始内容'}}]}}

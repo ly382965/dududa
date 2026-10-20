@@ -1,0 +1,13 @@
+**
+!apps/
+!apps/web/
+!apps/web/**
+apps/web/node_modules/
+apps/web/dist/
+apps/web/dist-server/
+apps/web/test-results/
+apps/web/playwright-report/
+!configs/
+!configs/personas/
+!configs/personas/registry-v1/
+!configs/personas/registry-v1/**

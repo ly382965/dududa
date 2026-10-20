@@ -1,7 +1,7 @@
 # 共享业务服务
 
 `builtin/shuttle/` 是从 2.0 原样提取的只读校车服务和版本化时刻表。
-3.0 的规则处理器直接调用它，Codex 通过同一服务的 MCP 包装调用。
+3.x 的校车指令直接调用它，Agent 通过 Host 的 `shuttle_query` 工具调用同一服务。
 
 `mcp/` 保留独立校园服务、传输 worker 和 Console；它们是业务服务，不是 Agent runtime。
 3.0 只通过显式配置的 Console 地址调用已授权的公开能力；默认不开启远程校园查询。

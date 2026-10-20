@@ -10,6 +10,7 @@ import { OneBotHub, type HubOptions } from './onebot-hub'
 import { RecallForwarder } from './recall-forwarder'
 import { RecallStore } from './recall-store'
 import { RecallMediaStore } from './recall-media'
+import { RuntimeV3QqBridge, runtimeV3Scopes, type RuntimeV3Run } from './runtime-v3'
 import type { ForwardedMessageBundle, RecallArchivePage, WorkspaceEvent } from '../src/types/workspace'
 
 const token = 'test-only-onebot-token-32-characters'
@@ -197,6 +198,7 @@ interface FakeNapCatOptions {
   groupFileCount?: number
   customFaceUrls?: string[]
   groupHistory?: (request: ActionRequest) => unknown[]
+  friendHistory?: (request: ActionRequest) => unknown[]
   forwardMessages?: (request: ActionRequest) => unknown[]
 }
 
@@ -424,7 +426,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         break
       case 'get_friend_msg_history':
         data = {
-          messages: [
+          messages: options.friendHistory?.(request) ?? [
             {
               self_id: Number(connectionSelfId),
               time: 1_785_742_400,
@@ -462,6 +464,10 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
             ),
           )
         }
+        break
+      case 'send_group_forward_msg':
+      case 'send_private_forward_msg':
+        data = { message_id: 103, forward_id: 'summary-forward' }
         break
       case 'upload_group_file':
       case 'upload_private_file':
@@ -585,8 +591,28 @@ afterEach(async () => {
 })
 
 describe('Dududa NapCat gateway', () => {
+  it('builds merged summaries using the bot identity and exact target for group and private chats', async () => {
+    const { hub, server, port } = await startTestServer()
+    servers.push(server)
+    const bot = connectFakeNapCat(port)
+    await bot.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const parts = ['14:20 小明提出方案。', '14:30 小红确认东区见面。']
+    for (const [type, peerId] of [['group', '345678901'], ['private', '456789012']] as const) {
+      await expect(hub.sendMergedForward(`qq-${selfId}`, type, peerId, parts)).resolves.toEqual({ messageId: '103' })
+      const action = bot.actions.find(item => item.action === `send_${type}_forward_msg`)!
+      expect(action.params[type === 'group' ? 'group_id' : 'user_id']).toBe(peerId)
+      expect(action.params.messages).toEqual(parts.map((text, index) => ({ type: 'node', data: {
+        user_id: selfId, nickname: expect.any(String),
+        content: [{ type: 'text', data: { text: `群聊总结 · ${index + 1}/2\n\n${text}` } }],
+      } })))
+    }
+    await expect(hub.sendMergedForward(`qq-${selfId}`, 'group', '999999999', parts)).rejects.toThrow()
+    expect(bot.actions.filter(item => item.action.endsWith('_forward_msg'))).toHaveLength(2)
+  })
+
   it('automatically forwards group recalls only after exact super-admin commands through OneBot', async () => {
-    const forwarder = new RecallForwarder(':memory:')
+    const forwarder = new RecallForwarder(':memory:', { defaultGroups: ['200001'], superAdmin: '300001' })
     const { hub, server, port } = await startTestServer({ recallForwarder: forwarder })
     servers.push(server)
     const bot = connectFakeNapCat(port)
@@ -595,7 +621,7 @@ describe('Dududa NapCat gateway', () => {
     const emit = (event: unknown) => bot.socket.send(JSON.stringify(event))
     const sends = () => bot.actions.filter((a) => a.action === 'send_group_msg')
     const recalled = (id: number, group = 345678901) => ({ post_type: 'notice', notice_type: 'group_recall', self_id: Number(selfId), group_id: group, user_id: 234567890, message_id: id })
-    const cmd = (text: string, id: number, user = 1778159807) => realGroupMessage(text, {
+    const cmd = (text: string, id: number, user = 300001) => realGroupMessage(text, {
       message_id: id, user_id: user,
       message: [{ type: 'at', data: { qq: selfId } }, { type: 'text', data: { text: ` ${text}` } }],
     })
@@ -603,10 +629,10 @@ describe('Dududa NapCat gateway', () => {
     emit(recalled(701))
     emit(cmd('/开启防撤回啊', 702))
     emit(cmd('/开启防撤回', 703, 234567890))
-    emit(realGroupMessage('默认开启的测试内容', { message_id: 704, group_id: 419256533 }))
-    emit(recalled(704, 419256533))
+    emit(realGroupMessage('默认开启的测试内容', { message_id: 704, group_id: 200001 }))
+    emit(recalled(704, 200001))
     await waitFor(async () => sends().length === 1)
-    expect(sends()[0]?.params.group_id).toBe('419256533')
+    expect(sends()[0]?.params.group_id).toBe('200001')
     expect(JSON.stringify(sends()[0]?.params.message)).toContain('测试成员（234567890）')
     expect(JSON.stringify(sends()[0]?.params.message)).toContain('默认开启的测试内容')
     emit(cmd('/开启防撤回', 705))
@@ -1365,6 +1391,87 @@ describe('Dududa NapCat gateway', () => {
     napcat.socket.close()
   })
 
+  it('delivers runtime mentions as real individual at segments with spacing and mixed action order', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = await response.json() as { actions?: Record<string, { status?: string }> }
+      return body.actions?.['message.send.mention']?.status === 'supported'
+    })
+    const result: RuntimeV3Run = {
+      runtime: 'dududa-3.0', run_id: 'runtime-mention', status: 'completed', route: 'rule',
+      text: '我讨厌你，不要和我说话。', tool_calls: 0, events: [], created_at: '', latency_ms: 0,
+      actions: [
+        { type: 'mention', user_id: '234567890' },
+        { type: 'text', text: '我讨厌你，不要和我说话。' },
+        { type: 'face', id: 14 },
+        { type: 'image', url: 'https://example.com/a.png' },
+        { type: 'forward', nodes: [{ actions: [
+          { type: 'text', text: '节点' }, { type: 'mention', user_id: '234567890' }, { type: 'text', text: '内容' },
+        ] }] },
+        { type: 'text', text: '结束' },
+      ],
+    }
+    const runtime = { run: vi.fn(async () => result),
+      delivery: vi.fn(async (_id: string, _state: string, _messageId?: string) => true) }
+    const errors: unknown[] = []
+    const bridge = new RuntimeV3QqBridge(hub, runtime,
+      runtimeV3Scopes(`${account}/${account}:group:345678901`), error => errors.push(error), 0)
+    try {
+      napcat.socket.send(JSON.stringify(realGroupMessage('触发回复')))
+      await waitFor(async () => runtime.delivery.mock.calls.some(call => call[1] === 'sent'))
+      expect(errors).toEqual([])
+      const sends = napcat.actions.filter(item => ['send_group_msg', 'send_group_forward_msg'].includes(item.action))
+      expect(sends.map(item => item.action)).toEqual(['send_group_msg', 'send_group_forward_msg', 'send_group_msg'])
+      expect(sends[0]?.params).toEqual({ group_id: '345678901', message: [
+        { type: 'at', data: { qq: '234567890' } },
+        { type: 'text', data: { text: ' ' } },
+        { type: 'text', data: { text: result.text } },
+        { type: 'face', data: { id: '14' } },
+        { type: 'image', data: { file: 'https://example.com/a.png' } },
+      ] })
+      expect(sends[1]?.params.messages).toEqual([{ type: 'node', data: {
+        user_id: selfId, nickname: '真实机器人', content: [
+          { type: 'text', data: { text: '节点' } },
+          { type: 'at', data: { qq: '234567890' } },
+          { type: 'text', data: { text: ' ' } },
+          { type: 'text', data: { text: '内容' } },
+        ],
+      } }])
+      expect(sends[2]?.params.message).toEqual([{ type: 'text', data: { text: '结束' } }])
+      expect(runtime.delivery).toHaveBeenCalledWith('runtime-mention', 'sent', '102')
+    } finally {
+      bridge.close()
+      napcat.socket.close()
+    }
+  })
+
+  it('rejects runtime mentions of all or malformed IDs before sending any OneBot message', async () => {
+    const { hub, server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const napcat = connectFakeNapCat(port)
+    await napcat.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const response = await fetch(`${baseUrl}/api/accounts/${account}/capabilities`)
+      if (!response.ok) return false
+      const body = await response.json() as { actions?: Record<string, { status?: string }> }
+      return body.actions?.['message.send.mention']?.status === 'supported'
+    })
+    for (const userId of ['all', 'ALL', ' all ', '', '0', '234567890,all', '[CQ:at,qq=all]']) {
+      const parts = [{ type: 'mention' as const, userId }, { type: 'text' as const, text: '不应发送' }]
+      await expect(hub.sendRuntimeMessage(account, 'group', '345678901', parts)).rejects.toThrow('具体 QQ 用户')
+      await expect(hub.sendRuntimeForward(account, 'group', '345678901', [{ parts }])).rejects.toThrow('具体 QQ 用户')
+    }
+    expect(napcat.actions.filter(item => ['send_group_msg', 'send_group_forward_msg'].includes(item.action))).toEqual([])
+    napcat.socket.close()
+  })
+
   it('publishes explicit capabilities, signed history cursors, and typed rich sends', async () => {
     const { server, port, baseUrl } = await startTestServer()
     servers.push(server)
@@ -1547,6 +1654,55 @@ describe('Dududa NapCat gateway', () => {
     expect(acrossGap.messages.every((item) => Number(item.messageSeq) > 5)).toBe(true)
     expect(acrossGap.hasMoreAfter).toBe(true)
     llonebot.socket.close()
+  })
+
+  it('pages SnowLuma private history by signed message ID without dropping equal-sequence messages', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const history = [-101, -205, -309, 411].map((id, index) => ({
+      self_id: Number(selfId),
+      time: 1_785_742_400 + index,
+      message_id: id,
+      message_seq: [7, 8, 8, 9][index],
+      user_id: index % 2 ? Number(selfId) : 456789012,
+      target_id: 456789012,
+      message_type: 'private',
+      post_type: 'message',
+      sender: { user_id: index % 2 ? Number(selfId) : 456789012, nickname: '私聊参与者' },
+      message: [{ type: 'text', data: { text: `私聊 ${id}` } }],
+    }))
+    const snowluma = connectFakeNapCat(port, {
+      appName: 'SnowLuma',
+      appVersion: '2.0.3-node',
+      packetAvailable: false,
+      friendHistory: ({ params }) => {
+        const anchor = Number(params.message_id || 0)
+        const index = anchor ? history.findIndex((message) => message.message_id === anchor) : history.length - 1
+        if (index < 0) return []
+        const count = Number(params.count)
+        return !anchor || params.reverse_order
+          ? history.slice(0, index + 1).slice(-count)
+          : history.slice(index, index + count)
+      },
+    })
+    await snowluma.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const workspace = await (await fetch(`${baseUrl}/api/workspace`)).json() as { accounts: Array<{ status: string }> }
+      return workspace.accounts[0]?.status === 'online'
+    })
+    const url = `${baseUrl}/api/accounts/${account}/conversations/private/456789012/messages`
+    type Page = { messages: Array<{ messageId: string }>; beforeCursor: string; afterCursor: string; hasMoreBefore: boolean; hasMoreAfter: boolean }
+    const latest = await (await fetch(`${url}?limit=2`)).json() as Page
+    expect(latest.messages.map((message) => message.messageId)).toEqual(['-309', '411'])
+    expect(latest.hasMoreBefore).toBe(true)
+    const older = await (await fetch(`${url}?limit=2&before=${encodeURIComponent(latest.beforeCursor)}`)).json() as Page
+    expect(older.messages.map((message) => message.messageId)).toEqual(['-101', '-205'])
+    expect(older.hasMoreBefore).toBe(false)
+    const newer = await (await fetch(`${url}?limit=2&after=${encodeURIComponent(older.afterCursor)}`)).json() as Page
+    expect(newer.messages.map((message) => message.messageId)).toEqual(['-309', '411'])
+    expect(newer.hasMoreAfter).toBe(false)
+    snowluma.socket.close()
   })
 
   it('marks unknown OneBot implementations as degraded without capabilities', async () => {

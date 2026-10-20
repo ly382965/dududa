@@ -1,8 +1,8 @@
 import { DatabaseSync } from 'node:sqlite'
 import type { OneBotMessage, OneBotSegment } from './mapper'
 
-export const recallForwardDefaultGroups = ['419256533', '481757927', '530719678'] as const
-export const recallSuperAdmin = '1778159807'
+export const recallForwardDefaultGroups = ['200001', '200002', '200003'] as const
+export const recallSuperAdmin = '300001'
 const retentionMs = 7 * 86_400_000
 export type RecallSend = (groupId: string, message: OneBotSegment[]) => Promise<unknown>
 

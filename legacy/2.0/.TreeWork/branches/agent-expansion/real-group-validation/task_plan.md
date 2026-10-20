@@ -165,7 +165,7 @@ Title: S23 Authorized Real-Group Validation
   revoked or unsubscribed delivery.
 - [ ] A separately authorized low-frequency group Probe produces no personal
   target/mention, Memory access, auto-follow-up or send after no response.
-- [x] The authorized `419256533` pilot Scope can enable Dududa 2.0 automatic
+- [x] The authorized `200001` pilot Scope can enable Dududa 2.0 automatic
   group participation independently of automatic reread. It reads bounded
   NapCat history, uses separately adjustable probability/cooldown/hourly quota
   without changing `replyIntensity`,

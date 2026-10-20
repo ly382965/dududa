@@ -41,8 +41,8 @@ describe('Dududa Runtime preview client', () => {
       )
       expect(init?.headers).toMatchObject({ 'X-API-Key': 'plugin-key' })
       expect(JSON.parse(String(init?.body))).toEqual({
-        accountId: 'qq-3296147894',
-        conversationId: 'qq-3296147894:group:364894085',
+        accountId: 'qq-100001',
+        conversationId: 'qq-100001:group:200004',
         prompt: '查询评课社区吴天',
       })
       return new Response(JSON.stringify({
@@ -73,8 +73,8 @@ describe('Dududa Runtime preview client', () => {
     )
 
     await expect(client.preview({
-      accountId: 'qq-3296147894',
-      conversationId: 'qq-3296147894:group:364894085',
+      accountId: 'qq-100001',
+      conversationId: 'qq-100001:group:200004',
       prompt: '查询评课社区吴天',
     })).resolves.toMatchObject({
       runId: 'run-1',

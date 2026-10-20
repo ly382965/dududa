@@ -151,7 +151,7 @@ Meme Manager、PokePro、ReplyPolish 和 Target Talk 不进入干净安装集合
   只能按批准的 Capability ID 与 input schema 调用，不能透传任意 `server/tool`。
 - 校车在“插件与能力”中显示为本地只读插件，群级默认关闭；启用后自然语言查询仍进入
   唯一 Dududa 2.0 Runtime。20/20 固定问题与 3 条原生消息抽样已经通过。
-- 群 `364894085` 已将评课、二课、培养方案、教务和校车五项查询设为 `on`。no-send
+- 群 `200004` 已将评课、二课、培养方案、教务和校车五项查询设为 `on`。no-send
   耦合抽样中，每类问题只选择自己的 Provider，普通聊天为零 Tool 调用；教务开课查询
   已把“2026 秋”解析为官方 `semester_id=461`。这些证据没有发送 QQ 消息。
 - 已验证 iCourse、公开教务、培养方案研究快照、校车和二课查询；自然语言查询进入唯一

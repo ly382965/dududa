@@ -1,15 +1,20 @@
 {
   "state_dir": "runtime/v3",
-  "codex_binary": "codex",
-  "model": null,
-  "timeout_seconds": 180,
+  "omp_binary": "omp",
+  "model_defaults": {"chat": "luna-max", "summary": "luna-max", "image": "luna-max"},
+  "service_defaults": {"vision": "luna-low"},
+  "agent_builtin_tools": ["web_search"],
+  "timeout_seconds": 300,
   "concurrency": 2,
+  "bot_names": ["嘟嘟哒", "dududa"],
+  "admins": [],
   "allowed_scopes": [],
   "proactive_scopes": [],
   "proactive_cooldown_seconds": 120,
+  "rate_limits": {"window_seconds": 300, "group": 30, "private": 50},
   "mcp_console_url": null,
+  "qq_gateway_url": null,
   "campus_capabilities": [],
-  "rules": [
-    {"match": "嘟嘟哒在吗", "reply": "在呀！"}
-  ]
+  "rules": [],
+  "features": {}
 }

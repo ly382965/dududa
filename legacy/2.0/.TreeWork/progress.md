@@ -19,7 +19,7 @@ Last sync: unix:1788579506
   逐题报告见 `docs/refactor/dududa-2.0-100-question-runtime-simulation-2026-09-03.md`。
 - S23 的群级自动搭话控制已由固定 `low/normal/high` 改为可分别拖动的触发概率、
   冷却和每小时上限，允许最大 100%/5 秒/500 次；主动历史扩展档最多读取 100 条。
-  `419256533` 保留旧 high 的等价 20%/180 秒/8 次并切到 extended，没有因开放
+  `200001` 保留旧 high 的等价 20%/180 秒/8 次并切到 extended，没有因开放
   上限而自动采用最大值。旧档位仅作为现有持久配置的读取迁移输入。
 - S01-S11 foundations/runtime are integrated on `codex/s08-s11`; the Work Tree
   has also integrated and verified Production Shape, additive semantics, S12
@@ -49,7 +49,7 @@ Last sync: unix:1788579506
   proactive controls, durable scheduling, governed fixture sources, Digest
   Shadow and deterministic group-level Probe Shadow exist. S23 has additionally
   enabled the first exact-Scope bounded-history automatic-talk Adapter for group
-  `419256533`; its real send path is live, but no naturally sampled Delivery has
+  `200001`; its real send path is live, but no naturally sampled Delivery has
   yet been recorded as quality evidence.
 - S16 is complete and verified for the offline operations boundary: immutable
   releases, atomic state/receipts, read-only health, consistent SQLite backup,
@@ -154,7 +154,7 @@ Last sync: unix:1788579506
   S23 is paused/partial after completing its offline S23A--S23E milestone and
   the deployed configuration-driven inbound Runtime, registered Luna/Terra/Sol,
   continuous health refresh, campus query slices and the exact-Scope automatic-
-  talk Adapter for `419256533`. It still needs user-triggered inbound receipts,
+  talk Adapter for `200001`. It still needs user-triggered inbound receipts,
   one naturally sampled proactive Delivery with human review, live digest
   Sources and closeout evidence. Historical Web no-send results remain separate
   from live Runtime evidence.

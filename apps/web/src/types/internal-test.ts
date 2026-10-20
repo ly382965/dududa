@@ -1,7 +1,7 @@
 export type InternalTestTier = 'haiku' | 'sonnet' | 'opus'
 export type InternalTestAnswerProfile = 'short' | 'medium' | 'long'
 export type InternalTestSelectionMode = 'adaptive' | 'preferred' | 'locked'
-export type InternalTestReasoningLevel = 'low' | 'medium' | 'high'
+export type InternalTestReasoningLevel = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 export type InternalTestPluginMode = 'off' | 'auto' | 'on' | 'locked'
 export type InternalTestReplyIntensity = 'quiet' | 'normal' | 'active'
 export type InternalTestContextLength = 'compact' | 'standard' | 'extended'
@@ -272,7 +272,7 @@ export interface InternalTestAgentStatus {
     passiveAutoReply: {
       actualEnabled: boolean
       state: 'enabled' | 'disabled'
-      rolloutMode: 'off' | 'shadow' | 'canary'
+      rolloutMode: 'off' | 'shadow' | 'canary' | 'codex'
       deliveryEnabled: boolean
       killSwitch: boolean
       summary: string
@@ -280,7 +280,7 @@ export interface InternalTestAgentStatus {
     proactiveGroupParticipation: {
       actualEnabled: boolean
       state: 'enabled' | 'disabled'
-      stage: 'proactive_canary' | 'probe_shadow'
+      stage: 'proactive_canary' | 'probe_shadow' | 'runtime_v3'
       deliveryEnabled: boolean
       summary: string
     }

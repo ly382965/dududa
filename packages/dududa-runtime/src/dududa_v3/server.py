@@ -34,8 +34,9 @@ def create_server(runtime: Runtime, loop: asyncio.AbstractEventLoop, host: str, 
                 body = {}
                 if self.command == "POST":
                     length = int(self.headers.get("Content-Length", "0"))
-                    if not 0 <= length <= 65536:
-                        raise ValueError("Request body exceeds 64 KiB")
+                    limit = 16 * 1024 * 1024 if path == "/v3/outbox" else 256 * 1024
+                    if not 0 <= length <= limit:
+                        raise ValueError(f"Request body exceeds {limit // 1024} KiB")
                     body = json.loads(self.rfile.read(length) or b"{}")
                     if not isinstance(body, dict):
                         raise ValueError("Expected JSON object")
@@ -43,6 +44,23 @@ def create_server(runtime: Runtime, loop: asyncio.AbstractEventLoop, host: str, 
                     result = runtime.health()
                 elif self.command == "POST" and path == "/v3/runs":
                     result = asyncio.run_coroutine_threadsafe(runtime.submit(body), loop).result(10)
+                elif self.command == "POST" and path == "/v3/outbox":
+                    # Trusted local workers (e.g. the notify worker) queue proactive messages.
+                    scope = f"{body.get('account_id')}/{body.get('conversation_id')}"
+                    if scope not in runtime.settings.allowed_scopes:
+                        raise PermissionError("Outbox scope is not enabled")
+                    actions = body.get("actions")
+                    if not isinstance(actions, list) or not all(isinstance(item, dict) for item in actions):
+                        raise ValueError("actions must be a list of objects")
+                    dedupe = body.get("dedupe")
+                    queued = runtime.store.outbox_push(body["account_id"], body["conversation_id"], actions,
+                                                       str(dedupe)[:300] if dedupe else None)
+                    result = {"queued": queued}
+                elif self.command == "POST" and path == "/v3/outbox/claim":
+                    result = {"items": runtime.store.outbox_claim(int(body.get("limit", 10)))}
+                elif self.command == "POST" and path.startswith("/v3/outbox/") and path.endswith("/result"):
+                    item_id = int(path[len("/v3/outbox/"):-len("/result")])
+                    result = {"updated": runtime.store.outbox_result(item_id, body.get("state"), body.get("message_id"))}
                 elif path.startswith("/v3/runs/"):
                     pieces = path[len("/v3/runs/"):].split("/")
                     run_id = pieces[0]

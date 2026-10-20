@@ -571,7 +571,9 @@ export function mapMessage(
   const segments = Array.isArray(raw.message) ? raw.message : []
   const messageId = text(raw.message_id) || text(raw.message_seq || raw.real_seq) || `${raw.time ?? Date.now()}-${senderId}`
   const messageSeq = text(raw.message_seq || raw.real_seq) || undefined
-  const senderName = text(raw.sender?.card) || text(raw.sender?.nickname) || senderId
+  const senderCard = text(raw.sender?.card)
+  const senderNickname = text(raw.sender?.nickname)
+  const senderName = senderCard || senderNickname || senderId
   const normalizedSegments = Array.isArray(raw.message)
     ? normalizeSegments(segments, registerMedia)
     : [{ type: 'text' as const, text: boundedText(raw.message || raw.raw_message) }]
@@ -589,6 +591,8 @@ export function mapMessage(
     messageSeq,
     senderId,
     senderName,
+    ...(senderCard ? { senderCard: boundedText(senderCard, 128) } : {}),
+    ...(senderNickname ? { senderNickname: boundedText(senderNickname, 128) } : {}),
     senderAvatar: userAvatar(senderId),
     timestamp: formatTime(Number(raw.time ?? 0)),
     content,

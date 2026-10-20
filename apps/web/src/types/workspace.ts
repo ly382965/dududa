@@ -447,6 +447,9 @@ export interface ChatMessage {
   messageSeq?: string
   senderId: string
   senderName: string
+  /** Raw QQ group card / nickname, kept separately from the display `senderName`. */
+  senderCard?: string
+  senderNickname?: string
   senderAvatar: string
   timestamp: string
   content: string

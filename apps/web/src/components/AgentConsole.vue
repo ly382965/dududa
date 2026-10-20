@@ -196,9 +196,12 @@ const tierLabels: Record<NonNullable<AgentRun['modelTier']>, string> = {
 }
 
 const reasoningLabels: Record<InternalTestReasoningLevel, string> = {
+  none: '无（规则服务）',
   low: '低',
   medium: '中',
   high: '高',
+  xhigh: '极高',
+  max: 'MAX',
 }
 
 const answerProfileLabels: Record<InternalTestAnswerProfile, string> = {
@@ -855,7 +858,7 @@ watch(
           <dl>
             <div><dt>模型</dt><dd>{{ run.model }}</dd></div>
             <div><dt>模型档位</dt><dd>{{ runTier ? tierLabels[runTier] : '未记录' }}</dd></div>
-            <div><dt>推理强度</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '由本机 Codex 配置' : runReasoning ? reasoningLabels[runReasoning] : '未记录' }}</dd></div>
+            <div><dt>推理强度</dt><dd>{{ runReasoning ? reasoningLabels[runReasoning] : '未记录' }}</dd></div>
             <div><dt>回答长度</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '由 3.0 Runtime 决定' : runAnswerProfile ? answerProfileLabels[runAnswerProfile] : '未记录' }}</dd></div>
             <div><dt>回复强度</dt><dd>{{ run.runtimePath === 'dududa_3_preview' ? '旧策略不适用' : runReplyIntensity ? replyIntensityLabels[runReplyIntensity] : '未记录' }}</dd></div>
             <div>

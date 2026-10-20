@@ -111,28 +111,28 @@ class AstrBotWebRuntimeContractTests(unittest.TestCase):
     def test_exact_group_scope_builds_explicit_mention_preview_event(self) -> None:
         event, prompt = preview_event(
             {
-                "accountId": "qq-3296147894",
-                "conversationId": "qq-3296147894:group:364894085",
+                "accountId": "qq-100001",
+                "conversationId": "qq-100001:group:200004",
                 "prompt": "查询评课社区吴天",
             }
         )
 
         self.assertEqual(prompt, "查询评课社区吴天")
-        self.assertEqual(event.get_self_id(), "3296147894")
-        self.assertEqual(event.get_group_id(), "364894085")
+        self.assertEqual(event.get_self_id(), "100001")
+        self.assertEqual(event.get_group_id(), "200004")
         self.assertEqual(event.message_str, "@嘟嘟哒 查询评课社区吴天")
-        self.assertEqual(event.get_messages()[0].qq, "3296147894")
+        self.assertEqual(event.get_messages()[0].qq, "100001")
 
     def test_cross_account_or_private_scope_is_rejected(self) -> None:
         for conversation_id in (
-            "qq-100001:group:364894085",
-            "qq-3296147894:private:100001",
+            "qq-100001:group:200004",
+            "qq-100001:private:100001",
         ):
             with self.subTest(conversation_id=conversation_id):
                 with self.assertRaises(ValueError):
                     preview_event(
                         {
-                            "accountId": "qq-3296147894",
+                            "accountId": "qq-100001",
                             "conversationId": conversation_id,
                             "prompt": "查询评课社区吴天",
                         }
@@ -172,10 +172,10 @@ class AstrBotNativeMessagePreviewContractTests(unittest.IsolatedAsyncioTestCase)
             "group_id": 364_894_085,
             "user_id": 1_778_159_807,
             "message": [
-                {"type": "at", "data": {"qq": "3296147894"}},
+                {"type": "at", "data": {"qq": "100001"}},
                 {"type": "text", "data": {"text": " 查询评课社区用户萌萌哒mmd"}},
             ],
-            "raw_message": "[CQ:at,qq=3296147894] 查询评课社区用户萌萌哒mmd",
+            "raw_message": "[CQ:at,qq=100001] 查询评课社区用户萌萌哒mmd",
             "sender": {
                 "user_id": 1_778_159_807,
                 "nickname": "测试用户",
@@ -193,8 +193,8 @@ class AstrBotNativeMessagePreviewContractTests(unittest.IsolatedAsyncioTestCase)
             event, prompt, source = await native_message_preview_event(
                 _Plugin(adapter),
                 {
-                    "accountId": "qq-3296147894",
-                    "conversationId": "qq-3296147894:group:364894085",
+                    "accountId": "qq-100001",
+                    "conversationId": "qq-100001:group:200004",
                     "platformId": "test",
                     "messageId": "1486592189",
                 },
@@ -203,9 +203,9 @@ class AstrBotNativeMessagePreviewContractTests(unittest.IsolatedAsyncioTestCase)
         self.assertEqual(prompt, "查询评课社区用户萌萌哒mmd")
         self.assertTrue(hasattr(event, "native_message"))
         self.assertEqual(source["kind"], "napcat.get_group_msg_history")
-        self.assertEqual(source["senderId"], "1778159807")
+        self.assertEqual(source["senderId"], "300001")
         self.assertEqual(client.calls[0]["action"], "get_group_msg_history")
-        self.assertEqual(client.calls[0]["group_id"], 364894085)
+        self.assertEqual(client.calls[0]["group_id"], 200004)
         self.assertEqual(len(adapter.converted), 1)
 
 
