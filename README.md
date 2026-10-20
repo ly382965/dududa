@@ -24,7 +24,7 @@
 
 3.1 由一个 Python Host 负责消息入口、规则功能、会话、权限、定时任务和输出；需要理解和多步推理的消息交给本机 [omp](#技术架构)（`omp --mode rpc`）完成 Agent 循环。**明确的指令和自动功能（链接解析、复读、小红书归档等）不调用对话模型。**
 
-线上机器人当前运行 **3.1.0**。默认对话模型为 `luna-max`（`openai-codex/gpt-5.6-luna`，thinking `max`），管理员可在群里用 `model` 指令切换已注册的模型。AstrBot 已完全下线，NapCat 只连接 Dududa Web。
+当前版本为 **3.1.14**。默认对话模型为 `luna-max`（`openai-codex/gpt-5.6-luna`，thinking `max`），管理员可在群里用 `model` 指令切换已注册的模型。QQ 协议端只运行 SnowLuma，连接 Dududa Web；旧协议容器已移除，旧账号数据保留。亲密度分数按用户 QQ 共享，同一 QQ 群的排行榜跨机器人账号继承互动记录。
 
 ## 3.1 的变化
 
@@ -39,7 +39,7 @@
 | 私聊通知 | AstrBot `dududa_notify` 插件 | 未迁移 | `notify` 功能包（学术报告、作业、课程、助教周报、自动提交） |
 | 主动推送 | 插件各自发送 | 无 | Host outbox：功能模块与外部本机进程排队，QQ 桥轮询发送 |
 | 频率限制 | 旧群策略 | 无 | 每会话 5 分钟内群 30 / 私聊 50 次主动回复 |
-| QQ 接入 | NapCat → AstrBot | NapCat → AstrBot + Web 并行 | NapCat 只连接 Dududa Web |
+| QQ 接入 | NapCat → AstrBot | NapCat → AstrBot + Web 并行 | SnowLuma 只连接 Dududa Web |
 
 ## 功能一览
 
@@ -219,7 +219,7 @@ Host 把每一轮渲染为固定的几个块：
 
 | 层 | 职责 |
 | --- | --- |
-| QQ 桥（Dududa Web） | NapCat 通过 OneBot v11 WebSocket 连接 Web；Web 补充身份与引用，提交 `/v3/runs`，按结果发送文本、图片、表情、合并转发、表情回应和文件，并轮询 outbox |
+| QQ 桥（Dududa Web） | SnowLuma 通过 OneBot v11 WebSocket 连接 Web；Web 补充身份与引用，提交 `/v3/runs`，按结果发送文本、图片、表情、合并转发、表情回应和文件，并轮询 outbox |
 | Dududa Host | 路由、频率限制、会话映射、任务队列、任务开关、模型解析、定时任务和 outbox |
 | 功能模块 | `features/` 下自动发现的模块，通过 `register(registry)` 注册指令、观察者、定时任务、Agent 工具和任务开关；契约见 `features/base.py` |
 | omp Agent | `omp --mode rpc` 子进程，每次运行一个进程；会话连续性来自 omp 自己的 session 目录 |
@@ -299,7 +299,7 @@ npm run dev
 
 ### 4. 接入 QQ
 
-在 NapCat 的 OneBot v11 网络配置中添加 WebSocket 客户端，指向 Web 的 `/onebot/v11/ws`。Host 与 Web 都需要相同的白名单（`DUDUDA_V3_QQ_SCOPES` 或 Host 配置的 `allowed_scopes`），例如 `qq-100001/qq-100001:group:200001`。空白名单不会处理或发送任何 QQ 消息。
+在 SnowLuma 的 OneBot v11 网络配置中添加 WebSocket 客户端（`networks.wsClients`），指向 Web 的 `/onebot/v11/ws`，消息格式使用 `array`。Host 与 Web 都需要相同的白名单（`DUDUDA_V3_QQ_SCOPES` 或 Host 配置的 `allowed_scopes`），例如 `qq-100001/qq-100001:group:200001`。空白名单不会处理或发送任何 QQ 消息。协议端部署、账号配置及历史分页差异见 [SnowLuma 运维说明](docs/operations/v3.md#snowluma-协议端)。
 
 ## 开发与验证
 
@@ -312,7 +312,7 @@ cd apps/web && npm test && npm run build
 
 | 验证 | 覆盖范围 | 需要真实模型 |
 | --- | --- | --- |
-| `tests/v3`（150 项） | 路由、频率限制、上下文渲染、omp RPC 传输、ServiceHub 和各功能模块 | 否；omp 传输测试使用明确标识的测试进程 |
+| `tests/v3` | 路由、频率限制、上下文渲染、omp RPC 传输、ServiceHub 和各功能模块 | 否；omp 传输测试使用明确标识的测试进程 |
 | `verify_dududa_v3.py` | 从 Host 入口调用真实本机 omp，验证工具调用与会话续接；不发送 QQ 消息 | 是 |
 | Web 测试与构建 | QQ 桥字段映射、动作发送顺序、合并转发、outbox 轮询及 UI 构建 | 否 |
 
@@ -322,7 +322,7 @@ cd apps/web && npm test && npm run build
 
 ## 部署
 
-生产环境位于 `/home/mmdustc/Code/dududa-state`，按版本目录发布：`current` 指向 `releases/<版本>`，其中 `source/` 是对应提交的 `git archive` 加独立 `.venv`。Host 以 systemd 用户服务 `dududa-v3.service` 运行，Web 以容器 `dududa-web-1`（镜像 `dududa/web:<版本>`）运行，MCP Console 和 NapCat 各自独立。
+生产环境位于 `/home/mmdustc/Code/dududa-state`，按版本目录发布：`current` 指向 `releases/<版本>`，其中 `source/` 是对应提交的 `git archive` 加独立 `.venv`。Host 以 systemd 用户服务 `dududa-v3.service` 运行，Web 以容器 `dududa-web-1`（镜像 `dududa/web:<版本>`）运行，MCP Console 和 SnowLuma 各自独立。
 
 目录布局、发布与回滚步骤、outbox、notify 迁移、配置字段和排障见 [3.1 运维手册](docs/operations/v3.md)。
 
@@ -397,6 +397,6 @@ legacy/2.0/                       完整冻结的 2.0 源码与文档
 
 ## 致谢与许可证
 
-感谢 omp、[OpenAI Codex](https://github.com/openai/codex)（3.0 时期的 Agent 执行）、[AstrBot](https://github.com/AstrBotDevs/AstrBot)（2.0 时期的机器人框架）、[NapCat](https://github.com/NapNeko/NapCat-Docker)、[pyustc](https://github.com/USTC-XeF2/pyustc)、[Open-Meteo](https://open-meteo.com/)、[Emoji Kitchen](https://github.com/xsalazar/emoji-kitchen-backend)、橘鸦 AI 早报及相关校园数据和开源项目。
+感谢 omp、SnowLuma（当前 QQ 协议端）、[OpenAI Codex](https://github.com/openai/codex)（3.0 时期的 Agent 执行）、[AstrBot](https://github.com/AstrBotDevs/AstrBot)（2.0 时期的机器人框架）、[NapCat](https://github.com/NapNeko/NapCat-Docker)（历史 QQ 协议端）、[pyustc](https://github.com/USTC-XeF2/pyustc)、[Open-Meteo](https://open-meteo.com/)、[Emoji Kitchen](https://github.com/xsalazar/emoji-kitchen-backend)、橘鸦 AI 早报及相关校园数据和开源项目。
 
 嘟嘟哒原创代码和文档采用 [MIT License](LICENSE)。第三方组件保留各自许可证，历史引入说明见 [Third-Party Notices](legacy/2.0/THIRD_PARTY_NOTICES.md)。

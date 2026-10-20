@@ -96,6 +96,35 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(self.book.score("warm"), 30)
         self.assertEqual(self.book.score("cold"), -3)
 
+    def test_group_members_survive_bot_account_changes_without_duplicate_scores(self):
+        old_group = "qq-99999:group:100"
+        self.book.seen("old", old_group, "旧号认识的群友", self.now - 2)
+        self.book.set("old", 30, "admin", self.now - 2)
+        self.book.seen("both", old_group, "旧名片", self.now - 2)
+        self.book.set("both", 20, "admin", self.now - 2)
+        self.book.seen("both", GROUP, "新名片", self.now - 1)
+        self.book.apply("both", 3, "praise", now=self.now)
+        for user, conversation, seen_at in (
+            ("other_group", "qq-99999:group:1000", self.now),
+            ("other_platform", "other-99999:group:100", self.now),
+            ("private", "qq-99999:private:100", self.now),
+            ("expired", old_group, self.now - affinity.RANK_WINDOW_SECONDS - 1),
+            (OTHER_BOT, old_group, self.now),
+        ):
+            self.book.seen(user, conversation, user, seen_at)
+
+        members = self.book.members(GROUP, self.now, {OTHER_BOT})
+        self.assertEqual(
+            sorted((member["user_id"], member["name"], member["score"]) for member in members),
+            [("both", "新名片", 23), ("old", "旧号认识的群友", 30)],
+        )
+
+    def test_non_group_members_remain_account_specific(self):
+        self.book.seen("old", "qq-99999:private:7", "旧号私聊", self.now)
+        self.book.seen("current", PRIVATE, "新号私聊", self.now)
+        members = self.book.members(PRIVATE, self.now, set())
+        self.assertEqual([member["user_id"] for member in members], ["current"])
+
     def test_tag_parsing_and_reason_ranges(self):
         clean, tag = affinity.parse_tag("好呀～\n[[aff:+9:praise]]")
         self.assertEqual((clean, tag), ("好呀～", (9.0, "praise")))

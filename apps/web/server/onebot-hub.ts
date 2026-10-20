@@ -96,7 +96,7 @@ interface AccountState {
   conversations: Map<string, Conversation>
   emittedMessages: Map<string, number>
   compatible: boolean
-  implementationKind: 'napcat' | 'llonebot' | 'unknown'
+  implementationKind: 'napcat' | 'llonebot' | 'snowluma' | 'unknown'
   implementationName: string
   implementationVersion?: string
   packetAvailable: boolean
@@ -257,6 +257,7 @@ interface HistoryCursorPayload {
   type: 'group' | 'private'
   peerId: string
   messageSeq: string
+  messageId?: string
 }
 
 export interface HistoryPageRequest {
@@ -1289,6 +1290,10 @@ export class OneBotHub extends EventEmitter {
     if (request.before && request.after) throw new Error('before 与 after 不能同时使用')
     const cursor = request.before || request.after
     const decodedCursor = cursor ? this.decodeHistoryCursor(cursor, account, type, peerId) : undefined
+    const usesMessageId = state.implementationKind === 'snowluma'
+    if (usesMessageId && decodedCursor && !decodedCursor.messageId) {
+      throw new Error('历史游标不属于当前协议端，请刷新消息历史')
+    }
     const direction = request.after ? 'after' : 'before'
     const requestCount = decodedCursor ? Math.min(count + 1, 100) : count
     const action = type === 'group' ? 'get_group_msg_history' : 'get_friend_msg_history'
@@ -1298,7 +1303,11 @@ export class OneBotHub extends EventEmitter {
       data = await this.requestHistory(state, action, {
         [key]: peerId,
         count: requestCount,
-        ...(decodedCursor ? { message_seq: decodedCursor.messageSeq } : {}),
+        ...(decodedCursor
+          ? usesMessageId
+            ? { message_id: Number(decodedCursor.messageId) }
+            : { message_seq: decodedCursor.messageSeq }
+          : {}),
         reverse_order: decodedCursor ? direction === 'before' : false,
         disable_get_url: false,
         parse_mult_msg: true,
@@ -1321,7 +1330,9 @@ export class OneBotHub extends EventEmitter {
         mapMessage(account, state.selfId, raw, (url) => this.registerMedia(url), type === 'private' ? peerId : undefined),
       )
       .filter((message): message is ChatMessage => Boolean(message))
-      .filter((message) => !decodedCursor || message.messageSeq !== decodedCursor.messageSeq)
+      .filter((message) => !decodedCursor || (usesMessageId
+        ? message.messageId !== decodedCursor.messageId
+        : message.messageSeq !== decodedCursor.messageSeq))
       .forEach((message) => byId.set(message.id, message))
     const mappedMessages = [...byId.values()]
     const messages =
@@ -1330,23 +1341,26 @@ export class OneBotHub extends EventEmitter {
           ? mappedMessages.slice(-count)
           : mappedMessages.slice(0, count)
         : mappedMessages
-    const firstSeq = messages.find((message) => message.messageSeq)?.messageSeq
-    const lastSeq = [...messages].reverse().find((message) => message.messageSeq)?.messageSeq
-    const boundarySeq = direction === 'before' ? firstSeq : lastSeq
+    const first = messages.find((message) => message.messageSeq)
+    const last = [...messages].reverse().find((message) => message.messageSeq)
+    const boundary = direction === 'before' ? first : last
+    const boundarySeq = boundary?.messageSeq
     let hasMoreInDirection = mappedMessages.length > count
     if (!hasMoreInDirection && boundarySeq) {
       try {
         const adjacent = await this.requestHistory(state, action, {
           [key]: peerId,
           count: 2,
-          message_seq: boundarySeq,
+          ...(usesMessageId ? { message_id: Number(boundary?.messageId) } : { message_seq: boundarySeq }),
           reverse_order: direction === 'before',
           disable_get_url: true,
           parse_mult_msg: false,
         }, direction)
         hasMoreInDirection = (adjacent.messages ?? []).some((message) => {
-          const sequence = String(message.message_seq ?? message.real_seq ?? '')
-          return Boolean(sequence) && sequence !== boundarySeq
+          const anchor = usesMessageId
+            ? String(message.message_id ?? '')
+            : String(message.message_seq ?? message.real_seq ?? '')
+          return Boolean(anchor) && anchor !== (usesMessageId ? boundary?.messageId : boundarySeq)
         })
       } catch (error) {
         // A transient boundary read must not hide a page that was already loaded.
@@ -1355,8 +1369,12 @@ export class OneBotHub extends EventEmitter {
     }
     return {
       messages: this.overlayRecalledMessages(messages, account, type, peerId, decodedCursor?.messageSeq, direction),
-      beforeCursor: firstSeq ? this.encodeHistoryCursor(account, type, peerId, firstSeq) : undefined,
-      afterCursor: lastSeq ? this.encodeHistoryCursor(account, type, peerId, lastSeq) : undefined,
+      beforeCursor: first?.messageSeq
+        ? this.encodeHistoryCursor(account, type, peerId, first.messageSeq, usesMessageId ? first.messageId : undefined)
+        : undefined,
+      afterCursor: last?.messageSeq
+        ? this.encodeHistoryCursor(account, type, peerId, last.messageSeq, usesMessageId ? last.messageId : undefined)
+        : undefined,
       hasMoreBefore: direction === 'before' && hasMoreInDirection,
       hasMoreAfter: direction === 'after' && hasMoreInDirection,
     }
@@ -1800,15 +1818,16 @@ export class OneBotHub extends EventEmitter {
         (version.app_name === 'LLOneBot' ||
           version.app_name === 'LuckyLilliaBot' ||
           version.app_name === 'llonebot')
-      const compatible = isNapCat || isLLOneBot
+      const isSnowLuma = version.app_name === 'SnowLuma' && version.protocol_version === 'v11'
+      const compatible = isNapCat || isLLOneBot || isSnowLuma
       state.compatible = compatible
-      state.implementationKind = isNapCat ? 'napcat' : isLLOneBot ? 'llonebot' : 'unknown'
+      state.implementationKind = isNapCat ? 'napcat' : isLLOneBot ? 'llonebot' : isSnowLuma ? 'snowluma' : 'unknown'
       state.implementationName = version.app_name || 'Unknown OneBot'
       state.implementationVersion = version.app_version
-      state.packetAvailable = isNapCat && await state.connection.request<null>('nc_get_packet_status').then(
+      state.packetAvailable = isSnowLuma || (isNapCat && await state.connection.request<null>('nc_get_packet_status').then(
         () => true,
         () => false,
-      )
+      ))
       state.account = mapAccount(login, this.oneBotAccountStatus(status.online, status.good, compatible))
       await this.refreshAccount(state, true)
       if (!this.isCurrent(state)) return
@@ -2458,6 +2477,11 @@ export class OneBotHub extends EventEmitter {
       ['group.essence', '当前工作台尚未对接 LLOneBot 精华消息'],
       ['group.announcements', '当前工作台尚未对接 LLOneBot 群公告'],
     ])
+    const snowLumaGaps: Partial<Record<CapabilityName, string>> = {
+      'directory.peer_pin': '当前工作台尚未对接 SnowLuma 会话置顶',
+      'request.friend.history': '当前 SnowLuma 无法回填普通好友申请历史',
+      'group.folder.rename': '当前工作台尚未对接 SnowLuma 群文件夹重命名',
+    }
     const minimumVersions = new Map<CapabilityName, string>([
       ['message.download.file', '4.8.0'],
       ['message.forward', '4.8.0'],
@@ -2490,13 +2514,15 @@ export class OneBotHub extends EventEmitter {
             ]
           }
         }
-        const gaps = state.implementationKind === 'llonebot' ? llOneBotGaps : napCatGaps
-        if (gaps.has(name)) {
+        const gap = state.implementationKind === 'snowluma'
+          ? snowLumaGaps[name]
+          : (state.implementationKind === 'llonebot' ? llOneBotGaps : napCatGaps).get(name)
+        if (gap) {
           return [
             name,
             {
               status: 'unsupported' as const,
-              reason: gaps.get(name),
+              reason: gap,
             },
           ]
         }
@@ -2505,7 +2531,7 @@ export class OneBotHub extends EventEmitter {
           name,
           {
             status: 'unsupported' as const,
-            reason: gaps.get(name) || `${state.implementationName} 支持该能力，但 Web 安全网关尚未实现`,
+            reason: `${state.implementationName} 支持该能力，但 Web 安全网关尚未实现`,
           },
         ]
       }),
@@ -2693,8 +2719,9 @@ export class OneBotHub extends EventEmitter {
     type: 'group' | 'private',
     peerId: string,
     messageSeq: string,
+    messageId?: string,
   ): string {
-    const payload: HistoryCursorPayload = { v: 1, accountId: account, type, peerId, messageSeq }
+    const payload: HistoryCursorPayload = { v: 1, accountId: account, type, peerId, messageSeq, messageId }
     const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url')
     const signature = createHmac('sha256', this.options.token).update(encoded).digest('base64url')
     return `${encoded}.${signature}`
@@ -2722,7 +2749,8 @@ export class OneBotHub extends EventEmitter {
       payload.accountId !== account ||
       payload.type !== type ||
       payload.peerId !== peerId ||
-      !/^\d{1,24}$/.test(payload.messageSeq)
+      !/^\d{1,24}$/.test(payload.messageSeq) ||
+      (payload.messageId !== undefined && !/^-?\d{1,24}$/.test(payload.messageId))
     ) {
       throw new Error('历史游标与当前会话不匹配')
     }

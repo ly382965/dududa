@@ -198,6 +198,7 @@ interface FakeNapCatOptions {
   groupFileCount?: number
   customFaceUrls?: string[]
   groupHistory?: (request: ActionRequest) => unknown[]
+  friendHistory?: (request: ActionRequest) => unknown[]
   forwardMessages?: (request: ActionRequest) => unknown[]
 }
 
@@ -425,7 +426,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         break
       case 'get_friend_msg_history':
         data = {
-          messages: [
+          messages: options.friendHistory?.(request) ?? [
             {
               self_id: Number(connectionSelfId),
               time: 1_785_742_400,
@@ -1653,6 +1654,55 @@ describe('Dududa NapCat gateway', () => {
     expect(acrossGap.messages.every((item) => Number(item.messageSeq) > 5)).toBe(true)
     expect(acrossGap.hasMoreAfter).toBe(true)
     llonebot.socket.close()
+  })
+
+  it('pages SnowLuma private history by signed message ID without dropping equal-sequence messages', async () => {
+    const { server, port, baseUrl } = await startTestServer()
+    servers.push(server)
+    const history = [-101, -205, -309, 411].map((id, index) => ({
+      self_id: Number(selfId),
+      time: 1_785_742_400 + index,
+      message_id: id,
+      message_seq: [7, 8, 8, 9][index],
+      user_id: index % 2 ? Number(selfId) : 456789012,
+      target_id: 456789012,
+      message_type: 'private',
+      post_type: 'message',
+      sender: { user_id: index % 2 ? Number(selfId) : 456789012, nickname: '私聊参与者' },
+      message: [{ type: 'text', data: { text: `私聊 ${id}` } }],
+    }))
+    const snowluma = connectFakeNapCat(port, {
+      appName: 'SnowLuma',
+      appVersion: '2.0.3-node',
+      packetAvailable: false,
+      friendHistory: ({ params }) => {
+        const anchor = Number(params.message_id || 0)
+        const index = anchor ? history.findIndex((message) => message.message_id === anchor) : history.length - 1
+        if (index < 0) return []
+        const count = Number(params.count)
+        return !anchor || params.reverse_order
+          ? history.slice(0, index + 1).slice(-count)
+          : history.slice(index, index + count)
+      },
+    })
+    await snowluma.ready
+    const account = `qq-${selfId}`
+    await waitFor(async () => {
+      const workspace = await (await fetch(`${baseUrl}/api/workspace`)).json() as { accounts: Array<{ status: string }> }
+      return workspace.accounts[0]?.status === 'online'
+    })
+    const url = `${baseUrl}/api/accounts/${account}/conversations/private/456789012/messages`
+    type Page = { messages: Array<{ messageId: string }>; beforeCursor: string; afterCursor: string; hasMoreBefore: boolean; hasMoreAfter: boolean }
+    const latest = await (await fetch(`${url}?limit=2`)).json() as Page
+    expect(latest.messages.map((message) => message.messageId)).toEqual(['-309', '411'])
+    expect(latest.hasMoreBefore).toBe(true)
+    const older = await (await fetch(`${url}?limit=2&before=${encodeURIComponent(latest.beforeCursor)}`)).json() as Page
+    expect(older.messages.map((message) => message.messageId)).toEqual(['-101', '-205'])
+    expect(older.hasMoreBefore).toBe(false)
+    const newer = await (await fetch(`${url}?limit=2&after=${encodeURIComponent(older.afterCursor)}`)).json() as Page
+    expect(newer.messages.map((message) => message.messageId)).toEqual(['-309', '411'])
+    expect(newer.hasMoreAfter).toBe(false)
+    snowluma.socket.close()
   })
 
   it('marks unknown OneBot implementations as degraded without capabilities', async () => {

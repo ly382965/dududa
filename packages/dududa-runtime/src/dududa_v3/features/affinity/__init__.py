@@ -244,12 +244,21 @@ class Ledger:
         return changed
 
     def members(self, conversation_id: str, now: float, exclude: set[str]) -> list[dict]:
+        # QQ group identity survives bot-account changes; retain account-specific observations.
+        group = re.fullmatch(r"qq-\d+:group:(\d+)", conversation_id)
+        scope = f"qq-%:group:{group[1]}" if group else conversation_id
+        operator = "LIKE" if group else "="
         with self.store.connect() as db:
             rows = db.execute(
                 "SELECT s.user_id, s.name, a.score, a.last_interaction FROM affinity_seen s "
-                "JOIN affinity a ON a.user_id=s.user_id WHERE s.conversation_id=? AND s.last_seen>=?",
-                (conversation_id, now - RANK_WINDOW_SECONDS)).fetchall()
-        return [dict(row) for row in rows if row["user_id"] not in exclude]
+                f"JOIN affinity a ON a.user_id=s.user_id WHERE s.conversation_id {operator} ? AND s.last_seen>=? "
+                "ORDER BY s.last_seen DESC, s.conversation_id",
+                (scope, now - RANK_WINDOW_SECONDS)).fetchall()
+        members: dict[str, dict] = {}
+        for row in rows:
+            if row["user_id"] not in exclude and row["user_id"] not in members:
+                members[row["user_id"]] = dict(row)
+        return list(members.values())
 
     def display_name(self, user_id: str, conversation_id: str | None = None) -> str | None:
         with self.store.connect() as db:
