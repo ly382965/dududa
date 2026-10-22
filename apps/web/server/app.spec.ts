@@ -215,6 +215,7 @@ interface FakeNapCatState {
   failureWording: string
   groupRequestChecked: boolean
   memberListGate?: Promise<void>
+  members?: unknown[]
 }
 
 function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
@@ -325,7 +326,7 @@ function connectFakeNapCat(port: number, options: FakeNapCatOptions = {}) {
         }
         break
       case 'get_group_member_list':
-        data = [
+        data = state.members ?? [
           {
             group_id: options.selfMemberGroupId ?? String(request.params.group_id ?? 345678901),
             user_id: Number(connectionSelfId),
@@ -591,6 +592,45 @@ afterEach(async () => {
 })
 
 describe('Dududa NapCat gateway', () => {
+  it('freshly rechecks both greeting recipient and bot membership instead of using cached members', async () => {
+    const { hub, server, port } = await startTestServer()
+    servers.push(server)
+    const bot = connectFakeNapCat(port)
+    await bot.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    await hub.memberDirectory(account, '345678901')
+    await expect(hub.validateRuntimeRecipient(account, 'group', '345678901', '234567890')).resolves.toBe(true)
+    bot.state.members = [{ group_id: 345678901, user_id: selfId }]
+    await expect(hub.validateRuntimeRecipient(account, 'group', '345678901', '234567890')).resolves.toBe(false)
+    bot.state.members = [{ group_id: 345678901, user_id: 234567890 }]
+    await expect(hub.validateRuntimeRecipient(account, 'group', '345678901', '234567890')).resolves.toBe(false)
+    bot.state.members = [{ group_id: 999999999, user_id: selfId }, { group_id: 345678901, user_id: 234567890 }]
+    await expect(hub.validateRuntimeRecipient(account, 'group', '345678901', '234567890')).resolves.toBe(false)
+    const checks = bot.actions.filter(item => item.action === 'get_group_member_list').slice(-4)
+    expect(checks).toHaveLength(4)
+    expect(checks.every(item => item.params.group_id === '345678901' && item.params.no_cache === true)).toBe(true)
+    expect(bot.actions.some(item => item.action === 'send_group_msg' || item.action === 'send_private_msg')).toBe(false)
+  })
+
+  it('checks private greeting friendship freshly and fails closed on unavailable targets', async () => {
+    const { hub, server, port } = await startTestServer()
+    servers.push(server)
+    const bot = connectFakeNapCat(port)
+    await bot.ready
+    await waitFor(async () => hub.workspaceSnapshot().accounts[0]?.status === 'online')
+    const account = `qq-${selfId}`
+    await expect(hub.validateRuntimeRecipient(account, 'private', '456789012', '456789012')).resolves.toBe(true)
+    bot.state.friends = []
+    await expect(hub.validateRuntimeRecipient(account, 'private', '456789012', '456789012')).resolves.toBe(false)
+    await expect(hub.validateRuntimeRecipient(account, 'private', '456789012', '234567890')).resolves.toBe(false)
+    bot.state.failedActions.add('get_group_member_list')
+    await expect(hub.validateRuntimeRecipient(account, 'group', '345678901', '234567890')).rejects.toThrow()
+    expect(bot.actions.filter(item => item.action === 'get_friend_list').slice(-2)
+      .every(item => item.params.no_cache === true)).toBe(true)
+    expect(bot.actions.some(item => item.action === 'send_private_msg')).toBe(false)
+  })
+
   it('builds merged summaries using the bot identity and exact target for group and private chats', async () => {
     const { hub, server, port } = await startTestServer()
     servers.push(server)

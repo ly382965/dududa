@@ -6,6 +6,7 @@ import asyncio
 import json
 import time
 from datetime import datetime
+from importlib.resources import files
 from zoneinfo import ZoneInfo
 
 from ..config import CHANNELS, SERVICES
@@ -30,6 +31,8 @@ def duration(seconds: float) -> str:
 
 
 async def help_command(ctx: Ctx) -> Reply:
+    if ctx.inbound.source == "qq":
+        return Reply().image(files("dududa_v3").joinpath("assets/dududa-guide.png").read_bytes())
     lines = ["【嘟嘟哒功能列表】", "用法：嘟嘟哒 <指令>、/<指令> 或 @嘟嘟哒 <指令>；其他内容直接当作提问。"]
     for command in ctx.runtime.registry.commands:
         if command.task and not ctx.runtime.task_enabled(command.task):

@@ -294,6 +294,8 @@ class Ctx(Toolkit):
     addressed: bool = False
     # Delivery hint set by host classification, never by user-supplied mention targets.
     mention_sender: bool = False
+    # Snapshot before this request's daily reward; privilege checks must not use rounded scores.
+    affinity_score: float | None = None
 
     @property
     def is_admin(self) -> bool:

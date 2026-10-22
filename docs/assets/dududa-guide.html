@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="嘟嘟哒 3.1.14 群友使用指南：全部公开命令、科大校园查询、创作、亲密度、自动功能与授权群用量统计。">
+  <title>嘟嘟哒 · 群友使用指南</title>
+  <style>
+    :root {
+      --canvas: #fffaf7;
+      --panel: #ffffff;
+      --border: #eee2de;
+      --ink: #332b30;
+      --muted: #786973;
+      --pink: #e86aa6;
+      --rose: #ad4779;
+      --pink-wash: #fff1f7;
+      --blue: #567c9a;
+      --blue-wash: #f1f6fa;
+      --green: #577e74;
+      --green-wash: #f0f7f3;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--canvas); }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 22px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, p, ul { margin: 0; }
+    ul { padding: 0; list-style: none; }
+    code { font-family: "DejaVu Sans Mono", "Noto Sans CJK SC", monospace; }
+    a { color: inherit; text-decoration-color: var(--border); text-underline-offset: 4px; }
+    .poster { width: min(1200px, 100%); margin: 0 auto; padding: 28px; }
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      align-items: center;
+      min-height: 365px;
+      overflow: hidden;
+      padding: 36px 38px 26px;
+      border: 2px solid var(--border);
+      border-radius: 30px;
+      background: radial-gradient(ellipse at 88% 40%, #f9dbe9 0, #fff3f8 36%, transparent 64%), var(--panel);
+    }
+    .hero::after {
+      position: absolute;
+      right: 40px;
+      bottom: 0;
+      left: 40px;
+      height: 4px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--pink), #f1b7cf 50%, #f6dfd5);
+      content: "";
+    }
+    .eyebrow {
+      display: inline-block;
+      padding: 5px 13px;
+      border: 1px solid #f0cede;
+      border-radius: 999px;
+      color: var(--rose);
+      background: #fff7fa;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: .12em;
+    }
+    h1 { margin-top: 15px; font-size: 76px; font-weight: 900; line-height: 1.2; letter-spacing: .04em; }
+    .hero-title { margin-top: 4px; color: var(--rose); font-size: 36px; font-weight: 600; letter-spacing: .14em; }
+    .hero-description { margin-top: 16px; font-size: 22px; }
+    .hero-meta { margin-top: 9px; color: var(--muted); font-size: 17px; }
+    .character { position: relative; align-self: end; }
+    .character::before {
+      position: absolute;
+      inset: 21% 6% 3%;
+      border: 1px solid #edcada;
+      border-radius: 50%;
+      background: #fff8fb;
+      content: "";
+    }
+    .character img { position: relative; display: block; width: 100%; height: auto; filter: drop-shadow(0 10px 12px #a9507420); }
+    .section {
+      margin-top: 22px;
+      padding: 27px 34px 23px;
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 4px 0 #e9dcd633;
+    }
+    .section-head { display: flex; align-items: center; gap: 15px; margin-bottom: 13px; }
+    .section-number {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 42px;
+      border-radius: 12px;
+      color: var(--rose);
+      background: var(--pink-wash);
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 42px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    h2 { font-size: 29px; font-weight: 700; letter-spacing: .03em; }
+    .section-label { margin-left: auto; color: var(--muted); font-size: 15px; letter-spacing: .09em; }
+    .section-intro { margin-bottom: 9px; color: var(--muted); font-size: 20px; }
+    .howto { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 18px; }
+    .howto li { padding: 14px 18px; border-radius: 14px; background: #fcf7f5; }
+    .howto strong { display: block; margin-bottom: 5px; color: var(--rose); font-size: 21px; }
+    .howto p { font-size: 19px; }
+    .howto code { font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 36px; }
+    .entry { min-width: 0; padding: 16px 0; border-bottom: 1px solid #f0e8e4; }
+    .entry.wide { grid-column: 1 / -1; }
+    .entry:nth-last-child(-n+2) { border-bottom: 0; }
+    .entry h3 { margin-bottom: 4px; font-size: 23px; font-weight: 700; }
+    .entry h3 code { font-size: 21px; font-weight: 700; overflow-wrap: anywhere; }
+    .entry p { font-size: 21px; line-height: 1.6; }
+    .aliases { margin-top: 4px; color: var(--muted); font-size: 17px; line-height: 1.65; overflow-wrap: anywhere; }
+    .aliases code { font-size: inherit; }
+    .sample { color: var(--rose); }
+    .tag {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 9px;
+      border-radius: 7px;
+      color: var(--rose);
+      background: var(--pink-wash);
+      font-size: 16px;
+      font-weight: 500;
+      vertical-align: 2px;
+      white-space: nowrap;
+    }
+    .tag.private { color: var(--blue); background: var(--blue-wash); }
+    .tag.config { color: var(--green); background: var(--green-wash); }
+    .note { margin-top: 12px; color: var(--muted); font-size: 18px; line-height: 1.7; }
+    .conversation-note {
+      margin: 10px 0 2px;
+      padding: 14px 19px;
+      border-left: 3px solid var(--pink);
+      border-radius: 0 12px 12px 0;
+      background: #fff8fb;
+      font-size: 20px;
+    }
+    .conversation-note strong { color: var(--rose); }
+    .affinity {
+      margin-top: 12px;
+      padding: 20px 23px;
+      border: 2px solid #edb6d1;
+      border-radius: 16px;
+      background: #fffbfd;
+    }
+    .affinity-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .affinity h3 { color: var(--rose); font-size: 24px; }
+    .affinity .entry { padding: 13px 0 6px; border: 0; }
+    .affinity .entry h3 { color: var(--ink); font-size: 21px; }
+    .affinity .entry p { font-size: 20px; }
+    .affinity .note { margin-top: 8px; font-size: 17px; }
+    .tiers { display: flex; flex-wrap: wrap; gap: 10px 25px; margin-top: 13px; padding-top: 13px; border-top: 1px solid #efdae5; font-size: 17px; }
+    .tiers li::before { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: currentColor; content: ""; }
+    .tiers .dislike { color: #bc5862; }
+    .tiers .neutral { color: #a18467; }
+    .tiers .ordinary { color: #777b83; }
+    .tiers .like { color: #567f9e; }
+    .tiers .love { color: #ba548a; }
+    .subheading { margin: 15px 0 2px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--blue); font-size: 20px; font-weight: 600; }
+    .usage-banner { margin: 8px 0 2px; padding: 13px 18px; border-radius: 12px; background: #fbf5f8; font-size: 20px; }
+    .usage-banner code { color: var(--rose); font-weight: 700; }
+    .subcommands .entry { padding-top: 13px; padding-bottom: 13px; }
+    .subcommands .entry h3 code { font-size: 20px; }
+    .subcommands .entry p { font-size: 20px; }
+    .footer { padding: 26px 8px 8px; }
+    .footer-heading { color: var(--rose); font-size: 21px; font-weight: 700; }
+    .footer p { margin-top: 7px; color: var(--muted); font-size: 17px; line-height: 1.8; }
+    .footer-line { display: flex; justify-content: space-between; gap: 16px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 16px; }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: minmax(0, 1fr) 290px; padding: 28px; }
+      h1 { font-size: 62px; }
+      .hero-title { font-size: 30px; }
+      .hero-description { font-size: 19px; }
+      .howto { grid-template-columns: 1fr; gap: 10px; }
+      .howto li { display: flex; align-items: baseline; gap: 16px; }
+      .howto strong { flex: 0 0 86px; margin: 0; }
+      .section-label { display: none; }
+    }
+    @media (max-width: 650px) {
+      body { font-size: 17px; }
+      .poster { padding: 12px; }
+      .hero { grid-template-columns: minmax(0, 1fr) 145px; gap: 0; min-height: 245px; padding: 23px 18px; border-radius: 22px; }
+      .eyebrow { padding: 4px 8px; font-size: 10px; letter-spacing: .06em; }
+      h1 { margin-top: 13px; font-size: 43px; letter-spacing: 0; }
+      .hero-title { font-size: 25px; letter-spacing: .04em; }
+      .hero-description { margin-top: 12px; font-size: 15px; }
+      .hero-meta { font-size: 13px; }
+      .character { align-self: center; }
+      .section { margin-top: 14px; padding: 20px 20px 16px; border-radius: 18px; }
+      .section-head { gap: 10px; margin-bottom: 12px; }
+      .section-number { width: 34px; height: 34px; border-radius: 9px; font-size: 16px; line-height: 34px; }
+      h2 { font-size: 22px; letter-spacing: 0; }
+      .subcommands .section-head { display: grid; grid-template-columns: 34px minmax(0, 1fr); }
+      .subcommands .section-head > .tag { grid-column: 2; justify-self: start; margin-left: 0; }
+      .section-intro, .conversation-note { font-size: 16px; }
+      .howto li { display: block; padding: 12px 14px; }
+      .howto strong { margin-bottom: 4px; font-size: 18px; }
+      .howto p, .howto code { font-size: 16px; }
+      .grid { grid-template-columns: minmax(0, 1fr); }
+      .entry { padding: 14px 0; }
+      .entry:nth-last-child(-n+2) { border-bottom: 1px solid #f0e8e4; }
+      .entry:last-child { border-bottom: 0; }
+      .entry h3 { font-size: 19px; }
+      .entry h3 code, .subcommands .entry h3 code { font-size: 17px; }
+      .entry p, .subcommands .entry p, .affinity .entry p { font-size: 17px; }
+      .aliases, .note { font-size: 14px; }
+      .tag { margin-left: 5px; font-size: 12px; vertical-align: 1px; }
+      .affinity { padding: 16px; }
+      .affinity-head { align-items: flex-start; flex-direction: column; gap: 6px; }
+      .affinity-head .tag { margin-left: 0; }
+      .affinity h3 { font-size: 21px; }
+      .affinity .entry { border: 0; }
+      .affinity .note { font-size: 14px; }
+      .tiers { gap: 8px 15px; font-size: 14px; }
+      .subheading, .usage-banner { font-size: 16px; }
+      .footer { padding: 20px 6px 9px; }
+      .footer-heading { font-size: 18px; }
+      .footer p, .footer-line { font-size: 13px; }
+      .footer-line { flex-direction: column; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+<!--
+  Static HTML/CSS, no framework, script, remote font or runtime API dependency.
+  Baseline feature handlers and the public MCP catalog were audited for 3.1.15
+  on 2026-10-20; authorized BB subscriptions were added in 3.1.16.
+  Admin and owner-only handlers are excluded.
+  Colors and rounded panels follow features/affinity/render.py.
+  Character: cropped and alpha-masked from the unchanged original artwork at
+  ../../legacy/2.0/docs/assets/dududa-poster.png; no character redesign.
+-->
+<main class="poster" id="poster">
+  <header class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">DUDUDA / USER GUIDE</span>
+      <h1>嘟嘟哒</h1>
+      <p class="hero-title">群友使用指南</p>
+      <p class="hero-description">生活在 QQ 群里的 AI 群友</p>
+      <p class="hero-meta">3.1.16 · 非管理员命令与功能全览</p>
+    </div>
+    <div class="character">
+      <img src="dududa-character.webp" width="405" height="380" alt="保留原设定的嘟嘟哒：白发猫耳、粉色蝴蝶结与粉色袖子的虚拟形象">
+    </div>
+  </header>
+
+  <section class="section" aria-labelledby="start-title">
+    <div class="section-head"><span class="section-number">01</span><h2 id="start-title">先叫到我，再开始吧</h2><span class="section-label">GET STARTED</span></div>
+    <ul class="howto">
+      <li><strong>群里提问</strong><p><code>@嘟嘟哒 你的问题</code><br>也可用“嘟嘟哒”或“dududa”开头。</p></li>
+      <li><strong>使用命令</strong><p><code>/天气 合肥 明天</code><br>或发送 <code>嘟嘟哒 天气 合肥 明天</code>。</p></li>
+      <li><strong>私聊交流</strong><p>直接说话，命令前缀可省略。<br>问问题、发图片、接着上文聊都可以。</p></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="daily-title">
+    <div class="section-head"><span class="section-number">02</span><h2 id="daily-title">日常查询与资讯</h2><span class="section-label">EVERYDAY & UPDATES</span></div>
+    <ul class="grid">
+      <li class="entry" data-command="help"><h3><code>/帮助</code></h3><p>以图片查看群友命令、功能与使用条件。</p><div class="aliases">别名：<code>help</code> · 菜单</div></li>
+      <li class="entry" data-command="ping"><h3><code>/在吗</code></h3><p>看看我在不在线；连续刷屏会暂时不回应。</p><div class="aliases">别名：<code>ping</code> · 在不在</div></li>
+      <li class="entry" data-command="status"><h3><code>/状态</code></h3><p>查看版本、服务时长、当前模型与运行任务。</p><div class="aliases">别名：<code>status</code></div></li>
+      <li class="entry" data-command="time"><h3><code>/时间</code></h3><p>上海、洛杉矶、纽约、巴黎时间，自动处理夏令时。</p><div class="aliases">别名：<code>time</code> · 几点了</div></li>
+      <li class="entry" data-command="天气"><h3><code>/天气 [城市] [日期]</code></h3><p>日期可写今天、明天、后天；默认城市合肥。</p><div class="aliases">别名：<code>weather</code> · 直接提问还可查未来 1–7 天天气、降雨时段。</div></li>
+      <li class="entry" data-command="shuttle"><h3><code>/校车 &lt;条件&gt;</code></h3><p>按校区、路线、日期和时间查询科大校车班次。</p><div class="aliases">别名：<code>shuttle</code> · 例：<span class="sample">校车 明天东区到西区</span></div></li>
+      <li class="entry" data-command="新闻"><h3><code>/新闻</code></h3><p>今天的橘鸦 AI 早报：新闻概览与原文链接。</p><div class="aliases">别名：<code>news</code> · 早报</div></li>
+      <li class="entry" data-command="状态告警"><h3><code>/状态告警</code></h3><p>查询 OpenAI、Anthropic、DeepSeek 服务状态。</p><div class="aliases">别名：<code>llm status</code> · <code>llm状态</code></div></li>
+      <li class="entry" data-command="博客"><h3><code>/博客 &lt;公司&gt;</code></h3><p>OpenAI 或 Anthropic 官方博客最新 5 条。</p><div class="aliases">别名：<code>blog</code> · 公司简写：<code>O/</code>、<code>O\</code>、<code>A/</code>、<code>A\</code></div></li>
+      <li class="entry" data-command="播客"><h3><code>/播客 &lt;公司&gt;</code></h3><p>OpenAI 或 Anthropic 官方播客、视频最新 5 期。</p><div class="aliases">别名：<code>podcast</code> · 公司写法与“博客”相同。</div></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="chat-title">
+    <div class="section-head"><span class="section-number">03</span><h2 id="chat-title">聊天、记忆与上下文</h2><span class="section-label">CHAT & MEMORY</span></div>
+    <p class="conversation-note" data-feature="agent"><strong>不必把问题写成命令。</strong>直接聊天、问代码、请我解释图片或查资料；我能结合引用、发送者身份和近期上下文回答，必要时联网搜索。</p>
+    <ul class="grid">
+      <li class="entry" data-command="群里最近在说什么"><h3><code>/总结群聊 [时间范围]</code></h3><p>按话题梳理讨论经过与结论；默认近 3 小时，可写“今日”“近 5h”。长总结以合并转发发送。</p><div class="aliases">别名：群里最近在说什么 · 近期消息省流 · <code>summary</code></div></li>
+      <li class="entry" data-command="remember"><h3><code>/记住 &lt;内容&gt;</code></h3><p>把指定内容保存为当前会话的显式记忆。</p><div class="aliases">别名：<code>remember</code> · 不同会话的记忆相互隔离。</div></li>
+      <li class="entry" data-command="memory"><h3><code>/记忆 [关键词]</code></h3><p>按关键词查找记忆；不写关键词时看最近记录。</p><div class="aliases">别名：<code>memory</code></div></li>
+      <li class="entry" data-command="forget"><h3><code>/忘记 &lt;编号&gt;</code></h3><p>删除自己在当前会话写入的那条记忆。</p><div class="aliases">别名：<code>forget</code></div></li>
+      <li class="entry" data-command="cancel"><h3><code>/取消</code></h3><p>取消当前会话正在执行或排队的任务。</p><div class="aliases">别名：<code>cancel</code></div></li>
+      <li class="entry" data-command="new"><h3><code>/新对话</code></h3><p>结束当前任务，重新开始 AI 对话；显式记忆保留。</p><div class="aliases">别名：<code>new</code></div></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="creative-title">
+    <div class="section-head"><span class="section-number">04</span><h2 id="creative-title">创作，也慢慢熟悉彼此</h2><span class="section-label">CREATE & CONNECT</span></div>
+    <ul class="grid">
+      <li class="entry" data-command="生图"><h3><code>/生图 &lt;描述&gt;</code></h3><p>画一张新图，也可附带或引用参考图进行创作。通常需要 1–3 分钟。</p><div class="aliases">别名：画图 · <code>draw</code> · <code>image gen</code> · <code>img</code> · <code>imggen</code> · <code>img gen</code></div></li>
+      <li class="entry" data-command="表情合成"><h3><code>/表情合成 &lt;表情1&gt; &lt;表情2&gt;</code></h3><p>将两个受支持的表情合成为 Emoji Kitchen 图片。</p><div class="aliases">别名：<code>emoji</code> · 直接发送两个表情作为参数。</div></li>
+    </ul>
+    <div class="affinity" data-command="亲密度" data-feature="affinity">
+      <div class="affinity-head"><h3>亲密度 · 每一次相处都会留下印象</h3><span class="tag">亲密度 ≥ 50 可查询与设置</span></div>
+      <ul class="grid">
+        <li class="entry"><h3><code>/亲密度</code></h3><p>显示群排行：Top 5 与 Low 5，人数较少时合并展示。</p><div class="aliases">别名：好感度；也可用 亲密度排行 · 亲密度 排行 / 排名 / 榜</div></li>
+        <li class="entry"><h3><code>/亲密度 all</code></h3><p>显示本群完整排行图片，含名片、QQ、分数与档位。</p><div class="aliases">参数同义：全部 · 全员 · 所有人 · 全部人</div></li>
+      </ul>
+      <p class="note">群榜统计最近 90 天在该群与我互动过的人；普通用户私聊时显示其最近活跃群。分数按 QQ 共享，同群换号不丢记录；恰好 50 分也能查询。</p>
+      <ul class="tiers" aria-label="亲密度档位"><li class="dislike">特别讨厌</li><li class="dislike">讨厌</li><li class="neutral">反感</li><li class="ordinary">普通</li><li class="like">好感</li><li class="love">喜欢</li><li class="love">特别喜欢</li></ul>
+      <div class="subheading">个人设置 · 只操作自己的资料，不改变群名片</div>
+      <ul class="grid">
+        <li class="entry"><h3><code>/亲密度 设置 [查看]</code></h3><p>查看本人在当前会话的称呼、偏好与约定。</p><div class="aliases"><code>/亲密度 设置 称呼 &lt;名字&gt;</code> 设置认可的称呼。</div></li>
+        <li class="entry"><h3><code>/亲密度 设置 保存 &lt;偏好|约定&gt; &lt;内容&gt;</code></h3><p>明确同意保存内容，只在当前会话使用；保存约定需已建立闺蜜关系。</p></li>
+        <li class="entry"><h3><code>/亲密度 设置 关系卡 [基本|特别]</code></h3><p>查看关系卡；<code>设置 样式 &lt;基本|特别&gt;</code> 保存卡片样式。需要已建立关系。</p><div class="aliases"><code>设置 特别称呼 &lt;名字&gt;</code> 与特别样式还需亲密度 ≥ 80。</div></li>
+        <li class="entry"><h3><code>/亲密度 设置 删除 &lt;编号|称呼|特别称呼|全部&gt;</code></h3><p>删除本人设置；“全部”清除本人各会话的设置与约定，不清除分数或关系。</p><div class="aliases">也可通过 <code>/亲密度 设置 问候 …</code> 管理问候。</div></li>
+      </ul>
+      <div class="subheading">关系与问候 · 由本人确认，不自动订阅</div>
+      <ul class="grid">
+        <li class="entry" data-command="闺蜜"><h3><code>/闺蜜 [申请|确认|状态|关系卡|解除]</code></h3><p>亲密度严格大于 50 才可建立关系；申请后需本人在同一会话内确认，10 分钟有效。</p><div class="aliases">关系卡也可写“卡”；关系非恋爱、非排他，建立后不会自动开启问候。</div><div class="aliases" data-command="做闺蜜">也可 @ 我说：做闺蜜 · 和我做闺蜜 · 我们做闺蜜吧 · 我们可以做闺蜜吗 · 可以和我做闺蜜吗。</div></li>
+        <li class="entry" data-command="申诉"><h3><code>/申诉 [说明]</code></h3><p>请求管理员复核误判，不会自动加分；同一人仅保留一条待处理申请。</p><div class="aliases"><code>/申诉 状态</code> 查看进度；处理结论回提交申诉的会话查看。</div></li>
+      </ul>
+      <div data-command="问候">
+        <ul class="grid">
+          <li class="entry"><h3><code>/问候 早安 &lt;HH:MM&gt;</code><br><code>/问候 晚安 &lt;HH:MM&gt;</code></h3><p>亲密度 ≥ 50 可分别开启。默认关闭，时区为上海；例如 <code>/问候 早安 08:00</code>。</p></li>
+          <li class="entry"><h3><code>/问候 生日 &lt;MM-DD&gt; &lt;HH:MM&gt;</code><br><code>/问候 纪念日 &lt;YYYY-MM-DD&gt; &lt;HH:MM&gt;</code></h3><p>亲密度 ≥ 80 且已建立关系时可单独开启。日期由本人提供，不会自动公开生日。</p></li>
+          <li class="entry"><h3><code>/问候 [状态]</code><br><code>/问候 确认 &lt;早安|晚安|生日|纪念日&gt;</code></h3><p>查看订阅；换会话开启时，需在新会话内确认替换，每种问候只保留一个目标。</p></li>
+          <li class="entry"><h3><code>/问候 关闭</code></h3><p>关闭全部本人问候；也可分别使用“关闭早安 / 关闭晚安 / 关闭生日 / 关闭纪念日”。</p></li>
+        </ul>
+        <p class="note">群里开启就在该群 @ 本人，私聊开启才发私聊；群目标须同时允许服务和主动消息。每人每天每种最多一次，不向共同群广播；失去权限会暂停，恢复后需重新开启。</p>
+      </div>
+      <p class="note">关系降至 50 分及以下会暂停亲密权益与问候；关系仍保留。严重负面状态会限制普通回复和娱乐功能，但解除关系、关闭问候、删除本人数据与申诉在任何分数下均可使用。</p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="campus-title">
+    <div class="section-head"><span class="section-number">05</span><h2 id="campus-title">科大校园助手</h2><span class="section-label">CAMPUS QUERIES</span></div>
+    <p class="section-intro">不用背命令，直接说想查什么。以下查询由已接入的校园服务提供。</p>
+    <ul class="grid">
+      <li class="entry" data-capabilities="icourse.course.get.v1 icourse.courses.search.v1 icourse.public-query.v2 icourse.reviews.get.v1 icourse.stats.read.v1"><h3>课程口碑 · iCourse</h3><p>找课程和老师，查看课程详情、评价、排行与公开统计。</p><div class="aliases sample">“这门课大家评价怎么样？”</div></li>
+      <li class="entry" data-capabilities="notifai.categories.list.v1 notifai.notices.calendar.v1 notifai.notices.deadlines.v1 notifai.notices.get.v1 notifai.notices.search.v1 notifai.sources.list.v1 notifai.stats.read.v1"><h3>校园通知 · NotifAI</h3><p>检索通知与详情，查看分类、来源、日历、截止日期及同步统计。</p><div class="aliases sample">“这周有哪些快截止的通知？”</div></li>
+      <li class="entry" data-capabilities="ustc.academic.lessons.search.v1 ustc.academic.semesters.list.v1"><h3>学期与开课</h3><p>查询学期列表、全校开课信息，按条件筛选课程。</p><div class="aliases sample">“这学期开了哪些机器学习相关课程？”</div></li>
+      <li class="entry" data-capabilities="ustc.academic.calendar.get.v1 ustc.academic.exams.search.v1"><h3>考试与教学日历</h3><p>查询官方考试安排、教学日历与重要日期。</p><div class="aliases sample">“查一下考试安排和教学周历。”</div></li>
+      <li class="entry" data-capabilities="ustc.curriculum.public-query.v1"><h3>培养方案资料</h3><p>按年级、专业检索公开方案，比较课程要求与变化；使用资料快照。</p><div class="aliases sample">“这个专业不同年级的培养方案有哪些区别？”</div></li>
+      <li class="entry" data-capabilities="ustc.young.activities.search.v1 ustc.young.activity.get.v1 ustc.young.connection.status.v1 ustc.young.facets.list.v1"><h3>第二课堂</h3><p>查活动、详情与系列场次，按模块、部门和标签筛选，也可检查服务连接。</p><div class="aliases sample">“最近有哪些第二课堂活动？”</div></li>
+    </ul>
+    <p class="subheading">这些资料请在私聊中问我 <span class="tag private">私聊限定 · 只读缓存</span></p>
+    <ul class="grid">
+      <li class="entry" data-capabilities="console.campus-events.query.v1 console.college-notice.query.v1"><h3>学校与学院公告</h3><p>检索学校主页公告、学院通知，附摘要、来源和已有附件链接。</p></li>
+      <li class="entry" data-capabilities="console.library.query.v1"><h3>图书馆开放时间</h3><p>按校区或地点查业务内容、工作日 / 周末时段及联系电话。</p></li>
+      <li class="entry" data-capabilities="console.local-recs.query.v1"><h3>校园生活参考</h3><p>查餐饮、活动、学习去处，按校区、餐次、价位筛选；不是实时营业信息。</p></li>
+      <li class="entry" data-capabilities="console.training-plan.query.v1"><h3>本科专业设置</h3><p>按年份、学院查专业、代码、学位与停招标记；不等同于实时培养方案审核。</p></li>
+    </ul>
+    <p class="note">还可以问“你能查哪些校园服务？”。资料可能来自缓存或历史快照，以返回的来源、更新时间和学校正式页面为准；本页校园查询不执行选课、报名或提交操作。</p>
+  </section>
+
+  <section class="section" aria-labelledby="automatic-title">
+    <div class="section-head"><span class="section-number">06</span><h2 id="automatic-title">自动小功能与课程订阅</h2><span class="section-label">AUTOMATIC FEATURES</span></div>
+    <p class="section-intro">不用每次 @ 我；满足条件且功能已开启时自动工作。</p>
+    <ul class="grid">
+      <li class="entry" data-feature="link_preview"><h3>链接解析</h3><p>为 B 站、公众号、X、arXiv、bioRxiv / medRxiv、Nature、Science 及官方博客 / 播客链接补标题、干净链接与封面。</p></li>
+      <li class="entry" data-feature="xhs_archive"><h3>小红书归档</h3><p>分享笔记后，归档正文及无水印图片 / 视频，并以合并转发发出；受来源访问权限影响。</p></li>
+      <li class="entry" data-feature="cat_hearts"><h3>猫图点爱心</h3><p>识别群聊图片里的猫，给原消息贴爱心回应；每群每小时最多 30 次。</p></li>
+      <li class="entry" data-feature="repeater"><h3>复读机</h3><p>群友连续发出相同文字、图片或表情时，跟着复读一次。</p></li>
+      <li class="entry" data-feature="proactive"><h3>主动参与聊天<span class="tag config">指定群</span></h3><p>在允许的群里结合上下文适时接话；没有值得说的就保持安静。</p></li>
+      <li class="entry" data-feature="recall"><h3>防撤回转发<span class="tag config">启用群</span></h3><p>收到撤回事件时，将缓存到的原消息文字、图片与发送者信息转回群中。</p></li>
+      <li class="entry" data-feature="llm_status_alerts"><h3>服务故障 / 恢复通知<span class="tag config">需配置</span></h3><p>检查 OpenAI、Anthropic、DeepSeek 的状态变化，向配置的接收目标推送。</p></li>
+      <li class="entry" data-feature="news_push"><h3>定时 AI 早报<span class="tag config">默认关闭</span></h3><p>启用并配置接收目标后，按设定时刻推送橘鸦 AI 早报；手动查新闻不受此开关限制。</p></li>
+      <li class="entry wide" data-feature="notify_blackboard" data-command="课程"><h3>BB 课程通知<span class="tag private">授权订阅者私聊</span></h3><p>自动检查当前学期的作业、公告和课件，用 Luna 提取课件内作业、截止依据及摘要，推送提醒与图文日报；空课程继续检查但不展示。</p><div class="aliases"><code>/课程 [学号] 列表</code> · <code>今日</code> · <code>状态</code><br><code>/课程 完成 学号:C1</code> · <code>/课程 恢复 学号:C1</code><br><code>/课程 截止 学号:C1 YYYY-MM-DD HH:MM</code></div><p>需由账号持有人授权配置。账号之间独立，只更改本地任务状态，不提交作业；主人省略学号时仍操作原账号。</p></li>
+    </ul>
+  </section>
+
+  <section class="section subcommands" aria-labelledby="usage-title" data-command="sub2api">
+    <div class="section-head"><span class="section-number">07</span><h2 id="usage-title">授权群的用量查询</h2><span class="tag">Sub2API · 仅授权范围</span></div>
+    <p class="section-intro">无需管理员身份，但必须在已授权的会话中使用。用量专用群可能只开放这组命令。</p>
+    <div class="usage-banner"><code>/sub2api &lt;子命令&gt;</code>　入口别名：<code>/sub2</code>、<code>/用量</code></div>
+    <ul class="grid">
+      <li class="entry" data-subcommand="help"><h3><code>help</code></h3><p>查看本模块帮助与参数说明。</p><div class="aliases">同义：帮助</div></li>
+      <li class="entry" data-subcommand="overview"><h3><code>overview</code></h3><p>合并查看今日、当前计费轮、历史累计与上游账号。</p><div class="aliases">同义：概览 · 汇总</div></li>
+      <li class="entry" data-subcommand="today"><h3><code>today</code></h3><p>今日用量与用户排名。</p><div class="aliases">同义：今日 · 今天</div></li>
+      <li class="entry" data-subcommand="total"><h3><code>total</code></h3><p>历史累计用量。</p><div class="aliases">同义：历史 · 累计</div></li>
+      <li class="entry" data-subcommand="range"><h3><code>range &lt;开始日期&gt; &lt;结束日期&gt;</code></h3><p>指定日期区间的用量汇总。</p><div class="aliases">同义：范围 · 区间</div></li>
+      <li class="entry" data-subcommand="trendtotal"><h3><code>trendtotal [Nd]</code></h3><p>总 Token 用量趋势图。</p><div class="aliases">同义：<code>trend</code> · 总趋势</div></li>
+      <li class="entry" data-subcommand="trenduser"><h3><code>trenduser [sum] [Nd]</code></h3><p>用户用量趋势；加 <code>sum</code> 看区间累计趋势。</p><div class="aliases">同义：用户趋势</div></li>
+      <li class="entry" data-subcommand="users"><h3><code>users [开始日期 结束日期]</code></h3><p>用户用量排名，不写日期时查看今日。</p><div class="aliases">同义：用户 · 排名 · 排行</div></li>
+      <li class="entry" data-subcommand="models"><h3><code>models [开始日期 结束日期]</code></h3><p>按模型查看用量，不写日期时查看今日。</p><div class="aliases">同义：模型</div></li>
+      <li class="entry" data-subcommand="accounts"><h3><code>accounts</code></h3><p>上游账号状态列表。</p><div class="aliases">同义：账号 · 账户</div></li>
+      <li class="entry" data-subcommand="account"><h3><code>account &lt;ID&gt;</code></h3><p>单个上游账号的状态与今日用量。</p><div class="aliases">同义：单账号 · 单账户</div></li>
+      <li class="entry" data-subcommand="status"><h3><code>status</code></h3><p>检查用量服务的连接和统计状态。</p><div class="aliases">同义：状态 · 连接</div></li>
+    </ul>
+    <p class="note">示例：<code>/用量 今日</code>、<code>/sub2api trend 7d</code>。日期格式为 <code>YYYY-MM-DD</code>，<code>Nd</code> 表示近 N 天；统计范围与显示条数遵循授权配置。</p>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-heading">小提示 · 把问题说清楚，比把命令背下来更重要</div>
+    <p><code>&lt;参数&gt;</code> 表示需要填写，<code>[参数]</code> 表示可以省略；发送时不带括号，参数之间用空格分隔。群里未知的斜杠指令会被忽略。</p>
+    <p>仅在已接入的群和私聊中服务。默认频率限制为每 5 分钟群聊 30 次、私聊 50 次主动回复；功能受会话配置与数据源状态影响。本页不包含管理指令及主人专属的研究生作业、周报操作。</p>
+    <div class="footer-line"><span>嘟嘟哒 · Dududa 3.1.16　/　2026.10.23</span><a href="https://github.com/ly382965/dududa">github.com/ly382965/dududa</a></div>
+  </footer>
+</main>
+</body>
+</html>

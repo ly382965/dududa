@@ -187,7 +187,7 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     # ------------------------------------------------------------ routing
 
     async def test_commands_never_construct_the_client(self):
-        for text in ('/ping', '嘟嘟哒 帮助', '/status', '嘟嘟哒 时间', '嘟嘟哒，几点了？', '嘟嘟哒 规则问候',
+        for text in ('/ping', '/status', '嘟嘟哒 时间', '嘟嘟哒，几点了？', '嘟嘟哒 规则问候',
                      '/校车 工作日东区到西区最早一班', '嘟嘟哒 记住 喜欢绿茶', '/记忆 绿茶'):
             result = await self.execute(text)
             self.assertEqual(result['runtime'], RUNTIME, text)
@@ -199,11 +199,20 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('喜欢绿茶', result['text'])
         self.assertEqual(self.omp.instances, [])
 
+    async def test_qq_help_uses_packaged_image_without_repository_assets(self):
+        self.runtime.settings = dataclasses.replace(self.settings, root=self.state)
+        result = await self.execute('/help', mentioned=True)
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual([action['type'] for action in result['actions']], ['image'])
+        image = result['actions'][0]
+        self.assertEqual(image['mime'], 'image/png')
+        self.assertEqual(base64.b64decode(image['data'])[:8], b'\x89PNG\r\n\x1a\n')
+        self.assertEqual(self.omp.instances, [])
+
     async def test_help_hides_admin_commands_from_ordinary_users(self):
-        ordinary = await self.execute('嘟嘟哒 帮助')
-        self.assertIn('【嘟嘟哒功能列表】', ordinary['text'])
+        ordinary = await self.execute('嘟嘟哒 帮助', source='web')
         self.assertNotIn('task list', ordinary['text'])
-        admin = await self.admin('/help')
+        admin = await self.admin('/help', source='web')
         self.assertIn('task list', admin['text'])
 
     async def test_routing_prefixes_and_exact_commands(self):

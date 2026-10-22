@@ -1,4 +1,5 @@
 BB_ORIGIN = "https://www.bb.ustc.edu.cn"
+BB_PORTAL_URL = BB_ORIGIN + "/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_1_1"
 ALGORITHM_URL = "http://home.ustc.edu.cn/~wx309/lecture/alg2026/"
 NETWORK_URL = "https://acn-2026.github.io/"
 DEFAULT_COURSES = [
@@ -45,8 +46,41 @@ DEFAULT_COURSES = [
 ]
 
 
-def validate_courses(courses):
+def blackboard_course_id(url):
+    """Recognize only course navigation URLs, never assessment/attempt links."""
+    import re
     from urllib.parse import parse_qs, urlsplit
+
+    parts = urlsplit(url)
+    if (
+        parts.scheme != "https"
+        or parts.hostname != "www.bb.ustc.edu.cn"
+        or parts.username
+        or parts.password
+        or parts.port not in (None, 443)
+    ):
+        return None
+    query = parse_qs(parts.query)
+    if parts.path == "/webapps/blackboard/execute/launcher":
+        if query.get("type") != ["Course"] or query.get("url") not in (None, [""]):
+            return None
+        values = query.get("id", [])
+    elif parts.path in {
+        "/webapps/blackboard/content/listContent.jsp",
+        "/webapps/blackboard/execute/courseMain",
+    }:
+        values = query.get("course_id", [])
+        if parts.path.endswith("/listContent.jsp") and not query.get("content_id"):
+            return None
+    else:
+        return None
+    if len(values) == 1 and re.fullmatch(r"_\d+_\d+", values[0]):
+        return values[0]
+    return None
+
+
+def validate_courses(courses):
+    from urllib.parse import urlsplit
 
     ids = set()
     for course in courses:
@@ -59,14 +93,7 @@ def validate_courses(courses):
         ids.add(course["id"])
         parts = urlsplit(course["url"])
         if course["kind"] == "blackboard":
-            if (
-                parts.scheme != "https"
-                or parts.hostname != "www.bb.ustc.edu.cn"
-                or parts.path != "/webapps/blackboard/content/listContent.jsp"
-                or not all(
-                    parse_qs(parts.query).get(k) for k in ("course_id", "content_id")
-                )
-            ):
+            if not blackboard_course_id(course["url"]):
                 raise ValueError("invalid_blackboard_course_url")
         elif course["kind"] == "website":
             if course["url"] not in {ALGORITHM_URL, NETWORK_URL}:

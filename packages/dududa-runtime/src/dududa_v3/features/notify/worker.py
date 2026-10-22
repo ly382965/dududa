@@ -10,17 +10,24 @@ from datetime import datetime
 from pathlib import Path
 
 import tomllib
-from campus_auth import CampusAuthError, graduate_session
-from portal_diagnostics import PortalResponseError
-from seminar_client import create_seminar_client
+
+if __package__:
+    from .campus_auth import CampusAuthError, graduate_session
+    from .portal_diagnostics import PortalResponseError
+    from .seminar_client import create_seminar_client
+else:
+    from campus_auth import CampusAuthError, graduate_session
+    from portal_diagnostics import PortalResponseError
+    from seminar_client import create_seminar_client
 
 
-def load_credentials(path: str):
+def load_credentials(path: str, *, expected_username=None):
     from seminar_radar.config import Credentials
 
     username = os.getenv("USTC_CAS_USR", "")
     password = os.getenv("USTC_CAS_PWD", "")
-    if not (username and password):
+    # An explicit account file must never inherit another account's environment.
+    if path or not (username and password):
         configured = path or os.getenv("USTC_CAS_CREDENTIALS_FILE", "")
         if not configured:
             raise ValueError("cas_credentials_missing")
@@ -32,6 +39,8 @@ def load_credentials(path: str):
         raise ValueError("cas_username_missing")
     if not isinstance(password, str) or not password.strip():
         raise ValueError("cas_password_missing")
+    if expected_username is not None and username != expected_username:
+        raise ValueError("cas_account_mismatch")
     return Credentials(username=username, password=password)
 
 

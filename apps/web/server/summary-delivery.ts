@@ -1,5 +1,5 @@
 /** Keep every character, preferring paragraph/sentence boundaries for QQ nodes. */
-export const SUMMARY_FORWARD_THRESHOLD = 1200
+export const SUMMARY_FORWARD_THRESHOLD = 1000
 
 export function summaryForwardParts(text: string): string[] {
   const characters = Array.from(text)

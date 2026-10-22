@@ -1521,6 +1521,27 @@ export class OneBotHub extends EventEmitter {
     return match ? this.mediaUrl(match[1]!) : undefined
   }
 
+  /** Fresh opt-in greeting check; never trust the cached workspace directory for delivery consent. */
+  async validateRuntimeRecipient(
+    account: string, type: 'group' | 'private', peerId: string, userId: string,
+  ): Promise<boolean> {
+    if (!/^\d{5,20}$/.test(peerId) || !/^\d{5,20}$/.test(userId)) return false
+    const state = this.requireAccount(account)
+    if (type === 'private') {
+      if (peerId !== userId) return false
+      const friends = await state.connection.request<OneBotFriend[]>('get_friend_list', { no_cache: true })
+      return this.accounts.get(account) === state && friends.some(friend => String(friend.user_id) === userId)
+    }
+    const members = await state.connection.request<OneBotGroupMember[]>(
+      'get_group_member_list', { group_id: peerId, no_cache: true },
+    )
+    return this.accounts.get(account) === state
+      && members.some(member => String(member.user_id) === userId
+        && (member.group_id === undefined || String(member.group_id) === peerId))
+      && members.some(member => String(member.user_id) === state.selfId
+        && (member.group_id === undefined || String(member.group_id) === peerId))
+  }
+
   /** Send Host-produced parts (text, individual mentions, base64/url images, system faces) as one bot message. */
   async sendRuntimeMessage(
     account: string, type: 'group' | 'private', peerId: string, parts: RuntimeMessagePart[],

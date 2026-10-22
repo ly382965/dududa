@@ -27,7 +27,15 @@ async def execute(request: dict) -> dict:
         return {
             "content": base64.b64encode(render_pdf(request["content"])).decode("ascii")
         }
-    credentials = load_credentials(request.get("credentials_file", ""))
+    try:
+        credentials = load_credentials(
+            request.get("credentials_file", ""),
+            expected_username=request.get("expected_username"),
+        )
+    except ValueError as exc:
+        if str(exc) == "cas_account_mismatch":
+            return {"error": "cas_account_mismatch"}
+        raise
     if request["operation"] in {"weekly_list", "weekly_submit"}:
         from weekly_client import execute_weekly
 

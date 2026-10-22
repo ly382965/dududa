@@ -24,7 +24,9 @@
 
 3.1 由一个 Python Host 负责消息入口、规则功能、会话、权限、定时任务和输出；需要理解和多步推理的消息交给本机 [omp](#技术架构)（`omp --mode rpc`）完成 Agent 循环。**明确的指令和自动功能（链接解析、复读、小红书归档等）不调用对话模型。**
 
-当前版本为 **3.1.14**。默认对话模型为 `luna-max`（`openai-codex/gpt-5.6-luna`，thinking `max`），管理员可在群里用 `model` 指令切换已注册的模型。QQ 协议端只运行 SnowLuma，连接 Dududa Web；旧协议容器已移除，旧账号数据保留。亲密度分数按用户 QQ 共享，同一 QQ 群的排行榜跨机器人账号继承互动记录。
+当前版本为 **3.1.15**。默认对话模型为 `luna-max`（`openai-codex/gpt-5.6-luna`，thinking `max`），管理员可在群里用 `model` 指令切换已注册的模型。QQ 协议端只运行 SnowLuma，连接 Dududa Web；旧协议容器已移除，旧账号数据保留。亲密度分数按用户 QQ 共享，同一 QQ 群的排行榜跨机器人账号继承互动记录。新版七档、个人设置、闺蜜关系与群内问候见[统一规则](docs/design/affinity.md)；现有用户不自动建立关系或开启推送。
+
+群友命令与功能速查：[HTML 海报](docs/assets/dududa-guide.html) · [PNG 长图](packages/dududa-runtime/src/dududa_v3/assets/dududa-guide.png)。QQ 中 `/help`、`/帮助`、`/菜单` 返回海报图片；Web/CLI 保留文字帮助。海报由 HTML 渲染，PNG 随 Runtime 包分发，不依赖生产服务器上的浏览器或文档目录。
 
 ## 3.1 的变化
 
@@ -122,13 +124,14 @@
 
 ### 私聊通知
 
-`notify` 功能包移植自 2.0 的 AstrBot 插件 `dududa_notify`，消息只通过 outbox 发到主人私聊。
+`notify` 功能包移植自 2.0 的 AstrBot 插件 `dududa_notify`，消息通过 outbox 发到已授权私聊；研究生作业和周报仍仅限主人，BB 课程可按学生账号独立订阅。
 
 | 任务 ID | 行为 |
 | --- | --- |
 | `notify_seminar` | 对接 SeminarRadar 查询科大研究生学术报告，推送 B 站直播或高新校区可报名场次，按报告去重 |
 | `notify_homework` | 读取研究生系统「我的作业」，新作业私聊提醒并生成 PDF 草稿；可评论、改稿、确认版本 |
 | `notify_courses` | 监控课程主页与 BB 课程的作业、实验与课件，DDL 前提醒，每日 20:00 发送课件日报（列表 + 图片） |
+| `notify_blackboard` | 独立 BB 账号按学期发现课程，只读检查作业、公告与课件；通过现有 omp/Luna 通道提取课件内作业、截止依据和摘要，向绑定的私聊发送提醒与日报 |
 | `notify_weekly` | 按学校的首个汇报日检查助教空周汇报，状态变化私聊通知 |
 | `notify_auto_submit` | 作业截止前自动提交已确认的最新 PDF、空周汇报自动提交；未手动开关时跟随 `homework_auto_submit_enabled` |
 
@@ -142,11 +145,15 @@
 
 校园访问、PDF / PNG 渲染和课程资料读取运行在独立 worker 虚拟环境中，由 `ops/cli/install_notify_worker.sh` 构建；提交前核对学校记录，不覆盖已交答案，结果不确定时不重复提交。`dry_run` 阻止全部自动写操作。
 
+BB 订阅者使用 `课程 <学号> 列表|今日|状态`，以及 `课程 完成|恢复 <学号>:C1`、`课程 截止 <学号>:C1 2026-10-28 14:00`。这些操作只改变本地记录，不提交学校作业。主人原有 `课程 完成 C1` 等命令仍操作原账号；其他订阅者只有一个账号时可省略学号。不同学号的凭据、任务编号、完成状态与缓存互相隔离，群聊和其他收件人不能读取。
+
+首次报告列出非空课程的完整任务与课件，历史任务不逐条补推；之后日报只摘要当天新增或更新的课件。未发生变化的课件复用分析结果；不可读的图片、视频、代码或压缩包只显示资源及限制，不伪造摘要。凭据须由账号持有人明确授权，保存在仓库外的受限文件中，不发送给模型；[配置与运维说明](docs/operations/v3.md#独立-bb-课程订阅)。
+
 ### 群聊总结
 
 可以说「总结群聊」（默认最近 3 小时）、「总结今日消息」（北京时间零点起）或「总结近 5h 消息」。总结轮次使用 `summary` 服务的模型，Host 把 [`summarize-chat` skill](skills/summarize-chat/SKILL.md) 内联到本轮提示中；模型通过 `conversation_history` 按时间分页读取原始消息（最多 1000 条，达到上限或截断时明确说明），再按话题叙述时间、参与者、起因、讨论过程和结论，不受日常聊天「尽量简短」的限制。
 
-超过 1200 字符的总结由 QQ 桥切成合并转发节点，以嘟嘟哒自己的身份一次发送；较短总结发送文本。发送结果不确定时记为 `unknown`，不自动重发。
+QQ 群聊和私聊的纯文本回复（包括普通对话和群聊总结）超过 1000 个 Unicode 字符时，由 QQ 桥切成每段最多 1000 字符的合并转发节点，以嘟嘟哒自己的身份一次发送；恰好 1000 字符或更短仍发送普通文本。连续的多个纯文本动作按顺序合并计算，保留全文、换行和表情字符；含图片、提及、文件等其他动作的回复维持原发送方式。普通长回复不使用「群聊总结」标题。发送结果不确定时记为 `unknown`，不自动重发。
 
 ### 做最懂科大的 AI 群友
 
@@ -306,6 +313,7 @@ npm run dev
 ```bash
 uv sync --locked --python 3.12
 .venv/bin/python -m unittest discover -s tests/v3
+uv run --with httpx --with lxml python -m unittest discover -s tests/notify_worker
 .venv/bin/python ops/cli/verify_dududa_v3.py --output runtime/v3/verification.json
 cd apps/web && npm test && npm run build
 ```
@@ -313,6 +321,7 @@ cd apps/web && npm test && npm run build
 | 验证 | 覆盖范围 | 需要真实模型 |
 | --- | --- | --- |
 | `tests/v3` | 路由、频率限制、上下文渲染、omp RPC 传输、ServiceHub 和各功能模块 | 否；omp 传输测试使用明确标识的测试进程 |
+| `tests/notify_worker` | BB 课程发现、只读跳转、资源缓存与凭据隔离；与 Host 依赖分离，需 Python 3.12、httpx、lxml | 否；学校 HTTP 响应使用隔离夹具 |
 | `verify_dududa_v3.py` | 从 Host 入口调用真实本机 omp，验证工具调用与会话续接；不发送 QQ 消息 | 是 |
 | Web 测试与构建 | QQ 桥字段映射、动作发送顺序、合并转发、outbox 轮询及 UI 构建 | 否 |
 
