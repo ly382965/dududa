@@ -58,6 +58,12 @@ def create_server(runtime: Runtime, loop: asyncio.AbstractEventLoop, host: str, 
                     result = {"queued": queued}
                 elif self.command == "POST" and path == "/v3/outbox/claim":
                     result = {"items": runtime.store.outbox_claim(int(body.get("limit", 10)))}
+                elif self.command == "POST" and path.startswith("/v3/outbox/") and path.endswith("/authorize"):
+                    from .features.affinity.greetings import authorize
+                    item_id = int(path[len("/v3/outbox/"):-len("/authorize")])
+                    if not isinstance(body.get("target_valid"), bool):
+                        raise ValueError("target_valid must be a boolean from a fresh bridge target check")
+                    result = authorize(runtime, item_id, body["target_valid"])
                 elif self.command == "POST" and path.startswith("/v3/outbox/") and path.endswith("/result"):
                     item_id = int(path[len("/v3/outbox/"):-len("/result")])
                     result = {"updated": runtime.store.outbox_result(item_id, body.get("state"), body.get("message_id"))}

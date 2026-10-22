@@ -17,7 +17,8 @@ from typing import Any
 from . import RUNTIME, SESSION_PROFILE, VERSION
 from .config import SERVICES, Settings
 from .context import background_lines, normalize_history, render_turn
-from .features import load_registry
+from .features import affinity, load_registry
+from .features.affinity import greetings
 from .features.base import Ctx, Delegate, FeatureError, Inbound, JobCtx, Reply
 from .omp import ModelSpec, OmpClient, OmpResult
 from .router import RateLimiter, route
@@ -72,6 +73,7 @@ class Runtime:
                                    {"group": int(limits.get("group", 30)), "private": int(limits.get("private", 50)),
                                     "web": int(limits.get("private", 50))})
         self.started_at = time.time()
+        greetings.reconcile(self)
 
     # ------------------------------------------------------------ public state
 
@@ -213,6 +215,8 @@ class Runtime:
                 await self.emit(ctx, "addressed")
                 if intercepted is not None:
                     task, reply = intercepted
+                    if not affinity.safe_request(ctx) and not await self._admit(ctx, kind):
+                        return
                     self._finish(run_id, "rule", reply, model="rules", reason=f"hook:{task}")
                     return
             for rule in self.settings.rules:
@@ -228,7 +232,15 @@ class Runtime:
                 if command.admin and not ctx.is_admin:
                     self._finish(run_id, "rule", Reply.of_text("这个指令只有白名单用户可以用哦。"), model="rules")
                     return
-                if command.counted and not command.admin and not await self._admit(ctx, kind):
+                if (command.counted and not command.admin and not affinity.safe_request(ctx)
+                        and not await self._admit(ctx, kind)):
+                    return
+                if affinity.entertainment_blocked(ctx, command.task):
+                    reply = Reply()
+                    if inbound.is_group:
+                        reply.mention(inbound.sender.id)
+                    reply.text("这个我现在不想陪你玩。")
+                    self._finish(run_id, "rule", reply, model="rules", reason="affinity_entertainment_blocked")
                     return
                 try:
                     outcome = await command.handler(ctx)
@@ -242,6 +254,10 @@ class Runtime:
                 if not reply:
                     self.store.update(run_id, status="ignored", route="rule", reason="no_reply")
                     return
+                if (ctx.mention_sender and inbound.source == "qq" and inbound.is_group
+                        and not any(action.get("type") == "mention" and action.get("user_id") == inbound.sender.id
+                                    for action in reply.actions)):
+                    reply.actions.insert(0, {"type": "mention", "user_id": inbound.sender.id})
                 self._finish(run_id, "rule", reply, model="rules", command=command.names[0])
                 return
             if decision.kind == "agent":
@@ -291,7 +307,7 @@ class Runtime:
     async def _observe(self, ctx: Ctx) -> Reply:
         combined = Reply()
         for observer in sorted(self.registry.observers, key=lambda item: item.order):
-            if not self.task_enabled(observer.task):
+            if not self.task_enabled(observer.task) or affinity.entertainment_blocked(ctx, observer.task):
                 continue
             try:
                 reply = await observer.handler(ctx)
@@ -362,7 +378,12 @@ class Runtime:
         self.store.record_tool(ctx.run_id, name)
         try:
             if name in self.registry.tools:
-                value = await self.registry.tools[name].handler(ctx, args)
+                tool = self.registry.tools[name]
+                if tool.task and not self.task_enabled(tool.task):
+                    raise FeatureError("这个功能当前未启用。")
+                if affinity.entertainment_blocked(ctx, tool.task):
+                    raise FeatureError("这个我现在不想陪你玩。")
+                value = await tool.handler(ctx, args)
             else:
                 hub = ServiceHub(self.settings, self.store, ctx.session_id, ctx.run_id)
                 value = await asyncio.to_thread(hub.call, name, args, record=False)

@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   HttpRuntimeV3Client, RuntimeV3QqBridge, runtimeV3Scopes,
-  type RuntimeV3OutboxItem, type RuntimeV3Request, type RuntimeV3Run,
+  type RuntimeV3Action, type RuntimeV3OutboxItem, type RuntimeV3Request, type RuntimeV3Run,
 } from './runtime-v3'
 import { createAgentGateway, FileInternalTestGateway } from './internal-test'
 import type { ChatMessage, GroupMemberDirectory, WorkspaceEvent } from '../src/types/workspace'
@@ -176,6 +176,7 @@ function bridgeFixture(scopes = runtimeV3Scopes(`${scope.accountId}/${scope.conv
     }),
     refreshMessage: vi.fn(async (..._args: unknown[]): Promise<ChatMessage> => { throw new Error('not cached') }),
     memberDirectory: vi.fn(async (..._args: unknown[]): Promise<GroupMemberDirectory> => { throw new Error('no directory') }),
+    validateRuntimeRecipient: vi.fn(async (..._args: unknown[]) => true),
   })
   const claims = new Set<string>()
   const runtime = {
@@ -334,6 +335,89 @@ describe('Dududa 3.0 QQ bridge (synthetic delivery only)', () => {
     bridge.close()
   })
 
+  it.each([
+    { kind: 'chat' as const, size: 1000, split: false, privateChat: false },
+    { kind: 'chat' as const, size: 1001, split: false, privateChat: false },
+    { kind: 'chat' as const, size: 2501, split: true, privateChat: false },
+    { kind: undefined, size: 1001, split: false, privateChat: true },
+    { kind: 'conversation_summary' as const, size: 1001, split: true, privateChat: false },
+  ])('chooses delivery by Unicode length: $kind/$size/split=$split/private=$privateChat', async ({ kind, size, split, privateChat }) => {
+    const event = messageEvent()
+    if (privateChat) {
+      event.conversation.type = 'private'
+      event.conversation.peerId = '300001'
+      event.conversation.id = `${scope.accountId}:private:300001`
+      event.message.conversationId = event.conversation.id
+    }
+    const { bridge, runtime, hub } = bridgeFixture(runtimeV3Scopes(`${scope.accountId}/${event.conversation.id}`))
+    const text = '😀'.repeat(size - 1) + '完'
+    const actions = split
+      ? [{ type: 'text' as const, text: text.slice(0, 1200) }, { type: 'text' as const, text: text.slice(1200) }]
+      : undefined
+    runtime.run.mockResolvedValue({ ...completed, route: 'agent', response_kind: kind, text, actions })
+    try {
+      await Promise.all([bridge.handle(event), bridge.handle(event)])
+      if (size <= 1000) {
+        expect(hub.sendRuntimeMessage).toHaveBeenCalledExactlyOnceWith(scope.accountId, event.conversation.type,
+          event.conversation.peerId, [{ type: 'text', text }])
+        expect(hub.sendRuntimeForward).not.toHaveBeenCalled()
+        expect(hub.sendMergedForward).not.toHaveBeenCalled()
+      } else {
+        expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+        const summary = kind === 'conversation_summary'
+        const sender = summary ? hub.sendMergedForward : hub.sendRuntimeForward
+        expect(sender).toHaveBeenCalledTimes(1)
+        expect(summary ? hub.sendRuntimeForward : hub.sendMergedForward).not.toHaveBeenCalled()
+        const args = sender.mock.calls[0]!
+        expect(args.slice(0, 3)).toEqual([scope.accountId, event.conversation.type, event.conversation.peerId])
+        const parts = summary ? args[3] as string[]
+          : (args[3] as Array<{ parts: Array<{ type: string; text: string }> }>).map(node => {
+            expect(node.parts).toHaveLength(1)
+            expect(node.parts[0]!.type).toBe('text')
+            return node.parts[0]!.text
+          })
+        expect(parts.join('')).toBe(text)
+        expect(parts.every(part => Array.from(part).length <= 1000)).toBe(true)
+        expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'sent', summary ? 'forward-1' : 'rforward-1')
+      }
+    } finally {
+      bridge.close()
+    }
+  })
+
+  it('preserves mixed long text and images rather than hiding attachments in a forward', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    const text = '长'.repeat(1001)
+    runtime.run.mockResolvedValue({ ...completed, text, actions: [
+      { type: 'text', text }, { type: 'image', url: 'https://example.com/image.png' },
+    ] })
+    try {
+      await bridge.handle(messageEvent())
+      expect(hub.sendRuntimeMessage).toHaveBeenCalledExactlyOnceWith(scope.accountId, 'group', '200001', [
+        { type: 'text', text }, { type: 'image', file: 'https://example.com/image.png' },
+      ])
+      expect(hub.sendRuntimeForward).not.toHaveBeenCalled()
+      expect(hub.sendMergedForward).not.toHaveBeenCalled()
+    } finally {
+      bridge.close()
+    }
+  })
+
+  it('does not resend a long chat when the forward result is uncertain', async () => {
+    const { bridge, runtime, hub } = bridgeFixture()
+    runtime.run.mockResolvedValue({ ...completed, text: '长'.repeat(1001), response_kind: 'chat' })
+    hub.sendRuntimeForward.mockRejectedValue(new Error('forward timeout'))
+    try {
+      await expect(bridge.handle(messageEvent())).rejects.toThrow('forward timeout')
+      await bridge.handle(messageEvent())
+      expect(hub.sendRuntimeForward).toHaveBeenCalledTimes(1)
+      expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+      expect(runtime.delivery).toHaveBeenCalledWith('run-v3', 'unknown')
+    } finally {
+      bridge.close()
+    }
+  })
+
   it('sends a long summary once as merged forward, preserving all text and Unicode', async () => {
     const { bridge, runtime, hub } = bridgeFixture()
     const text = '14:20 小明在东区提出方案。😀\n\n'.repeat(150)
@@ -424,6 +508,9 @@ describe('Dududa 3.0 outbox poller', () => {
       ...runtime,
       claimOutbox: vi.fn(async (_limit?: number) => items.splice(0)),
       outboxResult: vi.fn(async (_id: number | string, _state: 'sent' | 'unknown', _messageId?: string) => undefined),
+      authorizeOutbox: vi.fn(async (_id: number | string, valid: boolean): Promise<{
+        authorized: boolean; actions?: RuntimeV3Action[]
+      }> => ({ authorized: valid })),
     }
     const errors: unknown[] = []
     const bridge = new RuntimeV3QqBridge(hub, outbox, runtimeV3Scopes(`${scope.accountId}/${scope.conversationId}`),
@@ -447,8 +534,92 @@ describe('Dududa 3.0 outbox poller', () => {
     ])
     expect(outbox.outboxResult.mock.calls).toEqual([[1, 'sent', 'out-1'], [2, 'unknown'], [3, 'unknown']])
     expect(errors).toHaveLength(2)
+    expect(hub.validateRuntimeRecipient).not.toHaveBeenCalled()
+    expect(outbox.authorizeOutbox).not.toHaveBeenCalled()
     await bridge.pollOutbox()
     expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(2)
+    bridge.close()
+  })
+
+  function greeting(expiresAt = Date.now() / 1_000 + 900): RuntimeV3OutboxItem {
+    return { id: 20, account_id: scope.accountId, conversation_id: scope.conversationId,
+      actions: [{ type: 'mention', user_id: '300001' }, { type: 'text', text: 'queued nickname' }],
+      guard: { type: 'affinity_greeting', user_id: '300001', kind: 'morning', expires_at: expiresAt } }
+  }
+
+  it('freshly validates the recipient, then authorizes immediately before a single group mention send', async () => {
+    const { hub, outbox, bridge } = outboxFixture([greeting()])
+    const order: string[] = []
+    hub.validateRuntimeRecipient.mockImplementationOnce(async () => { order.push('membership'); return true })
+    outbox.authorizeOutbox.mockImplementationOnce(async () => {
+      order.push('authorize')
+      return { authorized: true, actions: [{ type: 'mention', user_id: '300001' }, { type: 'text', text: 'current nickname' }] }
+    })
+    hub.sendRuntimeMessage.mockImplementationOnce(async () => { order.push('send'); return { messageId: 'morning' } })
+    await bridge.pollOutbox()
+    expect(order).toEqual(['membership', 'authorize', 'send'])
+    expect(hub.validateRuntimeRecipient).toHaveBeenCalledWith('qq-100001', 'group', '200001', '300001')
+    expect(outbox.authorizeOutbox).toHaveBeenCalledWith(20, true)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledWith('qq-100001', 'group', '200001',
+      [{ type: 'mention', userId: '300001' }, { type: 'text', text: 'current nickname' }])
+    expect(outbox.outboxResult).toHaveBeenCalledWith(20, 'sent', 'morning')
+    bridge.close()
+  })
+
+  it.each(['removed', 'unavailable'])('revokes a greeting when recipient or bot is %s without fallback', async failure => {
+    const { hub, outbox, bridge } = outboxFixture([greeting()])
+    if (failure === 'removed') hub.validateRuntimeRecipient.mockResolvedValueOnce(false)
+    else hub.validateRuntimeRecipient.mockRejectedValueOnce(new Error('bot disconnected'))
+    await bridge.pollOutbox()
+    expect(outbox.authorizeOutbox).toHaveBeenCalledWith(20, false)
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+    expect(outbox.outboxResult).not.toHaveBeenCalled()
+    await bridge.pollOutbox()
+    expect(hub.validateRuntimeRecipient).toHaveBeenCalledTimes(1)
+    bridge.close()
+  })
+
+  it('does not dispatch a claimed greeting cancelled during the live membership check', async () => {
+    const { hub, outbox, bridge } = outboxFixture([greeting()])
+    let resolveMembership!: (valid: boolean) => void
+    const membership = new Promise<boolean>(resolve => { resolveMembership = resolve })
+    hub.validateRuntimeRecipient.mockImplementationOnce(() => membership)
+    const polling = bridge.pollOutbox()
+    await vi.waitFor(() => expect(hub.validateRuntimeRecipient).toHaveBeenCalledTimes(1))
+    outbox.authorizeOutbox.mockResolvedValueOnce({ authorized: false })
+    resolveMembership(true)
+    await polling
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+    expect(outbox.outboxResult).not.toHaveBeenCalled()
+    bridge.close()
+  })
+
+  it('does not send if the authorization response arrives after expiry', async () => {
+    const { hub, outbox, bridge } = outboxFixture([greeting(Date.now() / 1_000 - 1)])
+    await bridge.pollOutbox()
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
+    expect(outbox.outboxResult).toHaveBeenCalledWith(20, 'unknown')
+    bridge.close()
+  })
+
+  it('does not retry or change target after an authorized OneBot send has unknown outcome', async () => {
+    const { hub, outbox, bridge } = outboxFixture([greeting()])
+    hub.sendRuntimeMessage.mockRejectedValueOnce(new Error('unknown send outcome'))
+    await bridge.pollOutbox()
+    await bridge.pollOutbox()
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(1)
+    expect(outbox.authorizeOutbox).toHaveBeenCalledTimes(1)
+    expect(outbox.outboxResult).toHaveBeenCalledWith(20, 'unknown')
+    bridge.close()
+  })
+
+  it('revokes a guarded target outside bridge scopes before sending', async () => {
+    const item = { ...greeting(), conversation_id: 'qq-100001:group:999999' }
+    const { hub, outbox, bridge } = outboxFixture([item])
+    await bridge.pollOutbox()
+    expect(hub.validateRuntimeRecipient).not.toHaveBeenCalled()
+    expect(outbox.authorizeOutbox).toHaveBeenCalledWith(20, false)
+    expect(hub.sendRuntimeMessage).not.toHaveBeenCalled()
     bridge.close()
   })
 
@@ -501,14 +672,19 @@ describe('Dududa 3.0 outbox poller', () => {
         requests.push({ url: request.url, body })
         json(response, request.url === '/v3/outbox/claim'
           ? { items: [{ id: 5, account_id: scope.accountId, conversation_id: scope.conversationId, actions: [] }] }
-          : { updated: true })
+          : request.url === '/v3/outbox/5/authorize' ? { authorized: true, actions: [{ type: 'text', text: 'fresh' }] }
+            : { updated: true })
       })
     })
     const client = new HttpRuntimeV3Client(base, 'token')
     await expect(client.claimOutbox()).resolves.toEqual([{ id: 5, account_id: scope.accountId, conversation_id: scope.conversationId, actions: [] }])
+    await expect(client.authorizeOutbox(5, true)).resolves.toEqual({
+      authorized: true, actions: [{ type: 'text', text: 'fresh' }],
+    })
     await client.outboxResult(5, 'sent', 'm-1')
     expect(requests).toEqual([
       { url: '/v3/outbox/claim', body: '{"limit":10}' },
+      { url: '/v3/outbox/5/authorize', body: '{"target_valid":true}' },
       { url: '/v3/outbox/5/result', body: '{"state":"sent","message_id":"m-1"}' },
     ])
   })

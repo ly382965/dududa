@@ -57,6 +57,15 @@ class Store:
                     db.execute(f"ALTER TABLE messages ADD COLUMN {name} TEXT")
             if "bot" not in columns:
                 db.execute("ALTER TABLE messages ADD COLUMN bot INTEGER NOT NULL DEFAULT 0")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(outbox)")}
+            for name, kind in (("guard_user", "TEXT"), ("guard_kind", "TEXT"),
+                               ("guard_revision", "INTEGER"), ("expires_at", "REAL")):
+                if name not in columns:
+                    db.execute(f"ALTER TABLE outbox ADD COLUMN {name} {kind}")
+            db.execute("CREATE INDEX IF NOT EXISTS outbox_greeting_guard ON outbox(guard_user,guard_kind,state)")
+        from .features.affinity import greetings, social
+        social.initialize(self)
+        greetings.initialize(self)
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self.path, timeout=10)
@@ -128,7 +137,7 @@ class Store:
             # A process restart cannot establish whether an in-flight external
             # send succeeded. Keep its claim and expose the uncertain outcome.
             db.execute("UPDATE deliveries SET state='unknown' WHERE state='sending'")
-            db.execute("UPDATE outbox SET state='unknown' WHERE state='sending'")
+            db.execute("UPDATE outbox SET state='unknown' WHERE state IN ('sending','claimed')")
         for row in rows:
             result = json.loads(row["result"])
             if result["status"] in ("queued", "running"):
@@ -212,10 +221,14 @@ class Store:
 
     def set_switch(self, task: str, enabled: bool | None, user: str) -> None:
         with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             if enabled is None:
                 db.execute("DELETE FROM switches WHERE task=?", (task,))
             else:
                 db.execute("INSERT OR REPLACE INTO switches VALUES (?,?,?,?)", (task, int(enabled), user, time.time()))
+            if task == "affinity" and enabled is False:
+                from .features.affinity.greetings import disable_all
+                disable_all(db)
 
     def model_bindings(self) -> dict[str, str]:
         with self.connect() as db:
@@ -254,16 +267,24 @@ class Store:
         now = time.time()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            rows = db.execute("SELECT id,account_id,conversation_id,actions FROM outbox WHERE state='pending' "
-                              "ORDER BY id LIMIT ?", (max(1, min(limit, 50)),)).fetchall()
+            db.execute("UPDATE outbox SET state='cancelled',updated_at=? WHERE guard_user IS NOT NULL "
+                       "AND state IN ('pending','claimed') AND expires_at<?", (now, now))
+            rows = db.execute("SELECT id,account_id,conversation_id,actions,guard_user,guard_kind,expires_at "
+                              "FROM outbox WHERE state='pending' ORDER BY id LIMIT ?",
+                              (max(1, min(limit, 50)),)).fetchall()
             for row in rows:
-                db.execute("UPDATE outbox SET state='sending',updated_at=? WHERE id=?", (now, row["id"]))
+                db.execute("UPDATE outbox SET state=?,updated_at=? WHERE id=?",
+                           ("claimed" if row["guard_user"] else "sending", now, row["id"]))
         return [{"id": row["id"], "account_id": row["account_id"], "conversation_id": row["conversation_id"],
-                 "actions": json.loads(row["actions"])} for row in rows]
+                 "actions": json.loads(row["actions"]),
+                 **({"guard": {"type": "affinity_greeting", "user_id": row["guard_user"],
+                              "kind": row["guard_kind"], "expires_at": row["expires_at"]}}
+                    if row["guard_user"] else {})} for row in rows]
 
     def outbox_result(self, item_id: int, state: str, message_id: str | None = None) -> bool:
         if state not in ("sent", "unknown"):
             raise ValueError("Invalid outbox state")
         with self.connect() as db:
-            return bool(db.execute("UPDATE outbox SET state=?,message_id=?,updated_at=? WHERE id=? AND state='sending'",
-                                   (state, message_id, time.time(), item_id)).rowcount)
+            return bool(db.execute("UPDATE outbox SET state=?,message_id=?,updated_at=? WHERE id=? "
+                                   "AND (state='sending' OR (state='claimed' AND ?='unknown'))",
+                                   (state, message_id, time.time(), item_id, state)).rowcount)

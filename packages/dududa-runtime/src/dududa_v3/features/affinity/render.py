@@ -23,14 +23,19 @@ TEXT = (51, 43, 48)
 MUTED = (150, 138, 144)
 ACCENT = (232, 106, 166)
 TIERS = {
+    "特别讨厌": (160, 52, 70),
     "讨厌": (214, 86, 86),
-    "不反感": (232, 160, 72),
+    "反感": (210, 144, 58),
     "普通": (150, 150, 158),
+    "好感": (82, 160, 130),
     "喜欢": (96, 170, 220),
-    "非常喜欢": (232, 106, 166),
+    "特别喜欢": (232, 106, 166),
     "最喜欢的姐姐": (205, 84, 160),
 }
-BANDS = [(-100, -51, "讨厌"), (-50, -11, "不反感"), (-10, 30, "普通"), (31, 60, "喜欢"), (61, 100, "非常喜欢")]
+BANDS = [
+    ("特别讨厌", "[-100, -80]"), ("讨厌", "(-80, -50]"), ("反感", "(-50, -20)"),
+    ("普通", "[-20, 20]"), ("好感", "(20, 50)"), ("喜欢", "[50, 80)"), ("特别喜欢", "[80, 100]"),
+]
 # Noto Sans CJK has no emoji glyphs; drop them instead of drawing empty boxes.
 EMOJI = re.compile("[\U0001F000-\U0001FAFF\U0001FC00-\U0001FFFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D\u20E3]")
 
@@ -95,14 +100,14 @@ class Canvas:
 
 
 def score_text(score: float) -> str:
-    return str(round(score))
+    return f"{score:.1f}"
 
 
 def row(canvas: Canvas, x, y, width, item):
     color = TIERS.get(item["tier"], MUTED)
     canvas.avatar((x + 16, y), 14, item.get("avatar"), item["name"], color)
     canvas.text((x + 40, y), str(item["rank"]), size=13, fill=MUTED, anchor="lm")
-    name = canvas.fit(item["name"], 14, width - 190)
+    name = canvas.fit(item["name"], 14, width - 220)
     canvas.text((x + 66, y), name, size=14, anchor="lm")
     canvas.text((x + width, y), f"{score_text(item['score'])} {item['tier']}", size=14, fill=color, bold=True,
                 anchor="rm")
@@ -114,7 +119,7 @@ def ranking(request: dict) -> bytes:
     pinned = request.get("pinned")
     top_y = 70 + (54 if pinned else 0)
     list_height = 30 + rows * 38
-    height = top_y + list_height + 74
+    height = top_y + list_height + 100
     canvas = Canvas(height, request["fonts"])
     canvas.rect([12, 12, W - 12, height - 12], fill=PANEL, outline=BORDER, radius=22, width=2)
     canvas.text((40, 48), "嘟嘟哒的亲密度排行", size=22, bold=True, anchor="ls")
@@ -126,8 +131,8 @@ def ranking(request: dict) -> bytes:
         canvas.text((84, 86), canvas.fit(pinned["name"], 15, 300), size=15, fill=color, bold=True, anchor="lm")
         canvas.text((W - 58, 86), "最喜欢的姐姐 · 120", size=15, fill=color, bold=True, anchor="rm")
     if split:
-        canvas.text((40, top_y + 18), "最亲近 Top 5", size=15, fill=TIERS["非常喜欢"], bold=True, anchor="ls")
-        canvas.text((376, top_y + 18), "最疏远 Low 5", size=15, fill=TIERS["讨厌"], bold=True, anchor="ls")
+        canvas.text((40, top_y + 18), "最亲近 Top 5", size=15, fill=TIERS["特别喜欢"], bold=True, anchor="ls")
+        canvas.text((376, top_y + 18), "最疏远 Low 5", size=15, fill=TIERS["特别讨厌"], bold=True, anchor="ls")
         for index, item in enumerate(request["top"]):
             row(canvas, 40, top_y + 46 + index * 38, 300, item)
         for index, item in enumerate(request["low"]):
@@ -144,13 +149,12 @@ def ranking(request: dict) -> bytes:
 
 def legend(canvas: Canvas, y: int) -> None:
     canvas.draw.line([(40 * S, (y - 22) * S), ((W - 40) * S, (y - 22) * S)], fill=BORDER, width=2 * S)
-    x = 40
-    for low, high, label in BANDS:
+    for index, (label, interval) in enumerate(BANDS):
+        # Four fixed columns and two rows keep all seven exact intervals on-canvas.
+        x, line_y = 40 + (index % 4) * 162, y + (index // 4) * 24
         color = TIERS[label]
-        canvas.draw.ellipse([x * S, (y - 5) * S, (x + 10) * S, (y + 5) * S], fill=color)
-        caption = f"{label} {low}~{high}"
-        canvas.text((x + 16, y), caption, size=11, fill=MUTED, anchor="lm")
-        x += 22 + canvas.font(11).getlength(caption) / S + 18
+        canvas.draw.ellipse([x * S, (line_y - 4) * S, (x + 8) * S, (line_y + 4) * S], fill=color)
+        canvas.text((x + 12, line_y), f"{label} {interval}", size=10, fill=MUTED, anchor="lm")
 
 def everyone(request: dict) -> bytes:
     """Every person in two columns, highest first."""
@@ -160,7 +164,7 @@ def everyone(request: dict) -> bytes:
     pinned = request.get("pinned")
     pinned_height = 54 if pinned else 0
     top_y = 104 + pinned_height
-    height = top_y + per_column * row_height + 80
+    height = top_y + per_column * row_height + 106
     canvas = Canvas(height, request["fonts"])
     canvas.rect([12, 12, W - 12, height - 12], fill=PANEL, outline=BORDER, radius=22, width=2)
     canvas.text((40, 48), request.get("title") or "全部亲密度", size=22, bold=True, anchor="ls")
@@ -186,11 +190,11 @@ def everyone(request: dict) -> bytes:
         color = TIERS.get(item["tier"], MUTED)
         canvas.avatar((left + 14, y), 13, item.get("avatar"), item["name"], color)
         canvas.text((left + 34, y), str(item["rank"]), size=12, fill=MUTED, anchor="lm")
-        canvas.text((left + 62, y - 8), canvas.fit(item["name"], 13, 150), size=13, anchor="lm")
+        canvas.text((left + 62, y - 8), canvas.fit(item["name"], 13, 100), size=13, anchor="lm")
         canvas.text((left + 62, y + 10), item["qq"], size=10, fill=MUTED, anchor="lm")
         canvas.text((left + 304, y), f"{item['score']:.1f} {item['tier']}", size=13, fill=color, bold=True,
                     anchor="rm")
-    legend(canvas, height - 40)
+    legend(canvas, height - 64)
     return canvas.png()
 
 

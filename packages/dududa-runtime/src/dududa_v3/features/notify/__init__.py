@@ -7,12 +7,13 @@ Campus access, PDF/PNG rendering and course readers run in a separate worker ven
 (``worker-requirements.txt``, ``ops/cli/install_notify_worker.sh``) through ``worker.py`` and
 ``assignment_worker.py``; those worker-side modules are never imported by the Host.
 
-Every message goes to the owner's private chat through the outbox. Each poller is exactly one Job;
-``notify_auto_submit`` gates every automatic school write and ``dry_run`` blocks all of them.
+Notifications go only to configured private recipients; extra BB accounts have separate state.
+``notify_auto_submit`` gates the original school writers; BB subscriptions never submit.
 """
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import contextvars
 import hashlib
@@ -55,7 +56,11 @@ from .weekly import WeeklyService
 FEATURE = "notify"
 SEMINAR, HOMEWORK, COURSES, WEEKLY, AUTO_SUBMIT = (
     "notify_seminar", "notify_homework", "notify_courses", "notify_weekly", "notify_auto_submit")
-HEALTH_LABELS = {"homework": "作业", "courses": "课程", "course_reports": "课件日报", "weekly": "周汇报"}
+BLACKBOARD = "notify_blackboard"
+HEALTH_LABELS = {
+    "homework": "作业", "courses": "课程", "course_reports": "课件日报", "weekly": "周汇报",
+    "blackboard": "BB课程", "blackboard_reports": "BB课件日报",
+}
 HOMEWORK_ERRORS = {
     "homework_already_submitted": "学校系统已有提交记录，不会覆盖。",
     "homework_requirements_changed": "作业要求已更新，请等待新草稿并确认新版本。",
@@ -145,6 +150,8 @@ class Notify:
         self.homework: HomeworkService | None = None
         self.courses: CourseService | None = None
         self.weekly: WeeklyService | None = None
+        self.blackboard_accounts: dict[str, CourseService] = {}
+        self.blackboard_intervals: dict[str, int] = {}
         owned = [flag for flag in ("homework_enabled", "courses_enabled", "weekly_enabled") if cfg.get(flag)]
         if self.enabled and owned and self.owner not in self.recipients:
             raise FeatureError("notify.homework_recipient 必须在 recipients 中")
@@ -182,6 +189,41 @@ class Notify:
                 self.root, self.owner, self.query, lambda text: self.send_text(self.owner, text, "weekly"),
                 hour=_int(cfg, "weekly_submit_hour", 20, 0, 23), policy=policy,
                 submit_allowed=self.auto_submit_allowed(), dry_run=self.dry_run)
+        accounts = cfg.get("blackboard_accounts", [])
+        if not isinstance(accounts, list):
+            raise FeatureError("notify.blackboard_accounts 必须是账号列表")
+        for account in accounts:
+            if not isinstance(account, dict):
+                raise FeatureError("BB 账号配置必须是对象")
+            if not account.get("enabled", True):
+                continue
+            profile = account.get("id", "")
+            recipient = str(account.get("recipient", "")).strip()
+            credentials = account.get("credentials_file", "")
+            term = account.get("term", "")
+            if not isinstance(profile, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", profile):
+                raise FeatureError("BB 账号 id 必须是安全的学号标识")
+            if profile in self.blackboard_accounts:
+                raise FeatureError("BB 账号 id 不能重复")
+            if recipient not in self.recipients or self.scope(recipient) not in self.tk.settings.allowed_scopes:
+                raise FeatureError("BB 账号收件人必须在通知列表和私聊白名单中")
+            if not isinstance(credentials, str) or not credentials or not Path(credentials).is_absolute():
+                raise FeatureError("BB 账号必须配置独立凭据文件的绝对路径")
+            if not isinstance(term, str) or not re.fullmatch(r"20\d{2}[A-Z]{2}", term):
+                raise FeatureError("BB 学期格式应为 2026FA")
+            self.blackboard_intervals[profile] = _int(
+                account, "interval_minutes", _int(cfg, "courses_interval_minutes", 3, 1, 1440), 1, 1440)
+            self.blackboard_accounts[profile] = CourseService(
+                self.root, recipient, [],
+                lambda request, path=credentials, pid=profile, semester=term: self.blackboard_query(
+                    request, credentials_file=path, profile=pid, term=semester),
+                self.generate, self.course_image,
+                lambda text, target=recipient, pid=profile: self.send_text(target, text, f"blackboard:{pid}"),
+                lambda path, target=recipient: self.send_image(target, path),
+                summary_hour=_int(account, "summary_hour", _int(cfg, "courses_summary_hour", 20, 0, 23), 0, 23),
+                profile=profile, label=profile, discover=True, nonempty_only=True, analyze_materials=True,
+            )
+
 
     # ------------------------------------------------------------ gates
 
@@ -241,6 +283,13 @@ class Notify:
                                           self.proxy)
         return base64.b64decode(result["content"], validate=True)
 
+    async def blackboard_query(self, request: dict, *, credentials_file: str, profile: str, term: str) -> dict:
+        if request.get("operation") != "courses":
+            raise FeatureError("BB 订阅仅允许读取课程")
+        return await assignment_request(
+            self.python, {**request, "credentials_file": credentials_file, "expected_username": profile,
+                          "blackboard_term": term, "timeout": self.timeout}, self.proxy)
+
     async def generate(self, system: str, question: str) -> tuple[str, str]:
         concise = "作答方式：小测简答。" in question
         result = await self.tk.agent_once(question, service="qa", system=system, timeout=300 if concise else 600)
@@ -275,7 +324,8 @@ class Notify:
 
     async def record_poll(self, source: str, recipients: tuple[str, ...], error: BaseException | None = None) -> None:
         health = self.health.setdefault(source, {"failures": 0, "alerted": set(), "last_success": None, "error": ""})
-        label = HEALTH_LABELS.get(source, "讲座")
+        kind, _, profile = source.partition(":")
+        label = HEALTH_LABELS.get(kind, "讲座") + (f"（{profile}）" if profile else "")
         if error is None:
             health.update(failures=0, last_success=timestamp(), error="")
         else:
@@ -377,6 +427,28 @@ class Notify:
                 log.warning("Course report failed (%s)", query_error_reason(exc))
                 await self.record_poll("course_reports", (self.owner,), exc)
 
+    async def poll_blackboard(self, force: bool = False) -> None:
+        await asyncio.gather(*(self._poll_blackboard(profile, course, force)
+                               for profile, course in self.blackboard_accounts.items()))
+
+    async def _poll_blackboard(self, profile: str, course: CourseService, force: bool) -> None:
+        source, reports = f"blackboard:{profile}", f"blackboard_reports:{profile}"
+        recipients = (course.owner,)
+        if self.due(source, self.blackboard_intervals[profile], force):
+            try:
+                await course.poll()
+                await self.record_poll(source, recipients)
+            except Exception as exc:  # noqa: BLE001 - account failures must not affect another account
+                log.warning("BB course poll failed for %s (%s)", profile, query_error_reason(exc))
+                await self.record_poll(source, recipients, exc)
+        if self.health.get(source, {}).get("last_success"):
+            try:
+                await course.daily()
+                await self.record_poll(reports, recipients)
+            except Exception as exc:  # noqa: BLE001 - persisted delivery progress prevents duplicate chunks
+                log.warning("BB course report failed for %s (%s)", profile, query_error_reason(exc))
+                await self.record_poll(reports, recipients, exc)
+
     async def poll_weekly(self, force: bool = False) -> None:
         if self.weekly is None:
             return
@@ -418,6 +490,10 @@ async def deadline_job(ctx: JobCtx) -> None:
 
 async def courses_job(ctx: JobCtx) -> None:
     await service(ctx).poll_courses()
+
+
+async def blackboard_job(ctx: JobCtx) -> None:
+    await service(ctx).poll_blackboard()
 
 
 async def weekly_job(ctx: JobCtx) -> None:
@@ -471,14 +547,40 @@ async def homework_command(ctx: Ctx) -> Reply | Delegate:
 
 
 async def course_command(ctx: Ctx) -> Reply | Delegate:
-    owned = _owner_body(ctx, COURSES, "courses", r"课程(?:\s+([\s\S]*))?")
-    if isinstance(owned, Delegate):
-        return owned
-    notify, match = owned
-    assert notify.courses is not None
+    body = strip_prefix(ctx.inbound.text, ctx.settings.bot_names)[0]
+    match = re.fullmatch(r"课程(?:\s+([\s\S]*))?", body.strip(), re.IGNORECASE)
+    if match is None or ctx.inbound.kind != "private":
+        return Delegate(body)
+    try:
+        notify = service(ctx)
+    except FeatureError:
+        return Delegate(body)
+    if not notify.enabled:
+        return Delegate(body)
+    argument = (match.group(1) or "").strip()
+    fields = argument.split(maxsplit=2)
+    profile = fields[0] if fields and fields[0] in notify.blackboard_accounts else None
+    if profile is not None:
+        argument = argument[len(profile):].strip()
+    elif len(fields) >= 2 and ":" in fields[1]:
+        profile = fields[1].partition(":")[0]
+    if profile is not None:
+        course = notify.blackboard_accounts.get(profile)
+        if course is None or course.owner != ctx.inbound.sender.id or not ctx.enabled(BLACKBOARD):
+            return Delegate(body)
+    elif ctx.inbound.sender.id == notify.owner and notify.courses is not None and ctx.enabled(COURSES):
+        course = notify.courses
+    else:
+        choices = [item for item in notify.blackboard_accounts.values() if item.owner == ctx.inbound.sender.id]
+        if not ctx.enabled(BLACKBOARD) or not choices:
+            return Delegate(body)
+        if len(choices) != 1:
+            names = [name for name, item in notify.blackboard_accounts.items() if item.owner == ctx.inbound.sender.id]
+            return Reply.of_text("请指定课程账号：课程 <学号> 列表\n可用账号：" + "、".join(names))
+        course = choices[0]
     token = _command_origin.set(ctx.inbound.message_id)
     try:
-        result = await notify.courses.command((match.group(1) or "").strip())
+        result = await course.command(argument)
     except Exception as exc:  # noqa: BLE001 - no raw model or school payloads in error messages
         log.warning("Course command failed (%s)", type(exc).__name__)
         result = "课程操作暂未完成，请稍后重试；已保存的通知记录不会清空。"
@@ -501,6 +603,7 @@ def register(registry: Registry) -> None:
     registry.task(Task(SEMINAR, "学术报告通知", "私聊推送可报名的研究生学术报告（B 站直播/高新校区优先）"))
     registry.task(Task(HOMEWORK, "作业通知", "研究生系统新作业私聊提醒，并生成 PDF 草稿供确认"))
     registry.task(Task(COURSES, "课程监控", "全课程任务、DDL 提醒与每日课件日报（list + 图片）"))
+    registry.task(Task(BLACKBOARD, "BB课程订阅", "独立账号的BB课程更新、课件内作业与日报（只读）"))
     registry.task(Task(WEEKLY, "助教周报", "按汇报日检查助教空周汇报，状态变化私聊通知"))
     registry.task(Task(AUTO_SUBMIT, "自动提交",
                        "作业截止前自动提交最新 PDF、助教空周汇报自动提交；未手动设置时跟随配置 "
@@ -509,9 +612,10 @@ def register(registry: Registry) -> None:
     registry.job(Job(HOMEWORK, 30, homework_job, initial_delay_seconds=15))
     registry.job(Job(AUTO_SUBMIT, 10, deadline_job, initial_delay_seconds=15))
     registry.job(Job(COURSES, 30, courses_job, initial_delay_seconds=25))
+    registry.job(Job(BLACKBOARD, 30, blackboard_job, initial_delay_seconds=30))
     registry.job(Job(WEEKLY, 30, weekly_job, initial_delay_seconds=20))
     registry.command(Command(("作业", "homework"), homework_command,
                              "作业 列表/要求 H1/草稿 H1/评论 H1 1 内容/改稿 H1 意见/确认 H1 v1（仅主人私聊）"))
     registry.command(Command(("课程",), course_command,
-                             "课程 列表/今日/状态/完成 C1/恢复 C1/截止 C1 2026-09-29 23:59（仅主人私聊）"))
+                             "课程 [学号] 列表/今日/状态；课程 完成/恢复 <学号>:C1（仅授权私聊；主人原C1编号不变）"))
     registry.command(Command(("周汇报",), weekly_command, "周汇报 状态（仅主人私聊）"))

@@ -24,9 +24,12 @@ jobs:
       - run: uv sync --locked
       - name: Exercise the 3.0 runtime and its transport/service boundaries
         run: uv run python -m unittest discover -s tests/v3 -v
+      - name: Exercise isolated read-only BB worker sources
+        if: matrix.python-version == '3.12'
+        run: uv run --with httpx --with lxml python -m unittest discover -s tests/notify_worker -v
       - name: Prove deterministic routing without Codex installed
         run: uv run dududa-v3 chat /ping
-      - run: uv run ruff check --no-cache packages/dududa-runtime/src tests/v3 ops/cli/verify_dududa_v3.py
+      - run: uv run ruff check --no-cache packages/dududa-runtime/src tests/v3 tests/notify_worker ops/cli/verify_dududa_v3.py
       # Authenticated model acceptance is explicit and local:
       # uv run python ops/cli/verify_dududa_v3.py
       # CI protocol fakes are not evidence of a real model run.

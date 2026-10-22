@@ -67,6 +67,7 @@ export interface RuntimeV3OutboxItem {
   account_id: string
   conversation_id: string
   actions: RuntimeV3Action[]
+  guard?: { type: 'affinity_greeting'; user_id: string; kind: string; expires_at: number }
 }
 
 export interface RuntimeV3Run {
@@ -225,6 +226,16 @@ export class HttpRuntimeV3Client implements DududaRuntimePreviewClient {
     return claimed.items as RuntimeV3OutboxItem[]
   }
 
+  async authorizeOutbox(id: number | string, targetValid: boolean): Promise<{
+    authorized: boolean; actions?: RuntimeV3Action[]
+  }> {
+    const receipt = await this.request(`/v3/outbox/${encodeURIComponent(String(id))}/authorize`, {
+      target_valid: targetValid,
+    })
+    return { authorized: receipt.authorized === true,
+      ...(Array.isArray(receipt.actions) ? { actions: receipt.actions as RuntimeV3Action[] } : {}) }
+  }
+
   async outboxResult(id: number | string, state: 'sent' | 'unknown', messageId?: string): Promise<void> {
     await this.request(`/v3/outbox/${encodeURIComponent(String(id))}/result`, {
       state, ...(messageId ? { message_id: messageId } : {}),
@@ -278,10 +289,11 @@ interface RuntimeV3QqHub {
   resolveMediaSource: OneBotHub['resolveMediaSource']
   refreshMessage: OneBotHub['refreshMessage']
   memberDirectory: OneBotHub['memberDirectory']
+  validateRuntimeRecipient?: OneBotHub['validateRuntimeRecipient']
 }
 
 type RuntimeV3BridgeClient = Pick<HttpRuntimeV3Client, 'run' | 'delivery'>
-  & Partial<Pick<HttpRuntimeV3Client, 'claimOutbox' | 'outboxResult'>>
+  & Partial<Pick<HttpRuntimeV3Client, 'claimOutbox' | 'outboxResult' | 'authorizeOutbox'>>
 
 interface DeliveryTarget {
   account: string
@@ -366,12 +378,18 @@ export class RuntimeV3QqBridge {
     if (this.closed || run.status !== 'completed' || !actions.length) return
     if (!await this.runtime.delivery(run.run_id, 'sending')) return
     try {
-      const only = actions.length === 1 ? actions[0] : undefined
-      const longSummary = run.response_kind === 'conversation_summary' && only?.type === 'text'
-        && Array.from(only.text).length > SUMMARY_FORWARD_THRESHOLD
-      const sentId = longSummary && only?.type === 'text'
-        ? (await this.hub.sendMergedForward(target.account, target.type, target.peerId, summaryForwardParts(only.text))).messageId
-        : await this.deliver(target, actions)
+      const text = actions.every(action => action.type === 'text')
+        ? actions.map(action => action.text).join('') : ''
+      let sentId: string | undefined
+      if (Array.from(text).length > SUMMARY_FORWARD_THRESHOLD) {
+        const parts = summaryForwardParts(text)
+        sentId = run.response_kind === 'conversation_summary'
+          ? (await this.hub.sendMergedForward(target.account, target.type, target.peerId, parts)).messageId
+          : (await this.hub.sendRuntimeForward(target.account, target.type, target.peerId,
+            parts.map(text => ({ parts: [{ type: 'text', text }] })))).messageId
+      } else {
+        sentId = await this.deliver(target, actions)
+      }
       await this.runtime.delivery(run.run_id, 'sent', sentId)
     } catch (error) {
       // An interrupted OneBot request may already have sent. Never retry it automatically.
@@ -391,10 +409,33 @@ export class RuntimeV3QqBridge {
         if (this.closed) break
         const target = runtimeV3Target(item.account_id, item.conversation_id)
         try {
-          if (!target || !this.scopes.has(`${item.account_id}/${item.conversation_id}`)) {
+          const allowed = target && this.scopes.has(`${item.account_id}/${item.conversation_id}`)
+          let actions = Array.isArray(item.actions) ? item.actions : []
+          if (item.guard) {
+            if (!this.runtime.authorizeOutbox) throw new Error('问候缺少宿主发送授权接口')
+            let valid = false
+            if (target && allowed && item.guard.type === 'affinity_greeting' && this.hub.validateRuntimeRecipient) {
+              try {
+                valid = await this.hub.validateRuntimeRecipient(
+                  target.account, target.type, target.peerId, item.guard.user_id,
+                )
+              } catch (error) {
+                this.onError(error)
+              }
+            }
+            const authorization = await this.runtime.authorizeOutbox(item.id, valid)
+            if (!authorization.authorized) continue
+            // Authorization is one-shot. Even if its response was delayed, never send past expiry.
+            if (this.closed || !valid || Date.now() / 1_000 > item.guard.expires_at) {
+              await outboxResult.call(this.runtime, item.id, 'unknown')
+              continue
+            }
+            actions = authorization.actions ?? actions
+          }
+          if (!target || !allowed) {
             throw new Error(`发件箱会话未启用: ${item.account_id}/${item.conversation_id}`)
           }
-          const sentId = await this.deliver(target, Array.isArray(item.actions) ? item.actions : [])
+          const sentId = await this.deliver(target, actions)
           await outboxResult.call(this.runtime, item.id, 'sent', sentId)
         } catch (error) {
           // Claimed items are `sending` on the Host; an uncertain send is reported, never retried.
