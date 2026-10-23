@@ -12,7 +12,6 @@ from dududa_v3.features.base import Ctx, Delegate, Inbound, Sender
 from dududa_v3.features.sub2api import charts, client, formatters
 from dududa_v3.runtime import Runtime
 
-TOMORROW = client.today_in_timezone('Asia/Shanghai') + timedelta(days=1)
 ROOT = Path(__file__).resolve().parents[2]
 BOT = 'qq-10000'
 GROUP = BOT + ':group:100'
@@ -88,14 +87,14 @@ class PureLogicTests(unittest.TestCase):
         disabled = sub2api.Options.from_config({**CONFIG, 'enabled': False})
         self.assertIn('已关闭', sub2api.access_error(disabled, inbound(GROUP)))
 
-    def test_date_parsing(self):
+    @patch.object(client, 'today_in_timezone', return_value=date(2026, 10, 23))
+    def test_date_parsing(self, _today):
         period = client.parse_date_range('2026-08-20', '2026-08-26', timezone='Asia/Shanghai', max_days=90)
         self.assertEqual(period.days, 7)
         self.assertEqual(period.as_params(), {'start_date': '2026-08-20', 'end_date': '2026-08-26'})
         for start, end, message in (('2026-08-26', '2026-08-20', '不能晚于结束'), ('08-20', '2026-08-26', '格式'),
                                     ('2026-01-01', '2026-08-26', '最多允许 90 天'),
-                                    (str(TOMORROW), str(TOMORROW),
-                                     '不能晚于今天')):
+                                    ('2026-10-24', '2026-10-24', '不能晚于今天')):
             with self.assertRaisesRegex(client.Sub2APIConfigError, message):
                 client.parse_date_range(start, end, timezone='Asia/Shanghai', max_days=90)
         trend, cumulative = client.parse_user_trend_request('sum', '30d', timezone='Asia/Shanghai', max_days=90)

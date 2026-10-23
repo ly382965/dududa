@@ -55,6 +55,7 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
         for service in (self.legacy, self.one, self.two):
             service.close()
         self.notify.store.close()
+        self.notify.seminar_bookings.close()
         await self.runtime.close()
         self.tmp.cleanup()
 
@@ -73,6 +74,7 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
         await self.two.send_text(bb_notice)
         lectures = {
             "total": 1, "available_count": 1, "recommended_count": 1, "fetched_at": "now",
+            "account_key": "a" * 64, "selected_ids": [],
             "reports": [{"id": "R1", "title": "owner-seminar", "available": True,
                          "preferred": True, "remaining": 3}],
         }
@@ -87,6 +89,35 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delivered[f"{BOT}:private:{OTHER}"], [bb_notice])
         self.assertTrue(any("owner-seminar" in text for text in delivered[f"{BOT}:private:{OWNER}"]))
         self.assertEqual(set(delivered), {f"{BOT}:private:{OWNER}", f"{BOT}:private:{OTHER}"})
+
+    async def test_auto_booking_is_only_for_original_owner_not_bb_subscriber(self):
+        self.notify.cfg["seminar_auto_book_enabled"] = True
+        self.runtime.store.set_switch(notify.AUTO_SUBMIT, False, OWNER)
+        report = {"id": "AUTO1", "title": "owner-only-booking", "available": True,
+                  "preferred": True, "remaining": 3, "cancellable": True}
+        lectures = {
+            "account_key": "a" * 64, "selected_ids": [], "reports": [report],
+            "total": 1, "available_count": 1, "recommended_count": 1, "fetched_at": "now",
+        }
+        self.notify.query = AsyncMock(return_value={"status": "booked", "report": report})
+        with patch.object(notify, "fetch_snapshot", AsyncMock(return_value=lectures)):
+            await self.notify.poll_seminar(force=True)
+            lectures["reports"], lectures["selected_ids"] = [], ["AUTO1"]
+            await self.notify.poll_seminar(force=True)
+        self.notify.query.assert_awaited_once()
+        await self.two.send_text("independent BB update")
+        with self.runtime.store.connect() as db:
+            rows = db.execute("SELECT conversation_id,actions FROM outbox").fetchall()
+        destinations = [
+            conversation for conversation, actions in rows
+            if any("owner-only-booking" in action.get("text", "") for action in json.loads(actions))
+        ]
+        self.assertEqual(destinations, [f"{BOT}:private:{OWNER}"])
+        subscriber_messages = [
+            action["text"] for conversation, actions in rows if conversation == f"{BOT}:private:{OTHER}"
+            for action in json.loads(actions) if action["type"] == "text"
+        ]
+        self.assertEqual(subscriber_messages, ["independent BB update"])
 
     async def test_bb_recipient_still_requires_private_scope_authorization(self):
         root = Path(self.tmp.name) / "unauthorized"

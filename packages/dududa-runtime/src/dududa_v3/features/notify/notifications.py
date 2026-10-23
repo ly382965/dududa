@@ -43,6 +43,16 @@ def query_error_reason(error):
         "seminar_list_changed": "读取期间学校讲座列表发生变化",
         "seminar_repeated_page": "学校讲座接口重复返回同一页",
         "seminar_query_failed": "学校讲座接口查询失败",
+        "seminar_identity_missing": "讲座账号身份缺失",
+        "seminar_identity_unavailable": "学校未返回可核验的讲座账号身份",
+        "seminar_account_mismatch": "讲座账号身份不一致，已停止预约",
+        "seminar_selected_action_unknown": "学校未返回已选讲座的查询类型",
+        "seminar_selected_pagination_invalid": "已选讲座分页信息不完整",
+        "seminar_selected_page_mismatch": "学校返回了错误的已选讲座页",
+        "seminar_selected_list_changed": "读取期间已选讲座列表发生变化",
+        "seminar_selected_duplicate": "学校重复返回已选讲座，无法核验完整列表",
+        "seminar_selected_list_incomplete": "已选讲座记录与学校总数不一致",
+        "seminar_selected_page_limit": "已选讲座列表超出完整核验范围",
         "weekly_owner_mismatch": "周汇报账号或学生身份核对失败",
         "weekly_login_redirect_invalid": "助教系统认证跳转发生变化",
         "weekly_api_rejected": "助教系统未接受请求",
@@ -215,9 +225,19 @@ PORTAL_URL = "https://yjs1.ustc.edu.cn/gsapp/sys/xsbgglappustc/*default/index.do
 
 
 def seminar_notifications(
-    snapshot: dict, *, preferred_only: bool, interval: int
+    snapshot: dict, *, preferred_only: bool, interval: int, auto_book: bool = False
 ) -> list[Notification]:
     preference = "B 站直播和高新校区" if preferred_only else "所有地点"
+    if auto_book:
+        return [Notification(
+            "subscription:auto-book",
+            f"嘟嘟哒讲座自动预约已开启。\n每 {interval} 分钟检查一次，关注{preference}的可报名报告。\n"
+            "符合条件时先预约，核对学校已选列表后私聊通知结果；不会重复预约，也不会补选你退掉的报告。\n"
+            "退选是否开放及截止时间以学校页面为准；机器人不会自动退选。\n"
+            f"本次检查发现：可报名 {snapshot['available_count']} 场，"
+            f"符合 B 站/高新偏好 {snapshot['recommended_count']} 场。\n"
+            f"{PORTAL_URL}",
+        )]
     items = [
         Notification(
             "subscription",
