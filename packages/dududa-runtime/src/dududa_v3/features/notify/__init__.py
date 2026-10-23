@@ -205,8 +205,8 @@ class Notify:
                 raise FeatureError("BB 账号 id 必须是安全的学号标识")
             if profile in self.blackboard_accounts:
                 raise FeatureError("BB 账号 id 不能重复")
-            if recipient not in self.recipients or self.scope(recipient) not in self.tk.settings.allowed_scopes:
-                raise FeatureError("BB 账号收件人必须在通知列表和私聊白名单中")
+            if self.scope(recipient) not in self.tk.settings.allowed_scopes:
+                raise FeatureError("BB 账号收件人必须在私聊白名单中")
             if not isinstance(credentials, str) or not credentials or not Path(credentials).is_absolute():
                 raise FeatureError("BB 账号必须配置独立凭据文件的绝对路径")
             if not isinstance(term, str) or not re.fullmatch(r"20\d{2}[A-Z]{2}", term):
@@ -247,7 +247,9 @@ class Notify:
         return f"{self.account}/{self.account}:private:{recipient}"
 
     def push(self, recipient: str, reply: Reply, kind: str, data: str | bytes, key: str | None = None) -> str:
-        if recipient not in self.recipients:
+        if recipient not in self.recipients and not any(
+            course.owner == recipient for course in self.blackboard_accounts.values()
+        ):
             raise FeatureError("通知收件人未授权")
         key = key or message_key(kind, recipient, data, current_time().date().isoformat(),
                                  _command_origin.get(), next(self.sequence))

@@ -5,7 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from dududa_v3.config import Settings
 from dududa_v3.features import notify
@@ -35,8 +35,8 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
             {"id": "PB_ONE", "recipient": OWNER, "credentials_file": str(root / "one.toml"), "term": "2026FA"},
             {"id": "PB_TWO", "recipient": OTHER, "credentials_file": str(root / "two.toml"), "term": "2026FA"},
         ]
-        cfg = {"enabled": True, "seminar_enabled": False, "account_id": BOT,
-               "recipients": [OWNER, OTHER], "homework_recipient": OWNER,
+        cfg = {"enabled": True, "seminar_enabled": True, "account_id": BOT,
+               "recipients": [OWNER], "homework_recipient": OWNER,
                "courses_enabled": True, "course_sources": [dict(COURSE)], "blackboard_accounts": accounts}
         self.runtime = Runtime(Settings(
             root=Path(__file__).resolve().parents[2], state_dir=root,
@@ -54,6 +54,7 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         for service in (self.legacy, self.one, self.two):
             service.close()
+        self.notify.store.close()
         await self.runtime.close()
         self.tmp.cleanup()
 
@@ -66,6 +67,46 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
 
     def done(self, service):
         return service.db.execute("SELECT done FROM tasks WHERE number=1").fetchone()[0]
+
+    async def test_bb_recipient_does_not_receive_original_account_seminars(self):
+        bb_notice = "BB course update"
+        await self.two.send_text(bb_notice)
+        lectures = {
+            "total": 1, "available_count": 1, "recommended_count": 1, "fetched_at": "now",
+            "reports": [{"id": "R1", "title": "owner-seminar", "available": True,
+                         "preferred": True, "remaining": 3}],
+        }
+        with patch.object(notify, "fetch_snapshot", AsyncMock(return_value=lectures)):
+            await self.notify.poll_seminar(force=True)
+        with self.runtime.store.connect() as db:
+            rows = db.execute("SELECT conversation_id,actions FROM outbox ORDER BY id").fetchall()
+        delivered = {}
+        for conversation, actions in rows:
+            delivered.setdefault(conversation, []).extend(
+                action["text"] for action in json.loads(actions) if action["type"] == "text")
+        self.assertEqual(delivered[f"{BOT}:private:{OTHER}"], [bb_notice])
+        self.assertTrue(any("owner-seminar" in text for text in delivered[f"{BOT}:private:{OWNER}"]))
+        self.assertEqual(set(delivered), {f"{BOT}:private:{OWNER}", f"{BOT}:private:{OTHER}"})
+
+    async def test_bb_recipient_still_requires_private_scope_authorization(self):
+        root = Path(self.tmp.name) / "unauthorized"
+        config = {
+            "enabled": True, "seminar_enabled": False, "account_id": BOT,
+            "recipients": [OWNER],
+            "blackboard_accounts": [{
+                "id": "PB_OUTSIDE", "recipient": OTHER,
+                "credentials_file": str(root / "credentials.toml"), "term": "2026FA",
+            }],
+        }
+        runtime = Runtime(Settings(
+            state_dir=root, allowed_scopes=(f"{BOT}/{BOT}:private:{OWNER}",),
+            features={"notify": config},
+        ))
+        try:
+            with self.assertRaises(FeatureError):
+                notify.service(notify.JobCtx(runtime))
+        finally:
+            await runtime.close()
 
     async def test_profile_selection_and_qualified_ids_do_not_modify_another_account(self):
         await self.command(OWNER, "课程 PB_ONE 完成 C1")
