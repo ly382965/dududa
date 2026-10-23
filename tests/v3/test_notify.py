@@ -220,6 +220,14 @@ class FeatureGlueTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self.runtime.close()
+        service = notify._services.get(self.runtime)
+        if service is not None:
+            if service.seminar_bookings:
+                service.seminar_bookings.close()
+            if service.store:
+                service.store.close()
+            if service.homework:
+                service.homework.close()
         self.tmp.cleanup()
 
     def outbox(self):
@@ -246,6 +254,30 @@ class FeatureGlueTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(service.auto_submit_allowed())
         self.runtime.store.set_switch(notify.AUTO_SUBMIT, False, OWNER)
         self.assertFalse(service.auto_submit_allowed())
+
+    async def test_seminar_writes_require_independent_authorization(self):
+        service = notify.service(notify.JobCtx(self.runtime))
+        service.dry_run = False
+        service.query = AsyncMock()
+        request = {"operation": "seminar_book", "report_id": "R1", "account_key": "a" * 64}
+        self.runtime.store.set_switch(notify.AUTO_SUBMIT, True, OWNER)
+        self.assertFalse(service.seminar_booking_allowed())
+        result = await service.book_seminar(request)
+        self.assertEqual(result["status"], "unavailable")
+        service.query.assert_not_awaited()
+        service.cfg["seminar_auto_book_enabled"] = True
+        self.assertTrue(service.seminar_booking_allowed())
+        self.runtime.store.set_switch(notify.SEMINAR_BOOK, False, OWNER)
+        self.assertFalse(service.seminar_booking_allowed())
+        self.runtime.store.set_switch(notify.SEMINAR_BOOK, True, OWNER)
+        service.dry_run = True
+        self.assertFalse(service.seminar_booking_allowed())
+        service.dry_run = False
+        self.runtime.store.set_switch(notify.SEMINAR, False, OWNER)
+        self.assertFalse(service.seminar_booking_allowed())
+        self.runtime.store.set_switch(notify.SEMINAR, True, OWNER)
+        service.owner = "300002"
+        self.assertFalse(service.seminar_booking_allowed())
 
     async def submit(self, text, conversation, user):
         run = await self.runtime.submit({"account_id": BOT, "conversation_id": conversation, "user_id": user,

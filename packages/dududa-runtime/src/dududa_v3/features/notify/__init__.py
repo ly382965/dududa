@@ -8,7 +8,8 @@ Campus access, PDF/PNG rendering and course readers run in a separate worker ven
 ``assignment_worker.py``; those worker-side modules are never imported by the Host.
 
 Notifications go only to configured private recipients; extra BB accounts have separate state.
-``notify_auto_submit`` gates the original school writers; BB subscriptions never submit.
+``notify_auto_submit`` gates homework/weekly writers; ``notify_seminar_book`` gates seminar selection.
+BB subscriptions never submit or select seminars.
 """
 
 from __future__ import annotations
@@ -51,15 +52,18 @@ from .notifications import (
     query_error_reason,
     seminar_notifications,
 )
+from .seminars import SeminarBookingService
 from .weekly import WeeklyService
 
 FEATURE = "notify"
 SEMINAR, HOMEWORK, COURSES, WEEKLY, AUTO_SUBMIT = (
     "notify_seminar", "notify_homework", "notify_courses", "notify_weekly", "notify_auto_submit")
 BLACKBOARD = "notify_blackboard"
+SEMINAR_BOOK = "notify_seminar_book"
 HEALTH_LABELS = {
     "homework": "作业", "courses": "课程", "course_reports": "课件日报", "weekly": "周汇报",
     "blackboard": "BB课程", "blackboard_reports": "BB课件日报",
+    "seminar_booking": "讲座预约",
 }
 HOMEWORK_ERRORS = {
     "homework_already_submitted": "学校系统已有提交记录，不会覆盖。",
@@ -147,18 +151,27 @@ class Notify:
         self.homework_started = False
         self.sequence = itertools.count(1)
         self.store: DeliveryStore | None = None
+        self.seminar_bookings: SeminarBookingService | None = None
         self.homework: HomeworkService | None = None
         self.courses: CourseService | None = None
         self.weekly: WeeklyService | None = None
         self.blackboard_accounts: dict[str, CourseService] = {}
         self.blackboard_intervals: dict[str, int] = {}
-        owned = [flag for flag in ("homework_enabled", "courses_enabled", "weekly_enabled") if cfg.get(flag)]
+        owned = [flag for flag in (
+            "homework_enabled", "courses_enabled", "weekly_enabled", "seminar_auto_book_enabled"
+        ) if cfg.get(flag)]
         if self.enabled and owned and self.owner not in self.recipients:
             raise FeatureError("notify.homework_recipient 必须在 recipients 中")
         if not self.enabled:
             return
         if cfg.get("seminar_enabled", True):
             self.store = DeliveryStore(self.root / "deliveries.sqlite3")
+            if self.owner in self.recipients:
+                if cfg.get("seminar_auto_book_enabled") and self.scope(self.owner) not in self.tk.settings.allowed_scopes:
+                    raise FeatureError("讲座自动预约的主人必须在私聊白名单中")
+                self.seminar_bookings = SeminarBookingService(
+                    self.root, self.book_seminar,
+                    lambda text, key: self.send_text(self.owner, text, "seminar-booking", key=key))
         if cfg.get("homework_enabled"):
             self.homework_interval = _int(cfg, "homework_interval_minutes", 3, 1, 1440)
             self.homework = HomeworkService(
@@ -233,6 +246,20 @@ class Notify:
             return False
         switches = self.tk.store.switches()
         return switches.get(AUTO_SUBMIT, bool(self.cfg.get("homework_auto_submit_enabled", False)))
+
+    def seminar_booking_allowed(self) -> bool:
+        if (not self.enabled or self.dry_run or self.seminar_bookings is None
+                or not self.tk.enabled(SEMINAR)
+                or self.scope(self.owner) not in self.tk.settings.allowed_scopes):
+            return False
+        return self.tk.store.switches().get(
+            SEMINAR_BOOK, bool(self.cfg.get("seminar_auto_book_enabled", False)))
+
+    async def book_seminar(self, request: dict) -> dict:
+        # Recheck at each mutation, including a switch change during a slow poll.
+        if not self.seminar_booking_allowed():
+            return {"status": "unavailable", "reason": "seminar_booking_disabled"}
+        return await self.query(request)
 
     def refresh_gates(self) -> None:
         allowed = self.auto_submit_allowed()
@@ -378,13 +405,24 @@ class Notify:
             await self.record_poll("seminar", self.recipients, exc)
             return
         await self.record_poll("seminar", self.recipients)
-        items = seminar_notifications(snapshot, preferred_only=self.cfg.get("preferred_only", True),
-                                      interval=self.interval)
-        ids = {item.text: item.id for item in items}
+        preferred_only = bool(self.cfg.get("preferred_only", True))
+        booking = self.seminar_booking_allowed()
+        if self.seminar_bookings:
+            try:
+                await self.seminar_bookings.poll(snapshot, enabled=booking, preferred_only=preferred_only)
+            except Exception as exc:  # noqa: BLE001 - never log identities or school payloads
+                log.warning("Seminar booking poll failed (%s)", query_error_reason(exc))
+                await self.record_poll("seminar_booking", (self.owner,), exc)
+            else:
+                await self.record_poll("seminar_booking", (self.owner,))
         for recipient in self.recipients:
-            async def send(target: str, text: str) -> str:
+            items = seminar_notifications(
+                snapshot, preferred_only=preferred_only, interval=self.interval,
+                auto_book=booking and recipient == self.owner)
+            ids = {item.text: item.id for item in items}
+            async def send(target: str, text: str, keys: dict = ids) -> str:
                 return await self.send_text(target, text, "seminar",
-                                            key=f"notify:seminar-radar:{target}:{ids[text]}")
+                                            key=f"notify:seminar-radar:{target}:{keys[text]}")
             count = await deliver(self.store, send, source="seminar-radar", platform_id=self.platform_id,
                                   recipient=recipient, notifications=items, limit=self.limit)
             log.info("SeminarRadar poll: total=%s available=%s recommended=%s queued=%s", snapshot["total"],
@@ -603,6 +641,9 @@ async def weekly_command(ctx: Ctx) -> Reply | Delegate:
 
 def register(registry: Registry) -> None:
     registry.task(Task(SEMINAR, "学术报告通知", "私聊推送可报名的研究生学术报告（B 站直播/高新校区优先）"))
+    registry.task(Task(SEMINAR_BOOK, "讲座自动预约",
+                       "按讲座偏好先预约再核对通知；手动退选后不补选；未手动设置时跟随 "
+                       "seminar_auto_book_enabled"))
     registry.task(Task(HOMEWORK, "作业通知", "研究生系统新作业私聊提醒，并生成 PDF 草稿供确认"))
     registry.task(Task(COURSES, "课程监控", "全课程任务、DDL 提醒与每日课件日报（list + 图片）"))
     registry.task(Task(BLACKBOARD, "BB课程订阅", "独立账号的BB课程更新、课件内作业与日报（只读）"))

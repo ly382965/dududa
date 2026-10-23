@@ -8,7 +8,9 @@ import sys
 from assignment_client import HomeworkClient, HomeworkError
 from campus_auth import CampusAuthError, graduate_session
 from portal_diagnostics import PortalResponseError
+from seminar_client import SeminarBookingError
 from weekly_client import WeeklyError
+from worker import book as book_seminar
 from worker import load_credentials
 
 
@@ -36,6 +38,8 @@ async def execute(request: dict) -> dict:
         if str(exc) == "cas_account_mismatch":
             return {"error": "cas_account_mismatch"}
         raise
+    if request["operation"] == "seminar_book":
+        return await book_seminar(request, credentials)
     if request["operation"] in {"weekly_list", "weekly_submit"}:
         from weekly_client import execute_weekly
 
@@ -68,7 +72,7 @@ def main() -> int:
     request = json.load(sys.stdin)
     try:
         result = asyncio.run(execute(request))
-    except (HomeworkError, CampusAuthError, WeeklyError, PortalResponseError) as exc:
+    except (HomeworkError, CampusAuthError, WeeklyError, PortalResponseError, SeminarBookingError) as exc:
         result = {"error": str(exc)}
     except Exception as exc:  # noqa: BLE001 - never expose CAS tickets or request bodies
         result = {"error": type(exc).__name__}

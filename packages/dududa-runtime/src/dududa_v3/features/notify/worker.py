@@ -14,11 +14,11 @@ import tomllib
 if __package__:
     from .campus_auth import CampusAuthError, graduate_session
     from .portal_diagnostics import PortalResponseError
-    from .seminar_client import create_seminar_client
+    from .seminar_client import SeminarBookingError, create_seminar_client
 else:
     from campus_auth import CampusAuthError, graduate_session
     from portal_diagnostics import PortalResponseError
-    from seminar_client import create_seminar_client
+    from seminar_client import SeminarBookingError, create_seminar_client
 
 
 def load_credentials(path: str, *, expected_username=None):
@@ -50,21 +50,38 @@ async def fetch(credentials_file: str, timeout: float) -> dict:
     credentials = load_credentials(credentials_file)
     async with graduate_session(credentials, timeout=timeout) as session:
         client = create_seminar_client(session)
-        await client.initialize()
+        account_key = await client.initialize_account(credentials.username)
+        selected = await client.fetch_selected()
         rows = await client.fetch_unselected()
+        selected_ids = sorted(str(row["BGBM"]).strip() for row in selected)
     now = datetime.now(CHINA_TIME)
     reports = [normalize_report(row, now=now) for row in rows]
     available = sorted(
-        (report for report in reports if report["available"]),
+        (report for report in reports if report["available"] and report["id"] not in selected_ids),
         key=lambda report: (not report["preferred"], report["time"], report["id"]),
     )
     return {
         "fetched_at": now.isoformat(timespec="seconds"),
+        "account_key": account_key,
+        "selected_ids": selected_ids,
         "total": len(reports),
         "available_count": len(available),
         "recommended_count": sum(report["preferred"] for report in available),
         "reports": available,
     }
+
+
+async def book(request: dict, credentials) -> dict:
+    async with graduate_session(
+        credentials, timeout=request.get("timeout", 45)
+    ) as session:
+        client = create_seminar_client(session)
+        await client.initialize_account(credentials.username)
+        return await client.book(
+            request["report_id"],
+            request["account_key"],
+            preferred_only=request.get("preferred_only", True),
+        )
 
 
 def main() -> int:
@@ -78,7 +95,7 @@ def main() -> int:
         parser.error("timeout must be in (0, 300]")
     try:
         result = asyncio.run(fetch(args.credentials_file, args.timeout))
-    except (CampusAuthError, PortalResponseError) as exc:
+    except (CampusAuthError, PortalResponseError, SeminarBookingError) as exc:
         print(json.dumps({"error": str(exc)}))
         return 1
     except SeminarQueryError as exc:
