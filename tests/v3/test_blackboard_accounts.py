@@ -197,5 +197,55 @@ class BlackboardAccountTests(unittest.IsolatedAsyncioTestCase):
             await task
 
 
+class CourseForwardRecipientTests(unittest.IsolatedAsyncioTestCase):
+    FORWARD = "300009"
+
+    def runtime(self, root, forwards):
+        cfg = {"enabled": True, "seminar_enabled": True, "account_id": BOT,
+               "recipients": [OWNER], "homework_recipient": OWNER,
+               "courses_enabled": True, "course_sources": [dict(COURSE)], "course_forwards": forwards}
+        return Runtime(Settings(state_dir=root, allowed_scopes=(f"{BOT}/{BOT}:private:{OWNER}",),
+                                features={"notify": cfg}))
+
+    async def test_forward_recipient_gets_course_notice_only_without_chat_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = self.runtime(Path(directory), [{"recipient": self.FORWARD, "courses": [COURSE["id"]]}])
+            service = notify.service(notify.JobCtx(runtime))
+            try:
+                service.courses.query = AsyncMock(return_value=snapshot("转发任务"))
+                await service.courses.poll()
+                lectures = {"total": 1, "available_count": 1, "recommended_count": 1, "fetched_at": "now",
+                            "account_key": "a" * 64, "selected_ids": [],
+                            "reports": [{"id": "R1", "title": "owner-seminar", "available": True,
+                                         "preferred": True, "remaining": 3}]}
+                with patch.object(notify, "fetch_snapshot", AsyncMock(return_value=lectures)):
+                    await service.poll_seminar(force=True)
+                with runtime.store.connect() as db:
+                    rows = db.execute("SELECT actions FROM outbox WHERE conversation_id=?",
+                                      (f"{BOT}:private:{self.FORWARD}",)).fetchall()
+                texts = [action["text"] for (actions,) in rows for action in json.loads(actions)]
+                self.assertEqual(len(texts), 1)
+                self.assertIn("转发任务", texts[0])
+                inbound = Inbound(account_id=BOT, conversation_id=f"{BOT}:private:{self.FORWARD}",
+                                  message_id="m", text="课程 列表", sender=Sender(id=self.FORWARD))
+                reply = await notify.course_command(Ctx(runtime=runtime, inbound=inbound, session_id=0, run_id="t"))
+                self.assertIsInstance(reply, Delegate)
+            finally:
+                service.courses.close()
+                service.store.close()
+                if service.seminar_bookings:
+                    service.seminar_bookings.close()
+                await runtime.close()
+
+    async def test_forward_to_unconfigured_course_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = self.runtime(Path(directory), [{"recipient": self.FORWARD, "courses": ["missing"]}])
+            try:
+                with self.assertRaisesRegex(FeatureError, "missing"):
+                    notify.service(notify.JobCtx(runtime))
+            finally:
+                await runtime.close()
+
+
 if __name__ == "__main__":
     unittest.main()

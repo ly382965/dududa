@@ -353,6 +353,93 @@ class CourseProfileTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("- C1 ", service.send_text.await_args.args[0])
         self.assertEqual(len(self.rows(service)), 1)
 
+    async def test_changes_only_digest_skips_quiet_days_and_repeats_nothing(self):
+        service = self.service(changes_only=True)
+        await service.poll()
+        await service.daily()
+        self.assertIn(POINT, report_text(json.loads(self.rows(service, "reports")[0]["payload"])))
+        service.send_text.reset_mock()
+        service.send_image.reset_mock()
+        with patch("dududa_v3.features.notify.course_tasks.current_time", return_value=NOW.replace(day=23)):
+            await service.poll()
+            await service.daily()
+            service.send_text.assert_not_awaited()
+            service.send_image.assert_not_awaited()
+            service.query.return_value = result([material(), dict(material("新增课件正文。", signature="x"), id="new", title="L05.pdf")])
+            await service.poll()
+            await service.daily()
+            update = json.loads(self.rows(service, "reports")[-1]["payload"])
+            text = report_text(update)
+            self.assertEqual(self.rows(service, "reports")[-1]["kind"], "update")
+            self.assertIn("L05.pdf", text)
+            self.assertNotIn("L04_FET.pdf", text)
+            self.assertNotIn("PB_TEST:C1", text)
+            service.send_image.assert_awaited_once()
+            service.send_text.reset_mock()
+            await service.poll()
+            await service.daily()
+            service.send_text.assert_not_awaited()
+        # Manual commands still produce the full list.
+        self.assertIn("PB_TEST:C1", await service.command("状态"))
+
+
+AI = {"id": "ai", "name": "高级人工智能", "kind": "graduate", "url": "https://yjs.example/hw"}
+ML = {"id": "ml", "name": "机器学习", "kind": "blackboard", "url": "https://bb.example/ml"}
+
+
+class CourseForwardTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.clock = patch("dududa_v3.features.notify.course_tasks.current_time", return_value=NOW)
+        self.clock.start()
+        self.forward = AsyncMock()
+        self.service = CourseService(
+            self.tmp.name, "300001", [AI, ML], AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock(), AsyncMock(),
+            forwards={"300009": ["ai"]}, forward_text=self.forward)
+
+    async def asyncTearDown(self):
+        self.service.close()
+        self.clock.stop()
+        self.tmp.cleanup()
+
+    async def poll(self, ai_tasks, other_tasks=()):
+        self.service.query.return_value = {"courses": [
+            {"id": "ai", "status": "ok", "tasks": list(ai_tasks), "materials": []},
+            {"id": "ml", "status": "ok", "tasks": list(other_tasks), "materials": []},
+        ]}
+        await self.service.poll()
+
+    def texts(self):
+        return [call.args for call in self.forward.await_args_list]
+
+    async def test_forwards_only_selected_course_with_independent_reminders(self):
+        old = {"id": "h1", "title": "H1 旧作业", "url": AI["url"], "deadline": "2026-10-01 14:00:00",
+               "precision": "minute", "submitted": True}
+        new = {"id": "h2", "title": "H2 新作业", "url": AI["url"], "deadline": "2026-10-30 14:00:00",
+               "precision": "minute", "submitted": False}
+        other = {"id": "m1", "title": "机器学习作业", "url": ML["url"], "deadline": "2026-10-30 14:00:00",
+                 "precision": "minute"}
+        await self.poll([old, new], [other])
+        self.assertEqual(len(self.texts()), 1)
+        recipient, text = self.texts()[0]
+        self.assertEqual(recipient, "300009")
+        self.assertIn("【高级人工智能 · 课程任务】", text)
+        self.assertIn("H2 新作业", text)
+        self.assertNotIn("C2", text)
+        self.assertNotIn("提交", text)
+        await self.poll([old, new], [other])
+        self.assertEqual(len(self.texts()), 1)
+        # The owner submitting early must not silence the recipient's DDL reminder.
+        submitted = dict(new, submitted=True)
+        with patch("dududa_v3.features.notify.course_tasks.current_time",
+                   return_value=datetime(2026, 10, 30, 9, 0, tzinfo=CHINA_TIME)):
+            await self.poll([old, submitted], [other])
+            await self.poll([old, submitted], [other])
+        self.assertEqual(len(self.texts()), 3)
+        self.assertIn("【高级人工智能 · 课程任务更新】", self.texts()[1][1])
+        self.assertIn("已进入截止前 6 小时", self.texts()[2][1])
+        self.assertTrue(all(target == "300009" for target, _ in self.texts()))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -61,7 +61,8 @@ const runtimeV3 = runtimeVersion === '3'
   : undefined
 const runtimePreview = runtimeV3 ?? new HttpDududaRuntimePreviewClient(astrBotPluginApiUrl, astrBotPluginApiKey)
 const runtimeBridge = runtimeV3
-  ? new RuntimeV3QqBridge(hub, runtimeV3, runtimeV3Scopes(process.env.DUDUDA_V3_QQ_SCOPES))
+  ? new RuntimeV3QqBridge(hub, runtimeV3, runtimeV3Scopes(process.env.DUDUDA_V3_QQ_SCOPES), undefined, undefined,
+      runtimeV3Scopes(process.env.DUDUDA_V3_QQ_NOTIFY_SCOPES))
   : undefined
 // The Web gateway owns the write-only credential file.  Provider probes are
 // explicit operator actions. These legacy pool settings are not Codex configuration.

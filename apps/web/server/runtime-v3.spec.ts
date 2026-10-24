@@ -541,6 +541,31 @@ describe('Dududa 3.0 outbox poller', () => {
     bridge.close()
   })
 
+  it('delivers plain notifications to notify-only scopes without opening chat or greetings', async () => {
+    const { hub, runtime } = bridgeFixture(runtimeV3Scopes())
+    const items: RuntimeV3OutboxItem[] = [
+      { id: 1, account_id: scope.accountId, conversation_id: scope.conversationId, actions: [{ type: 'text', text: '课程任务' }] },
+      greeting(),
+    ]
+    const outbox = {
+      ...runtime,
+      claimOutbox: vi.fn(async () => items.splice(0)),
+      outboxResult: vi.fn(async (..._args: unknown[]) => undefined),
+      authorizeOutbox: vi.fn(async (_id: number | string, valid: boolean) => ({ authorized: valid })),
+    }
+    const bridge = new RuntimeV3QqBridge(hub, outbox, runtimeV3Scopes(), () => undefined, 0,
+      runtimeV3Scopes(`${scope.accountId}/${scope.conversationId}`))
+    await bridge.pollOutbox()
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledTimes(1)
+    expect(hub.sendRuntimeMessage).toHaveBeenCalledWith('qq-100001', 'group', '200001', [{ type: 'text', text: '课程任务' }])
+    expect(hub.validateRuntimeRecipient).not.toHaveBeenCalled()
+    expect(outbox.authorizeOutbox).toHaveBeenCalledWith(20, false)
+    expect(outbox.outboxResult.mock.calls).toEqual([[1, 'sent', 'sent-1']])
+    await bridge.handle(messageEvent())
+    expect(runtime.run).not.toHaveBeenCalled()
+    bridge.close()
+  })
+
   function greeting(expiresAt = Date.now() / 1_000 + 900): RuntimeV3OutboxItem {
     return { id: 20, account_id: scope.accountId, conversation_id: scope.conversationId,
       actions: [{ type: 'mention', user_id: '300001' }, { type: 'text', text: 'queued nickname' }],
