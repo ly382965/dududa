@@ -35,6 +35,17 @@ def deadline_label(task):
     return label + ("（已过期）" if deadline < now else "")
 
 
+def deadline_passed(task):
+    value = task.get("deadline")
+    if not value:
+        return False
+    if task.get("precision") == "date":
+        return datetime.fromisoformat(value).date() < current_time().date()
+    deadline = datetime.fromisoformat(value)
+    deadline = deadline if deadline.tzinfo else deadline.replace(tzinfo=CHINA_TIME)
+    return deadline < current_time()
+
+
 def report_text(report):
     lines = [report["title"], report["subtitle"], ""]
     for index, section in enumerate(report["sections"], 1):
@@ -65,12 +76,22 @@ class CourseService:
         discover=False,
         nonempty_only=False,
         analyze_materials=False,
+        changes_only=False,
+        forwards=None,
+        forward_text=None,
     ):
         if profile and not re.fullmatch(r"[A-Za-z0-9_-]+", profile):
             raise ValueError("课程账号标识格式无效")
         self.profile, self.label = profile, label or profile
         self.discover, self.nonempty_only = discover, nonempty_only
         self.analyze_materials = analyze_materials
+        # After the first digest, daily reports carry only materials not yet reported.
+        self.changes_only = changes_only
+        # recipient -> course ids whose task notices and DDL reminders are copied, with separate state.
+        self.forwards = {recipient: frozenset(courses) for recipient, courses in (forwards or {}).items()}
+        if self.forwards and forward_text is None:
+            raise ValueError("课程转发缺少发送通道")
+        self.forward_text = forward_text
         suffix = f"-{profile}" if profile else ""
         self.root = Path(root) / f"courses-{owner}{suffix}"
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -98,6 +119,8 @@ class CourseService:
             CREATE TABLE IF NOT EXISTS baseline_materials(course TEXT, material TEXT, PRIMARY KEY(course,material));
             CREATE TABLE IF NOT EXISTS baseline_tasks(number INTEGER PRIMARY KEY, revision INTEGER);
             CREATE TABLE IF NOT EXISTS analysis_errors(course TEXT, material TEXT, revision INTEGER, error TEXT, PRIMARY KEY(course,material));
+            CREATE TABLE IF NOT EXISTS forward_tasks(recipient TEXT, task INTEGER, revision INTEGER NOT NULL, PRIMARY KEY(recipient,task));
+            CREATE TABLE IF NOT EXISTS forward_reminders(recipient TEXT, task INTEGER, deadline TEXT, stage TEXT, PRIMARY KEY(recipient,task,deadline,stage));
         """)
         if discover:
             cached = self.db.execute("SELECT payload FROM course_metadata WHERE key='catalog'").fetchone()
@@ -295,6 +318,38 @@ class CourseService:
                         "INSERT INTO reminders VALUES(?,?,?)",
                         (row["number"], task["deadline"], stage),
                     )
+        await self.forward_tasks(names)
+
+    async def forward_tasks(self, names):
+        """Copy task notices and DDL reminders of selected courses, ignoring the owner's done/submitted state."""
+        for recipient, courses in self.forwards.items():
+            for row in self.db.execute("SELECT * FROM tasks WHERE active=1 ORDER BY number").fetchall():
+                if row["course"] not in courses or row["course"] not in names:
+                    continue
+                task, name = self.task_payload(row), names[row["course"]]
+                seen = self.db.execute(
+                    "SELECT revision FROM forward_tasks WHERE recipient=? AND task=?", (recipient, row["number"])
+                ).fetchone()
+                if seen is None or seen["revision"] < row["revision"]:
+                    # Tasks already past their deadline when first seen are recorded silently.
+                    if not deadline_passed(task):
+                        title = "课程任务" if seen is None else "课程任务更新"
+                        await self.forward_text(
+                            recipient, f"【{name} · {title}】\n- {task['title']}\n- DDL：{deadline_label(task)}\n{task['url']}")
+                    with self.db:
+                        self.db.execute("INSERT OR REPLACE INTO forward_tasks VALUES(?,?,?)",
+                                        (recipient, row["number"], row["revision"]))
+                stage = self.reminder_stage(task)
+                if stage and not self.db.execute(
+                    "SELECT 1 FROM forward_reminders WHERE recipient=? AND task=? AND deadline=? AND stage=?",
+                    (recipient, row["number"], task["deadline"], stage),
+                ).fetchone():
+                    hint = "请核对截止时刻" if stage == "date" else f"已进入截止前 {stage} 小时"
+                    await self.forward_text(
+                        recipient, f"【{name} · DDL 提醒】\n- {task['title']}\n- 截止：{deadline_label(task)}\n- {hint}\n{task['url']}")
+                    with self.db:
+                        self.db.execute("INSERT INTO forward_reminders VALUES(?,?,?,?)",
+                                        (recipient, row["number"], task["deadline"], stage))
 
     async def analyze_pending(self):
         configured = {course["id"]: course for course in self.courses}
@@ -558,6 +613,7 @@ class CourseService:
                 self.db.execute(
                     "UPDATE reports SET text_sent=? WHERE id=?", (index + 1, row["id"])
                 )
+
         if not row["image_sent"]:
             path = self.root / f"course-report-{row['day']}-{row['id']}.png"
             path.write_bytes(row["image"])
@@ -572,8 +628,43 @@ class CourseService:
                         (revision, cid, material),
                     )
 
+    def unreported_materials(self, course):
+        return self.db.execute(
+            "SELECT m.* FROM materials m JOIN sources s ON s.id=m.course WHERE m.course=? AND m.active=1 AND s.status='ok' AND m.revision>m.reported",
+            (course,),
+        ).fetchall()
+
+    async def build_update(self):
+        """Changes-only digest: materials added, updated or recovered since the last sent report."""
+        report = {
+            "title": (self.label + " · " if self.label else "") + "课程更新",
+            "subtitle": f"{current_time().date().isoformat()} · 自上次汇报以来 · 北京时间",
+            "sections": [],
+            "notes": [
+                "只列上次汇报后新增/更新或分析恢复的课件；上传日期不等于授课日期。",
+                "新任务与截止提醒已即时单独发送。",
+            ],
+        }
+        if self.profile:
+            report["notes"].append(f"完整待办：课程 {self.profile} 列表")
+        versions = []
+        for course in self.courses:
+            lines = []
+            for row in self.unreported_materials(course["id"]):
+                material = json.loads(row["payload"])
+                lines.append("课件：" + material["title"])
+                summary = await self.summarize(row)
+                lines.extend(line.strip().lstrip("-*").strip() for line in summary.splitlines() if line.strip())
+                if material.get("read_warning"):
+                    lines.append(material["read_warning"])
+                versions.append([course["id"], row["remote_id"], row["revision"]])
+            if lines:
+                report["sections"].append({"course_id": course["id"], "status": "ok", "title": course["name"],
+                                           "lines": lines, "url": course["url"]})
+        return report, versions
+
     async def publish(self, kind="manual", *, summarize=True):
-        report, versions = await self.build_report(summarize=summarize)
+        report, versions = await (self.build_update() if kind == "update" else self.build_report(summarize=summarize))
         if kind == "correction":
             report["title"] = (self.label + " · " if self.label else "") + "全课程日报（同步恢复修正版）"
         image = await self.render_image(report)
@@ -606,6 +697,10 @@ class CourseService:
             ):
                 await self.publish("setup", summarize=False)
             if current_time().hour < self.summary_hour:
+                return
+            if self.changes_only and self.db.execute("SELECT 1 FROM reports WHERE image_sent=1").fetchone():
+                if any(self.unreported_materials(course["id"]) for course in self.courses):
+                    await self.publish("update")
                 return
             today = current_time().date().isoformat()
             done = self.db.execute(

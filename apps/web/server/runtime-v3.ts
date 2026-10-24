@@ -331,7 +331,10 @@ export function runtimeV3Target(accountId: string, conversationId: string): Deli
   return { account: accountId, type: match[2] as 'group' | 'private', peerId: match[3]! }
 }
 
-/** Delivery is opt-in per exact account/conversation and claimed durably by the host. */
+/**
+ * Delivery is opt-in per exact account/conversation and claimed durably by the host.
+ * `notifyScopes` only receive plain outbox notifications: their messages are never sent to the Host.
+ */
 export class RuntimeV3QqBridge {
   private closed = false
   private polling = false
@@ -344,6 +347,7 @@ export class RuntimeV3QqBridge {
     private readonly scopes: ReadonlySet<string>,
     private readonly onError: (error: unknown) => void = error => console.error('Dududa 3.0 QQ bridge:', error),
     private readonly outboxIntervalMs = 3_000,
+    private readonly notifyScopes: ReadonlySet<string> = new Set(),
   ) {
     hub.on('workspace-event', this.listener)
     this.scheduleOutbox()
@@ -409,7 +413,8 @@ export class RuntimeV3QqBridge {
         if (this.closed) break
         const target = runtimeV3Target(item.account_id, item.conversation_id)
         try {
-          const allowed = target && this.scopes.has(`${item.account_id}/${item.conversation_id}`)
+          const scope = `${item.account_id}/${item.conversation_id}`
+          const allowed = target && this.scopes.has(scope)
           let actions = Array.isArray(item.actions) ? item.actions : []
           if (item.guard) {
             if (!this.runtime.authorizeOutbox) throw new Error('问候缺少宿主发送授权接口')
@@ -432,7 +437,7 @@ export class RuntimeV3QqBridge {
             }
             actions = authorization.actions ?? actions
           }
-          if (!target || !allowed) {
+          if (!target || !(allowed || (!item.guard && this.notifyScopes.has(scope)))) {
             throw new Error(`发件箱会话未启用: ${item.account_id}/${item.conversation_id}`)
           }
           const sentId = await this.deliver(target, actions)

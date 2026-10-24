@@ -135,6 +135,20 @@ class Notify:
         self.recipients = tuple(dict.fromkeys(str(value).strip() for value in recipients))
         if any(not value.isascii() or not value.isdigit() or int(value) <= 0 for value in self.recipients):
             raise FeatureError("notify.recipients 只能填写 QQ 号")
+        forwards = cfg.get("course_forwards", [])
+        if not isinstance(forwards, list) or not all(isinstance(item, dict) for item in forwards):
+            raise FeatureError("notify.course_forwards 必须是对象列表")
+        # Notification-only copies of selected courses; no commands, drafts, submissions or reports.
+        self.course_forwards: dict[str, tuple[str, ...]] = {}
+        for item in forwards:
+            target, courses = str(item.get("recipient", "")).strip(), item.get("courses")
+            if not target.isascii() or not target.isdigit() or int(target) <= 0:
+                raise FeatureError("课程转发收件人只能填写 QQ 号")
+            if target in self.course_forwards:
+                raise FeatureError("课程转发收件人不能重复")
+            if not isinstance(courses, list) or not courses or not all(isinstance(c, str) and c for c in courses):
+                raise FeatureError("课程转发必须列出课程 id")
+            self.course_forwards[target] = tuple(dict.fromkeys(courses))
         self.owner = str(cfg.get("homework_recipient", "")).strip()
         self.interval = _int(cfg, "interval_minutes", 3, 1, 1440)
         self.limit = _int(cfg, "max_messages_per_poll", 5, 1, 20)
@@ -187,12 +201,20 @@ class Notify:
                 validate_courses(sources)
             except ValueError as exc:
                 raise FeatureError(f"notify.course_sources 无效：{exc}") from None
+            unknown = {cid for courses in self.course_forwards.values() for cid in courses} - {
+                course["id"] for course in sources}
+            if unknown:
+                raise FeatureError("notify.course_forwards 引用了未配置的课程：" + "、".join(sorted(unknown)))
             self.course_interval = _int(cfg, "courses_interval_minutes", 3, 1, 1440)
             self.courses = CourseService(
                 self.root, self.owner, sources, self.course_query, self.generate, self.course_image,
                 lambda text: self.send_text(self.owner, text, "courses"),
                 lambda path: self.send_image(self.owner, path),
-                summary_hour=_int(cfg, "courses_summary_hour", 20, 0, 23))
+                summary_hour=_int(cfg, "courses_summary_hour", 20, 0, 23),
+                forwards=self.course_forwards,
+                forward_text=lambda target, text: self.send_text(target, text, "course-forward"))
+        elif self.course_forwards:
+            raise FeatureError("notify.course_forwards 需要开启 courses_enabled")
         if cfg.get("weekly_enabled"):
             self.weekly_interval = _int(cfg, "weekly_interval_minutes", 3, 1, 1440)
             policy = str(cfg.get("weekly_report_day", "first"))
@@ -235,6 +257,7 @@ class Notify:
                 lambda path, target=recipient: self.send_image(target, path),
                 summary_hour=_int(account, "summary_hour", _int(cfg, "courses_summary_hour", 20, 0, 23), 0, 23),
                 profile=profile, label=profile, discover=True, nonempty_only=True, analyze_materials=True,
+                changes_only=True,
             )
 
 
@@ -274,7 +297,7 @@ class Notify:
         return f"{self.account}/{self.account}:private:{recipient}"
 
     def push(self, recipient: str, reply: Reply, kind: str, data: str | bytes, key: str | None = None) -> str:
-        if recipient not in self.recipients and not any(
+        if recipient not in self.recipients and recipient not in self.course_forwards and not any(
             course.owner == recipient for course in self.blackboard_accounts.values()
         ):
             raise FeatureError("通知收件人未授权")
